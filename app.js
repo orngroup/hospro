@@ -788,11 +788,20 @@ function pipelineData(){
 function roomIdFromName(name){ const r=ROOMS.find(x=>x.name===name); return r?r.id:""; }
 
 function renderPipeline(v){
-  v.appendChild(head("Sales Pipeline","Every opportunity in one place — Rezlynx business-on-books plus new enquiries. Filter across the top, click a row to manage it."));
-  const tb=el("div","enq-toolbar");
-  tb.innerHTML=`<button class="btn" id="enq-new">+ New enquiry</button>
-    <button class="btn ghost" id="enq-chat">Open events chat</button>
-    <button class="btn ghost" id="enq-link">Copy chat link</button><div class="spacer"></div>`;
+  const ph=head("Sales Pipeline","Track every enquiry from first contact to confirmed — with conversion, traffic-light status and event-type breakdown.");
+  v.appendChild(ph);
+  const tb=el("div","pipe-toolbar");
+  tb.innerHTML=`<div class="rag-legend">
+      <span><i class="rag rag-green"></i>Confirmed</span>
+      <span><i class="rag rag-yellow"></i>In progress</span>
+      <span><i class="rag rag-amber"></i>Needs chasing</span>
+      <span><i class="rag rag-red"></i>Lost</span>
+    </div>
+    <div class="pipe-actions">
+      <button class="btn" id="enq-new">+ New enquiry</button>
+      <button class="btn ghost" id="enq-chat">Events chat</button>
+      <button class="btn ghost" id="enq-link">Copy chat link</button>
+    </div>`;
   v.appendChild(tb);
   $("#enq-new").onclick=()=>openEnquiryForm({});
   $("#enq-chat").onclick=()=>switchTab("chat");
@@ -857,6 +866,40 @@ function renderPipeline(v){
   row1.appendChild(clickableChart("Pipeline value by owner","owner", pieChartData(chartBase,e=>e.owner||"Unassigned")));
   v.appendChild(row1);
 
+  // ---- CONVERSION BY EVENT TYPE ----
+  const byType={};
+  allRaw.forEach(e=>{ const et=EVENT_TYPES.find(t=>t.id===e.event);
+    const key = et? et.id : (e.ratePlan?"corporate":"other");
+    const label = et? et.label : (e.ratePlan?"Corporate / Rooms":"Other");
+    const icon = et? et.icon : "🏢";
+    const t=byType[key]||(byType[key]={label,icon,total:0,open:0,won:0,lost:0,value:0,wonValue:0});
+    t.total++; t.value+=e.value||0;
+    if(e.status==="confirmed"){ t.won++; t.wonValue+=e.value||0; }
+    else if(e.status==="cancelled"){ t.lost++; }
+    else t.open++;
+  });
+  const types=Object.values(byType).sort((a,b)=>b.total-a.total);
+  const etPanel=el("div","quote-panel");
+  etPanel.style.marginBottom="18px";
+  etPanel.innerHTML=`<div class="cc-title" style="margin-bottom:12px">Conversion by event type</div>
+    <table class="ettable">
+      <tr><th>Event type</th><th>Enquiries</th><th>Open</th><th>Won</th><th>Lost</th><th>Win rate</th><th style="text-align:right">Won value</th></tr>
+      ${types.map(t=>{ const decided=t.won+t.lost; const wr=decided?Math.round(t.won/decided*100):0;
+        return `<tr class="ettr" data-type="${t.label}">
+          <td><b>${t.icon} ${t.label}</b></td>
+          <td>${t.total}</td><td>${t.open}</td>
+          <td class="et-won">${t.won}</td><td class="et-lost">${t.lost}</td>
+          <td><div class="et-wrbar"><span style="width:${wr}%"></span></div><span class="et-wr">${wr}%</span></td>
+          <td style="text-align:right;font-weight:600">${money(Math.round(t.wonValue))}</td></tr>`;
+      }).join("")}
+    </table>
+    <p class="qs-sub" style="margin-top:8px">Click a row to filter the pipeline to that event type.</p>`;
+  v.appendChild(etPanel);
+  etPanel.querySelectorAll(".ettr").forEach(row=>row.onclick=()=>{
+    const label=row.dataset.type; const et=EVENT_TYPES.find(t=>t.label===label);
+    if(et){ PIPE_FILTER.event=et.id; render(); }
+  });
+
   // ---- FILTER BAR ----
   const rooms=[...new Set(allRaw.map(e=>e.roomName||ROOMS.find(r=>r.id===e.room)?.name).filter(Boolean))].sort();
   const owners=[...new Set(allRaw.map(e=>e.owner).filter(Boolean))].sort();
@@ -909,17 +952,13 @@ function updateFilterCount(){
 }
 const STATUS_LABEL={enquiry:"Enquiry",provisional:"Provisional",confirmed:"Confirmed",cancelled:"Cancelled"};
 function ragStatus(e){
-  // manual override wins; else auto from follow-up date
-  if(e.rag) return e.rag;
-  if(["confirmed"].includes(e.status)) return "green";
-  if(["cancelled"].includes(e.status)) return "grey";
+  if(e.rag) return e.rag; // manual override wins
+  if(e.status==="confirmed") return "green";   // won
+  if(e.status==="cancelled") return "red";     // lost
+  // in progress (enquiry / provisional): yellow, or amber if follow-up overdue
   const today=new Date().toISOString().slice(0,10);
-  if(e.followUp){
-    if(e.followUp<today) return "red";      // overdue
-    const soon=new Date(); soon.setDate(soon.getDate()+3);
-    if(e.followUp<=soon.toISOString().slice(0,10)) return "amber"; // due within 3 days
-  }
-  return "green";
+  if(e.followUp && e.followUp<today) return "amber"; // needs chasing
+  return "yellow";
 }
 function renderPipeRows(){
   const box=$("#pipe-table"); if(!box)return;
