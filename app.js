@@ -833,74 +833,84 @@ function renderPipeline(v){
   const convRate=decided? Math.round(confN/decided*100):0;
   const lostReasons={};
   allRaw.filter(e=>e.status==="cancelled"&&e.lostReason).forEach(e=>{ lostReasons[e.lostReason]=(lostReasons[e.lostReason]||0)+1; });
-  const conv=el("div","conv-strip");
-  conv.innerHTML=`<div class="conv-main">
+
+  // ==== ACTION LIST — needs chasing (overdue follow-ups), by value ====
+  const needsChasing=allRaw.filter(e=>["enquiry","provisional"].includes(e.status) && e.followUp && e.followUp<today)
+    .sort((a,b)=>(b.value||0)-(a.value||0));
+  const noFollowUp=allRaw.filter(e=>["enquiry","provisional"].includes(e.status) && !e.followUp && (e.value||0)>0)
+    .sort((a,b)=>(b.value||0)-(a.value||0));
+  const action=el("div","action-panel");
+  const fmtD=d=>d?new Date(d).toLocaleDateString("en-GB"):"—";
+  action.innerHTML=`<div class="ap-head"><h3>🔴 Needs your attention</h3>
+    <span class="ap-sub">${needsChasing.length} overdue · ${noFollowUp.length} with no follow-up set</span></div>
+    ${needsChasing.length||noFollowUp.length? `<div class="ap-list">
+      ${needsChasing.slice(0,6).map(e=>{ const et=EVENT_TYPES.find(t=>t.id===e.event);
+        return `<div class="ap-row" data-id="${e.id}">
+          <span class="rag rag-amber"></span>
+          <span class="ap-name">${e.name}</span>
+          <span class="ap-meta">${et?et.label:(e.ratePlan||"—")} · ${e.owner||"Unassigned"}</span>
+          <span class="ap-due overdue">Follow-up due ${fmtD(e.followUp)}</span>
+          <span class="ap-val">${e.value?money(Math.round(e.value)):""}</span></div>`; }).join("")}
+      ${noFollowUp.slice(0,4).map(e=>{ const et=EVENT_TYPES.find(t=>t.id===e.event);
+        return `<div class="ap-row" data-id="${e.id}">
+          <span class="rag rag-yellow"></span>
+          <span class="ap-name">${e.name}</span>
+          <span class="ap-meta">${et?et.label:(e.ratePlan||"—")} · ${e.owner||"Unassigned"}</span>
+          <span class="ap-due">No follow-up set</span>
+          <span class="ap-val">${e.value?money(Math.round(e.value)):""}</span></div>`; }).join("")}
+    </div>` : `<div class="ap-empty">✓ Nothing overdue — every open enquiry has a follow-up scheduled.</div>`}`;
+  v.appendChild(action);
+  action.querySelectorAll(".ap-row").forEach(row=>row.onclick=()=>{
+    const e=allRaw.find(x=>x.id===row.dataset.id); if(e) openEnquiryDetail(e); });
+
+  // ==== CONVERSION ROW: win-rate + by event type side by side ====
+  const convWrap=el("div","conv-wrap");
+  // win rate card
+  const wrCard=el("div","quote-panel");
+  wrCard.innerHTML=`<div class="cc-title" style="margin-top:0">Conversion</div>
+    <div class="conv-main" style="margin-top:8px">
       <div class="conv-rate"><span class="cr-v">${convRate}%</span><span class="cr-k">Win rate (of decided)</span></div>
-      <div class="conv-bar"><span class="cb-won" style="flex:${confN||0.001}" title="Won ${confN}"></span><span class="cb-lost" style="flex:${cancN||0.001}" title="Lost ${cancN}"></span></div>
+      <div class="conv-bar"><span class="cb-won" style="flex:${confN||0.001}"></span><span class="cb-lost" style="flex:${cancN||0.001}"></span></div>
       <div class="conv-nums"><span class="cn-won">${confN} won</span> · <span class="cn-lost">${cancN} lost</span></div>
     </div>
-    ${Object.keys(lostReasons).length?`<div class="lost-reasons"><span class="lr-label">Lost reasons:</span>${Object.entries(lostReasons).sort((a,b)=>b[1]-a[1]).map(([r,n])=>`<span class="lr-pill">${r} <b>${n}</b></span>`).join("")}</div>`:`<div class="lost-reasons"><span class="lr-label" style="color:var(--muted)">Set a lost reason when marking an enquiry Cancelled to build this breakdown.</span></div>`}`;
-  v.appendChild(conv);
-
-  // ---- my tasks due ----
-  const today2=new Date().toISOString().slice(0,10);
-  const tasksDue=[];
-  allRaw.forEach(e=>{ (e.checklist||[]).forEach(t=>{ if(!t.done && t.due && t.due<=today2)
-    tasksDue.push({name:e.name, task:t.task, due:t.due, id:e.id, overdue:t.due<today2}); }); });
-  if(tasksDue.length){
-    tasksDue.sort((a,b)=>a.due<b.due?-1:1);
-    const td=el("div","tasks-due");
-    td.innerHTML=`<div class="sec-title" style="margin-top:0">📋 Tasks due (${tasksDue.length})</div>`+
-      tasksDue.slice(0,8).map(t=>`<div class="task-row" data-id="${t.id}">
-        <span class="tr-task ${t.overdue?"overdue":""}">${t.overdue?"⚠ ":""}${t.task}</span>
-        <span class="tr-name">${t.name}</span>
-        <span class="tr-due">${new Date(t.due).toLocaleDateString("en-GB")}</span></div>`).join("")+
-      (tasksDue.length>8?`<div class="qs-sub" style="margin-top:6px">+${tasksDue.length-8} more</div>`:"");
-    v.appendChild(td);
-    td.querySelectorAll(".task-row").forEach(row=>row.onclick=()=>{
-      const e=allRaw.find(x=>x.id===row.dataset.id); if(e) openEnquiryDetail(e); });
-  }
-
-  // ---- charts (clickable → set room/owner filter) ----
-  const chartBase=allRaw.filter(e=>["enquiry","provisional","confirmed"].includes(e.status));
-  const row1=el("div","chart-row");
-  row1.appendChild(clickableChart("Pipeline value by room","room", barChartData(chartBase,e=>e.roomName||ROOMS.find(r=>r.id===e.room)?.name||"—")));
-  row1.appendChild(clickableChart("Pipeline value by owner","owner", pieChartData(chartBase,e=>e.owner||"Unassigned")));
-  v.appendChild(row1);
-
-  // ---- CONVERSION BY EVENT TYPE ----
+    ${Object.keys(lostReasons).length?`<div class="lost-reasons" style="margin-top:12px"><span class="lr-label">Lost reasons:</span>${Object.entries(lostReasons).sort((a,b)=>b[1]-a[1]).map(([r,n])=>`<span class="lr-pill">${r} <b>${n}</b></span>`).join("")}</div>`:""}`;
+  convWrap.appendChild(wrCard);
+  // by event type
   const byType={};
   allRaw.forEach(e=>{ const et=EVENT_TYPES.find(t=>t.id===e.event);
     const key = et? et.id : (e.ratePlan?"corporate":"other");
     const label = et? et.label : (e.ratePlan?"Corporate / Rooms":"Other");
     const icon = et? et.icon : "🏢";
-    const t=byType[key]||(byType[key]={label,icon,total:0,open:0,won:0,lost:0,value:0,wonValue:0});
-    t.total++; t.value+=e.value||0;
+    const t=byType[key]||(byType[key]={label,icon,total:0,open:0,won:0,lost:0,wonValue:0});
+    t.total++;
     if(e.status==="confirmed"){ t.won++; t.wonValue+=e.value||0; }
-    else if(e.status==="cancelled"){ t.lost++; }
-    else t.open++;
+    else if(e.status==="cancelled"){ t.lost++; } else t.open++;
   });
   const types=Object.values(byType).sort((a,b)=>b.total-a.total);
   const etPanel=el("div","quote-panel");
-  etPanel.style.marginBottom="18px";
-  etPanel.innerHTML=`<div class="cc-title" style="margin-bottom:12px">Conversion by event type</div>
+  etPanel.innerHTML=`<div class="cc-title" style="margin-top:0">By event type</div>
     <table class="ettable">
-      <tr><th>Event type</th><th>Enquiries</th><th>Open</th><th>Won</th><th>Lost</th><th>Win rate</th><th style="text-align:right">Won value</th></tr>
-      ${types.map(t=>{ const decided=t.won+t.lost; const wr=decided?Math.round(t.won/decided*100):0;
+      <tr><th>Type</th><th>Open</th><th>Won</th><th>Lost</th><th>Win rate</th></tr>
+      ${types.map(t=>{ const dec=t.won+t.lost; const wr=dec?Math.round(t.won/dec*100):0;
         return `<tr class="ettr" data-type="${t.label}">
-          <td><b>${t.icon} ${t.label}</b></td>
-          <td>${t.total}</td><td>${t.open}</td>
+          <td><b>${t.icon} ${t.label}</b></td><td>${t.open}</td>
           <td class="et-won">${t.won}</td><td class="et-lost">${t.lost}</td>
-          <td><div class="et-wrbar"><span style="width:${wr}%"></span></div><span class="et-wr">${wr}%</span></td>
-          <td style="text-align:right;font-weight:600">${money(Math.round(t.wonValue))}</td></tr>`;
+          <td><div class="et-wrbar"><span style="width:${wr}%"></span></div><span class="et-wr">${wr}%</span></td></tr>`;
       }).join("")}
-    </table>
-    <p class="qs-sub" style="margin-top:8px">Click a row to filter the pipeline to that event type.</p>`;
-  v.appendChild(etPanel);
+    </table><p class="qs-sub" style="margin-top:6px">Click a type to filter below.</p>`;
+  convWrap.appendChild(etPanel);
+  v.appendChild(convWrap);
   etPanel.querySelectorAll(".ettr").forEach(row=>row.onclick=()=>{
     const label=row.dataset.type; const et=EVENT_TYPES.find(t=>t.label===label);
     if(et){ PIPE_FILTER.event=et.id; render(); }
   });
+
+  // ==== charts (collapsible, secondary) ====
+  const chartBase=allRaw.filter(e=>["enquiry","provisional","confirmed"].includes(e.status));
+  const row1=el("div","chart-row");
+  row1.appendChild(clickableChart("Pipeline value by room","room", barChartData(chartBase,e=>e.roomName||ROOMS.find(r=>r.id===e.room)?.name||"—")));
+  row1.appendChild(clickableChart("Pipeline value by owner","owner", pieChartData(chartBase,e=>e.owner||"Unassigned")));
+  v.appendChild(row1);
 
   // ---- FILTER BAR ----
   const rooms=[...new Set(allRaw.map(e=>e.roomName||ROOMS.find(r=>r.id===e.room)?.name).filter(Boolean))].sort();
