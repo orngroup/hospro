@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a2b3a">
+<title>How did we do? — Brandon Hall Hotel and Spa</title>
+<meta name="description" content="We'd love to hear how your stay was at Brandon Hall Hotel and Spa.">
+<meta property="og:title" content="How did we do? — Brandon Hall Hotel and Spa">
+<meta property="og:description" content="We'd love to hear how your stay was. It only takes a moment.">
+<meta property="og:image" content="https://orngroup.github.io/stayflow-brandon/assets/hotel/exterior-dusk.png">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{ --navy:#1a2b3a; --panel:#22374d; --gold:#c9a978; --gold-lt:#d8bb8e; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Lato',system-ui,sans-serif;color:#fff;background:var(--navy)}
+.bg{min-height:100dvh;display:grid;place-items:center;padding:30px;text-align:center;
+  background:linear-gradient(rgba(15,31,48,.78),rgba(15,31,48,.9)),url('assets/hotel/exterior-dusk.png') center/cover fixed}
+.card-in{max-width:520px;animation:fade .7s ease}
+@keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.logo{width:110px;margin-bottom:20px}
+.eyebrow{font-size:13px;letter-spacing:5px;color:var(--gold);font-weight:700}
+.title{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:600;line-height:1.05;margin:10px 0 14px}
+.sub{font-size:16px;line-height:1.6;color:#dbe3ec;max-width:400px;margin:0 auto 6px}
+.stars{display:flex;gap:10px;justify-content:center;margin:28px 0 8px}
+.star{font-size:44px;color:#4a5a6d;cursor:pointer;transition:.15s}
+.star:hover,.star.on{color:var(--gold);transform:scale(1.1)}
+.hint{font-size:13px;color:#8ea0b3}
+.panel{background:var(--panel);border-radius:16px;padding:28px;margin-top:10px;border:1px solid rgba(201,169,120,.25);text-align:left;display:none}
+.panel h3{font-family:'Cormorant Garamond',serif;font-size:24px;text-align:center;margin-bottom:6px}
+.panel p{font-size:14px;color:#b8c6d6;text-align:center;margin-bottom:16px}
+label{display:block;font-size:12.5px;font-weight:600;color:var(--gold);margin-bottom:5px;margin-top:12px}
+textarea,input{width:100%;padding:11px 13px;border-radius:9px;font-size:15px;font-family:inherit;
+  background:rgba(255,255,255,.06);border:1px solid rgba(201,169,120,.3);color:#fff}
+textarea::placeholder,input::placeholder{color:#8ea0b3}
+textarea:focus,input:focus{outline:none;border-color:var(--gold);background:rgba(255,255,255,.1)}
+.btn{display:inline-block;background:var(--gold);color:var(--navy);border:none;padding:15px 30px;border-radius:32px;
+  font:700 16px/1 'Lato',sans-serif;cursor:pointer;text-decoration:none;transition:.18s;margin-top:16px;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.btn:hover{background:var(--gold-lt);transform:translateY(-2px)}
+.btn.block{display:block;text-align:center;width:100%}
+.msg{font-size:13px;margin-top:10px;text-align:center;color:#ffd9b0}
+@media(max-width:560px){.title{font-size:34px}.star{font-size:38px}}
+</style>
+</head>
+<body>
+<div class="bg"><div class="card-in" id="root">
+  <img class="logo" src="assets/marketing/logos/logo-gold-transparent.png" onerror="this.src='assets/bh-logo.svg'">
+  <div class="eyebrow">YOUR STAY</div>
+  <h1 class="title">How did we do?</h1>
+  <p class="sub">Thank you for staying with us. We'd love to hear how everything was — it only takes a moment and helps us be even better.</p>
+  <div class="stars" id="stars">
+    <span class="star" data-n="1">★</span><span class="star" data-n="2">★</span>
+    <span class="star" data-n="3">★</span><span class="star" data-n="4">★</span><span class="star" data-n="5">★</span>
+  </div>
+  <div class="hint">Tap a star to rate your stay</div>
+
+  <!-- HAPPY panel -->
+  <div class="panel" id="happy">
+    <h3>Wonderful — thank you!</h3>
+    <p>We're so glad you enjoyed your stay. Would you share a quick review on Google? It means the world to us.</p>
+    <a class="btn block" id="googleBtn" target="_blank" rel="noopener">Leave a Google review ★</a>
+  </div>
+
+  <!-- UNHAPPY panel -->
+  <div class="panel" id="unhappy">
+    <h3>We're sorry to hear that</h3>
+    <p>Thank you for being honest — please tell us what let you down so we can put it right. This comes straight to our management team.</p>
+    <label>Your feedback</label>
+    <textarea id="fb-text" rows="4" placeholder="What could we have done better?"></textarea>
+    <label>Your name (optional)</label>
+    <input id="fb-name" type="text">
+    <label>Email or phone (optional, so we can follow up)</label>
+    <input id="fb-contact" type="text">
+    <button class="btn block" id="fb-submit">Send feedback</button>
+    <div class="msg" id="fb-msg"></div>
+  </div>
+</div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+// Brandon Hall Google review link (permanent, via Place ID)
+const GOOGLE_REVIEW = "https://search.google.com/local/writereview?placeid=ChIJTdWs5dRJd0gRYN_wSDrGSU8";
+document.getElementById("googleBtn").href = GOOGLE_REVIEW;
+
+let db=null, auth=null;
+try{
+  if(typeof firebase!=="undefined" && firebaseConfig && !firebaseConfig.apiKey.startsWith("YOUR_")){
+    firebase.initializeApp(firebaseConfig); db=firebase.firestore(); auth=firebase.auth();
+  }
+}catch(e){}
+
+let rating=0;
+const $=s=>document.querySelector(s);
+document.querySelectorAll(".star").forEach(st=>{
+  st.onclick=()=>{
+    rating=+st.dataset.n;
+    document.querySelectorAll(".star").forEach((s,i)=>s.classList.toggle("on", i<rating));
+    $("#happy").style.display = rating>=4 ? "block":"none";
+    $("#unhappy").style.display = rating<4 ? "block":"none";
+    // happy guests: auto-nudge to Google after a beat (optional) — we keep it as a button
+    setTimeout(()=>{ (rating>=4?$("#happy"):$("#unhappy")).scrollIntoView({behavior:"smooth",block:"center"}); },100);
+  };
+});
+
+$("#fb-submit").onclick=async()=>{
+  const text=$("#fb-text").value.trim();
+  if(!text){ $("#fb-msg").textContent="Please tell us a little about what happened."; return; }
+  const rec={ rating, text, name:$("#fb-name").value.trim(), contact:$("#fb-contact").value.trim(),
+    created:new Date().toISOString(), source:"guest feedback" };
+  $("#fb-submit").disabled=true; $("#fb-msg").textContent="Sending…";
+  try{
+    if(db){ if(auth && !auth.currentUser){ try{ await auth.signInAnonymously(); }catch(e){} }
+      await db.collection("feedback").add(rec);
+    }else{ const l=JSON.parse(localStorage.getItem("bh_feedback")||"[]"); l.unshift(rec); localStorage.setItem("bh_feedback",JSON.stringify(l)); }
+  }catch(e){ console.warn(e.message); }
+  $("#root").innerHTML=`<img class="logo" src="assets/marketing/logos/logo-gold-transparent.png" onerror="this.src='assets/bh-logo.svg'">
+    <div class="eyebrow">THANK YOU</div><h1 class="title">We appreciate it</h1>
+    <p class="sub">Thank you for letting us know. Our management team will look into this personally. We hope to welcome you back and do better.</p>`;
+};
+</script>
+</body>
+</html>

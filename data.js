@@ -849,7 +849,7 @@ const FLOW_MODULES = [
   { id:"events",    name:"EventsFLOW",    caption:"Plan. Organise. Deliver.",       icon:"📅", colour:"#4a9d7f", tint:"#e6f3ee", tabs:["chat","dining"] },
   { id:"room",      name:"RoomFLOW",      caption:"Keep operations in flow.",       icon:"🛏️", colour:"#4a86c7", tint:"#e6eff8", tabs:["rooms","packages"] },
   { id:"sales",     name:"SalesFLOW",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","profit"] },
-  { id:"corp",      name:"StayCORP",      caption:"Corporate guests & rates.",       icon:"🏢", colour:"#2f6f9e", tint:"#e6eef5", tabs:["precheckin","corpdb","corprates"] },
+  { id:"corp",      name:"StayCORP",      caption:"Corporate guests & rates.",       icon:"🏢", colour:"#2f6f9e", tint:"#e6eef5", tabs:["precheckin","corpdb","corprates","feedback"] },
   { id:"marketing", name:"MarketingFLOW", caption:"Create. Campaign. Convert.",     icon:"📣", colour:"#c85c6b", tint:"#f8e9eb", tabs:["marketing","social"] },
   { id:"task",      name:"TaskFLOW",      caption:"Tasks. Teams. Accountability.",  icon:"✅", colour:"#d4a24a", tint:"#faf1e0", tabs:["tasks"] },
   { id:"asset",     name:"AssetFLOW",     caption:"Maintain. Track. Extend.",       icon:"🔧", colour:"#3fa8a0", tint:"#e3f3f1", tabs:["mne","suppliers"] },
@@ -870,6 +870,7 @@ const TAB_META = {
   tasks:{label:"Tasks",icon:"✅"}, insight:{label:"Insights",icon:"📈"},
   precheckin:{label:"Pre Check-in Setup",icon:"📋"}, corpdb:{label:"Corporate Database",icon:"🏢"},
   corprates:{label:"Corporate Rates",icon:"💷"},
+  feedback:{label:"Guest Feedback & QR",icon:"⭐"},
   admin:{label:"Admin",icon:"⚙️"}
 };
 
@@ -904,6 +905,5 @@ const PRECHECKIN_FIELDS = [
   { key:"dinnerCovers",label:"Number of covers",   type:"number",req:false, showIf:"dinner=Yes" },
   { key:"dietary",   label:"Dietary requirements / allergies", type:"text", req:false, ph:"e.g. vegetarian, nut allergy" },
   { key:"occasion",  label:"Special occasion?",    type:"text",  req:false, ph:"e.g. birthday, anniversary" },
-  { key:"billing",   label:"Bill to company account?", type:"select", opts:["No","Yes"], req:false },
   { key:"newsletter",label:"Keep me updated with offers", type:"select", opts:["No","Yes"], req:false }
 ];

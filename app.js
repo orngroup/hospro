@@ -116,6 +116,8 @@ async function boot(){
       MktStore.onChange(()=>{ if(CURRENT_TAB==="marketing") render(); }); }
     if(typeof CorpGuestStore!=="undefined"){ CorpGuestStore.start();
       CorpGuestStore.onChange(()=>{ if(CURRENT_TAB==="corpdb") render(); }); }
+    if(typeof FeedbackStore!=="undefined"){ FeedbackStore.start();
+      FeedbackStore.onChange(()=>{ if(CURRENT_TAB==="feedback") render(); }); }
   } else {
     Store.seed();
   }
@@ -147,7 +149,7 @@ function render(){
   document.body.classList.toggle("home-active", CURRENT_TAB==="home");
   syncSidebar();
   ({home:renderHome, rooms:renderRooms, dining:renderDining, pipeline:renderPipeline, corprates:renderCorpRates, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
-    profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, admin:renderAdmin }[CURRENT_TAB]||renderRooms)(v);
+    profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, admin:renderAdmin }[CURRENT_TAB]||renderRooms)(v);
 }
 
 /* ============================================================ ROOMS */
@@ -2808,6 +2810,76 @@ function renderCorpDb(v){
       <td>${r.checkin?new Date(r.checkin).toLocaleDateString("en-GB"):"—"}</td><td>${nights(r)}</td>
       <td>${r.dinner==="Yes"?(r.dinnerTime||"Yes"):"—"}</td><td>${r.dietary||"—"}</td></tr>`).join("");
   v.appendChild(rt);
+}
+
+/* ============================================================ GUEST FEEDBACK & QR */
+function feedbackURL(){ return location.href.split("#")[0].replace(/index\.html$/,"").replace(/\/$/,"")+"/feedback.html"; }
+function renderFeedback(v){
+  v.appendChild(head("Guest Feedback & Review QR","Print the QR for rooms and checkout. Happy guests go to Google; unhappy guests reach you privately."));
+  const url=feedbackURL();
+  const grid=el("div","chart-row");
+  const qp=el("div","quote-panel");
+  qp.innerHTML=`<div class="sec-title" style="margin-top:0">Review QR code</div>
+    <div id="qr-box" class="qr-box"></div>
+    <p class="qs-sub" style="text-align:center;margin-top:10px">Scan to leave feedback</p>
+    <div class="embed-box" style="margin-top:12px">${url}<button class="cp" id="fb-copy">Copy</button></div>
+    <div class="dual-btn" style="margin-top:12px">
+      <button class="btn" id="qr-print">Print QR poster</button>
+      <button class="btn ghost" id="qr-download">Download QR</button>
+    </div>`;
+  grid.appendChild(qp);
+
+  const list=(typeof FeedbackStore!=="undefined")?FeedbackStore.all():[];
+  const ip=el("div","quote-panel");
+  const avg = list.length? (list.reduce((s,f)=>s+(f.rating||0),0)/list.length).toFixed(1) : "—";
+  ip.innerHTML=`<div class="sec-title" style="margin-top:0">Private feedback inbox ${list.length?`(${list.length})`:""}</div>
+    ${list.length?`<p class="qs-sub">Average from this channel: <b>${avg} ★</b> · these guests rated below 4 and did NOT go to Google.</p>`:""}
+    <div class="fb-list">${list.length? list.slice(0,30).map(f=>`
+      <div class="fb-item">
+        <div class="fb-top"><span class="fb-stars">${"★".repeat(f.rating||0)}${"☆".repeat(5-(f.rating||0))}</span>
+          <span class="fb-date">${new Date(f.created).toLocaleDateString("en-GB")}</span></div>
+        <div class="fb-text">${f.text||""}</div>
+        ${(f.name||f.contact)?`<div class="fb-contact">${f.name||""}${f.contact?" · "+f.contact:""}</div>`:""}
+      </div>`).join("") : `<div class="qs-sub" style="padding:14px 0">No private feedback yet. When a guest rates below 4 stars, their comments arrive here instead of going public.</div>`}</div>`;
+  grid.appendChild(ip);
+  v.appendChild(grid);
+
+  const qrBox=$("#qr-box"); qrBox.innerHTML="";
+  if(typeof QRCode!=="undefined"){
+    new QRCode(qrBox,{ text:url, width:200, height:200, colorDark:"#1a2b3a", colorLight:"#ffffff", correctLevel:QRCode.CorrectLevel.H });
+  } else { qrBox.innerHTML=`<div class="qs-sub">QR library not loaded.</div>`; }
+
+  $("#fb-copy").onclick=()=>{ navigator.clipboard?.writeText(url); $("#fb-copy").textContent="Copied"; };
+  $("#qr-download").onclick=()=>{ const im=qrBox.querySelector("img")||qrBox.querySelector("canvas");
+    if(im){ const src=im.src||im.toDataURL("image/png"); const a=document.createElement("a"); a.href=src; a.download="brandon-hall-review-qr.png"; a.click(); } };
+  $("#qr-print").onclick=()=>printQRPoster(url, qrBox);
+}
+function printQRPoster(url, qrBox){
+  const im=qrBox.querySelector("img")||qrBox.querySelector("canvas");
+  const src=im? (im.src||im.toDataURL("image/png")) : "";
+  const logo=location.href.split('#')[0].replace(/index\.html$/,'')+"assets/marketing/logos/logo-gold-transparent.png";
+  const win=window.open("","_blank");
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Review QR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>@page{margin:0}body{margin:0;font-family:'Lato',sans-serif;text-align:center;
+      background:linear-gradient(160deg,#1a2b3a,#0f1f30);color:#fff;min-height:297mm;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:30mm}
+    .logo{width:120px;margin-bottom:20px}
+    .eyebrow{font-size:14px;letter-spacing:6px;color:#c9a978;font-weight:700}
+    h1{font-family:'Cormorant Garamond',serif;font-size:56px;margin:14px 0 10px}
+    p{font-size:19px;color:#dbe3ec;max-width:420px;line-height:1.5}
+    .qr{background:#fff;padding:22px;border-radius:16px;margin:30px 0}
+    .qr img{width:260px;height:260px;display:block}
+    .scan{font-size:16px;color:#c9a978;font-weight:700;letter-spacing:1px}
+    .foot{margin-top:26px;font-size:13px;color:#8ea0b3}</style></head><body>
+    <img class="logo" src="${logo}" onerror="this.style.display='none'">
+    <div class="eyebrow">YOUR STAY</div>
+    <h1>How did we do?</h1>
+    <p>We'd love to hear how your stay was. It only takes a moment — and it helps us be even better.</p>
+    <div class="qr"><img src="${src}"></div>
+    <div class="scan">SCAN TO SHARE YOUR FEEDBACK</div>
+    <div class="foot">Brandon Hall Hotel and Spa · Main Street, Brandon, Coventry CV8 3FW</div>
+    <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>`);
+  win.document.close();
 }
 
 /* ============================================================ HELPERS */

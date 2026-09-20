@@ -62,6 +62,9 @@ select option{background:var(--panel);color:#fff}
 .submit:hover{background:var(--gold-lt)}
 .msg{font-size:13px;margin-top:10px;text-align:center;color:#ffd9b0;min-height:16px}
 .foot{text-align:center;color:#8ea0b3;font-size:12px;margin:20px 0 10px}
+.chkwrap{margin-top:4px}
+.chk{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;color:#dbe3ec;line-height:1.4}
+.chk input{width:auto;margin-top:2px;accent-color:var(--gold)}
 @media(max-width:560px){.grid{grid-template-columns:1fr}}
 
 /* thanks */
@@ -105,9 +108,12 @@ const FIELDS = [
   { key:"name",      label:"Full name",            type:"text",  req:true },
   { key:"company",   label:"Company",              type:"text" },
   { key:"email",     label:"Email",                type:"email", req:true },
-  { key:"phone",     label:"Phone",                type:"tel" },
+  { key:"phone",     label:"Phone",                type:"tel",   req:true },
+  { key:"guests",    label:"Number of guests staying", type:"number" },
+  { key:"purpose",   label:"Purpose of stay",      type:"select", opts:["Leisure","Business","Event / Wedding","Other"] },
   { key:"checkin",   label:"Check-in date",        type:"date",  req:true },
   { key:"checkout",  label:"Check-out date",       type:"date" },
+  { key:"nights",    label:"Nights",               type:"readonly" },
   { key:"arrival",   label:"Estimated arrival time", type:"time" },
   { key:"carReg",    label:"Car registration",     type:"text" },
   { key:"roomReq",   label:"Room requests / preferences", type:"textarea", full:true, ph:"e.g. quiet room, high floor, twin beds, accessible" },
@@ -116,8 +122,9 @@ const FIELDS = [
   { key:"dinnerCovers",label:"Number of covers",   type:"number" },
   { key:"dietary",   label:"Dietary requirements / allergies", type:"text", full:true, ph:"e.g. vegetarian, nut allergy" },
   { key:"occasion",  label:"Special occasion?",    type:"text", full:true, ph:"e.g. birthday, anniversary" },
-  { key:"billing",   label:"Bill to company account?", type:"select", opts:["No","Yes"] },
-  { key:"newsletter",label:"Keep me updated with offers", type:"select", opts:["No","Yes"] }
+  { key:"hearAbout", label:"How did you hear about us?", type:"select", full:true, opts:["","Returning guest","Recommendation","Google","Social media","Travel agent","Booking site","Event / wedding","Other"] },
+  { key:"newsletter",label:"Keep me updated with offers", type:"select", opts:["No","Yes"] },
+  { key:"gdpr",      label:"I agree to Brandon Hall Hotel and Spa storing these details to prepare for my stay, in line with its privacy policy.", type:"checkbox", full:true, req:true }
 ];
 
 // init firebase if configured
@@ -136,19 +143,31 @@ function buildFields(){
     let inp;
     if(f.type==="textarea") inp=`<textarea id="f-${f.key}" rows="2" placeholder="${f.ph||''}"></textarea>`;
     else if(f.type==="select") inp=`<select id="f-${f.key}">${f.opts.map(o=>`<option>${o}</option>`).join("")}</select>`;
+    else if(f.type==="readonly") inp=`<input id="f-${f.key}" type="text" readonly placeholder="—" style="opacity:.7">`;
+    else if(f.type==="checkbox") inp=`<label class="chk"><input id="f-${f.key}" type="checkbox"> <span>${f.label}${f.req?' *':''}</span></label>`;
     else inp=`<input id="f-${f.key}" type="${f.type}" placeholder="${f.ph||''}">`;
+    if(f.type==="checkbox") return `<div class="full chkwrap" data-field="${f.key}">${inp}</div>`;
     return `<div class="${f.full?'full':''}" data-field="${f.key}"><label>${f.label}${f.req?' *':''}</label>${inp}</div>`;
   }).join("");
   const toggle=()=>{ const show=$("#f-dinner").value==="Yes";
     ["dinnerTime","dinnerCovers"].forEach(k=>{ const d=document.querySelector(`[data-field="${k}"]`); if(d) d.style.display=show?"":"none"; }); };
   $("#f-dinner").onchange=toggle; toggle();
+  // auto-calc nights
+  const calcNights=()=>{ const ci=$("#f-checkin").value, co=$("#f-checkout").value;
+    if(ci&&co){ const n=Math.round((new Date(co)-new Date(ci))/864e5);
+      $("#f-nights").value = n>0 ? n+" night"+(n>1?"s":"") : "—"; } else $("#f-nights").value=""; };
+  $("#f-checkin").onchange=calcNights; $("#f-checkout").onchange=calcNights;
   $("#submit").onclick=submit;
 }
 
 async function submit(){
   const rec={}; let missing=false;
-  FIELDS.forEach(f=>{ const v=($("#f-"+f.key)?.value||"").trim(); rec[f.key]=v; if(f.req&&!v) missing=true; });
-  if(missing){ $("#msg").textContent="Please complete the required fields (*)."; return; }
+  FIELDS.forEach(f=>{
+    if(f.type==="checkbox"){ rec[f.key]=$("#f-"+f.key)?.checked?"Yes":"No"; if(f.req && !$("#f-"+f.key)?.checked) missing=true; return; }
+    if(f.type==="readonly"){ rec[f.key]=($("#f-"+f.key)?.value||""); return; }
+    const v=($("#f-"+f.key)?.value||"").trim(); rec[f.key]=v; if(f.req&&!v) missing=true;
+  });
+  if(missing){ $("#msg").textContent="Please complete the required fields (*) and accept the consent."; return; }
   rec.source="pre check-in"; rec.created=new Date().toISOString();
   $("#submit").disabled=true; $("#msg").textContent="Submitting…";
   try{

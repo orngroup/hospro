@@ -2,9 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Any signed-in user (your four accounts) can read and write
-    // enquiries and meta. The public events-chat writes enquiries too,
-    // but only via an authenticated context, so keep it auth-only.
     match /enquiries/{doc} {
       allow read, write: if request.auth != null;
     }
@@ -15,7 +12,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    // Deny everything else by default.
+    // Guests (not logged in) can submit; only staff can read.
+    match /precheckin/{doc} {
+      allow read: if request.auth != null;
+      allow create: if true;
+    }
+    match /feedback/{doc} {
+      allow read: if request.auth != null;
+      allow create: if true;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

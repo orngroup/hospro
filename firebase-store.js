@@ -177,3 +177,19 @@ const CorpGuestStore = {
     localStorage.setItem("bh_precheckin", JSON.stringify(l));
   }
 };
+
+/* ---- GUEST FEEDBACK store (Firestore + local fallback) ---- */
+const FeedbackStore = {
+  _cache: [], _listeners: [], live:false,
+  onChange(cb){ this._listeners.push(cb); },
+  _emit(){ this._listeners.forEach(cb=>cb(this._cache)); },
+  start(){
+    if(!FB.ready || !FB.user){ return false; }
+    if(this.live) return true; this.live=true;
+    FB.db.collection("feedback").orderBy("created","desc")
+      .onSnapshot(snap=>{ this._cache=snap.docs.map(d=>({id:d.id,...d.data()})); this._emit(); },
+        err=>console.warn("Feedback listener:",err.message));
+    return true;
+  },
+  all(){ return this.live? this._cache : (JSON.parse(localStorage.getItem("bh_feedback")||"[]")); }
+};
