@@ -2539,7 +2539,7 @@ function renderSocialPreview(){
 function renderHome(v){
   // ---- simple welcome header ----
   const hdr=el("div","sf-welcome");
-  hdr.innerHTML=`<h1>Welcome to <span class="sf-stay">Stay</span><span class="sf-flow">FLOW</span></h1>
+  hdr.innerHTML=`<h1>Welcome to <span class="hospro-navy">HOS</span><span class="hospro-teal">PRO</span></h1>
     <p>Brandon Hall Hotel and Spa</p>`;
   v.appendChild(hdr);
 
@@ -2549,7 +2549,7 @@ function renderHome(v){
   cardRow.innerHTML=mods.map(m=>`
     <button class="sf-modcard" data-go="${m.tabs[0]}" style="--mc:${m.colour};--mt:${m.tint}">
       <span class="sf-modico" style="background:${m.colour}">${m.icon}</span>
-      <span class="sf-modname">${m.name.replace("FLOW","")}<b>FLOW</b></span>
+      <span class="sf-modname">${m.name.replace("PRO","")}<b>PRO</b></span>
       <span class="sf-modcap">${m.caption}</span>
     </button>`).join("");
   v.appendChild(cardRow);
@@ -2587,10 +2587,10 @@ function renderHome(v){
   const grid=el("div","sf-dash-grid");
   const tasks=(typeof TaskStore!=="undefined")?TaskStore.all().filter(t=>!t.done).slice(0,5):[];
   const prioRows = tasks.length? tasks.map(t=>`<div class="sf-prio"><span class="sf-prio-check">☐</span>
-      <div class="sf-prio-txt">${t.title}<span class="sf-prio-mod">${t.module||"TaskFLOW"}</span></div>
+      <div class="sf-prio-txt">${t.title}<span class="sf-prio-mod">${t.module||"TaskPRO"}</span></div>
       <span class="sf-prio-due">${t.due||""}</span></div>`).join("")
     : open.slice(0,5).map(e=>`<div class="sf-prio"><span class="sf-prio-check">☐</span>
-      <div class="sf-prio-txt">Follow up: ${e.name}<span class="sf-prio-mod">SalesFLOW</span></div>
+      <div class="sf-prio-txt">Follow up: ${e.name}<span class="sf-prio-mod">SalesPRO</span></div>
       <span class="sf-prio-due">${e.followUp?fmtDMY(e.followUp):""}</span></div>`).join("");
   const upRows = upcoming.slice(0,5).map(e=>{ const d=new Date(e.date);
     const et=EVENT_TYPES.find(t=>t.id===e.event);
@@ -2631,18 +2631,18 @@ const TaskStore={ key:"bh_tasks",
   toggle(id){ const l=this.all(); const t=l.find(x=>x.id===id); if(t){t.done=!t.done; this.save(l);} },
   remove(id){ this.save(this.all().filter(x=>x.id!==id)); } };
 const DEFAULT_TASKS=[
-  { id:"T-1", title:"Finalise wedding rooming list", module:"EventsFLOW", due:"Due 10:00", done:false },
-  { id:"T-2", title:"Approve Q3 corporate proposal", module:"SalesFLOW", due:"Due 11:30", done:false },
-  { id:"T-3", title:"Check spa maintenance schedule", module:"AssetFLOW", due:"Due 14:00", done:false },
-  { id:"T-4", title:"Review marketing campaign assets", module:"MarketingFLOW", due:"Due 15:00", done:false },
-  { id:"T-5", title:"Team briefing", module:"TaskFLOW", due:"Due 16:00", done:false }
+  { id:"T-1", title:"Finalise wedding rooming list", module:"EventsPRO", due:"Due 10:00", done:false },
+  { id:"T-2", title:"Approve Q3 corporate proposal", module:"SalesPRO", due:"Due 11:30", done:false },
+  { id:"T-3", title:"Check spa maintenance schedule", module:"AssetPRO", due:"Due 14:00", done:false },
+  { id:"T-4", title:"Review marketing campaign assets", module:"MarketingPRO", due:"Due 15:00", done:false },
+  { id:"T-5", title:"Team briefing", module:"TaskPRO", due:"Due 16:00", done:false }
 ];
 function renderTasks(v){
   v.appendChild(head("Tasks","Team tasks and accountability across every module."));
   const tb=el("div","enq-toolbar");
   tb.innerHTML=`<button class="btn" id="task-new">+ New task</button><div class="spacer"></div>`;
   v.appendChild(tb);
-  $("#task-new").onclick=()=>{ const title=prompt("Task:"); if(title){ TaskStore.add({title,module:"TaskFLOW",due:"",done:false}); render(); } };
+  $("#task-new").onclick=()=>{ const title=prompt("Task:"); if(title){ TaskStore.add({title,module:"TaskPRO",due:"",done:false}); render(); } };
   const list=TaskStore.all();
   const box=el("div","task-list");
   box.innerHTML=list.map(t=>`<div class="task-row ${t.done?'done':''}">
@@ -2838,14 +2838,19 @@ function renderFeedback(v){
   const url=feedbackURL();
   const grid=el("div","chart-row");
   const qp=el("div","quote-panel");
-  qp.innerHTML=`<div class="sec-title" style="margin-top:0">Review QR code</div>
+  qp.innerHTML=`<div class="sec-title" style="margin-top:0">Feedback QR — smart routing <span class="qs-sub">(recommended)</span></div>
+    <p class="qs-sub" style="margin-bottom:8px">Happy guests → Google review · unhappy guests → private form to you.</p>
     <div id="qr-box" class="qr-box"></div>
     <p class="qs-sub" style="text-align:center;margin-top:10px">Scan to leave feedback</p>
     <div class="embed-box" style="margin-top:12px">${url}<button class="cp" id="fb-copy">Copy</button></div>
     <div class="dual-btn" style="margin-top:12px">
-      <button class="btn" id="qr-print">Print QR poster</button>
+      <button class="btn" id="qr-print">Print poster</button>
       <button class="btn ghost" id="qr-download">Download QR</button>
-    </div>`;
+    </div>
+    <div class="sec-title">Direct Google review QR</div>
+    <p class="qs-sub" style="margin-bottom:8px">Sends every guest straight to Google. Your official code &amp; link.</p>
+    <div class="qr-box" style="max-width:180px;margin:0 auto"><img src="assets/hospro/google-review-qr.png" style="width:160px" alt="Google review QR"></div>
+    <div class="embed-box" style="margin-top:10px">https://g.page/r/CWDf8Eg6xklPEBM/review<button class="cp" id="g-copy">Copy</button></div>`;
   grid.appendChild(qp);
 
   const list=(typeof FeedbackStore!=="undefined")?FeedbackStore.all():[];
@@ -2869,6 +2874,7 @@ function renderFeedback(v){
   } else { qrBox.innerHTML=`<div class="qs-sub">QR library not loaded.</div>`; }
 
   $("#fb-copy").onclick=()=>{ navigator.clipboard?.writeText(url); $("#fb-copy").textContent="Copied"; };
+  if($("#g-copy")) $("#g-copy").onclick=()=>{ navigator.clipboard?.writeText("https://g.page/r/CWDf8Eg6xklPEBM/review"); $("#g-copy").textContent="Copied"; };
   $("#qr-download").onclick=()=>{ const im=qrBox.querySelector("img")||qrBox.querySelector("canvas");
     if(im){ const src=im.src||im.toDataURL("image/png"); const a=document.createElement("a"); a.href=src; a.download="brandon-hall-review-qr.png"; a.click(); } };
   $("#qr-print").onclick=()=>printQRPoster(url, qrBox);

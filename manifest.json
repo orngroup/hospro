@@ -1,6 +1,6 @@
 {
-  "name": "Brandon Hall Sales Portal",
-  "short_name": "BH Portal",
+  "name": "HOSPRO",
+  "short_name": "HOSPRO",
   "description": "Sales & marketing portal for Brandon Hall Hotel & Spa",
   "start_url": "./index.html",
   "display": "standalone",

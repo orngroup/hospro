@@ -843,18 +843,18 @@ const BROCHURE_TEMPLATES = {
 };
 
 /* ============================================================
-   STAYFLOW — modules (sidebar + welcome cards) + role access
+   HOSPRO — modules (sidebar + welcome cards) + role access
    ============================================================ */
 const FLOW_MODULES = [
-  { id:"events",    name:"EventsFLOW",    caption:"Plan. Organise. Deliver.",       icon:"📅", colour:"#4a9d7f", tint:"#e6f3ee", tabs:["chat","dining"] },
-  { id:"room",      name:"RoomFLOW",      caption:"Keep operations in flow.",       icon:"🛏️", colour:"#4a86c7", tint:"#e6eff8", tabs:["rooms","packages"] },
-  { id:"sales",     name:"SalesFLOW",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","profit"] },
+  { id:"events",    name:"EventsPRO",    caption:"Plan. Organise. Deliver.",       icon:"📅", colour:"#4a9d7f", tint:"#e6f3ee", tabs:["chat","dining"] },
+  { id:"room",      name:"RoomPRO",      caption:"Keep operations in flow.",       icon:"🛏️", colour:"#4a86c7", tint:"#e6eff8", tabs:["rooms","packages"] },
+  { id:"sales",     name:"SalesPRO",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","profit"] },
   { id:"corp",      name:"StayCORP",      caption:"Corporate guests & rates.",       icon:"🏢", colour:"#2f6f9e", tint:"#e6eef5", tabs:["precheckin","corpdb","corprates","feedback"] },
-  { id:"marketing", name:"MarketingFLOW", caption:"Create. Campaign. Convert.",     icon:"📣", colour:"#c85c6b", tint:"#f8e9eb", tabs:["marketing","social"] },
-  { id:"task",      name:"TaskFLOW",      caption:"Tasks. Teams. Accountability.",  icon:"✅", colour:"#d4a24a", tint:"#faf1e0", tabs:["tasks"] },
-  { id:"asset",     name:"AssetFLOW",     caption:"Maintain. Track. Extend.",       icon:"🔧", colour:"#3fa8a0", tint:"#e3f3f1", tabs:["mne","suppliers"] },
-  { id:"content",   name:"ContentFLOW",   caption:"Brochures. Menus. Collateral.",  icon:"📄", colour:"#5a8fc7", tint:"#e8f0f8", tabs:["quote","brochure","menu"] },
-  { id:"insight",   name:"InsightFLOW",   caption:"See more. Do more.",             icon:"📈", colour:"#5fa563", tint:"#e8f3e8", tabs:["insight","admin"] }
+  { id:"marketing", name:"MarketingPRO", caption:"Create. Campaign. Convert.",     icon:"📣", colour:"#c85c6b", tint:"#f8e9eb", tabs:["marketing","social"] },
+  { id:"task",      name:"TaskPRO",      caption:"Tasks. Teams. Accountability.",  icon:"✅", colour:"#d4a24a", tint:"#faf1e0", tabs:["tasks"] },
+  { id:"asset",     name:"AssetPRO",     caption:"Maintain. Track. Extend.",       icon:"🔧", colour:"#3fa8a0", tint:"#e3f3f1", tabs:["mne","suppliers"] },
+  { id:"content",   name:"ContentPRO",   caption:"Brochures. Menus. Collateral.",  icon:"📄", colour:"#5a8fc7", tint:"#e8f0f8", tabs:["quote","brochure","menu"] },
+  { id:"insight",   name:"InsightPRO",   caption:"See more. Do more.",             icon:"📈", colour:"#5fa563", tint:"#e8f3e8", tabs:["insight","admin"] }
 ];
 
 /* Tab metadata (label + icon) for sidebar links and cards */
