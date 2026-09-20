@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#BB9979">
-<title>Brandon Hall Hotel and Spa</title>
+<meta name="theme-color" content="#1a2b3a">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<title>HOSPRO · Brandon Hall Hotel and Spa</title>
 <meta name="description" content="Complete your pre check-in for Brandon Hall Hotel and Spa. We look forward to welcoming you.">
 <!-- Link preview (WhatsApp / social / email) -->
 <meta property="og:title" content="Brandon Hall Hotel and Spa">
@@ -19,12 +20,12 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&family=Lato:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Lato:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 :root{
   --navy:#1a2b47; --navy-dk:#101d33; --navy-lt:#2d4569;
-  --brand-navy:#2C3E50; --brand-orange:#AB3C0C; --brand-beige:#EDF1EB;
-  --brand-sans:'Lato',system-ui,sans-serif;
+  --brand-navy:#1a2b3a; --brand-teal:#20b2a2; --brand-teal-dk:#159187; --brand-beige:#eef2f4;
+  --brand-sans:'Manrope',system-ui,sans-serif;
   --gold:#BB9979; --gold-dk:#9d7d5f; --gold-soft:#e8dccf;
   --rust:#9b320f; --rust-lt:#b8481f;
   --ink:#1a2230; --ink-2:#3a4256; --paper:#f7f8fa; --line:#e3e7ee;
@@ -34,7 +35,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{font-family:var(--sans);color:var(--ink);background:var(--paper);
+body{font-family:'Manrope','Inter',system-ui,sans-serif;color:var(--ink);background:var(--paper);
   font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 input,select,textarea{font-family:inherit;font-size:15px}
@@ -42,26 +43,31 @@ a{color:var(--gold-dk)}
 .hidden{display:none!important}
 
 /* ---------- LOGIN ---------- */
-#login{min-height:100dvh;display:grid;place-items:center;padding:24px;position:relative;
-  background:url('assets/hotel/exterior-dusk.png') center/cover no-repeat}
-#login::before{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(44,62,80,.82),rgba(16,29,51,.9))}
-.login-card{background:rgba(255,255,255,.97);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.4);
-  width:100%;max-width:380px;padding:40px 34px;text-align:center;position:relative;z-index:2;backdrop-filter:blur(4px)}
-.login-card .logo{width:120px;margin:0 auto 8px}
-.login-card h1{font-family:var(--serif);font-size:26px;font-weight:600;
-  letter-spacing:.3px;margin-bottom:2px}
-.login-card .sub{color:var(--muted);font-size:13px;margin-bottom:26px}
+#login{min-height:100dvh;padding:40px;position:relative;display:flex;
+  align-items:flex-end;justify-content:flex-end;
+  background:url('assets/hospro/login-bg.png') center/cover no-repeat;font-family:var(--brand-sans)}
+#login::before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,rgba(16,28,40,.72) 0%,rgba(16,28,40,.35) 45%,rgba(16,28,40,.15) 100%)}
+.hp-login-logo{position:absolute;top:36px;left:40px;z-index:3;width:190px;max-width:44vw}
+.hp-login-foot{position:absolute;bottom:20px;left:40px;z-index:3;color:rgba(255,255,255,.7);font-size:12px;letter-spacing:.5px}
+.login-card{background:rgba(255,255,255,.98);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.45);
+  width:100%;max-width:400px;padding:38px 36px;text-align:left;position:relative;z-index:2}
+.hp-hotel-tag{display:inline-block;font-size:12px;font-weight:700;color:var(--brand-teal-dk);
+  background:#e6f6f4;padding:5px 12px;border-radius:20px;margin-bottom:16px;letter-spacing:.3px}
+.hp-welcome{font-family:var(--brand-sans);font-size:28px;font-weight:800;color:var(--brand-navy);letter-spacing:-.5px}
+.login-card .sub{color:var(--muted);font-size:13.5px;margin-bottom:24px}
 .field{text-align:left;margin-bottom:16px}
-.field label{display:block;font-size:12px;font-weight:600;color:var(--ink-2);
+.field label{display:block;font-size:12px;font-weight:700;color:var(--ink-2);
   margin-bottom:6px}
-.field input{width:100%;padding:11px 13px;border:1px solid var(--line);
-  border-radius:9px;transition:border .15s;background:var(--paper)}
+.field select,.field input{width:100%;padding:12px 13px;border:1px solid var(--line);
+  border-radius:10px;transition:border .15s;background:#fff;font-family:inherit;font-size:14px}
 .field input:focus{outline:none;border-color:var(--navy-lt)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
   padding:11px 18px;border-radius:9px;font-weight:600;font-size:14px;
   transition:.15s;background:var(--navy);color:#fff}
 .btn:hover{background:var(--navy-lt)}
 .btn.block{width:100%}
+#lg-btn{background:var(--brand-teal);margin-top:4px}
+#lg-btn:hover{background:var(--brand-teal-dk)}
 .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
 .btn.ghost:hover{background:var(--paper);border-color:var(--gold)}
 .btn.sm{padding:7px 12px;font-size:13px}
@@ -73,7 +79,8 @@ a{color:var(--gold-dk)}
 #app{min-height:100dvh;display:flex}
 .sf-sidebar{width:236px;flex-shrink:0;background:linear-gradient(180deg,#101d33,#0c1729);
   color:#c7d2e0;position:sticky;top:0;height:100dvh;display:flex;flex-direction:column;overflow-y:auto;z-index:40}
-.sf-logo{padding:20px 20px 2px;font-family:var(--brand-sans);font-size:24px;font-weight:800;cursor:pointer;letter-spacing:-.5px}
+.sf-logo{padding:20px 20px 4px;cursor:pointer}
+.sf-logo img{width:150px;max-width:100%;display:block}
 .sf-stay{color:#fff}.sf-flow{color:#4db6c4}
 .sf-tagline{padding:0 20px 16px;font-size:9.5px;letter-spacing:1.5px;color:#6b7d95;border-bottom:1px solid rgba(255,255,255,.07)}
 .sf-nav{flex:1;padding:12px 12px 8px;display:flex;flex-direction:column;gap:2px}
@@ -141,7 +148,8 @@ body.pc-public{background:#0f1f30}
 /* ---------- STAYFLOW HOME (redesigned) ---------- */
 .sf-welcome{margin-bottom:20px}
 .sf-welcome h1{font-family:var(--serif);font-size:30px;font-weight:600;color:var(--brand-navy)}
-.sf-welcome h1 .sf-stay{color:var(--brand-navy)}.sf-welcome h1 .sf-flow{color:#3aa9bd}
+.sf-welcome h1 .hospro-navy{color:var(--brand-navy)}.sf-welcome h1 .hospro-teal{color:var(--brand-teal)}
+.sf-welcome h1 .sf-stay{color:var(--brand-navy)}.sf-welcome h1 .sf-flow{color:var(--brand-teal)}
 .sf-welcome p{font-size:15px;color:var(--muted);margin-top:2px}
 .sf-modules{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;margin-bottom:22px}
 .sf-modcard{background:var(--mt,#eef2f6);border:1px solid rgba(0,0,0,.04);border-radius:13px;padding:16px 8px;
@@ -887,14 +895,16 @@ body.home-active nav.tabs{display:none;}
 </head>
 <body>
 
-<!-- ================= LOGIN ================= -->
+<!-- ================= LOGIN (HOSPRO) ================= -->
 <div id="login">
+  <img class="hp-login-logo" src="assets/hospro/logo-white.png" alt="HOSPRO">
   <div class="login-card">
-    <img class="logo" src="assets/bh-logo.svg" alt="Brandon Hall">
-    <div class="sub" style="margin-top:6px">Sales &amp; Marketing Portal</div>
+    <div class="hp-hotel-tag" id="lg-hotel">Brandon Hall Hotel and Spa</div>
+    <h1 class="hp-welcome">Welcome back</h1>
+    <div class="sub">Sign in to your HOSPRO workspace</div>
     <div class="field">
       <label for="lg-user">Team member</label>
-      <select id="lg-user" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--paper)">
+      <select id="lg-user">
         <option value="">Select your name…</option>
         <option value="ajay.kawa">Ajay Kawa</option>
         <option value="raj.kumar">Raj Kumar</option>
@@ -908,19 +918,20 @@ body.home-active nav.tabs{display:none;}
     </div>
     <button class="btn block" id="lg-btn">Sign in</button>
     <div class="login-err" id="lg-err"></div>
-    <div class="login-hint">Your access code is <b>BH</b> followed by your initials.<br>Runs in demo mode until Firebase is connected.</div>
+    <div class="login-hint">Access code is <b>BH</b> followed by your initials.</div>
   </div>
+  <div class="hp-login-foot">HOSPRO · hospro.co.uk</div>
 </div>
 
 <!-- ================= APP ================= -->
 <div id="app" class="hidden">
   <aside class="sf-sidebar" id="sf-sidebar">
-    <div class="sf-logo" id="sf-logo-home"><span class="sf-stay">Stay</span><span class="sf-flow">FLOW</span></div>
-    <div class="sf-tagline">Operate · Sell · Deliver · Grow</div>
+    <div class="sf-logo" id="sf-logo-home"><img src="assets/hospro/logo-white.png" alt="HOSPRO"></div>
+    <div class="sf-tagline">Hospitality, professionally run</div>
     <nav class="sf-nav" id="sf-nav"></nav>
     <div class="sf-side-foot">
       <button class="sf-side-link" id="sf-settings"><span class="sf-ico">⚙️</span> Settings</button>
-      <div class="sf-vendor">StayFLOW · for every part of your hotel</div>
+      <div class="sf-vendor">HOSPRO · for every part of your hotel</div>
     </div>
   </aside>
   <div class="sf-main">
