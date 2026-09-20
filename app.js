@@ -811,6 +811,24 @@ function renderPipeline(v){
     navigator.clipboard?.writeText(url); alert("Shareable events-chat link copied:\n"+url); };
 
   let allRaw=pipelineData();
+  // apply active filter to the WHOLE dashboard (KPIs, charts, conversion, table all move together)
+  const scoped = allRaw.filter(e=>{
+    const roomName=e.roomName||ROOMS.find(r=>r.id===e.room)?.name||"";
+    if(PIPE_FILTER.room && roomName!==PIPE_FILTER.room) return false;
+    if(PIPE_FILTER.owner && e.owner!==PIPE_FILTER.owner) return false;
+    if(PIPE_FILTER.event && e.event!==PIPE_FILTER.event) return false;
+    if(PIPE_FILTER.source && e.source!==PIPE_FILTER.source) return false;
+    return true;
+  });
+  const scopeActive = PIPE_FILTER.room||PIPE_FILTER.owner||PIPE_FILTER.event||PIPE_FILTER.source;
+  if(scopeActive){
+    const chip=el("div","scope-chip");
+    chip.innerHTML=`<span>Filtered: <b>${[PIPE_FILTER.owner,PIPE_FILTER.room,PIPE_FILTER.event?EVENT_TYPES.find(t=>t.id===PIPE_FILTER.event)?.label:"",PIPE_FILTER.source].filter(Boolean).join(" · ")}</b></span><button id="scope-clear">✕ Clear</button>`;
+    v.appendChild(chip);
+    $("#scope-clear").onclick=()=>{ PIPE_FILTER={room:"",event:"",status:"",owner:"",source:"",search:""}; render(); };
+  }
+  // dashboard sections read from the scoped set
+  allRaw = scoped;
 
   // ---- KPI cards (on full dataset) ----
   const openAll=allRaw.filter(e=>["enquiry","provisional"].includes(e.status));
@@ -2519,29 +2537,14 @@ function renderSocialPreview(){
 
 /* ============================================================ HOME / WELCOME */
 function renderHome(v){
-  const name=SESSION?.name||"there";
-  // ---- branded welcome hero band ----
-  const hero=el("div","sf-hero");
-  hero.innerHTML=`
-    <div class="sf-hero-left">
-      <div class="sf-hero-logo"><span class="sf-stay">Stay</span><span class="sf-flow">FLOW</span><span class="sf-tm">™</span></div>
-      <div class="sf-hero-tag">OPERATE · SELL · DELIVER · GROW</div>
-    </div>
-    <div class="sf-hero-mid">
-      <div class="sf-hero-welcome">Welcome</div>
-      <h2 class="sf-hero-hotel">Brandon Hall<br>Hotel &amp; Spa</h2>
-      <div class="sf-hero-rule"></div>
-      <p class="sf-hero-sub">Same exceptional hospitality.<br>Now with smarter operations.</p>
-    </div>
-    <div class="sf-hero-right">
-      <div class="sf-hero-title">One Platform.<br>A More Successful Hotel.</div>
-      <div class="sf-hero-rule sm"></div>
-      <p class="sf-hero-blurb">StayFLOW helps you streamline operations, empower your team and drive commercial growth.</p>
-    </div>`;
-  v.appendChild(hero);
+  // ---- simple welcome header ----
+  const hdr=el("div","sf-welcome");
+  hdr.innerHTML=`<h1>Welcome to <span class="sf-stay">Stay</span><span class="sf-flow">FLOW</span></h1>
+    <p>Brandon Hall Hotel and Spa</p>`;
+  v.appendChild(hdr);
 
-  // ---- coloured FLOW module cards ----
-  const mods=userModules(SESSION?._key||"ajay.kawa");
+  // ---- module cards, one even row (exclude insight from home) ----
+  const mods=userModules(SESSION?._key||"ajay.kawa").filter(m=>m.id!=="insight");
   const cardRow=el("div","sf-modules");
   cardRow.innerHTML=mods.map(m=>`
     <button class="sf-modcard" data-go="${m.tabs[0]}" style="--mc:${m.colour};--mt:${m.tint}">
@@ -2552,36 +2555,36 @@ function renderHome(v){
   v.appendChild(cardRow);
   cardRow.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>switchTab(b.dataset.go));
 
-  // ---- dashboard header ----
-  const dh=el("div","sf-dash-head");
-  dh.innerHTML=`<div><h2>Welcome, Brandon Hall Hotel and Spa</h2><p>Here's what's happening today.</p></div>`;
-  v.appendChild(dh);
-
-  // ---- stat cards (real where we have it) ----
+  // ---- at-a-glance stats ----
   const pipe=(typeof pipelineData==="function")?pipelineData():[];
   const open=pipe.filter(e=>["enquiry","provisional"].includes(e.status));
+  const conf=pipe.filter(e=>e.status==="confirmed");
   const today=new Date().toISOString().slice(0,10);
+  const weekAgo=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
+  const newThisWeek=pipe.filter(e=>e.created && e.created.slice(0,10)>=weekAgo && !["bob"].includes(e._kind)).length;
+  const overdue=pipe.filter(e=>["enquiry","provisional"].includes(e.status) && e.followUp && e.followUp<today).length;
   const upcoming=pipe.filter(e=>e.date && /^\d{4}-\d{2}-\d{2}/.test(e.date) && e.date>=today && e.status!=="cancelled")
     .sort((a,b)=>a.date.localeCompare(b.date));
-  const eventsToday=pipe.filter(e=>e.date===today && e.status!=="cancelled").length;
   const openTasks=(typeof TaskStore!=="undefined")?TaskStore.all().filter(t=>!t.done).length:0;
-  const stats=el("div","sf-stats");
+  const stats=el("div","sf-stats6");
   stats.innerHTML=`
-    <button class="sf-stat" data-go="pipeline"><span class="sf-stat-ic" style="background:#e6f3ee">📅</span>
-      <div><span class="sf-stat-v">${eventsToday||upcoming.length}</span><span class="sf-stat-k">${eventsToday?"Events today":"Upcoming events"}</span></div><span class="sf-stat-go">›</span></button>
-    <button class="sf-stat"><span class="sf-stat-ic" style="background:#e6eff8">🛏️</span>
-      <div><span class="sf-stat-v">92%<sup class="sf-est">est</sup></span><span class="sf-stat-k">Room occupancy</span></div><span class="sf-stat-go">›</span></button>
-    <button class="sf-stat" data-go="pipeline"><span class="sf-stat-ic" style="background:#f1e9f2">👥</span>
-      <div><span class="sf-stat-v">${open.length}</span><span class="sf-stat-k">Active leads</span></div><span class="sf-stat-go">›</span></button>
+    <button class="sf-stat" data-go="pipeline"><span class="sf-stat-ic" style="background:#eef2f8">📊</span>
+      <div><span class="sf-stat-v">${open.length}</span><span class="sf-stat-k">Open enquiries</span></div></button>
+    <button class="sf-stat" data-go="pipeline"><span class="sf-stat-ic" style="background:#e6f3ee">💷</span>
+      <div><span class="sf-stat-v">${money(Math.round(conf.reduce((s,e)=>s+(e.value||0),0)))}</span><span class="sf-stat-k">Confirmed value</span></div></button>
+    <button class="sf-stat" data-go="pipeline"><span class="sf-stat-ic" style="background:#eef7ea">🆕</span>
+      <div><span class="sf-stat-v">${newThisWeek}</span><span class="sf-stat-k">New this week</span></div></button>
+    <button class="sf-stat" data-go="pipeline"><span class="sf-stat-ic" style="background:#fdeee3">⚠️</span>
+      <div><span class="sf-stat-v" style="${overdue?'color:#b3261e':''}">${overdue}</span><span class="sf-stat-k">Overdue follow-ups</span></div></button>
     <button class="sf-stat" data-go="tasks"><span class="sf-stat-ic" style="background:#e8f3e8">✅</span>
-      <div><span class="sf-stat-v">${openTasks}</span><span class="sf-stat-k">Open tasks</span></div><span class="sf-stat-go">›</span></button>`;
+      <div><span class="sf-stat-v">${openTasks}</span><span class="sf-stat-k">Open tasks</span></div></button>
+    <button class="sf-stat" data-go="pipeline"><span class="sf-stat-ic" style="background:#eef2f8">📅</span>
+      <div><span class="sf-stat-v">${upcoming.length}</span><span class="sf-stat-k">Upcoming events</span></div></button>`;
   v.appendChild(stats);
   stats.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>switchTab(b.dataset.go));
 
-  // ---- two-column: priorities + upcoming / quote ----
+  // ---- dashboard grid: priorities · upcoming · mini pipeline snapshot ----
   const grid=el("div","sf-dash-grid");
-
-  // Today's priorities (from tasks + follow-ups)
   const tasks=(typeof TaskStore!=="undefined")?TaskStore.all().filter(t=>!t.done).slice(0,5):[];
   const prioRows = tasks.length? tasks.map(t=>`<div class="sf-prio"><span class="sf-prio-check">☐</span>
       <div class="sf-prio-txt">${t.title}<span class="sf-prio-mod">${t.module||"TaskFLOW"}</span></div>
@@ -2589,13 +2592,16 @@ function renderHome(v){
     : open.slice(0,5).map(e=>`<div class="sf-prio"><span class="sf-prio-check">☐</span>
       <div class="sf-prio-txt">Follow up: ${e.name}<span class="sf-prio-mod">SalesFLOW</span></div>
       <span class="sf-prio-due">${e.followUp?fmtDMY(e.followUp):""}</span></div>`).join("");
-
-  const upRows = upcoming.slice(0,4).map(e=>{ const d=new Date(e.date);
+  const upRows = upcoming.slice(0,5).map(e=>{ const d=new Date(e.date);
     const et=EVENT_TYPES.find(t=>t.id===e.event);
     return `<div class="sf-up"><div class="sf-up-date"><b>${d.getDate()}</b><span>${d.toLocaleDateString("en-GB",{month:"short"}).toUpperCase()}</span></div>
       <div class="sf-up-txt">${e.name}<span class="sf-up-sub">${et?et.label:(e.roomName||"Event")}</span></div></div>`;
-  }).join("") || `<div class="qs-sub" style="padding:10px 0">No upcoming events in the pipeline.</div>`;
+  }).join("") || `<div class="qs-sub" style="padding:10px 0">No upcoming events.</div>`;
 
+  // mini pipeline snapshot — value by stage
+  const byStage={enquiry:0,provisional:0,confirmed:0};
+  pipe.forEach(e=>{ if(byStage[e.status]!=null) byStage[e.status]+=e.value||0; });
+  const maxStage=Math.max(byStage.enquiry,byStage.provisional,byStage.confirmed,1);
   grid.innerHTML=`
     <div class="sf-panel">
       <div class="sf-panel-head"><h3>Today's Priorities</h3><button class="sf-link" data-go="tasks">View all</button></div>
@@ -2605,9 +2611,12 @@ function renderHome(v){
       <div class="sf-panel-head"><h3>Upcoming Events</h3><button class="sf-link" data-go="pipeline">View all</button></div>
       ${upRows}
     </div>
-    <div class="sf-quote" style="background-image:linear-gradient(rgba(26,43,71,.45),rgba(16,29,51,.65)),url('assets/hotel/pool.png')">
-      <div class="sf-quote-txt">"Great hotels don't just happen. They flow."</div>
-      <div class="sf-quote-by"><span class="sf-stay">Stay</span><span class="sf-flow">FLOW</span><br><small>For every part of your hotel.</small></div>
+    <div class="sf-panel">
+      <div class="sf-panel-head"><h3>Pipeline Snapshot</h3><button class="sf-link" data-go="pipeline">Open</button></div>
+      <div class="snap-row"><span class="snap-k">Enquiry</span><div class="snap-bar"><span style="width:${byStage.enquiry/maxStage*100}%;background:#e8cf4a"></span></div><span class="snap-v">${money(Math.round(byStage.enquiry))}</span></div>
+      <div class="snap-row"><span class="snap-k">Provisional</span><div class="snap-bar"><span style="width:${byStage.provisional/maxStage*100}%;background:#e0a030"></span></div><span class="snap-v">${money(Math.round(byStage.provisional))}</span></div>
+      <div class="snap-row"><span class="snap-k">Confirmed</span><div class="snap-bar"><span style="width:${byStage.confirmed/maxStage*100}%;background:#4a9d6a"></span></div><span class="snap-v">${money(Math.round(byStage.confirmed))}</span></div>
+      <div class="snap-tot">Open pipeline: <b>${money(Math.round(open.reduce((s,e)=>s+(e.value||0),0)))}</b></div>
     </div>`;
   v.appendChild(grid);
   grid.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>switchTab(b.dataset.go));
