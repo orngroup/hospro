@@ -881,6 +881,32 @@ function renderPipeline(v){
   action.querySelectorAll(".ap-row").forEach(row=>row.onclick=()=>{
     const e=allRaw.find(x=>x.id===row.dataset.id); if(e) openEnquiryDetail(e); });
 
+  // ==== SPACE HELD IN GUESTLINE ====
+  const held=allRaw.filter(e=>e.spaceHeld && !["cancelled"].includes(e.status));
+  if(held.length){
+    const fmtD=d=>d?new Date(d).toLocaleDateString("en-GB"):"—";
+    const withStatus=held.map(e=>({e,st:holdStatus(e)})).sort((a,b)=>(a.e.holdExpiry||"").localeCompare(b.e.holdExpiry||""));
+    const expired=withStatus.filter(x=>x.st==="expired").length;
+    const expiring=withStatus.filter(x=>x.st==="expiring").length;
+    const hp=el("div","held-panel");
+    hp.innerHTML=`<div class="ap-head"><h3>📋 Space held in Guestline</h3>
+      <span class="ap-sub">${held.length} held · <span style="color:#c07a3e">${expiring} expiring soon</span> · <span style="color:#b3261e">${expired} to release</span></span></div>
+      <div class="ap-list">${withStatus.slice(0,10).map(({e,st})=>{
+        const et=EVENT_TYPES.find(t=>t.id===e.event);
+        const dot = st==="expired"?"rag-red":st==="expiring"?"rag-amber":"rag-green";
+        const note = st==="expired"?"Hold expired — release or confirm":st==="expiring"?"Expiring soon — chase":"Held";
+        return `<div class="ap-row" data-id="${e.id}">
+          <span class="rag ${dot}"></span>
+          <span class="ap-name">${e.name}</span>
+          <span class="ap-meta">${et?et.label:(e.ratePlan||"—")}${e.date&&/^\d{4}/.test(e.date)?" · event "+fmtD(e.date):""}</span>
+          <span class="ap-due ${st==="expired"?"overdue":""}">${note} · holds to ${fmtD(e.holdExpiry)}</span>
+          <span class="ap-val">${e.value?money(Math.round(e.value)):""}</span></div>`;
+      }).join("")}</div>`;
+    v.appendChild(hp);
+    hp.querySelectorAll(".ap-row").forEach(row=>row.onclick=()=>{
+      const e=allRaw.find(x=>x.id===row.dataset.id); if(e) openEnquiryDetail(e); });
+  }
+
   // ==== CONVERSION ROW: win-rate + by event type side by side ====
   const convWrap=el("div","conv-wrap");
   // win rate card
@@ -981,6 +1007,32 @@ function updateFilterCount(){
   c.innerHTML=`Showing <b>${list.length}</b> of ${(window._pipeAll||[]).length} · total value <b>${money(Math.round(val))}</b>`;
 }
 const STATUS_LABEL={enquiry:"Enquiry",provisional:"Provisional",confirmed:"Confirmed",cancelled:"Cancelled"};
+/* Space-held auto-expiry per Nicola's rules:
+   event <1 month away → hold 1 week; 1–8 months → 2 weeks; 8–12+ → 3 weeks.
+   Held date defaults to today (when the tick is set). */
+function holdExpiry(eventDate, heldFrom){
+  const from = heldFrom? new Date(heldFrom) : new Date();
+  let weeks = 2;
+  if(eventDate && /^\d{4}-\d{2}-\d{2}/.test(eventDate)){
+    const months = (new Date(eventDate) - from) / (1000*60*60*24*30.44);
+    if(months < 1) weeks = 1;
+    else if(months < 8) weeks = 2;
+    else weeks = 3;
+  }
+  const exp = new Date(from); exp.setDate(exp.getDate() + weeks*7);
+  return { weeks, expiry: exp.toISOString().slice(0,10) };
+}
+function holdStatus(e){
+  if(!e.spaceHeld) return null;
+  const today=new Date().toISOString().slice(0,10);
+  const exp=e.holdExpiry||"";
+  if(!exp) return "held";
+  if(exp<today) return "expired";      // needs cancelling/releasing
+  const soon=new Date(); soon.setDate(soon.getDate()+3);
+  if(exp<=soon.toISOString().slice(0,10)) return "expiring"; // chase now
+  return "held";
+}
+
 function ragStatus(e){
   if(e.rag) return e.rag; // manual override wins
   if(e.status==="confirmed") return "green";   // won
@@ -1096,8 +1148,17 @@ function openEnquiryDetail(e){
       <div><label>Source</label><select id="m-source">${ENQ_SOURCES.map(s=>`<option ${e.source===s?"selected":""}>${s}</option>`).join("")}</select></div>
       <div><label>Status flag (RAG)</label><select id="m-rag"><option value="">Auto</option><option value="red" ${e.rag==="red"?"selected":""}>🔴 Red</option><option value="amber" ${e.rag==="amber"?"selected":""}>🟠 Amber</option><option value="green" ${e.rag==="green"?"selected":""}>🟢 Green</option></select></div>
       <div id="m-lostwrap" class="${e.status==="cancelled"?"":"hidden"}"><label>Lost reason</label><select id="m-lost">${LOST_REASONS.map(r=>`<option ${e.lostReason===r?"selected":""}>${r}</option>`).join("")}</select></div>
+      <div class="full" style="border-top:1px solid var(--line);padding-top:12px;margin-top:4px">
+        <label class="chk-label"><input type="checkbox" id="m-held" ${e.spaceHeld?"checked":""}> <b>Space held in Guestline</b></label>
+      </div>
+      <div><label>Held from</label><input id="m-heldfrom" type="date" value="${e.heldFrom||new Date().toISOString().slice(0,10)}"></div>
+      <div><label>Hold expires <span class="qs-sub" id="m-holdauto"></span></label><input id="m-holdexp" type="date" value="${e.holdExpiry||""}"></div>
     </div>
     <button class="btn sm" id="m-save" style="margin-top:10px">Save changes</button>
+    <div class="dual-btn" style="margin-top:10px">
+      <button class="btn ghost sm" id="m-chase">✉ Send chase email</button>
+      <button class="btn ghost sm" id="m-recalc">↻ Recalculate hold</button>
+    </div>
 
     ${(e.email||e.phone)?`<div class="sec-title">Contact</div>
     <p style="font-size:14px">${e.email||"—"} · ${e.phone||"—"} ${e.company?" · "+e.company:""}</p>`:""}
@@ -1154,13 +1215,64 @@ function openEnquiryDetail(e){
     drawChecklist();
   };
 
+  // ---- space-held auto-calc ----
+  function refreshHold(){
+    const evDate=$("#m-date").value||e.date;
+    const from=$("#m-heldfrom").value;
+    const calc=holdExpiry(evDate, from);
+    const auto=$("#m-holdauto"); if(auto) auto.textContent=`(auto: ${calc.weeks}wk)`;
+    return calc;
+  }
+  if($("#m-held")){
+    // pre-fill expiry if held ticked and none set
+    if(e.spaceHeld && !e.holdExpiry){ $("#m-holdexp").value=refreshHold().expiry; } else { refreshHold(); }
+    $("#m-held").onchange=()=>{ if($("#m-held").checked && !$("#m-holdexp").value){ $("#m-holdexp").value=refreshHold().expiry; } };
+    $("#m-recalc").onclick=()=>{ $("#m-holdexp").value=refreshHold().expiry; $("#m-held").checked=true; };
+    $("#m-heldfrom").onchange=refreshHold; $("#m-date").addEventListener("change",refreshHold);
+  }
+
+  // ---- chase email (to client + copy to team) ----
+  if($("#m-chase")) $("#m-chase").onclick=()=>{
+    const first=(e.name||"there").split(" ")[0];
+    const evLabel=et?et.label:(e.ratePlan||"your event");
+    const evDate=(/^\d{4}-\d{2}-\d{2}/.test(e.date||""))?new Date(e.date).toLocaleDateString("en-GB"):"your chosen date";
+    const held=$("#m-held")?.checked;
+    const exp=$("#m-holdexp")?.value? new Date($("#m-holdexp").value).toLocaleDateString("en-GB"):"";
+    const subject=`Brandon Hall Hotel and Spa — your ${evLabel} enquiry`;
+    const holdLine = held && exp
+      ? `We're currently holding the space and bedrooms for you until ${exp}. As we do have other interest in these dates, I wanted to check in before the hold expires.`
+      : `I wanted to check in on your enquiry and see whether there's anything more I can help with.`;
+    const body=`Dear ${first},
+
+Thank you again for considering Brandon Hall Hotel and Spa for your ${evLabel} on ${evDate}.
+
+${holdLine}
+
+If you'd like to go ahead, or if you have any questions at all, do let me know and I'll be delighted to help.
+
+Warm regards,
+${SESSION?.name||"The Events Team"}
+Brandon Hall Hotel and Spa
+024 7710 2555 · events@brandonhallhotelandspa.com`;
+    const to=e.email? encodeURIComponent(e.email):"";
+    const cc=encodeURIComponent("events@brandonhallhotelandspa.com");
+    const mailto=`mailto:${to}?cc=${cc}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href=mailto;
+    // log the chase against the enquiry
+    const today=new Date().toISOString().slice(0,10);
+    const chases=(e.chases||[]).slice(); chases.push({ at:new Date().toISOString(), by:SESSION?.name||"" });
+    if(!isBob){ DB.update(e.id,{ chases, lastChase:today }); }
+    if($("#m-chaselog")) $("#m-chaselog").textContent=`Last chased: ${new Date().toLocaleDateString("en-GB")} (${chases.length} total)`;
+  };
+
   $("#m-save").onclick=()=>{
     const newFollowUp=$("#m-followup").value;
     // if the follow-up date changed, record the previous one as "last follow-up"
     const lastFollowUp = (e.followUp && newFollowUp!==e.followUp) ? e.followUp : (e.lastFollowUp||"");
     const patch={ owner:$("#m-owner").value, status:$("#m-stage").value,
       value:parseFloat($("#m-value").value)||0, date:$("#m-date").value||e.date,
-      followUp:newFollowUp, lastFollowUp, rag:$("#m-rag").value, source:$("#m-source").value, checklist };
+      followUp:newFollowUp, lastFollowUp, rag:$("#m-rag").value, source:$("#m-source").value, checklist,
+      spaceHeld:$("#m-held")?.checked||false, heldFrom:$("#m-heldfrom")?.value||"", holdExpiry:$("#m-holdexp")?.value||"" };
     if($("#m-stage").value==="cancelled") patch.lostReason=$("#m-lost").value;
     if(isBob){
       DB.add(Object.assign({ name:e.name, pax:e.pax, room:e.room, roomName:e.roomName,
@@ -1955,6 +2067,31 @@ function renderDining(v){
       <div class="qs-sub" style="margin-top:8px">${area.tables.length} tables · ${area.covers} covers · tables 201–223</div>
     `:`<div class="sec-title">Seating plan</div><p class="qs-sub">Flexible layout — no fixed plan. Capacity ${area.covers}.</p>`}`;
   v.appendChild(panel);
+
+  // ---- Bar: sporting & TV events calendar ----
+  if(area.id==="bar" && typeof BAR_EVENTS!=="undefined"){
+    const today=new Date().toISOString().slice(0,10);
+    const upcoming=BAR_EVENTS.filter(ev=>ev.date>=today).sort((a,b)=>a.date.localeCompare(b.date));
+    const list=upcoming.length?upcoming:BAR_EVENTS;
+    const byMonth={};
+    list.forEach(ev=>{ const m=new Date(ev.date).toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+      (byMonth[m]=byMonth[m]||[]).push(ev); });
+    const ep=el("div","quote-panel");
+    ep.style.marginTop="16px";
+    ep.innerHTML=`<div class="sec-title" style="margin-top:0">📺 Sporting &amp; TV events — plan for busy nights</div>
+      <p class="qs-sub" style="margin-bottom:14px">Major fixtures and events that typically fill the bar. High-impact dates flagged — staff and stock up accordingly.</p>
+      ${Object.entries(byMonth).map(([month,evs])=>`
+        <div class="bar-month">${month}</div>
+        ${evs.map(ev=>`<div class="bar-ev ${ev.impact==="high"?"hi":""}">
+          <span class="be-date">${new Date(ev.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric"})}</span>
+          <span class="be-sport">${ev.sport}</span>
+          <span class="be-name">${ev.name}<span class="be-detail">${ev.detail}</span></span>
+          ${ev.impact==="high"?`<span class="be-flag">Busy</span>`:""}
+        </div>`).join("")}
+      `).join("")}
+      <p class="qs-sub" style="margin-top:12px">Curated calendar — refresh as fixtures and TV selections are confirmed.</p>`;
+    v.appendChild(ep);
+  }
 }
 
 /* ============================================================ MENU BUILDER */

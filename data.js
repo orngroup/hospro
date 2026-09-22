@@ -907,3 +907,47 @@ const PRECHECKIN_FIELDS = [
   { key:"occasion",  label:"Special occasion?",    type:"text",  req:false, ph:"e.g. birthday, anniversary" },
   { key:"newsletter",label:"Keep me updated with offers", type:"select", opts:["No","Yes"], req:false }
 ];
+
+/* ============================================================
+   BAR EVENTS CALENDAR — major sporting/TV events a hotel bar
+   fills up for. Oct 2026 – Mar 2027. Curated; refresh as fixtures
+   and TV selections firm up. impact: high/med.
+   ============================================================ */
+const BAR_EVENTS = [
+  // OCTOBER 2026
+  { date:"2026-10-11", sport:"⚽", name:"Liverpool v Man City", detail:"Premier League — marquee fixture", impact:"high" },
+  { date:"2026-10-18", sport:"🏉", name:"Autumn Rugby Internationals begin", detail:"England Autumn Nations Series", impact:"high" },
+  { date:"2026-10-24", sport:"⚽", name:"Chelsea v Tottenham", detail:"Premier League — London derby", impact:"med" },
+  { date:"2026-10-25", sport:"🏎️", name:"F1 — Mexico City GP", detail:"Formula 1", impact:"med" },
+  { date:"2026-10-31", sport:"⚽", name:"Chelsea v Man United", detail:"Premier League — big six clash", impact:"high" },
+  // NOVEMBER 2026
+  { date:"2026-11-01", sport:"⚽", name:"Liverpool v Arsenal", detail:"Premier League — title six-pointer", impact:"high" },
+  { date:"2026-11-07", sport:"🏉", name:"England v Australia (Autumn)", detail:"Rugby — Twickenham", impact:"high" },
+  { date:"2026-11-08", sport:"⚽", name:"Man United v Aston Villa", detail:"Premier League", impact:"med" },
+  { date:"2026-11-14", sport:"🏉", name:"England v New Zealand (Autumn)", detail:"Rugby — All Blacks", impact:"high" },
+  { date:"2026-11-21", sport:"🥊", name:"Major boxing bill (TBC)", detail:"Typical big fight-night weekend", impact:"med" },
+  { date:"2026-11-22", sport:"🏎️", name:"F1 — Las Vegas GP", detail:"Formula 1", impact:"med" },
+  { date:"2026-11-28", sport:"⚽", name:"Premier League Saturday", detail:"Full fixture programme", impact:"med" },
+  // DECEMBER 2026
+  { date:"2026-12-05", sport:"⚽", name:"Premier League — festive run begins", detail:"Busy pre-Christmas fixtures", impact:"med" },
+  { date:"2026-12-06", sport:"🏎️", name:"F1 — Abu Dhabi GP (season finale)", detail:"Formula 1 — championship decider", impact:"high" },
+  { date:"2026-12-12", sport:"⚽", name:"Premier League Saturday", detail:"Full programme", impact:"med" },
+  { date:"2026-12-26", sport:"⚽", name:"Boxing Day fixtures", detail:"Premier League — traditional full card", impact:"high" },
+  { date:"2026-12-28", sport:"⚽", name:"Premier League — festive fixtures", detail:"Busy holiday period", impact:"high" },
+  // JANUARY 2027
+  { date:"2027-01-01", sport:"⚽", name:"New Year's Day fixtures", detail:"Premier League full card", impact:"high" },
+  { date:"2027-01-09", sport:"⚽", name:"FA Cup Third Round", detail:"Premier League clubs enter — upsets draw crowds", impact:"med" },
+  { date:"2027-01-16", sport:"🏉", name:"Six Nations build-up", detail:"Rugby — championship approaches", impact:"med" },
+  { date:"2027-01-18", sport:"🎾", name:"Australian Open (finals week)", detail:"Tennis — Grand Slam", impact:"med" },
+  { date:"2027-01-30", sport:"⚽", name:"Premier League Saturday", detail:"Full programme", impact:"med" },
+  // FEBRUARY 2027
+  { date:"2027-02-06", sport:"🏉", name:"Six Nations Round 1", detail:"Rugby — England open the championship", impact:"high" },
+  { date:"2027-02-13", sport:"🏉", name:"Six Nations Round 2", detail:"Rugby", impact:"high" },
+  { date:"2027-02-14", sport:"⚽", name:"FA Cup Fourth Round", detail:"Football", impact:"med" },
+  { date:"2027-02-27", sport:"🏉", name:"Six Nations Round 3", detail:"Rugby", impact:"high" },
+  // MARCH 2027
+  { date:"2027-03-07", sport:"🏇", name:"Cheltenham Festival build-up", detail:"Horse racing — huge bar draw", impact:"high" },
+  { date:"2027-03-13", sport:"🏉", name:"Six Nations Round 4", detail:"Rugby", impact:"high" },
+  { date:"2027-03-16", sport:"🏇", name:"Cheltenham Festival (Gold Cup week)", detail:"Horse racing — peak week", impact:"high" },
+  { date:"2027-03-20", sport:"🏉", name:"Six Nations — Super Saturday (final round)", detail:"Rugby — championship finale", impact:"high" }
+];
