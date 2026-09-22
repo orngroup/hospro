@@ -151,7 +151,7 @@ function render(){
   document.body.classList.toggle("home-active", CURRENT_TAB==="home");
   syncSidebar();
   ({home:renderHome, rooms:renderRooms, dining:renderDining, pipeline:renderPipeline, corprates:renderCorpRates, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
-    profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, admin:renderAdmin }[CURRENT_TAB]||renderRooms)(v);
+    profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, admin:renderAdmin }[CURRENT_TAB]||renderRooms)(v);
 }
 
 /* ============================================================ ROOMS */
@@ -603,6 +603,9 @@ function downloadBrochurePDF(){
   const ref="BH-P-"+Date.now().toString(36).toUpperCase();
   const rows=q.lines.map(l=>`<tr><td>${l.label}</td><td style="text-align:right">${money(l.amt)}</td></tr>`).join("");
   const hero=roomImage(q.room);
+  const BC_IMG=roomImage("brandon-suite")||hero;
+  // pull payment schedule from the linked enquiry (if any)
+  q.payments = (q.enquiry&&Array.isArray(q.enquiry.payments))?q.enquiry.payments:(Array.isArray(q.payments)?q.payments:[]);
   const gallery=GALLERY.weddings.slice(0,3).map(u=>`<img src="${u}" style="width:32%;height:90px;object-fit:cover;border-radius:6px">`).join("");
 
   // per-room booking blocks with seating diagrams
@@ -625,8 +628,9 @@ function downloadBrochurePDF(){
     <style>
       @page{margin:0}
       body{font-family:'Inter',Arial,sans-serif;color:#1a2230;font-size:12px;line-height:1.5;margin:0}
-      .page{padding:22mm;page-break-after:always;min-height:257mm}
+      .page{padding:20mm;page-break-after:always}
       .page:last-child{page-break-after:auto}
+      .room-block .seat-svg,.room-block svg{max-height:150mm;width:auto;max-width:100%}
       .cover{background:linear-gradient(160deg,#1a2b47,#101d33);color:#fff;min-height:297mm;padding:0;
         display:flex;flex-direction:column;justify-content:space-between}
       .cover-img{height:44%;width:100%;object-fit:cover;opacity:.9}
@@ -658,6 +662,21 @@ function downloadBrochurePDF(){
       .foot-note{margin-top:24px;font-size:10px;color:#7a8494;border-top:1px solid #e3e7ee;padding-top:12px}
       .terms{column-count:2;column-gap:24px;font-size:8.5px;line-height:1.45}
       .term{break-inside:avoid;margin-bottom:9px}
+      .pay-pdf{margin-top:8px}
+      .pay-pdf th{font-size:11px;color:#7a8494;font-weight:600}
+      .pay-pdf td{font-size:12.5px}
+      .terms-pg{page-break-before:always}
+      .cost-page table{margin-bottom:6px}
+      .backcover{page-break-before:always;background:linear-gradient(160deg,#1a2b47,#101d33);color:#fff;min-height:297mm;display:flex;flex-direction:column}
+      .bc-img{height:42%;width:100%;object-fit:cover;opacity:.85}
+      .bc-body{padding:24mm;flex:1}
+      .bc-logo{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:600;letter-spacing:4px}
+      .bc-sub{color:#BB9979;font-size:13px;letter-spacing:5px;font-weight:600;margin-top:2px}
+      .bc-line{height:2px;background:#BB9979;width:70px;margin:22px 0}
+      .bc-intro{font-size:14px;color:#c9d1dd;line-height:1.7;max-width:30em;margin-bottom:34px}
+      .bc-contact{display:grid;grid-template-columns:1fr 1fr;gap:20px 30px}
+      .bc-contact div{font-size:13px;color:#c9d1dd}
+      .bc-contact b{display:block;color:#BB9979;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
       .term b{color:#1a2b47;font-size:9px;display:block;margin-bottom:2px}
       .term p{color:#3a4256;margin:0}
     </style></head><body>
@@ -693,17 +712,37 @@ function downloadBrochurePDF(){
     </div>
 
     <!-- COSTS -->
-    <div class="page">
+    <div class="page cost-page">
       <h2>Your proposal</h2><div class="rule"></div>
       <table>${rows}<tr class="total"><td>Total (inc. VAT where applicable)</td><td style="text-align:right">${money(q.subtotal)}</td></tr></table>
+      ${q.payments&&q.payments.length?`
+      <h2 style="font-size:18px;margin-top:22px">Payment schedule</h2><div class="rule"></div>
+      <table class="pay-pdf"><tr><th>Instalment</th><th>Due</th><th style="text-align:right">Amount</th></tr>
+        ${q.payments.map(p=>`<tr><td>${p.label||""}</td><td>${p.due&&/^\d{4}-\d{2}-\d{2}/.test(p.due)?new Date(p.due).toLocaleDateString("en-GB"):"On confirmation"}</td><td style="text-align:right">${money(p.amount)}</td></tr>`).join("")}
+      </table>`:""}
       <div class="carbon">🌱 Estimated event carbon footprint: <b>${q.carbon.total} kg CO₂e</b> across all spaces — we're committed to sustainable events.</div>
-      <div class="foot-note">${TERMS_SHORT}<br><br>
-      To confirm, contact our events team: nicola.cartwright@brandonhallhotelandspa.com · +44 (0)247 710 2555</div>
+      <div class="foot-note">${TERMS_SHORT}</div>
     </div>
     <!-- TERMS & CONDITIONS -->
-    <div class="page">
+    <div class="page terms-pg">
       <h2>Terms &amp; Conditions</h2><div class="rule"></div>
       <div class="terms">${CONTRACT_TERMS.map(t=>`<div class="term"><b>${t.h}</b><p>${t.t}</p></div>`).join("")}</div>
+    </div>
+    <!-- BACK COVER -->
+    <div class="backcover">
+      <img class="bc-img" src="${BC_IMG}" onerror="this.style.display='none'">
+      <div class="bc-body">
+        <div class="bc-logo">BRANDON HALL</div>
+        <div class="bc-sub">HOTEL &amp; SPA</div>
+        <div class="bc-line"></div>
+        <p class="bc-intro">Thank you for considering Brandon Hall Hotel &amp; Spa. We would be delighted to welcome you and bring your event to life. Please don't hesitate to get in touch — we're here to help every step of the way.</p>
+        <div class="bc-contact">
+          <div><b>Events Team</b>nicola.cartwright@brandonhallhotelandspa.com</div>
+          <div><b>Call us</b>+44 (0)247 710 2555</div>
+          <div><b>Find us</b>Main Street, Brandon, Coventry CV8 3FW</div>
+          <div><b>Online</b>brandonhallhotelandspa.com</div>
+        </div>
+      </div>
     </div>
     <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script>
     </body></html>`);
@@ -1180,6 +1219,14 @@ function openEnquiryDetail(e){
       <button class="btn ghost sm" id="m-recalc">↻ Recalculate hold</button>
     </div>
 
+    <div class="sec-title">💷 Payment schedule</div>
+    <div id="pay-sched"></div>
+    <div class="dual-btn" style="margin-top:8px">
+      <button class="btn ghost sm" id="pay-add">+ Add instalment</button>
+      <button class="btn ghost sm" id="pay-default">Use standard schedule</button>
+    </div>
+    <div id="pay-summary" style="margin-top:8px"></div>
+
     ${(e.email||e.phone)?`<div class="sec-title">Contact</div>
     <p style="font-size:14px">${e.email||"—"} · ${e.phone||"—"} ${e.company?" · "+e.company:""}</p>`:""}
     ${(e.budget||e.accommodation)?`<p style="font-size:14px;color:var(--muted)">${e.budget?`Budget: ${e.budget} · `:""}${e.accommodation?`Accommodation: ${e.accommodation}`:""}</p>`:""}
@@ -1291,6 +1338,61 @@ Brandon Hall Hotel and Spa
     if($("#m-chaselog")) $("#m-chaselog").textContent=`Last chased: ${new Date().toLocaleDateString("en-GB")} (${chases.length} total)`;
   };
 
+  // ---- payment schedule ----
+  let paySched = (e.payments||[]).slice();
+  function stdSchedule(){
+    const total=parseFloat($("#m-value")?.value)||e.value||0;
+    const evDate=$("#m-date")?.value||e.date;
+    const dep=Math.round(total*0.25), dep2=Math.round(total*0.25), bal=total-dep-dep2;
+    // balance due 6 weeks before event; 2nd deposit ~3 months before
+    const dDate=(off)=>{ if(evDate&&/^\d{4}-\d{2}-\d{2}/.test(evDate)){ const d=new Date(evDate); d.setDate(d.getDate()-off); return d.toISOString().slice(0,10);} return ""; };
+    return [
+      { label:"Deposit", pct:25, amount:dep, due:new Date().toISOString().slice(0,10), paid:false },
+      { label:"2nd Deposit", pct:25, amount:dep2, due:dDate(90), paid:false },
+      { label:"Full Balance", pct:50, amount:bal, due:dDate(42), paid:false }
+    ];
+  }
+  function renderPaySched(){
+    const box=$("#pay-sched"); if(!box) return;
+    const total=parseFloat($("#m-value")?.value)||e.value||0;
+    if(!paySched.length){ box.innerHTML=`<p class="qs-sub">No schedule set. Add instalments or use the standard 25% / 25% / 50% schedule.</p>`; }
+    else{
+      box.innerHTML=`<table class="pay-table"><tr><th>Instalment</th><th>%</th><th>Amount £</th><th>Due</th><th>Paid</th><th></th></tr>${
+        paySched.map((p,i)=>`<tr>
+          <td><input class="pin" data-i="${i}" data-k="label" value="${(p.label||'').replace(/"/g,'&quot;')}"></td>
+          <td><input class="pin pin-pct" data-i="${i}" data-k="pct" type="number" value="${p.pct||''}" style="width:44px"></td>
+          <td><input class="pin pin-amt" data-i="${i}" data-k="amount" type="number" value="${p.amount||''}" style="width:80px"></td>
+          <td><input class="pin" data-i="${i}" data-k="due" type="date" value="${p.due||''}"></td>
+          <td style="text-align:center"><input class="pin-paid" data-i="${i}" type="checkbox" ${p.paid?'checked':''}></td>
+          <td><button class="mini-btn pay-del" data-i="${i}">✕</button></td>
+        </tr>`).join("")}</table>`;
+    }
+    // summary
+    const paid=paySched.filter(p=>p.paid).reduce((s,p)=>s+(+p.amount||0),0);
+    const sched=paySched.reduce((s,p)=>s+(+p.amount||0),0);
+    const out=sched-paid;
+    const today=new Date().toISOString().slice(0,10);
+    const overdue=paySched.filter(p=>!p.paid && p.due && p.due<today).reduce((s,p)=>s+(+p.amount||0),0);
+    $("#pay-summary").innerHTML = paySched.length? `<div class="pay-sum">
+      <span>Scheduled <b>${money(sched)}</b></span><span>Paid <b style="color:#4a9d6a">${money(paid)}</b></span>
+      <span>Outstanding <b style="color:${out>0?'#c07a3e':'#4a9d6a'}">${money(out)}</b></span>
+      ${overdue>0?`<span style="color:#b3261e">Overdue <b>${money(overdue)}</b></span>`:''}
+      ${sched!==Math.round(total)?`<span class="qs-sub" style="color:#b3261e">⚠ schedule (${money(sched)}) ≠ total (${money(total)})</span>`:''}
+    </div>`:"";
+    // wire
+    box.querySelectorAll(".pin").forEach(inp=>inp.onchange=()=>{ const i=+inp.dataset.i, k=inp.dataset.k;
+      paySched[i][k]= k==='amount'||k==='pct'? parseFloat(inp.value)||0 : inp.value;
+      // if % changed, recompute amount from total
+      if(k==='pct'){ const t=parseFloat($("#m-value")?.value)||e.value||0; paySched[i].amount=Math.round(t*(paySched[i].pct/100)); }
+      renderPaySched(); });
+    box.querySelectorAll(".pin-paid").forEach(cb=>cb.onchange=()=>{ paySched[+cb.dataset.i].paid=cb.checked;
+      paySched[+cb.dataset.i].paidDate=cb.checked?new Date().toISOString().slice(0,10):""; renderPaySched(); });
+    box.querySelectorAll(".pay-del").forEach(bd=>bd.onclick=()=>{ paySched.splice(+bd.dataset.i,1); renderPaySched(); });
+  }
+  if($("#pay-add")) $("#pay-add").onclick=()=>{ paySched.push({label:"Instalment",pct:0,amount:0,due:"",paid:false}); renderPaySched(); };
+  if($("#pay-default")) $("#pay-default").onclick=()=>{ paySched=stdSchedule(); renderPaySched(); };
+  renderPaySched();
+
   $("#m-save").onclick=()=>{
     const newFollowUp=$("#m-followup").value;
     // if the follow-up date changed, record the previous one as "last follow-up"
@@ -1298,7 +1400,7 @@ Brandon Hall Hotel and Spa
     const patch={ owner:$("#m-owner").value, status:$("#m-stage").value,
       value:parseFloat($("#m-value").value)||0, date:$("#m-date").value||e.date,
       followUp:newFollowUp, lastFollowUp, rag:$("#m-rag").value, source:$("#m-source").value, checklist,
-      spaceHeld:$("#m-held")?.checked||false, heldFrom:$("#m-heldfrom")?.value||"", holdExpiry:$("#m-holdexp")?.value||"" };
+      spaceHeld:$("#m-held")?.checked||false, heldFrom:$("#m-heldfrom")?.value||"", holdExpiry:$("#m-holdexp")?.value||"", payments:paySched };
     if($("#m-stage").value==="cancelled") patch.lostReason=$("#m-lost").value;
     if(isBob){
       DB.add(Object.assign({ name:e.name, pax:e.pax, room:e.room, roomName:e.roomName,
@@ -3358,6 +3460,58 @@ h2{font-family:'Cormorant Garamond',serif;font-size:21px;color:#1a2b47;margin:24
 .ct-sigline{height:50px;border-bottom:2px solid #1a2b47;display:flex;align-items:flex-end;padding-bottom:4px}
 .ct-sigd{font-family:'Cormorant Garamond',serif;font-size:26px;color:#1a2b47}
 .ct-siglabel{font-size:11px;color:#7a8494;margin-top:6px}`;
+
+/* ============================================================ PAYMENTS DASHBOARD */
+function renderPayments(v){
+  v.appendChild(head("Payments","Track deposits and balances across all bookings — what's paid, what's due, and what's overdue."));
+  const all=pipelineData().filter(e=>Array.isArray(e.payments)&&e.payments.length);
+  const today=new Date().toISOString().slice(0,10);
+  const soon=new Date(); soon.setDate(soon.getDate()+30); const soonStr=soon.toISOString().slice(0,10);
+
+  // aggregate
+  let totSched=0,totPaid=0,totOut=0,totOverdue=0,dueThisMonth=0;
+  const dueRows=[];
+  all.forEach(e=>{ e.payments.forEach(p=>{ const amt=+p.amount||0; totSched+=amt;
+    if(p.paid){ totPaid+=amt; } else { totOut+=amt;
+      if(p.due&&p.due<today){ totOverdue+=amt; dueRows.push({e,p,st:"overdue"}); }
+      else if(p.due&&p.due<=soonStr){ dueThisMonth+=amt; dueRows.push({e,p,st:"soon"}); }
+      else dueRows.push({e,p,st:"future"});
+    }});
+  });
+  dueRows.sort((a,b)=>(a.p.due||"9999").localeCompare(b.p.due||"9999"));
+
+  const stats=el("div","stat-cards");
+  stats.innerHTML=`
+    <div class="stat-card"><div class="sc-v">${money(totPaid)}</div><div class="sc-k">Total collected</div></div>
+    <div class="stat-card"><div class="sc-v" style="color:#c07a3e">${money(totOut)}</div><div class="sc-k">Outstanding</div></div>
+    <div class="stat-card" style="${totOverdue?'border-left:3px solid #b3261e':''}"><div class="sc-v" style="${totOverdue?'color:#b3261e':''}">${money(totOverdue)}</div><div class="sc-k">Overdue</div></div>
+    <div class="stat-card"><div class="sc-v">${money(dueThisMonth)}</div><div class="sc-k">Due within 30 days</div></div>`;
+  v.appendChild(stats);
+
+  if(!all.length){
+    const empty=el("div","quote-panel");
+    empty.innerHTML=`<p class="qs-sub">No payment schedules yet. Open an enquiry in the Sales Pipeline and add a payment schedule (deposit / balance) to track it here.</p>`;
+    v.appendChild(empty); return;
+  }
+
+  const fmt=d=>d&&/^\d{4}-\d{2}-\d{2}/.test(d)?new Date(d).toLocaleDateString("en-GB"):(d||"—");
+  const panel=el("div","quote-panel");
+  panel.innerHTML=`<div class="sec-title" style="margin-top:0">Upcoming &amp; overdue payments</div>
+    <div class="tbl-scroll"><table class="ct-table">
+      <tr><th>Client</th><th>Event</th><th>Instalment</th><th>Amount</th><th>Due</th><th>Status</th><th></th></tr>
+      ${dueRows.slice(0,40).map(({e,p,st})=>{
+        const pill = st==="overdue"?["Overdue","#b3261e"]:st==="soon"?["Due soon","#c07a3e"]:["Scheduled","#7a8494"];
+        return `<tr class="ct-row" data-id="${e.id}">
+          <td><b>${e.name}</b></td><td>${(EVENT_TYPES.find(t=>t.id===e.event)||{}).label||e.ratePlan||"—"}</td>
+          <td>${p.label||"—"}</td><td>${money(p.amount)}</td><td>${fmt(p.due)}</td>
+          <td><span class="pay-pill" style="background:${pill[1]}22;color:${pill[1]}">${pill[0]}</span></td>
+          <td><button class="mini-btn pay-open" data-id="${e.id}">Open</button></td></tr>`;
+      }).join("")}
+    </table></div>
+    <p class="qs-sub" style="margin-top:8px">Showing unpaid instalments, soonest first. Click to open the booking and mark paid.</p>`;
+  v.appendChild(panel);
+  panel.querySelectorAll(".pay-open").forEach(b=>b.onclick=()=>{ const e=pipelineData().find(x=>x.id===b.dataset.id); if(e) openEnquiryDetail(e); });
+}
 
 /* ============================================================ CONTRACTS / AGREEMENTS (staff) */
 function renderContracts(v){

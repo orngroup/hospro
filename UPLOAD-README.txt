@@ -1,20 +1,12 @@
-BRANDON HALL PORTAL — COMPLETE CURRENT SET (upload all 8 to brandonme)
-======================================================================
-Upload ALL of these, overwriting existing. sign.html + quote.html are
-NEW pages (add them). Then paste firestore.rules into Firebase console.
+BRANDON HALL PORTAL — upload all 8 files to brandonme repo, overwrite.
+NEW pages: sign.html, quote.html. Paste firestore.rules into Firebase.
 
-  app.js            All logic — incl. T&C-on-quote FIX, deal tracker,
-                    M&E printouts, e-signature, bar events, space-held
-  index.html        Shell + all styles (deal tracker, contracts styles)
-  data.js           M&E full lists (10 rooms), 27 T&C clauses, bar events
-  firebase-store.js ContractStore + QuoteStore + FeedbackStore
-  firestore.rules   -> PASTE into Firebase console (quotes + contracts)
-  quote.html        NEW — client quote view + accept
-  sign.html         NEW — client agreement e-signature
-  feedback.html     Guest feedback (enlarged logo)
-
-WHY UPLOAD ALL: these files reference each other. app.js uses stores in
-firebase-store.js and styles in index.html — uploading one alone can
-break a feature. Uploading all 8 guarantees a consistent set.
-
-AFTER: hard refresh (Cmd+Shift+R).
+THIS UPDATE ADDS:
+- Payment schedule on every enquiry (Deposit / 2nd Deposit / Full Balance
+  + custom instalments; £ or % auto-calc; date due; mark paid/unpaid)
+- Payments dashboard (new SalesPRO tab): collected, outstanding, overdue,
+  due within 30 days, and a list of upcoming/overdue instalments
+- Payment schedule now prints on the proposal PDF
+- Proposal PDF: fixed spacing, added a branded BACK COVER with logo,
+  image, address and contact details, plus intro
+- T&Cs now print on the main quote PDF too (earlier fix)
