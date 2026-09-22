@@ -562,6 +562,11 @@ function downloadQuotePDF(){
       .grid div{font-size:12px}.grid b{color:#3a332c}
       .carbon{background:#eef5ec;border-radius:8px;padding:10px 14px;margin-top:16px;color:#4a6147;font-size:12px}
       .foot{margin-top:30px;font-size:10.5px;color:#8a8178;border-top:1px solid #e5ddd2;padding-top:12px}
+      .terms-page{page-break-before:always;margin-top:20px}
+      .terms{column-count:2;column-gap:20px;font-size:8.5px;line-height:1.45;margin-top:8px}
+      .term{break-inside:avoid;margin-bottom:9px}
+      .term b{color:#241f1b;font-size:9px;display:block;margin-bottom:2px}
+      .term p{color:#3a332c;margin:0}
     </style></head><body>
     <div class="top">
       <div><h1>Brandon Hall Hotel &amp; Spa</h1><div class="muted">Main Street, Brandon, Coventry CV8 3FW</div></div>
@@ -580,9 +585,13 @@ function downloadQuotePDF(){
     <h2>Costs</h2>
     <table>${rows}<tr class="total"><td>Total (inc. VAT where applicable)</td><td style="text-align:right">${money(q.subtotal)}</td></tr></table>
     <div class="carbon">Estimated event carbon footprint: <b>${q.carbon.total} kg CO₂e</b> — indicative estimate from room size, occupancy and event type.</div>
-    <div class="foot">This quotation is valid for 14 days and subject to availability. Prices include VAT at the current rate unless otherwise stated. Rates are non-commissionable. Cancellation terms are per individual contract.<br>
+    <div class="foot">${typeof TERMS_SHORT!=="undefined"?TERMS_SHORT:"This quotation is valid for 14 days and subject to availability."}<br>
     Brandon Hall Hotel &amp; Spa · Sales: nicola.cartwright@brandonhallhotelandspa.com</div>
-    <script>window.onload=()=>window.print()<\/script>
+    <div class="terms-page">
+      <h2>Terms &amp; Conditions</h2>
+      <div class="terms">${(typeof CONTRACT_TERMS!=="undefined"?CONTRACT_TERMS:[]).map(t=>`<div class="term"><b>${t.h}</b><p>${t.t}</p></div>`).join("")}</div>
+    </div>
+    <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script>
     </body></html>`);
   win.document.close();
 }

@@ -1,28 +1,20 @@
-BRANDON HALL PORTAL — UPDATE (upload all to your brandonme repo)
-================================================================
-Upload these 8 files, letting GitHub overwrite the existing ones.
-Two are NEW pages: quote.html and sign.html.
+BRANDON HALL PORTAL — COMPLETE CURRENT SET (upload all 8 to brandonme)
+======================================================================
+Upload ALL of these, overwriting existing. sign.html + quote.html are
+NEW pages (add them). Then paste firestore.rules into Firebase console.
 
-FILES
-  app.js            Main app logic (deal tracker, M&E printouts, contracts)
-  index.html        Shell + all styles
-  data.js           Data (M&E full equipment lists, contract T&Cs, bar events)
-  firebase-store.js Stores (contracts, quotes, feedback)
-  firestore.rules   Security rules — PASTE into Firebase console
-  quote.html        NEW — client quote view + accept page
-  sign.html         NEW — client agreement e-signature page
-  feedback.html     Guest feedback page (bigger logo)
+  app.js            All logic — incl. T&C-on-quote FIX, deal tracker,
+                    M&E printouts, e-signature, bar events, space-held
+  index.html        Shell + all styles (deal tracker, contracts styles)
+  data.js           M&E full lists (10 rooms), 27 T&C clauses, bar events
+  firebase-store.js ContractStore + QuoteStore + FeedbackStore
+  firestore.rules   -> PASTE into Firebase console (quotes + contracts)
+  quote.html        NEW — client quote view + accept
+  sign.html         NEW — client agreement e-signature
+  feedback.html     Guest feedback (enlarged logo)
 
-WHAT'S IN THIS UPDATE
-  - Deal workflow: Issue quote -> client accepts -> issue agreement ->
-    client signs -> counter-sign -> confirmed (tracked on each enquiry)
-  - Full T&Cs on quotes + built-in e-signature (client + counter-sign)
-  - M&E: full equipment list for ALL 10 rooms + print requirements list
-    + supplier quote-request (RFQ) buttons
-  - Bar sporting/TV events calendar (Oct 2026 - Mar 2027)
-  - Space held in Guestline tracking + chase emails
-  - Enlarged BH logo on feedback card & QR poster
+WHY UPLOAD ALL: these files reference each other. app.js uses stores in
+firebase-store.js and styles in index.html — uploading one alone can
+break a feature. Uploading all 8 guarantees a consistent set.
 
-AFTER UPLOAD
-  - Firebase console: paste firestore.rules (adds quotes + contracts)
-  - Hard refresh (Cmd+Shift+R)
+AFTER: hard refresh (Cmd+Shift+R).
