@@ -1187,13 +1187,18 @@ function openEnquiryDetail(e){
         <div><span class="ec-v">${money(Math.round(e.costing.perCover))}</span><span class="ec-k">Per cover</span></div>
       </div>
       <p class="qs-sub" style="margin-top:6px">Costed ${new Date(e.costing.at).toLocaleDateString("en-GB")}</p>`:""}
-    <div class="dual-btn" style="margin-top:16px">
-      <button class="btn" id="enq-cost">${e.costing?"Re-cost this event":"Cost this event"}</button>
-      <button class="btn ghost" id="enq-quote">Create a quote</button>
+
+    <div class="sec-title">Deal progress</div>
+    <div class="deal-track" id="deal-track"></div>
+    <div id="deal-actions" style="margin-top:12px"></div>
+
+    <div class="dual-btn" style="margin-top:14px">
+      <button class="btn ghost sm" id="enq-cost">${e.costing?"Re-cost":"Cost event"}</button>
+      <button class="btn ghost sm" id="enq-quote">Quote builder</button>
     </div>
-    <button class="btn block" id="enq-agreement" style="margin-top:10px;background:#2f6f9e">📝 Generate agreement &amp; send for e-signature</button>
     <div class="qs-sub" style="margin-top:14px">Ref ${e.ref||e.id} · ${e.owner?`owned by ${e.owner}`:""}</div>`;
   showModal(e.name, `${et?et.label:(e.ratePlan||"Enquiry")} · ${isBob?"BOB / Rezlynx":(e.source||"manual")}`, body);
+  renderDealTrack(e);
 
   // show/hide lost reason on stage change
   $("#m-stage").onchange=()=>{ $("#m-lostwrap").classList.toggle("hidden", $("#m-stage").value!=="cancelled"); };
@@ -1296,7 +1301,6 @@ Brandon Hall Hotel and Spa
   };
   $("#enq-cost").onclick=()=>{ closeModal(); profitPrefill={ enquiry:e }; switchTab("profit"); };
   $("#enq-quote").onclick=()=>{ closeModal(); prefill={room:e.room||"woodlands",event:e.event||"wedding",pax:parseInt(e.pax)||40}; switchTab("quote"); };
-  if($("#enq-agreement")) $("#enq-agreement").onclick=()=>openAgreementDialog(e);
 }
 
 /* ============================================================ ADMIN */
@@ -1801,6 +1805,16 @@ function printProfit(){
 function renderMnE(v){
   v.appendChild(head("M&E Upgrade — Equipment Tracker","Manage equipment per room: TVs, projectors, connectivity, furniture, power and software. Track needed → ordered → delivered → installed, with cost and supplier."));
 
+  const tb=el("div","pipe-toolbar");
+  tb.innerHTML=`<div class="rag-legend"><span>Print the full requirements list, or send a quote request to AV suppliers.</span></div>
+    <div class="pipe-actions">
+      <button class="btn" id="mne-print-req">🖨 Print requirements list</button>
+      <button class="btn ghost" id="mne-print-rfq">✉ Supplier quote request</button>
+    </div>`;
+  v.appendChild(tb);
+  $("#mne-print-req").onclick=()=>printMnE("requirements");
+  $("#mne-print-rfq").onclick=()=>printMnE("rfq");
+
   // ---- summary bar (status counts + cost) ----
   let counts={needed:0,ordered:0,delivered:0,installed:0}, total=0, totalCost=0, committedCost=0, outstandingCost=0;
   const bySupplier={};
@@ -1891,6 +1905,93 @@ function renderMnEItems(roomId){
   box.querySelectorAll(".mne-del").forEach(b=>b.onclick=()=>{
     MnEState.remove(b.dataset.room, +b.dataset.i); render(); });
 }
+/* ---- Print M&E requirements list OR supplier quote request (RFQ) ---- */
+function printMnE(mode){
+  const isRFQ = mode==="rfq";
+  const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+  // gather rooms with items or config
+  const rooms=ROOMS.map(r=>({ r, conf:MNE_ROOMS[r.id], items:MnEState.items(r.id) }))
+    .filter(x=>x.conf || x.items.length);
+  // totals for requirements mode
+  let grandItems=0;
+  const roomBlocks = rooms.map(({r,conf,items})=>{
+    const ready = conf? conf.readyToSell : null;
+    const readyTxt = ready===true?"Ready to sell" : ready===false?"NOT ready" : "Audit pending";
+    const readyClass = ready===true?"ry":ready===false?"rn":"rt";
+    grandItems += items.length;
+    const rows = items.length ? items.map(it=>{
+      const spec=[it.size,it.cat].filter(Boolean).join(" · ");
+      if(isRFQ){
+        return `<tr><td>${it.item}</td><td>${it.size||""}</td><td class="c">${it.qty||1}</td><td class="cat">${it.cat}</td><td class="fill"></td><td class="fill"></td><td class="fill"></td></tr>`;
+      }
+      return `<tr><td>${it.item}</td><td>${it.size||""}</td><td class="c">${it.qty||1}</td><td class="cat">${it.cat}</td><td class="st st-${it.status}">${it.status}</td></tr>`;
+    }).join("") : `<tr><td colspan="${isRFQ?7:5}" class="none">No equipment items listed${conf&&conf.currentAV?" · Current AV: "+conf.currentAV:""}</td></tr>`;
+    const head = isRFQ
+      ? `<tr><th>Item</th><th>Size</th><th class="c">Qty</th><th>Category</th><th>Unit price £</th><th>Total £</th><th>Lead time</th></tr>`
+      : `<tr><th>Item</th><th>Size</th><th class="c">Qty</th><th>Category</th><th>Status</th></tr>`;
+    return `<div class="room">
+      <div class="room-h"><h2>${r.name}</h2>
+        <span class="cap">${conf&&conf.capacity?conf.capacity:(r.m2?r.m2+" m²":"")}</span>
+        ${!isRFQ?`<span class="ready ${readyClass}">${readyTxt}</span>`:""}
+      </div>
+      ${conf&&conf.currentAV?`<div class="cur"><b>Current AV:</b> ${conf.currentAV}</div>`:""}
+      ${!isRFQ && conf&&conf.comments?`<div class="cmt">${conf.comments}</div>`:""}
+      <table>${head}${rows}</table>
+    </div>`;
+  }).join("");
+
+  const ddrNote = `<div class="ddr"><b>Included as standard in DDR / 24-hour packages:</b> Screen, HDMI cable, Wi-Fi, pads &amp; pens, flipchart pads &amp; pens, branded notepads.</div>`;
+
+  const title = isRFQ ? "Audio-Visual Equipment — Request for Quotation" : "Meetings &amp; Events — Equipment Requirements";
+  const intro = isRFQ
+    ? `<p class="intro">Brandon Hall Hotel and Spa invites your quotation for the audio-visual equipment listed below, by room. Please complete the <b>unit price</b>, <b>total</b> and <b>lead time</b> columns and return to <b>events@brandonhallhotelandspa.com</b>. Prices in GBP, please indicate whether inclusive or exclusive of VAT and delivery/installation.</p>`
+    : `<p class="intro">Full equipment requirements by room. Standard package inclusions are listed below; this schedule covers the additional / upgrade equipment needed to bring each space to specification.</p>`;
+
+  const win=window.open("","_blank");
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${isRFQ?"AV Quote Request":"M&E Requirements"} — Brandon Hall</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+    @page{margin:16mm}
+    body{font-family:'Lato',sans-serif;color:#2a3644;line-height:1.4;max-width:900px;margin:0 auto;padding:16px;font-size:12px}
+    .doc-h{text-align:center;border-bottom:3px solid #1a2b47;padding-bottom:12px;margin-bottom:14px}
+    .logo{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;letter-spacing:5px;color:#1a2b47}
+    .sub{font-size:11px;letter-spacing:4px;color:#c9a978;font-weight:700}
+    h1{font-family:'Cormorant Garamond',serif;font-size:22px;color:#1a2b47;margin:12px 0 4px;text-align:center}
+    .meta{text-align:center;font-size:11px;color:#7a8494;margin-bottom:14px}
+    .intro{font-size:11.5px;background:#f6f8f9;border-radius:8px;padding:10px 12px;margin-bottom:14px}
+    .ddr{font-size:11px;border:1px solid #e3e7ee;border-left:3px solid #c9a978;border-radius:6px;padding:9px 12px;margin-bottom:16px;background:#fffdf9}
+    .room{margin-bottom:16px;break-inside:avoid}
+    .room-h{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid #e3e7ee;padding-bottom:5px;margin-bottom:6px}
+    .room-h h2{font-family:'Cormorant Garamond',serif;font-size:18px;color:#1a2b47;margin:0}
+    .cap{font-size:11px;color:#7a8494;flex:1}
+    .ready{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px}
+    .ready.ry{background:#e8f3ee;color:#2a6a4a}.ready.rn{background:#fdecec;color:#b3261e}.ready.rt{background:#eef2f4;color:#7a8494}
+    .cur{font-size:11px;margin-bottom:3px}.cmt{font-size:10.5px;color:#7a8494;font-style:italic;margin-bottom:5px}
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    th{background:#1a2b47;color:#fff;text-align:left;padding:6px 8px;font-size:10px;font-weight:700}
+    td{padding:5px 8px;border-bottom:1px solid #eef2f4}
+    td.c,th.c{text-align:center}
+    td.cat{color:#7a8494;font-size:10px}
+    td.st{text-transform:capitalize;font-weight:700}
+    .st-needed{color:#b3261e}.st-ordered{color:#c07a3e}.st-delivered{color:#2f6f9e}.st-installed{color:#4a9d6a}
+    td.fill{background:#fbfcfd;border:1px solid #e3e7ee;min-width:70px}
+    td.none{color:#7a8494;font-style:italic}
+    .foot{margin-top:20px;border-top:1px solid #e3e7ee;padding-top:10px;font-size:10px;color:#7a8494}
+    .sign{margin-top:24px;display:flex;gap:40px}.sign div{flex:1;border-top:1px solid #1a2b47;padding-top:5px;font-size:10px;color:#7a8494}
+    </style></head><body>
+    <div class="doc-h"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL &amp; SPA</div></div>
+    <h1>${title}</h1>
+    <div class="meta">${isRFQ?"Request for Quotation":"Internal Requirements Schedule"} · ${today}${!isRFQ?` · ${grandItems} items across ${rooms.length} rooms`:""}</div>
+    ${intro}
+    ${ddrNote}
+    ${roomBlocks}
+    ${isRFQ?`<div class="sign"><div>Supplier name &amp; signature</div><div>Date</div><div>Quote valid until</div></div>`:""}
+    <div class="foot">Brandon Hall Hotel and Spa · Main Street, Brandon, Coventry CV8 3FW · events@brandonhallhotelandspa.com · +44 (0)247 710 2555</div>
+    <script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script>
+    </body></html>`);
+  win.document.close();
+}
+
 function openMnEItemForm(roomId){
   const room=ROOMS.find(r=>r.id===roomId);
   const sizes=['43"','55"','65"','75"','86"','98"','100"'];
@@ -3055,6 +3156,86 @@ function printQRPoster(url, qrBox){
     <div class="foot">Brandon Hall Hotel and Spa · Main Street, Brandon, Coventry CV8 3FW</div>
     <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>`);
   win.document.close();
+}
+
+/* ============================================================ DEAL PROGRESS (Quote → Accepted → Agreement → Signed) */
+const DEAL_STAGES = [
+  { id:"enquiry",   label:"Enquiry" },
+  { id:"quoted",    label:"Quote issued" },
+  { id:"accepted",  label:"Accepted" },
+  { id:"agreement", label:"Agreement sent" },
+  { id:"signed",    label:"Client signed" },
+  { id:"confirmed", label:"Confirmed" }
+];
+function dealStageIndex(e){
+  // derive from deal fields + any linked contract + quote acceptance
+  const c = (typeof ContractStore!=="undefined") ? ContractStore.all().find(x=>x.enquiryId===e.id) : null;
+  const q = (typeof QuoteStore!=="undefined" && e.quoteId) ? QuoteStore.all().find(x=>x.id===e.quoteId) : null;
+  if(e.status==="confirmed" || (c&&c.hotelSig)) return 5;
+  if(c&&c.clientSig) return 4;
+  if(c) return 3;
+  if(e.dealStage==="accepted" || e.quoteAccepted || (q&&q.acceptedBy)) return 2;
+  if(e.dealStage==="quoted" || e.quoteIssued) return 1;
+  return 0;
+}
+function renderDealTrack(e){
+  const box=$("#deal-track"); if(!box) return;
+  const idx=dealStageIndex(e);
+  box.innerHTML=DEAL_STAGES.map((s,i)=>`
+    <div class="ds-step ${i<idx?"done":i===idx?"active":""}">
+      <span class="ds-dot">${i<idx?"✓":i+1}</span>
+      <span class="ds-lbl">${s.label}</span>
+    </div>`).join('<span class="ds-line"></span>');
+
+  const act=$("#deal-actions"); if(!act) return;
+  const c = (typeof ContractStore!=="undefined") ? ContractStore.all().find(x=>x.enquiryId===e.id) : null;
+  const origin=location.href.split("#")[0].replace(/index\.html$/,"").replace(/\/$/,"");
+
+  if(idx===0){
+    // Enquiry → issue quote
+    act.innerHTML=`<button class="btn block" id="d-quote" style="background:#2f6f9e">1 · Issue quote (view + accept link for client)</button>`;
+    $("#d-quote").onclick=()=>issueQuote(e);
+  } else if(idx===1){
+    // Quote issued → awaiting acceptance
+    const url=`${origin}/quote.html?q=${e.quoteId||""}`;
+    act.innerHTML=`<div class="embed-box" style="margin-bottom:8px">${url}<button class="cp" id="d-copy">Copy</button></div>
+      <p class="qs-sub" style="margin-bottom:8px">Quote issued — awaiting client acceptance. You can mark it accepted once they confirm.</p>
+      <button class="btn block" id="d-accept">2 · Mark quote as accepted</button>`;
+    $("#d-copy").onclick=()=>{ navigator.clipboard?.writeText(url); $("#d-copy").textContent="Copied"; };
+    $("#d-accept").onclick=async()=>{ DB.update(e.id,{ dealStage:"accepted", quoteAccepted:true, quoteAcceptedAt:new Date().toISOString() });
+      const fresh=pipelineData().find(x=>x.id===e.id)||e; Object.assign(e,fresh); renderDealTrack(e); };
+  } else if(idx===2){
+    // Accepted → issue agreement
+    act.innerHTML=`<div class="deal-ok">✓ Quote accepted${e.quoteAcceptedAt?" · "+new Date(e.quoteAcceptedAt).toLocaleDateString("en-GB"):""}</div>
+      <button class="btn block" id="d-agreement" style="margin-top:8px;background:#2f6f9e">3 · Issue agreement to sign</button>`;
+    $("#d-agreement").onclick=()=>openAgreementDialog(e);
+  } else if(idx===3){
+    // Agreement sent → awaiting client signature
+    const url=`${origin}/sign.html?c=${c.id}`;
+    act.innerHTML=`<div class="embed-box" style="margin-bottom:8px">${url}<button class="cp" id="d-copy">Copy</button></div>
+      <p class="qs-sub">Agreement sent — awaiting the client's signature.</p>`;
+    $("#d-copy").onclick=()=>{ navigator.clipboard?.writeText(url); $("#d-copy").textContent="Copied"; };
+  } else if(idx===4){
+    // Client signed → counter-sign
+    act.innerHTML=`<div class="deal-ok">✓ Client signed${c.clientDate?" · "+new Date(c.clientDate).toLocaleDateString("en-GB"):""} by ${c.clientSig}</div>
+      <button class="btn block" id="d-countersign" style="margin-top:8px">4 · Counter-sign &amp; confirm event</button>`;
+    $("#d-countersign").onclick=()=>{ closeModal(); switchTab("contracts"); setTimeout(()=>openContractDetail(c),200); };
+  } else {
+    act.innerHTML=`<div class="deal-ok" style="background:#e8f3ee;color:#2a6a4a">✓ Fully signed &amp; confirmed. Event is on.</div>`;
+  }
+}
+function issueQuote(e){
+  // create a lightweight quote record (view+accept link). Reuse contract-style store via a quote id on the enquiry.
+  const qid = e.quoteId || ("Q-"+Date.now().toString(36).toUpperCase());
+  DB.update(e.id,{ dealStage:"quoted", quoteIssued:true, quoteId:qid, quoteIssuedAt:new Date().toISOString() });
+  // store the quote snapshot so quote.html can render it
+  const et=EVENT_TYPES.find(t=>t.id===e.event);
+  const snap={ id:qid, enquiryId:e.id, client:e.company||e.name, clientEmail:e.email||"",
+    eventType:et?et.label:(e.ratePlan||"Event"), eventDate:(/^\d{4}-\d{2}-\d{2}/.test(e.date||"")?e.date.slice(0,10):""),
+    value:e.value||0, room:e.roomName||ROOMS.find(r=>r.id===e.room)?.name||"", pax:e.pax||"", ref:e.ref||e.id,
+    created:new Date().toISOString(), status:"issued" };
+  if(typeof QuoteStore!=="undefined") QuoteStore.create(snap);
+  const fresh=pipelineData().find(x=>x.id===e.id)||e; Object.assign(e,fresh); renderDealTrack(e);
 }
 
 /* ============================================================ AGREEMENTS / E-SIGNATURE */

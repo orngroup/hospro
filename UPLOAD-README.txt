@@ -1,32 +1,28 @@
-HOSPRO — BRANDON HALL · COMPLETE PORTAL (corrected logo)
-=========================================================
-Upload ALL of this folder's contents to your GitHub repo
-(replacing what's there), then hard-refresh (Cmd+Shift+R).
+BRANDON HALL PORTAL — UPDATE (upload all to your brandonme repo)
+================================================================
+Upload these 8 files, letting GitHub overwrite the existing ones.
+Two are NEW pages: quote.html and sign.html.
 
-INCLUDES EVERYTHING
-- HOSPRO rebrand with CORRECTED logo (single H) - SVG + PNG + icons
-- Teal/navy colours, Manrope font, PRO modules
-- Generic showcase login (lobby bg, HOSPRO logo, hotel pre-selected)
-- Home dashboard (welcome, 8 module cards, stats, pipeline snapshot)
-- Sales cockpit (KPIs, action list, conversion, traffic-lights, filters)
-- StayCORP (pre-check-in + corporate database + rates)
-- Guest Feedback & QR (smart routing + official Google QR)
-- Marketing library, Social Studio, Brochure/Menu builders
-- Meeting Rooms, Dining, Packages, Suppliers, Profit Tool, M&E, Tasks
-- precheckin.html + feedback.html (public guest pages)
+FILES
+  app.js            Main app logic (deal tracker, M&E printouts, contracts)
+  index.html        Shell + all styles
+  data.js           Data (M&E full equipment lists, contract T&Cs, bar events)
+  firebase-store.js Stores (contracts, quotes, feedback)
+  firestore.rules   Security rules — PASTE into Firebase console
+  quote.html        NEW — client quote view + accept page
+  sign.html         NEW — client agreement e-signature page
+  feedback.html     Guest feedback page (bigger logo)
 
-PUBLIC GUEST LINKS (after upload)
-- Pre check-in:   <your-domain>/precheckin.html
-- Guest feedback: <your-domain>/feedback.html
+WHAT'S IN THIS UPDATE
+  - Deal workflow: Issue quote -> client accepts -> issue agreement ->
+    client signs -> counter-sign -> confirmed (tracked on each enquiry)
+  - Full T&Cs on quotes + built-in e-signature (client + counter-sign)
+  - M&E: full equipment list for ALL 10 rooms + print requirements list
+    + supplier quote-request (RFQ) buttons
+  - Bar sporting/TV events calendar (Oct 2026 - Mar 2027)
+  - Space held in Guestline tracking + chase emails
+  - Enlarged BH logo on feedback card & QR poster
 
-STILL ON YOUR SIDE
-- Firestore rules: paste firestore.rules contents into Firebase console
-  (covers enquiries, marketing, precheckin, feedback)
-- Alia Taub login: create Firebase Auth user (alia.taub@brandonhall.portal / BHAT01)
-- Login background has a Shutterstock watermark - swap for a licensed
-  image before showing prospective hotels
-
-UPLOAD TIP
-If GitHub's web uploader struggles with the full 49MB in one go,
-upload the code files first (small), then each assets/ subfolder
-(hospro, hotel, marketing, weddings) separately.
+AFTER UPLOAD
+  - Firebase console: paste firestore.rules (adds quotes + contracts)
+  - Hard refresh (Cmd+Shift+R)

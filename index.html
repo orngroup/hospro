@@ -482,6 +482,17 @@ main#view{flex:1;padding:26px 30px 60px;max-width:1240px;width:100%;margin:0 aut
 .ss-row.done{background:#e8f3ee;color:#2a6a4a}
 .ss-row span:first-child{font-weight:700}
 .ct-sigin{font-family:'Cormorant Garamond',serif;font-size:20px}
+/* deal progress tracker */
+.deal-track{display:flex;align-items:center;gap:2px;flex-wrap:wrap;margin:6px 0 4px}
+.ds-step{display:flex;align-items:center;gap:6px;opacity:.5}
+.ds-step.done,.ds-step.active{opacity:1}
+.ds-dot{width:22px;height:22px;border-radius:50%;background:#e3e7ee;color:#7a8494;display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0}
+.ds-step.done .ds-dot{background:#4a9d6a;color:#fff}
+.ds-step.active .ds-dot{background:#2f6f9e;color:#fff}
+.ds-lbl{font-size:11.5px;font-weight:600;color:var(--ink);white-space:nowrap}
+.ds-step.active .ds-lbl{color:#2f6f9e}
+.ds-line{flex:1;min-width:8px;height:2px;background:#e3e7ee}
+.deal-ok{background:#eef5f9;color:#2f6f9e;border-radius:8px;padding:9px 12px;font-size:13px;font-weight:600}
 .st-enquiry{background:#eef2f8;color:#3a6ea5}
 .st-provisional{background:#fdf0e3;color:#c07a3e}
 .st-confirmed{background:#e0efe4;color:var(--ok)}

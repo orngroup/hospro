@@ -24,6 +24,13 @@ service cloud.firestore {
 
     // Contracts: staff create/read/write. Client (anonymous) may read
     // their own by link and update only the client signature fields.
+    match /quotes/{doc} {
+      allow read: if true;
+      allow create, delete: if request.auth != null;
+      allow update: if request.auth != null
+        || (request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['acceptedBy','acceptedDate','acceptedAt','status']));
+    }
     match /contracts/{doc} {
       allow read: if true;
       allow create, delete: if request.auth != null;

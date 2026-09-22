@@ -228,3 +228,22 @@ const ContractStore = {
     return true;
   }
 };
+
+/* ---- QUOTES store (view + accept links) ---- */
+const QuoteStore = {
+  all(){ return JSON.parse(localStorage.getItem("bh_quotes")||"[]"); },
+  async create(rec){
+    if(FB.ready && FB.user){ try{ await FB.db.collection("quotes").doc(rec.id).set(rec); }catch(e){ console.warn(e.message); } }
+    const l=this.all().filter(q=>q.id!==rec.id); l.unshift(rec); localStorage.setItem("bh_quotes",JSON.stringify(l)); return rec.id;
+  },
+  async get(id){
+    if(FB.ready){ if(!FB.user){ try{ await fbEnsureAnon(); }catch{} }
+      try{ const d=await FB.db.collection("quotes").doc(id).get(); if(d.exists) return {id:d.id,...d.data()}; }catch(e){ console.warn(e.message); } }
+    return this.all().find(q=>q.id===id)||null;
+  },
+  async accept(id, patch){
+    if(FB.ready){ if(!FB.user){ try{ await fbEnsureAnon(); }catch{} }
+      try{ await FB.db.collection("quotes").doc(id).update(patch); return true; }catch(e){ console.warn(e.message); } }
+    const l=this.all(); const i=l.findIndex(q=>q.id===id); if(i>=0){ Object.assign(l[i],patch); localStorage.setItem("bh_quotes",JSON.stringify(l)); } return true;
+  }
+};

@@ -444,53 +444,53 @@ const MNE_STANDARD = ["Screen","HDMI cable","Wi-Fi","Pads & pens","Flipchart pad
 
 /* Per-room equipment lines from the audit. size only where relevant (TV "). */
 const MNE_ROOMS = {
-  "brandon-1": { readyToSell:true, currentAV:"Projector screen",
-    comments:"Sell as part of Brandon 1 as breakout/refreshment area — no access except through Brandon 1. TV hidden as room doubles for social gatherings.",
+  "brandon-1": { readyToSell:true, capacity:"Cabaret — 5 tables x 40 guests", currentAV:"Projector screen",
+    comments:"Sell as part of Brandon 1 as breakout/refreshment area — no access except through Brandon 1. TV hidden as room doubles for social gatherings and corporate meetings.",
     items:[
-      { cat:"Screen", item:'4K Smart TV', size:'98"', qty:1, status:"needed" },
+      { cat:"Screen", item:"4K Smart TV", size:'98"', qty:1, status:"needed" },
       { cat:"Furniture", item:"Swivel stand, height-adjustable", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
       { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
       { cat:"Software", item:"ClickShare", qty:1, status:"needed" }
     ]},
-  "brandon-2": { readyToSell:true, currentAV:"No equipment",
-    comments:"TV hidden as room doubles for social gatherings.",
+  "brandon-2": { readyToSell:true, capacity:"Cabaret — 4 tables x 24 guests", currentAV:"No equipment",
+    comments:"TV hidden as room doubles for social gatherings and corporate meetings.",
     items:[
-      { cat:"Screen", item:'4K Smart TV', size:'98"', qty:1, status:"needed" },
+      { cat:"Screen", item:"4K Smart TV", size:'98"', qty:1, status:"needed" },
       { cat:"Furniture", item:"Swivel stand, height-adjustable", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
       { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
       { cat:"Software", item:"ClickShare", qty:1, status:"needed" }
     ]},
-  "wolston-suite": { readyToSell:true, currentAV:"1 x projector screen, no projector",
-    comments:"Long room — additional screen needed so guests see the presentation. Partition now removed (15/9).",
+  "wolston-suite": { readyToSell:true, capacity:"Cabaret 60 (TBC) / Theatre (TBC)", currentAV:"1 x projector screen, no projector",
+    comments:"Long room — additional screen needed so guests can see the presentation. TV hidden as room doubles for social gatherings. Partition wall was temporary (not soundproof — could not host 3 different companies); partition now removed (15/9).",
     items:[
-      { cat:"Screen", item:'4K Smart TV', size:'75"', qty:1, status:"needed" },
+      { cat:"Screen", item:"4K Smart TV", size:'75"', qty:1, status:"needed" },
       { cat:"Screen", item:"Additional screen on stand (long room)", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
       { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
       { cat:"Software", item:"ClickShare", qty:1, status:"needed" }
     ]},
-  "beech": { readyToSell:false, currentAV:"None",
-    comments:"NOT READY: door needs fixing (attempted break-in, bottom panel broken), ladybird influx to clear, AV & door lock to fix.",
+  "beech": { readyToSell:false, capacity:"12 boardroom", currentAV:"None",
+    comments:"NOT READY: door needs fixing (looks like attempted break-in — bottom panel broken), influx of ladybirds to clear, AV equipment and door lock to fix prior to selling.",
     items:[
-      { cat:"Screen", item:'4K Smart TV', size:'75"', qty:1, status:"needed" },
+      { cat:"Screen", item:"4K Smart TV", size:'75"', qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
       { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
       { cat:"Software", item:"ClickShare", qty:1, status:"needed" },
       { cat:"Other", item:"Door repair & lock", qty:1, status:"needed" },
       { cat:"Other", item:"Ladybird clearance", qty:1, status:"needed" }
     ]},
-  "hunt": { readyToSell:false, currentAV:"TV on wall (HDMI compatibility unconfirmed)",
-    comments:"NOT READY: damp ceiling; cannot access room currently. Images to follow.",
+  "hunt": { readyToSell:false, capacity:"14 boardroom", currentAV:"TV on wall (unsure if works / HDMI compatible)",
+    comments:"NOT READY: damp ceiling and cannot access the room currently. Images to follow when room accessible.",
     items:[
       { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
       { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
       { cat:"Stationery", item:"Flipchart, pads & pens, branded notepads", qty:1, status:"needed" },
       { cat:"Other", item:"Damp ceiling repair", qty:1, status:"needed" }
     ]},
-  "warwick": { readyToSell:false, currentAV:"TV on wall (HDMI compatibility unconfirmed)",
-    comments:"NOT READY: no corridor lighting; door key not working, cannot enter. Images to follow.",
+  "warwick": { readyToSell:false, capacity:"10 boardroom", currentAV:"TV on wall (unsure if works / HDMI compatible)",
+    comments:"NOT READY: no lights along the corridor (needs rectifying); key not working so cannot enter the room. Images to follow when room accessible.",
     items:[
       { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
       { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
@@ -498,11 +498,50 @@ const MNE_ROOMS = {
       { cat:"Power", item:"Corridor lighting", qty:1, status:"needed" },
       { cat:"Other", item:"Door key/lock repair", qty:1, status:"needed" }
     ]},
-  "johnson": { readyToSell:null, currentAV:"To confirm", comments:"AV to be audited.", items:[] },
-  "jones": { readyToSell:null, currentAV:"To confirm", comments:"AV to be audited.", items:[] },
-  "parke": { readyToSell:null, currentAV:"To confirm", comments:"AV to be audited.", items:[] },
-  "woodlands": { readyToSell:null, currentAV:"To confirm",
-    comments:"28 theatre / up to 220 conference. AV to be audited.", items:[] }
+  "johnson": { readyToSell:null, capacity:"10 boardroom", currentAV:"To confirm",
+    comments:"AV to be audited on access. Standard kit specified below.",
+    items:[
+      { cat:"Screen", item:"4K Smart TV", size:'65"', qty:1, status:"needed" },
+      { cat:"Furniture", item:"Swivel stand, height-adjustable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
+      { cat:"Software", item:"ClickShare", qty:1, status:"needed" },
+      { cat:"Stationery", item:"Flipchart, pads & pens, branded notepads", qty:1, status:"needed" }
+    ]},
+  "jones": { readyToSell:null, capacity:"14 boardroom", currentAV:"To confirm",
+    comments:"AV to be audited on access. Standard kit specified below.",
+    items:[
+      { cat:"Screen", item:"4K Smart TV", size:'75"', qty:1, status:"needed" },
+      { cat:"Furniture", item:"Swivel stand, height-adjustable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
+      { cat:"Software", item:"ClickShare", qty:1, status:"needed" },
+      { cat:"Stationery", item:"Flipchart, pads & pens, branded notepads", qty:1, status:"needed" }
+    ]},
+  "parke": { readyToSell:null, capacity:"17 boardroom", currentAV:"To confirm",
+    comments:"AV to be audited on access. Standard kit specified below.",
+    items:[
+      { cat:"Screen", item:"4K Smart TV", size:'75"', qty:1, status:"needed" },
+      { cat:"Furniture", item:"Swivel stand, height-adjustable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
+      { cat:"Software", item:"ClickShare", qty:1, status:"needed" },
+      { cat:"Stationery", item:"Flipchart, pads & pens, branded notepads", qty:1, status:"needed" }
+    ]},
+  "woodlands": { readyToSell:null, capacity:"28 theatre / 220 conference", currentAV:"To confirm",
+    comments:"Largest space (up to 220 conference). Requires dual large-format screens or projector + screen so all guests can see. AV to be audited; standard large-room kit specified below.",
+    items:[
+      { cat:"Screen", item:"4K Smart TV (large format)", size:'98"', qty:2, status:"needed" },
+      { cat:"Furniture", item:"Mobile floor stand for screens", qty:2, status:"needed" },
+      { cat:"Projector", item:"Full-HD/4K projector (conference mode)", qty:1, status:"needed" },
+      { cat:"Screen", item:"Projector screen (large, on stand)", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"HDMI cable (long-run)", qty:2, status:"needed" },
+      { cat:"Connectivity", item:"USB-C connectors", qty:2, status:"needed" },
+      { cat:"Software", item:"ClickShare", qty:1, status:"needed" },
+      { cat:"Power", item:"PA / sound system (large room)", qty:1, status:"needed" },
+      { cat:"Other", item:"Wireless microphones (handheld + lapel)", qty:2, status:"needed" },
+      { cat:"Stationery", item:"Flipchart, pads & pens, branded notepads", qty:1, status:"needed" }
+    ]}
 };
 
 /* ============================================================
