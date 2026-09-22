@@ -193,3 +193,38 @@ const FeedbackStore = {
   },
   all(){ return this.live? this._cache : (JSON.parse(localStorage.getItem("bh_feedback")||"[]")); }
 };
+
+/* ---- CONTRACTS store (Firestore + local fallback) ---- */
+const ContractStore = {
+  _cache: [], _listeners: [], live:false,
+  onChange(cb){ this._listeners.push(cb); },
+  _emit(){ this._listeners.forEach(cb=>cb(this._cache)); },
+  start(){
+    if(!FB.ready || !FB.user){ return false; }
+    if(this.live) return true; this.live=true;
+    FB.db.collection("contracts").orderBy("created","desc")
+      .onSnapshot(snap=>{ this._cache=snap.docs.map(d=>({id:d.id,...d.data()})); this._emit(); },
+        err=>console.warn("Contracts listener:",err.message));
+    return true;
+  },
+  all(){ return this.live? this._cache : (JSON.parse(localStorage.getItem("bh_contracts")||"[]")); },
+  async create(rec){
+    rec.created=new Date().toISOString(); rec.status="sent";
+    if(FB.ready && FB.user){ try{ const ref=await FB.db.collection("contracts").add(rec); return ref.id; }catch(e){ console.warn(e.message); } }
+    const l=JSON.parse(localStorage.getItem("bh_contracts")||"[]");
+    rec.id="CN-"+Date.now().toString(36).toUpperCase(); l.unshift(rec);
+    localStorage.setItem("bh_contracts", JSON.stringify(l)); return rec.id;
+  },
+  async get(id){
+    if(FB.ready){ if(!FB.user){ try{ await fbEnsureAnon(); }catch{} }
+      try{ const d=await FB.db.collection("contracts").doc(id).get(); return d.exists?{id:d.id,...d.data()}:null; }catch(e){ console.warn(e.message); } }
+    const l=JSON.parse(localStorage.getItem("bh_contracts")||"[]"); return l.find(c=>c.id===id)||null;
+  },
+  async sign(id, patch){
+    if(FB.ready){ if(!FB.user){ try{ await fbEnsureAnon(); }catch{} }
+      try{ await FB.db.collection("contracts").doc(id).update(patch); return true; }catch(e){ console.warn(e.message); } }
+    const l=JSON.parse(localStorage.getItem("bh_contracts")||"[]");
+    const i=l.findIndex(c=>c.id===id); if(i>=0){ Object.assign(l[i],patch); localStorage.setItem("bh_contracts",JSON.stringify(l)); }
+    return true;
+  }
+};

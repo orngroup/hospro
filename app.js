@@ -118,6 +118,8 @@ async function boot(){
       CorpGuestStore.onChange(()=>{ if(CURRENT_TAB==="corpdb") render(); }); }
     if(typeof FeedbackStore!=="undefined"){ FeedbackStore.start();
       FeedbackStore.onChange(()=>{ if(CURRENT_TAB==="feedback") render(); }); }
+    if(typeof ContractStore!=="undefined"){ ContractStore.start();
+      ContractStore.onChange(()=>{ if(CURRENT_TAB==="contracts") render(); }); }
   } else {
     Store.seed();
   }
@@ -149,7 +151,7 @@ function render(){
   document.body.classList.toggle("home-active", CURRENT_TAB==="home");
   syncSidebar();
   ({home:renderHome, rooms:renderRooms, dining:renderDining, pipeline:renderPipeline, corprates:renderCorpRates, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
-    profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, admin:renderAdmin }[CURRENT_TAB]||renderRooms)(v);
+    profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, admin:renderAdmin }[CURRENT_TAB]||renderRooms)(v);
 }
 
 /* ============================================================ ROOMS */
@@ -645,6 +647,10 @@ function downloadBrochurePDF(){
       .rb-title span{font-size:13px;color:#7a8494;font-family:'Inter',sans-serif}
       .rb-pkg{display:inline-block;background:#eef2f8;color:#1a2b47;font-size:12px;font-weight:600;padding:3px 10px;border-radius:6px;margin-top:6px}
       .foot-note{margin-top:24px;font-size:10px;color:#7a8494;border-top:1px solid #e3e7ee;padding-top:12px}
+      .terms{column-count:2;column-gap:24px;font-size:8.5px;line-height:1.45}
+      .term{break-inside:avoid;margin-bottom:9px}
+      .term b{color:#1a2b47;font-size:9px;display:block;margin-bottom:2px}
+      .term p{color:#3a4256;margin:0}
     </style></head><body>
     <!-- COVER -->
     <div class="cover">
@@ -682,8 +688,13 @@ function downloadBrochurePDF(){
       <h2>Your proposal</h2><div class="rule"></div>
       <table>${rows}<tr class="total"><td>Total (inc. VAT where applicable)</td><td style="text-align:right">${money(q.subtotal)}</td></tr></table>
       <div class="carbon">🌱 Estimated event carbon footprint: <b>${q.carbon.total} kg CO₂e</b> across all spaces — we're committed to sustainable events.</div>
-      <div class="foot-note">This proposal is valid for 14 days and subject to availability. Prices include VAT at the current rate unless otherwise stated. Rates are non-commissionable. Cancellation terms are per individual contract. Bio-degradable confetti outside only; LED candelabras only (no naked flames).<br><br>
+      <div class="foot-note">${TERMS_SHORT}<br><br>
       To confirm, contact our events team: nicola.cartwright@brandonhallhotelandspa.com · +44 (0)247 710 2555</div>
+    </div>
+    <!-- TERMS & CONDITIONS -->
+    <div class="page">
+      <h2>Terms &amp; Conditions</h2><div class="rule"></div>
+      <div class="terms">${CONTRACT_TERMS.map(t=>`<div class="term"><b>${t.h}</b><p>${t.t}</p></div>`).join("")}</div>
     </div>
     <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script>
     </body></html>`);
@@ -1180,6 +1191,7 @@ function openEnquiryDetail(e){
       <button class="btn" id="enq-cost">${e.costing?"Re-cost this event":"Cost this event"}</button>
       <button class="btn ghost" id="enq-quote">Create a quote</button>
     </div>
+    <button class="btn block" id="enq-agreement" style="margin-top:10px;background:#2f6f9e">📝 Generate agreement &amp; send for e-signature</button>
     <div class="qs-sub" style="margin-top:14px">Ref ${e.ref||e.id} · ${e.owner?`owned by ${e.owner}`:""}</div>`;
   showModal(e.name, `${et?et.label:(e.ratePlan||"Enquiry")} · ${isBob?"BOB / Rezlynx":(e.source||"manual")}`, body);
 
@@ -1284,6 +1296,7 @@ Brandon Hall Hotel and Spa
   };
   $("#enq-cost").onclick=()=>{ closeModal(); profitPrefill={ enquiry:e }; switchTab("profit"); };
   $("#enq-quote").onclick=()=>{ closeModal(); prefill={room:e.room||"woodlands",event:e.event||"wedding",pax:parseInt(e.pax)||40}; switchTab("quote"); };
+  if($("#enq-agreement")) $("#enq-agreement").onclick=()=>openAgreementDialog(e);
 }
 
 /* ============================================================ ADMIN */
@@ -3025,7 +3038,7 @@ function printQRPoster(url, qrBox){
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
     <style>@page{margin:0}body{margin:0;font-family:'Lato',sans-serif;text-align:center;
       background:linear-gradient(160deg,#1a2b3a,#0f1f30);color:#fff;min-height:297mm;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:30mm}
-    .logo{width:120px;margin-bottom:20px}
+    .logo{width:230px;margin-bottom:26px}
     .eyebrow{font-size:14px;letter-spacing:6px;color:#c9a978;font-weight:700}
     h1{font-family:'Cormorant Garamond',serif;font-size:56px;margin:14px 0 10px}
     p{font-size:19px;color:#dbe3ec;max-width:420px;line-height:1.5}
@@ -3044,7 +3057,211 @@ function printQRPoster(url, qrBox){
   win.document.close();
 }
 
+/* ============================================================ AGREEMENTS / E-SIGNATURE */
+function openAgreementDialog(e){
+  const et=EVENT_TYPES.find(t=>t.id===e.event);
+  const evDate=(/^\d{4}-\d{2}-\d{2}/.test(e.date||""))?e.date.slice(0,10):"";
+  const body=`<p class="qs-sub">Generate a formal agreement with Brandon Hall's full terms and conditions. The client receives a secure link to read, sign and date. You then counter-sign to confirm the event.</p>
+    <div class="manage-grid" style="margin-top:12px">
+      <div class="full"><label>Client / organisation name</label><input id="ag-name" value="${(e.company||e.name||"").replace(/"/g,'&quot;')}"></div>
+      <div class="full"><label>Client email (where the link is sent)</label><input id="ag-email" type="email" value="${e.email||""}"></div>
+      <div><label>Event type</label><input id="ag-event" value="${et?et.label:(e.ratePlan||"Event")}"></div>
+      <div><label>Event date</label><input id="ag-date" type="date" value="${evDate}"></div>
+      <div><label>Total contracted amount (£)</label><input id="ag-value" type="number" value="${Math.round(e.value)||0}"></div>
+      <div><label>Room / space</label><input id="ag-room" value="${(e.roomName||ROOMS.find(r=>r.id===e.room)?.name||"").replace(/"/g,'&quot;')}"></div>
+      <div><label>Guests / pax</label><input id="ag-pax" value="${e.pax||""}"></div>
+      <div><label>Package</label><input id="ag-package" value="${(e.ratePlan||"").replace(/"/g,'&quot;')}"></div>
+    </div>
+    <div class="full" style="margin-top:8px"><label>Notes / special terms (optional)</label><textarea id="ag-notes" rows="2" placeholder="Any event-specific terms to add to the agreement"></textarea></div>
+    <div class="dual-btn" style="margin-top:14px">
+      <button class="btn" id="ag-create">Create &amp; get signing link</button>
+      <button class="btn ghost" id="ag-preview">Preview agreement</button>
+    </div>
+    <div id="ag-result" style="margin-top:12px"></div>`;
+  showModal("Generate agreement", `${e.name} · ${et?et.label:"Event"}`, body);
+
+  const gather=()=>({
+    enquiryId:e.id, client:$("#ag-name").value, clientEmail:$("#ag-email").value,
+    eventType:$("#ag-event").value, eventDate:$("#ag-date").value,
+    value:parseFloat($("#ag-value").value)||0, room:$("#ag-room").value,
+    pax:$("#ag-pax").value, package:$("#ag-package").value, notes:$("#ag-notes").value,
+    ref:e.ref||e.id, owner:SESSION?.name||""
+  });
+
+  $("#ag-preview").onclick=()=>{ contractHTML(gather(), null, true); };
+
+  $("#ag-create").onclick=async()=>{
+    const rec=gather();
+    if(!rec.client){ alert("Please enter the client name."); return; }
+    $("#ag-create").disabled=true; $("#ag-result").innerHTML=`<p class="qs-sub">Creating…</p>`;
+    const id=await ContractStore.create(rec);
+    const url=location.href.split("#")[0].replace(/index\.html$/,"").replace(/\/$/,"")+"/sign.html?c="+id;
+    const subject=`Your agreement — Brandon Hall Hotel and Spa`;
+    const emailBody=`Dear ${rec.client.split(" ")[0]},\n\nThank you for confirming your ${rec.eventType} at Brandon Hall Hotel and Spa.\n\nPlease review and sign your agreement using the secure link below. It contains the full details and terms of your booking:\n\n${url}\n\nOnce you've signed, we'll counter-sign to confirm your event.\n\nKind regards,\n${rec.owner||"Events Team"}\nBrandon Hall Hotel and Spa`;
+    const mailto=`mailto:${encodeURIComponent(rec.clientEmail)}?cc=${encodeURIComponent("events@brandonhallhotelandspa.com")}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+    $("#ag-result").innerHTML=`<div class="embed-box" style="margin-bottom:8px">${url}<button class="cp" id="ag-copy">Copy</button></div>
+      <div class="dual-btn"><a class="btn" href="${mailto}">✉ Email link to client</a>
+      <button class="btn ghost" id="ag-open">Open signing page</button></div>
+      <p class="qs-sub" style="margin-top:8px">✓ Agreement created. Send the link to your client — you'll be able to counter-sign once they've signed.</p>`;
+    $("#ag-copy").onclick=()=>{ navigator.clipboard?.writeText(url); $("#ag-copy").textContent="Copied"; };
+    $("#ag-open").onclick=()=>window.open(url,"_blank");
+  };
+}
+
+/* Build the full contract HTML — used for preview (print) and as the sign-page body */
+function contractHTML(c, signState, printIt){
+  const money2=v=>"£"+(Math.round(v)||0).toLocaleString();
+  const fmt=d=>d&&/^\d{4}-\d{2}-\d{2}/.test(d)?new Date(d).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}):(d||"—");
+  const terms=CONTRACT_TERMS.map(t=>`<div class="term"><b>${t.h}</b><p>${t.t}</p></div>`).join("");
+  const html=`<div class="ct-doc">
+    <div class="ct-head"><div class="ct-logo">BRANDON HALL</div><div class="ct-sub">HOTEL &amp; SPA</div></div>
+    <h1>Event Agreement</h1>
+    <p class="ct-intro">Dear ${(c.client||"Guest").split(" ")[0]}, thank you for confirming your event at Brandon Hall Hotel and Spa. Please read this agreement and sign to confirm your event. On the event sheet you will see the full breakdown of costings and when your final balance is due.</p>
+    <table class="ct-details">
+      <tr><td>Client / Organisation</td><td>${c.client||"—"}</td></tr>
+      <tr><td>Event</td><td>${c.eventType||"—"}${c.package?" · "+c.package:""}</td></tr>
+      <tr><td>Date</td><td>${fmt(c.eventDate)}</td></tr>
+      <tr><td>Space</td><td>${c.room||"—"}</td></tr>
+      <tr><td>Guests</td><td>${c.pax||"—"}</td></tr>
+      <tr><td>Total contracted amount</td><td><b>${money2(c.value)}</b> (inc. VAT)</td></tr>
+      <tr><td>Booking reference</td><td>${c.ref||"—"}</td></tr>
+    </table>
+    ${c.notes?`<div class="ct-notes"><b>Additional terms:</b> ${c.notes}</div>`:""}
+    <h2>Terms &amp; Conditions</h2>
+    <div class="ct-terms">${terms}</div>
+    <div class="ct-sign">
+      <h2>Signatures</h2>
+      <div class="ct-sigrow">
+        <div class="ct-sigbox">
+          <div class="ct-sigline">${signState&&signState.clientSig?`<span class="ct-sigd">${signState.clientSig}</span>`:""}</div>
+          <div class="ct-siglabel">Signed for and on behalf of the Client${signState&&signState.clientDate?` · ${fmt(signState.clientDate)}`:""}</div>
+        </div>
+        <div class="ct-sigbox">
+          <div class="ct-sigline">${signState&&signState.hotelSig?`<span class="ct-sigd">${signState.hotelSig}</span>`:""}</div>
+          <div class="ct-siglabel">Signed for and on behalf of Brandon Hall Hotel and Spa${signState&&signState.hotelDate?` · ${fmt(signState.hotelDate)}`:""}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  if(printIt){
+    const win=window.open("","_blank");
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Agreement — ${c.client||""}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+      <style>${CONTRACT_CSS}</style></head><body>${html}
+      <script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
+    win.document.close();
+  }
+  return html;
+}
+const CONTRACT_CSS=`@page{margin:18mm}body{font-family:'Lato',sans-serif;color:#2a3644;line-height:1.5;max-width:800px;margin:0 auto;padding:20px}
+.ct-head{text-align:center;margin-bottom:8px}.ct-logo{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:600;letter-spacing:5px;color:#1a2b47}
+.ct-sub{font-size:12px;letter-spacing:4px;color:#c9a978;font-weight:700}
+h1{font-family:'Cormorant Garamond',serif;font-size:30px;text-align:center;color:#1a2b47;margin:18px 0}
+h2{font-family:'Cormorant Garamond',serif;font-size:21px;color:#1a2b47;margin:24px 0 10px;border-bottom:2px solid #eef2f4;padding-bottom:5px}
+.ct-intro{font-size:14px;margin-bottom:16px}
+.ct-details{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:8px}
+.ct-details td{padding:8px 10px;border-bottom:1px solid #eef2f4}.ct-details td:first-child{color:#7a8494;width:40%}
+.ct-notes{background:#f6f8f9;border-radius:8px;padding:12px;font-size:13px;margin-top:10px}
+.ct-terms{column-count:2;column-gap:22px;font-size:9px;line-height:1.5;margin-top:8px}
+.term{break-inside:avoid;margin-bottom:9px}.term b{color:#1a2b47;font-size:9.5px;display:block}.term p{margin:2px 0 0}
+.ct-sigrow{display:flex;gap:30px;margin-top:20px}.ct-sigbox{flex:1}
+.ct-sigline{height:50px;border-bottom:2px solid #1a2b47;display:flex;align-items:flex-end;padding-bottom:4px}
+.ct-sigd{font-family:'Cormorant Garamond',serif;font-size:26px;color:#1a2b47}
+.ct-siglabel{font-size:11px;color:#7a8494;margin-top:6px}`;
+
+/* ============================================================ CONTRACTS / AGREEMENTS (staff) */
+function renderContracts(v){
+  v.appendChild(head("Agreements","Event agreements sent for e-signature. Track status, counter-sign to confirm, and view signed contracts."));
+  const list=(typeof ContractStore!=="undefined")?ContractStore.all():[];
+  const fmt=d=>d&&/^\d{4}-\d{2}-\d{2}/.test(d)?new Date(d).toLocaleDateString("en-GB"):(d||"—");
+
+  // status counts
+  const awaitingClient=list.filter(c=>!c.clientSig).length;
+  const awaitingHotel=list.filter(c=>c.clientSig && !c.hotelSig).length;
+  const complete=list.filter(c=>c.clientSig && c.hotelSig).length;
+
+  const stats=el("div","stat-cards");
+  stats.innerHTML=`
+    <div class="stat-card"><div class="sc-v">${list.length}</div><div class="sc-k">Total agreements</div></div>
+    <div class="stat-card"><div class="sc-v">${awaitingClient}</div><div class="sc-k">Awaiting client signature</div></div>
+    <div class="stat-card" style="${awaitingHotel?'border-left:3px solid #e0a030':''}"><div class="sc-v" style="${awaitingHotel?'color:#c07a3e':''}">${awaitingHotel}</div><div class="sc-k">Ready to counter-sign</div></div>
+    <div class="stat-card"><div class="sc-v" style="color:#4a9d6a">${complete}</div><div class="sc-k">Fully signed</div></div>`;
+  v.appendChild(stats);
+
+  if(!list.length){
+    const empty=el("div","quote-panel");
+    empty.innerHTML=`<p class="qs-sub">No agreements yet. Open an enquiry in the Sales Pipeline and use "Generate agreement &amp; send for e-signature" to create one.</p>`;
+    v.appendChild(empty); return;
+  }
+
+  const panel=el("div","quote-panel");
+  panel.innerHTML=`<div class="tbl-scroll"><table class="ct-table">
+    <tr><th>Client</th><th>Event</th><th>Date</th><th>Value</th><th>Status</th><th></th></tr>
+    ${list.map(c=>{
+      const st = (c.clientSig&&c.hotelSig)?["Fully signed","#4a9d6a"]:
+                 (c.clientSig)?["Client signed — counter-sign","#c07a3e"]:
+                 ["Awaiting client","#7a8494"];
+      return `<tr data-id="${c.id}" class="ct-row">
+        <td><b>${c.client||"—"}</b></td>
+        <td>${c.eventType||"—"}</td>
+        <td>${fmt(c.eventDate)}</td>
+        <td>${c.value?money(Math.round(c.value)):"—"}</td>
+        <td><span class="ct-pill" style="background:${st[1]}22;color:${st[1]}">${st[0]}</span></td>
+        <td><button class="mini-btn ct-open" data-id="${c.id}">Open</button></td>
+      </tr>`;
+    }).join("")}
+  </table></div>`;
+  v.appendChild(panel);
+  panel.querySelectorAll(".ct-open").forEach(b=>b.onclick=()=>openContractDetail(list.find(c=>c.id===b.dataset.id)));
+}
+
+function openContractDetail(c){
+  const fmt=d=>d&&/^\d{4}-\d{2}-\d{2}/.test(d)?new Date(d).toLocaleDateString("en-GB"):(d||"—");
+  const url=location.href.split("#")[0].replace(/index\.html$/,"").replace(/\/$/,"")+"/sign.html?c="+c.id;
+  const clientSigned=!!c.clientSig, hotelSigned=!!c.hotelSig;
+  const body=`<div class="detail-row">
+      <div class="stat"><div class="k">Event</div><div class="v" style="font-size:15px">${c.eventType||"—"}</div></div>
+      <div class="stat"><div class="k">Date</div><div class="v" style="font-size:15px">${fmt(c.eventDate)}</div></div>
+      <div class="stat"><div class="k">Value</div><div class="v">${c.value?money(Math.round(c.value)):"—"}</div></div>
+    </div>
+    <div class="sec-title">Signature status</div>
+    <div class="sig-status">
+      <div class="ss-row ${clientSigned?"done":""}"><span>${clientSigned?"✓":"○"} Client</span>
+        <span>${clientSigned?`${c.clientSig} · ${fmt(c.clientDate)}`:"Awaiting signature"}</span></div>
+      <div class="ss-row ${hotelSigned?"done":""}"><span>${hotelSigned?"✓":"○"} Brandon Hall</span>
+        <span>${hotelSigned?`${c.hotelSig} · ${fmt(c.hotelDate)}`:(clientSigned?"Ready to counter-sign":"Awaiting client first")}</span></div>
+    </div>
+    ${!clientSigned?`<div class="embed-box" style="margin-top:12px">${url}<button class="cp" id="ct-copy">Copy link</button></div>
+      <p class="qs-sub" style="margin-top:6px">Send this link to the client to sign.</p>`:""}
+    ${clientSigned && !hotelSigned?`
+      <div class="sec-title">Counter-sign to confirm the event</div>
+      <div class="manage-grid">
+        <div><label>Your name</label><input id="ct-hname" class="ct-sigin" value="${SESSION?.name||""}"></div>
+        <div><label>Date</label><input id="ct-hdate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+      </div>
+      <button class="btn" id="ct-sign" style="margin-top:10px">✓ Counter-sign &amp; confirm event</button>`:""}
+    <div class="dual-btn" style="margin-top:14px">
+      <button class="btn ghost" id="ct-view">View / print agreement</button>
+      ${clientSigned?`<a class="btn ghost" href="${url}" target="_blank">Open signed page</a>`:""}
+    </div>
+    <div class="qs-sub" style="margin-top:12px">Ref ${c.ref||c.id}</div>`;
+  showModal(`Agreement — ${c.client}`, c.eventType||"Event", body);
+
+  if($("#ct-copy")) $("#ct-copy").onclick=()=>{ navigator.clipboard?.writeText(url); $("#ct-copy").textContent="Copied"; };
+  if($("#ct-view")) $("#ct-view").onclick=()=>contractHTML(c,{clientSig:c.clientSig,clientDate:c.clientDate,hotelSig:c.hotelSig,hotelDate:c.hotelDate},true);
+  if($("#ct-sign")) $("#ct-sign").onclick=async()=>{
+    const name=$("#ct-hname").value.trim(), date=$("#ct-hdate").value;
+    if(!name){ alert("Please enter your name."); return; }
+    $("#ct-sign").disabled=true;
+    await ContractStore.sign(c.id,{ hotelSig:name, hotelDate:date, hotelSignedAt:new Date().toISOString(), status:"complete" });
+    // also mark the enquiry confirmed if linked
+    if(c.enquiryId){ try{ DB.update(c.enquiryId,{ status:"confirmed" }); }catch(e){} }
+    closeModal(); render();
+  };
+}
+
 /* ============================================================ HELPERS */
+
 function head(title,sub){ const h=el("div","page-head"); h.innerHTML=`<h2>${title}</h2>${sub?`<p>${sub}</p>`:""}`; return h; }
 function showModal(title,sub,bodyHTML){
   const root=$("#modal-root");

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a2b3a">
+<title>Your Agreement — Brandon Hall Hotel and Spa</title>
+<meta property="og:title" content="Your Agreement — Brandon Hall Hotel and Spa">
+<meta property="og:description" content="Please review and sign your event agreement.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1a2b3a;--gold:#c9a978;--paper:#f6f8f9;--ink:#2a3644;--line:#e3e7ee}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Lato',system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.55}
+.bar{background:var(--navy);color:#fff;text-align:center;padding:18px}
+.bar .logo{font-family:'Cormorant Garamond',serif;font-size:26px;letter-spacing:5px;font-weight:600}
+.bar .sub{font-size:11px;letter-spacing:4px;color:var(--gold);font-weight:700}
+.wrap{max-width:840px;margin:0 auto;padding:24px 18px 60px}
+.doc{background:#fff;border-radius:14px;box-shadow:0 10px 40px rgba(26,43,58,.1);padding:34px;margin-top:20px}
+h1{font-family:'Cormorant Garamond',serif;font-size:30px;text-align:center;color:var(--navy);margin:6px 0 16px}
+h2{font-family:'Cormorant Garamond',serif;font-size:21px;color:var(--navy);margin:24px 0 10px;border-bottom:2px solid #eef2f4;padding-bottom:5px}
+.intro{font-size:14.5px;margin-bottom:16px}
+.details{width:100%;border-collapse:collapse;font-size:14.5px}
+.details td{padding:9px 10px;border-bottom:1px solid var(--line)}
+.details td:first-child{color:#7a8494;width:42%}
+.notes{background:var(--paper);border-radius:8px;padding:12px;font-size:13.5px;margin-top:12px}
+.terms{column-count:2;column-gap:24px;font-size:10px;line-height:1.5;margin-top:8px}
+.term{break-inside:avoid;margin-bottom:9px}
+.term b{color:var(--navy);font-size:10.5px;display:block}
+.term p{margin:2px 0 0;color:#4a5560}
+.sign-card{background:#fff;border-radius:14px;box-shadow:0 10px 40px rgba(26,43,58,.1);padding:30px;margin-top:20px}
+.sig-field{margin:16px 0}
+.sig-field label{display:block;font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.sig-field input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:9px;font-size:16px;font-family:inherit}
+.sig-field input.sig{font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy)}
+.sig-field input:focus{outline:none;border-color:var(--gold)}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;margin:16px 0;cursor:pointer}
+.consent input{margin-top:3px}
+.btn{display:block;width:100%;background:var(--gold);color:var(--navy);border:none;padding:15px;border-radius:10px;font:700 16px 'Lato';cursor:pointer;transition:.15s}
+.btn:hover{background:#b89355}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.status{text-align:center;padding:20px;border-radius:12px;margin-top:20px;font-size:15px}
+.status.signed{background:#e8f3ee;color:#2a6a4a}
+.status.done{background:#e6eef5;color:#2f6f9e}
+.msg{font-size:13px;text-align:center;margin-top:10px;color:#b3261e}
+.sigd{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--navy)}
+.sigrow{display:flex;gap:24px;margin-top:14px;flex-wrap:wrap}
+.sigbox{flex:1;min-width:220px}
+.sigline{height:44px;border-bottom:2px solid var(--navy);display:flex;align-items:flex-end;padding-bottom:3px}
+.siglabel{font-size:11px;color:#7a8494;margin-top:5px}
+.loading{text-align:center;padding:60px 20px;color:#7a8494}
+.print-link{text-align:center;margin-top:16px}
+.print-link a{color:#2f6f9e;font-size:13px;text-decoration:underline;cursor:pointer}
+@media(max-width:600px){.terms{column-count:1}.doc,.sign-card{padding:22px}}
+</style>
+</head>
+<body>
+<div class="bar"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL &amp; SPA</div></div>
+<div class="wrap" id="root"><div class="loading">Loading your agreement…</div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="data.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+let db=null,auth=null;
+try{ if(typeof firebase!=="undefined" && firebaseConfig && !firebaseConfig.apiKey.startsWith("YOUR_")){
+  firebase.initializeApp(firebaseConfig); db=firebase.firestore(); auth=firebase.auth(); } }catch(e){}
+
+const params=new URLSearchParams(location.search);
+const cid=params.get("c");
+const money=v=>"£"+(Math.round(v)||0).toLocaleString();
+const fmt=d=>d&&/^\d{4}-\d{2}-\d{2}/.test(d)?new Date(d).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}):(d||"—");
+
+async function load(){
+  if(!cid){ $("#root").innerHTML=`<div class="doc"><p>No agreement reference provided.</p></div>`; return; }
+  let c=null;
+  if(db){ if(auth && !auth.currentUser){ try{ await auth.signInAnonymously(); }catch(e){} }
+    try{ const d=await db.collection("contracts").doc(cid).get(); if(d.exists) c={id:d.id,...d.data()}; }catch(e){ console.warn(e.message); } }
+  if(!c){ const l=JSON.parse(localStorage.getItem("bh_contracts")||"[]"); c=l.find(x=>x.id===cid); }
+  if(!c){ $("#root").innerHTML=`<div class="doc"><p>Sorry, we couldn't find this agreement. Please contact our events team.</p></div>`; return; }
+  render(c);
+}
+
+function termsHTML(){
+  if(typeof CONTRACT_TERMS==="undefined") return "";
+  return CONTRACT_TERMS.map(t=>`<div class="term"><b>${t.h}</b><p>${t.t}</p></div>`).join("");
+}
+
+function render(c){
+  const clientSigned=!!c.clientSig, hotelSigned=!!c.hotelSig;
+  $("#root").innerHTML=`
+    <div class="doc">
+      <h1>Event Agreement</h1>
+      <p class="intro">Dear ${(c.client||"Guest").split(" ")[0]}, thank you for confirming your event at Brandon Hall Hotel and Spa. Please read this agreement carefully and sign below to confirm your event.</p>
+      <table class="details">
+        <tr><td>Client / Organisation</td><td>${c.client||"—"}</td></tr>
+        <tr><td>Event</td><td>${c.eventType||"—"}${c.package?" · "+c.package:""}</td></tr>
+        <tr><td>Date</td><td>${fmt(c.eventDate)}</td></tr>
+        <tr><td>Space</td><td>${c.room||"—"}</td></tr>
+        <tr><td>Guests</td><td>${c.pax||"—"}</td></tr>
+        <tr><td>Total contracted amount</td><td><b>${money(c.value)}</b> (inc. VAT)</td></tr>
+        <tr><td>Booking reference</td><td>${c.ref||"—"}</td></tr>
+      </table>
+      ${c.notes?`<div class="notes"><b>Additional terms:</b> ${c.notes}</div>`:""}
+      <h2>Terms &amp; Conditions</h2>
+      <div class="terms">${termsHTML()}</div>
+    </div>
+
+    <div class="sign-card" id="signcard">
+      ${signCardBody(c, clientSigned, hotelSigned)}
+    </div>
+    <div class="print-link"><a onclick="window.print()">Print / save a copy</a></div>`;
+
+  wireSign(c, clientSigned, hotelSigned);
+}
+
+function signCardBody(c, clientSigned, hotelSigned){
+  if(clientSigned && hotelSigned){
+    return `<div class="status done">✓ This agreement is fully signed and your event is confirmed. Thank you.</div>
+      <div class="sigrow">
+        <div class="sigbox"><div class="sigline"><span class="sigd">${c.clientSig}</span></div><div class="siglabel">Client · ${fmt(c.clientDate)}</div></div>
+        <div class="sigbox"><div class="sigline"><span class="sigd">${c.hotelSig}</span></div><div class="siglabel">Brandon Hall Hotel and Spa · ${fmt(c.hotelDate)}</div></div>
+      </div>`;
+  }
+  if(clientSigned && !hotelSigned){
+    return `<div class="status signed">✓ Thank you, ${(c.client||"").split(" ")[0]} — you signed on ${fmt(c.clientDate)}. Brandon Hall will now counter-sign to confirm your event.</div>
+      <div class="sigrow">
+        <div class="sigbox"><div class="sigline"><span class="sigd">${c.clientSig}</span></div><div class="siglabel">Client · ${fmt(c.clientDate)}</div></div>
+        <div class="sigbox"><div class="sigline"></div><div class="siglabel">Brandon Hall Hotel and Spa · awaiting counter-signature</div></div>
+      </div>`;
+  }
+  // not yet signed by client
+  return `<h2 style="margin-top:0">Sign your agreement</h2>
+    <p style="font-size:14px">By signing below you confirm you have read and agree to this agreement and the terms and conditions above.</p>
+    <div class="sig-field"><label>Type your full name to sign</label><input id="s-name" class="sig" placeholder="Your name" value="${c.client||""}"></div>
+    <div class="sig-field"><label>Date</label><input id="s-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+    <label class="consent"><input type="checkbox" id="s-consent"> <span>I confirm I am authorised to sign on behalf of the client, and I agree to this agreement and its terms and conditions. I understand this is a legally binding electronic signature.</span></label>
+    <button class="btn" id="s-sign" disabled>Sign agreement</button>
+    <div class="msg" id="s-msg"></div>`;
+}
+
+function wireSign(c, clientSigned, hotelSigned){
+  if(clientSigned) return;
+  const consent=$("#s-consent"), btn=$("#s-sign");
+  if(consent) consent.onchange=()=>{ btn.disabled=!consent.checked; };
+  if(btn) btn.onclick=async()=>{
+    const name=$("#s-name").value.trim(), date=$("#s-date").value;
+    if(!name){ $("#s-msg").textContent="Please type your name to sign."; return; }
+    if(!consent.checked){ $("#s-msg").textContent="Please tick the box to confirm."; return; }
+    btn.disabled=true; $("#s-msg").textContent="";
+    const patch={ clientSig:name, clientDate:date, clientSignedAt:new Date().toISOString(), status:"client-signed" };
+    let ok=false;
+    if(db){ try{ await db.collection("contracts").doc(c.id).update(patch); ok=true; }catch(e){ console.warn(e.message); } }
+    if(!ok){ const l=JSON.parse(localStorage.getItem("bh_contracts")||"[]"); const i=l.findIndex(x=>x.id===c.id); if(i>=0){ Object.assign(l[i],patch); localStorage.setItem("bh_contracts",JSON.stringify(l)); } }
+    Object.assign(c,patch);
+    $("#signcard").innerHTML=signCardBody(c,true,false);
+  };
+}
+load();
+</script>
+</body>
+</html>

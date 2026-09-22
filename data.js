@@ -848,7 +848,7 @@ const BROCHURE_TEMPLATES = {
 const FLOW_MODULES = [
   { id:"events",    name:"EventsPRO",    caption:"Plan. Organise. Deliver.",       icon:"📅", colour:"#4a9d7f", tint:"#e6f3ee", tabs:["chat","dining"] },
   { id:"room",      name:"RoomPRO",      caption:"Keep operations in flow.",       icon:"🛏️", colour:"#4a86c7", tint:"#e6eff8", tabs:["rooms","packages"] },
-  { id:"sales",     name:"SalesPRO",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","profit"] },
+  { id:"sales",     name:"SalesPRO",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","profit","contracts"] },
   { id:"corp",      name:"StayCORP",      caption:"Corporate guests & rates.",       icon:"🏢", colour:"#2f6f9e", tint:"#e6eef5", tabs:["precheckin","corpdb","corprates","feedback"] },
   { id:"marketing", name:"MarketingPRO", caption:"Create. Campaign. Convert.",     icon:"📣", colour:"#c85c6b", tint:"#f8e9eb", tabs:["marketing","social"] },
   { id:"task",      name:"TaskPRO",      caption:"Tasks. Teams. Accountability.",  icon:"✅", colour:"#d4a24a", tint:"#faf1e0", tabs:["tasks"] },
@@ -864,6 +864,7 @@ const TAB_META = {
   pipeline:{label:"Sales Pipeline",icon:"📊"},
   packages:{label:"Packages",icon:"📦"}, suppliers:{label:"Suppliers",icon:"🤝"},
   quote:{label:"Create Quote",icon:"🧾"}, profit:{label:"Profit Tool",icon:"💰"},
+  contracts:{label:"Agreements",icon:"📝"},
   chat:{label:"Events Chat",icon:"💬"}, mne:{label:"M&E Upgrade",icon:"🖥️"},
   marketing:{label:"Marketing Library",icon:"🖼️"}, menu:{label:"Menu Builder",icon:"📝"},
   brochure:{label:"Brochure Builder",icon:"📕"}, social:{label:"Social Studio",icon:"📱"},
@@ -951,3 +952,40 @@ const BAR_EVENTS = [
   { date:"2027-03-16", sport:"🏇", name:"Cheltenham Festival (Gold Cup week)", detail:"Horse racing — peak week", impact:"high" },
   { date:"2027-03-20", sport:"🏉", name:"Six Nations — Super Saturday (final round)", detail:"Rugby — championship finale", impact:"high" }
 ];
+
+/* ============================================================
+   CONTRACT TERMS & CONDITIONS — from Brandon Hall template.
+   Used on quote/proposal PDFs and the formal agreement.
+   ============================================================ */
+const CONTRACT_TERMS = [
+  { h:"Taxes & Service Charge", t:"All meeting room, food and beverage, and related services are subject to applicable taxes (currently 20%) and service charge in effect on the date(s) of the event." },
+  { h:"Maximum Numbers", t:"The maximum number for the meeting room will decrease should additional equipment and/or additional floor space (i.e. staging) be required. The Hotel may, at its sole discretion, reduce the maximum number for the function suite or for the event more generally if required or advised to do so in line with any legal or regulatory requirement or government guidance." },
+  { h:"Car Parking", t:"Car parking at the hotel is on a first come first serve basis and is complimentary for guests attending an event. Please ensure your guests register the vehicle registration number at reception." },
+  { h:"Use of Outside Vendors", t:"If the Organization wishes to hire outside vendors to provide any goods or services at the Hotel during the event, the Hotel may, in its sole discretion, require that such vendor provide an indemnification agreement and proof of adequate insurance and compliance with applicable health and safety regulations." },
+  { h:"Group Room Night Commitment", t:"The Group Room Night Commitment as stated in this Agreement is the minimum commitment the Organization has agreed to utilize; contracted bedrooms will be charged for. Any additional rooms are strictly subject to availability and will incur additional charges. Room rates are subject to applicable taxes (currently 20%) in effect at the time of check-out." },
+  { h:"Attrition", t:"The Hotel is relying upon the Organization's use of the Group Room Night Commitment and the Minimum Spend. A loss will be incurred if actual usage is less than ninety percent (90%) of the commitment. The Hotel allows a ten percent (10%) reduction. Any remaining shortfall will be posted as attrition charges to the Master Account, plus applicable taxes. If actual event revenue is less than the Minimum Spend, forty percent (40%) of the difference will be posted to the Master Account. These charges are due as liquidated damages." },
+  { h:"Rooming List", t:"A full rooming list with guest names is required a minimum of twenty-one (21) working days prior to arrival. Rooms without names at this time will be released to general inventory at best available rate and remain subject to the cancellation policy less any attrition." },
+  { h:"Check-in Procedure", t:"All rooms will be available for check-in from 3:00pm on the day of arrival and must be vacated by 11:00am on the day of departure." },
+  { h:"Advance Payment", t:"Full pre-payment is required prior to arrival, based on the Event Order and Group Room Night Commitment. A cash or credit card authorization may be required to guarantee payment of any additional charges incurred during the event." },
+  { h:"Payment — BACS/Bank Transfer", t:"Please arrange payment by bank transfer stating the booking reference on all correspondence. Account name: Brandon Hall Management Limited · Sort Code: 30-98-97 · Account Number: 38757762 · IBAN: GB17LOYD30989738757762 · BIC: LOYDGB21031 · VAT: GB 499558606. If bank details appear to change, verify by phone with your event contact before making any payment." },
+  { h:"Cancellation by the Organization", t:"Liquidated damages apply on cancellation, based on working days prior to arrival: 0–3 days — 100% of Group Room Night Commitment, 70% of Minimum Spend and Total Meeting Room Rental; 4–90 days — 90% / 40%; 91–180 days — 80% / 40%; 181–365 days — 70% / 40%; from acceptance to 366+ days — 50% / 40%. All plus applicable taxes and Total Meeting Room Rental." },
+  { h:"Cancellation by the Hotel", t:"The Hotel may cancel the event and terminate this Agreement without liability if the event might prejudice the reputation of the Hotel; if there is any deterioration in the Organization's financial situation such that it may not fulfil its obligations; or if the Organization fails to pay any sum when due." },
+  { h:"Governing Law & Disputes", t:"This Agreement is governed by the law of England and Wales. Disputes will first be addressed through good faith negotiation; failing that, the courts of England and Wales have exclusive jurisdiction." },
+  { h:"Impossibility (Force Majeure)", t:"Performance is subject to termination without liability upon circumstances beyond either party's control (acts of God, war, terrorism, government regulation, disaster, strikes, civil disorder, or curtailment of transport) making it illegal or impossible to provide or use the facilities, conditioned on written notice within ten (10) days of learning of the basis." },
+  { h:"Privacy & Data Protection", t:"The Hotel is committed to complying with applicable privacy and data protection laws. The Organization will obtain all necessary rights and permissions before providing any personal data to the Hotel." },
+  { h:"Damage", t:"The Organization is responsible to the Hotel for any damage caused to allocated rooms, furnishings, utensils and equipment, or to the Hotel generally, by any act, default or neglect of the Organization or its sub-contractors, employees or guests, and shall pay on demand the amount required to make good such damage." },
+  { h:"Intellectual Property", t:"The Organization shall not use any of the Hotel's trademarks or intellectual property without the prior written consent of the Hotel or its management company." },
+  { h:"Reputation", t:"The Organization shall not, and will procure that its sub-contractors, employees or guests shall not, do anything which may cause damage to the reputation or good standing of the Hotel or bring it into disrepute." },
+  { h:"Changes & Amendments", t:"Any changes, additions, stipulations or deletions will not be binding on the other party unless initialled or otherwise approved in writing by that party." },
+  { h:"In-house Equipment", t:"The Hotel will provide, at no charge, a reasonable amount of standard meeting equipment. Special setups depleting in-house stock may be charged at rental cost, or changed to a standard format to avoid additional cost." },
+  { h:"Security of Items", t:"The Hotel cannot ensure the security of items left unattended in function rooms. Special arrangements may be made for securing a limited number of valuable items. Security personnel are subject to Hotel approval." },
+  { h:"Performance Licences", t:"The Organization is solely responsible for obtaining any necessary licences or permission to perform, broadcast, transmit or display any copyrighted works used at the Hotel." },
+  { h:"High-risk Activities", t:"The Hotel has committed facilities based on information given. Should the Hotel determine at any time that the event will include a previously undisclosed high-risk activity (e.g. biological agents, pyrotechnics), it may terminate this Agreement immediately without liability." },
+  { h:"Anti-Corruption, Sanctions & Regulatory Laws", t:"The Organization acknowledges the Hotel and its management company may be subject to the UK Bribery Act 2010, the US Foreign Corrupt Practices Act, anti-money-laundering laws, and applicable sanctions/trade-embargo laws, and may take any action necessary to ensure compliance, including immediate termination without liability." },
+  { h:"Compliance with Law", t:"This Agreement is subject to all applicable laws, including health and safety codes, alcoholic beverage control laws, disability laws and anti-terrorism laws. Both parties agree to cooperate to ensure compliance." },
+  { h:"Entire Agreement", t:"This Agreement contains the entire understanding between the parties and supersedes all prior understandings. No amendment or waiver is effective except in writing duly executed by both parties. The main body prevails over any schedules (but not the Event Order)." },
+  { h:"General", t:"Correspondence between the Hotel and the customer, and any consequent booking, will be taken as confirmation of the customer's acceptance of the Hotel's terms and conditions. Once agreed, the function sheet is binding and forms part of the contract. All rates are quoted in GBP inclusive of VAT at the current rate and are therefore liable to change." }
+];
+
+/* Short T&C summary line for quote footers */
+const TERMS_SHORT = "This proposal is subject to Brandon Hall Hotel and Spa's full terms and conditions (attached). Rates in GBP incl. VAT (currently 20%) and liable to change. Space and rates are held provisionally and subject to availability until confirmed. Cancellation charges apply per the schedule in the terms.";
