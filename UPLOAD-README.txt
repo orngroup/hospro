@@ -1,12 +1,13 @@
-BRANDON HALL PORTAL — upload all 8 files to brandonme repo, overwrite.
-NEW pages: sign.html, quote.html. Paste firestore.rules into Firebase.
+BRANDON HALL PORTAL — upload all 8 to brandonme, overwrite.
+NEW/updated client pages: quote.html (now a FULL rich proposal), sign.html.
+Paste firestore.rules into Firebase.
 
-THIS UPDATE ADDS:
-- Payment schedule on every enquiry (Deposit / 2nd Deposit / Full Balance
-  + custom instalments; £ or % auto-calc; date due; mark paid/unpaid)
-- Payments dashboard (new SalesPRO tab): collected, outstanding, overdue,
-  due within 30 days, and a list of upcoming/overdue instalments
-- Payment schedule now prints on the proposal PDF
-- Proposal PDF: fixed spacing, added a branded BACK COVER with logo,
-  image, address and contact details, plus intro
-- T&Cs now print on the main quote PDF too (earlier fix)
+THIS UPDATE:
+- Quote link is now a FULL rich proposal page: hero image, intro,
+  gallery, why-us, room/space details with packages & inclusions,
+  itemised cost breakdown, payment schedule, full T&Cs, hotel links
+  (website / map / email / phone), and the accept button.
+- Build it from the Quote Builder: "Create client proposal link" saves
+  the complete quote (all function rooms & lines) and gives you the link.
+- Re-issuing from the same builder session updates the same link.
+- Acceptance still flows back to the enquiry's Deal progress.

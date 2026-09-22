@@ -394,6 +394,7 @@ function renderQuote(v){
   const right=el("div","quote-panel quote-summary");
   right.innerHTML=`<h3>Quote summary</h3><div id="q-summary"></div>
     <button class="btn block" id="q-brochure" style="margin-top:16px">Download brochure &amp; quote</button>
+    <button class="btn block" id="q-sendlink" style="margin-top:8px;background:#2f6f9e">🔗 Create client proposal link (view + accept)</button>
     <button class="btn ghost block" id="q-pdf" style="margin-top:8px">Simple quote only</button>
     <button class="btn ghost block" id="q-kitchen" style="margin-top:8px">Kitchen / ops sheet</button>
     <button class="btn ghost block" id="q-save" style="margin-top:8px">Save as enquiry</button>`;
@@ -424,6 +425,7 @@ function renderQuote(v){
   recalcQuote();
   $("#q-pdf").onclick=downloadQuotePDF;
   $("#q-brochure").onclick=downloadBrochurePDF;
+  if($("#q-sendlink")) $("#q-sendlink").onclick=sendQuoteLink;
   $("#q-kitchen").onclick=downloadKitchenSheet;
   $("#q-save").onclick=saveQuoteAsEnquiry;
 }
@@ -3335,6 +3337,54 @@ function renderDealTrack(e){
     act.innerHTML=`<div class="deal-ok" style="background:#e8f3ee;color:#2a6a4a">✓ Fully signed &amp; confirmed. Event is on.</div>`;
   }
 }
+/* Build a FULL rich quote snapshot from the quote builder and save it,
+   so quote.html renders the complete proposal (images, rooms, costs, T&Cs). */
+function buildRichQuote(q, id){
+  const et=EVENT_TYPES.find(x=>x.id===q.evId);
+  const rooms=q.rooms.map(line=>{
+    const room=ROOMS.find(r=>r.id===line.room); if(!room) return null;
+    const pkg=PACKAGES.find(p=>p.id===line.pkg);
+    return { id:room.id, name:room.name, m2:room.m2, cap:room.cap||"",
+      img:roomImage(room), layout:line.layout||"", pax:parseInt(line.pax)||0,
+      date:line.date||"", pkg:pkg?{name:pkg.name,from:pkg.from,inc:pkg.inc||[]}:null,
+      hire:line.hire||"none", fn:fnLabel(line) };
+  }).filter(Boolean);
+  return {
+    id, enquiryId:(q.enquiry&&q.enquiry.id)||null,
+    client:q.customer.name, clientEmail:q.customer.email, company:q.customer.co,
+    eventType:et?et.label:(q.evId||"Event"), evId:q.evId,
+    eventDate:q.customer.date||(q.rooms[0]&&q.rooms[0].date)||"",
+    pax:q.pax, rooms, lines:q.lines, subtotal:q.subtotal, carbon:q.carbon,
+    hero:(q.room?roomImage(q.room):(rooms[0]&&rooms[0].img))||"", gallery:(GALLERY.weddings||[]).slice(0,3),
+    payments:(q.enquiry&&Array.isArray(q.enquiry.payments))?q.enquiry.payments:[],
+    ref:(q.enquiry&&q.enquiry.ref)||id, created:new Date().toISOString(), status:"issued"
+  };
+}
+function sendQuoteLink(){
+  const q=gatherQuote();
+  if(!q.customer.name){ alert("Please enter the customer name first."); return; }
+  if(!q.lines.length){ alert("Add at least one room, package or add-on to the quote."); return; }
+  // reuse existing quote id if this builder was opened from a saved quote
+  const id = window._editingQuoteId || ("Q-"+Date.now().toString(36).toUpperCase());
+  const rich=buildRichQuote(q,id);
+  QuoteStore.create(rich);
+  window._editingQuoteId=id;
+  const origin=location.href.split("#")[0].replace(/index\.html$/,"").replace(/\/$/,"");
+  const url=`${origin}/quote.html?q=${id}`;
+  const emailBody=`Dear ${(rich.client||"there").split(" ")[0]},\n\nThank you for your interest in Brandon Hall Hotel and Spa. Please view your proposal — including all the details, costs and terms — and accept it online here:\n\n${url}\n\nOnce you're happy, accepting the quote lets us prepare your formal agreement.\n\nKind regards,\n${SESSION?.name||"The Events Team"}\nBrandon Hall Hotel and Spa`;
+  const mailto=`mailto:${encodeURIComponent(rich.clientEmail||"")}?cc=${encodeURIComponent("events@brandonhallhotelandspa.com")}&subject=${encodeURIComponent("Your proposal — Brandon Hall Hotel and Spa")}&body=${encodeURIComponent(emailBody)}`;
+  showModal("Client proposal link", rich.client, `
+    <p class="qs-sub">A full proposal page has been created for the client — with images, venue &amp; room details, costs, payment schedule and terms — ready to view and accept.</p>
+    <div class="embed-box" style="margin-top:10px">${url}<button class="cp" id="sq-copy">Copy</button></div>
+    <div class="dual-btn" style="margin-top:10px">
+      <a class="btn" href="${mailto}">✉ Email to client</a>
+      <button class="btn ghost" id="sq-open">Preview page</button>
+    </div>
+    ${rich.enquiryId?`<p class="qs-sub" style="margin-top:8px">Linked to the enquiry — acceptance will show on its Deal progress.</p>`:`<p class="qs-sub" style="margin-top:8px">Tip: build quotes from an enquiry (Sales Pipeline) to track acceptance on the deal.</p>`}`);
+  $("#sq-copy").onclick=()=>{ navigator.clipboard?.writeText(url); $("#sq-copy").textContent="Copied"; };
+  $("#sq-open").onclick=()=>window.open(url,"_blank");
+}
+
 function issueQuote(e){
   // create a lightweight quote record (view+accept link). Reuse contract-style store via a quote id on the enquiry.
   const qid = e.quoteId || ("Q-"+Date.now().toString(36).toUpperCase());
