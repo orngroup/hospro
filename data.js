@@ -912,7 +912,7 @@ const BROCHURE_TEMPLATES = {
 const FLOW_MODULES = [
   { id:"events",    name:"EventsPRO",    caption:"Plan. Organise. Deliver.",       icon:"📅", colour:"#4a9d7f", tint:"#e6f3ee", tabs:["chat","dining"] },
   { id:"room",      name:"RoomPRO",      caption:"Keep operations in flow.",       icon:"🛏️", colour:"#4a86c7", tint:"#e6eff8", tabs:["rooms","packages"] },
-  { id:"sales",     name:"SalesPRO",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","profit","contracts","payments"] },
+  { id:"sales",     name:"SalesPRO",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","quotes","profit","contracts","payments"] },
   { id:"corp",      name:"StayCORP",      caption:"Corporate guests & rates.",       icon:"🏢", colour:"#2f6f9e", tint:"#e6eef5", tabs:["precheckin","corpdb","corprates","feedback"] },
   { id:"marketing", name:"MarketingPRO", caption:"Create. Campaign. Convert.",     icon:"📣", colour:"#c85c6b", tint:"#f8e9eb", tabs:["marketing","social"] },
   { id:"task",      name:"TaskPRO",      caption:"Tasks. Teams. Accountability.",  icon:"✅", colour:"#d4a24a", tint:"#faf1e0", tabs:["tasks"] },
@@ -930,6 +930,7 @@ const TAB_META = {
   quote:{label:"Create Quote",icon:"🧾"}, profit:{label:"Profit Tool",icon:"💰"},
   contracts:{label:"Agreements",icon:"📝"},
   payments:{label:"Payments",icon:"💷"},
+  quotes:{label:"Quotes",icon:"🧾"},
   chat:{label:"Events Chat",icon:"💬"}, mne:{label:"M&E Upgrade",icon:"🖥️"},
   marketing:{label:"Marketing Library",icon:"🖼️"}, menu:{label:"Menu Builder",icon:"📝"},
   brochure:{label:"Brochure Builder",icon:"📕"}, social:{label:"Social Studio",icon:"📱"},

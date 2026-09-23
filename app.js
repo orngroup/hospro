@@ -151,7 +151,7 @@ function render(){
   document.body.classList.toggle("home-active", CURRENT_TAB==="home");
   syncSidebar();
   ({home:renderHome, rooms:renderRooms, dining:renderDining, pipeline:renderPipeline, corprates:renderCorpRates, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
-    profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, admin:renderAdmin }[CURRENT_TAB]||renderRooms)(v);
+    profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin }[CURRENT_TAB]||renderRooms)(v);
 }
 
 /* ============================================================ ROOMS */
@@ -3848,6 +3848,85 @@ h2{font-family:'Cormorant Garamond',serif;font-size:21px;color:#1a2b47;margin:24
 .ct-sigline{height:50px;border-bottom:2px solid #1a2b47;display:flex;align-items:flex-end;padding-bottom:4px}
 .ct-sigd{font-family:'Cormorant Garamond',serif;font-size:26px;color:#1a2b47}
 .ct-siglabel{font-size:11px;color:#7a8494;margin-top:6px}`;
+
+/* ============================================================ QUOTES LIST */
+let QUOTES_FILTER={status:"",search:""};
+function renderQuotesList(v){
+  v.appendChild(head("Quotes","Every proposal you've created — open, copy the link, email it, or re-open in the builder."));
+  const all=(typeof QuoteStore!=="undefined")?QuoteStore.all():[];
+  const origin=location.href.split("#")[0].replace(/index\.html$/,"").replace(/\/$/,"");
+  const fmt=d=>d&&/^\d{4}-\d{2}-\d{2}/.test((d||"").slice(0,10))?new Date(d).toLocaleDateString("en-GB"):(d?new Date(d).toLocaleDateString("en-GB"):"—");
+
+  // stat cards
+  const issued=all.filter(q=>q.status==="issued"||q.status==="saved").length;
+  const accepted=all.filter(q=>q.acceptedBy||q.status==="accepted").length;
+  const totVal=all.reduce((s,q)=>s+(q.subtotal||q.value||0),0);
+  const stats=el("div","stat-cards");
+  stats.innerHTML=`
+    <div class="stat-card"><div class="sc-v">${all.length}</div><div class="sc-k">Total quotes</div></div>
+    <div class="stat-card"><div class="sc-v">${issued}</div><div class="sc-k">Issued / awaiting</div></div>
+    <div class="stat-card"><div class="sc-v" style="color:#4a9d6a">${accepted}</div><div class="sc-k">Accepted</div></div>
+    <div class="stat-card"><div class="sc-v">${money(Math.round(totVal))}</div><div class="sc-k">Total value</div></div>`;
+  v.appendChild(stats);
+
+  if(!all.length){
+    const empty=el("div","quote-panel");
+    empty.innerHTML=`<p class="qs-sub">No quotes yet. Open an enquiry in the Sales Pipeline and use <b>Build quote</b> — every proposal you create will appear here.</p>`;
+    v.appendChild(empty); return;
+  }
+
+  // filter bar
+  const bar=el("div","pipe-toolbar");
+  bar.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <input id="qf-search" placeholder="🔍 Search client / ref…" value="${QUOTES_FILTER.search}" style="padding:9px 12px;border:1px solid var(--line);border-radius:9px;min-width:220px">
+    <select id="qf-status" style="padding:9px 12px;border:1px solid var(--line);border-radius:9px">
+      <option value="">All statuses</option>
+      <option value="issued" ${QUOTES_FILTER.status==="issued"?"selected":""}>Issued / awaiting</option>
+      <option value="accepted" ${QUOTES_FILTER.status==="accepted"?"selected":""}>Accepted</option>
+      <option value="saved" ${QUOTES_FILTER.status==="saved"?"selected":""}>Draft</option>
+    </select></div>`;
+  v.appendChild(bar);
+  $("#qf-search").oninput=()=>{ QUOTES_FILTER.search=$("#qf-search").value; render(); };
+  $("#qf-status").onchange=()=>{ QUOTES_FILTER.status=$("#qf-status").value; render(); };
+
+  // filtered list
+  let list=all.slice().sort((a,b)=>(b.created||"").localeCompare(a.created||""));
+  if(QUOTES_FILTER.search){ const s=QUOTES_FILTER.search.toLowerCase();
+    list=list.filter(q=>`${q.client||""} ${q.ref||""} ${q.company||""}`.toLowerCase().includes(s)); }
+  if(QUOTES_FILTER.status){ list=list.filter(q=> QUOTES_FILTER.status==="accepted" ? (q.acceptedBy||q.status==="accepted") : q.status===QUOTES_FILTER.status); }
+
+  const panel=el("div","quote-panel");
+  panel.innerHTML=`<div class="tbl-scroll"><table class="ct-table">
+    <tr><th>Client</th><th>Ref</th><th>Event</th><th>Date</th><th>Value</th><th>Status</th><th>Actions</th></tr>
+    ${list.map(q=>{
+      const val=q.subtotal||q.value||0;
+      const acc=q.acceptedBy||q.status==="accepted";
+      const st = acc?["Accepted","#4a9d6a"] : (q.status==="saved")?["Draft","#7a8494"] : ["Issued","#2f6f9e"];
+      const nopt = q.options&&q.options.length?` <span class="qs-sub">(${q.options.length} options)</span>`:"";
+      return `<tr class="ct-row">
+        <td><b>${q.client||"—"}</b>${q.company?`<br><span class="qs-sub">${q.company}</span>`:""}</td>
+        <td style="font-size:12px">${q.ref||q.id}</td>
+        <td>${q.eventType||"—"}${nopt}</td>
+        <td>${fmt(q.eventDate)}</td>
+        <td>${money(Math.round(val))}</td>
+        <td><span class="pay-pill" style="background:${st[1]}22;color:${st[1]}">${st[0]}</span></td>
+        <td class="q-actions">
+          <a class="mini-btn" href="${origin}/quote.html?q=${q.id}" target="_blank" title="Open">Open</a>
+          <button class="mini-btn q-copy" data-url="${origin}/quote.html?q=${q.id}" title="Copy link">Copy</button>
+          <button class="mini-btn q-email" data-id="${q.id}" title="Email">Email</button>
+        </td></tr>`;
+    }).join("")}
+  </table></div>${list.length?"":`<p class="qs-sub" style="padding:14px">No quotes match your filter.</p>`}`;
+  v.appendChild(panel);
+
+  panel.querySelectorAll(".q-copy").forEach(b=>b.onclick=()=>{ navigator.clipboard?.writeText(b.dataset.url); b.textContent="Copied"; setTimeout(()=>b.textContent="Copy",1500); });
+  panel.querySelectorAll(".q-email").forEach(b=>b.onclick=()=>{
+    const q=all.find(x=>x.id===b.dataset.id); if(!q) return;
+    const url=`${origin}/quote.html?q=${q.id}`;
+    const body=`Dear ${(q.client||"there").split(" ")[0]},\n\nThank you for your interest in Brandon Hall Hotel and Spa. Please view your proposal and accept it online here:\n\n${url}\n\nKind regards,\n${SESSION?.name||"The Events Team"}\nBrandon Hall Hotel and Spa`;
+    window.location.href=`mailto:${encodeURIComponent(q.clientEmail||"")}?cc=${encodeURIComponent("events@brandonhallhotelandspa.com")}&subject=${encodeURIComponent("Your proposal — Brandon Hall Hotel and Spa")}&body=${encodeURIComponent(body)}`;
+  });
+}
 
 /* ============================================================ PAYMENTS DASHBOARD */
 function renderPayments(v){
