@@ -72,6 +72,12 @@ h2{font-family:'Cormorant Garamond',serif;font-size:21px;color:var(--navy);margi
 .cost-sub{color:#7a8494;font-size:12px}
 .cost-total td{border-top:2px solid var(--navy);border-bottom:none;font-weight:700;font-size:16px}
 .carbon{background:#eef5ec;border-radius:8px;padding:11px 14px;color:#4a6147;font-size:12.5px;margin-top:12px}
+.opt-intro{font-size:14px;color:var(--ink);margin-bottom:14px}
+.qopt{border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:14px}
+.qopt.pick{border-color:var(--gold);box-shadow:0 6px 20px rgba(201,169,120,.15)}
+.qopt-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.qopt-h h3{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--navy)}
+.qopt-tag{font-size:11px;font-weight:700;background:#e6f6f4;color:#159187;padding:3px 10px;border-radius:12px}
 .hotel-links{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px;padding-top:18px;border-top:1px solid var(--line)}
 .hotel-links a{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;color:var(--navy)}
 .hotel-links a:hover{border-color:var(--gold);color:var(--gold-dk,#b89355)}
@@ -125,11 +131,21 @@ function render(q){
         ${r.menu&&r.menu.length?`<div class="space-menu"><b>Menu selections</b><ul class="space-inc">${r.menu.map(m=>`<li>${m}</li>`).join("")}</ul></div>`:""}
       </div>
     </div>`).join("") : "";
-  // itemised costs
-  const costHTML = (q.lines&&q.lines.length) ? `<table class="cost">
-    ${q.lines.map(l=>`<tr><td>${l.label}${l.sub?` <span class="cost-sub">${l.sub}</span>`:""}</td><td class="r">${money(l.amt)}</td></tr>`).join("")}
-    <tr class="cost-total"><td>Total (inc. VAT where applicable)</td><td class="r">${money(total)}</td></tr>
-  </table>` : `<div class="total">Total: ${money(total)} <span style="font-size:13px;font-weight:400;color:#7a8494">(inc. VAT)</span></div>`;
+  // itemised costs OR multiple options
+  let costHTML;
+  if(q.options && q.options.length){
+    costHTML = `<p class="opt-intro">We've prepared ${q.options.length} option${q.options.length>1?"s":""} for you — please review and select the one that suits you best.</p>` +
+      q.options.map((o,i)=>`<div class="qopt ${i===q.options.length-1?"pick":""}">
+        <div class="qopt-h"><h3>${o.label}</h3>${i===q.options.length-1?`<span class="qopt-tag">Best value</span>`:""}</div>
+        <table class="cost">${o.lines.map(l=>`<tr><td>${l.label}${l.sub?` <span class="cost-sub">${l.sub}</span>`:""}</td><td class="r">${money(l.amt)}</td></tr>`).join("")}
+          <tr class="cost-total"><td>Total (inc. VAT where applicable)</td><td class="r">${money(o.subtotal)}</td></tr></table>
+      </div>`).join("");
+  } else {
+    costHTML = (q.lines&&q.lines.length) ? `<table class="cost">
+      ${q.lines.map(l=>`<tr><td>${l.label}${l.sub?` <span class="cost-sub">${l.sub}</span>`:""}</td><td class="r">${money(l.amt)}</td></tr>`).join("")}
+      <tr class="cost-total"><td>Total (inc. VAT where applicable)</td><td class="r">${money(total)}</td></tr>
+    </table>` : `<div class="total">Total: ${money(total)} <span style="font-size:13px;font-weight:400;color:#7a8494">(inc. VAT)</span></div>`;
+  }
   // payment schedule
   const payHTML = (q.payments&&q.payments.length) ? `<h2>Payment schedule</h2>
     <table class="cost"><tr><th>Instalment</th><th>Due</th><th class="r">Amount</th></tr>
@@ -165,7 +181,7 @@ function render(q){
 
       ${roomsHTML?`<h2>Your spaces</h2>${roomsHTML}`:""}
 
-      <h2>Your proposal</h2>
+      <h2>${q.options&&q.options.length?"Your options":"Your proposal"}</h2>
       ${costHTML}
       <div class="carbon">🌱 Estimated event carbon footprint: <b>${q.carbon?q.carbon.total:"—"} kg CO₂e</b> across all spaces — we're committed to sustainable events.</div>
 

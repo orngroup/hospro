@@ -348,6 +348,7 @@ let QUOTE_ACC=[];   // accommodation blocks: {label,rooms,rate,nights,basis}
 let QUOTE_CUSTOM=[];// custom lines: {label,qty,price}
 let QUOTE_PAY=[];   // payment schedule for the current quote
 let QUOTE_TOTAL=0;  // latest computed total
+let QUOTE_OPTIONS=[]; // collected options (A/B/C) for the proposal
 function newRoomLine(pre){
   return { fnType: pre?.fnType||"meeting", label: pre?.label||"", time: pre?.time||"",
     room: pre?.room || ROOMS[0].id, date: pre?.date||"", layout: pre?.layout||"theatre",
@@ -431,12 +432,15 @@ function renderQuote(v){
   // right: summary
   const right=el("div","quote-panel quote-summary");
   right.innerHTML=`<h3>Quote summary</h3><div id="q-summary"></div>
-    <button class="btn block" id="q-save" style="margin-top:16px;background:#4a7c59">💾 Save quote</button>
-    <button class="btn block" id="q-brochure" style="margin-top:8px">Download brochure &amp; quote</button>
-    <button class="btn block" id="q-sendlink" style="margin-top:8px;background:#2f6f9e">🔗 Create client proposal link (view + accept)</button>
-    <button class="btn ghost block" id="q-pdf" style="margin-top:8px">Simple quote only</button>
+    <div id="q-options-box"></div>
+    <button class="btn block" id="q-addopt" style="margin-top:14px;background:#4a7c59">➕ Add this as an option</button>
+    <button class="btn block" id="q-sendlink" style="margin-top:8px;background:#2f6f9e">🔗 Create client proposal link</button>
+    <div class="dual-btn" style="margin-top:8px">
+      <button class="btn ghost sm" id="q-brochure">Brochure PDF</button>
+      <button class="btn ghost sm" id="q-pdf">Simple PDF</button>
+    </div>
     <button class="btn ghost block" id="q-kitchen" style="margin-top:8px">Kitchen / ops sheet</button>
-    <button class="btn ghost block" id="q-save" style="margin-top:8px">Save as enquiry</button>`;
+    <p class="qs-sub" style="margin-top:10px">Build a version, then <b>Add this as an option</b>. Add a second version for an A/B proposal. The client link shows all options to approve.</p>`;
   wrap.appendChild(right);
   v.appendChild(wrap);
 
@@ -468,7 +472,8 @@ function renderQuote(v){
   $("#q-pdf").onclick=downloadQuotePDF;
   $("#q-brochure").onclick=downloadBrochurePDF;
   if($("#q-sendlink")) $("#q-sendlink").onclick=sendQuoteLink;
-  if($("#q-save")) $("#q-save").onclick=saveQuoteOnly;
+  if($("#q-addopt")) $("#q-addopt").onclick=addQuoteOption;
+  renderQuoteOptions();
   $("#q-kitchen").onclick=downloadKitchenSheet;
 
   // ---- payment terms in the quote builder (linked to the enquiry) ----
@@ -1540,7 +1545,7 @@ Brandon Hall Hotel and Spa
     closeModal(); render();
   };
   $("#enq-cost").onclick=()=>{ closeModal(); profitPrefill={ enquiry:e }; switchTab("profit"); };
-  $("#enq-quote").onclick=()=>{ closeModal(); quoteEnquiry=e; QUOTE_ROOMS=[]; QUOTE_ACC=[]; QUOTE_CUSTOM=[]; QUOTE_PAY=[]; window._editingQuoteId=null; switchTab("quote"); };
+  $("#enq-quote").onclick=()=>{ closeModal(); quoteEnquiry=e; QUOTE_ROOMS=[]; QUOTE_ACC=[]; QUOTE_CUSTOM=[]; QUOTE_PAY=[]; QUOTE_OPTIONS=[]; window._editingQuoteId=null; switchTab("quote"); };
 }
 
 /* ============================================================ ADMIN */
@@ -3576,7 +3581,7 @@ function renderDealTrack(e){
     // Enquiry → issue quote
     act.innerHTML=`<button class="btn block" id="d-quote" style="background:#2f6f9e">1 · Build &amp; issue quote</button>
       <p class="qs-sub" style="margin-top:6px">Opens the quote builder — add rooms, packages, menu and payment terms, then create the client link.</p>`;
-    $("#d-quote").onclick=()=>{ closeModal(); quoteEnquiry=e; QUOTE_ROOMS=[]; QUOTE_ACC=[]; QUOTE_CUSTOM=[]; QUOTE_PAY=[]; window._editingQuoteId=null; switchTab("quote"); };
+    $("#d-quote").onclick=()=>{ closeModal(); quoteEnquiry=e; QUOTE_ROOMS=[]; QUOTE_ACC=[]; QUOTE_CUSTOM=[]; QUOTE_PAY=[]; QUOTE_OPTIONS=[]; window._editingQuoteId=null; switchTab("quote"); };
   } else if(idx===1){
     // Quote issued → awaiting acceptance
     const url=`${origin}/quote.html?q=${e.quoteId||""}`;
@@ -3608,6 +3613,32 @@ function renderDealTrack(e){
 }
 /* Build a FULL rich quote snapshot from the quote builder and save it,
    so quote.html renders the complete proposal (images, rooms, costs, T&Cs). */
+function addQuoteOption(){
+  const q=gatherQuote();
+  if(!q.lines.length){ alert("Build the quote first (add rooms, accommodation or packages), then add it as an option."); return; }
+  const letter=String.fromCharCode(65+QUOTE_OPTIONS.length); // A, B, C
+  const name=prompt(`Name this option (Option ${letter}):`, guessOptionName(q)||`Option ${letter}`);
+  if(name===null) return;
+  QUOTE_OPTIONS.push({ label:name||`Option ${letter}`, lines:q.lines.slice(), subtotal:q.subtotal, carbon:q.carbon });
+  renderQuoteOptions();
+}
+function guessOptionName(q){
+  const hasPkg=q.lines.some(l=>/Delegate|Package|Wedding/i.test(l.label));
+  const hasHire=q.lines.some(l=>/hire/i.test(l.label));
+  if(hasPkg) return "Day Delegate Package";
+  if(hasHire) return "Room hire & à la carte";
+  return "";
+}
+function renderQuoteOptions(){
+  const box=$("#q-options-box"); if(!box) return;
+  if(!QUOTE_OPTIONS.length){ box.innerHTML=""; return; }
+  box.innerHTML=`<div class="opt-collected"><div class="oc-head">Proposal options (${QUOTE_OPTIONS.length})</div>
+    ${QUOTE_OPTIONS.map((o,i)=>`<div class="oc-row"><span class="oc-let">${String.fromCharCode(65+i)}</span>
+      <span class="oc-name">${o.label}</span><span class="oc-tot">${money(o.subtotal)}</span>
+      <button class="mini-btn oc-del" data-i="${i}">✕</button></div>`).join("")}</div>`;
+  box.querySelectorAll(".oc-del").forEach(b=>b.onclick=()=>{ QUOTE_OPTIONS.splice(+b.dataset.i,1); renderQuoteOptions(); });
+}
+
 function buildRichQuote(q, id){
   const et=EVENT_TYPES.find(x=>x.id===q.evId);
   const rooms=q.rooms.map(line=>{
@@ -3624,8 +3655,9 @@ function buildRichQuote(q, id){
     eventType:et?et.label:(q.evId||"Event"), evId:q.evId,
     eventDate:q.customer.date||(q.rooms[0]&&q.rooms[0].date)||"",
     pax:q.pax, rooms, lines:q.lines, subtotal:q.subtotal, carbon:q.carbon,
-    hero:(q.room?roomImage(q.room):(rooms[0]&&rooms[0].img))||"", gallery:(GALLERY.weddings||[]).slice(0,3),
+    hero:(q.room?roomImage(q.room):(rooms[0]&&rooms[0].img))||"", gallery:(q.evId==="wedding"?(GALLERY.weddings||[]):(GALLERY.meetings||[])).slice(0,3),
     payments:(q.payments&&q.payments.length)?q.payments:((q.enquiry&&Array.isArray(q.enquiry.payments))?q.enquiry.payments:[]),
+    options:(typeof QUOTE_OPTIONS!=="undefined"&&QUOTE_OPTIONS.length)?QUOTE_OPTIONS.slice():null,
     ref:(q.enquiry&&q.enquiry.ref)||quoteRef(q.evId, q.customer.date||(q.rooms[0]&&q.rooms[0].date), q.customer.name), created:new Date().toISOString(), status:"issued"
   };
 }
