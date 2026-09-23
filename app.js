@@ -637,7 +637,7 @@ function downloadQuotePDF(){
       .term p{color:#3a332c;margin:0}
     </style></head><body>
     <div class="top">
-      <div><h1>Brandon Hall Hotel &amp; Spa</h1><div class="muted">Main Street, Brandon, Coventry CV8 3FW</div></div>
+      <div><h1>Brandon Hall Hotel and Spa</h1><div class="muted">Main Street, Brandon, Coventry CV8 3FW</div></div>
       <div style="text-align:right"><div class="muted">Quotation</div><b>${ref}</b><br><span class="muted">${new Date().toLocaleDateString("en-GB")}</span></div>
     </div>
     <h2>Prepared for</h2>
@@ -654,7 +654,7 @@ function downloadQuotePDF(){
     <table>${rows}<tr class="total"><td>Total (inc. VAT where applicable)</td><td style="text-align:right">${money(q.subtotal)}</td></tr></table>
     <div class="carbon">Estimated event carbon footprint: <b>${q.carbon.total} kg CO₂e</b> — indicative estimate from room size, occupancy and event type.</div>
     <div class="foot">${typeof TERMS_SHORT!=="undefined"?TERMS_SHORT:"This quotation is valid for 14 days and subject to availability."}<br>
-    Brandon Hall Hotel &amp; Spa · Sales: nicola.cartwright@brandonhallhotelandspa.com</div>
+    Brandon Hall Hotel and Spa · Sales: nicola.cartwright@brandonhallhotelandspa.com</div>
     <div class="terms-page">
       <h2>Terms &amp; Conditions</h2>
       <div class="terms">${(typeof CONTRACT_TERMS!=="undefined"?CONTRACT_TERMS:[]).map(t=>`<div class="term"><b>${t.h}</b><p>${t.t}</p></div>`).join("")}</div>
@@ -752,7 +752,7 @@ function downloadBrochurePDF(){
     <div class="cover">
       <img class="cover-img" src="${hero}" onerror="this.style.display='none'">
       <div class="cover-body">
-        <div class="sub">BRANDON HALL HOTEL &amp; SPA</div>
+        <div class="sub">BRANDON HALL HOTEL AND SPA</div>
         <h1>${et.label}<br>Proposal</h1>
         <div class="for">Prepared for<b>${q.customer.name}</b>${q.customer.co?q.customer.co:""}</div>
       </div>
@@ -801,9 +801,9 @@ function downloadBrochurePDF(){
       <img class="bc-img" src="${BC_IMG}" onerror="this.style.display='none'">
       <div class="bc-body">
         <div class="bc-logo">BRANDON HALL</div>
-        <div class="bc-sub">HOTEL &amp; SPA</div>
+        <div class="bc-sub">HOTEL AND SPA</div>
         <div class="bc-line"></div>
-        <p class="bc-intro">Thank you for considering Brandon Hall Hotel &amp; Spa. We would be delighted to welcome you and bring your event to life. Please don't hesitate to get in touch — we're here to help every step of the way.</p>
+        <p class="bc-intro">Thank you for considering Brandon Hall Hotel and Spa. We would be delighted to welcome you and bring your event to life. Please don't hesitate to get in touch — we're here to help every step of the way.</p>
         <div class="bc-contact">
           <div><b>Events Team</b>nicola.cartwright@brandonhallhotelandspa.com</div>
           <div><b>Call us</b>+44 (0)247 710 2555</div>
@@ -868,7 +868,7 @@ function downloadKitchenSheet(){
     .info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 20px;font-size:12px;margin-bottom:6px}
     .info b{color:#3a4256}
     .note{margin-top:24px;font-size:10px;color:#7a8494;border-top:1px solid #e3e7ee;padding-top:10px}</style></head><body>
-    <div class="top"><div><h1>Function / Kitchen Sheet</h1><div class="muted">Brandon Hall Hotel &amp; Spa · Operations</div></div>
+    <div class="top"><div><h1>Function / Kitchen Sheet</h1><div class="muted">Brandon Hall Hotel and Spa · Operations</div></div>
       <div style="text-align:right"><b>${ref}</b><br><span class="muted">${new Date().toLocaleDateString("en-GB")}</span></div></div>
     <div class="info">
       <div><b>Client:</b> ${q.customer.name}</div><div><b>Company:</b> ${q.customer.co||"—"}</div><div><b>Event:</b> ${et.label}</div>
@@ -1962,7 +1962,7 @@ function printProfit(){
     .r{text-align:right}.neg{color:#b3261e}.hero{background:#1a2b47;color:#fff;border-radius:10px;padding:16px;margin:14px 0;text-align:center}
     .hero .big{font-family:Georgia,serif;font-size:32px}.total td{font-weight:700;font-size:14px;border-top:2px solid #1a2b47}</style></head><body>
     <div class="top"><div><h1>Event Profitability</h1><div class="muted">${p.name}</div></div>
-      <div class="muted">Brandon Hall Hotel &amp; Spa<br>${new Date().toLocaleDateString("en-GB")}</div></div>
+      <div class="muted">Brandon Hall Hotel and Spa<br>${new Date().toLocaleDateString("en-GB")}</div></div>
     <div class="hero"><div class="big">${money(Math.round(p.profit))}</div>
       <div>Estimated profit · ${Math.round(p.margin*100)}% margin · ${money(p.covers?Math.round(p.profit/p.covers):0)} per cover</div></div>
     <h2>Revenue</h2><table>
@@ -2170,7 +2170,7 @@ function printMnE(mode){
     .foot{margin-top:20px;border-top:1px solid #e3e7ee;padding-top:10px;font-size:10px;color:#7a8494}
     .sign{margin-top:24px;display:flex;gap:40px}.sign div{flex:1;border-top:1px solid #1a2b47;padding-top:5px;font-size:10px;color:#7a8494}
     </style></head><body>
-    <div class="doc-h"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL &amp; SPA</div></div>
+    <div class="doc-h"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL AND SPA</div></div>
     <h1>${title}</h1>
     <div class="meta">${isRFQ?"Request for Quotation":"Internal Requirements Schedule"} · ${today}${!isRFQ?` · ${grandItems} items across ${rooms.length} rooms`:""}</div>
     ${intro}
@@ -2475,7 +2475,7 @@ function renderMenuPreview(){
   const box=$("#mn-preview"); if(!box)return;
   box.innerHTML=`
     <div class="mp-logo">BRANDON HALL</div>
-    <div class="mp-sub2">HOTEL &amp; SPA</div>
+    <div class="mp-sub2">HOTEL AND SPA</div>
     <h2 class="mp-title">${MENU.title||""}</h2>
     ${MENU.subtitle?`<div class="mp-subtitle">${MENU.subtitle}</div>`:""}
     ${MENU.courses.map(c=>`
@@ -2510,7 +2510,7 @@ function printMenu(){
     .price{font-family:'Cormorant Garamond',serif;font-size:20px;color:#1a2b47;margin:28px 0 0;font-weight:600}
     .footer{font-size:9.5px;color:#9aa2ad;margin-top:34px;border-top:1px solid #e8dccf;padding-top:14px;line-height:1.5}</style>
     </head><body><div class="menu">
-      <div class="logo">BRANDON HALL</div><div class="sub2">HOTEL &amp; SPA</div>
+      <div class="logo">BRANDON HALL</div><div class="sub2">HOTEL AND SPA</div>
       <h1>${MENU.title||""}</h1>${MENU.subtitle?`<div class="subtitle">${MENU.subtitle}</div>`:""}
       ${courses}
       ${MENU.price?`<div class="price">${MENU.price}</div>`:""}
@@ -2790,7 +2790,7 @@ function renderBrochurePreview(){
   const hero=imgFile(BROCHURE.heroImg);
   box.innerHTML=`
     <div class="brp-hero" style="background-image:url('${hero}')"><div class="brp-ov"></div>
-      <div class="brp-htxt"><div class="brp-logo">BRANDON HALL</div><div class="brp-eyebrow">HOTEL &amp; SPA</div>
+      <div class="brp-htxt"><div class="brp-logo">BRANDON HALL</div><div class="brp-eyebrow">HOTEL AND SPA</div>
         <div class="brp-title">${BROCHURE.title||''}</div><div class="brp-sub">${BROCHURE.subtitle||''}</div></div></div>
     <div class="brp-body">
       <p class="brp-intro">${(BROCHURE.intro||'').split("\n").filter(Boolean)[0]||''}</p>
@@ -2849,7 +2849,7 @@ function produceBrochurePDF(){
     .issued{position:absolute;top:14mm;right:16mm;z-index:3;color:#fff;font-size:10px;opacity:.85}</style>
     </head><body>
     <div class="hero"><div class="issued">Issued ${issued}</div>
-      <div class="htxt"><div class="logo">BRANDON HALL</div><div class="eyebrow">HOTEL &amp; SPA</div>
+      <div class="htxt"><div class="logo">BRANDON HALL</div><div class="eyebrow">HOTEL AND SPA</div>
         <div class="htitle">${b.title||""}</div><div class="hsub">${b.subtitle||""}</div></div></div>
     <div class="body">
       <h2>Welcome</h2><div class="rule"></div>
@@ -2859,7 +2859,7 @@ function produceBrochurePDF(){
       <table>${rates}</table>
       ${b.ratesNote?`<p style="font-size:10.5px;color:#7a8494;margin-top:10px">${b.ratesNote}</p>`:""}
       ${b.cta?`<div class="cta"><b>${b.cta}</b>+44 (0)247 710 2555 · events@brandonhallhotelandspa.com</div>`:""}
-      <div class="foot">Brandon Hall Hotel &amp; Spa · Main Street, Brandon, Wolston, Coventry CV8 3FW · brandonhallhotelandspa.com</div>
+      <div class="foot">Brandon Hall Hotel and Spa · Main Street, Brandon, Wolston, Coventry CV8 3FW · brandonhallhotelandspa.com</div>
     </div>
     <script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
   win.document.close();
@@ -2936,7 +2936,7 @@ function buildSocialPrompt(){
   const box=$("#soc-promptbox");
   if(!desc){ box.innerHTML=`<div class="qs-sub" style="color:var(--warn);margin-top:10px">Please describe the image and what you're promoting.</div>`; return; }
   const tone=$("#soc-tone").value, platform=$("#soc-platform").value, cta=$("#soc-cta").value.trim();
-  const prompt=`Write a social media post for Brandon Hall Hotel & Spa — a 4-star country-house hotel and spa set in 17 acres of Warwickshire grounds near Coventry (CV8 3FW), offering weddings, meetings & events, a spa with an 18-metre pool, restaurant and bar, and 120 en-suite bedrooms.
+  const prompt=`Write a social media post for Brandon Hall Hotel and Spa — a 4-star country-house hotel and spa set in 17 acres of Warwickshire grounds near Coventry (CV8 3FW), offering weddings, meetings & events, a spa with an 18-metre pool, restaurant and bar, and 120 en-suite bedrooms.
 
 Voice: ${tone.toLowerCase()}, with a touch of understated luxury — warm and genuine, never gimmicky. British English.
 
@@ -2980,10 +2980,30 @@ function renderSocialPreview(){
 /* ============================================================ HOME / WELCOME */
 function renderHome(v){
   // ---- simple welcome header ----
+  const topRow=el("div","sf-top-row");
   const hdr=el("div","sf-welcome");
   hdr.innerHTML=`<h1>Welcome to <span class="hospro-navy">HOS</span><span class="hospro-teal">PRO</span></h1>
     <p>Brandon Hall Hotel and Spa</p>`;
-  v.appendChild(hdr);
+  topRow.appendChild(hdr);
+
+  // ---- room configurator (top-right, quick access) ----
+  const sc=el("div","sf-panel stay-widget stay-top");
+  sc.innerHTML=`<div class="sf-panel-head"><h3>🛏️ Room Configurator</h3></div>
+    <div class="sc-inputs">
+      <label>Adults<input id="sc-ad" type="number" min="0" value="2"></label>
+      <label>Children<input id="sc-ch" type="number" min="0" value="0"></label>
+      <label>Infants<input id="sc-in" type="number" min="0" value="0"></label>
+      <button class="btn sm" id="sc-go">Find rooms</button>
+    </div>
+    <div id="sc-result" style="margin-top:10px"></div>`;
+  topRow.appendChild(sc);
+  v.appendChild(topRow);
+  const runSC=()=>{
+    const a=parseInt($("#sc-ad").value)||0, c=parseInt($("#sc-ch").value)||0, inf=parseInt($("#sc-in").value)||0;
+    $("#sc-result").innerHTML=renderStaySolution(solveStay(a,c,inf));
+  };
+  $("#sc-go").onclick=runSC;
+  ["sc-ad","sc-ch","sc-in"].forEach(id=>{ const el2=$("#"+id); if(el2) el2.onkeydown=e=>{ if(e.key==="Enter") runSC(); }; });
 
   // ---- module cards, one even row (exclude insight from home) ----
   const mods=userModules(SESSION?._key||"ajay.kawa").filter(m=>m.id!=="insight");
@@ -3062,25 +3082,6 @@ function renderHome(v){
     </div>`;
   v.appendChild(grid);
   grid.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>switchTab(b.dataset.go));
-
-  // ---- STAY CONFIGURATOR widget ----
-  const sc=el("div","sf-panel stay-widget");
-  sc.innerHTML=`<div class="sf-panel-head"><h3>🛏️ Enquiry Room Configurator</h3></div>
-    <p class="qs-sub" style="margin:0 0 10px">Enter the party and we'll suggest the best room combination.</p>
-    <div class="sc-inputs">
-      <label>Adults<input id="sc-ad" type="number" min="0" value="2"></label>
-      <label>Children <span class="qs-sub">(3–${CHILD_MAX_AGE})</span><input id="sc-ch" type="number" min="0" value="0"></label>
-      <label>Infants <span class="qs-sub">(0–${INFANT_MAX_AGE}, cot)</span><input id="sc-in" type="number" min="0" value="0"></label>
-      <button class="btn sm" id="sc-go">Find rooms</button>
-    </div>
-    <div id="sc-result" style="margin-top:12px"></div>`;
-  v.appendChild(sc);
-  const runSC=()=>{
-    const a=parseInt($("#sc-ad").value)||0, c=parseInt($("#sc-ch").value)||0, inf=parseInt($("#sc-in").value)||0;
-    $("#sc-result").innerHTML=renderStaySolution(solveStay(a,c,inf));
-  };
-  $("#sc-go").onclick=runSC;
-  ["sc-ad","sc-ch","sc-in"].forEach(id=>{ const el2=$("#"+id); if(el2) el2.onkeydown=e=>{ if(e.key==="Enter") runSC(); }; });
 }
 
 /* Solver using the real inventory. Allocates actual room numbers.
@@ -3659,7 +3660,7 @@ function contractHTML(c, signState, printIt){
   const fmt=d=>d&&/^\d{4}-\d{2}-\d{2}/.test(d)?new Date(d).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}):(d||"—");
   const terms=CONTRACT_TERMS.map(t=>`<div class="term"><b>${t.h}</b><p>${t.t}</p></div>`).join("");
   const html=`<div class="ct-doc">
-    <div class="ct-head"><div class="ct-logo">BRANDON HALL</div><div class="ct-sub">HOTEL &amp; SPA</div></div>
+    <div class="ct-head"><div class="ct-logo">BRANDON HALL</div><div class="ct-sub">HOTEL AND SPA</div></div>
     <h1>Event Agreement</h1>
     <p class="ct-intro">Dear ${(c.client||"Guest").split(" ")[0]}, thank you for confirming your event at Brandon Hall Hotel and Spa. Please read this agreement and sign to confirm your event. On the event sheet you will see the full breakdown of costings and when your final balance is due.</p>
     <table class="ct-details">

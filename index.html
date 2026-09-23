@@ -177,6 +177,13 @@ body.pc-public{background:#0f1f30}
 .snap-tot{margin-top:10px;padding-top:10px;border-top:1px solid var(--brand-beige);font-size:13px;color:var(--ink-2)}
 /* stay configurator */
 .stay-widget{margin-top:16px}
+.sf-top-row{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;margin-bottom:22px}
+.stay-top{margin-top:0}
+.stay-top .sf-panel-head h3{font-size:16px}
+.stay-top .sc-inputs{gap:8px}
+.stay-top .sc-inputs input{width:60px}
+.stay-top .sc-solution{max-height:260px;overflow-y:auto}
+@media(max-width:1000px){.sf-top-row{grid-template-columns:1fr}}
 .sc-inputs{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
 .sc-inputs label{font-size:12px;font-weight:600;color:var(--ink-2);display:flex;flex-direction:column;gap:4px}
 .sc-inputs input{width:80px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:15px}
@@ -994,7 +1001,7 @@ body.home-active nav.tabs{display:none;}
   </aside>
   <div class="sf-main">
     <header class="sf-header">
-      <div class="sf-loc" id="tb-loc">Brandon Hall Hotel &amp; Spa · Coventry</div>
+      <div class="sf-loc" id="tb-loc">Brandon Hall Hotel and Spa · Coventry</div>
       <div class="sf-search"><input placeholder="🔍 Search…" id="sf-search"></div>
       <div class="sf-spacer"></div>
       <span id="tb-mode" class="mode-badge">Demo</span>
