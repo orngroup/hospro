@@ -2988,7 +2988,7 @@ function renderHome(v){
 
   // ---- room configurator (top-right, quick access) ----
   const sc=el("div","sf-panel stay-widget stay-top");
-  sc.innerHTML=`<div class="sf-panel-head"><h3>🛏️ Room Configurator</h3></div>
+  sc.innerHTML=`<div class="sf-panel-head"><h3>🛏️ Room Configurator</h3><button class="sc-clear" id="sc-clear" title="Clear">✕</button></div>
     <div class="sc-inputs">
       <label>Adults<input id="sc-ad" type="number" min="0" value="2"></label>
       <label>Children<input id="sc-ch" type="number" min="0" value="0"></label>
@@ -3003,6 +3003,7 @@ function renderHome(v){
     $("#sc-result").innerHTML=renderStaySolution(solveStay(a,c,inf));
   };
   $("#sc-go").onclick=runSC;
+  $("#sc-clear").onclick=()=>{ $("#sc-result").innerHTML=""; $("#sc-ad").value=2; $("#sc-ch").value=0; $("#sc-in").value=0; };
   ["sc-ad","sc-ch","sc-in"].forEach(id=>{ const el2=$("#"+id); if(el2) el2.onkeydown=e=>{ if(e.key==="Enter") runSC(); }; });
 
   // ---- module cards, one even row (exclude insight from home) ----
