@@ -187,6 +187,18 @@ body.pc-public{background:#0f1f30}
 .stay-top .sc-inputs input{width:60px}
 .stay-top #sc-result{max-height:230px;overflow-y:auto}
 .stay-top .sc-solution{max-height:none}
+/* configurator popup */
+.sc-modal{position:fixed;inset:0;z-index:200;background:rgba(20,35,58,.5);display:grid;place-items:center;padding:20px;animation:scfade .15s ease}
+@keyframes scfade{from{opacity:0}to{opacity:1}}
+.sc-modal-card{background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+.sc-modal-head{display:flex;align-items:flex-start;justify-content:space-between;padding:20px 22px 14px;border-bottom:1px solid var(--brand-beige)}
+.sc-modal-head h3{font-size:18px;color:var(--brand-navy)}
+.sc-modal-sub{font-size:13px;color:var(--muted)}
+.sc-modal-x{background:none;border:none;font-size:18px;color:var(--muted);cursor:pointer;padding:2px 6px}
+.sc-modal-x:hover{color:var(--brand-navy)}
+.sc-modal-body{padding:18px 22px;overflow-y:auto}
+.sc-modal-body .sc-solution{background:transparent;padding:0}
+.sc-modal-foot{padding:14px 22px;border-top:1px solid var(--brand-beige);display:flex;justify-content:flex-end;gap:10px}
 @media(max-width:1000px){.sf-top-row{grid-template-columns:1fr}}
 .sc-inputs{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
 .sc-inputs label{font-size:12px;font-weight:600;color:var(--ink-2);display:flex;flex-direction:column;gap:4px}

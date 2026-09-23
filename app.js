@@ -2988,22 +2988,23 @@ function renderHome(v){
 
   // ---- room configurator (top-right, quick access) ----
   const sc=el("div","sf-panel stay-widget stay-top");
-  sc.innerHTML=`<div class="sf-panel-head"><h3>🛏️ Room Configurator</h3><button class="sc-clear" id="sc-clear" title="Clear">✕</button></div>
+  sc.innerHTML=`<div class="sf-panel-head"><h3>🛏️ Room Configurator</h3></div>
+    <p class="qs-sub" style="margin:0 0 10px">Enter the party — we'll suggest the best rooms.</p>
     <div class="sc-inputs">
       <label>Adults<input id="sc-ad" type="number" min="0" value="2"></label>
       <label>Children<input id="sc-ch" type="number" min="0" value="0"></label>
       <label>Infants<input id="sc-in" type="number" min="0" value="0"></label>
       <button class="btn sm" id="sc-go">Find rooms</button>
-    </div>
-    <div id="sc-result" style="margin-top:10px"></div>`;
+    </div>`;
   topRow.appendChild(sc);
   v.appendChild(topRow);
   const runSC=()=>{
     const a=parseInt($("#sc-ad").value)||0, c=parseInt($("#sc-ch").value)||0, inf=parseInt($("#sc-in").value)||0;
-    $("#sc-result").innerHTML=renderStaySolution(solveStay(a,c,inf));
+    if(!a&&!c&&!inf){ return; }
+    const sol=solveStay(a,c,inf);
+    openStayModal(sol);
   };
   $("#sc-go").onclick=runSC;
-  $("#sc-clear").onclick=()=>{ $("#sc-result").innerHTML=""; $("#sc-ad").value=2; $("#sc-ch").value=0; $("#sc-in").value=0; };
   ["sc-ad","sc-ch","sc-in"].forEach(id=>{ const el2=$("#"+id); if(el2) el2.onkeydown=e=>{ if(e.key==="Enter") runSC(); }; });
 
   // ---- module cards, one even row (exclude insight from home) ----
@@ -3083,6 +3084,45 @@ function renderHome(v){
     </div>`;
   v.appendChild(grid);
   grid.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>switchTab(b.dataset.go));
+}
+
+/* Room configurator results in a dismissable popup (print + close). */
+function openStayModal(sol){
+  const party=`${sol.party.adults} adult${sol.party.adults!==1?"s":""}${sol.party.children?`, ${sol.party.children} child${sol.party.children>1?"ren":""}`:""}${sol.party.infants?`, ${sol.party.infants} infant${sol.party.infants>1?"s":""}`:""}`;
+  document.querySelectorAll(".sc-modal").forEach(m=>m.remove());
+  const wrap=el("div","sc-modal");
+  wrap.innerHTML=`<div class="sc-modal-card" id="sc-print-area">
+    <div class="sc-modal-head">
+      <div><h3>🛏️ Room Configurator</h3><span class="sc-modal-sub">${party}</span></div>
+      <button class="sc-modal-x" id="sc-x">✕</button>
+    </div>
+    <div class="sc-modal-body">${renderStaySolution(sol)}</div>
+    <div class="sc-modal-foot">
+      <button class="btn ghost sm" id="sc-print">🖨 Print</button>
+      <button class="btn sm" id="sc-close">Close</button>
+    </div>
+  </div>`;
+  document.body.appendChild(wrap);
+  const close=()=>wrap.remove();
+  wrap.onclick=(e)=>{ if(e.target===wrap) close(); };
+  wrap.querySelector("#sc-x").onclick=close;
+  wrap.querySelector("#sc-close").onclick=close;
+  wrap.querySelector("#sc-print").onclick=()=>{
+    const w=window.open("","_blank");
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Room allocation</title>
+      <style>body{font-family:Arial,sans-serif;color:#1a2b47;padding:24px;max-width:700px;margin:0 auto}
+      h2{font-family:Georgia,serif}.sc-row{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #eee}
+      .sc-qty{font-weight:800;color:#2f6f9e}.sc-name{font-weight:700;min-width:140px}.sc-fill{flex:1;color:#666}
+      .sc-nums{color:#2f6f9e;font-weight:600}.sc-head{margin:10px 0}.sc-ok{color:#4a7c59;margin-top:12px;font-size:13px}
+      .sc-over{color:#b3261e;margin-top:12px;font-weight:600}</style></head><body>
+      <h2>Brandon Hall Hotel and Spa — Room Allocation</h2>
+      <p style="color:#666">${party} · ${new Date().toLocaleDateString("en-GB")}</p>
+      ${renderStaySolution(sol)}
+      <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+    w.document.close();
+  };
+  const esc=(e)=>{ if(e.key==="Escape"){ close(); document.removeEventListener("keydown",esc); } };
+  document.addEventListener("keydown",esc);
 }
 
 /* Solver using the real inventory. Allocates actual room numbers.
