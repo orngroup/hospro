@@ -3083,41 +3083,51 @@ function renderHome(v){
   ["sc-ad","sc-ch","sc-in"].forEach(id=>{ const el2=$("#"+id); if(el2) el2.onkeydown=e=>{ if(e.key==="Enter") runSC(); }; });
 }
 
-/* Solver: place the party into the fewest rooms without wasting premium rooms.
-   Children/infants drive room type (a family with more kids needs a bigger room).
-   Strategy: form "family units" of 2 adults + their children, pick smallest room
-   that fits each unit; place remaining adults 2-per-standard. */
+/* Solver using the real inventory. Allocates actual room numbers.
+   - forms adult pairs (2 per room), assigns children up to room capacity
+   - prefers sofa-bed rooms when a room needs to hold 3 adults / extra bed
+   - prefers interconnecting rooms for families with children
+   - assigns cots for infants (max HOTEL_COTS) */
 function solveStay(adults, children, infants){
-  const byCap=[...STAY_ROOMS].sort((a,b)=>a.children-b.children); // standard, deluxe, suite
-  const rooms=[];
-  let a=adults, c=children, inf=infants;
-  // pair adults into rooms of 2; each room can take some children up to its child cap
+  const pool = (typeof HOTEL_ROOMS!=="undefined") ? HOTEL_ROOMS.map(r=>({...r,used:false})) : [];
+  const cotsAvail = (typeof HOTEL_COTS!=="undefined")?HOTEL_COTS:4;
+  let a=adults, c=children, inf=infants, cotsUsed=0;
+  const assigned=[];
+  const take=(pred)=>{ const r=pool.find(x=>!x.used && pred(x)); if(r){ r.used=true; } return r; };
+
+  // Families first: while children remain, place a room that holds children
+  const familyRooms = ["JSUI","EXE_TRP","PRE_DBL","EXE_DBL","EXE_TWN","CLA_DBL","CLA_TWN"];
+  while(c>0 && (a>0 || c>0)){
+    // prefer a room with higher child capacity / interconnect
+    let r = take(x=>x.children>=2 && x.interconnect) || take(x=>x.children>=2) ||
+            take(x=>x.sofaBed) || take(x=>x.adults>=2);
+    if(!r) break;
+    const pa=Math.min(a, r.adults + (r.sofaBed?1:0));
+    a-=pa;
+    const kidCap = r.children + (r.sofaBed?1:0) + Math.max(0, r.adults-pa);
+    const pc=Math.min(c, Math.max(1,kidCap)); c-=pc;
+    let pin=0; if(inf>0 && cotsUsed<cotsAvail){ pin=1; inf--; cotsUsed++; }
+    assigned.push({room:r, adults:pa, children:pc, infants:pin});
+  }
+  // Remaining adults: 2 per room, cheapest suitable
   while(a>0){
-    const adultsHere=Math.min(2,a); a-=adultsHere;
-    // choose smallest room type whose child capacity covers a fair share, but only upgrade if children remain
-    let pick=byCap[0];
-    // how many children would we like to put here? spread remaining children across remaining adult-pairs
-    const pairsLeft=Math.ceil(a/2)+1;
-    const wantKids=Math.min(c, Math.ceil(c/pairsLeft));
-    for(const t of byCap){ if(t.children>=wantKids){ pick=t; break; } pick=t; }
-    const kidsHere=Math.min(c, pick.children); c-=kidsHere;
-    const infHere=Math.min(inf, pick.infants); inf-=infHere;
-    rooms.push({t:pick, pa:adultsHere, pc:kidsHere, pin:infHere});
+    let r = take(x=>x.type==="CLA_DBL"||x.type==="CLA_TWN") || take(x=>x.adults>=2) || take(()=>true);
+    if(!r) break;
+    const pa=Math.min(a, r.adults + (r.sofaBed?1:0)); a-=pa;
+    let pin=0; if(inf>0 && cotsUsed<cotsAvail){ pin=1; inf--; cotsUsed++; }
+    assigned.push({room:r, adults:pa, children:0, infants:pin});
   }
-  // any leftover children/infants with no adult room → add rooms
-  let guard=0;
-  while((c>0||inf>0) && guard<50){ guard++;
-    let pick=byCap[byCap.length-1];
-    for(const t of byCap){ if(t.children>=c){ pick=t; break; } }
-    const kidsHere=Math.min(c,pick.children); c-=kidsHere;
-    const infHere=Math.min(inf,pick.infants); inf-=infHere;
-    rooms.push({t:pick, pa:0, pc:kidsHere, pin:infHere});
-  }
-  const agg={};
-  rooms.forEach(r=>{ const k=r.t.id; if(!agg[k]) agg[k]={type:r.t,qty:0,adults:0,children:0,infants:0};
-    agg[k].qty++; agg[k].adults+=r.pa; agg[k].children+=r.pc; agg[k].infants+=r.pin; });
-  return { combo:Object.values(agg), leftover:{adults:Math.max(0,a),children:Math.max(0,c),infants:Math.max(0,inf)},
-    totalRooms:rooms.length, party:{adults,children,infants} };
+  // leftover infants → try to add cots to existing rooms
+  assigned.forEach(x=>{ if(inf>0 && x.infants===0 && cotsUsed<cotsAvail){ x.infants=1; inf--; cotsUsed++; } });
+
+  // group by type for a tidy summary, but keep room numbers
+  const byType={};
+  assigned.forEach(x=>{ const k=x.room.label; if(!byType[k]) byType[k]={label:k,rooms:[],adults:0,children:0,infants:0};
+    byType[k].rooms.push(x.room.n); byType[k].adults+=x.adults; byType[k].children+=x.children; byType[k].infants+=x.infants; });
+
+  return { combo:Object.values(byType), assigned,
+    leftover:{adults:Math.max(0,a),children:Math.max(0,c),infants:Math.max(0,inf)},
+    totalRooms:assigned.length, cotsUsed, party:{adults,children,infants} };
 }
 function renderStaySolution(sol){
   if(!sol.party.adults && !sol.party.children && !sol.party.infants) return `<p class="qs-sub">Enter a party size above.</p>`;
@@ -3126,16 +3136,18 @@ function renderStaySolution(sol){
     const parts=[];
     if(c.adults) parts.push(`${c.adults} adult${c.adults>1?"s":""}`);
     if(c.children) parts.push(`${c.children} child${c.children>1?"ren":""}`);
-    if(c.infants) parts.push(`${c.infants} infant${c.infants>1?"s":""}`);
-    const avail = c.type.count!=null ? `<span class="sc-avail">${c.type.count} in hotel</span>`:"";
-    return `<div class="sc-row"><span class="sc-qty">${c.qty}×</span><span class="sc-name">${c.type.name}</span>
-      <span class="sc-fill">${parts.join(" · ")}</span>${avail}</div>`;
+    if(c.infants) parts.push(`${c.infants} infant${c.infants>1?"s":""} (cot)`);
+    const nums = c.rooms.sort((a,b)=>a-b).join(", ");
+    return `<div class="sc-row"><span class="sc-qty">${c.rooms.length}×</span>
+      <span class="sc-name">${c.label}</span>
+      <span class="sc-fill">${parts.join(" · ")}</span>
+      <span class="sc-nums">Rooms ${nums}</span></div>`;
   }).join("");
   return `<div class="sc-solution">
-    <div class="sc-head">Best combination — <b>${sol.totalRooms} room${sol.totalRooms>1?"s":""}</b> for
-      ${sol.party.adults} adult${sol.party.adults!==1?"s":""}${sol.party.children?`, ${sol.party.children} child${sol.party.children>1?"ren":""}`:""}${sol.party.infants?`, ${sol.party.infants} infant${sol.party.infants>1?"s":""}`:""}</div>
+    <div class="sc-head">Suggested allocation — <b>${sol.totalRooms} room${sol.totalRooms>1?"s":""}</b> for
+      ${sol.party.adults} adult${sol.party.adults!==1?"s":""}${sol.party.children?`, ${sol.party.children} child${sol.party.children>1?"ren":""}`:""}${sol.party.infants?`, ${sol.party.infants} infant${sol.party.infants>1?"s":""}`:""}${sol.cotsUsed?` · ${sol.cotsUsed} cot${sol.cotsUsed>1?"s":""}`:""}</div>
     ${rows}
-    ${over?`<div class="sc-over">⚠ Couldn't place: ${[sol.leftover.adults?sol.leftover.adults+" adults":"",sol.leftover.children?sol.leftover.children+" children":"",sol.leftover.infants?sol.leftover.infants+" infants":""].filter(Boolean).join(", ")} — may need extra rooms or a different mix.</div>`:`<div class="sc-ok">✓ Everyone placed. Child = up to ${CHILD_MAX_AGE} yrs; infant = up to ${INFANT_MAX_AGE} yrs (cot).</div>`}
+    ${over?`<div class="sc-over">⚠ Couldn't place: ${[sol.leftover.adults?sol.leftover.adults+" adults":"",sol.leftover.children?sol.leftover.children+" children":"",sol.leftover.infants?sol.leftover.infants+" infants (no cots left)":""].filter(Boolean).join(", ")}.</div>`:`<div class="sc-ok">✓ Everyone placed. Room numbers are a suggestion (subject to availability). Child = up to ${CHILD_MAX_AGE} yrs; infant = up to ${INFANT_MAX_AGE} yrs (cot).</div>`}
   </div>`;
 }
 function fmtDMY(d){ return /^\d{4}-\d{2}-\d{2}/.test(d)?new Date(d).toLocaleDateString("en-GB"):d; }
