@@ -1,18 +1,20 @@
 BRANDON HALL PORTAL — upload all 8 to brandonme, overwrite. Paste firestore.rules in Firebase.
 
-THIS UPDATE:
-M&E (ready to print & price):
-  - Loaded Nicola's completed list — all 10 rooms with AC / USB sockets /
-    power answers, current AV, comments, Standard equipment, Wish list and
-    Social/events wish list.
-  - Print requirements list + supplier RFQ now show all of this.
-Quote builder:
-  - Menu items now appear on the client link and brochure (bug fixed)
-  - "Save quote" button (save without producing a PDF/email)
-  - Quotes save to a customer profile (multiple quotes per customer)
-  - Quote reference format: W230926-14072027-HAM
-    (Type letter + issue ddmmyy - event ddmmyyyy - first 3 of name)
-Stay Configurator (home dashboard widget):
-  - Enter adults / children / infants -> suggests best room combination
-  - Rules: Standard 2A+1C, Deluxe 2A+2C, Suite 2A+3C; child <=11,
-    infant <=2 (cot). Editable in data.js (STAY_ROOMS).
+THIS UPDATE — quote flow restructured to start from the enquiry:
+  - Standalone Quote Builder tab REMOVED from the sidebar.
+  - Quotes are now built ONLY from an enquiry:
+      Sales Pipeline > open enquiry > "Build quote"
+  - The quote builder now carries the customer (prefilled from enquiry),
+    the rooms/packages/menu, AND the payment terms — all in one flow.
+  - Issue: Save quote / Download brochure / Create client link — from one place.
+  - When the client accepts the link, the enquiry's Deal progress moves
+    to "Accepted" automatically (quote is linked via enquiryId).
+  - Payment schedule set in the builder saves back to the enquiry and
+    shows on the Payments dashboard.
+
+PLUS (from earlier this session, all included):
+  - M&E: Nicola's completed list loaded (AC/USB/power, wish lists) —
+    ready to print & price.
+  - Menu items now show on the client link & brochure.
+  - Quote ref format W230926-14072027-HAM.
+  - Stay Configurator widget on the home dashboard.

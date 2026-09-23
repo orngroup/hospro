@@ -273,7 +273,7 @@ function openRoom(r){
     </div>
 
     <div class="dual-btn">
-      <button class="btn" id="rm-quote">Start a quote</button>
+      <button class="btn" id="rm-quote">Enquire & quote</button>
       <button class="btn ghost" id="rm-enq">Log an enquiry</button>
     </div>`;
   showModal(r.name, `${r.m2} m² · ${r.combined||"Function room"}`, body);
@@ -285,7 +285,7 @@ function openRoom(r){
     $("#rm-layview").innerHTML=seatingSVG(r,k,r.cap[k]);
     $("#rm-laydesc").textContent=LAYOUT_INFO[k].desc;
   });
-  $("#rm-quote").onclick=()=>{ closeModal(); prefill={room:r.id,event:evId,pax}; switchTab("quote"); };
+  $("#rm-quote").onclick=()=>{ closeModal(); alert("To build a quote, start from an enquiry in the Sales Pipeline."); switchTab("pipeline"); };
   $("#rm-enq").onclick=()=>{ closeModal(); openEnquiryForm({room:r.id,event:evId}); };
 }
 function switchTab(t){ CURRENT_TAB=t; render(); }
@@ -344,6 +344,8 @@ function renderPackages(v){
 /* ============================================================ QUOTE BUILDER */
 let prefill=null;
 let QUOTE_ROOMS=[]; // array of function/room-booking line items
+let QUOTE_PAY=[];   // payment schedule for the current quote
+let QUOTE_TOTAL=0;  // latest computed total
 function newRoomLine(pre){
   return { fnType: pre?.fnType||"meeting", label: pre?.label||"", time: pre?.time||"",
     room: pre?.room || ROOMS[0].id, date: pre?.date||"", layout: pre?.layout||"theatre",
@@ -354,24 +356,38 @@ function applyEventTemplate(tplId){
   QUOTE_ROOMS=tpl.functions.map(f=>newRoomLine({ fnType:f.type, label:f.label, time:f.time,
     room:ROOMS[0].id, layout:f.layout, hire:f.hire, pkg:f.pkg, pax:40 }));
 }
+let quoteEnquiry=null;  // the enquiry a quote is being built for (required)
 function renderQuote(v){
-  v.appendChild(head("Create a Quote","Build a multi-room, multi-function quote — a line for each function (meeting, lunch, break…) with its own room, time, layout and package. Load an event template to start fast."));
-  if(!QUOTE_ROOMS.length) QUOTE_ROOMS=[newRoomLine(prefill)];
-  if(prefill){ QUOTE_ROOMS=[newRoomLine(prefill)]; }
-  const preEvent = prefill?.event || "wedding";
-  prefill=null;
+  const e=quoteEnquiry;
+  if(!e){
+    v.appendChild(head("Create a Quote","Quotes are built from a customer enquiry."));
+    const msg=el("div","quote-panel");
+    msg.innerHTML=`<div style="text-align:center;padding:30px 20px">
+      <div style="font-size:40px;margin-bottom:10px">📋</div>
+      <h3 style="margin-bottom:8px">Start from an enquiry</h3>
+      <p class="qs-sub" style="max-width:34em;margin:0 auto 18px">Every quote belongs to a customer. Open an enquiry in the Sales Pipeline (or create a new one), then use <b>Build quote</b> — the customer details, payment terms and acceptance all stay linked to that booking.</p>
+      <button class="btn" id="q-gopipe">Go to Sales Pipeline</button>
+    </div>`;
+    v.appendChild(msg);
+    $("#q-gopipe").onclick=()=>switchTab("pipeline");
+    return;
+  }
+  const et=EVENT_TYPES.find(t=>t.id===e.event);
+  v.appendChild(head(`Quote — ${e.name}`,`Building a quote for this enquiry. Customer, payment terms and issue are all here and stay linked to the booking.`));
+  // seed rooms from enquiry if empty
+  if(!QUOTE_ROOMS.length){ QUOTE_ROOMS=[newRoomLine({room:e.room||"woodlands",event:e.event||"wedding",pax:parseInt(e.pax)||40})]; }
+  const preEvent = e.event || "wedding";
 
   const wrap=el("div","quote-layout");
-  // left: form
   const left=el("div","quote-panel");
-  left.innerHTML=`<h3>Customer</h3>
+  left.innerHTML=`<h3>Customer <span class="qs-sub">(from enquiry)</span></h3>
     <div class="form-grid">
-      <div><label>Customer name</label><input id="q-name" placeholder="Full name"></div>
-      <div><label>Company (optional)</label><input id="q-co" placeholder="Company"></div>
-      <div><label>Email</label><input id="q-email" type="email" placeholder="name@email.com"></div>
-      <div><label>Phone</label><input id="q-phone" placeholder="Phone"></div>
-      <div><label>Event type</label><select id="q-event">${EVENT_TYPES.map(e=>`<option value="${e.id}" ${e.id===preEvent?"selected":""}>${e.label}</option>`).join("")}</select></div>
-      <div><label>Main event date</label><input id="q-date" type="date"></div>
+      <div><label>Customer name</label><input id="q-name" value="${(e.name||'').replace(/"/g,'&quot;')}"></div>
+      <div><label>Company (optional)</label><input id="q-co" value="${(e.company||'').replace(/"/g,'&quot;')}"></div>
+      <div><label>Email</label><input id="q-email" type="email" value="${e.email||''}"></div>
+      <div><label>Phone</label><input id="q-phone" value="${e.phone||''}"></div>
+      <div><label>Event type</label><select id="q-event">${EVENT_TYPES.map(t=>`<option value="${t.id}" ${t.id===preEvent?"selected":""}>${t.label}</option>`).join("")}</select></div>
+      <div><label>Main event date</label><input id="q-date" type="date" value="${/^\d{4}-\d{2}-\d{2}/.test(e.date||'')?e.date.slice(0,10):''}"></div>
     </div>
 
     <div class="tmpl-row" style="margin-top:16px">
@@ -387,7 +403,15 @@ function renderQuote(v){
     <div id="q-roomlines"></div>
 
     <h3 style="margin-top:22px">Add-ons <span class="qs-sub">(applied across the whole quote)</span></h3>
-    <div id="q-addons"></div>`;
+    <div id="q-addons"></div>
+
+    <h3 style="margin-top:22px">💷 Payment terms</h3>
+    <div id="q-pay"></div>
+    <div class="dual-btn" style="margin-top:8px">
+      <button class="btn ghost sm" id="q-pay-add" type="button">+ Add instalment</button>
+      <button class="btn ghost sm" id="q-pay-std" type="button">Use standard schedule</button>
+    </div>
+    <div id="q-pay-sum" style="margin-top:8px"></div>`;
   wrap.appendChild(left);
 
   // right: summary
@@ -429,7 +453,43 @@ function renderQuote(v){
   if($("#q-sendlink")) $("#q-sendlink").onclick=sendQuoteLink;
   if($("#q-save")) $("#q-save").onclick=saveQuoteOnly;
   $("#q-kitchen").onclick=downloadKitchenSheet;
-  $("#q-save").onclick=saveQuoteAsEnquiry;
+
+  // ---- payment terms in the quote builder (linked to the enquiry) ----
+  QUOTE_PAY = (e.payments||[]).slice();
+  function qStd(){
+    const total=(typeof QUOTE_TOTAL!=="undefined"?QUOTE_TOTAL:0)||e.value||0;
+    const evd=$("#q-date").value||e.date;
+    const dd=(off)=>{ if(evd&&/^\d{4}-\d{2}-\d{2}/.test(evd)){ const d=new Date(evd); d.setDate(d.getDate()-off); return d.toISOString().slice(0,10);} return ""; };
+    const dep=Math.round(total*0.25);
+    return [ {label:"Deposit",pct:25,amount:dep,due:new Date().toISOString().slice(0,10),paid:false},
+      {label:"2nd Deposit",pct:25,amount:dep,due:dd(90),paid:false},
+      {label:"Full Balance",pct:50,amount:total-dep*2,due:dd(42),paid:false} ];
+  }
+  function qRenderPay(){
+    const box=$("#q-pay"); if(!box) return;
+    const total=(typeof QUOTE_TOTAL!=="undefined"?QUOTE_TOTAL:0)||e.value||0;
+    if(!QUOTE_PAY.length){ box.innerHTML=`<p class="qs-sub">No schedule yet. Add instalments or use the standard 25/25/50.</p>`; }
+    else box.innerHTML=`<table class="pay-table"><tr><th>Instalment</th><th>%</th><th>£</th><th>Due</th><th>Paid</th><th></th></tr>${
+      QUOTE_PAY.map((p,i)=>`<tr>
+        <td><input class="qpin" data-i="${i}" data-k="label" value="${(p.label||'').replace(/"/g,'&quot;')}"></td>
+        <td><input class="qpin" data-i="${i}" data-k="pct" type="number" value="${p.pct||''}" style="width:42px"></td>
+        <td><input class="qpin" data-i="${i}" data-k="amount" type="number" value="${p.amount||''}" style="width:78px"></td>
+        <td><input class="qpin" data-i="${i}" data-k="due" type="date" value="${p.due||''}"></td>
+        <td style="text-align:center"><input class="qpin-paid" data-i="${i}" type="checkbox" ${p.paid?'checked':''}></td>
+        <td><button class="mini-btn qpay-del" data-i="${i}">✕</button></td></tr>`).join("")}</table>`;
+    const sched=QUOTE_PAY.reduce((s,p)=>s+(+p.amount||0),0), paid=QUOTE_PAY.filter(p=>p.paid).reduce((s,p)=>s+(+p.amount||0),0);
+    $("#q-pay-sum").innerHTML=QUOTE_PAY.length?`<div class="pay-sum"><span>Scheduled <b>${money(sched)}</b></span><span>Paid <b style="color:#4a9d6a">${money(paid)}</b></span><span>Outstanding <b style="color:#c07a3e">${money(sched-paid)}</b></span>${sched!==Math.round(total)?`<span class="qs-sub" style="color:#b3261e">⚠ ≠ total ${money(total)}</span>`:''}</div>`:"";
+    box.querySelectorAll(".qpin").forEach(inp=>inp.onchange=()=>{ const i=+inp.dataset.i,k=inp.dataset.k;
+      QUOTE_PAY[i][k]= (k==='amount'||k==='pct')?parseFloat(inp.value)||0:inp.value;
+      if(k==='pct'){ const t=(typeof QUOTE_TOTAL!=="undefined"?QUOTE_TOTAL:0)||e.value||0; QUOTE_PAY[i].amount=Math.round(t*(QUOTE_PAY[i].pct/100)); }
+      qRenderPay(); });
+    box.querySelectorAll(".qpin-paid").forEach(cb=>cb.onchange=()=>{ QUOTE_PAY[+cb.dataset.i].paid=cb.checked; qRenderPay(); });
+    box.querySelectorAll(".qpay-del").forEach(bd=>bd.onclick=()=>{ QUOTE_PAY.splice(+bd.dataset.i,1); qRenderPay(); });
+  }
+  $("#q-pay-add").onclick=()=>{ QUOTE_PAY.push({label:"Instalment",pct:0,amount:0,due:"",paid:false}); qRenderPay(); };
+  $("#q-pay-std").onclick=()=>{ QUOTE_PAY=qStd(); qRenderPay(); };
+  window._qRenderPay=qRenderPay;
+  qRenderPay();
 }
 
 function renderRoomLines(){
@@ -527,8 +587,11 @@ function gatherQuote(){
   QUOTE_ROOMS.forEach(line=>{ const room=ROOMS.find(r=>r.id===line.room);
     if(room) carbonTotal += carbonModel(room,evId,parseInt(line.pax)||0).total; });
   const primaryRoom=ROOMS.find(r=>r.id===QUOTE_ROOMS[0]?.room)||ROOMS[0];
+  QUOTE_TOTAL=subtotal;
   return { rooms:QUOTE_ROOMS, room:primaryRoom, evId, pax:totalPax, lines, subtotal,
     carbon:{ total:carbonTotal },
+    enquiry:quoteEnquiry||null,
+    payments:(typeof QUOTE_PAY!=="undefined"?QUOTE_PAY:[]),
     customer:{ name:$("#q-name")?.value||"", co:$("#q-co")?.value||"",
       email:$("#q-email")?.value||"", phone:$("#q-phone")?.value||"",
       date:$("#q-date")?.value||"" }};
@@ -541,6 +604,7 @@ function recalcQuote(){
         <div class="qs-sub">${QUOTE_ROOMS.length} room${QUOTE_ROOMS.length>1?"s":""} · ${q.pax} total guests · inc VAT where applicable.</div>
         <div class="carbon-quote">Estimated carbon: <b>${q.carbon.total} kg CO₂e</b> across all spaces</div>`
     : `<div class="qs-sub">Add a room, package or add-ons to build the quote.</div>`;
+  if(window._qRenderPay) window._qRenderPay();
 }
 
 /* ============================================================ QUOTE PDF (print-to-PDF) */
@@ -1254,7 +1318,7 @@ function openEnquiryDetail(e){
 
     <div class="dual-btn" style="margin-top:14px">
       <button class="btn ghost sm" id="enq-cost">${e.costing?"Re-cost":"Cost event"}</button>
-      <button class="btn ghost sm" id="enq-quote">Quote builder</button>
+      <button class="btn ghost sm" id="enq-quote">Build quote</button>
     </div>
     <div class="qs-sub" style="margin-top:14px">Ref ${e.ref||e.id} · ${e.owner?`owned by ${e.owner}`:""}</div>`;
   showModal(e.name, `${et?et.label:(e.ratePlan||"Enquiry")} · ${isBob?"BOB / Rezlynx":(e.source||"manual")}`, body);
@@ -1415,7 +1479,7 @@ Brandon Hall Hotel and Spa
     closeModal(); render();
   };
   $("#enq-cost").onclick=()=>{ closeModal(); profitPrefill={ enquiry:e }; switchTab("profit"); };
-  $("#enq-quote").onclick=()=>{ closeModal(); prefill={room:e.room||"woodlands",event:e.event||"wedding",pax:parseInt(e.pax)||40}; switchTab("quote"); };
+  $("#enq-quote").onclick=()=>{ closeModal(); quoteEnquiry=e; QUOTE_ROOMS=[]; window._editingQuoteId=null; switchTab("quote"); };
 }
 
 /* ============================================================ ADMIN */
@@ -3395,8 +3459,9 @@ function renderDealTrack(e){
 
   if(idx===0){
     // Enquiry → issue quote
-    act.innerHTML=`<button class="btn block" id="d-quote" style="background:#2f6f9e">1 · Issue quote (view + accept link for client)</button>`;
-    $("#d-quote").onclick=()=>issueQuote(e);
+    act.innerHTML=`<button class="btn block" id="d-quote" style="background:#2f6f9e">1 · Build &amp; issue quote</button>
+      <p class="qs-sub" style="margin-top:6px">Opens the quote builder — add rooms, packages, menu and payment terms, then create the client link.</p>`;
+    $("#d-quote").onclick=()=>{ closeModal(); quoteEnquiry=e; QUOTE_ROOMS=[]; window._editingQuoteId=null; switchTab("quote"); };
   } else if(idx===1){
     // Quote issued → awaiting acceptance
     const url=`${origin}/quote.html?q=${e.quoteId||""}`;
@@ -3445,7 +3510,7 @@ function buildRichQuote(q, id){
     eventDate:q.customer.date||(q.rooms[0]&&q.rooms[0].date)||"",
     pax:q.pax, rooms, lines:q.lines, subtotal:q.subtotal, carbon:q.carbon,
     hero:(q.room?roomImage(q.room):(rooms[0]&&rooms[0].img))||"", gallery:(GALLERY.weddings||[]).slice(0,3),
-    payments:(q.enquiry&&Array.isArray(q.enquiry.payments))?q.enquiry.payments:[],
+    payments:(q.payments&&q.payments.length)?q.payments:((q.enquiry&&Array.isArray(q.enquiry.payments))?q.enquiry.payments:[]),
     ref:(q.enquiry&&q.enquiry.ref)||quoteRef(q.evId, q.customer.date||(q.rooms[0]&&q.rooms[0].date), q.customer.name), created:new Date().toISOString(), status:"issued"
   };
 }
@@ -3475,6 +3540,10 @@ function saveQuoteOnly(){
   window._editingQuoteId=id;
   // attach to customer profile
   if(typeof CustomerStore!=="undefined") CustomerStore.addQuote(rich);
+  // write payments + quote link + stage back to the enquiry
+  if(rich.enquiryId && typeof DB!=="undefined"){
+    DB.update(rich.enquiryId,{ payments:rich.payments||[], quoteId:id, dealStage:"quoted", quoteIssued:true });
+  }
   alert(`Quote saved · Ref ${rich.ref}\n\nYou can now download a PDF or send the client link.`);
 }
 
@@ -3487,6 +3556,9 @@ function sendQuoteLink(){
   const rich=buildRichQuote(q,id);
   QuoteStore.create(rich);
   if(typeof CustomerStore!=="undefined") CustomerStore.addQuote(rich);
+  if(rich.enquiryId && typeof DB!=="undefined"){
+    DB.update(rich.enquiryId,{ payments:rich.payments||[], quoteId:id, dealStage:"quoted", quoteIssued:true });
+  }
   window._editingQuoteId=id;
   const origin=location.href.split("#")[0].replace(/index\.html$/,"").replace(/\/$/,"");
   const url=`${origin}/quote.html?q=${id}`;
