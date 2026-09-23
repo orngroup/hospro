@@ -247,3 +247,23 @@ const QuoteStore = {
     const l=this.all(); const i=l.findIndex(q=>q.id===id); if(i>=0){ Object.assign(l[i],patch); localStorage.setItem("bh_quotes",JSON.stringify(l)); } return true;
   }
 };
+
+/* ---- CUSTOMER PROFILES store (groups quotes by customer) ---- */
+const CustomerStore = {
+  key:"bh_customers",
+  all(){ return JSON.parse(localStorage.getItem(this.key)||"[]"); },
+  _slug(name,email){ return (email||name||"").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,40)||("c"+Date.now()); },
+  save(l){ localStorage.setItem(this.key,JSON.stringify(l));
+    if(FB.ready && FB.user){ l.forEach(c=>{ try{ FB.db.collection("customers").doc(c.id).set(c); }catch(e){} }); } },
+  addQuote(q){
+    const l=this.all();
+    const id=this._slug(q.client,q.clientEmail);
+    let c=l.find(x=>x.id===id);
+    if(!c){ c={ id, name:q.client, email:q.clientEmail||"", company:q.company||"", quotes:[], created:new Date().toISOString() }; l.unshift(c); }
+    c.quotes=(c.quotes||[]).filter(x=>x.id!==q.id);
+    c.quotes.unshift({ id:q.id, ref:q.ref, eventType:q.eventType, eventDate:q.eventDate, value:q.subtotal, status:q.status, created:q.created });
+    c.lastQuote=new Date().toISOString();
+    this.save(l);
+    return c;
+  }
+};

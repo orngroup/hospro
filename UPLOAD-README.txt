@@ -1,13 +1,18 @@
-BRANDON HALL PORTAL — upload all 8 to brandonme, overwrite.
-NEW/updated client pages: quote.html (now a FULL rich proposal), sign.html.
-Paste firestore.rules into Firebase.
+BRANDON HALL PORTAL — upload all 8 to brandonme, overwrite. Paste firestore.rules in Firebase.
 
 THIS UPDATE:
-- Quote link is now a FULL rich proposal page: hero image, intro,
-  gallery, why-us, room/space details with packages & inclusions,
-  itemised cost breakdown, payment schedule, full T&Cs, hotel links
-  (website / map / email / phone), and the accept button.
-- Build it from the Quote Builder: "Create client proposal link" saves
-  the complete quote (all function rooms & lines) and gives you the link.
-- Re-issuing from the same builder session updates the same link.
-- Acceptance still flows back to the enquiry's Deal progress.
+M&E (ready to print & price):
+  - Loaded Nicola's completed list — all 10 rooms with AC / USB sockets /
+    power answers, current AV, comments, Standard equipment, Wish list and
+    Social/events wish list.
+  - Print requirements list + supplier RFQ now show all of this.
+Quote builder:
+  - Menu items now appear on the client link and brochure (bug fixed)
+  - "Save quote" button (save without producing a PDF/email)
+  - Quotes save to a customer profile (multiple quotes per customer)
+  - Quote reference format: W230926-14072027-HAM
+    (Type letter + issue ddmmyy - event ddmmyyyy - first 3 of name)
+Stay Configurator (home dashboard widget):
+  - Enter adults / children / infants -> suggests best room combination
+  - Rules: Standard 2A+1C, Deluxe 2A+2C, Suite 2A+3C; child <=11,
+    infant <=2 (cot). Editable in data.js (STAY_ROOMS).

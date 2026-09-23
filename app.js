@@ -393,7 +393,8 @@ function renderQuote(v){
   // right: summary
   const right=el("div","quote-panel quote-summary");
   right.innerHTML=`<h3>Quote summary</h3><div id="q-summary"></div>
-    <button class="btn block" id="q-brochure" style="margin-top:16px">Download brochure &amp; quote</button>
+    <button class="btn block" id="q-save" style="margin-top:16px;background:#4a7c59">💾 Save quote</button>
+    <button class="btn block" id="q-brochure" style="margin-top:8px">Download brochure &amp; quote</button>
     <button class="btn block" id="q-sendlink" style="margin-top:8px;background:#2f6f9e">🔗 Create client proposal link (view + accept)</button>
     <button class="btn ghost block" id="q-pdf" style="margin-top:8px">Simple quote only</button>
     <button class="btn ghost block" id="q-kitchen" style="margin-top:8px">Kitchen / ops sheet</button>
@@ -426,6 +427,7 @@ function renderQuote(v){
   $("#q-pdf").onclick=downloadQuotePDF;
   $("#q-brochure").onclick=downloadBrochurePDF;
   if($("#q-sendlink")) $("#q-sendlink").onclick=sendQuoteLink;
+  if($("#q-save")) $("#q-save").onclick=saveQuoteOnly;
   $("#q-kitchen").onclick=downloadKitchenSheet;
   $("#q-save").onclick=saveQuoteAsEnquiry;
 }
@@ -2047,9 +2049,16 @@ function printMnE(mode){
         <span class="cap">${conf&&conf.capacity?conf.capacity:(r.m2?r.m2+" m²":"")}</span>
         ${!isRFQ?`<span class="ready ${readyClass}">${readyTxt}</span>`:""}
       </div>
+      ${conf?`<div class="facilities">
+        <span class="fac ${(conf.ac||'').toLowerCase()==='yes'?'y':'n'}">AC: ${conf.ac||'—'}</span>
+        <span class="fac ${(conf.usbSockets||'').toLowerCase()==='yes'?'y':'n'}">USB sockets: ${conf.usbSockets||'—'}</span>
+        <span class="fac ${(conf.powerAdequate||'').toLowerCase().startsWith('y')?'y':'n'}">Power: ${conf.powerAdequate||'—'}</span>
+      </div>`:""}
       ${conf&&conf.currentAV?`<div class="cur"><b>Current AV:</b> ${conf.currentAV}</div>`:""}
       ${!isRFQ && conf&&conf.comments?`<div class="cmt">${conf.comments}</div>`:""}
       <table>${head}${rows}</table>
+      ${!isRFQ && conf&&conf.wishlist&&conf.wishlist.length?`<div class="wish"><b>Wish list:</b> ${conf.wishlist.join(" · ")}</div>`:""}
+      ${!isRFQ && conf&&conf.socialWishlist&&conf.socialWishlist.length?`<div class="wish social"><b>Social / events wish list:</b> ${conf.socialWishlist.join(" · ")}</div>`:""}
     </div>`;
   }).join("");
 
@@ -2080,6 +2089,11 @@ function printMnE(mode){
     .ready{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px}
     .ready.ry{background:#e8f3ee;color:#2a6a4a}.ready.rn{background:#fdecec;color:#b3261e}.ready.rt{background:#eef2f4;color:#7a8494}
     .cur{font-size:11px;margin-bottom:3px}.cmt{font-size:10.5px;color:#7a8494;font-style:italic;margin-bottom:5px}
+    .facilities{display:flex;gap:8px;margin:4px 0 6px;flex-wrap:wrap}
+    .fac{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px}
+    .fac.y{background:#e8f3ee;color:#2a6a4a}.fac.n{background:#fdecec;color:#b3261e}
+    .wish{font-size:10px;color:#4a5560;margin-top:6px;padding:6px 9px;background:#f6f8f9;border-radius:5px}
+    .wish b{color:#1a2b47}.wish.social{background:#fdf6ee}
     table{width:100%;border-collapse:collapse;font-size:11px}
     th{background:#1a2b47;color:#fff;text-align:left;padding:6px 8px;font-size:10px;font-weight:700}
     td{padding:5px 8px;border-bottom:1px solid #eef2f4}
@@ -2984,6 +2998,81 @@ function renderHome(v){
     </div>`;
   v.appendChild(grid);
   grid.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>switchTab(b.dataset.go));
+
+  // ---- STAY CONFIGURATOR widget ----
+  const sc=el("div","sf-panel stay-widget");
+  sc.innerHTML=`<div class="sf-panel-head"><h3>🛏️ Enquiry Room Configurator</h3></div>
+    <p class="qs-sub" style="margin:0 0 10px">Enter the party and we'll suggest the best room combination.</p>
+    <div class="sc-inputs">
+      <label>Adults<input id="sc-ad" type="number" min="0" value="2"></label>
+      <label>Children <span class="qs-sub">(3–${CHILD_MAX_AGE})</span><input id="sc-ch" type="number" min="0" value="0"></label>
+      <label>Infants <span class="qs-sub">(0–${INFANT_MAX_AGE}, cot)</span><input id="sc-in" type="number" min="0" value="0"></label>
+      <button class="btn sm" id="sc-go">Find rooms</button>
+    </div>
+    <div id="sc-result" style="margin-top:12px"></div>`;
+  v.appendChild(sc);
+  const runSC=()=>{
+    const a=parseInt($("#sc-ad").value)||0, c=parseInt($("#sc-ch").value)||0, inf=parseInt($("#sc-in").value)||0;
+    $("#sc-result").innerHTML=renderStaySolution(solveStay(a,c,inf));
+  };
+  $("#sc-go").onclick=runSC;
+  ["sc-ad","sc-ch","sc-in"].forEach(id=>{ const el2=$("#"+id); if(el2) el2.onkeydown=e=>{ if(e.key==="Enter") runSC(); }; });
+}
+
+/* Solver: place the party into the fewest rooms without wasting premium rooms.
+   Children/infants drive room type (a family with more kids needs a bigger room).
+   Strategy: form "family units" of 2 adults + their children, pick smallest room
+   that fits each unit; place remaining adults 2-per-standard. */
+function solveStay(adults, children, infants){
+  const byCap=[...STAY_ROOMS].sort((a,b)=>a.children-b.children); // standard, deluxe, suite
+  const rooms=[];
+  let a=adults, c=children, inf=infants;
+  // pair adults into rooms of 2; each room can take some children up to its child cap
+  while(a>0){
+    const adultsHere=Math.min(2,a); a-=adultsHere;
+    // choose smallest room type whose child capacity covers a fair share, but only upgrade if children remain
+    let pick=byCap[0];
+    // how many children would we like to put here? spread remaining children across remaining adult-pairs
+    const pairsLeft=Math.ceil(a/2)+1;
+    const wantKids=Math.min(c, Math.ceil(c/pairsLeft));
+    for(const t of byCap){ if(t.children>=wantKids){ pick=t; break; } pick=t; }
+    const kidsHere=Math.min(c, pick.children); c-=kidsHere;
+    const infHere=Math.min(inf, pick.infants); inf-=infHere;
+    rooms.push({t:pick, pa:adultsHere, pc:kidsHere, pin:infHere});
+  }
+  // any leftover children/infants with no adult room → add rooms
+  let guard=0;
+  while((c>0||inf>0) && guard<50){ guard++;
+    let pick=byCap[byCap.length-1];
+    for(const t of byCap){ if(t.children>=c){ pick=t; break; } }
+    const kidsHere=Math.min(c,pick.children); c-=kidsHere;
+    const infHere=Math.min(inf,pick.infants); inf-=infHere;
+    rooms.push({t:pick, pa:0, pc:kidsHere, pin:infHere});
+  }
+  const agg={};
+  rooms.forEach(r=>{ const k=r.t.id; if(!agg[k]) agg[k]={type:r.t,qty:0,adults:0,children:0,infants:0};
+    agg[k].qty++; agg[k].adults+=r.pa; agg[k].children+=r.pc; agg[k].infants+=r.pin; });
+  return { combo:Object.values(agg), leftover:{adults:Math.max(0,a),children:Math.max(0,c),infants:Math.max(0,inf)},
+    totalRooms:rooms.length, party:{adults,children,infants} };
+}
+function renderStaySolution(sol){
+  if(!sol.party.adults && !sol.party.children && !sol.party.infants) return `<p class="qs-sub">Enter a party size above.</p>`;
+  const over = sol.leftover.adults||sol.leftover.children||sol.leftover.infants;
+  const rows=sol.combo.map(c=>{
+    const parts=[];
+    if(c.adults) parts.push(`${c.adults} adult${c.adults>1?"s":""}`);
+    if(c.children) parts.push(`${c.children} child${c.children>1?"ren":""}`);
+    if(c.infants) parts.push(`${c.infants} infant${c.infants>1?"s":""}`);
+    const avail = c.type.count!=null ? `<span class="sc-avail">${c.type.count} in hotel</span>`:"";
+    return `<div class="sc-row"><span class="sc-qty">${c.qty}×</span><span class="sc-name">${c.type.name}</span>
+      <span class="sc-fill">${parts.join(" · ")}</span>${avail}</div>`;
+  }).join("");
+  return `<div class="sc-solution">
+    <div class="sc-head">Best combination — <b>${sol.totalRooms} room${sol.totalRooms>1?"s":""}</b> for
+      ${sol.party.adults} adult${sol.party.adults!==1?"s":""}${sol.party.children?`, ${sol.party.children} child${sol.party.children>1?"ren":""}`:""}${sol.party.infants?`, ${sol.party.infants} infant${sol.party.infants>1?"s":""}`:""}</div>
+    ${rows}
+    ${over?`<div class="sc-over">⚠ Couldn't place: ${[sol.leftover.adults?sol.leftover.adults+" adults":"",sol.leftover.children?sol.leftover.children+" children":"",sol.leftover.infants?sol.leftover.infants+" infants":""].filter(Boolean).join(", ")} — may need extra rooms or a different mix.</div>`:`<div class="sc-ok">✓ Everyone placed. Child = up to ${CHILD_MAX_AGE} yrs; infant = up to ${INFANT_MAX_AGE} yrs (cot).</div>`}
+  </div>`;
 }
 function fmtDMY(d){ return /^\d{4}-\d{2}-\d{2}/.test(d)?new Date(d).toLocaleDateString("en-GB"):d; }
 
@@ -3347,7 +3436,7 @@ function buildRichQuote(q, id){
     return { id:room.id, name:room.name, m2:room.m2, cap:room.cap||"",
       img:roomImage(room), layout:line.layout||"", pax:parseInt(line.pax)||0,
       date:line.date||"", pkg:pkg?{name:pkg.name,from:pkg.from,inc:pkg.inc||[]}:null,
-      hire:line.hire||"none", fn:fnLabel(line) };
+      hire:line.hire||"none", fn:fnLabel(line), menu:(line.menu||[]) };
   }).filter(Boolean);
   return {
     id, enquiryId:(q.enquiry&&q.enquiry.id)||null,
@@ -3357,9 +3446,38 @@ function buildRichQuote(q, id){
     pax:q.pax, rooms, lines:q.lines, subtotal:q.subtotal, carbon:q.carbon,
     hero:(q.room?roomImage(q.room):(rooms[0]&&rooms[0].img))||"", gallery:(GALLERY.weddings||[]).slice(0,3),
     payments:(q.enquiry&&Array.isArray(q.enquiry.payments))?q.enquiry.payments:[],
-    ref:(q.enquiry&&q.enquiry.ref)||id, created:new Date().toISOString(), status:"issued"
+    ref:(q.enquiry&&q.enquiry.ref)||quoteRef(q.evId, q.customer.date||(q.rooms[0]&&q.rooms[0].date), q.customer.name), created:new Date().toISOString(), status:"issued"
   };
 }
+/* Quote reference: [TypeLetter][ddmmyy issue]-[ddmmyyyy event]-[1st3 name]
+   e.g. W230926-14072027-HAM  (W=Wedding, M=Meeting, R=Reception, C=Christmas...) */
+const EVENT_TYPE_LETTER = { wedding:"W", meeting:"M", "baby-shower":"B", birthday:"P", celebration:"R", funeral:"L", christmas:"C" };
+function quoteRef(evId, eventDate, name){
+  const L = EVENT_TYPE_LETTER[evId] || "E";
+  const iss = new Date();
+  const dd=String(iss.getDate()).padStart(2,"0"), mm=String(iss.getMonth()+1).padStart(2,"0"), yy=String(iss.getFullYear()).slice(2);
+  const issue = dd+mm+yy;
+  let evStr="TBC";
+  if(eventDate && /^\d{4}-\d{2}-\d{2}/.test(eventDate)){ const d=new Date(eventDate);
+    evStr=String(d.getDate()).padStart(2,"0")+String(d.getMonth()+1).padStart(2,"0")+d.getFullYear(); }
+  const nm=(name||"XXX").replace(/[^A-Za-z]/g,"").slice(0,3).toUpperCase().padEnd(3,"X");
+  return `${L}${issue}-${evStr}-${nm}`;
+}
+
+function saveQuoteOnly(){
+  const q=gatherQuote();
+  if(!q.customer.name){ alert("Please enter the customer name first."); return; }
+  if(!q.lines.length){ alert("Add at least one room, package or add-on to the quote."); return; }
+  const id = window._editingQuoteId || ("Q-"+Date.now().toString(36).toUpperCase());
+  const rich=buildRichQuote(q,id);
+  rich.status="saved";
+  QuoteStore.create(rich);
+  window._editingQuoteId=id;
+  // attach to customer profile
+  if(typeof CustomerStore!=="undefined") CustomerStore.addQuote(rich);
+  alert(`Quote saved · Ref ${rich.ref}\n\nYou can now download a PDF or send the client link.`);
+}
+
 function sendQuoteLink(){
   const q=gatherQuote();
   if(!q.customer.name){ alert("Please enter the customer name first."); return; }
@@ -3368,6 +3486,7 @@ function sendQuoteLink(){
   const id = window._editingQuoteId || ("Q-"+Date.now().toString(36).toUpperCase());
   const rich=buildRichQuote(q,id);
   QuoteStore.create(rich);
+  if(typeof CustomerStore!=="undefined") CustomerStore.addQuote(rich);
   window._editingQuoteId=id;
   const origin=location.href.split("#")[0].replace(/index\.html$/,"").replace(/\/$/,"");
   const url=`${origin}/quote.html?q=${id}`;
