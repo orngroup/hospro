@@ -344,6 +344,8 @@ function renderPackages(v){
 /* ============================================================ QUOTE BUILDER */
 let prefill=null;
 let QUOTE_ROOMS=[]; // array of function/room-booking line items
+let QUOTE_ACC=[];   // accommodation blocks: {label,rooms,rate,nights,basis}
+let QUOTE_CUSTOM=[];// custom lines: {label,qty,price}
 let QUOTE_PAY=[];   // payment schedule for the current quote
 let QUOTE_TOTAL=0;  // latest computed total
 function newRoomLine(pre){
@@ -402,8 +404,20 @@ function renderQuote(v){
     </div>
     <div id="q-roomlines"></div>
 
+    <div class="rooms-head">
+      <h3 style="margin-top:22px">🛏️ Accommodation</h3>
+      <button class="btn sm" id="q-addacc">+ Add bedroom block</button>
+    </div>
+    <div id="q-acclines"></div>
+
     <h3 style="margin-top:22px">Add-ons <span class="qs-sub">(applied across the whole quote)</span></h3>
     <div id="q-addons"></div>
+
+    <div class="rooms-head">
+      <h3 style="margin-top:22px">✏️ Custom lines <span class="qs-sub">(any bespoke cost)</span></h3>
+      <button class="btn sm" id="q-addcustom">+ Add custom line</button>
+    </div>
+    <div id="q-customlines"></div>
 
     <h3 style="margin-top:22px">💷 Payment terms</h3>
     <div id="q-pay"></div>
@@ -443,6 +457,9 @@ function renderQuote(v){
   });
 
   $("#q-addroom").onclick=()=>{ QUOTE_ROOMS.push(newRoomLine()); renderRoomLines(); recalcQuote(); };
+  $("#q-addacc").onclick=()=>{ QUOTE_ACC.push({label:"Bedrooms",rooms:10,rate:130,nights:1,basis:"DBB single"}); renderAccLines(); recalcQuote(); };
+  $("#q-addcustom").onclick=()=>{ QUOTE_CUSTOM.push({label:"",qty:1,price:0}); renderCustomLines(); recalcQuote(); };
+  renderAccLines(); renderCustomLines();
   $("#q-applytpl").onclick=()=>{ const t=$("#q-template").value; if(t){ applyEventTemplate(t);
     const tpl=EVENT_TEMPLATES[t]; if(tpl && tpl.event) $("#q-event").value=tpl.event;
     renderRoomLines(); recalcQuote(); } };
@@ -518,6 +535,8 @@ function renderRoomLines(){
           <div><label>Guests</label><input type="number" min="1" data-i="${i}" data-f="pax" value="${line.pax}"></div>
           <div><label>Hire basis</label><select data-i="${i}" data-f="hire"><option value="full" ${line.hire==="full"?"selected":""}>Full day</option><option value="half" ${line.hire==="half"?"selected":""}>Half day</option><option value="none" ${line.hire==="none"?"selected":""}>None (incl.)</option></select></div>
           <div><label>Package</label><select data-i="${i}" data-f="pkg"><option value="">Room hire only</option>${PACKAGES.map(p=>`<option value="${p.id}" ${p.id===line.pkg?"selected":""}>${p.name} (${money(p.from)}pp)</option>`).join("")}</select></div>
+          ${line.pkg?`<div><label>Rate override £pp <span class="qs-sub">(optional)</span></label><input type="number" min="0" step="0.01" data-i="${i}" data-f="rateOverride" value="${line.rateOverride||""}" placeholder="${money(PACKAGES.find(p=>p.id===line.pkg)?.from||0).replace('£','')}"></div>
+          <div><label>Rate note</label><input type="text" data-i="${i}" data-f="rateNote" value="${(line.rateNote||"").replace(/"/g,'&quot;')}" placeholder="e.g. reduced from £40"></div>`:""}
         </div>
       </div>
       ${room?`<div class="rl-spec">${room.m2} m²${room.length?` · ${room.length}×${room.width}m`:""} · max ${maxCap(room)} · ${tech.screen||"Screen"}${tech.wirelessShare?" · ClickShare":""}${tech.videoCall?" · Video-call ready":""}</div>`:""}
@@ -548,7 +567,7 @@ function renderRoomLines(){
   box.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("input",e=>{
     const i=+e.target.dataset.i, f=e.target.dataset.f;
     QUOTE_ROOMS[i][f] = (f==="pax")? (parseInt(e.target.value)||0) : e.target.value;
-    if(f==="fnType") renderRoomLines();
+    if(f==="fnType"||f==="pkg"||f==="room") renderRoomLines();
     recalcQuote();
   }));
   box.querySelectorAll(".rl-del").forEach(b=>b.onclick=()=>{
@@ -561,6 +580,40 @@ function fnLabel(line){
   const base=line.label|| (ft?ft.label:"Function");
   return line.time? `${line.time} ${base}` : base;
 }
+function renderAccLines(){
+  const box=$("#q-acclines"); if(!box) return;
+  const bases=["DBB single","DBB double/twin","B&B single","B&B double/twin","Room only"];
+  box.innerHTML=QUOTE_ACC.map((a,i)=>`
+    <div class="acc-row">
+      <input class="acc-in" data-i="${i}" data-k="label" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="e.g. Fri night bedrooms" style="flex:2">
+      <input class="acc-in" data-i="${i}" data-k="rooms" type="number" min="0" value="${a.rooms||0}" title="Rooms" style="width:60px">
+      <span class="acc-x">×</span>
+      <input class="acc-in" data-i="${i}" data-k="rate" type="number" min="0" value="${a.rate||0}" title="£ per room/night" style="width:72px">
+      <span class="acc-x">×</span>
+      <input class="acc-in" data-i="${i}" data-k="nights" type="number" min="1" value="${a.nights||1}" title="Nights" style="width:52px">
+      <select class="acc-in" data-i="${i}" data-k="basis" style="width:130px">${bases.map(b=>`<option ${a.basis===b?"selected":""}>${b}</option>`).join("")}</select>
+      <span class="acc-tot">${money((a.rooms||0)*(a.rate||0)*(a.nights||1))}</span>
+      <button class="mini-btn acc-del" data-i="${i}">✕</button>
+    </div>`).join("") || `<p class="qs-sub">No bedrooms added. Use "+ Add bedroom block" for residential quotes (rooms × rate × nights).</p>`;
+  box.querySelectorAll(".acc-in").forEach(inp=>inp.onchange=()=>{ const i=+inp.dataset.i,k=inp.dataset.k;
+    QUOTE_ACC[i][k]= (k==='rooms'||k==='rate'||k==='nights')?parseFloat(inp.value)||0:inp.value; renderAccLines(); recalcQuote(); });
+  box.querySelectorAll(".acc-del").forEach(b=>b.onclick=()=>{ QUOTE_ACC.splice(+b.dataset.i,1); renderAccLines(); recalcQuote(); });
+}
+function renderCustomLines(){
+  const box=$("#q-customlines"); if(!box) return;
+  box.innerHTML=QUOTE_CUSTOM.map((c,i)=>`
+    <div class="acc-row">
+      <input class="cus-in" data-i="${i}" data-k="label" value="${(c.label||'').replace(/"/g,'&quot;')}" placeholder="Description (e.g. Chef's buffet lunch)" style="flex:2">
+      <input class="cus-in" data-i="${i}" data-k="qty" type="number" min="1" value="${c.qty||1}" title="Qty" style="width:56px">
+      <span class="acc-x">×</span>
+      <input class="cus-in" data-i="${i}" data-k="price" type="number" min="0" step="0.01" value="${c.price||0}" title="£ each" style="width:78px">
+      <span class="acc-tot">${money((c.qty||1)*(c.price||0))}</span>
+      <button class="mini-btn cus-del" data-i="${i}">✕</button>
+    </div>`).join("") || `<p class="qs-sub">No custom lines. Add any bespoke cost — sandwich lunch, extra toilets, marquee, etc.</p>`;
+  box.querySelectorAll(".cus-in").forEach(inp=>inp.onchange=()=>{ const i=+inp.dataset.i,k=inp.dataset.k;
+    QUOTE_CUSTOM[i][k]= (k==='qty'||k==='price')?parseFloat(inp.value)||0:inp.value; renderCustomLines(); recalcQuote(); });
+  box.querySelectorAll(".cus-del").forEach(b=>b.onclick=()=>{ QUOTE_CUSTOM.splice(+b.dataset.i,1); renderCustomLines(); recalcQuote(); });
+}
 function gatherQuote(){
   const evId=$("#q-event").value;
   const lines=[];
@@ -571,7 +624,9 @@ function gatherQuote(){
     const dateStr=line.date? " ("+new Date(line.date).toLocaleDateString("en-GB")+")" : "";
     const fl=fnLabel(line);
     const pkg=PACKAGES.find(p=>p.id===line.pkg);
-    if(pkg){ lines.push({label:`${fl} · ${pkg.name} — ${room.name}${dateStr} × ${pax}`, amt:pkg.from*pax, sub:`${money(pkg.from)}pp`}); }
+    if(pkg){ const rate=(line.rateOverride&&+line.rateOverride>0)?+line.rateOverride:pkg.from;
+      const noteTxt=line.rateNote?` (${line.rateNote})`:(rate!==pkg.from?" (special rate)":"");
+      lines.push({label:`${fl} · ${pkg.name} — ${room.name}${dateStr} × ${pax}`, amt:rate*pax, sub:`${money(rate)}pp${noteTxt}`}); }
     if(line.hire!=="none" && ROOM_HIRE[room.id]){
       lines.push({label:`${fl} · Room hire — ${room.name} (${line.hire} day)${dateStr}`, amt:ROOM_HIRE[room.id][line.hire]});
     }
@@ -582,6 +637,12 @@ function gatherQuote(){
       lines.push({label:`${q.dataset.name} × ${n} ${q.dataset.unit}`, amt:price*n});
     }
   });
+  // accommodation blocks
+  (QUOTE_ACC||[]).forEach(a=>{ const amt=(a.rooms||0)*(a.rate||0)*(a.nights||1);
+    if(amt>0) lines.push({label:`${a.label||"Bedrooms"} — ${a.rooms} room${a.rooms>1?"s":""} × ${money(a.rate)} × ${a.nights} night${a.nights>1?"s":""} (${a.basis})`, amt, group:"Accommodation"}); });
+  // custom lines
+  (QUOTE_CUSTOM||[]).forEach(c=>{ const amt=(c.qty||1)*(c.price||0);
+    if(c.label && amt>0) lines.push({label:`${c.label}${c.qty>1?` × ${c.qty}`:""}`, amt}); });
   const subtotal=lines.reduce((s,l)=>s+l.amt,0);
   let carbonTotal=0;
   QUOTE_ROOMS.forEach(line=>{ const room=ROOMS.find(r=>r.id===line.room);
@@ -1479,7 +1540,7 @@ Brandon Hall Hotel and Spa
     closeModal(); render();
   };
   $("#enq-cost").onclick=()=>{ closeModal(); profitPrefill={ enquiry:e }; switchTab("profit"); };
-  $("#enq-quote").onclick=()=>{ closeModal(); quoteEnquiry=e; QUOTE_ROOMS=[]; window._editingQuoteId=null; switchTab("quote"); };
+  $("#enq-quote").onclick=()=>{ closeModal(); quoteEnquiry=e; QUOTE_ROOMS=[]; QUOTE_ACC=[]; QUOTE_CUSTOM=[]; QUOTE_PAY=[]; window._editingQuoteId=null; switchTab("quote"); };
 }
 
 /* ============================================================ ADMIN */
@@ -3515,7 +3576,7 @@ function renderDealTrack(e){
     // Enquiry → issue quote
     act.innerHTML=`<button class="btn block" id="d-quote" style="background:#2f6f9e">1 · Build &amp; issue quote</button>
       <p class="qs-sub" style="margin-top:6px">Opens the quote builder — add rooms, packages, menu and payment terms, then create the client link.</p>`;
-    $("#d-quote").onclick=()=>{ closeModal(); quoteEnquiry=e; QUOTE_ROOMS=[]; window._editingQuoteId=null; switchTab("quote"); };
+    $("#d-quote").onclick=()=>{ closeModal(); quoteEnquiry=e; QUOTE_ROOMS=[]; QUOTE_ACC=[]; QUOTE_CUSTOM=[]; QUOTE_PAY=[]; window._editingQuoteId=null; switchTab("quote"); };
   } else if(idx===1){
     // Quote issued → awaiting acceptance
     const url=`${origin}/quote.html?q=${e.quoteId||""}`;

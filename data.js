@@ -105,6 +105,8 @@ const ADDONS = [
     { name:"Sandwich lunch with crisps", price:12, unit:"pp" },
     { name:"Sandwich lunch with chips", price:14, unit:"pp" },
     { name:"Soup and sandwich lunch", price:13, unit:"pp" },
+    { name:"Chef's choice lunch", price:20, unit:"pp" },
+    { name:"Tea & coffee (per serving)", price:3.50, unit:"pp/serving" },
     { name:"Bacon & egg rolls", price:8, unit:"pp" },
     { name:"Breakfast (individual, <15)", price:18.50, unit:"pp" },
     { name:"Group breakfast (min 15)", price:15, unit:"pp" },
