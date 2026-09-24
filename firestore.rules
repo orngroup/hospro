@@ -31,6 +31,11 @@ service cloud.firestore {
         || (request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['acceptedBy','acceptedDate','acceptedAt','status']));
     }
+    match /beverage/{doc} {
+      allow read: if true;
+      allow write: if true;
+      match /log/{entry} { allow read, write: if true; }
+    }
     match /contracts/{doc} {
       allow read: if true;
       allow create, delete: if request.auth != null;

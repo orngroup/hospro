@@ -980,7 +980,7 @@ const BROCHURE_TEMPLATES = {
    HOSPRO — modules (sidebar + welcome cards) + role access
    ============================================================ */
 const FLOW_MODULES = [
-  { id:"events",    name:"EventsPRO",    caption:"Plan. Organise. Deliver.",       icon:"📅", colour:"#4a9d7f", tint:"#e6f3ee", tabs:["chat","dining"] },
+  { id:"events",    name:"EventsPRO",    caption:"Plan. Organise. Deliver.",       icon:"📅", colour:"#4a9d7f", tint:"#e6f3ee", tabs:["chat","dining","beverage"] },
   { id:"room",      name:"RoomPRO",      caption:"Keep operations in flow.",       icon:"🛏️", colour:"#4a86c7", tint:"#e6eff8", tabs:["rooms","packages"] },
   { id:"sales",     name:"SalesPRO",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","quotes","profit","contracts","payments"] },
   { id:"corp",      name:"StayCORP",      caption:"Corporate guests & rates.",       icon:"🏢", colour:"#2f6f9e", tint:"#e6eef5", tabs:["precheckin","corpdb","corprates","feedback"] },
@@ -994,7 +994,7 @@ const FLOW_MODULES = [
 /* Tab metadata (label + icon) for sidebar links and cards */
 const TAB_META = {
   home:{label:"Home",icon:"🏠"},
-  rooms:{label:"Meeting Rooms",icon:"🚪"}, dining:{label:"Dining & Bars",icon:"🍽️"},
+  rooms:{label:"Meeting Rooms",icon:"🚪"}, dining:{label:"Dining & Bars",icon:"🍽️"}, beverage:{label:"Beverage Management",icon:"🍷"},
   pipeline:{label:"Sales Pipeline",icon:"📊"},
   packages:{label:"Packages",icon:"📦"}, suppliers:{label:"Suppliers",icon:"🤝"},
   quote:{label:"Create Quote",icon:"🧾"}, profit:{label:"Profit Tool",icon:"💰"},

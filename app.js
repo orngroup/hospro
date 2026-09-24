@@ -151,7 +151,7 @@ function render(){
   const v=$("#view"); v.innerHTML="";
   document.body.classList.toggle("home-active", CURRENT_TAB==="home");
   syncSidebar();
-  ({home:renderHome, rooms:renderRooms, dining:renderDining, pipeline:renderPipeline, corprates:renderCorpRates, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
+  ({home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin }[CURRENT_TAB]||renderRooms)(v);
 }
 
@@ -2585,6 +2585,137 @@ function openUploadForm(section){
 
 /* ============================================================ DINING & BARS */
 let DINING_AREA="restaurant";
+/* ============================================================ BEVERAGE MANAGEMENT (portal dashboard) */
+const BevStore={
+  levels:null, log:[],
+  async load(){
+    // start from BEV_PRODUCTS, overlay saved levels
+    this.levels={}; (typeof BEV_PRODUCTS!=="undefined"?BEV_PRODUCTS:[]).forEach(p=>this.levels[p.id]={...p});
+    let saved=null;
+    if(typeof FB!=="undefined"&&FB.ready){ try{ if(!FB.user){ await fbEnsureAnon(); } const d=await FB.db.collection("beverage").doc("levels").get(); if(d.exists) saved=d.data(); }catch(e){} }
+    if(!saved){ try{ saved=JSON.parse(localStorage.getItem("bh_bev_levels")||"null"); }catch{} }
+    if(saved&&saved.stock){ Object.keys(saved.stock).forEach(id=>{ if(this.levels[id]) this.levels[id].stock=saved.stock[id]; }); }
+    if(typeof FB!=="undefined"&&FB.ready){ try{ const q=await FB.db.collection("beverage").doc("levels").collection("log").orderBy("at","desc").limit(500).get(); this.log=q.docs.map(d=>d.data()); }catch(e){} }
+    if(!this.log.length){ try{ this.log=JSON.parse(localStorage.getItem("bh_bev_log")||"[]"); }catch{} }
+  }
+};
+function renderBeverage(v){
+  v.appendChild(head("Beverage Management","Live bar stock, usage and value. Staff sign stock in and out on the iPad screen in the stock room; this is the dashboard and reporting side."));
+  const info=el("div","quote-panel");
+  const bevUrl=location.href.split("#")[0].replace(/index\.html$/,"").replace(/\/$/,"")+"/beverage.html";
+  info.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <div><b>📱 Stock room screen</b><div class="qs-sub">Open this on the iPad on the stock room wall — PIN protected (0356).</div></div>
+    <div class="dual-btn" style="margin:0"><a class="btn" href="${bevUrl}" target="_blank">Open iPad screen</a>
+    <button class="btn ghost" id="bev-copy">Copy link</button></div></div>`;
+  v.appendChild(info);
+  const cp=$("#bev-copy"); if(cp) cp.onclick=()=>{ navigator.clipboard?.writeText(bevUrl); cp.textContent="Copied"; };
+
+  const mount=el("div"); mount.innerHTML=`<p class="qs-sub" style="padding:16px">Loading stock…</p>`; v.appendChild(mount);
+  BevStore.load().then(()=>{
+    const items=Object.values(BevStore.levels);
+    const totVal=items.reduce((s,p)=>s+p.stock*(p.price||0),0);
+    const low=items.filter(p=>p.stock>0&&p.stock<2);
+    const out=items.filter(p=>p.stock<=0);
+    // weekly usage from log
+    const weekAgo=new Date(Date.now()-7*864e5).toISOString();
+    const weekOut=BevStore.log.filter(e=>e.type==="remove"&&e.at>=weekAgo);
+    const weekUsageVal=weekOut.reduce((s,e)=>{ const p=BevStore.levels[e.id]; return s+Math.abs(e.delta)*((p&&p.price)||0); },0);
+
+    const stats=el("div","stat-cards");
+    stats.innerHTML=`
+      <div class="stat-card"><div class="sc-v">${money2dp(totVal)}</div><div class="sc-k">Stock value (ex-VAT)</div></div>
+      <div class="stat-card"><div class="sc-v">${items.length}</div><div class="sc-k">Products</div></div>
+      <div class="stat-card" style="${low.length?'border-left:3px solid #c78a3b':''}"><div class="sc-v" style="${low.length?'color:#c78a3b':''}">${low.length}</div><div class="sc-k">Low stock</div></div>
+      <div class="stat-card" style="${out.length?'border-left:3px solid #b3261e':''}"><div class="sc-v" style="${out.length?'color:#b3261e':''}">${out.length}</div><div class="sc-k">Out of stock</div></div>
+      <div class="stat-card"><div class="sc-v">${money2dp(weekUsageVal)}</div><div class="sc-k">Used this week</div></div>`;
+    mount.innerHTML=""; mount.appendChild(stats);
+
+    // toolbar
+    const tb=el("div","pipe-toolbar");
+    tb.innerHTML=`<div class="rag-legend"><span>Stock by category. Export a weekly usage report for records or ordering.</span></div>
+      <div class="pipe-actions">
+        <button class="btn" id="bev-report">📊 Weekly usage report</button>
+        <button class="btn ghost" id="bev-export">⬇ Export stock (CSV)</button>
+      </div>`;
+    mount.appendChild(tb);
+    $("#bev-report").onclick=()=>bevWeeklyReport();
+    $("#bev-export").onclick=()=>bevExportCSV();
+
+    // stock table grouped by category
+    const cats={}; items.forEach(p=>{ (cats[p.cat]=cats[p.cat]||[]).push(p); });
+    const panel=el("div","quote-panel");
+    panel.innerHTML=Object.keys(cats).sort().map(cat=>{
+      const rows=cats[cat].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{
+        const val=p.stock*(p.price||0); const lowf=p.stock<2;
+        return `<tr><td>${p.name}</td><td>${p.pack||p.unit}</td><td>${p.sup||"—"}</td>
+          <td class="r ${lowf?'':''}" style="${lowf?'color:#b3261e;font-weight:700':''}">${(+p.stock).toLocaleString("en-GB",{maximumFractionDigits:2})}</td>
+          <td class="r">${money2dp(p.price)}</td><td class="r">${money2dp(val)}</td></tr>`;
+      }).join("");
+      const catVal=cats[cat].reduce((s,p)=>s+p.stock*(p.price||0),0);
+      return `<div class="bev-cat"><div class="bev-cat-h"><h3>${cat}</h3><span>${money2dp(catVal)}</span></div>
+        <div class="tbl-scroll"><table class="ct-table"><tr><th>Product</th><th>Pack</th><th>Supplier</th><th class="r">Stock</th><th class="r">Unit £</th><th class="r">Value</th></tr>${rows}</table></div></div>`;
+    }).join("");
+    mount.appendChild(panel);
+
+    // recent movements
+    if(BevStore.log.length){
+      const logp=el("div","quote-panel");
+      logp.innerHTML=`<div class="sec-title" style="margin-top:0">Recent movements</div>
+        <div class="tbl-scroll"><table class="ct-table"><tr><th>When</th><th>Product</th><th>Type</th><th class="r">Qty</th><th>By</th><th>Note</th></tr>
+        ${BevStore.log.slice(0,30).map(e=>`<tr><td>${new Date(e.at).toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</td>
+          <td>${e.name}</td><td><span class="pay-pill" style="background:${e.type==="remove"?"#fdecec;color:#b3261e":"#e8f3ee;color:#2a6a4a"}">${e.type==="remove"?"Out":"In"}</span></td>
+          <td class="r">${e.delta>0?"+":""}${(+e.delta).toLocaleString("en-GB",{maximumFractionDigits:2})}</td><td>${e.staff||"—"}</td><td class="qs-sub">${e.note||""}</td></tr>`).join("")}
+        </table></div>`;
+      mount.appendChild(logp);
+    }
+  });
+}
+function bevWeeklyReport(){
+  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
+  const outs=BevStore.log.filter(e=>e.type==="remove"&&e.at>=weekAgo);
+  // aggregate usage per product
+  const usage={};
+  outs.forEach(e=>{ const p=BevStore.levels[e.id]; if(!usage[e.id]) usage[e.id]={name:e.name,cat:p?p.cat:"",unit:p?p.unit:"",qty:0,val:0,price:p?p.price:0};
+    usage[e.id].qty+=Math.abs(e.delta); usage[e.id].val+=Math.abs(e.delta)*((p&&p.price)||0); });
+  const rows=Object.values(usage).sort((a,b)=>b.val-a.val);
+  const total=rows.reduce((s,r)=>s+r.val,0);
+  const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+  const from=new Date(Date.now()-7*864e5).toLocaleDateString("en-GB");
+  const win=window.open("","_blank");
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Weekly Beverage Usage — Brandon Hall</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>@page{margin:16mm}body{font-family:'Lato',sans-serif;color:#2a3644;font-size:12px;max-width:820px;margin:0 auto;padding:14px}
+    .h{text-align:center;border-bottom:3px solid #1a2b47;padding-bottom:12px;margin-bottom:14px}
+    .logo{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;letter-spacing:5px;color:#1a2b47}
+    .sub{font-size:11px;letter-spacing:4px;color:#c9a978;font-weight:700}
+    h1{font-family:'Cormorant Garamond',serif;font-size:22px;text-align:center;color:#1a2b47;margin:12px 0 4px}
+    .meta{text-align:center;font-size:11px;color:#7a8494;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th{background:#1a2b47;color:#fff;text-align:left;padding:7px 8px;font-size:10.5px}
+    td{padding:6px 8px;border-bottom:1px solid #eef2f4}.r{text-align:right}
+    .tot{margin-top:14px;background:#f6f8f9;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;font-weight:700;font-size:15px;color:#1a2b47}
+    .foot{margin-top:20px;font-size:10px;color:#7a8494;text-align:center}
+    .none{text-align:center;color:#7a8494;padding:30px}</style></head><body>
+    <div class="h"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL AND SPA</div></div>
+    <h1>Weekly Beverage Usage</h1>
+    <div class="meta">${from} – ${today} · signed-out stock</div>
+    ${rows.length?`<table><tr><th>Product</th><th>Category</th><th class="r">Qty used</th><th class="r">Unit £</th><th class="r">Value (ex-VAT)</th></tr>
+      ${rows.map(r=>`<tr><td>${r.name}</td><td>${r.cat}</td><td class="r">${r.qty.toLocaleString("en-GB",{maximumFractionDigits:2})} ${r.unit}</td><td class="r">${money2dp(r.price)}</td><td class="r">${money2dp(r.val)}</td></tr>`).join("")}</table>
+      <div class="tot"><span>Total usage value (ex-VAT)</span><span>${money2dp(total)}</span></div>`
+      :`<div class="none">No stock signed out in the last 7 days.</div>`}
+    <div class="foot">Brandon Hall Hotel and Spa · Beverage Management · Generated ${today}</div>
+    <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>`);
+  win.document.close();
+}
+function bevExportCSV(){
+  const items=Object.values(BevStore.levels).sort((a,b)=>(a.cat+a.name).localeCompare(b.cat+b.name));
+  const rows=[["Category","Product","Pack","Supplier","Code","Stock","Unit price ex-VAT","Stock value ex-VAT"]];
+  items.forEach(p=>rows.push([p.cat,p.name,p.pack,p.sup,p.code,p.stock,(p.price||0).toFixed(2),(p.stock*(p.price||0)).toFixed(2)]));
+  const csv=rows.map(r=>r.map(c=>`"${String(c==null?"":c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv"}); const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download="Brandon_Hall_Beverage_Stock_"+new Date().toISOString().slice(0,10)+".csv"; a.click();
+}
+
 function renderDining(v){
   v.appendChild(head("Dining & Bars","Our restaurant, bar and terrace — seating plans, capacities and features."));
   const nav=el("div","mkt-nav");

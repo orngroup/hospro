@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a2b3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Beverage">
+<title>Beverage Management — Brandon Hall Hotel and Spa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1a2b3a;--navy2:#101d33;--gold:#c9a978;--teal:#20b2a2;--paper:#f5f7f9;--ink:#2a3644;--line:#e3e7ee;--red:#d0433b;--green:#4a9d6a;--amber:#c78a3b}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:'Lato',system-ui,sans-serif;background:var(--paper);color:var(--ink);overflow-x:hidden}
+.hide{display:none!important}
+
+/* ---------- LOGIN ---------- */
+#login{position:fixed;inset:0;background:linear-gradient(160deg,var(--navy),var(--navy2));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;z-index:100}
+#login .logo{font-family:'Cormorant Garamond',serif;font-size:46px;letter-spacing:7px;color:#fff;font-weight:600;text-align:center;line-height:1}
+#login .sub{font-size:13px;letter-spacing:6px;color:var(--gold);font-weight:700;margin-top:6px}
+#login .title{font-family:'Cormorant Garamond',serif;font-size:26px;color:#fff;margin:26px 0 4px}
+#login .hint{color:#9fb0c4;font-size:14px;margin-bottom:24px}
+.pin-dots{display:flex;gap:14px;margin-bottom:26px}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid #6b7f98;transition:.15s}
+.pin-dot.on{background:var(--gold);border-color:var(--gold)}
+.pin-dot.err{border-color:var(--red);animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.keypad{display:grid;grid-template-columns:repeat(3,80px);gap:16px}
+.key{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:28px;font-weight:600;cursor:pointer;display:grid;place-items:center;transition:.1s}
+.key:active{background:rgba(255,255,255,.25);transform:scale(.94)}
+.key.wide{border-radius:40px}
+.key.blank{background:none;border:none;cursor:default}
+
+/* ---------- APP SHELL ---------- */
+#app{min-height:100%;padding-bottom:90px}
+.topbar{background:var(--navy);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}
+.topbar .brand{font-family:'Cormorant Garamond',serif;font-size:20px;letter-spacing:3px;font-weight:600}
+.topbar .brand small{display:block;font-size:9px;letter-spacing:3px;color:var(--gold);font-family:'Lato';font-weight:700}
+.topbar .out{background:rgba(255,255,255,.12);border:none;color:#fff;padding:9px 14px;border-radius:9px;font-size:13px;font-weight:600}
+.wrap{padding:16px;max-width:900px;margin:0 auto}
+
+/* summary cards */
+.sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.sum-card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 10px rgba(26,43,58,.06)}
+.sum-card .v{font-family:'Cormorant Garamond',serif;font-size:30px;color:var(--navy);font-weight:600;line-height:1}
+.sum-card .k{font-size:12px;color:#7a8494;margin-top:4px}
+.sum-card.alert .v{color:var(--amber)}
+
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+.act-btn{padding:20px;border-radius:14px;border:none;font-size:17px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.act-remove{background:var(--red)}.act-add{background:var(--green)}
+.act-btn:active{transform:scale(.97)}
+
+/* search + category chips */
+.searchbar{display:flex;gap:8px;margin-bottom:12px}
+.searchbar input{flex:1;padding:13px 15px;border:1px solid var(--line);border-radius:11px;font-size:16px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;-webkit-overflow-scrolling:touch}
+.chip{white-space:nowrap;padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* stock list */
+.stock-list{display:flex;flex-direction:column;gap:8px}
+.prod{background:#fff;border-radius:12px;padding:13px 15px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 6px rgba(26,43,58,.05)}
+.prod .info{flex:1;min-width:0}
+.prod .nm{font-weight:700;font-size:15px;color:var(--navy)}
+.prod .meta{font-size:12px;color:#7a8494;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod .qty{text-align:right}
+.prod .qn{font-size:22px;font-weight:700;font-family:'Cormorant Garamond',serif}
+.prod .ql{font-size:10px;color:#7a8494}
+.qn.low{color:var(--red)}.qn.ok{color:var(--navy)}
+.prod .pm{display:flex;gap:6px}
+.pm button{width:38px;height:38px;border-radius:9px;border:none;font-size:20px;font-weight:700;cursor:pointer}
+.pm .minus{background:#fde8e6;color:var(--red)}.pm .plus{background:#e6f5ee;color:var(--green)}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(20,35,58,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.modal-bg.center{align-items:center}
+.sheet{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;padding:22px 20px calc(22px + env(safe-area-inset-bottom))}
+.modal-bg.center .sheet{border-radius:20px;margin:16px}
+.sheet h2{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--navy);margin-bottom:4px}
+.sheet .psub{font-size:13px;color:#7a8494;margin-bottom:16px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;font-weight:700;color:var(--navy);margin-bottom:5px}
+.field input,.field select{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:11px;font-size:16px}
+.unit-toggle{display:flex;gap:8px}
+.unit-toggle button{flex:1;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-weight:600;font-size:14px}
+.unit-toggle button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.qty-step{display:flex;align-items:center;gap:14px;justify-content:center;margin:6px 0}
+.qty-step button{width:56px;height:56px;border-radius:14px;border:none;font-size:28px;font-weight:700;background:var(--paper);cursor:pointer}
+.qty-step .qv{font-size:40px;font-weight:700;font-family:'Cormorant Garamond',serif;min-width:70px;text-align:center;color:var(--navy)}
+.btn-primary{width:100%;padding:16px;border-radius:12px;border:none;font-size:17px;font-weight:700;color:#fff;background:var(--navy);cursor:pointer;margin-top:6px}
+.btn-primary.rm{background:var(--red)}.btn-primary.ad{background:var(--green)}
+.btn-ghost{width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);background:#fff;font-size:15px;font-weight:600;margin-top:8px;cursor:pointer}
+.toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:14px 22px;border-radius:12px;font-size:15px;font-weight:600;z-index:200;box-shadow:0 8px 30px rgba(0,0,0,.3);animation:rise .25s}
+@keyframes rise{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;background:var(--paper);color:#7a8494}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="logo">BRANDON HALL</div>
+  <div class="sub">HOTEL AND SPA</div>
+  <div class="title">Beverage Management</div>
+  <div class="hint">Enter your 4-digit PIN</div>
+  <div class="pin-dots" id="pinDots"></div>
+  <div class="keypad" id="keypad"></div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hide">
+  <div class="topbar">
+    <div class="brand">BRANDON HALL<small>BEVERAGE MANAGEMENT</small></div>
+    <button class="out" id="logout">Lock</button>
+  </div>
+  <div class="wrap">
+    <div class="sum-grid" id="summary"></div>
+    <div class="actions">
+      <button class="act-btn act-remove" id="btnRemove">➖ Remove / Sign out</button>
+      <button class="act-btn act-add" id="btnAdd">➕ Add delivery</button>
+    </div>
+    <div class="searchbar"><input id="search" placeholder="🔍 Search a product…" autocomplete="off"></div>
+    <div class="chips" id="chips"></div>
+    <div class="stock-list" id="stockList"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="bev-data.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+let db=null,auth=null;
+try{ if(typeof firebase!=="undefined" && firebaseConfig && !String(firebaseConfig.apiKey||"").startsWith("YOUR_")){
+  firebase.initializeApp(firebaseConfig); db=firebase.firestore(); auth=firebase.auth(); } }catch(e){ console.warn(e); }
+
+const money=n=>"£"+Number(n||0).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
+const LOW=2; // low-stock threshold (order units)
+
+/* ---------- STOCK STORE (Firebase + local fallback) ---------- */
+const Store={
+  stock:{}, log:[], staff:"",
+  async load(){
+    // seed from BEV_PRODUCTS, then overlay saved levels
+    BEV_PRODUCTS.forEach(p=>{ this.stock[p.id]={...p}; });
+    let saved=null;
+    if(db){ if(auth&&!auth.currentUser){ try{ await auth.signInAnonymously(); }catch(e){} }
+      try{ const d=await db.collection("beverage").doc("levels").get(); if(d.exists) saved=d.data(); }catch(e){ console.warn(e.message); } }
+    if(!saved){ try{ saved=JSON.parse(localStorage.getItem("bh_bev_levels")||"null"); }catch{} }
+    if(saved&&saved.stock){ Object.keys(saved.stock).forEach(id=>{ if(this.stock[id]) this.stock[id].stock=saved.stock[id]; }); }
+    // log
+    if(db){ try{ const q=await db.collection("beverage").doc("levels").collection("log").orderBy("at","desc").limit(200).get();
+      this.log=q.docs.map(d=>d.data()); }catch(e){} }
+    if(!this.log.length){ try{ this.log=JSON.parse(localStorage.getItem("bh_bev_log")||"[]"); }catch{} }
+  },
+  async persist(){
+    const levels={}; Object.values(this.stock).forEach(p=>levels[p.id]=p.stock);
+    const payload={stock:levels, updated:new Date().toISOString()};
+    localStorage.setItem("bh_bev_levels",JSON.stringify(payload));
+    if(db){ try{ await db.collection("beverage").doc("levels").set(payload,{merge:true}); }catch(e){ console.warn(e.message); } }
+  },
+  async move(id, deltaUnits, type, note){
+    const p=this.stock[id]; if(!p) return;
+    p.stock=Math.round((p.stock+deltaUnits)*100)/100;
+    if(p.stock<0) p.stock=0;
+    const entry={ id, name:p.name, delta:deltaUnits, type, staff:this.staff||"", note:note||"", at:new Date().toISOString() };
+    this.log.unshift(entry);
+    localStorage.setItem("bh_bev_log",JSON.stringify(this.log.slice(0,500)));
+    await this.persist();
+    if(db){ try{ await db.collection("beverage").doc("levels").collection("log").add(entry); }catch(e){} }
+  },
+  totalValue(){ return Object.values(this.stock).reduce((s,p)=>s+(p.stock*(p.price||0)),0); },
+  lowCount(){ return Object.values(this.stock).filter(p=>p.stock>0 && p.stock<LOW).length; },
+  outCount(){ return Object.values(this.stock).filter(p=>p.stock<=0).length; },
+  itemCount(){ return Object.keys(this.stock).length; }
+};
+
+/* ---------- PIN LOGIN ---------- */
+let pinBuf="";
+function buildKeypad(){
+  const dots=$("#pinDots"); dots.innerHTML=[0,1,2,3].map(()=>`<div class="pin-dot"></div>`).join("");
+  const keys=[1,2,3,4,5,6,7,8,9,"",0,"⌫"];
+  $("#keypad").innerHTML=keys.map(k=>{
+    if(k==="") return `<div class="key blank"></div>`;
+    return `<button class="key" data-k="${k}">${k}</button>`;
+  }).join("");
+  $("#keypad").querySelectorAll(".key[data-k]").forEach(b=>b.onclick=()=>press(b.dataset.k));
+}
+function renderDots(err){
+  document.querySelectorAll(".pin-dot").forEach((d,i)=>{
+    d.classList.toggle("on", i<pinBuf.length); d.classList.toggle("err", !!err); });
+}
+function press(k){
+  if(k==="⌫"){ pinBuf=pinBuf.slice(0,-1); renderDots(); return; }
+  if(pinBuf.length>=4) return;
+  pinBuf+=k; renderDots();
+  if(pinBuf.length===4){
+    if(pinBuf===(typeof BEV_PIN!=="undefined"?BEV_PIN:"0356")){ enterApp(); }
+    else { renderDots(true); setTimeout(()=>{ pinBuf=""; renderDots(); },400); }
+  }
+}
+async function enterApp(){
+  $("#login").classList.add("hide"); $("#app").classList.remove("hide");
+  sessionStorage.setItem("bh_bev_unlocked","1");
+  await Store.load(); renderAll();
+}
+$("#logout").onclick=()=>{ sessionStorage.removeItem("bh_bev_unlocked"); pinBuf=""; renderDots(); $("#app").classList.add("hide"); $("#login").classList.remove("hide"); };
+
+/* ---------- RENDER ---------- */
+let FILTER={cat:"All", search:""};
+function renderAll(){ renderSummary(); renderChips(); renderList(); }
+function renderSummary(){
+  $("#summary").innerHTML=`
+    <div class="sum-card"><div class="v">${money(Store.totalValue())}</div><div class="k">Stock value (ex-VAT)</div></div>
+    <div class="sum-card"><div class="v">${Store.itemCount()}</div><div class="k">Products</div></div>
+    <div class="sum-card ${Store.lowCount()?"alert":""}"><div class="v">${Store.lowCount()}</div><div class="k">Low stock</div></div>
+    <div class="sum-card ${Store.outCount()?"alert":""}"><div class="v">${Store.outCount()}</div><div class="k">Out of stock</div></div>`;
+}
+function categories(){ return ["All",...[...new Set(Object.values(Store.stock).map(p=>p.cat))].sort()]; }
+function renderChips(){
+  $("#chips").innerHTML=categories().map(c=>`<button class="chip ${FILTER.cat===c?"on":""}" data-c="${c}">${c}</button>`).join("");
+  $("#chips").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ FILTER.cat=b.dataset.c; renderChips(); renderList(); });
+}
+function renderList(){
+  let list=Object.values(Store.stock);
+  if(FILTER.cat!=="All") list=list.filter(p=>p.cat===FILTER.cat);
+  if(FILTER.search){ const s=FILTER.search.toLowerCase(); list=list.filter(p=>`${p.name} ${p.cat} ${p.code}`.toLowerCase().includes(s)); }
+  list.sort((a,b)=>a.name.localeCompare(b.name));
+  $("#stockList").innerHTML=list.map(p=>{
+    const low=p.stock<LOW;
+    return `<div class="prod">
+      <div class="info"><div class="nm">${p.name}</div>
+        <div class="meta">${p.cat} · ${p.pack||p.unit}${p.sup?" · "+p.sup:""}</div></div>
+      <div class="qty"><div class="qn ${low?"low":"ok"}">${(+p.stock).toLocaleString("en-GB",{maximumFractionDigits:2})}</div><div class="ql">${p.unit}</div></div>
+      <div class="pm"><button class="minus" data-id="${p.id}" data-d="-1">–</button><button class="plus" data-id="${p.id}" data-d="1">+</button></div>
+    </div>`;
+  }).join("") || `<p style="text-align:center;color:#7a8494;padding:30px">No products match.</p>`;
+  // quick +/- open the movement sheet prefilled
+  $("#stockList").querySelectorAll(".pm button").forEach(b=>b.onclick=()=>openMove(b.dataset.id, b.dataset.d>0?"add":"remove"));
+}
+$("#search").oninput=e=>{ FILTER.search=e.target.value; renderList(); };
+
+/* ---------- MOVEMENT SHEET (add / remove) ---------- */
+function openPicker(mode){
+  // choose a product first
+  const bg=document.createElement("div"); bg.className="modal-bg";
+  const list=Object.values(Store.stock).sort((a,b)=>a.name.localeCompare(b.name));
+  bg.innerHTML=`<div class="sheet"><h2>${mode==="remove"?"Remove / Sign out":"Add delivery"}</h2>
+    <div class="psub">Pick a product</div>
+    <div class="field"><input id="pick-search" placeholder="🔍 Search…" autocomplete="off"></div>
+    <div id="pick-list" class="stock-list"></div>
+    <button class="btn-ghost" id="pick-cancel">Cancel</button></div>`;
+  document.body.appendChild(bg);
+  const draw=(q="")=>{ const f=q?list.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())):list;
+    $("#pick-list").innerHTML=f.slice(0,60).map(p=>`<div class="prod" data-id="${p.id}" style="cursor:pointer">
+      <div class="info"><div class="nm">${p.name}</div><div class="meta">${p.cat} · in stock: ${(+p.stock).toLocaleString("en-GB",{maximumFractionDigits:2})} ${p.unit}</div></div></div>`).join("");
+    $("#pick-list").querySelectorAll(".prod").forEach(el=>el.onclick=()=>{ bg.remove(); openMove(el.dataset.id, mode); }); };
+  draw();
+  $("#pick-search").oninput=e=>draw(e.target.value);
+  $("#pick-cancel").onclick=()=>bg.remove();
+  bg.onclick=e=>{ if(e.target===bg) bg.remove(); };
+}
+function openMove(id, mode){
+  const p=Store.stock[id]; if(!p) return;
+  const per=p.perCase||1;
+  let unit="case"; let qty=1;
+  const bg=document.createElement("div"); bg.className="modal-bg center";
+  document.body.appendChild(bg);
+  const draw=()=>{
+    const isSingles = unit==="single";
+    const effective = isSingles ? qty/per : qty; // in order units
+    bg.innerHTML=`<div class="sheet">
+      <h2>${mode==="remove"?"Sign out stock":"Add delivery"}</h2>
+      <div class="psub">${p.name} · ${p.pack||p.unit} · in stock ${(+p.stock).toLocaleString("en-GB",{maximumFractionDigits:2})} ${p.unit}</div>
+      ${per>1?`<div class="field"><label>Unit</label><div class="unit-toggle">
+        <button class="${unit==="case"?"on":""}" data-u="case">Case (${per})</button>
+        <button class="${unit==="single"?"on":""}" data-u="single">Single bottle/can</button></div></div>`:""}
+      <div class="field"><label>Quantity (${isSingles?"singles":p.unit.toLowerCase()})</label>
+        <div class="qty-step"><button data-s="-1">–</button><span class="qv">${qty}</span><button data-s="1">+</button></div></div>
+      ${mode==="remove"?`<div class="field"><label>Your name *</label><input id="mv-name" placeholder="Who is signing this out?" value="${Store.staff||""}"></div>
+        <div class="field"><label>Reason / destination</label><input id="mv-note" placeholder="e.g. Bar restock, function, wastage"></div>`
+        :`<div class="field"><label>Note (optional)</label><input id="mv-note" placeholder="e.g. Matthew Clark delivery, INV 4271338"></div>`}
+      <button class="btn-primary ${mode==="remove"?"rm":"ad"}" id="mv-go">${mode==="remove"?"Sign out "+ (isSingles?qty+" single(s)":qty+" "+p.unit.toLowerCase()) : "Add "+qty+" "+p.unit.toLowerCase()}</button>
+      <button class="btn-ghost" id="mv-cancel">Cancel</button>
+    </div>`;
+    bg.querySelectorAll(".unit-toggle button").forEach(b=>b.onclick=()=>{ unit=b.dataset.u; qty=1; draw(); });
+    bg.querySelectorAll(".qty-step button").forEach(b=>b.onclick=()=>{ qty=Math.max(1,qty+(+b.dataset.s)); draw(); });
+    $("#mv-cancel").onclick=()=>bg.remove();
+    $("#mv-go").onclick=async()=>{
+      const eff = (unit==="single") ? qty/per : qty;
+      const delta = mode==="remove" ? -eff : eff;
+      if(mode==="remove"){ const nm=($("#mv-name").value||"").trim(); if(!nm){ $("#mv-name").focus(); return; } Store.staff=nm; }
+      const note=($("#mv-note")?.value||"").trim() + (unit==="single"?` (${qty} single${qty>1?"s":""})`:"");
+      $("#mv-go").disabled=true;
+      await Store.move(id, delta, mode, note);
+      bg.remove(); renderAll();
+      toast(`${mode==="remove"?"Signed out":"Added"} ${unit==="single"?qty+" single(s)":qty+" "+p.unit.toLowerCase()} · ${p.name}`);
+    };
+  };
+  draw();
+  bg.onclick=e=>{ if(e.target===bg) bg.remove(); };
+}
+$("#btnRemove").onclick=()=>openPicker("remove");
+$("#btnAdd").onclick=()=>openPicker("add");
+
+function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
+
+/* ---------- INIT ---------- */
+buildKeypad(); renderDots();
+if(sessionStorage.getItem("bh_bev_unlocked")==="1"){ enterApp(); }
+</script>
+</body>
+</html>

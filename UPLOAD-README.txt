@@ -1,18 +1,22 @@
-BRANDON HALL PORTAL — upload all to brandonme, overwrite. Paste firestore.rules in Firebase.
+BRANDON HALL — BEVERAGE MANAGEMENT
+Upload all files to brandonme (overwrite). Paste firestore.rules into Firebase.
 
-THIS UPDATE — multi-option proposals + residential quoting:
-  - Quote builder: build a version, click "Add this as an option".
-    Build a second version, add it too -> A/B (or more) proposal.
-  - "Create client proposal link" shows ALL options on the client page,
-    each as a card with itemised costs, plus the accept button.
-  - Client link is the full rich proposal: hero image, gallery (meeting
-    photos for conferences, wedding photos for weddings), why-us, spaces,
-    options, payment terms, T&Cs, hotel links.
-  - Accommodation blocks (rooms x rate x nights, DBB/B&B, single/double).
-  - Custom lines for any bespoke cost.
-  - A la carte catering (chef's lunch GBP20, tea/coffee GBP3.50/serving).
-  - Package rate override with a note (e.g. DDR reduced GBP40 -> GBP30).
-  - Consistent name "Brandon Hall Hotel and Spa" everywhere.
+FILES:
+  beverage.html   NEW — the iPad stock-room screen (PIN 0356)
+  bev-data.js     NEW — 117 products from the 21 Sept stock take
+  app.js          adds the Beverage Management dashboard tab (EventsPRO)
+  data.js         registers the tab
+  index.html      loads bev-data.js + styles
+  firestore.rules adds the 'beverage' collection (paste in Firebase)
 
-TESTED against the real Martin Mugadza enquiry — produces the two-option
-proposal (Room hire & a la carte GBP35,400 / Day Delegate GBP32,000).
+HOW IT WORKS:
+  - iPad screen: brandon.hospro.co.uk/beverage.html
+    PIN 0356 -> summary -> Remove/Sign out (types name) or Add delivery.
+    Holds cases; can remove single bottles. Every move logged with name + time.
+  - Portal: EventsPRO > Beverage Management
+    Live stock value, low/out counts, used-this-week, stock by category,
+    movement log, Weekly Usage Report (print) and Export stock (CSV).
+  - Both share the Firebase 'beverage' collection, so iPad + portal sync.
+
+TIP: On the iPad, open beverage.html and "Add to Home Screen" for a
+full-screen app-like tile.
