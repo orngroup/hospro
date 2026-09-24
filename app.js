@@ -3888,11 +3888,14 @@ function renderDealTrack(e){
     $("#d-quote").onclick=()=>{ closeModal(); quoteEnquiry=e; QUOTE_ROOMS=[]; QUOTE_ACC=[]; QUOTE_CUSTOM=[]; QUOTE_PAY=[]; QUOTE_OPTIONS=[]; window._editingQuoteId=null; switchTab("quote"); };
   } else if(idx===1){
     // Quote issued → awaiting acceptance
-    const url=`${origin}/quote.html?q=${e.quoteId||""}`;
+    const url = e.quoteLink
+      ? `${origin}/${e.quoteLink}`
+      : `${origin}/quote.html?q=${e.quoteId||""}`;
     act.innerHTML=`<div class="embed-box" style="margin-bottom:8px">${url}<button class="cp" id="d-copy">Copy</button></div>
+      <a class="btn block" href="${url}" target="_blank" style="margin-bottom:8px;text-align:center">Open proposal →</a>
       <p class="qs-sub" style="margin-bottom:8px">Quote issued — awaiting client acceptance. You can mark it accepted once they confirm.</p>
-      <button class="btn block" id="d-accept">2 · Mark quote as accepted</button>`;
-    $("#d-copy").onclick=()=>{ navigator.clipboard?.writeText(url); $("#d-copy").textContent="Copied"; };
+      <button class="btn ghost block" id="d-accept">2 · Mark quote as accepted</button>`;
+    $("#d-copy").onclick=()=>{ navigator.clipboard?.writeText(url); $("#d-copy").textContent="Copied ✓"; setTimeout(()=>$("#d-copy").textContent="Copy",1500); };
     $("#d-accept").onclick=async()=>{ DB.update(e.id,{ dealStage:"accepted", quoteAccepted:true, quoteAcceptedAt:new Date().toISOString() });
       const fresh=pipelineData().find(x=>x.id===e.id)||e; Object.assign(e,fresh); renderDealTrack(e); };
   } else if(idx===2){
