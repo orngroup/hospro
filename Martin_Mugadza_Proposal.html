@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Retreat Proposal — Martin Mugadza — Brandon Hall Hotel and Spa</title>
+<meta property="og:title" content="Retreat Proposal — Brandon Hall Hotel and Spa">
+<meta property="og:description" content="Your event proposal — please review and accept online.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1a2b3a;--gold:#c9a978;--paper:#f6f8f9;--ink:#2a3644;--line:#e3e7ee;--green:#2a6a4a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Lato',system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6}
+/* ---- TOPBAR ---- */
+.bar{background:var(--navy);text-align:center;padding:20px}
+.logo{font-family:'Cormorant Garamond',serif;font-size:28px;letter-spacing:6px;color:#fff;font-weight:600}
+.logo-sub{font-size:11px;letter-spacing:5px;color:var(--gold);font-weight:700;margin-top:3px}
+/* ---- HERO ---- */
+.hero{position:relative;height:400px;overflow:hidden}
+.hero img{width:100%;height:100%;object-fit:cover}
+.hero-ov{position:absolute;inset:0;background:linear-gradient(to top,rgba(16,29,51,.88),rgba(16,29,51,.1))}
+.hero-txt{position:absolute;bottom:0;left:0;right:0;padding:36px;max-width:860px;margin:0 auto}
+.hero-eye{color:var(--gold);font-size:12px;letter-spacing:3px;font-weight:700;margin-bottom:6px}
+.hero-h{font-family:'Cormorant Garamond',serif;font-size:46px;color:#fff;font-weight:600;line-height:1.1}
+.hero-for{color:#c9d4e0;font-size:15px;margin-top:8px}
+/* ---- LAYOUT ---- */
+.wrap{max-width:860px;margin:0 auto;padding:28px 18px 60px}
+.doc{background:#fff;border-radius:16px;box-shadow:0 10px 50px rgba(26,43,58,.1);padding:38px;margin-bottom:20px}
+h1{font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--navy);text-align:center;margin-bottom:6px}
+.rule{width:60px;height:3px;background:var(--gold);margin:10px auto 20px;border-radius:2px}
+h2{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--navy);margin:28px 0 12px}
+.intro{font-size:15px;color:#4a5560;margin-bottom:18px}
+/* ---- FACTS ---- */
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.fact{background:var(--paper);border-radius:12px;padding:16px;text-align:center}
+.fact b{display:block;font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--navy)}
+.fact span{font-size:11px;color:#7a8494;margin-top:3px;display:block}
+/* ---- GALLERY ---- */
+.gallery{display:flex;gap:10px;margin:18px 0}
+.gallery img{flex:1;height:140px;object-fit:cover;border-radius:10px}
+/* ---- WHY ---- */
+.why{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.why-i{background:var(--paper);border-radius:12px;padding:18px}
+.why-i b{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--navy);display:block;margin-bottom:4px}
+.why-i p{font-size:13px;color:#4a5560}
+/* ---- STAY SCHEDULE ---- */
+.day{border-left:3px solid var(--gold);padding:8px 0 8px 16px;margin:10px 0}
+.day b{color:var(--navy);font-size:15px}
+.day p{font-size:14px;color:#4a5560;margin-top:3px}
+.suite-note{background:var(--paper);border-radius:10px;padding:14px 16px;font-size:13.5px;margin:14px 0}
+.suite-note b{color:var(--navy)}
+/* ---- OPTIONS ---- */
+.opt-intro{font-size:15px;margin-bottom:16px}
+.opt{border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px}
+.opt.best{border-color:var(--gold);box-shadow:0 6px 24px rgba(201,169,120,.18)}
+.opt-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.opt-head h3{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--navy)}
+.opt-tag{font-size:11px;font-weight:700;background:#e6f6f4;color:#159187;padding:3px 12px;border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left}
+th{font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase}
+td.r{text-align:right}.cost-sub{color:#7a8494;font-size:12px}
+.total-row td{border-top:2px solid var(--navy);border-bottom:none;font-weight:700;font-size:17px;padding-top:12px}
+/* ---- PAYMENT SCHEDULE ---- */
+.pay-table td{font-size:14px}
+/* ---- TERMS ---- */
+.terms{columns:2;column-gap:24px;font-size:10px;line-height:1.5;margin-top:10px}
+.term{break-inside:avoid;margin-bottom:10px}
+.term b{display:block;font-size:10.5px;color:var(--navy);margin-bottom:2px}
+.term p{color:#4a5560}
+/* ---- LINKS ---- */
+.links{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.links a{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;color:var(--navy);text-decoration:none}
+/* ---- ACCEPT ---- */
+.accept{background:#fff;border-radius:16px;box-shadow:0 10px 50px rgba(26,43,58,.1);padding:36px;margin-bottom:20px}
+.accept h2{margin-top:0}
+.accept p{font-size:14px;color:#4a5560;margin-bottom:16px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.field input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:10px;font-size:16px;font-family:inherit}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;margin:14px 0;cursor:pointer}
+.consent input{margin-top:3px;width:16px;height:16px;flex-shrink:0}
+.btn-accept{width:100%;padding:16px;background:var(--gold);color:var(--navy);border:none;border-radius:12px;font:700 17px 'Lato';cursor:pointer}
+.btn-accept:disabled{opacity:.5;cursor:not-allowed}
+.accepted{text-align:center;background:#e8f3ee;border-radius:12px;padding:24px;color:var(--green);font-size:16px;font-weight:600}
+.err{color:#b3261e;font-size:13px;margin-top:8px;text-align:center}
+.print-lnk{text-align:center;margin-top:14px}
+.print-lnk a{color:#2f6f9e;font-size:13px;cursor:pointer;text-decoration:underline}
+.addr{text-align:center;font-size:12px;color:#8a97ab;margin-top:6px;padding-bottom:20px}
+@media(max-width:620px){
+  .hero-h{font-size:32px}.facts{grid-template-columns:1fr 1fr}.why{grid-template-columns:1fr}
+  .gallery{flex-direction:column}.gallery img{height:180px;width:100%}
+  .terms{columns:1}.doc,.accept{padding:22px}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="bar">
+  <div class="logo">BRANDON HALL</div>
+  <div class="logo-sub">HOTEL AND SPA</div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <img src="https://www.brandonhallhotelandspa.com/wp-content/uploads/2025/09/1758893100-1000x667.png" alt="Brandon Hall Hotel and Spa" onerror="this.src='https://www.brandonhallhotelandspa.com/wp-content/uploads/2025/09/brandon-hall-hotel-spa-warwickshire-brandon-warwickshire-pic-4-1000x750.jpeg'">
+  <div class="hero-ov"></div>
+  <div class="hero-txt">
+    <div class="hero-eye">BRANDON HALL HOTEL AND SPA</div>
+    <div class="hero-h">Meeting &amp; Retreat Proposal</div>
+    <div class="hero-for">Prepared for Martin Mugadza · Men's Christian Retreat</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- INTRO -->
+<div class="doc">
+  <h1>Your event at Brandon Hall</h1>
+  <div class="rule"></div>
+  <p class="intro">Dear Martin, thank you so much for the opportunity to earn your business here at Brandon Hall Hotel and Spa. We would be delighted to be your chosen venue for your retreat in March 2027. Please find your full proposal below — everything is here to review, and you can accept online when you're ready.</p>
+
+  <!-- GALLERY -->
+  <div class="gallery">
+    <img src="https://www.brandonhallhotelandspa.com/wp-content/uploads/2025/09/1758893782-1000x757.png" alt="Brandon Hall" onerror="this.style.display='none'">
+    <img src="https://www.brandonhallhotelandspa.com/wp-content/uploads/2025/09/1758893922-1000x757.png" alt="Brandon Hall" onerror="this.style.display='none'">
+    <img src="https://www.brandonhallhotelandspa.com/wp-content/uploads/2025/09/brandon-hall-hotel-spa-warwickshire-brandon-warwickshire-pic-9-1000x750.jpeg" alt="Brandon Hall" onerror="this.style.display='none'">
+  </div>
+
+  <!-- FACTS -->
+  <div class="facts">
+    <div class="fact"><b>5–7 Mar 2027</b><span>Fri–Sun</span></div>
+    <div class="fact"><b>Up to 100</b><span>Delegates</span></div>
+    <div class="fact"><b>2 nights</b><span>Dinner, bed &amp; breakfast</span></div>
+    <div class="fact"><b>M050327-MUG</b><span>Reference</span></div>
+  </div>
+
+  <!-- WHY BH -->
+  <h2>Why Brandon Hall</h2>
+  <div class="why">
+    <div class="why-i"><b>Exclusive feel, sensible price</b><p>A stunning country-house setting that feels exclusively yours, at a price that works for you.</p></div>
+    <div class="why-i"><b>Everyone under one roof</b><p>Beautiful accommodation means your delegates can stay together, making the most of the retreat.</p></div>
+    <div class="why-i"><b>Tailored to you</b><p>Be as selective or as comprehensive as you like — every event is built around your needs.</p></div>
+    <div class="why-i"><b>Ceremony, dining &amp; meeting in one place</b><p>Your sessions, meals and accommodation all under one roof — no transfers, no disruption.</p></div>
+  </div>
+
+  <!-- STAY SCHEDULE -->
+  <h2>Your stay</h2>
+  <div class="day"><b>Friday 5th March 2027</b><p>Check in from 3:00pm at a rate of £130.00 per room, to include dinner, bed &amp; breakfast, use of the leisure facilities, complimentary car parking and VAT. Double/twin occupancy if required is at a rate of £180.00.</p></div>
+  <div class="day"><b>Saturday 6th March 2027</b><p>Bedrooms at a rate of £130.00 (DBB, leisure, parking, VAT). Double/twin £180.00. Function suite in use for your programme (see options below).</p></div>
+  <div class="day"><b>Sunday 7th March 2027</b><p>Breakfast included. Check out by 11:00am. Function suite available if required (see options below).</p></div>
+
+  <div class="suite-note"><b>Function suites:</b> The <b>Wolston Suite</b> accommodates up to 90 guests in a theatre-style layout — ideal for a lecture or informal gathering. The <b>Brandon Suite</b> holds up to 100 guests seated on round tables for a more formal set-up. Room-hire figures below are for the Wolston Suite; the Brandon Suite is £3,000/day.</div>
+
+  <!-- OPTIONS -->
+  <h2>Your options</h2>
+  <p class="opt-intro">We have prepared two options based on your requirements. Please review both and let us know which suits you best — or we can tailor further.</p>
+
+  <!-- OPTION 1 -->
+  <div class="opt">
+    <div class="opt-head"><h3>Option 1 — Room hire &amp; à la carte</h3><span class="opt-tag" style="background:#f0f4ff;color:#2f4fa2">Flexible</span></div>
+    <table>
+      <tr><td>Accommodation — 100 rooms × £130 × 2 nights (DBB single)</td><td class="r">£26,000</td></tr>
+      <tr><td>Wolston Suite hire — £2,000 × 2 days (Sat &amp; Sun) <span class="cost-sub">Brandon Suite £3,000/day if preferred</span></td><td class="r">£4,000</td></tr>
+      <tr><td>Chef's choice lunch × 100 guests × 2 days <span class="cost-sub">£20pp · sandwich lunch from £14pp as alternative</span></td><td class="r">£4,000</td></tr>
+      <tr><td>Tea &amp; coffee × 100 guests × 2 servings × 2 days <span class="cost-sub">£3.50pp per serving</span></td><td class="r">£1,400</td></tr>
+      <tr class="total-row"><td>Total (inc. VAT where applicable)</td><td class="r">£35,400</td></tr>
+    </table>
+  </div>
+
+  <!-- OPTION 2 -->
+  <div class="opt best">
+    <div class="opt-head"><h3>Option 2 — Day Delegate Package</h3><span class="opt-tag">Best value</span></div>
+    <table>
+      <tr><td>Accommodation — 100 rooms × £130 × 2 nights (DBB single)</td><td class="r">£26,000</td></tr>
+      <tr><td>Day Delegate Package × 100 guests × 2 days <span class="cost-sub">£30pp (reduced from £40pp) · includes room hire, projector &amp; screen, tea/coffee with snacks throughout, chef's buffet lunch</span></td><td class="r">£6,000</td></tr>
+      <tr class="total-row"><td>Total (inc. VAT where applicable)</td><td class="r">£32,000</td></tr>
+    </table>
+  </div>
+
+  <!-- PAYMENT SCHEDULE -->
+  <h2>Payment schedule</h2>
+  <table class="pay-table">
+    <tr><th>Instalment</th><th>Due</th><th class="r">Amount</th></tr>
+    <tr><td>Deposit (25%)</td><td>On confirmation</td><td class="r">£8,000</td></tr>
+    <tr><td>2nd Deposit (25%)</td><td>5 December 2026</td><td class="r">£8,000</td></tr>
+    <tr><td>Full Balance (50%)</td><td>22 January 2027</td><td class="r">£16,000</td></tr>
+    <tr class="total-row"><td colspan="2">Total (Option 2)</td><td class="r">£32,000</td></tr>
+  </table>
+
+  <!-- T&CS -->
+  <h2>Terms &amp; Conditions</h2>
+  <div class="terms">
+    <div class="term"><b>Taxes &amp; Service Charge</b><p>All meeting room, food and beverage, and related services are subject to applicable taxes (currently 20%) and service charge in effect on the date(s) of the event.</p></div>
+    <div class="term"><b>Maximum Numbers</b><p>Maximum numbers may decrease if additional equipment or staging is required. The Hotel may reduce numbers if required by law or regulatory guidance.</p></div>
+    <div class="term"><b>Car Parking</b><p>Complimentary for guests attending an event, on a first come first served basis. Please register vehicle registration at reception.</p></div>
+    <div class="term"><b>Group Room Night Commitment</b><p>The contracted bedrooms will be charged for. Additional rooms are subject to availability and will incur additional charges. Rates are subject to applicable taxes at time of check-out.</p></div>
+    <div class="term"><b>Attrition</b><p>A 10% reduction is permitted. Any shortfall beyond this will be charged as attrition. If revenue is less than the Minimum Spend, 40% of the difference will be posted to the Master Account.</p></div>
+    <div class="term"><b>Rooming List</b><p>A full rooming list with guest names is required a minimum of 21 working days prior to arrival.</p></div>
+    <div class="term"><b>Check-in Procedure</b><p>Rooms available from 3:00pm on the day of arrival and must be vacated by 11:00am on departure.</p></div>
+    <div class="term"><b>Advance Payment</b><p>Full pre-payment is required prior to arrival based on the Event Order and Group Room Night Commitment.</p></div>
+    <div class="term"><b>Payment — BACS/Bank Transfer</b><p>Account name: Brandon Hall Management Limited · Sort Code: 30-98-97 · Account Number: 38757762 · IBAN: GB17LOYD30989738757762 · BIC: LOYDGB21031 · VAT: GB 499558606. If bank details appear to change, verify by phone before making any payment.</p></div>
+    <div class="term"><b>Cancellation by the Organisation</b><p>0–3 days: 100% room commitment, 70% spend; 4–90 days: 90%/40%; 91–180 days: 80%/40%; 181–365 days: 70%/40%; 366+ days: 50%/40%. All plus applicable taxes.</p></div>
+    <div class="term"><b>Cancellation by the Hotel</b><p>The Hotel may cancel without liability if the event might prejudice the Hotel's reputation, or if the Organisation fails to meet its financial obligations.</p></div>
+    <div class="term"><b>Governing Law</b><p>This agreement is governed by the law of England and Wales. Disputes will first be addressed through good faith negotiation.</p></div>
+    <div class="term"><b>Force Majeure</b><p>Performance is subject to termination without liability upon circumstances beyond either party's control, conditioned on written notice within 10 days.</p></div>
+    <div class="term"><b>Privacy &amp; Data Protection</b><p>The Hotel is committed to applicable privacy and data protection laws. The Organisation will obtain all necessary rights before providing personal data.</p></div>
+    <div class="term"><b>Damage</b><p>The Organisation is responsible for any damage caused by its employees, sub-contractors or guests and shall pay on demand the amount to make good such damage.</p></div>
+    <div class="term"><b>Changes &amp; Amendments</b><p>Any changes will not be binding unless initialled or approved in writing by both parties.</p></div>
+    <div class="term"><b>Compliance with Law</b><p>This agreement is subject to all applicable laws including health and safety, alcoholic beverage control and disability laws.</p></div>
+    <div class="term"><b>Entire Agreement</b><p>This agreement contains the entire understanding between the parties and supersedes all prior understandings. No amendment is effective except in writing duly executed by both parties.</p></div>
+  </div>
+
+  <!-- HOTEL LINKS -->
+  <div class="links">
+    <a href="https://www.brandonhallhotelandspa.com" target="_blank">🌐 Visit our website</a>
+    <a href="https://www.google.com/maps/place/Brandon+Hall+Hotel+and+Spa/@52.3756,-1.4689" target="_blank">📍 Directions &amp; map</a>
+    <a href="mailto:events@brandonhallhotelandspa.com">✉ Email the events team</a>
+    <a href="tel:+442477102555">📞 +44 (0)247 710 2555</a>
+  </div>
+</div>
+
+<!-- ACCEPT CARD -->
+<div class="accept" id="acceptCard">
+  <h2>Accept your proposal</h2>
+  <p>By accepting, you confirm you're happy to proceed on the basis of this proposal and its terms. Our events team will then prepare your formal agreement to sign.</p>
+  <div class="field"><label>Your full name</label><input type="text" id="aName" placeholder="Type your full name" value="Martin Mugadza"></div>
+  <label class="consent"><input type="checkbox" id="aConsent"><span>I confirm I am happy to accept this proposal and wish to proceed to a formal agreement.</span></label>
+  <button class="btn-accept" id="aBtn" disabled>Accept proposal</button>
+  <div class="err" id="aErr"></div>
+</div>
+
+<div class="print-lnk"><a onclick="window.print()">🖨 Print / save a copy</a></div>
+<div class="addr">Brandon Hall Hotel and Spa · Main Street, Brandon, Coventry CV8 3FW · +44 (0)247 710 2555 · events@brandonhallhotelandspa.com</div>
+
+</div><!-- /wrap -->
+
+<script>
+const consent=document.getElementById('aConsent');
+const btn=document.getElementById('aBtn');
+const err=document.getElementById('aErr');
+const card=document.getElementById('acceptCard');
+
+// Check if already accepted (stored locally)
+const STORE_KEY='bh_accepted_M050327';
+if(localStorage.getItem(STORE_KEY)){
+  const d=JSON.parse(localStorage.getItem(STORE_KEY));
+  card.innerHTML=`<div class="accepted">✓ Thank you, ${d.name} — you accepted this proposal on ${d.date}.<br><br>Our events team will be in touch shortly to prepare your formal agreement.</div>`;
+}
+
+consent.onchange=()=>btn.disabled=!consent.checked;
+btn.onclick=()=>{
+  const name=document.getElementById('aName').value.trim();
+  if(!name){err.textContent='Please enter your full name.';return;}
+  btn.disabled=true;
+  const data={name,date:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}),at:new Date().toISOString()};
+  localStorage.setItem(STORE_KEY,JSON.stringify(data));
+  // Fire off notification email via mailto
+  const subject=encodeURIComponent('Proposal Accepted — Martin Mugadza / Men\'s Retreat — M050327-MUG');
+  const body=encodeURIComponent(`Martin Mugadza has accepted the proposal for the Men\'s Christian Retreat.\n\nRef: M050327-MUG\nDate accepted: ${data.date}\nAccepted by: ${data.name}\n\nPlease prepare the formal agreement and send for signature.\n\nBrandon Hall Hotel and Spa — HOSPRO`);
+  window.open(`mailto:events@brandonhallhotelandspa.com?subject=${subject}&body=${body}`);
+  card.innerHTML=`<div class="accepted">✓ Thank you, ${data.name} — you have accepted this proposal on ${data.date}.<br><br>Our events team will be in touch to prepare your formal agreement to sign. We look forward to welcoming you to Brandon Hall Hotel and Spa.</div>`;
+};
+</script>
+</body>
+</html>
