@@ -967,16 +967,31 @@ function pipeFilterActive(){ return Object.values(PIPE_FILTER).some(x=>x); }
 
 function pipelineData(){
   const out=[];
-  DB.all().forEach(e=>out.push(Object.assign({_kind:"enquiry"}, e)));
+  const dbRecords=DB.all();
+  dbRecords.forEach(e=>out.push(Object.assign({_kind:"enquiry"}, e)));
+  // collect refs already covered by DB records so we don't show BOB duplicates
+  const dbRefs=new Set(dbRecords.map(e=>e.ref||e.bobRef||"").filter(Boolean));
+  const dbNames=new Set(dbRecords.map(e=>(e.name||e.client||"").toLowerCase()).filter(Boolean));
   if(typeof BOB!=="undefined"){
     const map={ prospect:"provisional", confirmed:"confirmed", cancelled:"cancelled" };
     ["prospect","confirmed","cancelled"].forEach(bucket=>{
-      BOB[bucket].forEach(r=>out.push({
-        _kind:"bob", id:"BOB-"+r.ref, name:r.guest, value:r.value, pax:r.pax,
-        room:roomIdFromName(r.room), roomName:r.room, date:r.arrival,
-        status:map[bucket], owner:r.operator, source:"BOB / Rezlynx",
-        ratePlan:r.ratePlan, ref:r.ref, created:r.arrival||BOB.pulled,
-        notes:`Rezlynx ${bucket} · ${r.ratePlan} · ref ${r.ref}` }));
+      BOB[bucket].forEach(r=>{
+        // Skip BOB record if there's already a DB enquiry with same ref or same guest name + date
+        if(dbRefs.has(r.ref)) return;
+        const nm=(r.guest||"").toLowerCase();
+        if(dbNames.has(nm)) return; // name already in DB
+        const extra = r.quoteOptions?{quoteOptions:r.quoteOptions}:{};
+        if(r.quotePay) extra.quotePay=r.quotePay;
+        out.push(Object.assign({
+          _kind:"bob", id:"BOB-"+r.ref, name:r.guest, value:r.value, pax:r.pax,
+          room:roomIdFromName(r.room), roomName:r.room, date:r.arrival,
+          status:map[bucket], owner:r.operator, source:"BOB / Rezlynx",
+          ratePlan:r.ratePlan, ref:r.ref, created:r.arrival||BOB.pulled,
+          notes:`Rezlynx ${bucket} · ${r.ratePlan} · ref ${r.ref}`,
+          quoteIssued:r.quoteIssued, dealStage:r.dealStage,
+          quoteLink:r.quoteLink, client:r.client, company:r.company,
+          eventType:r.eventType }, extra));
+      });
     });
   }
   return out;
@@ -3885,7 +3900,15 @@ function renderDealTrack(e){
     // Enquiry → issue quote
     act.innerHTML=`<button class="btn block" id="d-quote" style="background:#2f6f9e">1 · Build &amp; issue quote</button>
       <p class="qs-sub" style="margin-top:6px">Opens the quote builder — add rooms, packages, menu and payment terms, then create the client link.</p>`;
-    $("#d-quote").onclick=()=>{ closeModal(); quoteEnquiry=e; QUOTE_ROOMS=[]; QUOTE_ACC=[]; QUOTE_CUSTOM=[]; QUOTE_PAY=[]; QUOTE_OPTIONS=[]; window._editingQuoteId=null; switchTab("quote"); };
+    $("#d-quote").onclick=()=>{
+      closeModal(); quoteEnquiry=e;
+      QUOTE_ROOMS=[]; QUOTE_ACC=[]; QUOTE_CUSTOM=[]; QUOTE_PAY=[]; QUOTE_OPTIONS=[];
+      if(e.quoteOptions && e.quoteOptions.length){ QUOTE_OPTIONS=JSON.parse(JSON.stringify(e.quoteOptions)); }
+      if(e.quoteAcc && e.quoteAcc.length){ QUOTE_ACC=JSON.parse(JSON.stringify(e.quoteAcc)); }
+      if(e.quoteCustom && e.quoteCustom.length){ QUOTE_CUSTOM=JSON.parse(JSON.stringify(e.quoteCustom)); }
+      if(e.quotePay && e.quotePay.length){ QUOTE_PAY=JSON.parse(JSON.stringify(e.quotePay)); }
+      window._editingQuoteId=null; switchTab("quote");
+    };
   } else if(idx===1){
     // Quote issued → awaiting acceptance
     const url = e.quoteLink
