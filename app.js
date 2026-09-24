@@ -2133,13 +2133,15 @@ function renderMnEItems(roomId){
   const items=MnEState.items(roomId);
   if(!items.length){ box.innerHTML=`<div class="qs-sub" style="padding:8px 0">No items yet — add what this room needs.</div>`; return; }
   box.innerHTML=`<table class="mne-table">
-    <tr><th>Item</th><th>Cat</th><th>Size</th><th>Qty</th><th>Unit cost</th><th>Line</th><th>Supplier</th><th>Status</th><th></th></tr>`+
+    <tr><th>Item</th><th>Cat</th><th>Size</th><th>Qty</th><th>Unit cost £</th><th>Line</th><th>Supplier</th><th>Status</th><th></th></tr>`+
     items.map((it,i)=>{ const line=(it.cost||0)*(it.qty||1);
       return `<tr>
       <td>${it.item}</td><td><span class="cat-pill">${it.cat}</span></td>
-      <td>${it.size||"—"}</td><td>${it.qty}</td>
-      <td>${it.cost?money(it.cost):"—"}</td><td>${line?money(Math.round(line)):"—"}</td>
-      <td>${it.supplier||"—"}</td>
+      <td>${it.size||"—"}</td>
+      <td><input class="mne-edit mne-qty" data-room="${roomId}" data-i="${i}" data-k="qty" type="number" min="1" value="${it.qty||1}" style="width:48px"></td>
+      <td><input class="mne-edit mne-cost" data-room="${roomId}" data-i="${i}" data-k="cost" type="number" min="0" step="0.01" value="${it.cost||''}" placeholder="0.00" style="width:80px"></td>
+      <td class="mne-line">${line?money(Math.round(line)):"—"}</td>
+      <td><input class="mne-edit" data-room="${roomId}" data-i="${i}" data-k="supplier" value="${(it.supplier||'').replace(/"/g,'&quot;')}" placeholder="Supplier" style="width:110px"></td>
       <td><select class="mne-status ${it.status}" data-room="${roomId}" data-i="${i}">
         ${MNE_STATUSES.map(s=>`<option value="${s}" ${it.status===s?"selected":""}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join("")}
       </select></td>
@@ -2149,6 +2151,23 @@ function renderMnEItems(roomId){
     MnEState.setStatus(sel.dataset.room, +sel.dataset.i, sel.value); render(); });
   box.querySelectorAll(".mne-del").forEach(b=>b.onclick=()=>{
     MnEState.remove(b.dataset.room, +b.dataset.i); render(); });
+  // inline edit of qty / cost / supplier — update totals live without re-rendering the row
+  box.querySelectorAll(".mne-edit").forEach(inp=>inp.onchange=()=>{
+    const room=inp.dataset.room, idx=+inp.dataset.i, k=inp.dataset.k;
+    const val=(k==='cost'||k==='qty')?parseFloat(inp.value)||0:inp.value;
+    MnEState.setField(room, idx, k, val);
+    // update this row's line total
+    const it=MnEState.items(room)[idx];
+    const line=(it.cost||0)*(it.qty||1);
+    const cell=inp.closest("tr")?.querySelector(".mne-line");
+    if(cell) cell.textContent = line?money(Math.round(line)):"—";
+    // update the room total in the header
+    const roomCost=MnEState.items(room).reduce((s,x)=>s+(x.cost||0)*(x.qty||1),0);
+    const head=box.closest(".mne-room")?.querySelector(".room-cost");
+    if(head) head.textContent = roomCost?money(Math.round(roomCost)):"";
+    else if(roomCost){ const h=box.closest(".mne-room")?.querySelector(".mne-head");
+      if(h && !h.querySelector(".room-cost")){ const sp=document.createElement("span"); sp.className="room-cost"; sp.textContent=money(Math.round(roomCost)); h.insertBefore(sp, h.querySelector(".mne-add")); } }
+  });
 }
 /* ---- Print M&E requirements list OR supplier quote request (RFQ) ---- */
 function printMnE(mode){
@@ -2285,7 +2304,8 @@ const MnEState={
   items(roomId){ return this.load()[roomId]||[]; },
   add(roomId,item){ this.load(); (this._store[roomId]=this._store[roomId]||[]).push(item); this.save(); },
   remove(roomId,i){ this.load(); this._store[roomId].splice(i,1); this.save(); },
-  setStatus(roomId,i,status){ this.load(); this._store[roomId][i].status=status; this.save(); }
+  setStatus(roomId,i,status){ this.load(); this._store[roomId][i].status=status; this.save(); },
+  setField(roomId,i,key,val){ this.load(); if(this._store[roomId]&&this._store[roomId][i]){ this._store[roomId][i][key]=val; this.save(); } }
 };
 
 /* ---- SVG chart builders ---- */
