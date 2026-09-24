@@ -2051,14 +2051,19 @@ function renderMnE(v){
   v.appendChild(head("M&E Upgrade — Equipment Tracker","Manage equipment per room: TVs, projectors, connectivity, furniture, power and software. Track needed → ordered → delivered → installed, with cost and supplier."));
 
   const tb=el("div","pipe-toolbar");
-  tb.innerHTML=`<div class="rag-legend"><span>Print the full requirements list, or send a quote request to AV suppliers.</span></div>
+  tb.innerHTML=`<div class="rag-legend"><span>Enter unit costs to price up. Print the list, or send a supplier quote request.</span></div>
     <div class="pipe-actions">
+      <button class="btn ghost" id="mne-reload" title="Pull in the latest standard items (keeps your entered costs where item names match)">↻ Reload master list</button>
       <button class="btn" id="mne-print-req">🖨 Print requirements list</button>
       <button class="btn ghost" id="mne-print-rfq">✉ Supplier quote request</button>
     </div>`;
   v.appendChild(tb);
   $("#mne-print-req").onclick=()=>printMnE("requirements");
   $("#mne-print-rfq").onclick=()=>printMnE("rfq");
+  $("#mne-reload").onclick=()=>{
+    if(!confirm("Reload the master equipment list?\n\nThis adds any new standard items to each room. Your entered costs are kept where the item name matches. Continue?")) return;
+    MnEState.mergeMaster(); render();
+  };
 
   // ---- summary bar (status counts + cost) ----
   let counts={needed:0,ordered:0,delivered:0,installed:0}, total=0, totalCost=0, committedCost=0, outstandingCost=0;
@@ -2305,7 +2310,18 @@ const MnEState={
   add(roomId,item){ this.load(); (this._store[roomId]=this._store[roomId]||[]).push(item); this.save(); },
   remove(roomId,i){ this.load(); this._store[roomId].splice(i,1); this.save(); },
   setStatus(roomId,i,status){ this.load(); this._store[roomId][i].status=status; this.save(); },
-  setField(roomId,i,key,val){ this.load(); if(this._store[roomId]&&this._store[roomId][i]){ this._store[roomId][i][key]=val; this.save(); } }
+  setField(roomId,i,key,val){ this.load(); if(this._store[roomId]&&this._store[roomId][i]){ this._store[roomId][i][key]=val; this.save(); } },
+  /* Merge the current MNE_ROOMS master into the store: adds any item (by name)
+     a room is missing, without wiping costs/qty the user already entered. */
+  mergeMaster(){ this.load();
+    Object.entries(MNE_ROOMS).forEach(([rid,conf])=>{
+      const existing=this._store[rid]=this._store[rid]||[];
+      (conf.items||[]).forEach(mi=>{
+        if(!existing.some(x=>x.item===mi.item)){ existing.push(Object.assign({},mi)); }
+      });
+    });
+    this.save();
+  }
 };
 
 /* ---- SVG chart builders ---- */

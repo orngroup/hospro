@@ -452,6 +452,13 @@ const MNE_ROOMS = {
     wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "conference chairs", "Black out blinds"],
     socialWishlist:["Chavari chairs (for weddings)", "Couple chairs", "LED Uplighters for dinners", "LED dancefloor", "Poseur tables x 4", "Easel x 2"],
     items:[
+      
+      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
+      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
+      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
+      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
+      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
+      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
       { cat:"Screen", item:"4K Smart TV / Screen", size:"98\"", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
       { cat:"Software", item:"Click Share", qty:1, status:"needed" },
@@ -464,6 +471,13 @@ const MNE_ROOMS = {
     wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "conference  chairs", "Black out blinds"],
     socialWishlist:["Portable bar - so guests can have private bar in room"],
     items:[
+      
+      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
+      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
+      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
+      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
+      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
+      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
       { cat:"Screen", item:"4K Smart TV / Screen", size:"98\"", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
       { cat:"Software", item:"Click Share", qty:1, status:"needed" },
@@ -476,6 +490,13 @@ const MNE_ROOMS = {
     wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "comfortable conference chairs", "Black out blinds", "New carpet - necessity"],
     socialWishlist:["LED Uplighters for special events", "LED Dancefloor", "Portable bar - so guests can have private bar in room", "Poseur tables x 4", "Easel x 1"],
     items:[
+      
+      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
+      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
+      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
+      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
+      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
+      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
       { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
       { cat:"Software", item:"Click Share", qty:1, status:"needed" },
@@ -488,6 +509,13 @@ const MNE_ROOMS = {
     wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs", "Black out blinds"],
     socialWishlist:[],
     items:[
+      
+      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
+      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
+      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
+      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
+      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
+      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
       { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
       { cat:"Software", item:"Click Share", qty:1, status:"needed" },
@@ -500,6 +528,13 @@ const MNE_ROOMS = {
     wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs", "Black out blinds"],
     socialWishlist:[],
     items:[
+      
+      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
+      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
+      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
+      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
+      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
+      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
       { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
       { cat:"Software", item:"Click Share", qty:1, status:"needed" },
@@ -512,6 +547,13 @@ const MNE_ROOMS = {
     wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs", "Black out blinds"],
     socialWishlist:[],
     items:[
+      
+      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
+      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
+      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
+      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
+      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
+      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
       { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
       { cat:"Software", item:"Click Share", qty:1, status:"needed" },
@@ -524,6 +566,13 @@ const MNE_ROOMS = {
     wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs", "Black out blinds"],
     socialWishlist:[],
     items:[
+      
+      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
+      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
+      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
+      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
+      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
+      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
       { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
       { cat:"Software", item:"Click Share", qty:1, status:"needed" },
@@ -536,6 +585,13 @@ const MNE_ROOMS = {
     wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs", "Black out blinds"],
     socialWishlist:[],
     items:[
+      
+      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
+      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
+      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
+      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
+      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
+      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
       { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
       { cat:"Software", item:"Click Share", qty:1, status:"needed" },
@@ -548,6 +604,13 @@ const MNE_ROOMS = {
     wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs", "Black out blinds"],
     socialWishlist:[],
     items:[
+      
+      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
+      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
+      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
+      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
+      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
+      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
       { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
       { cat:"Software", item:"Click Share", qty:1, status:"needed" },
@@ -560,6 +623,13 @@ const MNE_ROOMS = {
     wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs - comfortable conference chairs", "Black out blinds", "Staging - for conferences and bands/weddings"],
     socialWishlist:["LED Uplighters for special events", "LED Dancefloor", "Poseur tables x 8", "Easel x 3"],
     items:[
+      
+      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
+      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
+      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
+      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
+      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
+      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
       { cat:"Screen", item:"4K Smart TV / Screen", size:"98\"", qty:1, status:"needed" },
       { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
       { cat:"Software", item:"Click Share", qty:1, status:"needed" },
