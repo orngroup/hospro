@@ -19,6 +19,7 @@ const LAYOUT_LABELS = { boardroom:"Boardroom", ushape:"U-Shape",
 const $  = s => document.querySelector(s);
 const el = (t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
 const money = n => "£"+Number(n).toLocaleString("en-GB",{minimumFractionDigits:0,maximumFractionDigits:2});
+const money2dp = n => "£"+Number(n||0).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
 
 /* ---------- simple demo store ---------- */
 const Store = {
@@ -2054,12 +2055,16 @@ function renderMnE(v){
   tb.innerHTML=`<div class="rag-legend"><span>Enter unit costs to price up. Print the list, or send a supplier quote request.</span></div>
     <div class="pipe-actions">
       <button class="btn ghost" id="mne-reload" title="Pull in the latest standard items (keeps your entered costs where item names match)">↻ Reload master list</button>
-      <button class="btn" id="mne-print-req">🖨 Print requirements list</button>
-      <button class="btn ghost" id="mne-print-rfq">✉ Supplier quote request</button>
+      <button class="btn" id="mne-budget" style="background:#4a7c59">📋 Budget approval sheet</button>
+      <button class="btn ghost" id="mne-jobsheet">🔧 Maintenance job sheets</button>
+      <button class="btn ghost" id="mne-print-req">🖨 Requirements list</button>
+      <button class="btn ghost" id="mne-print-rfq">✉ Supplier RFQ</button>
     </div>`;
   v.appendChild(tb);
   $("#mne-print-req").onclick=()=>printMnE("requirements");
   $("#mne-print-rfq").onclick=()=>printMnE("rfq");
+  $("#mne-budget").onclick=printBudgetApproval;
+  $("#mne-jobsheet").onclick=printJobSheets;
   $("#mne-reload").onclick=()=>{
     if(!confirm("Reload the master equipment list?\n\nThis adds any new standard items to each room. Your entered costs are kept where the item name matches. Continue?")) return;
     MnEState.mergeMaster(); render();
@@ -2121,7 +2126,7 @@ function renderMnE(v){
     panel.innerHTML=`<div class="mne-head">
         <h3>${r.name} <span class="mne-m2">${r.m2} m²</span></h3>
         ${readyBadge}
-        ${roomCost?`<span class="room-cost">${money(Math.round(roomCost))}</span>`:""}
+        ${roomCost?`<span class="room-cost">${money2dp(roomCost)}</span>`:""}
         <button class="btn sm mne-add" data-room="${r.id}">+ Item</button>
       </div>
       ${conf&&conf.currentAV?`<div class="mne-current">Current AV: ${conf.currentAV}</div>`:""}
@@ -2145,7 +2150,7 @@ function renderMnEItems(roomId){
       <td>${it.size||"—"}</td>
       <td><input class="mne-edit mne-qty" data-room="${roomId}" data-i="${i}" data-k="qty" type="number" min="1" value="${it.qty||1}" style="width:48px"></td>
       <td><input class="mne-edit mne-cost" data-room="${roomId}" data-i="${i}" data-k="cost" type="number" min="0" step="0.01" value="${it.cost||''}" placeholder="0.00" style="width:80px"></td>
-      <td class="mne-line">${line?money(Math.round(line)):"—"}</td>
+      <td class="mne-line">${line?money2dp(line):"—"}</td>
       <td><input class="mne-edit" data-room="${roomId}" data-i="${i}" data-k="supplier" value="${(it.supplier||'').replace(/"/g,'&quot;')}" placeholder="Supplier" style="width:110px"></td>
       <td><select class="mne-status ${it.status}" data-room="${roomId}" data-i="${i}">
         ${MNE_STATUSES.map(s=>`<option value="${s}" ${it.status===s?"selected":""}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join("")}
@@ -2165,13 +2170,13 @@ function renderMnEItems(roomId){
     const it=MnEState.items(room)[idx];
     const line=(it.cost||0)*(it.qty||1);
     const cell=inp.closest("tr")?.querySelector(".mne-line");
-    if(cell) cell.textContent = line?money(Math.round(line)):"—";
+    if(cell) cell.textContent = line?money2dp(line):"—";
     // update the room total in the header
     const roomCost=MnEState.items(room).reduce((s,x)=>s+(x.cost||0)*(x.qty||1),0);
     const head=box.closest(".mne-room")?.querySelector(".room-cost");
-    if(head) head.textContent = roomCost?money(Math.round(roomCost)):"";
+    if(head) head.textContent = roomCost?money2dp(roomCost):"";
     else if(roomCost){ const h=box.closest(".mne-room")?.querySelector(".mne-head");
-      if(h && !h.querySelector(".room-cost")){ const sp=document.createElement("span"); sp.className="room-cost"; sp.textContent=money(Math.round(roomCost)); h.insertBefore(sp, h.querySelector(".mne-add")); } }
+      if(h && !h.querySelector(".room-cost")){ const sp=document.createElement("span"); sp.className="room-cost"; sp.textContent=money2dp(roomCost); h.insertBefore(sp, h.querySelector(".mne-add")); } }
   });
 }
 /* ---- Print M&E requirements list OR supplier quote request (RFQ) ---- */
@@ -2273,25 +2278,157 @@ function printMnE(mode){
   win.document.close();
 }
 
+/* ---- Budget Approval Sheet (master, all rooms) — for Raj Kumar to sign ---- */
+function printBudgetApproval(){
+  const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+  let grand=0;
+  const rooms=ROOMS.map(r=>({r,items:MnEState.items(r.id).filter(it=>(it.cost||0)>0 || it.item)}))
+    .filter(x=>x.items.length);
+  const blocks=rooms.map(({r,items})=>{
+    const roomTotal=items.reduce((s,it)=>s+(it.cost||0)*(it.qty||1),0);
+    grand+=roomTotal;
+    const rows=items.map(it=>{ const line=(it.cost||0)*(it.qty||1);
+      return `<tr><td>${it.item}</td><td class="c">${it.qty||1}</td><td class="r">${it.cost?money2dp(it.cost):"—"}</td><td class="r">${line?money2dp(line):"—"}</td><td>${it.supplier||""}</td></tr>`;
+    }).join("");
+    return `<div class="room"><div class="room-h"><h3>${r.name}</h3><span class="rtot">${money2dp(roomTotal)}</span></div>
+      <table><tr><th>Item</th><th class="c">Qty</th><th class="r">Unit £</th><th class="r">Line £</th><th>Supplier</th></tr>${rows}</table></div>`;
+  }).join("");
+  const win=window.open("","_blank");
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>M&E Budget Approval — Brandon Hall</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>@page{margin:16mm}body{font-family:'Lato',sans-serif;color:#2a3644;font-size:12px;max-width:900px;margin:0 auto;padding:14px}
+    .h{text-align:center;border-bottom:3px solid #1a2b47;padding-bottom:12px;margin-bottom:14px}
+    .logo{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;letter-spacing:5px;color:#1a2b47}
+    .sub{font-size:11px;letter-spacing:4px;color:#c9a978;font-weight:700}
+    h1{font-family:'Cormorant Garamond',serif;font-size:22px;text-align:center;color:#1a2b47;margin:12px 0 4px}
+    .meta{text-align:center;font-size:11px;color:#7a8494;margin-bottom:14px}
+    .room{margin-bottom:14px;break-inside:avoid}
+    .room-h{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #e3e7ee;padding-bottom:4px;margin-bottom:5px}
+    .room-h h3{font-family:'Cormorant Garamond',serif;font-size:17px;color:#1a2b47}
+    .rtot{font-weight:700;color:#1a2b47}
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    th{background:#1a2b47;color:#fff;text-align:left;padding:6px 8px;font-size:10px}
+    td{padding:5px 8px;border-bottom:1px solid #eef2f4}.c{text-align:center}.r{text-align:right}
+    .grand{margin-top:16px;background:#eef5ec;border:1px solid #cfe3c8;border-radius:8px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+    .grand .lbl{font-size:15px;font-weight:700;color:#1a2b47}.grand .amt{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:#2a6a4a}
+    .approve{margin-top:26px;border-top:2px solid #1a2b47;padding-top:18px}
+    .approve h4{font-family:'Cormorant Garamond',serif;font-size:16px;color:#1a2b47;margin-bottom:10px}
+    .sigrow{display:flex;gap:40px;margin-top:24px}
+    .sigbox{flex:1}.sigline{height:44px;border-bottom:1.5px solid #1a2b47}
+    .siglabel{font-size:11px;color:#7a8494;margin-top:5px}
+    .foot{margin-top:22px;font-size:10px;color:#7a8494;text-align:center}
+    </style></head><body>
+    <div class="h"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL AND SPA</div></div>
+    <h1>Meetings &amp; Events — Capital Budget Approval</h1>
+    <div class="meta">Equipment &amp; works upgrade · Prepared ${today}</div>
+    ${blocks}
+    <div class="grand"><span class="lbl">Total capital budget requested</span><span class="amt">${money2dp(grand)}</span></div>
+    <div class="approve">
+      <h4>Approval</h4>
+      <p style="font-size:11.5px;color:#4a5560">The above budget covers the equipment and works required to bring the meeting &amp; events spaces to specification. Approval is requested to proceed with procurement.</p>
+      <div class="sigrow">
+        <div class="sigbox"><div class="sigline"></div><div class="siglabel">Approved — Raj Kumar (Global COO)</div></div>
+        <div class="sigbox"><div class="sigline"></div><div class="siglabel">Date</div></div>
+      </div>
+    </div>
+    <div class="foot">Brandon Hall Hotel and Spa · Main Street, Brandon, Coventry CV8 3FW · 024 7710 2555</div>
+    <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>`);
+  win.document.close();
+}
+
+/* ---- Maintenance Job Sheets (per room) — for the house maintenance team ---- */
+function printJobSheets(){
+  const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+  // turn equipment items into install tasks
+  const taskVerb=(it)=>{ const n=(it.item||"").toLowerCase();
+    if(n.includes("tv")||n.includes("screen")) return "Install & mount";
+    if(n.includes("air con")||n.includes("cassette")||n.includes("ac ")) return "Fit";
+    if(n.includes("socket")||n.includes("power")) return "Fit / replace";
+    if(n.includes("door")||n.includes("lock")) return "Repair";
+    if(n.includes("cable")||n.includes("connector")||n.includes("clickshare")) return "Fit / connect";
+    return "Install"; };
+  const rooms=ROOMS.map(r=>({r,conf:MNE_ROOMS[r.id],items:MnEState.items(r.id)})).filter(x=>x.items.length||x.conf);
+  const pages=rooms.map(({r,conf,items})=>{
+    const rows=items.map(it=>`<tr><td class="tick">☐</td><td><b>${taskVerb(it)}</b> ${it.item}${it.size?` (${it.size})`:""}</td><td class="c">${it.qty||1}</td><td>${it.supplier||""}</td><td class="note"></td></tr>`).join("")
+      || `<tr><td colspan="5" class="none">No equipment tasks listed.</td></tr>`;
+    return `<div class="sheet">
+      <div class="h"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL AND SPA</div></div>
+      <h1>Maintenance Job Sheet</h1>
+      <div class="rm">${r.name}${conf&&conf.capacity?` · ${conf.capacity}`:""}</div>
+      <div class="meta">Issued ${today} · House Maintenance Team</div>
+      ${conf&&conf.comments?`<div class="cmt"><b>Notes:</b> ${conf.comments}</div>`:""}
+      <table><tr><th></th><th>Task</th><th class="c">Qty</th><th>Supplier / kit</th><th>Done ✓ / notes</th></tr>${rows}</table>
+      <div class="works"><b>Additional works required</b> (decorating, snagging, electrical, other):
+        <div class="lines"></div></div>
+      <div class="sigrow">
+        <div class="sigbox"><div class="sigline"></div><div class="siglabel">Completed by</div></div>
+        <div class="sigbox"><div class="sigline"></div><div class="siglabel">Date</div></div>
+        <div class="sigbox"><div class="sigline"></div><div class="siglabel">Checked by</div></div>
+      </div>
+    </div>`;
+  }).join("");
+  const win=window.open("","_blank");
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Maintenance Job Sheets — Brandon Hall</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>@page{margin:14mm}body{font-family:'Lato',sans-serif;color:#2a3644;font-size:12px}
+    .sheet{max-width:800px;margin:0 auto 0;padding:10px;page-break-after:always}
+    .sheet:last-child{page-break-after:auto}
+    .h{text-align:center;border-bottom:2px solid #1a2b47;padding-bottom:8px}
+    .logo{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;letter-spacing:4px;color:#1a2b47}
+    .sub{font-size:10px;letter-spacing:4px;color:#c9a978;font-weight:700}
+    h1{font-family:'Cormorant Garamond',serif;font-size:22px;text-align:center;color:#1a2b47;margin:12px 0 2px}
+    .rm{text-align:center;font-size:15px;font-weight:700;color:#1a2b47}
+    .meta{text-align:center;font-size:11px;color:#7a8494;margin-bottom:12px}
+    .cmt{font-size:11px;background:#f6f8f9;border-radius:6px;padding:8px 10px;margin-bottom:10px}
+    table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px}
+    th{background:#1a2b47;color:#fff;text-align:left;padding:7px 8px;font-size:10.5px}
+    td{padding:9px 8px;border-bottom:1px solid #e3e7ee;vertical-align:top}
+    .tick{font-size:16px;text-align:center;width:28px}.c{text-align:center}
+    .note{min-width:150px}.none{color:#7a8494;font-style:italic}
+    .works{border:1px solid #e3e7ee;border-radius:8px;padding:12px;font-size:12px}
+    .works .lines{height:90px;background-image:repeating-linear-gradient(#fff,#fff 27px,#e3e7ee 28px);margin-top:8px}
+    .sigrow{display:flex;gap:30px;margin-top:22px}.sigbox{flex:1}
+    .sigline{height:40px;border-bottom:1.5px solid #1a2b47}.siglabel{font-size:11px;color:#7a8494;margin-top:5px}
+    </style></head><body>${pages}
+    <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>`);
+  win.document.close();
+}
+
+function knownMnEItems(){
+  const map={};
+  Object.values(MNE_ROOMS).forEach(r=>(r.items||[]).forEach(it=>{ if(it.item&&!(it.item in map)) map[it.item]=it.cost||0; }));
+  try{ const saved=JSON.parse(localStorage.getItem("bh_mne_items")||"{}"); Object.assign(map,saved); }catch{}
+  return map;
+}
+function rememberMnEItem(name,cost){
+  try{ const saved=JSON.parse(localStorage.getItem("bh_mne_items")||"{}"); saved[name]=cost||saved[name]||0;
+    localStorage.setItem("bh_mne_items",JSON.stringify(saved)); }catch{}
+}
 function openMnEItemForm(roomId){
   const room=ROOMS.find(r=>r.id===roomId);
   const sizes=['43"','55"','65"','75"','86"','98"','100"'];
+  const known=knownMnEItems();
   const body=`<div class="form-grid">
     <div><label>Category</label><select id="mi-cat">${MNE_CATEGORIES.map(c=>`<option>${c}</option>`).join("")}</select></div>
-    <div><label>Item</label><input id="mi-item" placeholder="e.g. 4K Smart TV"></div>
+    <div><label>Item</label><input id="mi-item" list="mi-itemlist" placeholder="Type or pick…" autocomplete="off">
+      <datalist id="mi-itemlist">${Object.keys(known).sort().map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join("")}</datalist></div>
     <div><label>Size (screens)</label><select id="mi-size"><option value="">N/A</option>${sizes.map(s=>`<option>${s}</option>`).join("")}</select></div>
     <div><label>Quantity</label><input id="mi-qty" type="number" min="1" value="1"></div>
-    <div><label>Unit cost (£)</label><input id="mi-cost" type="number" min="0" step="0.01" placeholder="0"></div>
+    <div><label>Unit cost (£)</label><input id="mi-cost" type="number" min="0" step="0.01" placeholder="0.00"></div>
     <div><label>Supplier</label><input id="mi-supplier" placeholder="e.g. AV Partner Ltd"></div>
     <div><label>Status</label><select id="mi-status">${MNE_STATUSES.map(s=>`<option value="${s}">${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join("")}</select></div>
   </div>
   <div style="margin-top:18px"><button class="btn" id="mi-save">Add item</button></div>`;
   showModal(`Add equipment — ${room.name}`,"New M&E item",body);
+  // auto-fill cost when a known item is picked
+  $("#mi-item").oninput=()=>{ const v=$("#mi-item").value.trim(); if(known[v]!=null && !$("#mi-cost").value){ $("#mi-cost").value=known[v]; } };
   $("#mi-save").onclick=()=>{
     const item=$("#mi-item").value.trim(); if(!item){ $("#mi-item").focus(); return; }
+    const cost=parseFloat($("#mi-cost").value)||0;
     MnEState.add(roomId,{ cat:$("#mi-cat").value, item, size:$("#mi-size").value,
-      qty:parseInt($("#mi-qty").value)||1, cost:parseFloat($("#mi-cost").value)||0,
+      qty:parseInt($("#mi-qty").value)||1, cost,
       supplier:$("#mi-supplier").value.trim(), status:$("#mi-status").value });
+    rememberMnEItem(item,cost);   // save to dropdown for next time
     closeModal(); render();
   };
 }
