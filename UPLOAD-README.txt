@@ -1,22 +1,14 @@
-BRANDON HALL — BEVERAGE MANAGEMENT
-Upload all files to brandonme (overwrite). Paste firestore.rules into Firebase.
+BRANDON HALL — BEVERAGE MANAGEMENT (updated)
+Upload all to brandonme (overwrite). Paste firestore.rules in Firebase.
 
-FILES:
-  beverage.html   NEW — the iPad stock-room screen (PIN 0356)
-  bev-data.js     NEW — 117 products from the 21 Sept stock take
-  app.js          adds the Beverage Management dashboard tab (EventsPRO)
-  data.js         registers the tab
-  index.html      loads bev-data.js + styles
-  firestore.rules adds the 'beverage' collection (paste in Firebase)
+iPad screen (beverage.html) changes:
+  - Stock value removed from the mobile app (it's on the portal dashboard)
+  - Top row = 3 clickable tabs: Products / Low stock / Out of stock
+    (tap to filter the list)
+  - 3 actions: Remove / Delivery / Re-Order
+  - Re-Order builds an order (low/out items pre-selected), then emails the
+    General Manager (gm@brandonhallhotelandspa.com) for approval & ordering,
+    grouped by supplier with estimated cost. When it arrives, use Delivery.
 
-HOW IT WORKS:
-  - iPad screen: brandon.hospro.co.uk/beverage.html
-    PIN 0356 -> summary -> Remove/Sign out (types name) or Add delivery.
-    Holds cases; can remove single bottles. Every move logged with name + time.
-  - Portal: EventsPRO > Beverage Management
-    Live stock value, low/out counts, used-this-week, stock by category,
-    movement log, Weekly Usage Report (print) and Export stock (CSV).
-  - Both share the Firebase 'beverage' collection, so iPad + portal sync.
-
-TIP: On the iPad, open beverage.html and "Add to Home Screen" for a
-full-screen app-like tile.
+Portal (EventsPRO > Beverage Management): full stock, costs, values,
+weekly usage report, CSV export, movement + re-order log.

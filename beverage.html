@@ -42,16 +42,19 @@ body{font-family:'Lato',system-ui,sans-serif;background:var(--paper);color:var(-
 .topbar .out{background:rgba(255,255,255,.12);border:none;color:#fff;padding:9px 14px;border-radius:9px;font-size:13px;font-weight:600}
 .wrap{padding:16px;max-width:900px;margin:0 auto}
 
-/* summary cards */
-.sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
-.sum-card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 10px rgba(26,43,58,.06)}
-.sum-card .v{font-family:'Cormorant Garamond',serif;font-size:30px;color:var(--navy);font-weight:600;line-height:1}
-.sum-card .k{font-size:12px;color:#7a8494;margin-top:4px}
-.sum-card.alert .v{color:var(--amber)}
+/* summary filter tabs */
+.sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat-tab{background:#fff;border:2px solid var(--line);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;transition:.12s}
+.stat-tab .v{display:block;font-family:'Cormorant Garamond',serif;font-size:30px;color:var(--navy);font-weight:600;line-height:1}
+.stat-tab .k{display:block;font-size:11.5px;color:#7a8494;margin-top:4px}
+.stat-tab.on{border-color:var(--navy);background:var(--navy)}
+.stat-tab.on .v,.stat-tab.on .k{color:#fff}
+.stat-tab.amber .v{color:var(--amber)}.stat-tab.red .v{color:var(--red)}
+.stat-tab.on.amber .v,.stat-tab.on.red .v{color:#fff}
 
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
-.act-btn{padding:20px;border-radius:14px;border:none;font-size:17px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
-.act-remove{background:var(--red)}.act-add{background:var(--green)}
+.actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px}
+.act-btn{padding:18px 8px;border-radius:14px;border:none;font-size:15px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.act-remove{background:var(--red)}.act-add{background:var(--green)}.act-reorder{background:var(--navy)}
 .act-btn:active{transform:scale(.97)}
 
 /* search + category chips */
@@ -97,6 +100,7 @@ body{font-family:'Lato',system-ui,sans-serif;background:var(--paper);color:var(-
 .toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:14px 22px;border-radius:12px;font-size:15px;font-weight:600;z-index:200;box-shadow:0 8px 30px rgba(0,0,0,.3);animation:rise .25s}
 @keyframes rise{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
 .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;background:var(--paper);color:#7a8494}
+.ro-cartinfo{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -120,8 +124,9 @@ body{font-family:'Lato',system-ui,sans-serif;background:var(--paper);color:var(-
   <div class="wrap">
     <div class="sum-grid" id="summary"></div>
     <div class="actions">
-      <button class="act-btn act-remove" id="btnRemove">➖ Remove / Sign out</button>
-      <button class="act-btn act-add" id="btnAdd">➕ Add delivery</button>
+      <button class="act-btn act-remove" id="btnRemove">➖ Remove</button>
+      <button class="act-btn act-add" id="btnAdd">➕ Delivery</button>
+      <button class="act-btn act-reorder" id="btnReorder">🛒 Re-Order</button>
     </div>
     <div class="searchbar"><input id="search" placeholder="🔍 Search a product…" autocomplete="off"></div>
     <div class="chips" id="chips"></div>
@@ -213,14 +218,15 @@ async function enterApp(){
 $("#logout").onclick=()=>{ sessionStorage.removeItem("bh_bev_unlocked"); pinBuf=""; renderDots(); $("#app").classList.add("hide"); $("#login").classList.remove("hide"); };
 
 /* ---------- RENDER ---------- */
-let FILTER={cat:"All", search:""};
+let FILTER={cat:"All", search:"", view:"all"};
 function renderAll(){ renderSummary(); renderChips(); renderList(); }
 function renderSummary(){
+  const total=Store.itemCount(), low=Store.lowCount(), out=Store.outCount();
   $("#summary").innerHTML=`
-    <div class="sum-card"><div class="v">${money(Store.totalValue())}</div><div class="k">Stock value (ex-VAT)</div></div>
-    <div class="sum-card"><div class="v">${Store.itemCount()}</div><div class="k">Products</div></div>
-    <div class="sum-card ${Store.lowCount()?"alert":""}"><div class="v">${Store.lowCount()}</div><div class="k">Low stock</div></div>
-    <div class="sum-card ${Store.outCount()?"alert":""}"><div class="v">${Store.outCount()}</div><div class="k">Out of stock</div></div>`;
+    <button class="stat-tab ${FILTER.view==="all"?"on":""}" data-view="all"><span class="v">${total}</span><span class="k">Products</span></button>
+    <button class="stat-tab ${FILTER.view==="low"?"on":""} ${low?"amber":""}" data-view="low"><span class="v">${low}</span><span class="k">Low stock</span></button>
+    <button class="stat-tab ${FILTER.view==="out"?"on":""} ${out?"red":""}" data-view="out"><span class="v">${out}</span><span class="k">Out of stock</span></button>`;
+  $("#summary").querySelectorAll(".stat-tab").forEach(b=>b.onclick=()=>{ FILTER.view=b.dataset.view; renderSummary(); renderList(); });
 }
 function categories(){ return ["All",...[...new Set(Object.values(Store.stock).map(p=>p.cat))].sort()]; }
 function renderChips(){
@@ -229,6 +235,8 @@ function renderChips(){
 }
 function renderList(){
   let list=Object.values(Store.stock);
+  if(FILTER.view==="low") list=list.filter(p=>p.stock>0&&p.stock<LOW);
+  else if(FILTER.view==="out") list=list.filter(p=>p.stock<=0);
   if(FILTER.cat!=="All") list=list.filter(p=>p.cat===FILTER.cat);
   if(FILTER.search){ const s=FILTER.search.toLowerCase(); list=list.filter(p=>`${p.name} ${p.cat} ${p.code}`.toLowerCase().includes(s)); }
   list.sort((a,b)=>a.name.localeCompare(b.name));
@@ -308,6 +316,68 @@ function openMove(id, mode){
 }
 $("#btnRemove").onclick=()=>openPicker("remove");
 $("#btnAdd").onclick=()=>openPicker("add");
+$("#btnReorder").onclick=openReorder;
+
+/* ---------- RE-ORDER (email GM for approval) ---------- */
+const GM_EMAIL="gm@brandonhallhotelandspa.com";
+let reorderCart={};  // id -> qty (order units)
+function openReorder(){
+  // default suggest low + out of stock
+  reorderCart={};
+  Object.values(Store.stock).forEach(p=>{ if(p.stock<LOW) reorderCart[p.id]=Math.max(1,Math.ceil(LOW-p.stock)); });
+  const bg=document.createElement("div"); bg.className="modal-bg"; document.body.appendChild(bg);
+  const draw=(q="")=>{
+    const all=Object.values(Store.stock).sort((a,b)=>{ const ai=reorderCart[a.id]?0:1, bi=reorderCart[b.id]?0:1; return ai-bi || a.name.localeCompare(b.name); });
+    const list=q?all.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())):all;
+    const inCart=Object.keys(reorderCart).filter(id=>reorderCart[id]>0);
+    bg.innerHTML=`<div class="sheet"><h2>Re-Order</h2>
+      <div class="psub">Build an order — sent to the General Manager for approval. Low/out-of-stock items are pre-selected.</div>
+      <div class="field"><input id="ro-search" placeholder="🔍 Search to add…" value="${q}" autocomplete="off"></div>
+      <div class="ro-cartinfo">${inCart.length} item${inCart.length!==1?"s":""} in order</div>
+      <div id="ro-list" class="stock-list" style="max-height:44vh;overflow-y:auto">${
+        list.slice(0,80).map(p=>{ const qy=reorderCart[p.id]||0;
+          return `<div class="prod"><div class="info"><div class="nm">${p.name}</div>
+            <div class="meta">${p.cat} · in stock ${(+p.stock).toLocaleString("en-GB",{maximumFractionDigits:2})} ${p.unit}${p.stock<LOW?' · <b style="color:#d0433b">LOW</b>':''}</div></div>
+            <div class="pm"><button class="minus" data-id="${p.id}" data-d="-1">–</button>
+              <span style="min-width:26px;text-align:center;font-weight:700">${qy}</span>
+              <button class="plus" data-id="${p.id}" data-d="1">+</button></div></div>`;
+        }).join("")}</div>
+      <button class="btn-primary" id="ro-send" style="background:#1a2b3a;margin-top:12px">📧 Send order to General Manager</button>
+      <button class="btn-ghost" id="ro-cancel">Cancel</button></div>`;
+    $("#ro-search").oninput=e=>draw(e.target.value);
+    bg.querySelectorAll(".pm button").forEach(b=>b.onclick=()=>{ const id=b.dataset.id;
+      reorderCart[id]=Math.max(0,(reorderCart[id]||0)+(+b.dataset.d)); if(!reorderCart[id]) delete reorderCart[id];
+      draw($("#ro-search").value); });
+    $("#ro-cancel").onclick=()=>bg.remove();
+    $("#ro-send").onclick=()=>sendReorder(bg);
+  };
+  draw();
+  bg.onclick=e=>{ if(e.target===bg) bg.remove(); };
+}
+function sendReorder(bg){
+  const items=Object.keys(reorderCart).filter(id=>reorderCart[id]>0).map(id=>{ const p=Store.stock[id]; return {p,qty:reorderCart[id]}; });
+  if(!items.length){ alert("Add at least one item to the order."); return; }
+  const name=Store.staff||prompt("Your name (for the order):")||"";
+  Store.staff=name;
+  // group by supplier
+  const bySup={}; items.forEach(({p,qty})=>{ (bySup[p.sup||"Unspecified"]=bySup[p.sup||"Unspecified"]||[]).push({p,qty}); });
+  let body=`BEVERAGE RE-ORDER REQUEST — Brandon Hall Hotel and Spa\nRaised by: ${name||"(bar team)"}\nDate: ${new Date().toLocaleString("en-GB")}\n\nPlease approve and place the following order:\n`;
+  let est=0;
+  Object.keys(bySup).sort().forEach(sup=>{
+    body+=`\n— ${sup} —\n`;
+    bySup[sup].forEach(({p,qty})=>{ const cost=qty*(p.price||0); est+=cost;
+      body+=`  ${qty} × ${p.name} (${p.pack||p.unit})  — in stock: ${(+p.stock).toLocaleString("en-GB",{maximumFractionDigits:2})}  ~ £${cost.toFixed(2)} ex-VAT\n`; });
+  });
+  body+=`\nEstimated total: £${est.toFixed(2)} ex-VAT\n\n(Generated from the Beverage Management stock screen.)`;
+  const subject=`Beverage Re-Order — Brandon Hall — ${items.length} items (~£${est.toFixed(2)})`;
+  // log the reorder request
+  Store.log.unshift({ id:"reorder", name:`Re-order (${items.length} items)`, delta:0, type:"reorder", staff:name, note:`Est £${est.toFixed(2)} ex-VAT`, at:new Date().toISOString() });
+  localStorage.setItem("bh_bev_log",JSON.stringify(Store.log.slice(0,500)));
+  if(db){ try{ db.collection("beverage").doc("levels").collection("log").add(Store.log[0]); }catch(e){} }
+  window.location.href=`mailto:${GM_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  if(bg) bg.remove();
+  toast("Order email prepared for the General Manager");
+}
 
 function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
 
