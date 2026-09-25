@@ -151,7 +151,7 @@ function render(){
   const v=$("#view"); v.innerHTML="";
   document.body.classList.toggle("home-active", CURRENT_TAB==="home");
   syncSidebar();
-  ({home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
+  ({home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin }[CURRENT_TAB]||renderRooms)(v);
 }
 
@@ -2911,6 +2911,344 @@ const CorpStore={ key:"bh_corp",
   addBatch(rows,meta){ const l=this.all(); l.unshift({ id:"WK-"+Date.now().toString(36).toUpperCase(),
     added:new Date().toISOString(), from:meta.from, to:meta.to, rows }); this.save(l); },
   remove(id){ this.save(this.all().filter(x=>x.id!==id)); } };
+
+/* ============================================================ GROUP CONFIGURATOR */
+function renderGroupConfig(v){
+  v.appendChild(head("Group Room Configurator","Enter your party, set your available rooms and pricing — the tool works out the optimal allocation, minimum rooms needed, and total cost with B&B and DBB options."));
+
+  const wrap=el("div"); wrap.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start";
+
+  /* ---- LEFT PANEL: Inputs ---- */
+  const left=el("div");
+
+  /* Party */
+  left.innerHTML=`
+  <div class="quote-panel" style="margin-bottom:14px">
+    <h3 style="margin-bottom:12px">👥 Party</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div class="field"><label>Adults</label><input type="number" id="gc-adults" min="0" value="14" style="font-size:16px;font-weight:700"></div>
+      <div class="field"><label>Children <span class="qs-sub">(up to 16)</span></label><input type="number" id="gc-children" min="0" value="6"></div>
+      <div class="field"><label>Babies <span class="qs-sub">(cot age)</span></label><input type="number" id="gc-babies" min="0" value="2"></div>
+    </div>
+    <div class="field" style="margin-top:8px"><label>Nights</label>
+      <input type="number" id="gc-nights" min="1" value="1" style="width:80px">
+    </div>
+  </div>
+
+  <div class="quote-panel" style="margin-bottom:14px">
+    <h3 style="margin-bottom:4px">🛏️ Available room types</h3>
+    <p class="qs-sub" style="margin-bottom:12px">Set how many of each type you have available tonight and their prices. Tick options that apply.</p>
+    <div id="gc-room-types"></div>
+    <button class="btn ghost sm" id="gc-add-type" style="margin-top:10px">+ Add room type</button>
+  </div>
+
+  <div class="quote-panel" style="margin-bottom:14px">
+    <h3 style="margin-bottom:12px">🍳 Meal plan prices <span class="qs-sub">(per person per night)</span></h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>B&B rate (pp/night)</label><input type="number" id="gc-bb" min="0" value="75" step="0.01"></div>
+      <div class="field"><label>DBB rate (pp/night)</label><input type="number" id="gc-dbb" min="0" value="130" step="0.01"></div>
+    </div>
+    <p class="qs-sub">Extra bed: £25/night (added automatically when ticked per room type)</p>
+  </div>
+
+  <button class="btn block" id="gc-calc" style="background:#4a7c59;font-size:16px;padding:16px">
+    🔍 Calculate optimal allocation
+  </button>`;
+
+  wrap.appendChild(left);
+
+  /* ---- RIGHT PANEL: Results ---- */
+  const right=el("div");
+  right.innerHTML=`<div class="quote-panel" id="gc-results">
+    <p class="qs-sub" style="padding:20px;text-align:center">Configure your party and rooms, then click <b>Calculate</b>.</p>
+  </div>`;
+  wrap.appendChild(right);
+  v.appendChild(wrap);
+
+  /* ---- Default room types (Brandon Hall typical) ---- */
+  let roomTypes=[
+    { id:1, name:"Executive Triple",  capacity:3, childCapacity:1, available:1, pricePerRoom:180, hasExtraBed:false, hasSofa:false, hasCot:false, extraBedPrice:25 },
+    { id:2, name:"Executive Double",  capacity:2, childCapacity:0, available:8, pricePerRoom:130, hasExtraBed:false, hasSofa:true,  hasCot:false, extraBedPrice:25 },
+    { id:3, name:"Executive Twin",    capacity:2, childCapacity:1, available:6, pricePerRoom:130, hasExtraBed:false, hasSofa:true,  hasCot:false, extraBedPrice:25 },
+    { id:4, name:"Classic Double",    capacity:2, childCapacity:0, available:4, pricePerRoom:110, hasExtraBed:false, hasSofa:false, hasCot:false, extraBedPrice:25 },
+    { id:5, name:"Classic Twin",      capacity:2, childCapacity:1, available:4, pricePerRoom:110, hasExtraBed:false, hasSofa:false, hasCot:false, extraBedPrice:25 },
+    { id:6, name:"Junior Suite",      capacity:2, childCapacity:0, available:2, pricePerRoom:220, hasExtraBed:false, hasSofa:true,  hasCot:false, extraBedPrice:25 },
+  ];
+  let nextId=10;
+
+  function renderTypes(){
+    const box=$("#gc-room-types"); if(!box) return;
+    box.innerHTML=roomTypes.map((rt,i)=>`
+      <div class="gc-rt" data-i="${i}" style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--paper)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <input class="gc-f" data-k="name" data-i="${i}" value="${rt.name.replace(/"/g,'&quot;')}" style="flex:1;font-weight:700">
+          <button class="mini-btn gc-del" data-i="${i}" title="Remove">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">
+          <div><label class="qs-sub">Adults max</label><input class="gc-f" type="number" data-k="capacity" data-i="${i}" value="${rt.capacity}" min="1"></div>
+          <div><label class="qs-sub">Children max</label><input class="gc-f" type="number" data-k="childCapacity" data-i="${i}" value="${rt.childCapacity}" min="0"></div>
+          <div><label class="qs-sub">Available</label><input class="gc-f" type="number" data-k="available" data-i="${i}" value="${rt.available}" min="0"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div><label class="qs-sub">Room price/night (£)</label><input class="gc-f" type="number" data-k="pricePerRoom" data-i="${i}" value="${rt.pricePerRoom}" min="0" step="0.01"></div>
+          <div><label class="qs-sub">Extra bed price/night (£)</label><input class="gc-f" type="number" data-k="extraBedPrice" data-i="${i}" value="${rt.extraBedPrice||25}" min="0" step="0.01"></div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <label class="gc-chk"><input type="checkbox" class="gc-f" data-k="hasExtraBed" data-i="${i}" ${rt.hasExtraBed?"checked":""}> Has extra bed <span class="qs-sub">(+£${rt.extraBedPrice||25}/night)</span></label>
+          <label class="gc-chk"><input type="checkbox" class="gc-f" data-k="hasSofa" data-i="${i}" ${rt.hasSofa?"checked":""}> Has sofa bed <span class="qs-sub">(+£25/night)</span></label>
+          <label class="gc-chk"><input type="checkbox" class="gc-f" data-k="hasCot" data-i="${i}" ${rt.hasCot?"checked":""}> Cot in room <span class="qs-sub">(free)</span></label>
+        </div>
+        ${rt.hasExtraBed&&rt.hasCot?`<p style="color:#d0433b;font-size:12px;margin-top:4px">⚠️ Extra bed and cot cannot both be in the same room.</p>`:""}
+      </div>`).join("");
+    box.querySelectorAll(".gc-f").forEach(inp=>inp.oninput=inp.onchange=()=>{
+      const i=+inp.dataset.i, k=inp.dataset.k;
+      const v=inp.type==="checkbox"?inp.checked:(inp.type==="number"?parseFloat(inp.value)||0:inp.value);
+      roomTypes[i][k]=v;
+      // cot + extra bed mutual exclusion
+      if((k==="hasExtraBed"&&v&&roomTypes[i].hasCot)||(k==="hasCot"&&v&&roomTypes[i].hasExtraBed)){
+        if(k==="hasExtraBed") roomTypes[i].hasCot=false;
+        else roomTypes[i].hasExtraBed=false;
+        renderTypes();
+      }
+    });
+    box.querySelectorAll(".gc-del").forEach(b=>b.onclick=()=>{ roomTypes.splice(+b.dataset.i,1); renderTypes(); });
+  }
+  renderTypes();
+
+  $("#gc-add-type").onclick=()=>{
+    roomTypes.push({ id:nextId++, name:"Room type", capacity:2, childCapacity:0, available:2, pricePerRoom:130, hasExtraBed:false, hasSofa:false, hasCot:false, extraBedPrice:25 });
+    renderTypes();
+  };
+
+  /* ---- CALCULATION ENGINE ---- */
+  $("#gc-calc").onclick=()=>{
+    const adults=parseInt($("#gc-adults").value)||0;
+    const children=parseInt($("#gc-children").value)||0;
+    const babies=parseInt($("#gc-babies").value)||0;
+    const nights=parseInt($("#gc-nights").value)||1;
+    const bbRate=parseFloat($("#gc-bb").value)||0;
+    const dbbRate=parseFloat($("#gc-dbb").value)||0;
+
+    const result=allocateRooms(adults, children, babies, roomTypes, nights, bbRate, dbbRate);
+    renderResults(result, adults, children, babies, nights, bbRate, dbbRate);
+  };
+
+  function allocateRooms(adults, children, babies, types, nights, bbRate, dbbRate){
+    // Sort: triples first, then by child capacity desc, then by price asc
+    const available=types.map((rt,i)=>({...rt, remaining:rt.available})).filter(rt=>rt.available>0);
+    available.sort((a,b)=> b.capacity-a.capacity || b.childCapacity-a.childCapacity || a.pricePerRoom-b.pricePerRoom);
+
+    let adultsLeft=adults, childrenLeft=children, babiesLeft=babies;
+    const allocation=[], warnings=[];
+
+    // PASS 1: allocate triples for families (adult+child combos)
+    available.filter(rt=>rt.capacity>=3 && rt.childCapacity>0).forEach(rt=>{
+      while(rt.remaining>0 && adultsLeft>0 && childrenLeft>0){
+        const adultsIn=Math.min(rt.capacity, adultsLeft);
+        const childrenIn=Math.min(rt.childCapacity, childrenLeft);
+        if(adultsIn===0) break;
+        const extraBed=(rt.hasExtraBed||rt.hasSofa)&&childrenIn>0;
+        const cot=rt.hasCot&&babiesLeft>0&&!extraBed;
+        if(cot) babiesLeft--;
+        allocation.push({ type:rt.name, adultsIn, childrenIn, babies:cot?1:0, extraBed, pricePerRoom:rt.pricePerRoom, extraBedPrice:extraBed?25:0 });
+        adultsLeft-=adultsIn; childrenLeft-=childrenIn; rt.remaining--;
+      }
+    });
+
+    // PASS 2: doubles/twins with extra bed for remaining children
+    available.filter(rt=>rt.capacity>=2 && rt.childCapacity>0 && rt.capacity<3).forEach(rt=>{
+      while(rt.remaining>0 && adultsLeft>0 && childrenLeft>0){
+        const adultsIn=Math.min(2, adultsLeft);
+        const childrenIn=Math.min(rt.childCapacity, childrenLeft);
+        const extraBed=(rt.hasExtraBed||rt.hasSofa)&&childrenIn>0;
+        const cot=rt.hasCot&&babiesLeft>0&&!extraBed;
+        if(cot) babiesLeft--;
+        allocation.push({ type:rt.name, adultsIn, childrenIn, babies:cot?1:0, extraBed, pricePerRoom:rt.pricePerRoom, extraBedPrice:extraBed?25:0 });
+        adultsLeft-=adultsIn; childrenLeft-=childrenIn; rt.remaining--;
+      }
+    });
+
+    // PASS 3: remaining children in adult rooms with sofa/extra if available
+    available.filter(rt=>rt.childCapacity===0&&(rt.hasExtraBed||rt.hasSofa)).forEach(rt=>{
+      while(rt.remaining>0 && adultsLeft>0 && childrenLeft>0){
+        const adultsIn=Math.min(rt.capacity, adultsLeft);
+        const childrenIn=Math.min(1, childrenLeft);
+        const extraBed=childrenIn>0;
+        const cot=rt.hasCot&&babiesLeft>0&&!extraBed;
+        if(cot) babiesLeft--;
+        allocation.push({ type:rt.name, adultsIn, childrenIn, babies:cot?1:0, extraBed, pricePerRoom:rt.pricePerRoom, extraBedPrice:extraBed?25:0 });
+        adultsLeft-=adultsIn; childrenLeft-=childrenIn; rt.remaining--;
+      }
+    });
+
+    // PASS 4: remaining adults in standard rooms
+    available.forEach(rt=>{
+      while(rt.remaining>0 && adultsLeft>0){
+        const adultsIn=Math.min(rt.capacity, adultsLeft);
+        const cot=rt.hasCot&&babiesLeft>0;
+        if(cot) babiesLeft--;
+        allocation.push({ type:rt.name, adultsIn, childrenIn:0, babies:cot?1:0, extraBed:false, pricePerRoom:rt.pricePerRoom, extraBedPrice:0 });
+        adultsLeft-=adultsIn; rt.remaining--;
+      }
+    });
+
+    if(adultsLeft>0) warnings.push(`⚠️ ${adultsLeft} adult${adultsLeft>1?"s":""} could not be allocated — not enough rooms available.`);
+    if(childrenLeft>0) warnings.push(`⚠️ ${childrenLeft} child${childrenLeft>1?"ren":""} could not be allocated — add rooms with extra bed / sofa options.`);
+    if(babiesLeft>0) warnings.push(`ℹ️ ${babiesLeft} baby${babiesLeft>1?" (cots needed)":""} — allocate cots manually to rooms above.`);
+
+    return { allocation, warnings, nights, bbRate, dbbRate, adults, children, babies };
+  }
+
+  function renderResults(r, adults, children, babies, nights, bbRate, dbbRate){
+    const box=$("#gc-results"); if(!box) return;
+    const totalPeople=adults+children; // babies not counted in meal rate
+    const totalAdults=adults;
+
+    // Calculate room cost
+    let roomCostPerNight=0, extraBedCostPerNight=0;
+    const groups={};
+    r.allocation.forEach(a=>{
+      const key=`${a.type}|${a.extraBed}`;
+      if(!groups[key]) groups[key]={type:a.type, count:0, extraBed:a.extraBed, pricePerRoom:a.pricePerRoom, extraBedPrice:a.extraBedPrice};
+      groups[key].count++;
+      roomCostPerNight+=a.pricePerRoom;
+      if(a.extraBed) extraBedCostPerNight+=(a.extraBedPrice||25);
+    });
+
+    const totalRoomCost=(roomCostPerNight+extraBedCostPerNight)*nights;
+    const mealsBB=bbRate*totalPeople*nights;
+    const mealsDbb=dbbRate*totalPeople*nights;
+
+    const totalBB=totalRoomCost+mealsBB;
+    const totalDBB=totalRoomCost+mealsDbb;
+
+    const money=n=>"£"+Number(n).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    const roomRows=Object.values(groups).map(g=>`
+      <tr><td>${g.type}${g.extraBed?' <span class="qs-sub">+ extra bed</span>':""}</td>
+        <td class="r">${g.count}</td>
+        <td class="r">${money(g.pricePerRoom+( g.extraBed?g.extraBedPrice:0))}/night</td>
+        <td class="r">${money((g.pricePerRoom+(g.extraBed?g.extraBedPrice:0))*g.count)}/night</td></tr>`).join("");
+
+    const warnHTML=r.warnings.map(w=>`<div style="background:#fef3e8;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px">${w}</div>`).join("");
+
+    // Detailed allocation list
+    const detailRows=r.allocation.map((a,i)=>`
+      <tr><td style="color:#7a8494;font-size:12px">Room ${i+1}</td><td>${a.type}</td>
+        <td class="r">${a.adultsIn} adult${a.adultsIn!==1?"s":""}${a.childrenIn?`, ${a.childrenIn} child`:""}${a.babies?`, cot`:""}${a.extraBed?" + extra bed":""}</td>
+        <td class="r">${money(a.pricePerRoom+(a.extraBed?a.extraBedPrice:0))}/night</td></tr>`).join("");
+
+    box.innerHTML=`
+      ${warnHTML}
+      <h3 style="margin-bottom:12px">📊 Optimal allocation</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="stat-card"><div class="sc-v">${r.allocation.length}</div><div class="sc-k">Rooms needed</div></div>
+        <div class="stat-card"><div class="sc-v">${adults+children+babies}</div><div class="sc-k">Total guests</div></div>
+        <div class="stat-card"><div class="sc-v">${nights}</div><div class="sc-k">Night${nights!==1?"s":""}</div></div>
+      </div>
+
+      <div class="tbl-scroll" style="margin-bottom:14px">
+        <table class="ct-table"><tr><th>Room type</th><th class="r">Rooms</th><th class="r">Rate/room/night</th><th class="r">Total/night</th></tr>
+        ${roomRows}
+        <tr style="font-weight:700;border-top:2px solid var(--navy)">
+          <td colspan="3">Rooms total (${nights} night${nights!==1?"s":""})</td><td class="r">${money(totalRoomCost)}</td></tr>
+        </table>
+      </div>
+
+      <h3 style="margin-bottom:10px">💷 Pricing options</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div class="opt" style="border:1px solid var(--line);border-radius:12px;padding:16px">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--navy);font-weight:600">B&B</div>
+          <div style="font-size:12px;color:#7a8494;margin-bottom:8px">${money(bbRate)} per person per night</div>
+          <table style="width:100%;font-size:13px;border-collapse:collapse">
+            <tr><td>Rooms</td><td style="text-align:right">${money(totalRoomCost)}</td></tr>
+            <tr><td>Breakfast (${totalPeople} guests × ${nights} nights)</td><td style="text-align:right">${money(mealsBB)}</td></tr>
+            <tr style="font-weight:700;border-top:1px solid var(--line)"><td>Total</td><td style="text-align:right;font-size:16px;color:var(--navy)">${money(totalBB)}</td></tr>
+          </table>
+        </div>
+        <div class="opt best" style="border:1px solid var(--gold);border-radius:12px;padding:16px;box-shadow:0 4px 16px rgba(201,169,120,.15)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--navy);font-weight:600">Dinner B&B</div>
+            <span style="font-size:11px;font-weight:700;background:#e6f6f4;color:#159187;padding:2px 10px;border-radius:10px">Recommended</span>
+          </div>
+          <div style="font-size:12px;color:#7a8494;margin-bottom:8px">${money(dbbRate)} per person per night</div>
+          <table style="width:100%;font-size:13px;border-collapse:collapse">
+            <tr><td>Rooms</td><td style="text-align:right">${money(totalRoomCost)}</td></tr>
+            <tr><td>Dinner, B&B (${totalPeople} guests × ${nights} nights)</td><td style="text-align:right">${money(mealsDbb)}</td></tr>
+            <tr style="font-weight:700;border-top:1px solid var(--line)"><td>Total</td><td style="text-align:right;font-size:16px;color:var(--navy)">${money(totalDBB)}</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <h3 style="margin-bottom:8px">🏨 Room by room breakdown</h3>
+      <div class="tbl-scroll">
+        <table class="ct-table"><tr><th></th><th>Room type</th><th class="r">Occupancy</th><th class="r">Rate/night</th></tr>
+        ${detailRows}
+        </table>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:#7a8494">
+        Extra beds: £25/night · Cots: complimentary · Babies not included in meal plan pricing.
+        <br>All rates subject to availability and confirmation.
+      </div>
+      <button class="btn block" id="gc-print" style="margin-top:14px;background:#1a2b3a">🖨 Print / save allocation</button>`;
+
+    $("#gc-print").onclick=()=>printGroupAllocation(r, adults, children, babies, nights, bbRate, dbbRate, roomRows, detailRows, totalRoomCost, mealsBB, mealsDbb, totalBB, totalDBB, money);
+  }
+
+  function printGroupAllocation(r, adults, children, babies, nights, bbRate, dbbRate, roomRows, detailRows, totalRoomCost, mealsBB, mealsDbb, totalBB, totalDBB, money){
+    const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+    const win=window.open("","_blank");
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Group Room Allocation — Brandon Hall</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>@page{margin:14mm}body{font-family:'Lato',sans-serif;color:#2a3644;font-size:12px;max-width:820px;margin:0 auto}
+    .h{text-align:center;border-bottom:3px solid #1a2b47;padding-bottom:10px;margin-bottom:14px}
+    .logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;letter-spacing:5px;color:#1a2b47}
+    .sub{font-size:10px;letter-spacing:4px;color:#c9a978;font-weight:700}
+    h1{font-family:'Cormorant Garamond',serif;font-size:22px;text-align:center;margin:10px 0 4px}
+    .meta{text-align:center;font-size:11px;color:#7a8494;margin-bottom:14px}
+    .facts{display:flex;gap:12px;justify-content:center;margin-bottom:14px}
+    .fact{background:#f5f7f9;border-radius:8px;padding:10px 16px;text-align:center}
+    .fact b{display:block;font-size:18px;color:#1a2b47;font-family:'Cormorant Garamond',serif}
+    table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
+    th{background:#1a2b47;color:#fff;text-align:left;padding:6px 8px;font-size:10.5px}
+    td{padding:6px 8px;border-bottom:1px solid #eef2f4}.r{text-align:right}
+    .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+    .opt{border:1px solid #e3e7ee;border-radius:8px;padding:12px}
+    .opt.rec{border-color:#c9a978}
+    .opt h3{font-family:'Cormorant Garamond',serif;font-size:16px;color:#1a2b47;margin-bottom:4px}
+    .big{font-size:18px;font-weight:700;color:#1a2b47}
+    .foot{margin-top:16px;font-size:10px;color:#7a8494;text-align:center;border-top:1px solid #e3e7ee;padding-top:8px}
+    </style></head><body>
+    <div class="h"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL AND SPA</div></div>
+    <h1>Group Room Allocation</h1>
+    <div class="meta">Prepared ${today}</div>
+    <div class="facts">
+      <div class="fact"><b>${adults}</b>Adults</div>
+      <div class="fact"><b>${children}</b>Children</div>
+      <div class="fact"><b>${babies}</b>Babies</div>
+      <div class="fact"><b>${r.allocation.length}</b>Rooms</div>
+      <div class="fact"><b>${nights}</b>Night${nights!==1?"s":""}</div>
+    </div>
+    ${r.warnings.map(w=>`<p style="color:#c78a3b;font-size:11px">${w}</p>`).join("")}
+    <h2 style="font-family:'Cormorant Garamond',serif;font-size:16px;color:#1a2b47;margin:10px 0 6px">Room by room</h2>
+    <table><tr><th>Room</th><th>Type</th><th class="r">Occupancy</th><th class="r">Rate/night</th></tr>${detailRows}</table>
+    <div class="opts">
+      <div class="opt"><h3>B&B</h3><table>
+        <tr><td>Rooms (${nights} night${nights!==1?"s":""})</td><td class="r">${money(totalRoomCost)}</td></tr>
+        <tr><td>Breakfast</td><td class="r">${money(mealsBB)}</td></tr>
+        <tr><td><b>Total</b></td><td class="r"><b class="big">${money(totalBB)}</b></td></tr>
+      </table></div>
+      <div class="opt rec"><h3>Dinner B&amp;B ★ Recommended</h3><table>
+        <tr><td>Rooms (${nights} night${nights!==1?"s":""})</td><td class="r">${money(totalRoomCost)}</td></tr>
+        <tr><td>Dinner, B&amp;B</td><td class="r">${money(mealsDbb)}</td></tr>
+        <tr><td><b>Total</b></td><td class="r"><b class="big">${money(totalDBB)}</b></td></tr>
+      </table></div>
+    </div>
+    <div class="foot">Brandon Hall Hotel and Spa · Main Street, Brandon, Coventry CV8 3FW · 024 7710 2555 · All rates indicative, subject to confirmation.</div>
+    <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+    win.document.close();
+  }
+}
 
 function renderCorpRates(v){
   v.appendChild(head("Corporate Rate Planner","Shift guests off commissionable OTA bookings onto direct corporate rates. Paste the weekly Guestline arrival list; we flag companies worth a corporate rate."));

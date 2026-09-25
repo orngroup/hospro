@@ -983,7 +983,7 @@ const FLOW_MODULES = [
   { id:"events",    name:"EventsPRO",    caption:"Plan. Organise. Deliver.",       icon:"📅", colour:"#4a9d7f", tint:"#e6f3ee", tabs:["chat","dining","beverage"] },
   { id:"room",      name:"RoomPRO",      caption:"Keep operations in flow.",       icon:"🛏️", colour:"#4a86c7", tint:"#e6eff8", tabs:["rooms","packages"] },
   { id:"sales",     name:"SalesPRO",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","quotes","profit","contracts","payments"] },
-  { id:"corp",      name:"StayCORP",      caption:"Corporate guests & rates.",       icon:"🏢", colour:"#2f6f9e", tint:"#e6eef5", tabs:["precheckin","corpdb","corprates","feedback"] },
+  { id:"corp",      name:"StayCORP",      caption:"Corporate guests & rates.",       icon:"🏢", colour:"#2f6f9e", tint:"#e6eef5", tabs:["precheckin","corpdb","corprates","feedback","groupconfig"] },
   { id:"marketing", name:"MarketingPRO", caption:"Create. Campaign. Convert.",     icon:"📣", colour:"#c85c6b", tint:"#f8e9eb", tabs:["marketing","social"] },
   { id:"task",      name:"TaskPRO",      caption:"Tasks. Teams. Accountability.",  icon:"✅", colour:"#d4a24a", tint:"#faf1e0", tabs:["tasks"] },
   { id:"asset",     name:"AssetPRO",     caption:"Maintain. Track. Extend.",       icon:"🔧", colour:"#3fa8a0", tint:"#e3f3f1", tabs:["mne","suppliers"] },
@@ -1006,7 +1006,7 @@ const TAB_META = {
   brochure:{label:"Brochure Builder",icon:"📕"}, social:{label:"Social Studio",icon:"📱"},
   tasks:{label:"Tasks",icon:"✅"}, insight:{label:"Insights",icon:"📈"},
   precheckin:{label:"Pre Check-in Setup",icon:"📋"}, corpdb:{label:"Corporate Database",icon:"🏢"},
-  corprates:{label:"Corporate Rates",icon:"💷"},
+  corprates:{label:"Corporate Rates",icon:"💷"}, groupconfig:{label:"Group Configurator",icon:"🛏️"},
   feedback:{label:"Guest Feedback & QR",icon:"⭐"},
   admin:{label:"Admin",icon:"⚙️"}
 };
