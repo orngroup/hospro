@@ -123,10 +123,46 @@ const params=new URLSearchParams(location.search), qid=params.get("q");
 const money=v=>"£"+(Math.round(v)||0).toLocaleString();
 const fmt=d=>d&&/^\d{4}-\d{2}-\d{2}/.test(d)?new Date(d).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}):(d||"—");
 
+// Hardcoded quotes — these render without Firebase so shared links always work
+const BAKED_QUOTES={
+  "Q-MARTIN-MUGADZA":{
+    id:"Q-MARTIN-MUGADZA",
+    client:"Martin Mugadza", company:"Men's Christian Retreat",
+    clientEmail:"", eventType:"Meeting / Conference", evId:"meeting",
+    eventDate:"2027-03-05", pax:100, ref:"M050327-07032027-MUG",
+    created:"2026-09-24T00:00:00.000Z",
+    hero:"https://www.brandonhallhotelandspa.com/wp-content/uploads/2025/09/1758893100-1000x667.png",
+    gallery:[
+      "https://www.brandonhallhotelandspa.com/wp-content/uploads/2025/09/1758893782-1000x757.png",
+      "https://www.brandonhallhotelandspa.com/wp-content/uploads/2025/09/1758893922-1000x757.png",
+      "https://www.brandonhallhotelandspa.com/wp-content/uploads/2025/09/brandon-hall-hotel-spa-warwickshire-brandon-warwickshire-pic-9-1000x750.jpeg"
+    ],
+    rooms:[{name:"Wolston Suite",m2:130,img:"https://www.brandonhallhotelandspa.com/wp-content/uploads/2025/09/1758893100-1000x667.png",layout:"Theatre",pax:90,date:"2027-03-06",fn:"Conference · Fri–Sun 5–7 March 2027"}],
+    options:[
+      {label:"Option 1 — Room hire & à la carte",subtotal:35400,lines:[
+        {label:"Accommodation — 100 rooms × £130 × 2 nights (DBB single, Fri & Sat)",amt:26000},
+        {label:"Wolston Suite hire — £2,000 × 2 days (Sat & Sun)",amt:4000,sub:"Brandon Suite £3,000/day if preferred"},
+        {label:"Chef's choice lunch × 100 guests × 2 days",amt:4000,sub:"£20pp · sandwich lunch from £14pp as alternative"},
+        {label:"Tea & coffee × 100 guests × 2 servings × 2 days",amt:1400,sub:"£3.50pp per serving"}
+      ]},
+      {label:"Option 2 — Day Delegate Package",subtotal:32000,lines:[
+        {label:"Accommodation — 100 rooms × £130 × 2 nights (DBB single, Fri & Sat)",amt:26000},
+        {label:"Day Delegate Package × 100 guests × 2 days",amt:6000,sub:"£30pp reduced from £40pp · room hire, projector & screen, tea/coffee with snacks, chef's buffet lunch"}
+      ]}
+    ],
+    payments:[
+      {label:"Deposit (25%)",amount:8000,due:"2026-10-24"},
+      {label:"2nd Deposit (25%)",amount:8000,due:"2026-12-05"},
+      {label:"Full Balance (50%)",amount:16000,due:"2027-01-22"}
+    ],
+    carbon:{total:180}, subtotal:32000, status:"issued"
+  }
+};
+
 async function load(){
   if(!qid){ $("#root").innerHTML=`<div class="doc"><p>No quote reference provided.</p></div>`; return; }
-  let q=null;
-  if(db){ if(auth && !auth.currentUser){ try{ await auth.signInAnonymously(); }catch(e){} }
+  let q = BAKED_QUOTES[qid] || null;
+  if(!q && db){ if(auth && !auth.currentUser){ try{ await auth.signInAnonymously(); }catch(e){} }
     try{ const d=await db.collection("quotes").doc(qid).get(); if(d.exists) q={id:d.id,...d.data()}; }catch(e){ console.warn(e.message); } }
   if(!q){ const l=JSON.parse(localStorage.getItem("bh_quotes")||"[]"); q=l.find(x=>x.id===qid); }
   if(!q){ $("#root").innerHTML=`<div class="doc"><p>Sorry, we couldn't find this quote. Please contact our events team.</p></div>`; return; }
