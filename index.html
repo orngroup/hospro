@@ -1025,8 +1025,63 @@ body.home-active nav.tabs{display:none;}
     <button class="btn block" id="lg-btn">Sign in</button>
     <div class="login-err" id="lg-err"></div>
     <div class="login-hint">Access code is <b>BH</b> followed by your initials.</div>
+    <div style="margin-top:18px;border-top:1px solid rgba(255,255,255,.1);padding-top:14px;text-align:center">
+      <button class="login-hint" id="lg-request-access" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;text-decoration:underline">Not registered? Request access</button>
+    </div>
   </div>
   <div class="hp-login-foot">HOSPRO · hospro.co.uk</div>
+</div>
+
+<!-- ACCESS REQUEST OVERLAY -->
+<div id="access-request" class="hidden" style="position:fixed;inset:0;background:linear-gradient(135deg,#0d1b2a,#1a2b3a);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px">
+  <img src="assets/hospro/logo-white.svg" style="width:140px;margin-bottom:28px;opacity:.9" alt="HOSPRO">
+  <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:36px;max-width:460px;width:100%;backdrop-filter:blur(10px)">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#fff;font-weight:600;letter-spacing:1px">Welcome to HOSPRO</div>
+      <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:8px;line-height:1.6">This portal is for the exclusive use of <b style="color:#c9a978">Brandon Hall Hotel and Spa</b> staff and authorised personnel only. Unauthorised access or use in any other environment is strictly prohibited.</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.5px;margin-bottom:6px">YOUR FULL NAME</label>
+        <input id="ar-name" placeholder="e.g. Jane Smith" style="width:100%;padding:13px 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none" autocomplete="name">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.5px;margin-bottom:6px">YOUR EMAIL ADDRESS</label>
+        <input id="ar-email" type="email" placeholder="e.g. jane@brandonhallhotelandspa.com" style="width:100%;padding:13px 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none" autocomplete="email">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.5px;margin-bottom:6px">ROLE / DEPARTMENT</label>
+        <input id="ar-role" placeholder="e.g. Events Manager" style="width:100%;padding:13px 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.5px;margin-bottom:6px">YOUR IP ADDRESS <span style="font-weight:400;color:rgba(255,255,255,.4)">(auto-detected — verify below)</span></label>
+        <input id="ar-ip" placeholder="Detecting…" style="width:100%;padding:13px 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.08);color:#c9a978;font-size:15px;font-weight:700;outline:none;font-family:monospace" readonly>
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.5px;margin-bottom:6px">LOCATION / HOTEL</label>
+        <input id="ar-location" placeholder="e.g. Brandon Hall Hotel and Spa, Coventry" style="width:100%;padding:13px 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none">
+      </div>
+    </div>
+    <button id="ar-submit" style="width:100%;margin-top:20px;padding:15px;background:#c9a978;color:#1a2b3a;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">Request Access</button>
+    <div id="ar-msg" style="margin-top:12px;text-align:center;font-size:13px;color:rgba(255,255,255,.6)"></div>
+    <div id="ar-sent" class="hidden" style="margin-top:16px">
+      <div style="background:rgba(42,106,74,.3);border:1px solid rgba(42,106,74,.5);border-radius:10px;padding:14px;text-align:center;color:#7ecfa0;font-size:14px">
+        ✓ Request submitted. Ajay will review and send your access code shortly.
+      </div>
+      <div style="margin-top:12px">
+        <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.5px;margin-bottom:6px">ENTER ACCESS CODE WHEN RECEIVED</label>
+        <div style="display:flex;gap:8px">
+          <input id="ar-code" placeholder="e.g. BHJD" style="flex:1;padding:13px 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.08);color:#c9a978;font-size:16px;font-weight:700;font-family:monospace;outline:none;text-transform:uppercase">
+          <button id="ar-activate" style="padding:13px 18px;background:#1a2b3a;border:1px solid rgba(255,255,255,.2);border-radius:10px;color:#fff;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Activate</button>
+        </div>
+        <div id="ar-code-err" style="color:#f87171;font-size:12px;margin-top:6px"></div>
+      </div>
+    </div>
+    <div style="margin-top:16px;text-align:center">
+      <button id="ar-already" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:12px;cursor:pointer;text-decoration:underline">Already registered? Sign in</button>
+    </div>
+  </div>
+  <div style="margin-top:20px;font-size:11px;color:rgba(255,255,255,.25);text-align:center">HOSPRO · Brandon Hall Hotel and Spa · Authorised use only</div>
 </div>
 
 <!-- ================= APP ================= -->

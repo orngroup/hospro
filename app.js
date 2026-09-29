@@ -47,6 +47,82 @@ const Store = {
 
 let SESSION=null, CURRENT_TAB="home";
 
+/* ============================================================ ACCESS REQUEST */
+(async ()=>{
+  const APPROVED_KEY="bh_hospro_approved";
+  const ar=$("#access-request");
+  const login=$("#login");
+
+  // If never approved on this device, show access request screen
+  if(!localStorage.getItem(APPROVED_KEY)){
+    login.classList.add("hidden");
+    ar.classList.remove("hidden");
+
+    // Auto-detect IP
+    try{
+      const r=await fetch("https://api.ipify.org?format=json");
+      const d=await r.json();
+      $("#ar-ip").value=d.ip||"";
+    }catch(e){ $("#ar-ip").value="Could not detect"; }
+  }
+
+  // "Already registered" → go to login
+  $("#ar-already").onclick=()=>{ ar.classList.add("hidden"); login.classList.remove("hidden"); };
+  $("#lg-request-access").onclick=()=>{ login.classList.add("hidden"); ar.classList.remove("hidden"); };
+
+  // Submit request → mailto to Ajay
+  $("#ar-submit").onclick=()=>{
+    const name=$("#ar-name").value.trim();
+    const email=$("#ar-email").value.trim();
+    const role=$("#ar-role").value.trim();
+    const ip=$("#ar-ip").value.trim();
+    const location=$("#ar-location").value.trim();
+    const msg=$("#ar-msg");
+
+    if(!name||!email||!location){ msg.textContent="Please fill in your name, email and location."; return; }
+
+    const subject=encodeURIComponent(`HOSPRO Access Request — ${name}`);
+    const body=encodeURIComponent(
+`New HOSPRO access request:
+
+Name: ${name}
+Email: ${email}
+Role: ${role||"Not specified"}
+Location/Hotel: ${location}
+IP Address: ${ip}
+Requested: ${new Date().toLocaleString("en-GB")}
+
+To approve, reply with their access code (e.g. BH + initials) or add them to the USERS list in app.js.
+To deny, no action needed.
+
+-- HOSPRO Access Control`
+    );
+    window.location.href=`mailto:aj@ykawa.com?subject=${subject}&body=${body}`;
+    $("#ar-submit").disabled=true;
+    $("#ar-sent").classList.remove("hidden");
+    msg.textContent="";
+  };
+
+  // Activate with received code
+  $("#ar-activate").onclick=()=>{
+    const code=$("#ar-code").value.trim().toUpperCase();
+    const err=$("#ar-code-err");
+    // Check against known codes
+    const valid=Object.values(USERS).find(u=>u.code===code);
+    if(valid){
+      localStorage.setItem(APPROVED_KEY,"1");
+      ar.classList.add("hidden");
+      login.classList.remove("hidden");
+      err.textContent="";
+    } else {
+      err.textContent="Invalid access code. Please check the code sent by Ajay.";
+      $("#ar-code").style.borderColor="#f87171";
+      setTimeout(()=>{ $("#ar-code").style.borderColor=""; },1500);
+    }
+  };
+  $("#ar-code").addEventListener("keydown",e=>{ if(e.key==="Enter") $("#ar-activate").click(); });
+})();
+
 /* ============================================================ AUTH */
 $("#lg-btn").onclick = async ()=>{
   const u=$("#lg-user").value, pw=$("#lg-pw").value.trim().toUpperCase();
