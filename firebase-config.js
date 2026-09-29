@@ -18,5 +18,7 @@ const FB_LOGINS = {
   "ajay.kawa":         { email:"ajay.kawa@brandonhall.portal",         pw:"BHAK01", code:"BHAK", name:"Ajay Kawa" },
   "raj.kumar":         { email:"raj.kumar@brandonhall.portal",         pw:"BHRK01", code:"BHRK", name:"Raj Kumar" },
   "alia.taub":         { email:"alia.taub@brandonhall.portal",         pw:"BHAT01", code:"BHAT", name:"Alia Taub" },
-  "nicola.cartwright": { email:"nicola.cartwright@brandonhall.portal", pw:"BHNC01", code:"BHNC", name:"Nicola Cartwright" }
+  "nicola.cartwright": { email:"nicola.cartwright@brandonhall.portal", pw:"BHNC01", code:"BHNC", name:"Nicola Cartwright" },
+  "natalie.freeman":    { email:"natalie.freeman@brandonhall.portal",    pw:"zqPdm3tcsTWFJecj", code:"BHNF", name:"Natalie Freeman" },
+  "patrik.vlach":       { email:"patrik.vlach@brandonhall.portal",       pw:"3vjCLX5sAAIAKvI8", code:"BHPV", name:"Patrik Vlach" }
 };

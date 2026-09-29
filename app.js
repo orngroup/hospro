@@ -26,7 +26,9 @@ const USERS = {
   "ajay.kawa":        { name:"Ajay Kawa",        code:"BHAK", role:"admin" },
   "raj.kumar":        { name:"Raj Kumar",        code:"BHRK", role:"admin" },
   "alia.taub":        { name:"Alia Taub",        code:"BHAT", role:"admin" },
-  "nicola.cartwright":{ name:"Nicola Cartwright", code:"BHNC", role:"admin" }
+  "nicola.cartwright":{ name:"Nicola Cartwright", code:"BHNC", role:"admin" },
+  "natalie.freeman":  { name:"Natalie Freeman",  code:"BHNF", role:"admin" },
+  "patrik.vlach":     { name:"Patrik Vlach",     code:"BHPV", role:"admin" }
 };
 
 const LAYOUT_LABELS = { boardroom:"Boardroom", ushape:"U-Shape",
@@ -1111,7 +1113,7 @@ function downloadKitchenSheet(){
 
 /* ============================================================ SALES PIPELINE (merged) */
 const ENQ_STAGES=[["enquiry","Enquiry"],["provisional","Provisional"],["confirmed","Confirmed"],["cancelled","Cancelled"]];
-const ENQ_OWNERS=["Nicola Cartwright","Natalie Freeman","Ajay Kawa","Raj Kumar","Alia Taub"];
+const ENQ_OWNERS=["Nicola Cartwright","Natalie Freeman","Patrik Vlach","Ajay Kawa","Raj Kumar","Alia Taub"];
 const ENQ_SOURCES=["Website","Events chat","Hitched","arrangeMY / agent","Phone","Email","Walk-in","Referral","BOB / Rezlynx","Other"];
 
 let PIPE_FILTER={ room:"", event:"", status:"", owner:"", source:"", search:"" };

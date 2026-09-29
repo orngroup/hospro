@@ -11,7 +11,9 @@ service cloud.firestore {
           'ajay.kawa@brandonhall.portal',
           'raj.kumar@brandonhall.portal',
           'alia.taub@brandonhall.portal',
-          'nicola.cartwright@brandonhall.portal'
+          'nicola.cartwright@brandonhall.portal',
+          'natalie.freeman@brandonhall.portal',
+          'patrik.vlach@brandonhall.portal'
         ];
     }
 
