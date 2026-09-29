@@ -6,6 +6,22 @@
    ============================================================ */
 const USE_FIREBASE = false;
 
+/* ============================================================
+   TENANT — the hotel this HOSPRO portal belongs to.
+   Change these for each new hotel. The access screen, terms and
+   access log all read from here.
+   ============================================================ */
+const TENANT = {
+  hotelName:    "Brandon Hall Hotel and Spa",
+  hotelPlace:   "Coventry",
+  operator:     "HOSPRO Worldwide",
+  operatorEmail:"hello@hospro.co.uk",
+  termsVersion: "1.0 · 29 September 2026",
+  // Optional: only allow verification from these email domains, e.g. ["brandonhallhotelandspa.com"].
+  // Leave empty to allow any email address.
+  allowedDomains: []
+};
+
 const USERS = {
   "ajay.kawa":        { name:"Ajay Kawa",        code:"BHAK", role:"admin" },
   "raj.kumar":        { name:"Raj Kumar",        code:"BHRK", role:"admin" },
@@ -47,80 +63,140 @@ const Store = {
 
 let SESSION=null, CURRENT_TAB="home";
 
-/* ============================================================ ACCESS REQUEST */
+/* ============================================================ ACCESS (email verification)
+   First visit on a device:
+     1. Name, email, role, location; IP detected automatically.
+     2. Accept the terms of use for TENANT.hotelName.
+     3. Firebase emails a secure one-time sign-in link.
+     4. Clicking the link verifies the email, records the access in
+        Firestore (access_log) and unlocks the staff login on this device.
+   No manual approval needed. Staff still sign in with their own login. */
+function termsHTML(t){
+  const H=t.hotelName;
+  return `
+  <p><b>Terms of use for the ${H} HOSPRO portal</b> · Version ${t.termsVersion}</p>
+  <ol>
+    <li><b>Authorised use only.</b> This portal is intended solely for the use of ${H} staff and personnel authorised by ${H}. It must not be used for any other hotel, business or purpose.</li>
+    <li><b>Confidential information.</b> Guest, client, booking, pricing and commercial information in this portal belongs to ${H} and is confidential. Do not copy, download, share or disclose it except as needed for your work for ${H}.</li>
+    <li><b>Data protection.</b> You will handle personal data in line with UK GDPR, the Data Protection Act 2018 and ${H}'s policies, and only for legitimate hotel purposes.</li>
+    <li><b>Your access is personal.</b> Do not share your login or let anyone else use this portal on your behalf. Tell ${H} management straight away if you think your access has been misused.</li>
+    <li><b>Access is recorded.</b> Your name, email address, role, location, IP address, device and the time you verified and accepted these terms are recorded to protect ${H} and its guests.</li>
+    <li><b>Ownership.</b> The HOSPRO software is provided by ${t.operator} and licensed to ${H}. You may not copy, adapt, resell or reverse-engineer it.</li>
+    <li><b>Misuse.</b> Access may be withdrawn at any time. Misuse may lead to disciplinary or legal action.</li>
+  </ol>`;
+}
+
 (async ()=>{
-  const APPROVED_KEY="bh_hospro_approved";
-  const ar=$("#access-request");
-  const login=$("#login");
+  const APPROVED_KEY="bh_hospro_approved";   // kept for devices approved under the old flow
+  const PENDING_KEY="hospro_access_pending";
+  const ar=$("#access-request"), login=$("#login");
+  const show=state=>{ ["form","sent","confirm","done"].forEach(s=>{ const n=$("#ar-state-"+s); if(n) n.classList.toggle("hidden", s!==state); }); };
+  const msg=t=>{ $("#ar-msg").textContent=t||""; };
 
-  // If never approved on this device, show access request screen
-  if(!localStorage.getItem(APPROVED_KEY)){
-    login.classList.add("hidden");
-    ar.classList.remove("hidden");
+  // Fill in the hotel name and terms from TENANT
+  document.querySelectorAll("[data-tenant]").forEach(n=>{ n.textContent=TENANT[n.dataset.tenant]||""; });
+  $("#ar-terms").innerHTML=termsHTML(TENANT);
+  $("#ar-location").placeholder=`e.g. ${TENANT.hotelName}, ${TENANT.hotelPlace}`;
 
-    // Auto-detect IP
-    try{
-      const r=await fetch("https://api.ipify.org?format=json");
-      const d=await r.json();
-      $("#ar-ip").value=d.ip||"";
-    }catch(e){ $("#ar-ip").value="Could not detect"; }
+  const openAccess=()=>{ login.classList.add("hidden"); ar.classList.remove("hidden"); };
+  const openLogin=()=>{ ar.classList.add("hidden"); login.classList.remove("hidden"); };
+  $("#ar-already").onclick=openLogin;
+  $("#lg-request-access").onclick=()=>{ openAccess(); show("form"); };
+
+  async function detectIp(){
+    try{ const r=await fetch("https://api.ipify.org?format=json"); const d=await r.json(); return d.ip||""; }
+    catch(e){ return ""; }
   }
 
-  // "Already registered" → go to login
-  $("#ar-already").onclick=()=>{ ar.classList.add("hidden"); login.classList.remove("hidden"); };
-  $("#lg-request-access").onclick=()=>{ login.classList.add("hidden"); ar.classList.remove("hidden"); };
+  async function recordAccess(p, user){
+    const rec={
+      name:p.name, email:(user&&user.email)||p.email, role:p.role||"", location:p.location||"",
+      ip:p.ip||"", hotel:TENANT.hotelName, termsVersion:TENANT.termsVersion,
+      termsAcceptedAt:p.termsAcceptedAt, verifiedAt:new Date().toISOString(),
+      userAgent:navigator.userAgent.slice(0,300), uid:user?user.uid:""
+    };
+    try{ await FB.db.collection("access_log").add(rec); }
+    catch(e){ console.warn("Access log not saved:", e.message); }
+    try{ const l=JSON.parse(localStorage.getItem("hospro_access_local")||"[]"); l.unshift(rec); localStorage.setItem("hospro_access_local", JSON.stringify(l.slice(0,20))); }catch(e){}
+    return rec;
+  }
 
-  // Submit request → mailto to Ajay
-  $("#ar-submit").onclick=()=>{
-    const name=$("#ar-name").value.trim();
-    const email=$("#ar-email").value.trim();
-    const role=$("#ar-role").value.trim();
-    const ip=$("#ar-ip").value.trim();
-    const location=$("#ar-location").value.trim();
-    const msg=$("#ar-msg");
-
-    if(!name||!email||!location){ msg.textContent="Please fill in your name, email and location."; return; }
-
-    const subject=encodeURIComponent(`HOSPRO Access Request — ${name}`);
-    const body=encodeURIComponent(
-`New HOSPRO access request:
-
-Name: ${name}
-Email: ${email}
-Role: ${role||"Not specified"}
-Location/Hotel: ${location}
-IP Address: ${ip}
-Requested: ${new Date().toLocaleString("en-GB")}
-
-To approve, reply with their access code (e.g. BH + initials) or add them to the USERS list in app.js.
-To deny, no action needed.
-
--- HOSPRO Access Control`
-    );
-    window.location.href=`mailto:aj@ykawa.com?subject=${subject}&body=${body}`;
-    $("#ar-submit").disabled=true;
-    $("#ar-sent").classList.remove("hidden");
-    msg.textContent="";
-  };
-
-  // Activate with received code
-  $("#ar-activate").onclick=()=>{
-    const code=$("#ar-code").value.trim().toUpperCase();
-    const err=$("#ar-code-err");
-    // Check against known codes
-    const valid=Object.values(USERS).find(u=>u.code===code);
-    if(valid){
-      localStorage.setItem(APPROVED_KEY,"1");
-      ar.classList.add("hidden");
-      login.classList.remove("hidden");
-      err.textContent="";
-    } else {
-      err.textContent="Invalid access code. Please check the code sent by Ajay.";
-      $("#ar-code").style.borderColor="#f87171";
-      setTimeout(()=>{ $("#ar-code").style.borderColor=""; },1500);
+  async function finishWithLink(email){
+    const p=JSON.parse(localStorage.getItem(PENDING_KEY)||"{}");
+    try{
+      const cred=await FB.auth.signInWithEmailLink(email, location.href);
+      await recordAccess(Object.assign({}, p, { email }), cred.user);
+      localStorage.setItem(APPROVED_KEY, JSON.stringify({ email, verifiedAt:new Date().toISOString(), termsVersion:TENANT.termsVersion }));
+      localStorage.removeItem(PENDING_KEY);
+      // End the verification session so it never grants data access; staff then sign in normally.
+      try{ await FB.auth.signOut(); }catch(e){}
+      history.replaceState(null, "", location.pathname);
+      $("#ar-done-name").textContent=(p.name||email).split(" ")[0];
+      show("done");
+      setTimeout(openLogin, 2200);
+    }catch(e){
+      history.replaceState(null, "", location.pathname);
+      show("form");
+      msg(e.code==="auth/invalid-action-code"||e.code==="auth/expired-action-code"
+        ? "That link has expired or has already been used. Please send a new one."
+        : "We couldn't verify that link: "+(e.message||e.code));
     }
+  }
+
+  // Arriving from the email link?
+  const fromLink = FB.ready && FB.auth.isSignInWithEmailLink(location.href);
+  const approved = localStorage.getItem(APPROVED_KEY);
+
+  if(fromLink){
+    openAccess();
+    const p=JSON.parse(localStorage.getItem(PENDING_KEY)||"{}");
+    if(p.email){ show("sent"); $("#ar-sent-email").textContent=p.email; finishWithLink(p.email); }
+    else { show("confirm"); }   // link opened on a different device or browser
+  } else if(!approved){
+    openAccess(); show("form");
+  }
+
+  if(!approved || fromLink){
+    const ip=await detectIp();
+    $("#ar-ip").value=ip||"Could not detect";
+  }
+
+  $("#ar-confirm-btn").onclick=()=>{
+    const email=$("#ar-confirm-email").value.trim().toLowerCase();
+    if(!email){ $("#ar-confirm-err").textContent="Enter the email address you verified with."; return; }
+    finishWithLink(email);
   };
-  $("#ar-code").addEventListener("keydown",e=>{ if(e.key==="Enter") $("#ar-activate").click(); });
+
+  async function sendLink(){
+    const name=$("#ar-name").value.trim();
+    const email=$("#ar-email").value.trim().toLowerCase();
+    const role=$("#ar-role").value.trim();
+    const loc=$("#ar-location").value.trim();
+    const ip=$("#ar-ip").value.trim();
+    if(!name||!email||!loc){ msg("Please fill in your name, email and location."); return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg("Please enter a valid email address."); return; }
+    if(TENANT.allowedDomains.length && !TENANT.allowedDomains.some(d=>email.endsWith("@"+d))){
+      msg(`Please use your ${TENANT.allowedDomains.join(" or ")} email address.`); return; }
+    if(!$("#ar-accept").checked){ msg("Please read and accept the terms of use."); return; }
+    if(!FB.ready){ msg("Verification isn't available right now. Please try again shortly."); return; }
+
+    const btn=$("#ar-submit"); btn.disabled=true; const label=btn.textContent; btn.textContent="Sending…";
+    const pending={ name, email, role, location:loc, ip:ip==="Could not detect"?"":ip, termsAcceptedAt:new Date().toISOString(), termsVersion:TENANT.termsVersion };
+    try{
+      await FB.auth.sendSignInLinkToEmail(email, { url: location.origin + location.pathname, handleCodeInApp:true });
+      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+      $("#ar-sent-email").textContent=email;
+      show("sent"); msg("");
+    }catch(e){
+      msg(e.code==="auth/operation-not-allowed"
+        ? "Email verification isn't switched on yet. Please contact "+TENANT.operatorEmail+"."
+        : "We couldn't send the email: "+(e.message||e.code));
+    }
+    btn.disabled=false; btn.textContent=label;
+  }
+  $("#ar-submit").onclick=sendLink;
+  $("#ar-resend").onclick=()=>{ show("form"); sendLink(); };
+  $("#ar-change").onclick=()=>{ localStorage.removeItem(PENDING_KEY); show("form"); };
 })();
 
 /* ============================================================ AUTH */
@@ -1651,6 +1727,25 @@ function renderAdmin(v){
   ut.innerHTML=`<tr><th>Name</th><th>Access code</th><th>Role</th></tr>`+
     Object.values(USERS).map(u=>`<tr><td>${u.name}</td><td>${u.code}</td><td>${u.role}</td></tr>`).join("");
   v.appendChild(ut);
+
+  // Device access log (email-verified devices)
+  v.appendChild(el("div","sec-title","Device access log"));
+  v.appendChild(el("p","",`<span style="font-size:13px;color:var(--muted)">Everyone who has verified their email and accepted the ${TENANT.hotelName} terms of use (version ${TENANT.termsVersion}) to reach the login screen.</span>`));
+  const al=el("div","","<p style='font-size:13px;color:var(--muted)'>Loading…</p>"); v.appendChild(al);
+  const drawLog=rows=>{
+    if(!rows.length){ al.innerHTML="<p style='font-size:13px;color:var(--muted)'>No verified devices recorded yet.</p>"; return; }
+    const t=el("table","data-table");
+    t.innerHTML=`<tr><th>Verified</th><th>Name</th><th>Email</th><th>Role</th><th>Location</th><th>IP address</th><th>Terms</th></tr>`+
+      rows.map(r=>`<tr><td>${r.verifiedAt?new Date(r.verifiedAt).toLocaleString("en-GB"):"—"}</td><td>${r.name||"—"}</td><td>${r.email||"—"}</td><td>${r.role||"—"}</td><td>${r.location||"—"}</td><td style="font-family:monospace">${r.ip||"—"}</td><td>${r.termsVersion||"—"}</td></tr>`).join("");
+    al.innerHTML=""; al.appendChild(t);
+  };
+  if(FB.ready && FB.auth.currentUser){
+    FB.db.collection("access_log").orderBy("verifiedAt","desc").limit(100).get()
+      .then(s=>drawLog(s.docs.map(d=>d.data())))
+      .catch(e=>{ al.innerHTML=`<p style='font-size:13px;color:var(--muted)'>Access log unavailable (${e.code||e.message}). Check the Firestore rules in firestore.rules.</p>`; });
+  } else {
+    try{ drawLog(JSON.parse(localStorage.getItem("hospro_access_local")||"[]")); }catch(e){ drawLog([]); }
+  }
 
   // Room readiness (from M&E audit) — admin only
   v.appendChild(el("div","sec-title","Room readiness (M&E audit)"));

@@ -1,0 +1,39 @@
+HOSPRO ACCESS: EMAIL VERIFICATION SET-UP (one-off, about 5 minutes)
+==================================================================
+
+What changed
+- New devices no longer email Ajay for approval. The person fills in their details
+  (IP detected automatically), accepts the terms of use, and Firebase emails them a
+  secure one-time link. Clicking it verifies their email, records the access and
+  takes them to the normal staff login. No approval needed.
+- Every verification is saved to Firestore (collection: access_log) and shown in
+  HOSPRO under Settings > Device access log.
+- Devices approved under the old flow stay approved.
+- Staff still sign in with their own login after verifying, as before.
+
+1. FIREBASE CONSOLE (project brandonhall-7bdef)
+   a) Authentication > Sign-in method > Email/Password > switch on
+      "Email link (passwordless sign-in)" > Save.
+   b) Authentication > Settings > Authorised domains > make sure
+      brandon.hospro.co.uk is listed (add it if not).
+   c) Optional: Authentication > Templates > set the sender name to "HOSPRO".
+   d) Firestore Database > Rules > replace everything with the contents of
+      firestore.rules from this folder > Publish.
+      The rules give full access only to the four staff logins listed in them.
+      When you add a staff member, add their login email to that list too.
+
+2. GITHUB (repo orngroup/brandonme)
+   Upload app.js, index.html, sw.js and firestore.rules, replacing the old ones.
+
+3. TEST
+   Open brandon.hospro.co.uk in a private window, fill in the form with your
+   own email, accept the terms and press "Email my verification link".
+   Open the email on the same device and tap the link. You should land on the
+   staff login, and see yourself in Settings > Device access log once signed in.
+
+FOR THE NEXT HOTEL
+   At the top of app.js, change TENANT (hotel name, place, terms version).
+   The access screen, terms and access log all update from that one setting.
+   Optionally set TENANT.allowedDomains, e.g. ["newhotel.co.uk"], so only
+   staff email addresses can verify.
+   Update the staff login emails in firestore.rules for that hotel's project.
