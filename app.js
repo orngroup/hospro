@@ -229,7 +229,8 @@ function render(){
   syncSidebar();
   ({home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
-    compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport }[CURRENT_TAB]||renderRooms)(v);
+    compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
+    fixDash:renderFixDash, fixJobs:renderFixJobs, fixProjects:renderFixProjects }[CURRENT_TAB]||renderRooms)(v);
 }
 
 /* ============================================================ ROOMS */
@@ -4948,5 +4949,87 @@ function renderCompReport(v){
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Compliance Report</div>
     <p style="font-size:14px;color:#7a8494;margin-bottom:20px">Full printable report — per person breakdown, overdue items, completed tasks. Ready to print for Saeker update.</p>
     <a href="compliance.html" target="_blank" class="btn" style="background:#2a6a4a;text-decoration:none;display:inline-block">Open &amp; print report ↗</a>
+  </div>`;
+}
+
+/* ============================================================ HOSFIX — Maintenance Portal Views */
+function renderFixDash(v){
+  const jobs=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');
+  const open=jobs.filter(j=>j.status!=='done'&&j.status!=='cancelled');
+  const urgent=jobs.filter(j=>j.priority==='urgent'&&j.status!=='done');
+  const pending=jobs.filter(j=>j.status==='pending_approval');
+  const done=jobs.filter(j=>j.status==='done');
+  const totalCost=jobs.reduce((s,j)=>s+(j.cost||0),0);
+  const money=v=>'£'+Number(v||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  v.innerHTML=`<div style="padding:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Maintenance</h2>
+        <p style="font-size:13px;color:#7a8494">Brandon Hall Hotel and Spa · Property & Maintenance Management</p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open mobile app ↗</a>
+      </div>
+    </div>
+
+    ${pending.length?`<div style="background:#fff3e0;border:1px solid #c45c00;border-radius:12px;padding:14px;margin-bottom:18px">
+      <div style="font-weight:700;color:#c45c00;margin-bottom:8px">⏳ ${pending.length} job${pending.length>1?'s':''} awaiting cost approval (above £100)</div>
+      ${pending.map(j=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid rgba(196,92,0,.15)">
+        <span style="font-weight:600">${j.title}</span><span style="color:#c45c00;font-weight:700">${money(j.cost)}</span>
+      </div>`).join('')}
+    </div>`:''}
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+      ${[['🟠 Urgent',urgent.length,'var(--orange)'],['Open jobs',open.length,'var(--red)'],['Completed',done.length,'var(--green)'],[`Total costs`,money(totalCost),'var(--amber)']].map(([l,v2,c])=>
+        `<div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:3px solid ${c}">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:30px;color:${c};font-weight:600">${v2}</div>
+          <div style="font-size:12px;color:#7a8494;margin-top:4px">${l}</div></div>`
+      ).join('')}
+    </div>
+
+    ${jobs.length?`
+    <h3 style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--navy);margin-bottom:12px">Recent jobs</h3>
+    <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(26,43,58,.05)">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:#f5f7f9">
+          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase">Job</th>
+          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase">Location</th>
+          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase">Priority</th>
+          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase">Cost</th>
+          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase">Status</th>
+        </tr></thead>
+        <tbody>${jobs.slice(0,10).map(j=>`<tr style="border-bottom:1px solid #f5f7f9">
+          <td style="padding:10px 13px;font-weight:600;color:var(--navy)">${j.title}</td>
+          <td style="padding:10px 13px;color:#7a8494">${j.area||''}${j.location?' · '+j.location:''}</td>
+          <td style="padding:10px 13px">
+            <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:${j.priority==='urgent'?'#fff0e0':j.priority==='high'?'#fde8e6':j.priority==='medium'?'#fffbe6':'#e8f3ee'};color:${j.priority==='urgent'?'#c45c00':j.priority==='high'?'#b3261e':j.priority==='medium'?'#997300':'#2a6a4a'}">${j.priority}</span>
+          </td>
+          <td style="padding:10px 13px;color:${j.cost>100?'var(--orange)':'#7a8494'};font-weight:${j.cost>100?700:400}">${money(j.cost)}</td>
+          <td style="padding:10px 13px">
+            <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:${j.status==='done'?'#e8f3ee':j.status==='pending_approval'?'#fff0e0':'#e8edf3'};color:${j.status==='done'?'#2a6a4a':j.status==='pending_approval'?'#c45c00':'#1a2b47'}">${j.status==='done'?'✓ Done':j.status==='pending_approval'?'⏳ Approval':j.status}</span>
+          </td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`:`<div style="background:#fff;border-radius:12px;padding:40px;text-align:center;box-shadow:0 2px 8px rgba(26,43,58,.05)">
+      <div style="font-size:14px;color:#7a8494">No maintenance jobs logged yet.</div>
+      <a href="hosfix.html" target="_blank" style="display:inline-block;margin-top:12px;padding:11px 20px;background:#c45c00;color:#fff;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none">Open HosFIX mobile app →</a>
+    </div>`}
+  </div>`;
+}
+
+function renderFixJobs(v){
+  v.innerHTML=`<div style="padding:20px;text-align:center">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">All Maintenance Jobs</div>
+    <p style="font-size:14px;color:#7a8494;margin-bottom:20px">Log and manage jobs on the mobile app — use the dashboard above for a full overview.</p>
+    <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;display:inline-block">Open HosFIX mobile app ↗</a>
+  </div>`;
+}
+
+function renderFixProjects(v){
+  v.innerHTML=`<div style="padding:20px;text-align:center">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Maintenance Projects</div>
+    <p style="font-size:14px;color:#7a8494;margin-bottom:20px">Spa Refurbishment, Woodland Maintenance, Bedroom Refurb and more — manage projects on the mobile app.</p>
+    <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;display:inline-block">Open HosFIX mobile app ↗</a>
   </div>`;
 }
