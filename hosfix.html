@@ -190,12 +190,6 @@ html,body{height:100%;overflow:hidden;font-family:'Lato',system-ui,sans-serif;ba
 
 /* TOAST */
 
-/* TIME TRACKING */
-.timer-bar{background:var(--navy);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;font-size:13px;flex-shrink:0}
-.timer-bar .tb-job{font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 10px}
-.timer-bar .tb-time{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--gold);white-space:nowrap}
-.timer-start{padding:8px 14px;border-radius:8px;border:none;background:#2a6a4a;color:#fff;font:700 13px 'Lato';cursor:pointer;white-space:nowrap}
-.timer-stop{padding:8px 14px;border-radius:8px;border:none;background:var(--red);color:#fff;font:700 13px 'Lato';cursor:pointer;white-space:nowrap}
 
 /* PROFILE CARDS */
 .profile-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(26,43,58,.05)}
@@ -270,11 +264,7 @@ html,body{height:100%;overflow:hidden;font-family:'Lato',system-ui,sans-serif;ba
       <button class="user-chip" onclick="signOut()" style="background:rgba(255,255,255,.07)">Sign out</button>
     </div>
   </div>
-  <div class="timer-bar" id="timer-bar" style="display:none">
-    <button class="timer-stop" onclick="stopTimer()">⏹ Stop</button>
-    <div class="tb-job" id="timer-job-title">Job</div>
-    <div class="tb-time" id="timer-display">00:00:00</div>
-  </div>
+
   <div class="content" id="content"></div>
   <div class="bnav-bar">
     <button class="bnav on" data-v="dashboard" onclick="switchView('dashboard',this)"><span class="ico">📊</span>Dashboard<span class="bb" id="bn-approval" style="display:none"></span></button>
@@ -784,28 +774,60 @@ function openDetail(id){
     <button class="btn-p btn-red-outline" style="width:100%;margin-bottom:8px" onclick="rejectJob('${j.id}')">✗ Reject / return for revision</button>`:''}
 
     ${!isDone&&j.status!=='pending_approval'?`
-      <div style="margin-bottom:8px">
-        <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px">Update status</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${[['not-started','🔴','Not started'],['in-progress','🟡','In progress'],['complete','🟢','Complete']].map(([s,e,l])=>
-            `<button onclick="updateStatus('${j.id}','${s}')" style="flex:1;padding:10px;border-radius:10px;border:2px solid ${j.status===s?'var(--navy)':'var(--line)'};background:${j.status===s?'var(--navy)':'#fff'};color:${j.status===s?'#fff':'var(--ink)'};font:700 12px 'Lato';cursor:pointer">${e} ${l}</button>`
-          ).join('')}
-        </div>
+      <div class="f-field" style="margin-top:4px"><label>Add note / update</label>
+        <textarea id="job-note" placeholder="Progress update, materials needed, completed works…"></textarea>
       </div>
-      <div class="f-field"><label>Add note / update</label><textarea id="job-note" placeholder="Progress update, materials needed, completed works…"></textarea></div>
-      <div class="btn-row">
-        <button class="btn-p btn-navy" onclick="markComplete('${j.id}')">✓ Mark complete</button>
-        <button class="btn-p btn-ghost" onclick="addNote('${j.id}')">Save note</button>
-      </div>`:''}
+      <button class="btn-p btn-ghost" style="width:100%;margin-bottom:4px" onclick="addNote('${j.id}')">Save note</button>`:''}
 
     ${isDone?`<div style="background:#e8f3ee;border-radius:10px;padding:12px;font-size:13px;color:#2a6a4a;margin-top:8px">✓ Completed ${fmtDate(j.completedAt)}</div>
     <button class="btn-p btn-ghost" style="width:100%;margin-top:8px" onclick="reopenJob('${j.id}')">Reopen job</button>`:''}
 
-    <div style="display:flex;gap:8px;margin-top:10px">
-      ${ACTIVE_TIMER&&ACTIVE_TIMER.jobId===j.id
-        ? `<button class="timer-stop" style="flex:1;padding:13px;border-radius:12px;font-size:14px" onclick="stopTimer()">⏹ Stop timer · ${formatDuration(timerElapsed())}</button>`
-        : `<button class="timer-start" style="flex:1;padding:13px;border-radius:12px;font-size:14px;background:var(--green)" onclick="startTimer('${j.id}','${j.title.replace(/'/g,"\\'")}')">▶ Start timer</button>`}
-    </div>
+    ${(()=>{
+      const jstate = ACTIVE_TIMER && ACTIVE_TIMER.jobId===j.id ? ACTIVE_TIMER.state : null;
+      const isRunning = jstate==='running';
+      const isPaused = jstate==='paused';
+      const isNotStarted = !isDone && !isRunning && !isPaused && j.status!=='pending_approval';
+      // Show elapsed time if paused/running
+      let elapsed = '';
+      if(ACTIVE_TIMER && ACTIVE_TIMER.jobId===j.id) {
+        const ms = isRunning
+          ? (ACTIVE_TIMER.accumulatedMs||0)+(Date.now()-new Date(ACTIVE_TIMER.currentStart).getTime())
+          : (ACTIVE_TIMER.accumulatedMs||0);
+        const mins=Math.floor(ms/60000); const hrs=Math.floor(mins/60); const m=mins%60;
+        elapsed = hrs>0?hrs+'h '+m+'m':m+'m';
+      }
+      if(isDone || j.status==='pending_approval') return '';
+      return `<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+        ${isNotStarted?`
+          <button class="btn-p btn-green" onclick="startJob('${j.id}')" style="width:100%;font-size:15px;padding:15px">
+            ▶ Start Job
+          </button>`:''}
+        ${isRunning?`
+          <div style="background:#e8f3ee;border-radius:10px;padding:10px 14px;font-size:13px;color:#2a6a4a;font-weight:600;text-align:center">
+            ⏱ Job in progress${elapsed?' · '+elapsed+' elapsed':''}
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-p btn-ghost" onclick="pauseJob('${j.id}')" style="flex:1;padding:13px">
+              ⏸ Pause Job
+            </button>
+            <button class="btn-p btn-green" onclick="completeJob('${j.id}')" style="flex:1;padding:13px">
+              ✓ Complete Job
+            </button>
+          </div>`:''}
+        ${isPaused?`
+          <div style="background:#fffbe6;border-radius:10px;padding:10px 14px;font-size:13px;color:#997300;font-weight:600;text-align:center">
+            ⏸ Paused${elapsed?' · '+elapsed+' logged':''}
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-p btn-green" onclick="startJob('${j.id}')" style="flex:1;padding:13px">
+              ▶ Resume Job
+            </button>
+            <button class="btn-p" onclick="completeJob('${j.id}')" style="flex:1;padding:13px;background:var(--navy);color:#fff">
+              ✓ Complete Job
+            </button>
+          </div>`:''}
+      </div>`;
+    })()}
     <button class="btn-p btn-ghost" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>`);
 }
 
@@ -977,68 +999,117 @@ function render(){
 
 }
 
-// ============ TIMER ============
-let timerInterval = null;
+// ============ JOB TIME TRACKING ============
+// ACTIVE_TIMER = {jobId, startedAt, pausedAt, totalPausedMs, state:'running'|'paused'}
 
-function timerElapsed(){
-  if(!ACTIVE_TIMER) return 0;
-  return Math.floor((Date.now() - new Date(ACTIVE_TIMER.startedAt).getTime()) / 1000);
+function getJobState(job) {
+  // Returns 'not-started' | 'running' | 'paused' | 'complete'
+  if(job.status === 'complete') return 'complete';
+  if(ACTIVE_TIMER && ACTIVE_TIMER.jobId === job.id) return ACTIVE_TIMER.state || 'running';
+  return job.status === 'in-progress' ? 'in-progress' : 'not-started';
 }
 
-function formatDuration(secs){
-  const h=Math.floor(secs/3600), m=Math.floor((secs%3600)/60), s=secs%60;
-  return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':');
+function elapsedMs() {
+  if(!ACTIVE_TIMER || ACTIVE_TIMER.state === 'paused') return ACTIVE_TIMER?.accumulatedMs || 0;
+  const now = Date.now();
+  const sinceStart = now - new Date(ACTIVE_TIMER.currentStart).getTime();
+  return (ACTIVE_TIMER.accumulatedMs || 0) + sinceStart;
 }
 
-function startTimer(jobId, jobTitle){
-  if(ACTIVE_TIMER){ toast('Stop current job timer first'); return; }
-  ACTIVE_TIMER={jobId, jobTitle, startedAt:new Date().toISOString()};
+function startJob(jobId) {
+  if(ACTIVE_TIMER && ACTIVE_TIMER.jobId !== jobId) {
+    toast('Pause or complete the current job first');
+    return;
+  }
+  const j = JOBS.find(x => x.id === jobId);
+  if(!j) return;
+
+  const now = new Date().toISOString();
+  if(!ACTIVE_TIMER) {
+    // Fresh start
+    ACTIVE_TIMER = {
+      jobId, state: 'running',
+      startedAt: now,        // first ever start
+      currentStart: now,     // this session start
+      accumulatedMs: 0
+    };
+    j.status = 'in-progress';
+    j.startedAt = j.startedAt || now;
+    j.notes = j.notes || [];
+    j.notes.push({text: 'Job started', by: MY_USER?.name || ME, at: now.slice(0,10)});
+  } else {
+    // Resume from pause
+    ACTIVE_TIMER.state = 'running';
+    ACTIVE_TIMER.currentStart = now;
+    j.notes = j.notes || [];
+    j.notes.push({text: 'Job resumed', by: MY_USER?.name || ME, at: now.slice(0,10)});
+  }
   saveTimer();
-  showTimerBar();
-  toast('Timer started ▶');
-  closeModal();
+  saveJobs();
+  // Reopen the detail to reflect new state
+  openDetail(jobId);
 }
 
-function stopTimer(){
-  if(!ACTIVE_TIMER) return;
-  const secs = timerElapsed();
-  const mins = Math.round(secs/60);
-  const log = {
-    id: makeId(), jobId: ACTIVE_TIMER.jobId, userId: ME,
-    startedAt: ACTIVE_TIMER.startedAt, endedAt: new Date().toISOString(),
-    durationMins: mins
-  };
-  TIME_LOGS.push(log); saveTimeLogs();
-  // Add note to job
-  const j=JOBS.find(x=>x.id===ACTIVE_TIMER.jobId);
-  if(j){ j.notes=j.notes||[]; j.notes.push({text:`Time logged: ${formatDuration(secs)} by ${MY_USER?.name||ME}`, by:MY_USER?.name||ME, at:todayStr()}); saveJobs(); }
-  ACTIVE_TIMER=null; saveTimer();
-  hideTimerBar();
-  toast(`Time logged: ${formatDuration(secs)} ✓`);
-  render();
+function pauseJob(jobId) {
+  if(!ACTIVE_TIMER || ACTIVE_TIMER.jobId !== jobId) return;
+  const now = new Date().toISOString();
+  const sinceStart = Date.now() - new Date(ACTIVE_TIMER.currentStart).getTime();
+  ACTIVE_TIMER.accumulatedMs = (ACTIVE_TIMER.accumulatedMs || 0) + sinceStart;
+  ACTIVE_TIMER.state = 'paused';
+  ACTIVE_TIMER.pausedAt = now;
+  const j = JOBS.find(x => x.id === jobId);
+  if(j) {
+    j.notes = j.notes || [];
+    j.notes.push({text: 'Job paused', by: MY_USER?.name || ME, at: now.slice(0,10)});
+    saveJobs();
+  }
+  saveTimer();
+  openDetail(jobId);
 }
 
-function showTimerBar(){
-  const bar=document.getElementById('timer-bar');
-  if(bar) bar.style.display='flex';
-  if(timerInterval) clearInterval(timerInterval);
-  timerInterval=setInterval(()=>{
-    const el=document.getElementById('timer-display');
-    if(el) el.textContent=formatDuration(timerElapsed());
-    const tj=document.getElementById('timer-job-title');
-    if(tj&&ACTIVE_TIMER) tj.textContent=ACTIVE_TIMER.jobTitle;
-  },1000);
-}
+function completeJob(jobId) {
+  const j = JOBS.find(x => x.id === jobId); if(!j) return;
+  if(j.requiresReceipt && !(j.receipt?.photos || []).length) {
+    toast('Please photograph the receipt before completing'); return;
+  }
+  const now = new Date().toISOString();
+  let totalMs = 0;
+  if(ACTIVE_TIMER && ACTIVE_TIMER.jobId === jobId) {
+    if(ACTIVE_TIMER.state === 'running') {
+      totalMs = (ACTIVE_TIMER.accumulatedMs || 0) + (Date.now() - new Date(ACTIVE_TIMER.currentStart).getTime());
+    } else {
+      totalMs = ACTIVE_TIMER.accumulatedMs || 0;
+    }
+    ACTIVE_TIMER = null; saveTimer();
+  }
+  const totalMins = Math.round(totalMs / 60000);
+  const p = PROFILES[ME] || {};
+  const labourCost = totalMins > 0 && p.costPerHour ? parseFloat(((totalMins / 60) * p.costPerHour).toFixed(2)) : 0;
 
-function hideTimerBar(){
-  const bar=document.getElementById('timer-bar');
-  if(bar) bar.style.display='none';
-  if(timerInterval){ clearInterval(timerInterval); timerInterval=null; }
-}
+  // Log time entry
+  if(totalMins > 0) {
+    TIME_LOGS.push({
+      id: makeId(), jobId, userId: ME,
+      startedAt: j.startedAt || now, endedAt: now,
+      durationMins: totalMins
+    });
+    saveTimeLogs();
+  }
 
-function jobTimeLogs(jobId){ return TIME_LOGS.filter(l=>l.jobId===jobId); }
-function userTimeLogs(uid){ return TIME_LOGS.filter(l=>l.userId===uid); }
-function totalMins(logs){ return logs.reduce((s,l)=>s+(l.durationMins||0),0); }
+  j.status = 'complete';
+  j.completedAt = now;
+  j.completedBy = MY_USER?.name || ME;
+  if(labourCost > 0) j.labourCost = labourCost;
+  j.totalTimeMins = totalMins;
+  j.notes = j.notes || [];
+  const noteText = totalMins > 0
+    ? `Job completed. Time: ${Math.floor(totalMins/60)}h ${totalMins%60}m${labourCost ? ' · Labour cost: £' + labourCost.toFixed(2) : ''}`
+    : 'Job completed';
+  j.notes.push({text: noteText, by: MY_USER?.name || ME, at: now.slice(0,10)});
+  saveJobs();
+  toast('Job complete ✓');
+  closeModal(); render();
+}
 
 // ============ TEAM / PROFILES ============
 function renderTeam(){
@@ -1085,7 +1156,7 @@ if(su){
   if(MY_USER){IS_SUPER=SUPERVISORS.includes(ME);IS_APPROVER=APPROVAL_USERS.includes(ME);
     document.getElementById('login').style.display='none';document.getElementById('app').style.display='flex';
     document.getElementById('tb-user-chip').textContent=MY_USER.name.split(' ')[0]+' ('+MY_USER.role.split(' ')[0]+')';
-    updateBadges();render();if(ACTIVE_TIMER)showTimerBar();}
+    updateBadges();render();}
 }
 </script>
 </body>
