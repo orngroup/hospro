@@ -230,7 +230,7 @@ function render(){
   ({home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
-    fixDash:renderFixDash, fixJobs:renderFixJobs, fixProjects:renderFixProjects }[CURRENT_TAB]||renderRooms)(v);
+    fixDash:renderFixDash, fixJobs:renderFixJobs, fixProjects:renderFixProjects, fixTeam:renderFixTeam }[CURRENT_TAB]||renderRooms)(v);
 }
 
 /* ============================================================ ROOMS */
@@ -5032,4 +5032,140 @@ function renderFixProjects(v){
     <p style="font-size:14px;color:#7a8494;margin-bottom:20px">Spa Refurbishment, Woodland Maintenance, Bedroom Refurb and more — manage projects on the mobile app.</p>
     <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;display:inline-block">Open HosFIX mobile app ↗</a>
   </div>`;
+}
+
+/* ============================================================ HOSFIX — TEAM & PROFILES (portal only) */
+function renderFixTeam(v){
+  const HFUSERS=[
+    {id:"raj",    name:"Raj Kumar",     role:"Property Director",            color:"#1a2b3a"},
+    {id:"glenn",  name:"Glenn Randell", role:"Maintenance Manager",          color:"#b8860b"},
+    {id:"ruth",   name:"Ruth Addison",  role:"Housekeeping Manager",         color:"#be185d"},
+    {id:"herman", name:"Herman",        role:"Multi-trader (non-electrical)", color:"#2a6a4a"},
+    {id:"pete",   name:"Pete",          role:"Multi-trader (electrical)",     color:"#20b2a2"},
+    {id:"daniel", name:"Daniel",        role:"General Labour",               color:"#7c3aed"},
+  ];
+  const JOBS=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');
+  const LOGS=JSON.parse(localStorage.getItem('hosfix_timelogs')||'[]');
+  const PROFILES=JSON.parse(localStorage.getItem('hosfix_profiles')||'{}');
+  const money=n=>'£'+Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const inits=n=>n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const totalMins=logs=>logs.reduce((s,l)=>s+(l.durationMins||0),0);
+
+  v.innerHTML=`<div style="padding:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Team &amp; Profiles</h2>
+        <p style="font-size:13px;color:#7a8494">Staff profiles, contracted hours, rates and productivity. Edit profiles to update rates.</p>
+      </div>
+      <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open HosFIX app ↗</a>
+    </div>
+
+    <!-- Summary strip -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+      ${[
+        ['Total jobs logged',JOBS.length,'var(--navy)'],
+        ['Open jobs',JOBS.filter(j=>j.status!=='complete').length,'var(--red)'],
+        ['Complete',JOBS.filter(j=>j.status==='complete').length,'var(--green)'],
+        ['Total labour cost',money(HFUSERS.reduce((s,u)=>{const p=PROFILES[u.id]||{};const mins=totalMins(LOGS.filter(l=>l.userId===u.id));return s+((mins/60)*(p.costPerHour||0));},0)),'var(--amber)']
+      ].map(([l,v2,c])=>`<div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:3px solid ${c}">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:${c};font-weight:600">${v2}</div>
+        <div style="font-size:12px;color:#7a8494;margin-top:4px">${l}</div></div>`).join('')}
+    </div>
+
+    <!-- Staff cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
+      ${HFUSERS.map(u=>{
+        const p=PROFILES[u.id]||{};
+        const myJobs=JOBS.filter(j=>(j.assignees||[]).includes(u.id));
+        const myLogs=LOGS.filter(l=>l.userId===u.id);
+        const myMins=totalMins(myLogs);
+        const myHours=(myMins/60).toFixed(1);
+        const myCost=((myMins/60)*(p.costPerHour||0));
+        const weekMins=(p.weeklyHours||0)*60;
+        const pct=weekMins?Math.min(100,Math.round(myMins/weekMins*100)):0;
+        const pctColor=pct>90?'var(--red)':pct>70?'var(--amber)':'var(--green)';
+        return `<div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 8px rgba(26,43,58,.05)">
+          <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px">
+            <div style="width:48px;height:48px;border-radius:50%;background:${u.color};display:grid;place-items:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0">${inits(u.name)}</div>
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:16px;color:var(--navy)">${u.name}</div>
+              <div style="font-size:12px;color:#7a8494;margin-top:1px">${u.role}</div>
+              ${p.email?`<div style="font-size:12px;color:#7a8494;margin-top:3px">✉️ <a href="mailto:${p.email}" style="color:#7a8494">${p.email}</a></div>`:''}
+              ${p.mobile?`<div style="font-size:12px;color:#7a8494;margin-top:1px">📱 ${p.mobile}</div>`:''}
+            </div>
+            <button onclick="editFixProfile('${u.id}')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;font:600 12px 'Lato';cursor:pointer;color:var(--navy)">Edit</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+            ${[
+              [myJobs.length,'Total jobs','var(--navy)'],
+              [myJobs.filter(j=>j.status!=='complete').length,'Open','var(--amber)'],
+              [myJobs.filter(j=>j.status==='complete').length,'Done','var(--green)'],
+              [myHours+'h','Time logged','var(--navy)']
+            ].map(([val,label,color])=>`<div style="background:#f5f7f9;border-radius:9px;padding:10px;text-align:center">
+              <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:${color}">${val}</div>
+              <div style="font-size:10px;color:#7a8494;margin-top:2px">${label}</div>
+            </div>`).join('')}
+          </div>
+          ${p.costPerHour?`
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+            <div style="background:#f5f7f9;border-radius:9px;padding:10px;text-align:center">
+              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--amber)">${money(myCost)}</div>
+              <div style="font-size:10px;color:#7a8494;margin-top:2px">Labour cost logged</div>
+            </div>
+            <div style="background:#f5f7f9;border-radius:9px;padding:10px;text-align:center">
+              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--navy)">£${p.costPerHour}/hr</div>
+              <div style="font-size:10px;color:#7a8494;margin-top:2px">${p.weeklyHours||'?'}h/wk contracted</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#7a8494;margin-bottom:4px">Weekly hours utilisation — ${myHours}h of ${p.weeklyHours||'?'}h (${pct}%)</div>
+          <div style="background:#f0f2f5;border-radius:4px;height:8px"><div style="height:8px;border-radius:4px;width:${pct}%;background:${pctColor};transition:.3s"></div></div>`:'<div style="font-size:12px;color:#7a8494;font-style:italic">Set hourly rate to track costs</div>'}
+          ${p.notes?`<div style="font-size:12px;color:#7a8494;margin-top:8px;font-style:italic;padding-top:8px;border-top:1px solid var(--line)">${p.notes}</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  // Wire edit buttons
+  HFUSERS.forEach(u=>{
+    const btn=v.querySelector(`[onclick="editFixProfile('${u.id}')"]`);
+    if(btn) btn.onclick=()=>editFixProfile(u.id, v);
+  });
+}
+
+function editFixProfile(uid, container){
+  const PROFILES=JSON.parse(localStorage.getItem('hosfix_profiles')||'{}');
+  const HFUSERS=[
+    {id:"raj",name:"Raj Kumar"},{id:"glenn",name:"Glenn Randell"},{id:"ruth",name:"Ruth Addison"},
+    {id:"herman",name:"Herman"},{id:"pete",name:"Pete"},{id:"daniel",name:"Daniel"}
+  ];
+  const u=HFUSERS.find(x=>x.id===uid); const p=PROFILES[uid]||{};
+  const modal=el('div'); modal.className='quote-modal-bg'; modal.style.cssText='position:fixed;inset:0;background:rgba(26,43,58,.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:#fff;border-radius:16px;padding:24px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto">
+    <h3 style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--navy);margin-bottom:16px">Edit profile — ${u?.name}</h3>
+    <div class="field"><label>Full name</label><input id="ep-name" value="${p.name||u?.name||''}"></div>
+    <div class="field"><label>Email</label><input type="email" id="ep-email" value="${p.email||''}" placeholder="name@brandonhallhotelandspa.com"></div>
+    <div class="field"><label>Mobile</label><input type="tel" id="ep-mobile" value="${p.mobile||''}" placeholder="07xxx xxxxxx"></div>
+    <div class="field"><label>Weekly contracted hours</label><input type="number" id="ep-hours" value="${p.weeklyHours||40}" min="0" max="60" style="width:120px"></div>
+    <div class="field"><label>Cost per hour (£)</label><input type="number" id="ep-rate" value="${p.costPerHour||0}" min="0" step="0.50" style="width:120px"></div>
+    <div class="field"><label>Notes / qualifications</label><textarea id="ep-notes" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font:14px 'Lato';min-height:70px">${p.notes||''}</textarea></div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button id="ep-save" class="btn block" style="flex:1">Save profile</button>
+      <button onclick="this.closest('.quote-modal-bg').remove()" class="btn ghost" style="flex:1;border:1px solid var(--line);background:#fff;color:var(--navy)">Cancel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector('#ep-save').onclick=()=>{
+    PROFILES[uid]={
+      name:modal.querySelector('#ep-name').value.trim()||u?.name||'',
+      email:modal.querySelector('#ep-email').value.trim(),
+      mobile:modal.querySelector('#ep-mobile').value.trim(),
+      weeklyHours:parseFloat(modal.querySelector('#ep-hours').value)||0,
+      costPerHour:parseFloat(modal.querySelector('#ep-rate').value)||0,
+      notes:modal.querySelector('#ep-notes').value.trim(),
+    };
+    localStorage.setItem('hosfix_profiles',JSON.stringify(PROFILES));
+    modal.remove();
+    if(container) renderFixTeam(container);
+  };
+  modal.onclick=e=>{if(e.target===modal)modal.remove();};
 }
