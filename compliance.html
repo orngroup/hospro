@@ -2,199 +2,96 @@
 <html lang="en-GB">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-<meta name="theme-color" content="#1a2b3a">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="BH Compliance">
-<link rel="manifest" href="tasks-manifest.json">
-<link rel="apple-touch-icon" href="assets/icon-192.png">
-<title>Compliance — Brandon Hall Hotel and Spa</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Compliance Dashboard — Brandon Hall Hotel and Spa</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#1a2b3a;--navy2:#101d33;--gold:#c9a978;--red:#d0433b;--amber:#c78a3b;--green:#2a6a4a;--paper:#f5f7f9;--ink:#2a3644;--line:#e3e7ee}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden}
-body{font-family:'Lato',system-ui,sans-serif;background:var(--paper);color:var(--ink)}
-
-/* ---- LOGIN ---- */
-#login{position:fixed;inset:0;background:linear-gradient(160deg,var(--navy),var(--navy2));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;z-index:100}
-.login-logo{font-family:'Cormorant Garamond',serif;font-size:38px;letter-spacing:6px;color:#fff;font-weight:600;text-align:center}
-.login-sub{font-size:11px;letter-spacing:5px;color:var(--gold);font-weight:700;margin-top:4px;margin-bottom:26px}
-.login-title{font-family:'Cormorant Garamond',serif;font-size:22px;color:#fff;text-align:center;margin-bottom:6px}
-.login-hint{color:#9fb0c4;font-size:13px;text-align:center;margin-bottom:18px}
-.login-select{width:100%;max-width:340px;padding:16px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:17px;font-family:inherit;appearance:none;text-align:center}
-.login-select option{background:#1a2b3a;color:#fff}
-.login-btn{margin-top:14px;width:100%;max-width:340px;padding:16px;background:var(--gold);color:var(--navy);border:none;border-radius:12px;font:700 17px 'Lato';cursor:pointer}
-.login-btn:disabled{opacity:.4}
-
-/* ---- APP SHELL ---- */
-#app{display:none;height:100%;flex-direction:column}
-.topbar{background:var(--navy);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px}
-.topbar .brand{font-family:'Cormorant Garamond',serif;font-size:17px;letter-spacing:2px;font-weight:600;line-height:1}
-.topbar .brand small{display:block;font-size:9px;letter-spacing:3px;color:var(--gold);font-family:'Lato';font-weight:700}
-.tb-right{display:flex;align-items:center;gap:8px}
-.user-pill{background:rgba(255,255,255,.12);border:none;color:#fff;padding:7px 12px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
-.menu-btn{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:4px}
-
-/* ---- SIDEBAR ---- */
-#sidebar{position:fixed;inset:0;z-index:80;display:flex}
-.sidebar-overlay{flex:1;background:rgba(0,0,0,.45)}
-.sidebar-panel{width:240px;background:var(--navy);display:flex;flex-direction:column;padding:calc(20px + env(safe-area-inset-top)) 0 20px}
-.sb-logo{padding:0 18px 20px;border-bottom:1px solid rgba(255,255,255,.1)}
-.sb-logo-t{font-family:'Cormorant Garamond',serif;font-size:22px;color:#fff;font-weight:600;letter-spacing:3px}
-.sb-logo-s{font-size:10px;letter-spacing:3px;color:var(--gold);font-weight:700}
-.sb-section{padding:14px 18px 6px;font-size:10px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,.35);text-transform:uppercase}
-.sb-item{display:flex;align-items:center;gap:12px;padding:13px 18px;color:rgba(255,255,255,.75);font-size:14px;font-weight:600;cursor:pointer;border:none;background:none;width:100%;text-align:left;text-decoration:none}
-.sb-item:hover,.sb-item.on{background:rgba(255,255,255,.08);color:#fff}
-.sb-item .ico{font-size:18px;width:24px;text-align:center}
-.sb-item .badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700}
-.sb-foot{margin-top:auto;padding:14px 18px;border-top:1px solid rgba(255,255,255,.1)}
-.sb-foot button{background:none;border:none;color:rgba(255,255,255,.5);font-size:13px;cursor:pointer;width:100%;text-align:left;padding:8px 0}
-
-/* ---- CONTENT ---- */
-.content{flex:1;overflow-y:auto;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
-
-/* ---- DASHBOARD ---- */
-.dash-wrap{padding:14px}
-.dash-greeting{font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:4px}
-.dash-date{font-size:13px;color:#7a8494;margin-bottom:16px}
-.dash-alert{background:#fde8e6;border-radius:12px;padding:14px 16px;margin-bottom:14px;border-left:4px solid var(--red)}
-.dash-alert .da-n{font-weight:700;color:#b3261e;font-size:15px;margin-bottom:3px}
-.dash-alert .da-s{font-size:13px;color:#7a8494}
-.dash-h{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--navy);margin:16px 0 10px}
-.person-card{background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:8px;box-shadow:0 2px 8px rgba(26,43,58,.05);display:flex;align-items:center;gap:12px;cursor:pointer}
-.pc-av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0}
-.pc-body{flex:1}
-.pc-name{font-weight:700;color:var(--navy);font-size:14.5px}
-.pc-stats{font-size:12px;color:#7a8494;margin-top:2px}
-.pc-right{text-align:right}
-.pc-od{font-size:11px;font-weight:700;color:var(--red)}
-.pc-done{font-size:11px;color:var(--green);font-weight:700}
-
-/* ---- SUMMARY STRIP ---- */
-.sum-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px 14px 0}
-.sum-c{background:#fff;border-radius:12px;padding:13px;text-align:center;box-shadow:0 2px 8px rgba(26,43,58,.06)}
-.sum-c .v{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;line-height:1}
-.sum-c .k{font-size:11px;color:#7a8494;margin-top:3px}
-.sum-c.red .v{color:var(--red)}.sum-c.amber .v{color:var(--amber)}.sum-c.green .v{color:var(--green)}
-
-/* ---- FILTERS ---- */
-.filter-row{display:flex;gap:8px;padding:12px 14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.filter-row::-webkit-scrollbar{display:none}
-.ftab{white-space:nowrap;padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;flex-shrink:0}
-.ftab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-.ftab .n{display:inline-block;background:var(--red);color:#fff;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:4px;vertical-align:middle}
-.person-filter{padding:0 14px 10px;display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.person-filter::-webkit-scrollbar{display:none}
-.pf-btn{white-space:nowrap;padding:7px 13px;border-radius:16px;border:1px solid var(--line);background:#fff;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0}
-.pf-btn.on{background:var(--gold);color:var(--navy);border-color:var(--gold)}
-
-/* ---- TASK CARDS ---- */
-.task-list{display:flex;flex-direction:column;gap:8px;padding:0 14px}
-.tc{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(26,43,58,.05);border-left:5px solid transparent;cursor:pointer;transition:.1s}
-.tc:active{transform:scale(.98)}
-.tc.tl-red{border-color:#d0433b}          /* overdue 7+ days */
-.tc.tl-orange{border-color:#c45c00}       /* URGENT - manually flagged */
-.tc.tl-yellow{border-color:#d4a017}       /* due within 7 days */
-.tc.tl-green{border-color:#2a6a4a}        /* on track */
-.tc.tl-done{opacity:.55;border-color:#aaa}/* completed */
-.tc-row1{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px}
-.tc-name{font-weight:700;font-size:14px;color:var(--navy);line-height:1.3;flex:1}
-.tc.done-c .tc-name{text-decoration:line-through;color:#999}
-.tc-badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;white-space:nowrap;flex-shrink:0}
-.tc-badge.tl-red{background:#fde8e6;color:#b3261e}        /* red - overdue */
-.tc-badge.tl-orange{background:#fff0e0;color:#c45c00;border:1px solid #c45c00}  /* dark orange - urgent */
-.tc-badge.tl-yellow{background:#fffbe6;color:#997300}     /* yellow - due soon */
-.tc-badge.tl-green{background:#e8f3ee;color:#2a6a4a}      /* green - on track */
-.tc-badge.tl-grey{background:#f0f2f5;color:#4a5560}       /* grey - no date */
-.tc-badge.tl-done{background:#e8f3ee;color:#2a6a4a}       /* done */
-.tc-dates{display:flex;gap:10px;font-size:11.5px;color:#7a8494;margin-bottom:5px;flex-wrap:wrap}
-.tc-dates span{display:flex;align-items:center;gap:3px}
-.tc-dates .overdue-date{color:var(--red);font-weight:700}
-.tc-pills{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
-.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:7px}
+:root{--navy:#1a2b3a;--gold:#c9a978;--red:#d0433b;--orange:#c45c00;--amber:#c78a3b;--green:#2a6a4a;--paper:#f5f7f9;--ink:#2a3644;--line:#e3e7ee}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Lato',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh}
+.topbar{background:var(--navy);color:#fff;padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:20}
+.tb-brand{display:flex;align-items:center;gap:14px}
+.tb-brand-text .t{font-family:'Cormorant Garamond',serif;font-size:20px;letter-spacing:3px;font-weight:600}
+.tb-brand-text .s{font-size:9px;letter-spacing:3px;color:var(--gold);font-weight:700}
+.tb-right{display:flex;align-items:center;gap:10px}
+.tb-link{background:rgba(255,255,255,.1);border:none;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+.tb-pwa{background:var(--gold);color:var(--navy);border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 60px)}
+.sidebar{background:var(--navy);padding:20px 0;position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto}
+.sb-section{padding:14px 18px 5px;font-size:10px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,.35);text-transform:uppercase}
+.sb-item{display:flex;align-items:center;gap:10px;padding:11px 18px;color:rgba(255,255,255,.7);font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;width:100%;text-align:left}
+.sb-item:hover,.sb-item.on{background:rgba(255,255,255,.1);color:#fff}
+.sb-item .ico{font-size:15px;width:20px;text-align:center}
+.sb-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:8px}
+.main{padding:24px 28px}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
+.stat{background:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 10px rgba(26,43,58,.06);border-top:4px solid transparent}
+.stat.red{border-color:var(--red)}.stat.orange{border-color:var(--orange)}.stat.amber{border-color:var(--amber)}.stat.green{border-color:var(--green)}.stat.navy{border-color:var(--navy)}
+.stat .v{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:600;line-height:1}
+.stat.red .v{color:var(--red)}.stat.orange .v{color:var(--orange)}.stat.amber .v{color:var(--amber)}.stat.green .v{color:var(--green)}.stat.navy .v{color:var(--navy)}
+.stat .k{font-size:12px;color:#7a8494;margin-top:4px}
+.stat .prog{background:#f0f2f5;border-radius:4px;height:5px;margin-top:10px}
+.stat .prog-b{height:5px;border-radius:4px}
+.sec-h{display:flex;align-items:center;justify-content:space-between;margin:0 0 14px}
+.sec-h h2{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--navy)}
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:12px;margin-bottom:28px}
+.person-card{background:#fff;border-radius:12px;padding:15px;box-shadow:0 2px 8px rgba(26,43,58,.05);border-left:4px solid var(--line);cursor:pointer}
+.person-card.has-od{border-color:var(--red)}.person-card.all-ok{border-color:var(--green)}
+.pc-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.pc-av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.pc-av.mgr{background:#b8860b;border:2px solid #ffd700;box-sizing:border-box}
+.pc-name{font-weight:700;color:var(--navy);font-size:13.5px;line-height:1.2}
+.pc-role{font-size:11px;color:#7a8494}
+.pc-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pc-stat{background:#f5f7f9;border-radius:8px;padding:8px;text-align:center}
+.pc-stat .n{font-size:20px;font-weight:700;font-family:'Cormorant Garamond',serif}
+.pc-stat .l{font-size:10px;color:#7a8494}
+.pc-stat.red .n{color:var(--red)}.pc-stat.green .n{color:var(--green)}.pc-stat.orange .n{color:var(--orange)}
+.tbl-wrap{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(26,43,58,.05);overflow:hidden;margin-bottom:24px}
+.tbl-toolbar{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tbl-toolbar input{flex:1;min-width:180px;padding:9px 13px;border:1px solid var(--line);border-radius:8px;font-size:13px}
+.tbl-toolbar select{padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff}
+.print-btn{padding:9px 16px;border-radius:8px;border:none;background:var(--navy);color:#fff;font:700 13px 'Lato';cursor:pointer;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:#f5f7f9;padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;letter-spacing:.3px;text-transform:uppercase;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap}
+thead th:hover{color:var(--navy)}.thead th.sorted{color:var(--navy)}
+tbody tr{border-bottom:1px solid #f5f7f9;transition:.08s}
+tbody tr:hover{background:#fafbfc}
+tbody tr.done-row{opacity:.5}
+td{padding:10px 13px;vertical-align:middle}
+.td-name{font-weight:600;color:var(--navy);max-width:260px;line-height:1.3}
+.td-sub{font-size:11px;color:#7a8494;font-weight:400;margin-top:2px}
+.tl{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:7px;white-space:nowrap}
+.tl-red{background:#fde8e6;color:#b3261e}.tl-orange{background:#fff0e0;color:#c45c00;border:1px solid #c45c00}
+.tl-yellow{background:#fffbe6;color:#997300}.tl-green{background:#e8f3ee;color:#2a6a4a}
+.tl-grey{background:#f0f2f5;color:#6b7280}.tl-done{background:#e8f3ee;color:#2a6a4a}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;white-space:nowrap}
 .pill-fire{background:#fff0e6;color:#c2410c}.pill-food{background:#f0fdf4;color:#166534}
 .pill-water{background:#eff6ff;color:#1d4ed8}.pill-elec{background:#fdf4ff;color:#7e22ce}
-.pill-asb{background:#fefce8;color:#854d0e}.pill-hs{background:#f0f2f5;color:#374151}
-.pill-grey{background:#f0f2f5;color:#4a5560}.pill-urgent{background:#fff0e0;color:#c45c00;font-weight:700}
-.pill-mine{background:#e8edf3;color:#1a2b47}
-.tc-assignees{display:flex;gap:4px;flex-wrap:wrap}
+.pill-asb{background:#fefce8;color:#854d0e}.pill-hs{background:#f0f2f5;color:#374151}.pill-grey{background:#f0f2f5;color:#4a5560}
+.avs{display:flex;gap:3px;flex-wrap:wrap}
 .av{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;color:#fff}
-.av-0{background:#1a2b3a}.av-1{background:#2a6a4a}.av-2{background:#c78a3b}
-.av-3{background:#d0433b}.av-4{background:#20b2a2}.av-5{background:#7c3aed}.av-6{background:#be185d}
-.tc-note-preview{font-size:12px;color:#7a8494;font-style:italic;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-/* ---- SECTION HEADING ---- */
-.sec-h{padding:14px 14px 6px;font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--navy)}
-.sec-h span{font-size:13px;color:#7a8494;font-family:'Lato';font-weight:400;margin-left:6px}
-.empty-msg{text-align:center;padding:40px 20px;color:#7a8494;font-size:14px}
-
-/* ---- BOTTOM NAV ---- */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:10}
-.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 0;cursor:pointer;border:none;background:none;color:#7a8494;font-size:10px;font-weight:600;gap:2px}
-.bnav-item.on{color:var(--navy)}.bnav-item .ico{font-size:18px}
-.bnav-item .b-badge{background:var(--red);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;font-weight:700}
-
-/* ---- MODAL / DETAIL ---- */
-.modal-bg{position:fixed;inset:0;background:rgba(16,29,51,.6);z-index:50;display:flex;align-items:flex-end}
-.modal-sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:20px 18px calc(20px + env(safe-area-inset-bottom))}
-.ms-handle{width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 14px}
-.ms-title{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--navy);margin-bottom:3px;line-height:1.2}
-.ms-meta{font-size:12.5px;color:#7a8494;margin-bottom:12px}
-.ms-dates{display:flex;gap:14px;flex-wrap:wrap;background:#f5f7f9;border-radius:10px;padding:10px 12px;margin-bottom:12px}
-.ms-date-item{font-size:12.5px}
-.ms-date-item .dl{font-weight:700;color:var(--navy);font-size:11px;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px}
-.ms-date-item .dv{color:var(--ink)}
-.ms-date-item .dv.red{color:var(--red);font-weight:700}
-.field{margin-bottom:13px}
-.field label{display:block;font-size:11px;font-weight:700;color:var(--navy);letter-spacing:.4px;margin-bottom:6px;text-transform:uppercase}
-.field input,.field select,.field textarea{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:11px;font-size:15px;font-family:inherit}
-.field textarea{min-height:80px;resize:vertical}
-
-/* Assignee list */
-.assign-list{display:flex;flex-direction:column;gap:6px}
-.assign-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
-.assign-row.on{background:#e8edf3;border-color:#1a2b47}
-.assign-row .ar-l{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--navy)}
-.assign-row .ar-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
-.assign-row.on .ar-check{background:var(--navy);border-color:var(--navy)}
-
-/* Priority buttons */
-.pri-row{display:flex;gap:8px}
-.pri-btn{flex:1;padding:11px;border-radius:10px;border:2px solid var(--line);background:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:.1s}
-.pri-btn.on-urgent{background:#fde8e6;border-color:var(--red);color:var(--red)}
-.pri-btn.on-high{background:#fef3e8;border-color:var(--amber);color:var(--amber)}
-.pri-btn.on-normal{background:#e8edf3;border-color:var(--navy);color:var(--navy)}
-
-/* Photo */
-.photo-area{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;cursor:pointer;color:#7a8494;font-size:14px}
-.photo-thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.photo-thumb{width:72px;height:72px;object-fit:cover;border-radius:8px}
-
-/* Action buttons */
-.btn-row{display:flex;gap:8px;margin-top:8px}
-.btn-p{flex:1;padding:14px;border-radius:12px;border:none;font:700 15px 'Lato';cursor:pointer}
-.btn-complete{background:var(--green);color:#fff}
-.btn-ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
-.btn-undo{background:#f0f2f5;color:var(--ink);border:none}
-.done-box{background:#e8f3ee;border-radius:10px;padding:12px;font-size:13px;color:#2a6a4a;margin-bottom:12px;line-height:1.5}
-
-/* Notes history */
-.notes-history{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
-.note-entry{background:#f5f7f9;border-radius:8px;padding:9px 11px;font-size:13px}
-.note-entry .ne-by{font-weight:700;color:var(--navy);font-size:11px;margin-bottom:3px}
-
-/* Toast */
-.toast{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom) + 8px);left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.3);animation:rise .2s;white-space:nowrap}
-@keyframes rise{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+.av.mgr-av{background:#b8860b;border:2px solid #ffd700;box-sizing:border-box}
+.view-tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.vtab{padding:9px 18px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:700;cursor:pointer}
+.vtab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.vtab .vb{display:inline-block;background:var(--red);color:#fff;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:4px}
+.legend{display:flex;gap:14px;font-size:12px;color:#7a8494;align-items:center;flex-wrap:wrap}
+@media print{
+  .topbar,.sidebar,.tbl-toolbar,.print-btn,.view-tabs,.vtab{display:none!important}
+  .layout{display:block}.main{padding:0}
+  .stats{grid-template-columns:repeat(5,1fr)}
+  table{font-size:11px} td,th{padding:7px 10px}
+  .tbl-wrap{box-shadow:none;border:1px solid #ddd}
+  body{background:#fff}
+}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{display:none}.stats{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
-
-<!-- LOGIN -->
-<div id="login">
-  <div style="width:160px;height:auto;margin-bottom:22px"><svg style="filter:brightness(0) invert(1)" width="232" height="151" viewBox="0 0 232 151" fill="none" xmlns="http://www.w3.org/2000/svg">
+<div class="topbar">
+  <div class="tb-brand">
+    <div style="width:36px;flex-shrink:0"><svg style="filter:brightness(0) invert(1);width:52px;height:auto" width="232" height="151" viewBox="0 0 232 151" fill="none" xmlns="http://www.w3.org/2000/svg">
 <mask id="mask0_2121_335" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="36" y="0" width="153" height="122">
 <path d="M188.32 0H36.3201V121.333H188.32V0Z" fill="white"/>
 </mask>
@@ -233,565 +130,307 @@ body{font-family:'Lato',system-ui,sans-serif;background:var(--paper);color:var(-
 <path d="M202.328 125.316C202.203 125.316 202.104 125.264 202.037 125.17C201.964 125.076 201.933 124.956 201.933 124.816C201.943 124.597 201.985 124.461 202.058 124.42C202.141 124.368 202.287 124.336 202.495 124.336C202.938 124.336 203.266 124.264 203.474 124.107C203.683 123.941 203.813 123.748 203.87 123.524C203.922 123.29 203.959 122.977 203.974 122.586V113.566C203.959 113.18 203.922 112.873 203.87 112.649C203.813 112.415 203.683 112.222 203.474 112.066C203.266 111.899 202.938 111.816 202.495 111.816H202.37C202.214 111.816 202.104 111.79 202.037 111.732C201.979 111.68 201.943 111.545 201.933 111.336C201.933 111.201 201.964 111.081 202.037 110.982C202.104 110.889 202.203 110.836 202.328 110.836C203.328 110.878 204.224 110.899 205.016 110.899C205.933 110.899 206.881 110.878 207.87 110.836C208.006 110.836 208.11 110.889 208.183 110.982C208.25 111.081 208.287 111.201 208.287 111.336C208.271 111.56 208.224 111.701 208.141 111.753C208.058 111.795 207.912 111.816 207.703 111.816C207.271 111.816 206.943 111.899 206.724 112.066C206.516 112.222 206.381 112.415 206.328 112.649C206.271 112.873 206.235 113.18 206.224 113.566V122.941C206.266 123.264 206.308 123.514 206.349 123.691C206.391 123.857 206.521 124.014 206.745 124.149C206.979 124.29 207.339 124.352 207.828 124.336H209.87C210.396 124.326 210.797 124.243 211.078 124.086C211.354 123.92 211.568 123.67 211.724 123.336C211.891 123.003 212.084 122.461 212.308 121.711C212.417 121.435 212.672 121.326 213.078 121.378C213.214 121.42 213.339 121.493 213.453 121.586C213.578 121.67 213.631 121.774 213.62 121.899L213.162 124.774C213.12 124.972 213.047 125.102 212.953 125.17C212.87 125.227 212.724 125.253 212.516 125.253H205.058C204.235 125.253 203.328 125.274 202.328 125.316Z" fill="#BB9979"/>
 <path d="M220.643 125.316C220.518 125.316 220.419 125.264 220.351 125.17C220.278 125.076 220.247 124.956 220.247 124.816C220.257 124.597 220.299 124.461 220.372 124.42C220.455 124.368 220.601 124.336 220.81 124.336C221.252 124.336 221.58 124.264 221.789 124.107C221.997 123.941 222.127 123.748 222.185 123.524C222.237 123.29 222.273 122.977 222.289 122.586V113.566C222.273 113.18 222.237 112.873 222.185 112.649C222.127 112.415 221.997 112.222 221.789 112.066C221.58 111.899 221.252 111.816 220.81 111.816H220.685C220.528 111.816 220.419 111.79 220.351 111.732C220.294 111.68 220.257 111.545 220.247 111.336C220.247 111.201 220.278 111.081 220.351 110.982C220.419 110.889 220.518 110.836 220.643 110.836C221.643 110.878 222.539 110.899 223.33 110.899C224.247 110.899 225.195 110.878 226.185 110.836C226.32 110.836 226.424 110.889 226.497 110.982C226.565 111.081 226.601 111.201 226.601 111.336C226.586 111.56 226.539 111.701 226.455 111.753C226.372 111.795 226.226 111.816 226.018 111.816C225.586 111.816 225.257 111.899 225.039 112.066C224.83 112.222 224.695 112.415 224.643 112.649C224.586 112.873 224.549 113.18 224.539 113.566V122.941C224.58 123.264 224.622 123.514 224.664 123.691C224.705 123.857 224.836 124.014 225.06 124.149C225.294 124.29 225.653 124.352 226.143 124.336H228.185C228.711 124.326 229.112 124.243 229.393 124.086C229.669 123.92 229.882 123.67 230.039 123.336C230.205 123.003 230.398 122.461 230.622 121.711C230.731 121.435 230.987 121.326 231.393 121.378C231.528 121.42 231.653 121.493 231.768 121.586C231.893 121.67 231.945 121.774 231.935 121.899L231.476 124.774C231.435 124.972 231.362 125.102 231.268 125.17C231.185 125.227 231.039 125.253 230.83 125.253H223.372C222.549 125.253 221.643 125.274 220.643 125.316Z" fill="#BB9979"/>
 </svg></div>
-  <div class="login-title">Compliance</div>
-  <div class="login-hint">Sign in to Compliance</div>
-  <select class="login-select" id="lg-name">
-    <option value="">Select your name…</option>
-  </select>
-  <button class="login-btn" id="lg-btn" disabled>Continue</button>
-</div>
-
-<!-- APP -->
-<div id="app">
-  <div class="topbar">
-    <button class="menu-btn" id="menu-btn" onclick="toggleSidebar()">&#9776;</button>
-    <div class="brand">COMPLIANCE<small>BRANDON HALL</small></div>
-    <div class="tb-right">
-      <button class="user-pill" id="tb-user" onclick="toggleSidebar()">Glen &#9660;</button>
+    <div class="tb-brand-text">
+      <div class="t">BRANDON HALL</div>
+      <div class="s">COMPLIANCE DASHBOARD</div>
     </div>
   </div>
-  <div class="content" id="content"></div>
-  <div class="bottom-nav">
-    <button class="bnav-item on" data-view="dashboard" onclick="switchView('dashboard')"><span class="ico">🏠</span>Dashboard</button>
-    <button class="bnav-item" data-view="tasks" onclick="switchView('tasks')"><span class="ico">📋</span>Tasks<span class="b-badge" id="bnav-tasks-badge" style="display:none"></span></button>
-    <button class="bnav-item" data-view="actions" onclick="switchView('actions')"><span class="ico">⚡</span>Actions<span class="b-badge" id="bnav-actions-badge" style="display:none"></span></button>
-    <button class="bnav-item" data-view="report" onclick="switchView('report')"><span class="ico">📊</span>Report</button>
+  <div class="tb-right">
+    <a class="tb-link" href="index.html">&#8592; HOSPRO Portal</a>
+    <a class="tb-link" href="https://app.saeker.com" target="_blank">Saeker &#8599;</a>
+    <a class="tb-pwa" href="tasks.html" target="_blank">&#128241; Mobile App</a>
   </div>
 </div>
-
-<!-- SIDEBAR -->
-<div id="sidebar" style="display:none" onclick="e=>e.stopPropagation()">
-  <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
-  <div class="sidebar-panel">
-    <div class="sb-logo">
-      <div class="sb-logo-t">BRANDON HALL</div>
-      <div class="sb-logo-s">COMPLIANCE HUB</div>
-    </div>
-    <div class="sb-section">Navigation</div>
-    <button class="sb-item" onclick="switchView('dashboard');toggleSidebar()"><span class="ico">🏠</span>Dashboard</button>
-    <button class="sb-item" onclick="switchView('tasks');toggleSidebar()"><span class="ico">📋</span>Tasks<span class="badge" id="sb-tasks-od"></span></button>
-    <button class="sb-item" onclick="switchView('actions');toggleSidebar()"><span class="ico">⚡</span>Actions<span class="badge" id="sb-actions-od"></span></button>
-    <button class="sb-item" onclick="switchView('report');toggleSidebar()"><span class="ico">📊</span>Report</button>
-    <div class="sb-section">Links</div>
-    <a class="sb-item" href="index.html"><span class="ico">🏨</span>HOSPRO Portal</a>
-    <a class="sb-item" href="compliance.html"><span class="ico">📄</span>Full compliance view</a>
-    <a class="sb-item" href="https://app.saeker.com" target="_blank"><span class="ico">↗</span>Open Saeker</a>
-    <div class="sb-section">Phase 2 (coming)</div>
-    <button class="sb-item" style="opacity:.4" onclick="toast('Forms coming in Phase 2 — upload from Saeker or build here');toggleSidebar()"><span class="ico">📝</span>H&amp;S Forms</button>
-    <button class="sb-item" style="opacity:.4" onclick="toast('Audit templates coming in Phase 2');toggleSidebar()"><span class="ico">✅</span>Audit templates</button>
-    <div class="sb-foot">
-      <button onclick="signOut()">Sign out</button>
-    </div>
+<div class="layout">
+  <div class="sidebar">
+    <div class="sb-section">Views</div>
+    <button class="sb-item on" id="nav-overview" onclick="switchSection('overview',this)"><span class="ico">&#127968;</span>Overview</button>
+    <button class="sb-item" id="nav-tasks" onclick="switchSection('tasks',this)"><span class="ico">&#128203;</span>All Tasks<span class="sb-badge" id="sb-t-od" style="display:none"></span></button>
+    <button class="sb-item" id="nav-actions" onclick="switchSection('actions',this)"><span class="ico">&#9889;</span>All Actions<span class="sb-badge" id="sb-a-od" style="display:none"></span></button>
+    <button class="sb-item" id="nav-byPerson" onclick="switchSection('byPerson',this)"><span class="ico">&#128101;</span>By Person</button>
+    <button class="sb-item" id="nav-report" onclick="switchSection('report',this)"><span class="ico">&#128202;</span>Print Report</button>
+    <div class="sb-section">Filter by person</div>
+    <button class="sb-item on" id="pf-ALL" onclick="setPersonFilter('',this)"><span class="ico">&#128101;</span>Everyone</button>
+    <div id="person-sb-list"></div>
+    <div class="sb-section">Phase 2</div>
+    <button class="sb-item" style="opacity:.4" onclick="alert('H&S Forms coming in Phase 2')"><span class="ico">&#128221;</span>H&amp;S Forms</button>
+    <button class="sb-item" style="opacity:.4" onclick="alert('Audit templates in Phase 2')"><span class="ico">&#9989;</span>Audit Templates</button>
   </div>
+  <div class="main" id="main-content"></div>
 </div>
-
-<!-- TASK DETAIL MODAL -->
-<div class="modal-bg" id="modal" style="display:none" onclick="handleModalBgClick(event)">
-  <div class="modal-sheet" id="modal-sheet">
-    <div class="ms-handle"></div>
-    <div id="modal-content"></div>
-  </div>
-</div>
-
 <script>
 
-const ALL_TASKS = [{"id": "T001", "name": "Six monthly kitchen extract ductwork cleaning (external)", "type": "External", "due": "01/06/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Food Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T002", "name": "Quarterly staff fire training (night staff)", "type": "Internal", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T003", "name": "Quarterly staff fire training (fire staff)", "type": "Internal", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T004", "name": "Lightning protection system test", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Electrical & PAT", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T005", "name": "Pressure systems examination - hot water systems", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Legionella & Water", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T006", "name": "Sprinkler/ misting system service", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T007", "name": "Six monthly dry risers test", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T008", "name": "Six monthly kitchen equipment servicing", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Food Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T009", "name": "Annual cold water storage tank inspection", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Legionella & Water", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T010", "name": "Annual disabled accessible toilet & bedroom alarm servicing", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T011", "name": "Fixed electrical installation condition test", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Electrical & PAT", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T012", "name": "Biennial asbestos reinspection", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Asbestos", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T013", "name": "Six monthly fixed fire suppression system (Woodlands Suite Ansul) service", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T014", "name": "Window Restrictor Check (Internal)", "type": "Internal", "due": "01/08/2026", "lastRun": "16/06/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "General H&S", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T015", "name": "Monthly food and beverage safety check", "type": "Internal", "due": "01/09/2026", "lastRun": "01/08/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Food Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T016", "name": "Monthly maintenance safety check", "type": "Internal", "due": "01/09/2026", "lastRun": "01/08/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "General H&S", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T017", "name": "Monthly housekeeping safety check", "type": "Internal", "due": "01/09/2026", "lastRun": "01/08/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "General H&S", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T018", "name": "Monthly general office and reception safety check", "type": "Internal", "due": "01/09/2026", "lastRun": "01/08/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "General H&S", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T019", "name": "Monthly sprinkler system check", "type": "Internal", "due": "01/09/2026", "lastRun": "01/08/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "overdue", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T020", "name": "Monthly wet / dry riser check", "type": "Internal", "due": "01/09/2026", "lastRun": "01/08/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "overdue", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T021", "name": "Quarterly fire alarm service", "type": "External", "due": "17/09/2026", "lastRun": "17/06/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T022", "name": "Weekly sprinkler system check", "type": "Internal", "due": "28/09/2026", "lastRun": "21/09/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T023", "name": "Weekly manager's kitchen hygiene checklist (full service)", "type": "Internal", "due": "29/09/2026", "lastRun": "22/09/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Food Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T024", "name": "Weekly bar hygiene checklist (full service)", "type": "Internal", "due": "29/09/2026", "lastRun": "22/09/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Food Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T025", "name": "Six monthly operational fire risk assessment review", "type": "Internal", "due": "01/10/2026", "lastRun": "", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T026", "name": "Six monthly asbestos check", "type": "Internal", "due": "01/12/2026", "lastRun": "09/07/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Asbestos", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T027", "name": "Annual fire extinguishers service", "type": "External", "due": "01/12/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T028", "name": "Annual emergency lighting duration test (external)", "type": "External", "due": "12/12/2026", "lastRun": "12/12/2025", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Electrical & PAT", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T029", "name": "Portable Appliance Test (PAT)", "type": "External", "due": "12/12/2026", "lastRun": "12/12/2025", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Electrical & PAT", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T030", "name": "Annual gas safety inspection - kitchen equipment", "type": "External", "due": "01/01/2027", "lastRun": "01/01/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "overdue", "category": "Food Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T031", "name": "Six monthly fixed fire suppression system (kitchen Ansul) service", "type": "External", "due": "24/01/2027", "lastRun": "24/07/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T032", "name": "Annual fire hydrant inspection/service", "type": "External", "due": "05/08/2027", "lastRun": "05/08/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "T033", "name": "Legionella risk assessment", "type": "External", "due": "06/08/2028", "lastRun": "06/08/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Legionella & Water", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}];
-const ALL_ACTIONS = [{"id": "A001", "name": "Fire Panel Inspection", "deadline": "", "linkedTo": "Task", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A002", "name": "Update - Fire Inspection Due", "deadline": "", "linkedTo": "Task", "category": "-", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A003", "name": "Fire  Evact Test", "deadline": "", "linkedTo": "Task", "category": "Fire", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A004", "name": "Coffee machine milk jugs", "deadline": "", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A005", "name": "Completion of the 6 monthly asbestos check", "deadline": "", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A006", "name": "Sign in briefing", "deadline": "", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A007", "name": "Weekly fire alarm test", "deadline": "", "linkedTo": "", "category": "Fire", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A008", "name": "Fire Risk Assess - Followup", "deadline": "19/03/2026", "linkedTo": "Task", "category": "-", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A009", "name": "Monthly H&S Meetings", "deadline": "01/04/2026", "linkedTo": "Task", "category": "-", "assignees": ["Patrik Vlach", "Ruth Addison", "Veronica Webb"], "priority": "urgent", "status": "overdue", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A010", "name": "Follow-up Fire Training", "deadline": "02/04/2026", "linkedTo": "Task", "category": "Fire", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A011", "name": "Level 2 food safety training", "deadline": "10/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A012", "name": "Asbestos management plan - completion", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A013", "name": "DSE assessment - completion", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A014", "name": "Fixed electrical installation - inspection", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A015", "name": "PAT testing", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A016", "name": "FRA(fire risk assessment) availability", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A017", "name": "Fire walks - completion/recording", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A018", "name": "Emergency lights - record of testing", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A019", "name": "Fire extinguishers - mounting", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A020", "name": "Sharps container and body fluid spillage kit - availability", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A021", "name": "Infection control and clean-up procedures - staff training", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A022", "name": "Legionella risk assessment - completion", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A023", "name": "Incident crisis management plan - to adopt", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A024", "name": "Supplier list", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A025", "name": "Certificates of conformity/due diligence", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A026", "name": "Display of shelf life table", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A027", "name": "Removal of protective plastic coating", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A028", "name": "Completion of manager's weekly bar hygiene checklist", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A029", "name": "Bar glasswasher - removal of plastic covering", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A030", "name": "Ice machine cleaning - to be included into bar cleaning schedule", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A031", "name": "Ice scoop storage", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A032", "name": "Pre-employment health questionnaires - availability", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A033", "name": "Location and condition of electronic fly killers(EFKs)", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A034", "name": "Brush/bristle strip", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A035", "name": "Mixer taps in wash-up area", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A036", "name": "Fire door - repair", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A037", "name": "Condition of canopy filters", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A038", "name": "Canopy lighting", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A039", "name": "Men's staff changeroom ceiling - condition", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A040", "name": "Gaps in food safety management system(FSMS)", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A041", "name": "Notice board - health & safety information", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A042", "name": "Monthly health and safety meetings", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A043", "name": "Risk assessments - to adopt", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A044", "name": "Risk assessment record of understanding", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A045", "name": "SOP training", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A046", "name": "Accident/incident - recording", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A047", "name": "Asbestos awareness training", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A048", "name": "Permits to work - completion", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A049", "name": "COSHH register", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A050", "name": "COSHH paperwork", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A051", "name": "FRA - action completion", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A052", "name": "Monthly emergency lighting testing", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A053", "name": "Fire alarm - remedial works", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A054", "name": "PAT testing - report availability", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A055", "name": "Kitchen extract duct work systems - specialist clean", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A056", "name": "Fixed fire suppression system - report availability", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A057", "name": "Dry risers - annual servicing", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A058", "name": "Sprinklers - servicing", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A059", "name": "Lightning protection - servicing", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A060", "name": "Fire hydrant/hose reels - inspection", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A061", "name": "Fire protection systems - risks", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A062", "name": "Fire refresher training - completion", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A063", "name": "Fire bag - stocked up and ready to use", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A064", "name": "First aiders", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A065", "name": "co2 and carbon monoxide detectors", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A066", "name": "Legionella monitoring checks - completion", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A067", "name": "Legionella awareness training", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A068", "name": "Pressure systems inspections/examinations", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A069", "name": "Window restrictor checks", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A070", "name": "Ladder checks & register", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A071", "name": "Dangerous machinery - paperwork", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A072", "name": "Monthly grounds inspection", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A073", "name": "'Caution hot' signs", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A074", "name": "Red dot and non-red dot scenario training", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A075", "name": "hot water source rectified", "deadline": "04/06/2026", "linkedTo": "Task", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A076", "name": "Tree survey", "deadline": "30/06/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A077", "name": "ladder assets", "deadline": "17/07/2026", "linkedTo": "Task", "category": "-", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A078", "name": "Gas interlocking system - kitchen", "deadline": "22/07/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A079", "name": "first aid provisions", "deadline": "30/08/2026", "linkedTo": "Task", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A080", "name": "Fire Ansul service", "deadline": "31/08/2026", "linkedTo": "Task", "category": "Fire", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A081", "name": "food hygiene training", "deadline": "30/09/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A082", "name": "car park marking", "deadline": "01/10/2026", "linkedTo": "Task", "category": "-", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A083", "name": "food hygiene training", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A084", "name": "food handlers", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A085", "name": "due", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A086", "name": "forms", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A087", "name": "one fridge repair", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A088", "name": "ice machine", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A089", "name": "facilities", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A090", "name": "equipment", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A091", "name": "equipment", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A092", "name": "food safety training", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A093", "name": "repair", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A094", "name": "equipment", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A095", "name": "food hygiene training", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A096", "name": "food hygiene training", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A097", "name": "food handlers", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A098", "name": "fridge 1 repair", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A099", "name": "fridge 1 repair", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A100", "name": "metal plastic scoup container", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A101", "name": "equipment", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A102", "name": "equipment", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A103", "name": "food safety training", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A104", "name": "cleaning schedule", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}, {"id": "A105", "name": "ice scoop", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "notes": "", "completedBy": "", "completedAt": "", "evidence": "", "photos": []}];
+const ALL_TASKS = [{"id": "T001", "name": "Six monthly kitchen extract ductwork cleaning (external)", "type": "External", "due": "01/06/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Food Safety"}, {"id": "T002", "name": "Quarterly staff fire training (night staff)", "type": "Internal", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Fire & Safety"}, {"id": "T003", "name": "Quarterly staff fire training (fire staff)", "type": "Internal", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Fire & Safety"}, {"id": "T004", "name": "Lightning protection system test", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Electrical & PAT"}, {"id": "T005", "name": "Pressure systems examination - hot water systems", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Legionella & Water"}, {"id": "T006", "name": "Sprinkler/ misting system service", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Fire & Safety"}, {"id": "T007", "name": "Six monthly dry risers test", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Fire & Safety"}, {"id": "T008", "name": "Six monthly kitchen equipment servicing", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Food Safety"}, {"id": "T009", "name": "Annual cold water storage tank inspection", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Legionella & Water"}, {"id": "T010", "name": "Annual disabled accessible toilet & bedroom alarm servicing", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Fire & Safety"}, {"id": "T011", "name": "Fixed electrical installation condition test", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Electrical & PAT"}, {"id": "T012", "name": "Biennial asbestos reinspection", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Asbestos"}, {"id": "T013", "name": "Six monthly fixed fire suppression system (Woodlands Suite Ansul) service", "type": "External", "due": "01/07/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Fire & Safety"}, {"id": "T014", "name": "Window Restrictor Check (Internal)", "type": "Internal", "due": "01/08/2026", "lastRun": "16/06/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "General H&S"}, {"id": "T015", "name": "Monthly food and beverage safety check", "type": "Internal", "due": "01/09/2026", "lastRun": "01/08/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "Food Safety"}, {"id": "T016", "name": "Monthly maintenance safety check", "type": "Internal", "due": "01/09/2026", "lastRun": "01/08/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "General H&S"}, {"id": "T017", "name": "Monthly housekeeping safety check", "type": "Internal", "due": "01/09/2026", "lastRun": "01/08/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "General H&S"}, {"id": "T018", "name": "Monthly general office and reception safety check", "type": "Internal", "due": "01/09/2026", "lastRun": "01/08/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "urgent", "status": "overdue", "category": "General H&S"}, {"id": "T019", "name": "Monthly sprinkler system check", "type": "Internal", "due": "01/09/2026", "lastRun": "01/08/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety"}, {"id": "T020", "name": "Monthly wet / dry riser check", "type": "Internal", "due": "01/09/2026", "lastRun": "01/08/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety"}, {"id": "T021", "name": "Quarterly fire alarm service", "type": "External", "due": "17/09/2026", "lastRun": "17/06/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety"}, {"id": "T022", "name": "Weekly sprinkler system check", "type": "Internal", "due": "28/09/2026", "lastRun": "21/09/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety"}, {"id": "T023", "name": "Weekly manager's kitchen hygiene checklist (full service)", "type": "Internal", "due": "29/09/2026", "lastRun": "22/09/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Food Safety"}, {"id": "T024", "name": "Weekly bar hygiene checklist (full service)", "type": "Internal", "due": "29/09/2026", "lastRun": "22/09/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Food Safety"}, {"id": "T025", "name": "Six monthly operational fire risk assessment review", "type": "Internal", "due": "01/10/2026", "lastRun": "", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety"}, {"id": "T026", "name": "Six monthly asbestos check", "type": "Internal", "due": "01/12/2026", "lastRun": "09/07/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Asbestos"}, {"id": "T027", "name": "Annual fire extinguishers service", "type": "External", "due": "01/12/2026", "lastRun": "", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety"}, {"id": "T028", "name": "Annual emergency lighting duration test (external)", "type": "External", "due": "12/12/2026", "lastRun": "12/12/2025", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Electrical & PAT"}, {"id": "T029", "name": "Portable Appliance Test (PAT)", "type": "External", "due": "12/12/2026", "lastRun": "12/12/2025", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Electrical & PAT"}, {"id": "T030", "name": "Annual gas safety inspection - kitchen equipment", "type": "External", "due": "01/01/2027", "lastRun": "01/01/2026", "freq": "", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Food Safety"}, {"id": "T031", "name": "Six monthly fixed fire suppression system (kitchen Ansul) service", "type": "External", "due": "24/01/2027", "lastRun": "24/07/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety"}, {"id": "T032", "name": "Annual fire hydrant inspection/service", "type": "External", "due": "05/08/2027", "lastRun": "05/08/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Fire & Safety"}, {"id": "T033", "name": "Legionella risk assessment", "type": "External", "due": "06/08/2028", "lastRun": "06/08/2026", "freq": "", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming", "category": "Legionella & Water"}];
+const ALL_ACTIONS = [{"id": "A001", "name": "Fire Panel Inspection", "deadline": "", "linkedTo": "Task", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A002", "name": "Update - Fire Inspection Due", "deadline": "", "linkedTo": "Task", "category": "-", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A003", "name": "Fire  Evact Test", "deadline": "", "linkedTo": "Task", "category": "Fire", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A004", "name": "Coffee machine milk jugs", "deadline": "", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A005", "name": "Completion of the 6 monthly asbestos check", "deadline": "", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A006", "name": "Sign in briefing", "deadline": "", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A007", "name": "Weekly fire alarm test", "deadline": "", "linkedTo": "", "category": "Fire", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A008", "name": "Fire Risk Assess - Followup", "deadline": "19/03/2026", "linkedTo": "Task", "category": "-", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A009", "name": "Monthly H&S Meetings", "deadline": "01/04/2026", "linkedTo": "Task", "category": "-", "assignees": ["Patrik Vlach", "Ruth Addison", "Veronica Webb"], "priority": "urgent", "status": "overdue"}, {"id": "A010", "name": "Follow-up Fire Training", "deadline": "02/04/2026", "linkedTo": "Task", "category": "Fire", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A011", "name": "Level 2 food safety training", "deadline": "10/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A012", "name": "Asbestos management plan - completion", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A013", "name": "DSE assessment - completion", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A014", "name": "Fixed electrical installation - inspection", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A015", "name": "PAT testing", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A016", "name": "FRA(fire risk assessment) availability", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A017", "name": "Fire walks - completion/recording", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A018", "name": "Emergency lights - record of testing", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A019", "name": "Fire extinguishers - mounting", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A020", "name": "Sharps container and body fluid spillage kit - availability", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A021", "name": "Infection control and clean-up procedures - staff training", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A022", "name": "Legionella risk assessment - completion", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A023", "name": "Incident crisis management plan - to adopt", "deadline": "17/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A024", "name": "Supplier list", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A025", "name": "Certificates of conformity/due diligence", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A026", "name": "Display of shelf life table", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A027", "name": "Removal of protective plastic coating", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A028", "name": "Completion of manager's weekly bar hygiene checklist", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A029", "name": "Bar glasswasher - removal of plastic covering", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A030", "name": "Ice machine cleaning - to be included into bar cleaning schedule", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A031", "name": "Ice scoop storage", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A032", "name": "Pre-employment health questionnaires - availability", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A033", "name": "Location and condition of electronic fly killers(EFKs)", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A034", "name": "Brush/bristle strip", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A035", "name": "Mixer taps in wash-up area", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A036", "name": "Fire door - repair", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A037", "name": "Condition of canopy filters", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A038", "name": "Canopy lighting", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A039", "name": "Men's staff changeroom ceiling - condition", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A040", "name": "Gaps in food safety management system(FSMS)", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A041", "name": "Notice board - health & safety information", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A042", "name": "Monthly health and safety meetings", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A043", "name": "Risk assessments - to adopt", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A044", "name": "Risk assessment record of understanding", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A045", "name": "SOP training", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A046", "name": "Accident/incident - recording", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A047", "name": "Asbestos awareness training", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A048", "name": "Permits to work - completion", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A049", "name": "COSHH register", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A050", "name": "COSHH paperwork", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A051", "name": "FRA - action completion", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A052", "name": "Monthly emergency lighting testing", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A053", "name": "Fire alarm - remedial works", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A054", "name": "PAT testing - report availability", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A055", "name": "Kitchen extract duct work systems - specialist clean", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A056", "name": "Fixed fire suppression system - report availability", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A057", "name": "Dry risers - annual servicing", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A058", "name": "Sprinklers - servicing", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A059", "name": "Lightning protection - servicing", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A060", "name": "Fire hydrant/hose reels - inspection", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A061", "name": "Fire protection systems - risks", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A062", "name": "Fire refresher training - completion", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A063", "name": "Fire bag - stocked up and ready to use", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A064", "name": "First aiders", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A065", "name": "co2 and carbon monoxide detectors", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A066", "name": "Legionella monitoring checks - completion", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A067", "name": "Legionella awareness training", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A068", "name": "Pressure systems inspections/examinations", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A069", "name": "Window restrictor checks", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A070", "name": "Ladder checks & register", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A071", "name": "Dangerous machinery - paperwork", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A072", "name": "Monthly grounds inspection", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A073", "name": "'Caution hot' signs", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A074", "name": "Red dot and non-red dot scenario training", "deadline": "31/05/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A075", "name": "hot water source rectified", "deadline": "04/06/2026", "linkedTo": "Task", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A076", "name": "Tree survey", "deadline": "30/06/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A077", "name": "ladder assets", "deadline": "17/07/2026", "linkedTo": "Task", "category": "-", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A078", "name": "Gas interlocking system - kitchen", "deadline": "22/07/2026", "linkedTo": "Audit", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A079", "name": "first aid provisions", "deadline": "30/08/2026", "linkedTo": "Task", "category": "-", "assignees": ["Alia Taub", "Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A080", "name": "Fire Ansul service", "deadline": "31/08/2026", "linkedTo": "Task", "category": "Fire", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A081", "name": "food hygiene training", "deadline": "30/09/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A082", "name": "car park marking", "deadline": "01/10/2026", "linkedTo": "Task", "category": "-", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A083", "name": "food hygiene training", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A084", "name": "food handlers", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A085", "name": "due", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A086", "name": "forms", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A087", "name": "one fridge repair", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A088", "name": "ice machine", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A089", "name": "facilities", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A090", "name": "equipment", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A091", "name": "equipment", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A092", "name": "food safety training", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A093", "name": "repair", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A094", "name": "equipment", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A095", "name": "food hygiene training", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A096", "name": "food hygiene training", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A097", "name": "food handlers", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A098", "name": "fridge 1 repair", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A099", "name": "fridge 1 repair", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A100", "name": "metal plastic scoup container", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A101", "name": "equipment", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A102", "name": "equipment", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A103", "name": "food safety training", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A104", "name": "cleaning schedule", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}, {"id": "A105", "name": "ice scoop", "deadline": "30/10/2026", "linkedTo": "Task", "category": "Core Hotel Tasks", "assignees": ["Patrik Vlach"], "priority": "normal", "status": "upcoming"}];
 const STAFF = ["Ajay Kawa", "Alia Taub", "Glenn Randell", "Patrik Vlach", "Raj Kumar", "Ruth Addison", "Veronica Webb"];
 const MANAGERS = ["Ajay Kawa", "Alia Taub", "Glenn Randell", "Patrik Vlach", "Raj Kumar"];
-
-let ME = null, IS_MANAGER = false;
-let VIEW = 'dashboard';
-let FILTER = 'all';
-let PERSON_FILTER = '';
-let STATE = JSON.parse(localStorage.getItem('bh_comp_state2') || '{}');
+const STAFF_COLORS = ['#2a6a4a','#1a2b3a','#20b2a2','#be185d','#0369a1','#7c3aed','#c78a3b'];
 
 const today = new Date().toISOString().slice(0,10);
+const STATE = JSON.parse(localStorage.getItem('bh_comp_state2')||'{}');
+let SECTION='overview', PERSON_FILTER='', SEARCH='', CAT_FILTER='', STATUS_FILTER='all', SORT_KEY='due', SORT_DIR=1;
+
 const parseDate = d => {
   if(!d) return null;
-  if(d.includes('/')) { const p=d.split('/'); return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; }
+  if(d.includes('/')) { const p=d.split('/'); return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0'); }
   return d;
 };
-const fmt = d => { const p=parseDate(d); return p ? new Date(p+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'No date'; };
-const fmtShort = d => { const p=parseDate(d); return p ? new Date(p+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—'; };
+const fmt = d => { const p=parseDate(d); return p?new Date(p+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'—'; };
+const fmtS = d => { const p=parseDate(d); return p?new Date(p+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'—'; };
 const daysOD = d => { const p=parseDate(d); if(!p||p>=today) return 0; return Math.round((new Date(today)-new Date(p))/864e5); };
 const daysLeft = d => { const p=parseDate(d); if(!p) return null; return Math.round((new Date(p)-new Date(today))/864e5); };
-const AV_COLS = ['av-0','av-1','av-2','av-3','av-4','av-5','av-6'];
-const MANAGER_STYLE = 'background:#b8860b;border:2px solid #ffd700;'; // dark gold for managers
-const STAFF_COLORS = {
-  'Ajay Kawa':'#b8860b','Alia Taub':'#b8860b','Glenn Randell':'#b8860b',
-  'Patrik Vlach':'#b8860b','Raj Kumar':'#b8860b',
-  'Ruth Addison':'#be185d','Veronica Webb':'#0369a1'
-};
 const initials = n => n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+const isMgr = n => MANAGERS.includes(n);
+const avColor = (n,i) => isMgr(n)?'':'background:'+STAFF_COLORS[i%STAFF_COLORS.length];
 
 function itemState(item) {
-  const s = STATE[item.id] || {};
-  const assignees = s.assignees || item.assignees || [];
-  const status = s.status || item.status || 'upcoming';
-  return { ...item, assignees, priority: s.priority||item.priority||'normal',
-    notes: s.notes||'', evidence: s.evidence||'', notesHistory: s.notesHistory||[],
-    completedBy: s.completedBy||'', completedAt: s.completedAt||'', photos: s.photos||[], status };
+  const s=STATE[item.id]||{};
+  return {...item, assignees:s.assignees||item.assignees||[], priority:s.priority||item.priority||'normal',
+    status:s.status||item.status, notesHistory:s.notesHistory||[], completedBy:s.completedBy||'', completedAt:s.completedAt||''};
 }
 
-function saveState(id, patch) {
-  STATE[id] = Object.assign(STATE[id]||{}, patch);
-  localStorage.setItem('bh_comp_state2', JSON.stringify(STATE));
+function trafficLight(item, dk) {
+  const s=itemState(item); const d=s[dk]; const od=daysOD(d); const dl=daysLeft(d);
+  if(s.status==='done') return {cls:'tl-done',label:'Done'};
+  if(s.priority==='urgent') return {cls:'tl-orange',label:'URGENT'};
+  if(od>7) return {cls:'tl-red',label:od+'d overdue'};
+  if(od>0) return {cls:'tl-red',label:od+'d overdue'};
+  if(dl!==null&&dl<=7) return {cls:'tl-yellow',label:dl===0?'Today':dl+'d left'};
+  return {cls:'tl-green',label:'On track'};
 }
 
-// --- LOGIN ---
-STAFF.forEach(s => {
-  const o = document.createElement('option'); o.value=s; o.textContent=s;
-  document.getElementById('lg-name').appendChild(o);
-});
-document.getElementById('lg-name').onchange = e => {
-  document.getElementById('lg-btn').disabled = !e.target.value;
-};
-document.getElementById('lg-btn').onclick = () => {
-  ME = document.getElementById('lg-name').value;
-  IS_MANAGER = MANAGERS.includes(ME);
-  document.getElementById('login').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  document.getElementById('tb-user').textContent = ME.split(' ')[0] + ' ▾';
-  sessionStorage.setItem('bh_comp_user', ME);
-  updateBadges(); render();
-};
-
-function signOut() {
-  sessionStorage.removeItem('bh_comp_user');
-  document.getElementById('login').style.display='flex';
-  document.getElementById('app').style.display='none';
-  toggleSidebar();
+function catPill(cat) {
+  const m={'Fire & Safety':'pill-fire','Food Safety':'pill-food','Legionella & Water':'pill-water','Electrical & PAT':'pill-elec','Asbestos':'pill-asb','General H&S':'pill-hs'};
+  if(!cat||cat==='-') return '';
+  return '<span class="pill '+(m[cat]||'pill-grey')+'">'+cat+'</span>';
 }
 
-// --- SIDEBAR ---
-function toggleSidebar() {
-  const sb = document.getElementById('sidebar');
-  sb.style.display = sb.style.display==='none' ? 'flex' : 'none';
+function avHtml(assignees) {
+  return '<div class="avs">'+assignees.slice(0,4).map((a,i)=>{
+    const m=isMgr(a);
+    return '<div class="av '+(m?'mgr-av':'')+'" style="'+(m?'':'background:'+STAFF_COLORS[STAFF.indexOf(a)%STAFF_COLORS.length])+'" title="'+a+'">'+initials(a)+'</div>';
+  }).join('')+'</div>';
 }
 
-// --- VIEW ---
-function switchView(v) {
-  VIEW = v; FILTER = 'all'; PERSON_FILTER = '';
-  document.querySelectorAll('.bnav-item').forEach(b=>b.classList.toggle('on', b.dataset.view===v));
+function updateBadges() {
+  const tOD=ALL_TASKS.map(itemState).filter(i=>i.status!=='done'&&daysOD(i.due)>0).length;
+  const aOD=ALL_ACTIONS.map(itemState).filter(i=>i.status!=='done'&&daysOD(i.deadline)>0).length;
+  const sbt=document.getElementById('sb-t-od'); if(sbt){sbt.textContent=tOD;sbt.style.display=tOD?'':'none';}
+  const sba=document.getElementById('sb-a-od'); if(sba){sba.textContent=aOD;sba.style.display=aOD?'':'none';}
+}
+
+function buildPersonSidebar() {
+  document.getElementById('person-sb-list').innerHTML = STAFF.map(s=>
+    '<button class="sb-item" id="pf-'+s.replace(/ /g,'_')+'" onclick="setPersonFilter(\''+s+'\',this)">'+
+    '<span style="width:20px;height:20px;border-radius:50%;display:inline-grid;place-items:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;'+(isMgr(s)?'background:#b8860b;border:1px solid #ffd700':'background:'+STAFF_COLORS[STAFF.indexOf(s)%STAFF_COLORS.length])+'">'+initials(s)+'</span>'+
+    s.split(' ')[0]+(isMgr(s)?' ★':'')+'</button>'
+  ).join('');
+}
+
+function setPersonFilter(p, el) {
+  PERSON_FILTER=p;
+  document.querySelectorAll('[id^=pf-]').forEach(b=>b.classList.remove('on'));
+  if(el) el.classList.add('on');
+  else { const b=document.getElementById('pf-'+(p?p.replace(/ /g,'_'):'ALL')); if(b) b.classList.add('on'); }
   render();
 }
 
-// --- BADGE UPDATES ---
-function updateBadges() {
-  const taskOD = ALL_TASKS.map(itemState).filter(i=>i.status!=='done'&&daysOD(i.due)>0).length;
-  const actOD = ALL_ACTIONS.map(itemState).filter(i=>i.status!=='done'&&daysOD(i.deadline)>0).length;
-  ['tasks','actions'].forEach(t=>{
-    const el=document.getElementById(`bnav-${t}-badge`);
-    const cnt = t==='tasks'?taskOD:actOD;
-    if(el){ el.textContent=cnt; el.style.display=cnt?'':'none'; }
+function switchSection(s, el) {
+  SECTION=s; STATUS_FILTER='all'; SEARCH=''; CAT_FILTER='';
+  document.querySelectorAll('[id^=nav-]').forEach(b=>b.classList.remove('on'));
+  if(el) el.classList.add('on');
+  render();
+}
+
+// OVERVIEW
+function renderOverview() {
+  const allT=ALL_TASKS.map(itemState), allA=ALL_ACTIONS.map(itemState), all=[...allT,...allA];
+  const totalOD=all.filter(i=>i.status!=='done'&&daysOD(i.due||i.deadline)>0).length;
+  const od7=all.filter(i=>i.status!=='done'&&daysOD(i.due||i.deadline)>7).length;
+  const done=all.filter(i=>i.status==='done').length;
+  const due7=all.filter(i=>{const dl=daysLeft(i.due||i.deadline);return i.status!=='done'&&dl!==null&&dl<=7&&dl>=0;}).length;
+
+  const personCards = STAFF.map((s,si)=>{
+    const mine=all.filter(i=>i.assignees.includes(s));
+    const myOD=mine.filter(i=>i.status!=='done'&&daysOD(i.due||i.deadline)>0).length;
+    const myDone=mine.filter(i=>i.status==='done').length;
+    const myUrg=mine.filter(i=>i.status!=='done'&&i.priority==='urgent').length;
+    return '<div class="person-card '+(myOD>0?'has-od':'all-ok')+'" onclick="setPersonFilter(\''+s+'\');switchSection(\'tasks\')">'
+      +'<div class="pc-top">'
+      +'<div class="pc-av '+(isMgr(s)?'mgr':'')+'" style="'+(isMgr(s)?'':'background:'+STAFF_COLORS[si%STAFF_COLORS.length])+'">'+initials(s)+(isMgr(s)?'★':'')+'</div>'
+      +'<div><div class="pc-name">'+s+'</div><div class="pc-role">'+(isMgr(s)?'Manager':'Staff member')+'</div></div></div>'
+      +'<div class="pc-stats">'
+      +'<div class="pc-stat '+(myOD?'red':'')+'"><div class="n">'+myOD+'</div><div class="l">Overdue</div></div>'
+      +'<div class="pc-stat '+(myUrg?'orange':'')+'"><div class="n">'+myUrg+'</div><div class="l">Urgent</div></div>'
+      +'<div class="pc-stat"><div class="n">'+mine.length+'</div><div class="l">Total</div></div>'
+      +'<div class="pc-stat '+(myDone?'green':'')+'"><div class="n">'+myDone+'</div><div class="l">Done</div></div>'
+      +'</div></div>';
+  }).join('');
+
+  const top5=[...allT,...allA].filter(i=>i.status!=='done'&&daysOD(i.due||i.deadline)>0)
+    .sort((a,b)=>daysOD(b.due||b.deadline)-daysOD(a.due||a.deadline)).slice(0,5);
+
+  const top5rows=top5.map(i=>{
+    const tl=trafficLight(i,i.due!==undefined?'due':'deadline');
+    return '<tr><td class="td-name">'+i.name+'<div class="td-sub">'+(i.id.startsWith('T')?'Scheduled task':'Action')+'</div></td>'
+      +'<td>'+catPill(i.category)+'</td>'
+      +'<td><span class="tl '+tl.cls+'">'+tl.label+'</span></td>'
+      +'<td>'+avHtml(i.assignees)+'</td>'
+      +'<td style="color:var(--red);font-weight:700">'+fmt(i.due||i.deadline)+'</td></tr>';
+  }).join('');
+
+  return '<div style="margin-bottom:22px">'
+    +'<h1 style="font-family:\'Cormorant Garamond\',serif;font-size:30px;color:var(--navy);margin-bottom:4px">Compliance Overview</h1>'
+    +'<div style="font-size:13px;color:#7a8494">'+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</div></div>'
+    +'<div class="stats">'
+    +'<div class="stat red"><div class="v">'+totalOD+'</div><div class="k">Total overdue</div><div class="prog"><div class="prog-b" style="width:'+Math.min(100,totalOD/(all.length||1)*100)+'%;background:var(--red)"></div></div></div>'
+    +'<div class="stat orange"><div class="v">'+od7+'</div><div class="k">7+ days overdue</div><div class="prog"><div class="prog-b" style="width:'+Math.min(100,od7/(all.length||1)*100)+'%;background:var(--orange)"></div></div></div>'
+    +'<div class="stat amber"><div class="v">'+due7+'</div><div class="k">Due this week</div><div class="prog"><div class="prog-b" style="width:'+Math.min(100,due7/(all.length||1)*100)+'%;background:var(--amber)"></div></div></div>'
+    +'<div class="stat green"><div class="v">'+done+'</div><div class="k">Completed</div><div class="prog"><div class="prog-b" style="width:'+Math.min(100,done/(all.length||1)*100)+'%;background:var(--green)"></div></div></div>'
+    +'<div class="stat navy"><div class="v">'+all.length+'</div><div class="k">Total items</div></div></div>'
+    +'<div class="sec-h"><h2>Team overview — click to view tasks</h2>'
+    +'<div class="legend"><span>🟠 Urgent (manual flag)</span><span>🔴 Overdue</span><span>🟡 Due &lt;7 days</span><span>🟢 On track</span></div></div>'
+    +'<div class="team-grid">'+personCards+'</div>'
+    +(top5.length?'<div class="sec-h"><h2>Most overdue items</h2></div><div class="tbl-wrap"><table>'
+    +'<thead><tr><th>Item</th><th>Category</th><th>Status</th><th>Assignee</th><th>Due</th></tr></thead>'
+    +'<tbody>'+top5rows+'</tbody></table></div>':'');
+}
+
+// TASKS / ACTIONS TABLE
+function renderTable(source, dk) {
+  let items=source.map(itemState);
+  if(PERSON_FILTER) items=items.filter(i=>i.assignees.includes(PERSON_FILTER));
+  if(SEARCH) items=items.filter(i=>i.name.toLowerCase().includes(SEARCH.toLowerCase()));
+  if(CAT_FILTER) items=items.filter(i=>i.category===CAT_FILTER);
+  if(STATUS_FILTER==='overdue') items=items.filter(i=>i.status!=='done'&&daysOD(i[dk])>0);
+  else if(STATUS_FILTER==='urgent') items=items.filter(i=>i.status!=='done'&&i.priority==='urgent');
+  else if(STATUS_FILTER==='week') items=items.filter(i=>{const dl=daysLeft(i[dk]);return i.status!=='done'&&dl!==null&&dl<=7&&dl>=0;});
+  else if(STATUS_FILTER==='done') items=items.filter(i=>i.status==='done');
+  else if(STATUS_FILTER==='active') items=items.filter(i=>i.status!=='done');
+
+  items.sort((a,b)=>{
+    let av=a[SORT_KEY]||'', bv=b[SORT_KEY]||'';
+    if(SORT_KEY===dk){ av=parseDate(av)||'9999'; bv=parseDate(bv)||'9999'; }
+    return av>bv?SORT_DIR:av<bv?-SORT_DIR:0;
   });
-  const sbt=document.getElementById('sb-tasks-od'); if(sbt) sbt.textContent=taskOD||'';
-  const sba=document.getElementById('sb-actions-od'); if(sba) sba.textContent=actOD||'';
+
+  const isTask=dk==='due';
+  const all=source.map(itemState);
+  const od=all.filter(i=>i.status!=='done'&&daysOD(i[dk])>0).length;
+  const urg=all.filter(i=>i.status!=='done'&&i.priority==='urgent').length;
+  const cats=[...new Set(source.map(i=>i.category).filter(c=>c&&c!=='-'))].sort();
+
+  const th=(l,k)=>'<th style="'+(SORT_KEY===k?'color:var(--navy)':'')+'" onclick="sortBy(\''+k+'\')">'+l+(SORT_KEY===k?(SORT_DIR===1?' ↑':' ↓'):'')+'</th>';
+
+  const rows=items.map(i=>{
+    const s=itemState(i); const tl=trafficLight(s,dk);
+    const note=s.notesHistory&&s.notesHistory.length?s.notesHistory[s.notesHistory.length-1].text:'';
+    return '<tr class="'+(s.status==='done'?'done-row':'')+'">'
+      +'<td class="td-name">'+s.name+(note?'<div class="td-sub">&#128172; '+note.slice(0,55)+(note.length>55?'&hellip;':'')+'</div>':'')+'</td>'
+      +'<td>'+catPill(s.category)+'</td>'
+      +'<td style="'+(daysOD(s[dk])>0?'color:var(--red);font-weight:700;':'')+'">'+fmt(s[dk])+'</td>'
+      +(isTask?'<td style="color:#7a8494">'+fmtS(s.lastRun)+'</td><td style="color:#7a8494;font-size:12px">'+(s.freq||'—')+'</td>':'')
+      +'<td>'+avHtml(s.assignees)+'</td>'
+      +'<td><span class="tl '+tl.cls+'">'+tl.label+'</span></td></tr>';
+  }).join('') || '<tr><td colspan="8" style="text-align:center;padding:30px;color:#7a8494">No items match.</td></tr>';
+
+  return '<div style="margin-bottom:18px">'
+    +'<h1 style="font-family:\'Cormorant Garamond\',serif;font-size:30px;color:var(--navy)">'+(isTask?'Scheduled Tasks':'Actions')+'</h1>'
+    +'<div style="font-size:13px;color:#7a8494">'+all.length+' total &middot; '+od+' overdue &middot; '+urg+' urgent'+(PERSON_FILTER?' &middot; Showing: '+PERSON_FILTER:'')+'</div></div>'
+    +'<div class="view-tabs">'
+    +'<button class="vtab '+(STATUS_FILTER==='all'?'on':'')+'" onclick="setStatus(\'all\')">All</button>'
+    +'<button class="vtab '+(STATUS_FILTER==='active'?'on':'')+'" onclick="setStatus(\'active\')">Active</button>'
+    +'<button class="vtab '+(STATUS_FILTER==='urgent'?'on':'')+'" onclick="setStatus(\'urgent\')" style="'+(STATUS_FILTER==='urgent'?'background:#c45c00;border-color:#c45c00;color:#fff':'')+'">&#127825; Urgent<span class="vb">'+urg+'</span></button>'
+    +'<button class="vtab '+(STATUS_FILTER==='overdue'?'on':'')+'" onclick="setStatus(\'overdue\')">&#128308; Overdue<span class="vb">'+od+'</span></button>'
+    +'<button class="vtab '+(STATUS_FILTER==='week'?'on':'')+'" onclick="setStatus(\'week\')">&#127825; This week</button>'
+    +'<button class="vtab '+(STATUS_FILTER==='done'?'on':'')+'" onclick="setStatus(\'done\')">&#10003; Done</button></div>'
+    +'<div class="tbl-wrap"><div class="tbl-toolbar">'
+    +'<input placeholder="Search..." oninput="SEARCH=this.value;render()" value="'+SEARCH+'">'
+    +'<select onchange="CAT_FILTER=this.value;render()"><option value="">All categories</option>'+cats.map(c=>'<option'+(CAT_FILTER===c?' selected':'')+'>'+c+'</option>').join('')+'</select>'
+    +'<button class="print-btn" onclick="window.print()">&#128424; Print list</button></div>'
+    +'<table><thead><tr>'+th('Task / Action','name')+th('Category','category')+th(isTask?'Due':'Deadline',dk)+(isTask?th('Last done','lastRun')+th('Frequency','freq'):'')+th('Assignee','assignees')+'<th>Status</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div>';
 }
 
-// --- CATEGORY PILL ---
-function catPill(cat) {
-  const map={'Fire & Safety':'pill-fire','Food Safety':'pill-food','Legionella & Water':'pill-water',
-    'Electrical & PAT':'pill-elec','Asbestos':'pill-asb','General H&S':'pill-hs'};
-  if(!cat||cat==='-') return '';
-  return `<span class="pill ${map[cat]||'pill-grey'}">${cat}</span>`;
-}
-
-// --- CARD BORDER / BADGE ---
-function cardInfo(item, dk) {
-  const d=item[dk]; const od=daysOD(d); const dl=daysLeft(d);
-  // Done
-  if(item.status==='done') return {cls:'tl-done', badge:'✓ Done', bCls:'tl-done'};
-  // Manually flagged URGENT = dark orange (highest visual priority)
-  if(item.priority==='urgent') return {cls:'tl-orange', badge:'🟠 URGENT', bCls:'tl-orange'};
-  // Overdue 7+ days = red
-  if(od>7) return {cls:'tl-red', badge:`🔴 ${od}d overdue`, bCls:'tl-red'};
-  // Overdue 1-7 days = also red but lighter label
-  if(od>0) return {cls:'tl-red', badge:`🔴 ${od}d overdue`, bCls:'tl-red'};
-  // Due within 7 days = yellow
-  if(dl!==null&&dl<=7) return {cls:'tl-yellow', badge:`🟡 ${dl===0?'Today':dl+'d'}`, bCls:'tl-yellow'};
-  // On track = green
-  return {cls:'tl-green', badge:d?`🟢 ${fmtShort(d)}`:'🟢 Scheduled', bCls:'tl-green'};
-}
-
-// --- RENDER TASK CARD ---
-function renderCard(item, dk) {
-  const s=itemState(item); const ci=cardInfo(s,dk);
-  const d=s[dk]; const od=daysOD(d);
-  const isMine=s.assignees.includes(ME);
-  const dueCls=od>0?'overdue-date':'';
-  const avHtml=s.assignees.slice(0,5).map((a,i)=>{
-    const isMgr=MANAGERS.includes(a);
-    const style=isMgr?`style="background:#b8860b;border:2px solid #ffd700;box-sizing:border-box"`:`class="av ${AV_COLS[i%7]}"`;
-    return `<div class="av" ${style} title="${a}${isMgr?' ★':''}">${initials(a)}</div>`;
-  }).join('');
-  const lastNote=s.notesHistory&&s.notesHistory.length?s.notesHistory[s.notesHistory.length-1].text:'';
-  return `<div class="tc ${ci.cls}" onclick="openTask('${item.id}','${dk}')">
-    <div class="tc-row1">
-      <div class="tc-name">${s.name}</div>
-      <div class="tc-badge ${ci.bCls}">${ci.badge}</div>
-    </div>
-    <div class="tc-dates">
-      ${d?`<span><b>Due:</b>&nbsp;<span class="${dueCls}">${fmt(d)}</span></span>`:''}
-      ${s.lastRun?`<span><b>Last:</b>&nbsp;${fmtShort(s.lastRun)}</span>`:''}
-      ${s.freq?`<span><b>Freq:</b>&nbsp;${s.freq}</span>`:''}
-    </div>
-    <div class="tc-pills">
-      ${catPill(s.category)}
-      ${s.type&&s.type!=='-'?`<span class="pill pill-grey">${s.type}</span>`:''}
-      ${s.priority==='urgent'?`<span class="pill pill-urgent">URGENT</span>`:''}
-      ${isMine&&!IS_MANAGER?`<span class="pill pill-mine">Mine</span>`:''}
-    </div>
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div class="tc-assignees">${avHtml}</div>
-      ${lastNote?`<div class="tc-note-preview">"${lastNote.slice(0,40)}${lastNote.length>40?'…':''}"</div>`:''}
-    </div>
-  </div>`;
-}
-
-// --- FILTER HELPERS ---
-function getVisible(source, dk) {
-  let items = source.map(itemState);
-  // Non-admins only see their own
-  if(!IS_MANAGER) items = items.filter(i=>i.assignees.includes(ME));
-  // Person filter (admin only)
-  if(PERSON_FILTER) items = items.filter(i=>i.assignees.includes(PERSON_FILTER));
-  // Status filter - traffic light
-  if(FILTER==='urgent') items=items.filter(i=>i.status!=='done'&&i.priority==='urgent');
-  else if(FILTER==='red') items=items.filter(i=>i.status!=='done'&&daysOD(i[dk])>0);
-  else if(FILTER==='yellow') items=items.filter(i=>i.status!=='done'&&daysOD(i[dk])===0&&(daysLeft(i[dk])??99)<=7);
-  else if(FILTER==='green') items=items.filter(i=>i.status!=='done'&&daysOD(i[dk])===0&&(daysLeft(i[dk])??99)>7);
-  else if(FILTER==='done') items=items.filter(i=>i.status==='done');
-  else if(FILTER==='mine') items=items.filter(i=>i.assignees.includes(ME)&&i.status!=='done');
-  return items;
-}
-
-function trafficLegend() {
-  return `<div style="display:flex;gap:10px;padding:4px 14px 10px;font-size:11px;color:#7a8494;flex-wrap:wrap">
-    <span>🟠 Urgent (manual)</span>
-    <span>🔴 Overdue</span>
-    <span>🟡 Due &lt;7 days</span>
-    <span>🟢 On track</span>
-    <span>✓ Done</span>
-  </div>`;
-}
-function personFilterRow() {
-  if(!IS_MANAGER) return '';
-  return `<div class="person-filter">
-    <button class="pf-btn ${!PERSON_FILTER?'on':''}" onclick="setPerson('')">Everyone</button>
-    ${STAFF.map(s=>`<button class="pf-btn ${PERSON_FILTER===s?'on':''}" onclick="setPerson('${s}')">${s.split(' ')[0]}</button>`).join('')}
-  </div>`;
-}
-
-function filterTabs(od, mine, total) {
-  return `<div class="filter-row">
-    <button class="ftab ${FILTER==='all'?'on':''}" onclick="setFilter('all')">All</button>
-    <button class="ftab ${FILTER==='urgent'?'on':''}" onclick="setFilter('urgent')" style="${FILTER==='urgent'?'background:#c45c00;border-color:#c45c00':''}">🟠 Urgent</button>
-    <button class="ftab ${FILTER==='red'?'on':''}" onclick="setFilter('red')">🔴 Overdue<span class="n">${od}</span></button>
-    <button class="ftab ${FILTER==='yellow'?'on':''}" onclick="setFilter('yellow')">🟡 This week</button>
-    <button class="ftab ${FILTER==='green'?'on':''}" onclick="setFilter('green')">🟢 On track</button>
-    ${IS_MANAGER?`<button class="ftab ${FILTER==='mine'?'on':''}" onclick="setFilter('mine')">Mine</button>`:''}
-    <button class="ftab ${FILTER==='done'?'on':''}" onclick="setFilter('done')">✓ Done</button>
-  </div>`;
-}
-
-// --- DASHBOARD ---
-function renderDashboard() {
-  const allTasks = ALL_TASKS.map(itemState);
-  const allActions = ALL_ACTIONS.map(itemState);
-  const taskOD = allTasks.filter(i=>i.status!=='done'&&daysOD(i.due)>0).length;
-  const actOD = allActions.filter(i=>i.status!=='done'&&daysOD(i.deadline)>0).length;
-  const taskOD7 = allTasks.filter(i=>i.status!=='done'&&daysOD(i.due)>7).length;
-  const done = [...allTasks,...allActions].filter(i=>i.status==='done').length;
-  const greeting = ME.split(' ')[0];
-  const dateStr = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-
-  // Per-person summary
-  const personRows = STAFF.map((s,si) => {
-    const myT = allTasks.filter(i=>i.assignees.includes(s));
-    const myA = allActions.filter(i=>i.assignees.includes(s));
-    const myOD = [...myT,...myA].filter(i=>i.status!=='done'&&daysOD(i.due||i.deadline)>0).length;
-    const myDone = [...myT,...myA].filter(i=>i.status==='done').length;
-    return `<div class="person-card" onclick="setPerson('${s}');switchView('tasks')">
-      <div class="pc-av" style="${MANAGERS.includes(s)?'background:#b8860b;border:2px solid #ffd700;box-sizing:border-box':'background:'+(['#1a2b3a','#2a6a4a','#20b2a2','#7c3aed','#be185d','#0369a1','#c78a3b'][si%7])+''}">${initials(s)}${MANAGERS.includes(s)?' ★':''}</div>
-      <div class="pc-body">
-        <div class="pc-name">${s}</div>
-        <div class="pc-stats">${myT.length} tasks · ${myA.length} actions</div>
-      </div>
-      <div class="pc-right">
-        ${myOD?`<div class="pc-od">${myOD} overdue</div>`:''}
-        ${myDone?`<div class="pc-done">${myDone} done</div>`:''}
-      </div>
-    </div>`;
-  }).join('');
-
-  return `<div class="dash-wrap">
-    <div class="dash-greeting">Good day, ${greeting}</div>
-    <div class="dash-date">${dateStr}</div>
-    ${taskOD7>0?`<div class="dash-alert">
-      <div class="da-n">⚠️ ${taskOD7} tasks more than 7 days overdue</div>
-      <div class="da-s">These require urgent attention — tap to view</div>
-    </div>`:''}
-    <div class="sum-strip" style="padding:0 0 14px">
-      <div class="sum-c red"><div class="v">${taskOD+actOD}</div><div class="k">Total overdue</div></div>
-      <div class="sum-c amber"><div class="v">${taskOD7}</div><div class="k">7+ days OD</div></div>
-      <div class="sum-c green"><div class="v">${done}</div><div class="k">Completed</div></div>
-    </div>
-    <div class="dash-h">Team overview</div>
-    ${personRows}
-    <div style="margin-top:14px;display:flex;gap:8px">
-      <button onclick="switchView('tasks')" style="flex:1;padding:13px;border-radius:11px;border:none;background:var(--navy);color:#fff;font:700 14px 'Lato';cursor:pointer">View all tasks</button>
-      <button onclick="switchView('actions')" style="flex:1;padding:13px;border-radius:11px;border:1px solid var(--line);background:#fff;font:700 14px 'Lato';cursor:pointer">View actions</button>
-    </div>
-  </div>`;
-}
-
-// --- TASKS VIEW ---
-function renderTasksView() {
-  const all = ALL_TASKS.map(itemState).filter(i=>IS_MANAGER||i.assignees.includes(ME));
-  const items = getVisible(ALL_TASKS, 'due');
-  const od = all.filter(i=>i.status!=='done'&&daysOD(i.due)>0).length;
-  const overdue=items.filter(i=>i.status!=='done'&&daysOD(i.due)>0);
-  const upcoming=items.filter(i=>i.status!=='done'&&daysOD(i.due)===0);
-  const doneItems=items.filter(i=>i.status==='done');
-  return filterTabs(od,0,all.length) + trafficLegend() + personFilterRow() +
-    (overdue.length?`<div class="sec-h">Overdue<span>${overdue.length}</span></div><div class="task-list">${overdue.map(i=>renderCard(i,'due')).join('')}</div>`:'') +
-    (upcoming.length?`<div class="sec-h">Upcoming<span>${upcoming.length}</span></div><div class="task-list">${upcoming.map(i=>renderCard(i,'due')).join('')}</div>`:'') +
-    (doneItems.length?`<div class="sec-h">Completed<span>${doneItems.length}</span></div><div class="task-list">${doneItems.map(i=>renderCard(i,'due')).join('')}</div>`:'') +
-    (!items.length?`<div class="empty-msg">No tasks match this filter.</div>`:'');
-}
-
-// --- ACTIONS VIEW ---
-function renderActionsView() {
-  const all = ALL_ACTIONS.map(itemState).filter(i=>IS_MANAGER||i.assignees.includes(ME));
-  const items = getVisible(ALL_ACTIONS, 'deadline');
-  const od = all.filter(i=>i.status!=='done'&&daysOD(i.deadline)>0).length;
-  const overdue=items.filter(i=>i.status!=='done'&&daysOD(i.deadline)>0);
-  const nodead=items.filter(i=>i.status!=='done'&&!i.deadline&&daysOD(i.deadline)===0);
-  const upcoming=items.filter(i=>i.status!=='done'&&i.deadline&&daysOD(i.deadline)===0);
-  const doneItems=items.filter(i=>i.status==='done');
-  return filterTabs(od,0,all.length) + trafficLegend() + personFilterRow() +
-    (overdue.length?`<div class="sec-h">Overdue<span>${overdue.length}</span></div><div class="task-list">${overdue.map(i=>renderCard(i,'deadline')).join('')}</div>`:'') +
-    (nodead.length?`<div class="sec-h">No deadline<span>${nodead.length}</span></div><div class="task-list">${nodead.map(i=>renderCard(i,'deadline')).join('')}</div>`:'') +
-    (upcoming.length?`<div class="sec-h">Upcoming<span>${upcoming.length}</span></div><div class="task-list">${upcoming.map(i=>renderCard(i,'deadline')).join('')}</div>`:'') +
-    (doneItems.length?`<div class="sec-h">Completed<span>${doneItems.length}</span></div><div class="task-list">${doneItems.map(i=>renderCard(i,'deadline')).join('')}</div>`:'') +
-    (!items.length?`<div class="empty-msg">No actions match.</div>`:'');
-}
-
-// --- REPORT VIEW ---
-function renderReportView() {
-  const all=[...ALL_TASKS,...ALL_ACTIONS].map(itemState);
-  const done=all.filter(i=>i.status==='done');
-  const staffRows=STAFF.map((s,si)=>{
+// BY PERSON
+function renderByPerson() {
+  const all=[...ALL_TASKS.map(itemState),...ALL_ACTIONS.map(itemState)];
+  const sections=STAFF.map((s,si)=>{
     const mine=all.filter(i=>i.assignees.includes(s));
     const myOD=mine.filter(i=>i.status!=='done'&&daysOD(i.due||i.deadline)>0);
     const myDone=mine.filter(i=>i.status==='done');
-    return `<div style="background:#fff;border-radius:12px;padding:13px;margin-bottom:8px;box-shadow:0 2px 8px rgba(26,43,58,.05)">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <div class="av ${AV_COLS[si%7]}">${initials(s)}</div>
-        <div style="font-weight:700;color:var(--navy)">${s}</div>
-      </div>
-      <div style="display:flex;gap:10px;font-size:13px">
-        <span>Total: <b>${mine.length}</b></span>
-        <span style="color:var(--red)">Overdue: <b>${myOD.length}</b></span>
-        <span style="color:var(--green)">Done: <b>${myDone.length}</b></span>
-      </div>
-      ${myDone.length?`<div style="margin-top:8px;font-size:12px;color:#7a8494">${myDone.map(i=>i.name).join(', ')}</div>`:''}
-    </div>`;
+    const myUp=mine.filter(i=>i.status!=='done'&&!daysOD(i.due||i.deadline));
+    return '<div style="background:#fff;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px rgba(26,43,58,.05)">'
+      +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)">'
+      +'<div class="pc-av '+(isMgr(s)?'mgr':'')+'" style="width:40px;height:40px;font-size:14px;'+(isMgr(s)?'':'background:'+STAFF_COLORS[si%STAFF_COLORS.length])+'">'+initials(s)+(isMgr(s)?'★':'')+'</div>'
+      +'<div><div style="font-weight:700;font-size:16px;color:var(--navy)">'+s+' '+(isMgr(s)?'<span style="font-size:11px;color:#b8860b">★ Manager</span>':'')+'</div>'
+      +'<div style="font-size:12px;color:#7a8494;margin-top:2px">'+mine.length+' items assigned'+(myOD.length?' &middot; <span style="color:var(--red);font-weight:700">'+myOD.length+' overdue</span>':'')+(myDone.length?' &middot; <span style="color:var(--green);font-weight:700">'+myDone.length+' done</span>':'')+'</div></div></div>'
+      +(myOD.length?'<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px">OVERDUE ('+myOD.length+')</div>'
+        +myOD.map(i=>'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f5f7f9;font-size:13px">'
+          +'<span>'+i.name+'</span><span style="color:var(--red);font-weight:700">'+fmt(i.due||i.deadline)+'</span></div>').join(''):'')
+      +(myUp.length?'<div style="font-size:12px;font-weight:700;color:var(--amber);margin:10px 0 6px">UPCOMING ('+myUp.length+')</div>'
+        +myUp.slice(0,4).map(i=>'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f5f7f9;font-size:13px">'
+          +'<span>'+i.name+'</span><span style="color:#7a8494">'+fmt(i.due||i.deadline)+'</span></div>').join('')
+        +(myUp.length>4?'<div style="font-size:12px;color:#7a8494;padding-top:6px">+ '+(myUp.length-4)+' more upcoming</div>':''):'')
+      +(!mine.length?'<div style="color:#7a8494;font-size:13px">No tasks assigned</div>':'')
+      +'</div>';
   }).join('');
-  return `<div style="padding:14px">
-    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--navy);margin-bottom:14px">Compliance Report</div>
-    ${staffRows}
-    ${done.length?`<div style="background:#fff;border-radius:12px;padding:13px;margin-bottom:8px;box-shadow:0 2px 8px rgba(26,43,58,.05)">
-      <div style="font-weight:700;color:var(--green);margin-bottom:8px">&#10003; Completed items (${done.length})</div>
-      ${done.map(i=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">
-        <div style="font-weight:600">${i.name}</div>
-        <div style="color:#7a8494">${i.completedBy} · ${i.completedAt?fmt(i.completedAt):''}${i.evidence?' · '+i.evidence:''}</div>
-        ${i.notesHistory&&i.notesHistory.length?`<div style="color:#4a5560;font-style:italic">"${i.notesHistory[i.notesHistory.length-1].text}"</div>`:''}
-      </div>`).join('')}
-    </div>`:'<div style="background:#fff;border-radius:12px;padding:20px;text-align:center;color:#7a8494;font-size:14px">No items completed yet.</div>'}
-    <button onclick="exportReport()" style="width:100%;margin-top:4px;padding:13px;border-radius:11px;border:1px solid var(--line);background:#fff;font:600 14px 'Lato';cursor:pointer">Export for Saeker update &#8595;</button>
-  </div>`;
+  return '<h1 style="font-family:\'Cormorant Garamond\',serif;font-size:30px;color:var(--navy);margin-bottom:20px">By Person</h1>'+sections;
 }
+
+// PRINT REPORT
+function renderReport() {
+  const all=[...ALL_TASKS.map(itemState),...ALL_ACTIONS.map(itemState)];
+  const od=all.filter(i=>i.status!=='done'&&daysOD(i.due||i.deadline)>0);
+  const done=all.filter(i=>i.status==='done');
+  const dateStr=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+
+  const staffSections=STAFF.map(s=>{
+    const mine=all.filter(i=>i.assignees.includes(s));
+    const myOD=mine.filter(i=>i.status!=='done'&&daysOD(i.due||i.deadline)>0);
+    const myDone=mine.filter(i=>i.status==='done');
+    return '<div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(26,43,58,.05)">'
+      +'<div style="font-weight:700;font-size:15px;color:var(--navy);margin-bottom:8px">'+s+(isMgr(s)?' ★':'')
+      +'<span style="font-size:12px;color:#7a8494;font-weight:400;margin-left:10px">'+mine.length+' items &middot; '+myOD.length+' overdue &middot; '+myDone.length+' done</span></div>'
+      +myOD.map(i=>'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f5f7f9;font-size:13px">'
+        +'<span>&#128308; '+i.name+'</span><span style="color:var(--red)">'+fmt(i.due||i.deadline)+'</span></div>').join('')
+      +myDone.map(i=>'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f5f7f9;font-size:13px">'
+        +'<span>&#10003; '+i.name+'</span><span style="color:var(--green)">'+(i.completedBy||'')+(i.completedAt?' &middot; '+fmt(i.completedAt):'')+'</span></div>').join('')
+      +(!mine.length?'<div style="color:#7a8494;font-size:13px">No tasks assigned</div>':'')
+      +'</div>';
+  }).join('');
+
+  return '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">'
+    +'<div><h1 style="font-family:\'Cormorant Garamond\',serif;font-size:30px;color:var(--navy)">Compliance Report</h1>'
+    +'<div style="font-size:13px;color:#7a8494">'+dateStr+' &middot; Brandon Hall Hotel and Spa</div></div>'
+    +'<button class="print-btn" onclick="window.print()" style="padding:12px 22px;font-size:14px">&#128424; Print report</button></div>'
+    +'<div style="background:#fff;border-radius:14px;padding:20px;margin-bottom:18px;box-shadow:0 2px 8px rgba(26,43,58,.05)">'
+    +'<div style="font-family:\'Cormorant Garamond\',serif;font-size:22px;color:var(--navy);margin-bottom:14px">Summary</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'
+    +[['Total',all.length,'var(--navy)'],['Overdue',od.length,'var(--red)'],['Completed',done.length,'var(--green)'],['Outstanding',all.length-done.length,'var(--amber)']].map(([l,v,c])=>
+      '<div style="background:#f5f7f9;border-radius:10px;padding:14px;text-align:center">'
+      +'<div style="font-size:32px;font-family:\'Cormorant Garamond\',serif;color:'+c+';font-weight:600">'+v+'</div>'
+      +'<div style="font-size:12px;color:#7a8494">'+l+'</div></div>'
+    ).join('')+'</div></div>'
+    +staffSections;
+}
+
+function setStatus(s){ STATUS_FILTER=s; render(); }
+function sortBy(k){ if(SORT_KEY===k) SORT_DIR*=-1; else{SORT_KEY=k;SORT_DIR=1;} render(); }
 
 function render() {
   let html='';
-  if(VIEW==='dashboard') html=renderDashboard();
-  else if(VIEW==='tasks') html=renderTasksView();
-  else if(VIEW==='actions') html=renderActionsView();
-  else html=renderReportView();
-  document.getElementById('content').innerHTML=html;
+  if(SECTION==='overview') html=renderOverview();
+  else if(SECTION==='tasks') html=renderTable(ALL_TASKS,'due');
+  else if(SECTION==='actions') html=renderTable(ALL_ACTIONS,'deadline');
+  else if(SECTION==='byPerson') html=renderByPerson();
+  else if(SECTION==='report') html=renderReport();
+  document.getElementById('main-content').innerHTML=html;
   updateBadges();
 }
 
-function setFilter(f){ FILTER=f; render(); }
-function setPerson(p){ PERSON_FILTER=p; render(); }
-
-// --- TASK DETAIL MODAL ---
-let currentId=null, currentDk=null;
-
-function openTask(id, dk) {
-  const source = dk==='due' ? ALL_TASKS : ALL_ACTIONS;
-  const raw = source.find(i=>i.id===id); if(!raw) return;
-  const s = itemState(raw);
-  currentId=id; currentDk=dk;
-  const d=s[dk]; const od=daysOD(d);
-  const isDone=s.status==='done';
-
-  const assignHTML = STAFF.map((person,si)=>{
-    const isOn=s.assignees.includes(person);
-    const isMgrPerson=MANAGERS.includes(person);
-    const avStyle=isMgrPerson?`style="background:#b8860b;border:2px solid #ffd700;box-sizing:border-box"`:`class="av ${AV_COLS[si%7]}"`;
-    return `<div class="assign-row ${isOn?'on':''}" id="ar-${id}-${si}" onclick="toggleAssignee('${id}','${person}',${si})">
-      <div class="ar-l"><div class="av" ${avStyle}>${initials(person)}</div>${person}${isMgrPerson?' <span style="font-size:10px;color:#b8860b;font-weight:700">★ Manager</span>':''}</div>
-      <div class="ar-check">${isOn?'&#10003;':''}</div>
-    </div>`;
-  }).join('');
-
-  const notesHistHTML = s.notesHistory&&s.notesHistory.length
-    ? `<div class="notes-history">${s.notesHistory.map(n=>`<div class="note-entry"><div class="ne-by">${n.by} · ${n.at}</div>${n.text}</div>`).join('')}</div>` : '';
-
-  const priCls=(p)=>s.priority===p?`on-${p}`:'';
-
-  document.getElementById('modal-content').innerHTML=`
-    <div class="ms-title">${s.name}</div>
-    <div class="ms-meta">${s.category||''} ${s.type&&s.type!=='-'?'· '+s.type:''} ${s.linkedTo&&s.linkedTo!=='-'?'· '+s.linkedTo:''}</div>
-    <div class="ms-dates">
-      ${d?`<div class="ms-date-item"><div class="dl">Due</div><div class="dv ${od>0?'red':''}">${fmt(d)}${od>0?' ('+od+'d overdue)':''}</div></div>`:''}
-      ${s.lastRun?`<div class="ms-date-item"><div class="dl">Last done</div><div class="dv">${fmt(s.lastRun)}</div></div>`:''}
-      ${s.freq?`<div class="ms-date-item"><div class="dl">Frequency</div><div class="dv">${s.freq}</div></div>`:''}
-    </div>
-
-    ${isDone?`<div class="done-box">&#10003; Completed by <b>${s.completedBy}</b> on <b>${fmt(s.completedAt)}</b>${s.evidence?'<br>Evidence: '+s.evidence:''}</div>`:''}
-
-    <div class="field"><label>Assigned to</label>
-      <div class="assign-list">${assignHTML}</div>
-    </div>
-
-    <div class="field"><label>Priority</label>
-      <div class="pri-row">
-        <button class="pri-btn ${priCls('urgent')}" onclick="setPri('${id}','urgent')">🔴 Urgent</button>
-        <button class="pri-btn ${priCls('high')}" onclick="setPri('${id}','high')">🟡 High</button>
-        <button class="pri-btn ${priCls('normal')}" onclick="setPri('${id}','normal')">🟢 Normal</button>
-      </div>
-    </div>
-
-    ${notesHistHTML?`<div class="field"><label>Previous notes</label>${notesHistHTML}</div>`:''}
-    <div class="field"><label>Add note / update</label>
-      <textarea id="t-notes" placeholder="Contractor name, update, reference, action taken..."></textarea></div>
-
-    ${!isDone?`
-    <div class="field"><label>Evidence reference</label>
-      <input id="t-evidence" placeholder="Saeker ref, certificate, invoice number" value="${s.evidence||''}"></div>
-    <div class="field"><label>Photo evidence</label>
-      <div class="photo-area" onclick="document.getElementById('ph-${id}').click()">📷 Tap to take / upload photo</div>
-      <input type="file" id="ph-${id}" accept="image/*" capture="environment" style="display:none" onchange="addPhoto('${id}',this)">
-      <div class="photo-thumbs" id="thumbs-${id}">${(s.photos||[]).map(p=>`<img class="photo-thumb" src="${p}">`).join('')}</div>
-    </div>
-    <div class="btn-row">
-      <button class="btn-p btn-complete" onclick="saveNote('${id}');markDone('${id}')">&#10003; Mark complete</button>
-      <button class="btn-p btn-ghost" onclick="saveNote('${id}')">Save note</button>
-    </div>`:`
-    <div class="btn-row">
-      <button class="btn-p btn-undo" onclick="undoDone('${id}')">Undo completion</button>
-    </div>`}
-    <button class="btn-p btn-ghost" onclick="closeModal()" style="width:100%;margin-top:8px">Close</button>`;
-
-  document.getElementById('modal').style.display='flex';
-}
-
-function handleModalBgClick(e){ if(e.target===document.getElementById('modal')) closeModal(); }
-function closeModal(){ document.getElementById('modal').style.display='none'; currentId=null; }
-
-function toggleAssignee(id, person, si) {
-  const s=itemState([...ALL_TASKS,...ALL_ACTIONS].find(i=>i.id===id));
-  let a=[...s.assignees];
-  const on=a.includes(person);
-  if(on) a=a.filter(x=>x!==person); else a.push(person);
-  saveState(id,{assignees:a});
-  const row=document.getElementById(`ar-${id}-${si}`);
-  if(row){ row.classList.toggle('on',!on); row.querySelector('.ar-check').innerHTML=!on?'&#10003;':''; }
-  toast((on?'Removed: ':'Assigned: ')+person.split(' ')[0]);
-  render();
-}
-
-function setPri(id,p){ saveState(id,{priority:p}); openTask(id,currentDk); render(); }
-
-function saveNote(id) {
-  const txt=(document.getElementById('t-notes')?.value||'').trim();
-  const ev=(document.getElementById('t-evidence')?.value||'').trim();
-  const s=itemState([...ALL_TASKS,...ALL_ACTIONS].find(i=>i.id===id));
-  const hist=[...(s.notesHistory||[])];
-  if(txt) hist.push({text:txt, by:ME, at:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'})});
-  saveState(id,{notesHistory:hist, evidence:ev});
-  if(txt) toast('Note saved');
-}
-
-function addPhoto(id,inp) {
-  const file=inp.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const s=STATE[id]||{}; const photos=[...(s.photos||[]),e.target.result];
-    saveState(id,{photos});
-    const thumbs=document.getElementById('thumbs-'+id);
-    if(thumbs){ const img=document.createElement('img'); img.className='photo-thumb'; img.src=e.target.result; thumbs.appendChild(img); }
-    toast('Photo added');
-  };
-  reader.readAsDataURL(file);
-}
-
-function markDone(id) {
-  const ev=(document.getElementById('t-evidence')?.value||'').trim();
-  saveState(id,{status:'done',completedBy:ME,completedAt:today,evidence:ev});
-  closeModal(); render(); toast('Marked complete ✓');
-}
-
-function undoDone(id) {
-  const st=STATE[id]||{}; delete st.status; delete st.completedBy; delete st.completedAt;
-  STATE[id]=st; localStorage.setItem('bh_comp_state2',JSON.stringify(STATE));
-  closeModal(); render();
-}
-
-function exportReport() {
-  const all=[...ALL_TASKS,...ALL_ACTIONS].map(itemState);
-  const done=all.filter(i=>i.status==='done');
-  let txt=`BRANDON HALL HOTEL AND SPA — COMPLIANCE REPORT
-${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}
-Generated by: ${ME}
-
-`;
-  txt+=`COMPLETED ITEMS (${done.length})
-${'─'.repeat(50)}
-`;
-  done.forEach(i=>{ txt+=`
-${i.name}
-Completed by: ${i.completedBy} on ${i.completedAt}
-Evidence: ${i.evidence||'None recorded'}
-`;
-    if(i.notesHistory&&i.notesHistory.length) txt+=`Notes: ${i.notesHistory.map(n=>n.text).join(' | ')}
-`; });
-  const od=all.filter(i=>i.status!=='done'&&daysOD(i.due||i.deadline)>0);
-  txt+=`
-STILL OVERDUE (${od.length})
-${'─'.repeat(50)}
-`;
-  od.forEach(i=>txt+=`
-${i.name} — ${daysOD(i.due||i.deadline)}d overdue — Assigned: ${i.assignees.join(', ')}
-`);
-  const el=document.createElement('a'); el.href='data:text/plain;charset=utf-8,'+encodeURIComponent(txt);
-  el.download=`BH_Compliance_${today}.txt`; el.click();
-}
-
-function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); }
-
-// Auto-login from session
-const su=sessionStorage.getItem('bh_comp_user');
-if(su){ ME=su; IS_MANAGER=MANAGERS.includes(ME);
-  document.getElementById('login').style.display='none';
-  document.getElementById('app').style.display='flex';
-  document.getElementById('tb-user').textContent=ME.split(' ')[0]+' ▾';
-  updateBadges(); render(); }
+buildPersonSidebar();
+render();
 </script>
 </body>
 </html>
