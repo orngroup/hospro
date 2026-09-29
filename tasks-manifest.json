@@ -1,0 +1,14 @@
+{
+  "name": "Brandon Hall Compliance",
+  "short_name": "Compliance",
+  "description": "Brandon Hall Hotel and Spa — Compliance & Task Management",
+  "start_url": "/tasks.html",
+  "display": "standalone",
+  "background_color": "#1a2b3a",
+  "theme_color": "#1a2b3a",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
