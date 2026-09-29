@@ -105,8 +105,6 @@ const ADDONS = [
     { name:"Sandwich lunch with crisps", price:12, unit:"pp" },
     { name:"Sandwich lunch with chips", price:14, unit:"pp" },
     { name:"Soup and sandwich lunch", price:13, unit:"pp" },
-    { name:"Chef's choice lunch", price:20, unit:"pp" },
-    { name:"Tea & coffee (per serving)", price:3.50, unit:"pp/serving" },
     { name:"Bacon & egg rolls", price:8, unit:"pp" },
     { name:"Breakfast (individual, <15)", price:18.50, unit:"pp" },
     { name:"Group breakfast (min 15)", price:15, unit:"pp" },
@@ -446,197 +444,65 @@ const MNE_STANDARD = ["Screen","HDMI cable","Wi-Fi","Pads & pens","Flipchart pad
 
 /* Per-room equipment lines from the audit. size only where relevant (TV "). */
 const MNE_ROOMS = {
-  "brandon-1": { readyToSell:true, capacity:"Cabaret — 5 tables x 40", currentAV:"Projector screen",
-    ac:"Yes", usbSockets:"Yes", powerAdequate:"y",
-    comments:"Sell as part of Brandon 1 (breakout/refreshment) — no access except via Brandon 1. TV hidden (room doubles for social).  This room is required beginning of October for an event",
-    wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "conference chairs", "Black out blinds"],
-    socialWishlist:["Chavari chairs (for weddings)", "Couple chairs", "LED Uplighters for dinners", "LED dancefloor", "Poseur tables x 4", "Easel x 2"],
+  "brandon-1": { readyToSell:true, currentAV:"Projector screen",
+    comments:"Sell as part of Brandon 1 as breakout/refreshment area — no access except through Brandon 1. TV hidden as room doubles for social gatherings.",
     items:[
-      
-      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
-      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
-      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
-      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
-      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
-      { cat:"Screen", item:"4K Smart TV / Screen", size:"98\"", qty:1, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
-      { cat:"Software", item:"Click Share", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Pads and pens", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Flipchart", qty:1, status:"needed" }
+      { cat:"Screen", item:'4K Smart TV', size:'98"', qty:1, status:"needed" },
+      { cat:"Furniture", item:"Swivel stand, height-adjustable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
+      { cat:"Software", item:"ClickShare", qty:1, status:"needed" }
     ]},
-  "brandon-2": { readyToSell:true, capacity:"Cabaret — 4 tables x 24", currentAV:"No equipment",
-    ac:"Yes", usbSockets:"Yes", powerAdequate:"y",
-    comments:"TV hidden (room doubles for social gatherings). This room is required beginning of October for an event",
-    wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "conference  chairs", "Black out blinds"],
-    socialWishlist:["Portable bar - so guests can have private bar in room"],
+  "brandon-2": { readyToSell:true, currentAV:"No equipment",
+    comments:"TV hidden as room doubles for social gatherings.",
     items:[
-      
-      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
-      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
-      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
-      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
-      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
-      { cat:"Screen", item:"4K Smart TV / Screen", size:"98\"", qty:1, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
-      { cat:"Software", item:"Click Share", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Pads and pens", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Flipchart", qty:1, status:"needed" }
+      { cat:"Screen", item:'4K Smart TV', size:'98"', qty:1, status:"needed" },
+      { cat:"Furniture", item:"Swivel stand, height-adjustable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
+      { cat:"Software", item:"ClickShare", qty:1, status:"needed" }
     ]},
-  "wolston-suite": { readyToSell:true, capacity:"Cabaret 60 / Theatre — TBC", currentAV:"1x projector screen, no projector",
-    ac:"Yes", usbSockets:"Yes", powerAdequate:"y",
-    comments:"Long room — additional screen on stand needed so guests see presentation. Partition removed 15/9.",
-    wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "comfortable conference chairs", "Black out blinds", "New carpet - necessity"],
-    socialWishlist:["LED Uplighters for special events", "LED Dancefloor", "Portable bar - so guests can have private bar in room", "Poseur tables x 4", "Easel x 1"],
+  "wolston-suite": { readyToSell:true, currentAV:"1 x projector screen, no projector",
+    comments:"Long room — additional screen needed so guests see the presentation. Partition now removed (15/9).",
     items:[
-      
-      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
-      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
-      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
-      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
-      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
-      { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
-      { cat:"Software", item:"Click Share", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Pads and pens", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Flipchart", qty:1, status:"needed" }
+      { cat:"Screen", item:'4K Smart TV', size:'75"', qty:1, status:"needed" },
+      { cat:"Screen", item:"Additional screen on stand (long room)", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
+      { cat:"Software", item:"ClickShare", qty:1, status:"needed" }
     ]},
-  "beech": { readyToSell:false, capacity:"12 boardroom", currentAV:"None",
-    ac:"Yes", usbSockets:"Yes", powerAdequate:"",
-    comments:"NOT READY: door repair + lock (attempted break-in, bottom panel broken), ladybird clearance, AV to fit. This room is required beginning of October for an event",
-    wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs", "Black out blinds"],
-    socialWishlist:[],
+  "beech": { readyToSell:false, currentAV:"None",
+    comments:"NOT READY: door needs fixing (attempted break-in, bottom panel broken), ladybird influx to clear, AV & door lock to fix.",
     items:[
-      
-      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
-      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
-      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
-      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
-      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
-      { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
-      { cat:"Software", item:"Click Share", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Pads and pens", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Flipchart", qty:1, status:"needed" }
+      { cat:"Screen", item:'4K Smart TV', size:'75"', qty:1, status:"needed" },
+      { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
+      { cat:"Software", item:"ClickShare", qty:1, status:"needed" },
+      { cat:"Other", item:"Door repair & lock", qty:1, status:"needed" },
+      { cat:"Other", item:"Ladybird clearance", qty:1, status:"needed" }
     ]},
-  "hunt": { readyToSell:false, capacity:"14 boardroom", currentAV:"TV on wall (unsure if works / HDMI compatible)  TV too small for the room",
-    ac:"Yes", usbSockets:"Yes", powerAdequate:"No",
-    comments:"NOT READY: damp ceiling; air conditioning unit inbedded but leaking and not working TV is too small for this room size   This room is required beginning of October for an event",
-    wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs", "Black out blinds"],
-    socialWishlist:[],
+  "hunt": { readyToSell:false, currentAV:"TV on wall (HDMI compatibility unconfirmed)",
+    comments:"NOT READY: damp ceiling; cannot access room currently. Images to follow.",
     items:[
-      
-      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
-      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
-      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
-      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
-      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
-      { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
-      { cat:"Software", item:"Click Share", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Pads and pens", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Flipchart", qty:1, status:"needed" }
+      { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
+      { cat:"Stationery", item:"Flipchart, pads & pens, branded notepads", qty:1, status:"needed" },
+      { cat:"Other", item:"Damp ceiling repair", qty:1, status:"needed" }
     ]},
-  "warwick": { readyToSell:false, capacity:"10 boardroom", currentAV:"TV on wall (unsure if works / HDMI compatible)",
-    ac:"Yes", usbSockets:"Yes", powerAdequate:"y",
-    comments:"NOT READY: no corridor lighting; key not working, cannot enter. Confirm if wall TV works. Images to follow.  This room is required beginning of October for an event",
-    wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs", "Black out blinds"],
-    socialWishlist:[],
+  "warwick": { readyToSell:false, currentAV:"TV on wall (HDMI compatibility unconfirmed)",
+    comments:"NOT READY: no corridor lighting; door key not working, cannot enter. Images to follow.",
     items:[
-      
-      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
-      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
-      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
-      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
-      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
-      { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
-      { cat:"Software", item:"Click Share", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Pads and pens", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Flipchart", qty:1, status:"needed" }
+      { cat:"Connectivity", item:"HDMI cable", qty:1, status:"needed" },
+      { cat:"Connectivity", item:"USB-C connectors", qty:1, status:"needed" },
+      { cat:"Stationery", item:"Flipchart, pads & pens, branded notepads", qty:1, status:"needed" },
+      { cat:"Power", item:"Corridor lighting", qty:1, status:"needed" },
+      { cat:"Other", item:"Door key/lock repair", qty:1, status:"needed" }
     ]},
-  "johnson": { readyToSell:false, capacity:"10 boardroom", currentAV:"pull down screen not sure if working no projector tables and charis  are in the room",
-    ac:"Yes", usbSockets:"Yes", powerAdequate:"y",
-    comments:"AV to be audited — please complete requirements.",
-    wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs", "Black out blinds"],
-    socialWishlist:[],
-    items:[
-      
-      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
-      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
-      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
-      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
-      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
-      { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
-      { cat:"Software", item:"Click Share", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Pads and pens", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Flipchart", qty:1, status:"needed" }
-    ]},
-  "jones": { readyToSell:false, capacity:"14 boardroom", currentAV:"pull down screen not sure if working no projector tables and charis  are in the room",
-    ac:"Yes", usbSockets:"Yes", powerAdequate:"y",
-    comments:"AV to be audited — please complete requirements.",
-    wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs", "Black out blinds"],
-    socialWishlist:[],
-    items:[
-      
-      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
-      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
-      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
-      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
-      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
-      { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
-      { cat:"Software", item:"Click Share", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Pads and pens", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Flipchart", qty:1, status:"needed" }
-    ]},
-  "parke": { readyToSell:false, capacity:"17 boardroom", currentAV:"pull down screen not sure if working no projector tables and charis  are in the room",
-    ac:"Yes", usbSockets:"Yes", powerAdequate:"y",
-    comments:"needs projector or tv with click share putting in, plug are in there but ay need USB port",
-    wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs", "Black out blinds"],
-    socialWishlist:[],
-    items:[
-      
-      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
-      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
-      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
-      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
-      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
-      { cat:"Screen", item:"4K Smart TV / Screen", size:"75\"", qty:1, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
-      { cat:"Software", item:"Click Share", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Pads and pens", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Flipchart", qty:1, status:"needed" }
-    ]},
-  "woodlands": { readyToSell:false, capacity:"28 theatre / 220 conference", currentAV:"pull down screen with projector not sure if working, carpet and full refurb needed,",
-    ac:"Yes", usbSockets:"Yes", powerAdequate:"y",
-    comments:"Largest space — likely needs dual screens or projector + PA/mics. Please confirm requirements.",
-    wishlist:["Whiteboards", "Video conferencing system", "Wireless presentation system", "Room scheduling panel - outside room for electronic signage and availability", "Power at conference table", "Linenless tables", "Boardroom chairs - comfortable conference chairs", "Black out blinds", "Staging - for conferences and bands/weddings"],
-    socialWishlist:["LED Uplighters for special events", "LED Dancefloor", "Poseur tables x 8", "Easel x 3"],
-    items:[
-      
-      { cat:"HVAC", item:"Air Conditioning Cassette", qty:1, cost:1000, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cables", qty:1, cost:5, status:"needed" },
-      { cat:"Power", item:"USB Power Socket Replacement", qty:1, cost:40, status:"needed" },
-      { cat:"Power", item:"Power Socket", qty:1, cost:40, status:"needed" },
-      { cat:"Connectivity", item:"USB-C Connectors", qty:1, cost:4, status:"needed" },
-      { cat:"Other", item:"Door Repair and Lock", qty:1, cost:100, status:"needed" },
-      { cat:"Screen", item:"4K Smart TV / Screen", size:"98\"", qty:1, status:"needed" },
-      { cat:"Connectivity", item:"HDMI Cable", qty:1, status:"needed" },
-      { cat:"Software", item:"Click Share", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Pads and pens", qty:1, status:"needed" },
-      { cat:"Stationery", item:"Flipchart                                 podium                                       lecturn                                                 mic", qty:1, status:"needed" },
-      { cat:"AV", item:"Definitely needs built in PA system with plenty of speakers, microphones - hand held and lapel", qty:1, status:"needed" }
-    ]},
+  "johnson": { readyToSell:null, currentAV:"To confirm", comments:"AV to be audited.", items:[] },
+  "jones": { readyToSell:null, currentAV:"To confirm", comments:"AV to be audited.", items:[] },
+  "parke": { readyToSell:null, currentAV:"To confirm", comments:"AV to be audited.", items:[] },
+  "woodlands": { readyToSell:null, currentAV:"To confirm",
+    comments:"28 theatre / up to 220 conference. AV to be audited.", items:[] }
 };
 
 /* ============================================================
@@ -980,35 +846,35 @@ const BROCHURE_TEMPLATES = {
    HOSPRO — modules (sidebar + welcome cards) + role access
    ============================================================ */
 const FLOW_MODULES = [
-  { id:"events",    name:"EventsPRO",    caption:"Plan. Organise. Deliver.",       icon:"📅", colour:"#4a9d7f", tint:"#e6f3ee", tabs:["chat","dining","beverage"] },
+  { id:"events",    name:"EventsPRO",    caption:"Plan. Organise. Deliver.",       icon:"📅", colour:"#4a9d7f", tint:"#e6f3ee", tabs:["chat","dining"] },
   { id:"room",      name:"RoomPRO",      caption:"Keep operations in flow.",       icon:"🛏️", colour:"#4a86c7", tint:"#e6eff8", tabs:["rooms","packages"] },
-  { id:"sales",     name:"SalesPRO",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","quotes","profit","contracts","payments"] },
-  { id:"corp",      name:"StayCORP",      caption:"Corporate guests & rates.",       icon:"🏢", colour:"#2f6f9e", tint:"#e6eef5", tabs:["precheckin","corpdb","corprates","feedback","groupconfig"] },
+  { id:"sales",     name:"SalesPRO",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","profit"] },
+  { id:"corp",      name:"StayCORP",      caption:"Corporate guests & rates.",       icon:"🏢", colour:"#2f6f9e", tint:"#e6eef5", tabs:["precheckin","corpdb","corprates","feedback"] },
   { id:"marketing", name:"MarketingPRO", caption:"Create. Campaign. Convert.",     icon:"📣", colour:"#c85c6b", tint:"#f8e9eb", tabs:["marketing","social"] },
   { id:"task",      name:"TaskPRO",      caption:"Tasks. Teams. Accountability.",  icon:"✅", colour:"#d4a24a", tint:"#faf1e0", tabs:["tasks"] },
+  { id:"hoscom",    name:"HosCOM",       caption:"Compliance. Safety. Peace of mind.", icon:"🛡️", colour:"#2a6a4a", tint:"#e8f3ee", tabs:["compDash","compTasks","compActions","compReport"] },
   { id:"asset",     name:"AssetPRO",     caption:"Maintain. Track. Extend.",       icon:"🔧", colour:"#3fa8a0", tint:"#e3f3f1", tabs:["mne","suppliers"] },
-  { id:"content",   name:"ContentPRO",   caption:"Brochures. Menus. Collateral.",  icon:"📄", colour:"#5a8fc7", tint:"#e8f0f8", tabs:["brochure","menu"] },
+  { id:"content",   name:"ContentPRO",   caption:"Brochures. Menus. Collateral.",  icon:"📄", colour:"#5a8fc7", tint:"#e8f0f8", tabs:["quote","brochure","menu"] },
   { id:"insight",   name:"InsightPRO",   caption:"See more. Do more.",             icon:"📈", colour:"#5fa563", tint:"#e8f3e8", tabs:["insight","admin"] }
 ];
 
 /* Tab metadata (label + icon) for sidebar links and cards */
 const TAB_META = {
   home:{label:"Home",icon:"🏠"},
-  rooms:{label:"Meeting Rooms",icon:"🚪"}, dining:{label:"Dining & Bars",icon:"🍽️"}, beverage:{label:"Beverage Management",icon:"🍷"},
+  rooms:{label:"Meeting Rooms",icon:"🚪"}, dining:{label:"Dining & Bars",icon:"🍽️"},
   pipeline:{label:"Sales Pipeline",icon:"📊"},
   packages:{label:"Packages",icon:"📦"}, suppliers:{label:"Suppliers",icon:"🤝"},
   quote:{label:"Create Quote",icon:"🧾"}, profit:{label:"Profit Tool",icon:"💰"},
-  contracts:{label:"Agreements",icon:"📝"},
-  payments:{label:"Payments",icon:"💷"},
-  quotes:{label:"Quotes",icon:"🧾"},
   chat:{label:"Events Chat",icon:"💬"}, mne:{label:"M&E Upgrade",icon:"🖥️"},
   marketing:{label:"Marketing Library",icon:"🖼️"}, menu:{label:"Menu Builder",icon:"📝"},
   brochure:{label:"Brochure Builder",icon:"📕"}, social:{label:"Social Studio",icon:"📱"},
   tasks:{label:"Tasks",icon:"✅"}, insight:{label:"Insights",icon:"📈"},
   precheckin:{label:"Pre Check-in Setup",icon:"📋"}, corpdb:{label:"Corporate Database",icon:"🏢"},
-  corprates:{label:"Corporate Rates",icon:"💷"}, groupconfig:{label:"Group Configurator",icon:"🛏️"},
+  corprates:{label:"Corporate Rates",icon:"💷"},
   feedback:{label:"Guest Feedback & QR",icon:"⭐"},
-  admin:{label:"Admin",icon:"⚙️"}
+  admin:{label:"Admin",icon:"⚙️"},
+  compDash:{label:"Compliance Dashboard",icon:"🛡️"}, compTasks:{label:"Scheduled Tasks",icon:"📋"},
+  compActions:{label:"Actions",icon:"⚡"}, compReport:{label:"Print Report",icon:"📊"}
 };
 
 /* Which module a tab belongs to (for sidebar grouping / highlighting) */
@@ -1043,225 +909,4 @@ const PRECHECKIN_FIELDS = [
   { key:"dietary",   label:"Dietary requirements / allergies", type:"text", req:false, ph:"e.g. vegetarian, nut allergy" },
   { key:"occasion",  label:"Special occasion?",    type:"text",  req:false, ph:"e.g. birthday, anniversary" },
   { key:"newsletter",label:"Keep me updated with offers", type:"select", opts:["No","Yes"], req:false }
-];
-
-/* ============================================================
-   BAR EVENTS CALENDAR — major sporting/TV events a hotel bar
-   fills up for. Oct 2026 – Mar 2027. Curated; refresh as fixtures
-   and TV selections firm up. impact: high/med.
-   ============================================================ */
-const BAR_EVENTS = [
-  // OCTOBER 2026
-  { date:"2026-10-11", sport:"⚽", name:"Liverpool v Man City", detail:"Premier League — marquee fixture", impact:"high" },
-  { date:"2026-10-18", sport:"🏉", name:"Autumn Rugby Internationals begin", detail:"England Autumn Nations Series", impact:"high" },
-  { date:"2026-10-24", sport:"⚽", name:"Chelsea v Tottenham", detail:"Premier League — London derby", impact:"med" },
-  { date:"2026-10-25", sport:"🏎️", name:"F1 — Mexico City GP", detail:"Formula 1", impact:"med" },
-  { date:"2026-10-31", sport:"⚽", name:"Chelsea v Man United", detail:"Premier League — big six clash", impact:"high" },
-  // NOVEMBER 2026
-  { date:"2026-11-01", sport:"⚽", name:"Liverpool v Arsenal", detail:"Premier League — title six-pointer", impact:"high" },
-  { date:"2026-11-07", sport:"🏉", name:"England v Australia (Autumn)", detail:"Rugby — Twickenham", impact:"high" },
-  { date:"2026-11-08", sport:"⚽", name:"Man United v Aston Villa", detail:"Premier League", impact:"med" },
-  { date:"2026-11-14", sport:"🏉", name:"England v New Zealand (Autumn)", detail:"Rugby — All Blacks", impact:"high" },
-  { date:"2026-11-21", sport:"🥊", name:"Major boxing bill (TBC)", detail:"Typical big fight-night weekend", impact:"med" },
-  { date:"2026-11-22", sport:"🏎️", name:"F1 — Las Vegas GP", detail:"Formula 1", impact:"med" },
-  { date:"2026-11-28", sport:"⚽", name:"Premier League Saturday", detail:"Full fixture programme", impact:"med" },
-  // DECEMBER 2026
-  { date:"2026-12-05", sport:"⚽", name:"Premier League — festive run begins", detail:"Busy pre-Christmas fixtures", impact:"med" },
-  { date:"2026-12-06", sport:"🏎️", name:"F1 — Abu Dhabi GP (season finale)", detail:"Formula 1 — championship decider", impact:"high" },
-  { date:"2026-12-12", sport:"⚽", name:"Premier League Saturday", detail:"Full programme", impact:"med" },
-  { date:"2026-12-26", sport:"⚽", name:"Boxing Day fixtures", detail:"Premier League — traditional full card", impact:"high" },
-  { date:"2026-12-28", sport:"⚽", name:"Premier League — festive fixtures", detail:"Busy holiday period", impact:"high" },
-  // JANUARY 2027
-  { date:"2027-01-01", sport:"⚽", name:"New Year's Day fixtures", detail:"Premier League full card", impact:"high" },
-  { date:"2027-01-09", sport:"⚽", name:"FA Cup Third Round", detail:"Premier League clubs enter — upsets draw crowds", impact:"med" },
-  { date:"2027-01-16", sport:"🏉", name:"Six Nations build-up", detail:"Rugby — championship approaches", impact:"med" },
-  { date:"2027-01-18", sport:"🎾", name:"Australian Open (finals week)", detail:"Tennis — Grand Slam", impact:"med" },
-  { date:"2027-01-30", sport:"⚽", name:"Premier League Saturday", detail:"Full programme", impact:"med" },
-  // FEBRUARY 2027
-  { date:"2027-02-06", sport:"🏉", name:"Six Nations Round 1", detail:"Rugby — England open the championship", impact:"high" },
-  { date:"2027-02-13", sport:"🏉", name:"Six Nations Round 2", detail:"Rugby", impact:"high" },
-  { date:"2027-02-14", sport:"⚽", name:"FA Cup Fourth Round", detail:"Football", impact:"med" },
-  { date:"2027-02-27", sport:"🏉", name:"Six Nations Round 3", detail:"Rugby", impact:"high" },
-  // MARCH 2027
-  { date:"2027-03-07", sport:"🏇", name:"Cheltenham Festival build-up", detail:"Horse racing — huge bar draw", impact:"high" },
-  { date:"2027-03-13", sport:"🏉", name:"Six Nations Round 4", detail:"Rugby", impact:"high" },
-  { date:"2027-03-16", sport:"🏇", name:"Cheltenham Festival (Gold Cup week)", detail:"Horse racing — peak week", impact:"high" },
-  { date:"2027-03-20", sport:"🏉", name:"Six Nations — Super Saturday (final round)", detail:"Rugby — championship finale", impact:"high" }
-];
-
-/* ============================================================
-   CONTRACT TERMS & CONDITIONS — from Brandon Hall template.
-   Used on quote/proposal PDFs and the formal agreement.
-   ============================================================ */
-const CONTRACT_TERMS = [
-  { h:"Taxes & Service Charge", t:"All meeting room, food and beverage, and related services are subject to applicable taxes (currently 20%) and service charge in effect on the date(s) of the event." },
-  { h:"Maximum Numbers", t:"The maximum number for the meeting room will decrease should additional equipment and/or additional floor space (i.e. staging) be required. The Hotel may, at its sole discretion, reduce the maximum number for the function suite or for the event more generally if required or advised to do so in line with any legal or regulatory requirement or government guidance." },
-  { h:"Car Parking", t:"Car parking at the hotel is on a first come first serve basis and is complimentary for guests attending an event. Please ensure your guests register the vehicle registration number at reception." },
-  { h:"Use of Outside Vendors", t:"If the Organization wishes to hire outside vendors to provide any goods or services at the Hotel during the event, the Hotel may, in its sole discretion, require that such vendor provide an indemnification agreement and proof of adequate insurance and compliance with applicable health and safety regulations." },
-  { h:"Group Room Night Commitment", t:"The Group Room Night Commitment as stated in this Agreement is the minimum commitment the Organization has agreed to utilize; contracted bedrooms will be charged for. Any additional rooms are strictly subject to availability and will incur additional charges. Room rates are subject to applicable taxes (currently 20%) in effect at the time of check-out." },
-  { h:"Attrition", t:"The Hotel is relying upon the Organization's use of the Group Room Night Commitment and the Minimum Spend. A loss will be incurred if actual usage is less than ninety percent (90%) of the commitment. The Hotel allows a ten percent (10%) reduction. Any remaining shortfall will be posted as attrition charges to the Master Account, plus applicable taxes. If actual event revenue is less than the Minimum Spend, forty percent (40%) of the difference will be posted to the Master Account. These charges are due as liquidated damages." },
-  { h:"Rooming List", t:"A full rooming list with guest names is required a minimum of twenty-one (21) working days prior to arrival. Rooms without names at this time will be released to general inventory at best available rate and remain subject to the cancellation policy less any attrition." },
-  { h:"Check-in Procedure", t:"All rooms will be available for check-in from 3:00pm on the day of arrival and must be vacated by 11:00am on the day of departure." },
-  { h:"Advance Payment", t:"Full pre-payment is required prior to arrival, based on the Event Order and Group Room Night Commitment. A cash or credit card authorization may be required to guarantee payment of any additional charges incurred during the event." },
-  { h:"Payment — BACS/Bank Transfer", t:"Please arrange payment by bank transfer stating the booking reference on all correspondence. Account name: Brandon Hall Management Limited · Sort Code: 30-98-97 · Account Number: 38757762 · IBAN: GB17LOYD30989738757762 · BIC: LOYDGB21031 · VAT: GB 499558606. If bank details appear to change, verify by phone with your event contact before making any payment." },
-  { h:"Cancellation by the Organization", t:"Liquidated damages apply on cancellation, based on working days prior to arrival: 0–3 days — 100% of Group Room Night Commitment, 70% of Minimum Spend and Total Meeting Room Rental; 4–90 days — 90% / 40%; 91–180 days — 80% / 40%; 181–365 days — 70% / 40%; from acceptance to 366+ days — 50% / 40%. All plus applicable taxes and Total Meeting Room Rental." },
-  { h:"Cancellation by the Hotel", t:"The Hotel may cancel the event and terminate this Agreement without liability if the event might prejudice the reputation of the Hotel; if there is any deterioration in the Organization's financial situation such that it may not fulfil its obligations; or if the Organization fails to pay any sum when due." },
-  { h:"Governing Law & Disputes", t:"This Agreement is governed by the law of England and Wales. Disputes will first be addressed through good faith negotiation; failing that, the courts of England and Wales have exclusive jurisdiction." },
-  { h:"Impossibility (Force Majeure)", t:"Performance is subject to termination without liability upon circumstances beyond either party's control (acts of God, war, terrorism, government regulation, disaster, strikes, civil disorder, or curtailment of transport) making it illegal or impossible to provide or use the facilities, conditioned on written notice within ten (10) days of learning of the basis." },
-  { h:"Privacy & Data Protection", t:"The Hotel is committed to complying with applicable privacy and data protection laws. The Organization will obtain all necessary rights and permissions before providing any personal data to the Hotel." },
-  { h:"Damage", t:"The Organization is responsible to the Hotel for any damage caused to allocated rooms, furnishings, utensils and equipment, or to the Hotel generally, by any act, default or neglect of the Organization or its sub-contractors, employees or guests, and shall pay on demand the amount required to make good such damage." },
-  { h:"Intellectual Property", t:"The Organization shall not use any of the Hotel's trademarks or intellectual property without the prior written consent of the Hotel or its management company." },
-  { h:"Reputation", t:"The Organization shall not, and will procure that its sub-contractors, employees or guests shall not, do anything which may cause damage to the reputation or good standing of the Hotel or bring it into disrepute." },
-  { h:"Changes & Amendments", t:"Any changes, additions, stipulations or deletions will not be binding on the other party unless initialled or otherwise approved in writing by that party." },
-  { h:"In-house Equipment", t:"The Hotel will provide, at no charge, a reasonable amount of standard meeting equipment. Special setups depleting in-house stock may be charged at rental cost, or changed to a standard format to avoid additional cost." },
-  { h:"Security of Items", t:"The Hotel cannot ensure the security of items left unattended in function rooms. Special arrangements may be made for securing a limited number of valuable items. Security personnel are subject to Hotel approval." },
-  { h:"Performance Licences", t:"The Organization is solely responsible for obtaining any necessary licences or permission to perform, broadcast, transmit or display any copyrighted works used at the Hotel." },
-  { h:"High-risk Activities", t:"The Hotel has committed facilities based on information given. Should the Hotel determine at any time that the event will include a previously undisclosed high-risk activity (e.g. biological agents, pyrotechnics), it may terminate this Agreement immediately without liability." },
-  { h:"Anti-Corruption, Sanctions & Regulatory Laws", t:"The Organization acknowledges the Hotel and its management company may be subject to the UK Bribery Act 2010, the US Foreign Corrupt Practices Act, anti-money-laundering laws, and applicable sanctions/trade-embargo laws, and may take any action necessary to ensure compliance, including immediate termination without liability." },
-  { h:"Compliance with Law", t:"This Agreement is subject to all applicable laws, including health and safety codes, alcoholic beverage control laws, disability laws and anti-terrorism laws. Both parties agree to cooperate to ensure compliance." },
-  { h:"Entire Agreement", t:"This Agreement contains the entire understanding between the parties and supersedes all prior understandings. No amendment or waiver is effective except in writing duly executed by both parties. The main body prevails over any schedules (but not the Event Order)." },
-  { h:"General", t:"Correspondence between the Hotel and the customer, and any consequent booking, will be taken as confirmation of the customer's acceptance of the Hotel's terms and conditions. Once agreed, the function sheet is binding and forms part of the contract. All rates are quoted in GBP inclusive of VAT at the current rate and are therefore liable to change." }
-];
-
-/* Short T&C summary line for quote footers */
-const TERMS_SHORT = "This proposal is subject to Brandon Hall Hotel and Spa's full terms and conditions (attached). Rates in GBP incl. VAT (currently 20%) and liable to change. Space and rates are held provisionally and subject to availability until confirmed. Cancellation charges apply per the schedule in the terms.";
-
-/* ============================================================
-   STAY CONFIGURATOR — real bedroom inventory (from Availability Report).
-   120 rooms. Occupancy by type; sofaBed rooms take an extra bed;
-   interconnecting rooms flagged for families. Cots for infants (<=2yrs).
-   child = up to 11 years; infant = up to 2 (cot).
-   ============================================================ */
-const CHILD_MAX_AGE = 11;
-const INFANT_MAX_AGE = 2;
-const HOTEL_ROOMS = [
-  { n:1, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:2, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:3, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:4, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:5, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:6, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:7, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:8, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:9, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:10, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:11, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:12, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:13, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:14, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:15, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:16, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:17, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:18, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:19, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:20, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:21, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:22, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:23, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:24, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:25, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:26, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:27, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:28, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:29, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:30, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:31, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:32, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:33, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:34, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:35, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:36, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:37, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:38, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:39, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:40, type:"CLA_TWN", label:"Classic Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:41, type:"JSUI", label:"Junior Suite", adults:2, children:2, sofaBed:false, interconnect:null },
-  { n:42, type:"JSUI", label:"Junior Suite", adults:2, children:2, sofaBed:false, interconnect:null },
-  { n:43, type:"PRE_DBL", label:"Privilege Room", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:44, type:"PRE_DBL", label:"Privilege Room", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:45, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:46, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:47, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:48, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:49, type:"PRE_DBL", label:"Privilege Room", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:50, type:"JSUI", label:"Junior Suite", adults:2, children:2, sofaBed:false, interconnect:null },
-  { n:51, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:52, type:"PRE_DBL", label:"Privilege Room", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:53, type:"PRE_DBL", label:"Privilege Room", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:54, type:"PRE_DBL", label:"Privilege Room", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:61, type:"CLA_DBL", label:"Classic Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:62, type:"JSUI", label:"Junior Suite", adults:2, children:2, sofaBed:false, interconnect:null },
-  { n:101, type:"PRE_DBL", label:"Privilege Room", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:102, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:103, type:"EXE_DBL_ACC", label:"Executive Double (Accessible)", adults:2, children:1, sofaBed:false, interconnect:105 },
-  { n:104, type:"EXE_TWN_ACC", label:"Executive Twin (Accessible)", adults:2, children:1, sofaBed:false, interconnect:106 },
-  { n:105, type:"EXE_TWN", label:"Executive Twin", adults:2, children:1, sofaBed:false, interconnect:103 },
-  { n:106, type:"EXE_TWN", label:"Executive Twin", adults:2, children:1, sofaBed:false, interconnect:104 },
-  { n:107, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:108, type:"EXE_TWN", label:"Executive Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:109, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:110, type:"EXE_TRP", label:"Executive Triple", adults:3, children:1, sofaBed:false, interconnect:null },
-  { n:111, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:112, type:"EXE_TRP", label:"Executive Triple", adults:3, children:1, sofaBed:false, interconnect:null },
-  { n:113, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:true, interconnect:null },
-  { n:114, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:115, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:116, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:117, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:118, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:119, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:120, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:121, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:122, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:123, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:124, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:125, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:126, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:127, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:128, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:129, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:130, type:"PRE_DBL", label:"Privilege Room", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:131, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:132, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:133, type:"EXE_DBL_ACC", label:"Executive Double (Accessible)", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:134, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:135, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:true, interconnect:null },
-  { n:136, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:137, type:"EXE_DBL_ACC", label:"Executive Double (Accessible)", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:138, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:139, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:true, interconnect:null },
-  { n:140, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:141, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:true, interconnect:null },
-  { n:142, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:143, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:144, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:145, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:146, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:147, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:148, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:149, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:true, interconnect:null },
-  { n:150, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:151, type:"EXE_TWN", label:"Executive Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:152, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:153, type:"EXE_TWN", label:"Executive Twin", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:154, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:155, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:true, interconnect:null },
-  { n:156, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:157, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:true, interconnect:null },
-  { n:158, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:159, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:true, interconnect:null },
-  { n:160, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:false, interconnect:null },
-  { n:161, type:"EXE_DBL", label:"Executive Double", adults:2, children:1, sofaBed:true, interconnect:null },
-  { n:162, type:"EXE_TRP", label:"Executive Triple", adults:3, children:1, sofaBed:false, interconnect:null },
-  { n:163, type:"EXE_TRP", label:"Executive Triple", adults:3, children:1, sofaBed:false, interconnect:null },
-  { n:164, type:"EXE_TRP", label:"Executive Triple", adults:3, children:1, sofaBed:false, interconnect:null },
-];
-const HOTEL_COTS = 4;
-const HOTEL_FOLDABLE = 4;
-
-/* Legacy simple types kept for reference (not used by new solver). */
-const STAY_ROOMS = [
-  { id:"standard", name:"Standard Room", adults:2, children:1, infants:1 },
-  { id:"deluxe",   name:"Deluxe Room",   adults:2, children:2, infants:1 },
-  { id:"suite",    name:"Suite",         adults:2, children:3, infants:1 }
 ];

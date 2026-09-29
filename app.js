@@ -6,29 +6,11 @@
    ============================================================ */
 const USE_FIREBASE = false;
 
-/* ============================================================
-   TENANT — the hotel this HOSPRO portal belongs to.
-   Change these for each new hotel. The access screen, terms and
-   access log all read from here.
-   ============================================================ */
-const TENANT = {
-  hotelName:    "Brandon Hall Hotel and Spa",
-  hotelPlace:   "Coventry",
-  operator:     "HOSPRO Worldwide",
-  operatorEmail:"hello@hospro.co.uk",
-  termsVersion: "1.0 · 29 September 2026",
-  // Optional: only allow verification from these email domains, e.g. ["brandonhallhotelandspa.com"].
-  // Leave empty to allow any email address.
-  allowedDomains: []
-};
-
 const USERS = {
   "ajay.kawa":        { name:"Ajay Kawa",        code:"BHAK", role:"admin" },
   "raj.kumar":        { name:"Raj Kumar",        code:"BHRK", role:"admin" },
   "alia.taub":        { name:"Alia Taub",        code:"BHAT", role:"admin" },
-  "nicola.cartwright":{ name:"Nicola Cartwright", code:"BHNC", role:"admin" },
-  "natalie.freeman":  { name:"Natalie Freeman",  code:"BHNF", role:"admin" },
-  "patrik.vlach":     { name:"Patrik Vlach",     code:"BHPV", role:"admin" }
+  "nicola.cartwright":{ name:"Nicola Cartwright", code:"BHNC", role:"admin" }
 };
 
 const LAYOUT_LABELS = { boardroom:"Boardroom", ushape:"U-Shape",
@@ -65,140 +47,80 @@ const Store = {
 
 let SESSION=null, CURRENT_TAB="home";
 
-/* ============================================================ ACCESS (email verification)
-   First visit on a device:
-     1. Name, email, role, location; IP detected automatically.
-     2. Accept the terms of use for TENANT.hotelName.
-     3. Firebase emails a secure one-time sign-in link.
-     4. Clicking the link verifies the email, records the access in
-        Firestore (access_log) and unlocks the staff login on this device.
-   No manual approval needed. Staff still sign in with their own login. */
-function termsHTML(t){
-  const H=t.hotelName;
-  return `
-  <p><b>Terms of use for the ${H} HOSPRO portal</b> · Version ${t.termsVersion}</p>
-  <ol>
-    <li><b>Authorised use only.</b> This portal is intended solely for the use of ${H} staff and personnel authorised by ${H}. It must not be used for any other hotel, business or purpose.</li>
-    <li><b>Confidential information.</b> Guest, client, booking, pricing and commercial information in this portal belongs to ${H} and is confidential. Do not copy, download, share or disclose it except as needed for your work for ${H}.</li>
-    <li><b>Data protection.</b> You will handle personal data in line with UK GDPR, the Data Protection Act 2018 and ${H}'s policies, and only for legitimate hotel purposes.</li>
-    <li><b>Your access is personal.</b> Do not share your login or let anyone else use this portal on your behalf. Tell ${H} management straight away if you think your access has been misused.</li>
-    <li><b>Access is recorded.</b> Your name, email address, role, location, IP address, device and the time you verified and accepted these terms are recorded to protect ${H} and its guests.</li>
-    <li><b>Ownership.</b> The HOSPRO software is provided by ${t.operator} and licensed to ${H}. You may not copy, adapt, resell or reverse-engineer it.</li>
-    <li><b>Misuse.</b> Access may be withdrawn at any time. Misuse may lead to disciplinary or legal action.</li>
-  </ol>`;
-}
-
+/* ============================================================ ACCESS REQUEST */
 (async ()=>{
-  const APPROVED_KEY="bh_hospro_approved";   // kept for devices approved under the old flow
-  const PENDING_KEY="hospro_access_pending";
-  const ar=$("#access-request"), login=$("#login");
-  const show=state=>{ ["form","sent","confirm","done"].forEach(s=>{ const n=$("#ar-state-"+s); if(n) n.classList.toggle("hidden", s!==state); }); };
-  const msg=t=>{ $("#ar-msg").textContent=t||""; };
+  const APPROVED_KEY="bh_hospro_approved";
+  const ar=$("#access-request");
+  const login=$("#login");
 
-  // Fill in the hotel name and terms from TENANT
-  document.querySelectorAll("[data-tenant]").forEach(n=>{ n.textContent=TENANT[n.dataset.tenant]||""; });
-  $("#ar-terms").innerHTML=termsHTML(TENANT);
-  $("#ar-location").placeholder=`e.g. ${TENANT.hotelName}, ${TENANT.hotelPlace}`;
+  // If never approved on this device, show access request screen
+  if(!localStorage.getItem(APPROVED_KEY)){
+    login.classList.add("hidden");
+    ar.classList.remove("hidden");
 
-  const openAccess=()=>{ login.classList.add("hidden"); ar.classList.remove("hidden"); };
-  const openLogin=()=>{ ar.classList.add("hidden"); login.classList.remove("hidden"); };
-  $("#ar-already").onclick=openLogin;
-  $("#lg-request-access").onclick=()=>{ openAccess(); show("form"); };
-
-  async function detectIp(){
-    try{ const r=await fetch("https://api.ipify.org?format=json"); const d=await r.json(); return d.ip||""; }
-    catch(e){ return ""; }
-  }
-
-  async function recordAccess(p, user){
-    const rec={
-      name:p.name, email:(user&&user.email)||p.email, role:p.role||"", location:p.location||"",
-      ip:p.ip||"", hotel:TENANT.hotelName, termsVersion:TENANT.termsVersion,
-      termsAcceptedAt:p.termsAcceptedAt, verifiedAt:new Date().toISOString(),
-      userAgent:navigator.userAgent.slice(0,300), uid:user?user.uid:""
-    };
-    try{ await FB.db.collection("access_log").add(rec); }
-    catch(e){ console.warn("Access log not saved:", e.message); }
-    try{ const l=JSON.parse(localStorage.getItem("hospro_access_local")||"[]"); l.unshift(rec); localStorage.setItem("hospro_access_local", JSON.stringify(l.slice(0,20))); }catch(e){}
-    return rec;
-  }
-
-  async function finishWithLink(email){
-    const p=JSON.parse(localStorage.getItem(PENDING_KEY)||"{}");
+    // Auto-detect IP
     try{
-      const cred=await FB.auth.signInWithEmailLink(email, location.href);
-      await recordAccess(Object.assign({}, p, { email }), cred.user);
-      localStorage.setItem(APPROVED_KEY, JSON.stringify({ email, verifiedAt:new Date().toISOString(), termsVersion:TENANT.termsVersion }));
-      localStorage.removeItem(PENDING_KEY);
-      // End the verification session so it never grants data access; staff then sign in normally.
-      try{ await FB.auth.signOut(); }catch(e){}
-      history.replaceState(null, "", location.pathname);
-      $("#ar-done-name").textContent=(p.name||email).split(" ")[0];
-      show("done");
-      setTimeout(openLogin, 2200);
-    }catch(e){
-      history.replaceState(null, "", location.pathname);
-      show("form");
-      msg(e.code==="auth/invalid-action-code"||e.code==="auth/expired-action-code"
-        ? "That link has expired or has already been used. Please send a new one."
-        : "We couldn't verify that link: "+(e.message||e.code));
-    }
+      const r=await fetch("https://api.ipify.org?format=json");
+      const d=await r.json();
+      $("#ar-ip").value=d.ip||"";
+    }catch(e){ $("#ar-ip").value="Could not detect"; }
   }
 
-  // Arriving from the email link?
-  const fromLink = FB.ready && FB.auth.isSignInWithEmailLink(location.href);
-  const approved = localStorage.getItem(APPROVED_KEY);
+  // "Already registered" → go to login
+  $("#ar-already").onclick=()=>{ ar.classList.add("hidden"); login.classList.remove("hidden"); };
+  $("#lg-request-access").onclick=()=>{ login.classList.add("hidden"); ar.classList.remove("hidden"); };
 
-  if(fromLink){
-    openAccess();
-    const p=JSON.parse(localStorage.getItem(PENDING_KEY)||"{}");
-    if(p.email){ show("sent"); $("#ar-sent-email").textContent=p.email; finishWithLink(p.email); }
-    else { show("confirm"); }   // link opened on a different device or browser
-  } else if(!approved){
-    openAccess(); show("form");
-  }
+  // Submit request → mailto to Ajay
+  $("#ar-submit").onclick=()=>{
+    const name=$("#ar-name").value.trim();
+    const email=$("#ar-email").value.trim();
+    const role=$("#ar-role").value.trim();
+    const ip=$("#ar-ip").value.trim();
+    const location=$("#ar-location").value.trim();
+    const msg=$("#ar-msg");
 
-  if(!approved || fromLink){
-    const ip=await detectIp();
-    $("#ar-ip").value=ip||"Could not detect";
-  }
+    if(!name||!email||!location){ msg.textContent="Please fill in your name, email and location."; return; }
 
-  $("#ar-confirm-btn").onclick=()=>{
-    const email=$("#ar-confirm-email").value.trim().toLowerCase();
-    if(!email){ $("#ar-confirm-err").textContent="Enter the email address you verified with."; return; }
-    finishWithLink(email);
+    const subject=encodeURIComponent(`HOSPRO Access Request — ${name}`);
+    const body=encodeURIComponent(
+`New HOSPRO access request:
+
+Name: ${name}
+Email: ${email}
+Role: ${role||"Not specified"}
+Location/Hotel: ${location}
+IP Address: ${ip}
+Requested: ${new Date().toLocaleString("en-GB")}
+
+To approve, reply with their access code (e.g. BH + initials) or add them to the USERS list in app.js.
+To deny, no action needed.
+
+-- HOSPRO Access Control`
+    );
+    window.location.href=`mailto:aj@ykawa.com?subject=${subject}&body=${body}`;
+    $("#ar-submit").disabled=true;
+    $("#ar-sent").classList.remove("hidden");
+    msg.textContent="";
   };
 
-  async function sendLink(){
-    const name=$("#ar-name").value.trim();
-    const email=$("#ar-email").value.trim().toLowerCase();
-    const role=$("#ar-role").value.trim();
-    const loc=$("#ar-location").value.trim();
-    const ip=$("#ar-ip").value.trim();
-    if(!name||!email||!loc){ msg("Please fill in your name, email and location."); return; }
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg("Please enter a valid email address."); return; }
-    if(TENANT.allowedDomains.length && !TENANT.allowedDomains.some(d=>email.endsWith("@"+d))){
-      msg(`Please use your ${TENANT.allowedDomains.join(" or ")} email address.`); return; }
-    if(!$("#ar-accept").checked){ msg("Please read and accept the terms of use."); return; }
-    if(!FB.ready){ msg("Verification isn't available right now. Please try again shortly."); return; }
-
-    const btn=$("#ar-submit"); btn.disabled=true; const label=btn.textContent; btn.textContent="Sending…";
-    const pending={ name, email, role, location:loc, ip:ip==="Could not detect"?"":ip, termsAcceptedAt:new Date().toISOString(), termsVersion:TENANT.termsVersion };
-    try{
-      await FB.auth.sendSignInLinkToEmail(email, { url: location.origin + location.pathname, handleCodeInApp:true });
-      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
-      $("#ar-sent-email").textContent=email;
-      show("sent"); msg("");
-    }catch(e){
-      msg(e.code==="auth/operation-not-allowed"
-        ? "Email verification isn't switched on yet. Please contact "+TENANT.operatorEmail+"."
-        : "We couldn't send the email: "+(e.message||e.code));
+  // Activate with received code
+  $("#ar-activate").onclick=()=>{
+    const code=$("#ar-code").value.trim().toUpperCase();
+    const err=$("#ar-code-err");
+    // Check against known codes
+    const valid=Object.values(USERS).find(u=>u.code===code);
+    if(valid){
+      localStorage.setItem(APPROVED_KEY,"1");
+      ar.classList.add("hidden");
+      login.classList.remove("hidden");
+      err.textContent="";
+    } else {
+      err.textContent="Invalid access code. Please check the code sent by Ajay.";
+      $("#ar-code").style.borderColor="#f87171";
+      setTimeout(()=>{ $("#ar-code").style.borderColor=""; },1500);
     }
-    btn.disabled=false; btn.textContent=label;
-  }
-  $("#ar-submit").onclick=sendLink;
-  $("#ar-resend").onclick=()=>{ show("form"); sendLink(); };
-  $("#ar-change").onclick=()=>{ localStorage.removeItem(PENDING_KEY); show("form"); };
+  };
+  $("#ar-code").addEventListener("keydown",e=>{ if(e.key==="Enter") $("#ar-activate").click(); });
 })();
 
 /* ============================================================ AUTH */
@@ -306,7 +228,8 @@ function render(){
   document.body.classList.toggle("home-active", CURRENT_TAB==="home");
   syncSidebar();
   ({home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
-    profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin }[CURRENT_TAB]||renderRooms)(v);
+    profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
+    compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport }[CURRENT_TAB]||renderRooms)(v);
 }
 
 /* ============================================================ ROOMS */
@@ -1113,7 +1036,7 @@ function downloadKitchenSheet(){
 
 /* ============================================================ SALES PIPELINE (merged) */
 const ENQ_STAGES=[["enquiry","Enquiry"],["provisional","Provisional"],["confirmed","Confirmed"],["cancelled","Cancelled"]];
-const ENQ_OWNERS=["Nicola Cartwright","Natalie Freeman","Patrik Vlach","Ajay Kawa","Raj Kumar","Alia Taub"];
+const ENQ_OWNERS=["Nicola Cartwright","Natalie Freeman","Ajay Kawa","Raj Kumar","Alia Taub"];
 const ENQ_SOURCES=["Website","Events chat","Hitched","arrangeMY / agent","Phone","Email","Walk-in","Referral","BOB / Rezlynx","Other"];
 
 let PIPE_FILTER={ room:"", event:"", status:"", owner:"", source:"", search:"" };
@@ -1729,25 +1652,6 @@ function renderAdmin(v){
   ut.innerHTML=`<tr><th>Name</th><th>Access code</th><th>Role</th></tr>`+
     Object.values(USERS).map(u=>`<tr><td>${u.name}</td><td>${u.code}</td><td>${u.role}</td></tr>`).join("");
   v.appendChild(ut);
-
-  // Device access log (email-verified devices)
-  v.appendChild(el("div","sec-title","Device access log"));
-  v.appendChild(el("p","",`<span style="font-size:13px;color:var(--muted)">Everyone who has verified their email and accepted the ${TENANT.hotelName} terms of use (version ${TENANT.termsVersion}) to reach the login screen.</span>`));
-  const al=el("div","","<p style='font-size:13px;color:var(--muted)'>Loading…</p>"); v.appendChild(al);
-  const drawLog=rows=>{
-    if(!rows.length){ al.innerHTML="<p style='font-size:13px;color:var(--muted)'>No verified devices recorded yet.</p>"; return; }
-    const t=el("table","data-table");
-    t.innerHTML=`<tr><th>Verified</th><th>Name</th><th>Email</th><th>Role</th><th>Location</th><th>IP address</th><th>Terms</th></tr>`+
-      rows.map(r=>`<tr><td>${r.verifiedAt?new Date(r.verifiedAt).toLocaleString("en-GB"):"—"}</td><td>${r.name||"—"}</td><td>${r.email||"—"}</td><td>${r.role||"—"}</td><td>${r.location||"—"}</td><td style="font-family:monospace">${r.ip||"—"}</td><td>${r.termsVersion||"—"}</td></tr>`).join("");
-    al.innerHTML=""; al.appendChild(t);
-  };
-  if(FB.ready && FB.auth.currentUser){
-    FB.db.collection("access_log").orderBy("verifiedAt","desc").limit(100).get()
-      .then(s=>drawLog(s.docs.map(d=>d.data())))
-      .catch(e=>{ al.innerHTML=`<p style='font-size:13px;color:var(--muted)'>Access log unavailable (${e.code||e.message}). Check the Firestore rules in firestore.rules.</p>`; });
-  } else {
-    try{ drawLog(JSON.parse(localStorage.getItem("hospro_access_local")||"[]")); }catch(e){ drawLog([]); }
-  }
 
   // Room readiness (from M&E audit) — admin only
   v.appendChild(el("div","sec-title","Room readiness (M&E audit)"));
@@ -3909,7 +3813,7 @@ function renderHome(v){
   cardRow.innerHTML=mods.map(m=>`
     <button class="sf-modcard" data-go="${m.tabs[0]}" style="--mc:${m.colour};--mt:${m.tint}">
       <span class="sf-modico" style="background:${m.colour}">${m.icon}</span>
-      <span class="sf-modname">${m.name.replace("PRO","")}<b>PRO</b></span>
+      <span class="sf-modname">${m.name.includes("PRO")?m.name.replace("PRO","")+"<b>PRO</b>":m.name}</span>
       <span class="sf-modcap">${m.caption}</span>
     </button>`).join("");
   v.appendChild(cardRow);
@@ -4945,3 +4849,104 @@ function openPublicChat(){
 }
 if(location.hash==="#events-chat"){ window.addEventListener("DOMContentLoaded",openPublicChat); openPublicChat(); }
 if(location.hash==="#precheckin-form"){ window.addEventListener("DOMContentLoaded",openPrecheckinForm); openPrecheckinForm(); }
+
+/* ============================================================ HOSCOM — Compliance */
+function renderCompDash(v){
+  v.innerHTML=`<div style="padding:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">Compliance Dashboard</h2>
+        <p style="font-size:13px;color:#7a8494">Brandon Hall Hotel and Spa · Live view of all compliance tasks and actions</p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="compliance.html" target="_blank" class="btn" style="background:#2a6a4a;text-decoration:none;font-size:13px;padding:10px 18px">Open full dashboard ↗</a>
+        <a href="tasks.html" target="_blank" class="btn ghost" style="font-size:13px;padding:10px 18px;border:1px solid var(--line);background:#fff;color:var(--navy);text-decoration:none">📱 Mobile app ↗</a>
+        <a href="https://app.saeker.com" target="_blank" class="btn ghost" style="font-size:13px;padding:10px 18px;border:1px solid var(--line);background:#fff;color:var(--navy);text-decoration:none">Saeker ↗</a>
+      </div>
+    </div>
+
+    <div id="hoscom-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:4px solid #d0433b">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:34px;color:#d0433b;font-weight:600">95</div>
+        <div style="font-size:12px;color:#7a8494;margin-top:4px">Total overdue</div></div>
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:4px solid #c45c00">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:34px;color:#c45c00;font-weight:600">94</div>
+        <div style="font-size:12px;color:#7a8494;margin-top:4px">7+ days overdue</div></div>
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:4px solid #c78a3b">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:34px;color:#c78a3b;font-weight:600">5</div>
+        <div style="font-size:12px;color:#7a8494;margin-top:4px">Due this week</div></div>
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:4px solid #2a6a4a">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:34px;color:#2a6a4a;font-weight:600">138</div>
+        <div style="font-size:12px;color:#7a8494;margin-top:4px">Total items tracked</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <!-- Most overdue -->
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.05)">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--navy);margin-bottom:12px">Most overdue</div>
+        ${[
+          {name:"Fire Risk Assess - Followup",days:194,who:"Patrik"},
+          {name:"Monthly H&S Meetings",days:181,who:"Team"},
+          {name:"Follow-up Fire Training",days:180,who:"Patrik"},
+          {name:"Level 2 food safety training",days:142,who:"Alia, Patrik"},
+          {name:"Kitchen extract ductwork cleaning",days:120,who:"Patrik"}
+        ].map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f5f7f9;font-size:13px">
+          <span style="font-weight:600;color:var(--navy);flex:1;min-width:0;margin-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</span>
+          <span style="background:#fde8e6;color:#b3261e;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap">${t.days}d</span>
+        </div>`).join("")}
+        <a href="compliance.html" target="_blank" style="display:block;margin-top:10px;font-size:13px;color:#2a6a4a;font-weight:600;text-decoration:none">View all overdue →</a>
+      </div>
+
+      <!-- Team summary -->
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.05)">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--navy);margin-bottom:12px">Team overview</div>
+        ${[
+          {name:"Patrik Vlach",total:138,od:95,isMgr:true},
+          {name:"Alia Taub",total:81,od:72,isMgr:true},
+          {name:"Glenn Randell",total:0,od:0,isMgr:true},
+          {name:"Ruth Addison",total:1,od:1,isMgr:false},
+          {name:"Veronica Webb",total:1,od:1,isMgr:false}
+        ].map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f5f7f9">
+          <div style="width:28px;height:28px;border-radius:50%;background:${p.isMgr?"#b8860b":"#2a6a4a"};${p.isMgr?"border:2px solid #ffd700;":""}display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${p.name.split(" ").map(w=>w[0]).join("")}</div>
+          <div style="flex:1;font-size:13px;font-weight:600;color:var(--navy)">${p.name}${p.isMgr?" ★":""}</div>
+          <div style="font-size:12px;color:#7a8494">${p.total} items</div>
+          ${p.od>0?`<span style="background:#fde8e6;color:#b3261e;font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px">${p.od} OD</span>`:"<span style='color:#2a6a4a;font-size:11px;font-weight:700'>✓</span>"}
+        </div>`).join("")}
+        <a href="compliance.html" target="_blank" style="display:block;margin-top:10px;font-size:13px;color:#2a6a4a;font-weight:600;text-decoration:none">Full by-person view →</a>
+      </div>
+    </div>
+
+    <div style="background:#1a2b3a;border-radius:12px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div>
+        <div style="font-weight:700;color:#fff;margin-bottom:3px">Saeker is your primary compliance system</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.6)">This hub shows live status. For official audit records, forms and evidence upload, use Saeker directly.</div>
+      </div>
+      <a href="https://app.saeker.com" target="_blank" style="background:#c9a978;color:#1a2b3a;font-weight:700;font-size:14px;padding:10px 20px;border-radius:9px;text-decoration:none;white-space:nowrap">Open Saeker ↗</a>
+    </div>
+  </div>`;
+}
+
+function renderCompTasks(v){
+  v.innerHTML=`<div style="padding:20px;text-align:center">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Scheduled Tasks</div>
+    <p style="font-size:14px;color:#7a8494;margin-bottom:20px">View and manage all 33 scheduled compliance tasks — sortable by priority, category and due date.</p>
+    <a href="compliance.html" target="_blank" class="btn" style="background:#2a6a4a;text-decoration:none;display:inline-block;margin-bottom:12px">Open full task list ↗</a>
+    <br><a href="tasks.html" target="_blank" style="font-size:13px;color:#2a6a4a;font-weight:600;text-decoration:none">📱 Open mobile app for staff →</a>
+  </div>`;
+}
+
+function renderCompActions(v){
+  v.innerHTML=`<div style="padding:20px;text-align:center">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Actions</div>
+    <p style="font-size:14px;color:#7a8494;margin-bottom:20px">105 outstanding actions from your Saeker audits — 73 overdue. View, assign and track progress.</p>
+    <a href="compliance.html#actions" target="_blank" class="btn" style="background:#2a6a4a;text-decoration:none;display:inline-block">Open actions list ↗</a>
+  </div>`;
+}
+
+function renderCompReport(v){
+  v.innerHTML=`<div style="padding:20px;text-align:center">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Compliance Report</div>
+    <p style="font-size:14px;color:#7a8494;margin-bottom:20px">Full printable report — per person breakdown, overdue items, completed tasks. Ready to print for Saeker update.</p>
+    <a href="compliance.html" target="_blank" class="btn" style="background:#2a6a4a;text-decoration:none;display:inline-block">Open &amp; print report ↗</a>
+  </div>`;
+}
