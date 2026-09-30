@@ -464,7 +464,7 @@ html,body{height:100%;overflow:hidden;font-family:'Lato',system-ui,sans-serif;ba
   <button class="nb-close" id="nb-close-btn">✕</button>
 </div>
 
-<div id="login">
+<div id="login" style="display:none">
   <div class="login-logo"><svg style="filter:brightness(0) invert(1);width:140px;height:auto" width="232" height="151" viewBox="0 0 232 151" fill="none" xmlns="http://www.w3.org/2000/svg">
 <mask id="mask0_2121_335" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="36" y="0" width="153" height="122">
 <path d="M188.32 0H36.3201V121.333H188.32V0Z" fill="white"/>
@@ -1963,12 +1963,12 @@ const hasSeenInstall = localStorage.getItem('hosfix_install_seen');
 // Show install banner on first visit (not standalone, not seen before)
 function maybeShowInstallBanner() {
   if(isStandalone || hasSeenInstall) {
-    // Already installed or seen — login is already visible, nothing to do
+    // Returning visitor or already installed — show login directly
+    document.getElementById('login').style.display = 'flex';
     return;
   }
-  // First visit — show install banner, hide login behind it
+  // First visit — show install banner only
   document.getElementById('install-banner').style.display = 'flex';
-  document.getElementById('login').style.display = 'none';
 }
 
 document.getElementById('ib-skip-btn')?.addEventListener('click', () => {
