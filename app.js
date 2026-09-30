@@ -230,7 +230,7 @@ function render(){
   ({home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
-    fixDash:renderFixDash, fixJobs:renderFixJobs, fixProjects:renderFixProjects, fixTeam:renderFixTeam }[CURRENT_TAB]||renderRooms)(v);
+    fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam }[CURRENT_TAB]||renderRooms)(v);
 }
 
 /* ============================================================ ROOMS */
@@ -5168,4 +5168,196 @@ function editFixProfile(uid, container){
     if(container) renderFixTeam(container);
   };
   modal.onclick=e=>{if(e.target===modal)modal.remove();};
+}
+
+/* ============================================================ HOSFIX — Inventory (portal) */
+function renderFixInventory(v){
+  const INVENTORY=JSON.parse(localStorage.getItem('hosfix_inventory')||'[]');
+  const money=n=>'£'+Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const cats=[...new Set(INVENTORY.map(i=>i.category))].sort();
+  const lowItems=INVENTORY.filter(i=>i.stock<=i.minStock);
+  const totalValue=INVENTORY.reduce((s,i)=>s+(i.stock*i.tradePrice),0);
+
+  v.innerHTML=`<div style="padding:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Stock &amp; Inventory</h2>
+        <p style="font-size:13px;color:#7a8494">Maintenance stock levels, trade prices and reorder alerts. Update stock on the mobile app.</p>
+      </div>
+      <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;font-size:13px;padding:10px 18px">📱 Update stock on app ↗</a>
+    </div>
+
+    <!-- Summary -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+      ${[
+        ['Total items',INVENTORY.length,'var(--navy)'],
+        ['Low / reorder',lowItems.length,'var(--red)'],
+        ['Categories',cats.length,'var(--green)'],
+        ['Stock value',money(totalValue),'var(--amber)']
+      ].map(([l,v2,c])=>`<div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:3px solid ${c}">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:${c};font-weight:600">${v2}</div>
+        <div style="font-size:12px;color:#7a8494;margin-top:4px">${l}</div></div>`).join('')}
+    </div>
+
+    ${lowItems.length?`<div style="background:#fde8e6;border:1px solid var(--red);border-radius:12px;padding:14px;margin-bottom:20px">
+      <div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:8px">⚠️ ${lowItems.length} item${lowItems.length>1?'s':''} at or below minimum stock — reorder needed</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">
+        ${lowItems.map(i=>`<div style="background:#fff;border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-weight:600;font-size:13px">${i.name}</div>
+          <div style="font-size:11px;color:#7a8494">${i.supplier}</div></div>
+          <div style="text-align:right"><div style="font-weight:700;color:var(--red);font-size:14px">${i.stock} left</div>
+          <div style="font-size:11px;color:#7a8494">min: ${i.minStock}</div></div>
+        </div>`).join('')}
+      </div>
+    </div>`:''}
+
+    <!-- Category tabs -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      ${['All',...cats].map((c,i)=>`<button onclick="filterInvCat('${c}',this)" style="padding:7px 14px;border-radius:16px;border:1px solid var(--line);background:${i===0?'var(--navy)':'#fff'};color:${i===0?'#fff':'var(--ink)'};font:600 12px 'Lato';cursor:pointer">${c}</button>`).join('')}
+    </div>
+
+    <!-- Items grid -->
+    <div id="inv-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+      ${INVENTORY.map(i=>{
+        const isLow=i.stock<=i.minStock;
+        const pct=Math.min(100,Math.round(i.stock/(i.minStock*3||1)*100));
+        const barCol=isLow?'var(--red)':pct<60?'var(--amber)':'var(--green)';
+        return `<div class="inv-card" data-cat="${i.category}" style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 6px rgba(26,43,58,.05);border-left:4px solid ${isLow?'var(--red)':'var(--line)'}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div style="flex:1;margin-right:8px">
+              <div style="font-weight:700;font-size:13px;color:var(--navy);line-height:1.3">${i.name}</div>
+              <div style="font-size:11px;color:#7a8494;margin-top:3px">${i.supplier}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:${isLow?'var(--red)':'var(--navy)'};font-weight:600;line-height:1">${i.stock}</div>
+              <div style="font-size:10px;color:#7a8494">${i.unit}s</div>
+            </div>
+          </div>
+          <div style="background:#f0f2f5;border-radius:3px;height:4px;margin-bottom:8px">
+            <div style="height:4px;border-radius:3px;width:${pct}%;background:${barCol};transition:.3s"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#7a8494">
+            <span>${money(i.tradePrice)} / ${i.unit}</span>
+            <span>Min: ${i.minStock} · Value: ${money(i.stock*i.tradePrice)}</span>
+          </div>
+          ${isLow?`<div style="margin-top:6px;padding:5px 8px;background:#fde8e6;border-radius:6px;font-size:11px;color:var(--red);font-weight:600">⚠️ Reorder from ${i.supplier}</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  // Wire category filter buttons
+  v.querySelectorAll('[onclick^="filterInvCat"]').forEach(btn=>{
+    btn.onclick=()=>{
+      const cat=btn.textContent;
+      v.querySelectorAll('[onclick^="filterInvCat"]').forEach(b=>{b.style.background='#fff';b.style.color='var(--ink)';});
+      btn.style.background='var(--navy)'; btn.style.color='#fff';
+      v.querySelectorAll('.inv-card').forEach(card=>{
+        card.style.display=(cat==='All'||card.dataset.cat===cat)?'':'none';
+      });
+    };
+  });
+}
+
+/* ============================================================ HOSFIX — Full Jobs View (portal) */
+function renderFixAllJobs(v){
+  const JOBS=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');
+  const HFUSERS=[
+    {id:"raj",name:"Raj Kumar",color:"#1a2b3a"},{id:"ajay",name:"Ajay Kawa",color:"#c78a3b"},
+    {id:"alia",name:"Alia Taub",color:"#5a8fc7"},{id:"glenn",name:"Glenn Randell",color:"#b8860b"},
+    {id:"ruth",name:"Ruth Addison",color:"#be185d"},{id:"patrik",name:"Patrik Vlach",color:"#6366f1"},
+    {id:"pete",name:"Pete",color:"#20b2a2"},{id:"herman",name:"Herman Charles",color:"#2a6a4a"},
+  ];
+  const money=n=>'£'+Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const inits=n=>n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const tlCol={urgent:'#c45c00','not-started':'#b3261e','in-progress':'#997300','complete':'#2a6a4a','pending_approval':'#c45c00'};
+  const tlLabel={urgent:'🟠 Urgent','not-started':'🔴 Not started','in-progress':'🟡 In progress','complete':'🟢 Complete','pending_approval':'⏳ Approval'};
+
+  const open=JOBS.filter(j=>j.status!=='complete');
+  const done=JOBS.filter(j=>j.status==='complete');
+  const urgent=JOBS.filter(j=>j.priority==='urgent'&&j.status!=='complete');
+  const totalCost=JOBS.reduce((s,j)=>s+(j.cost||0)+(j.labourCost||0),0);
+
+  v.innerHTML=`<div style="padding:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">All Maintenance Jobs</h2>
+        <p style="font-size:13px;color:#7a8494">${JOBS.length} jobs total · ${open.length} open · ${done.length} complete</p>
+      </div>
+      <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open mobile app ↗</a>
+    </div>
+
+    <!-- Stats -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+      ${[
+        ['🟠 Urgent',urgent.length,'#c45c00'],
+        ['🔴 Not started',JOBS.filter(j=>j.status==='not-started'&&j.priority!=='urgent').length,'var(--red)'],
+        ['🟡 In progress',JOBS.filter(j=>j.status==='in-progress').length,'var(--amber)'],
+        ['🟢 Complete',done.length,'var(--green)'],
+        ['Total cost',money(totalCost),'var(--navy)']
+      ].map(([l,v2,c])=>`<div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 6px rgba(26,43,58,.05);border-top:3px solid ${c}">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:${c};font-weight:600">${v2}</div>
+        <div style="font-size:11px;color:#7a8494;margin-top:3px">${l}</div></div>`).join('')}
+    </div>
+
+    <!-- Filter row -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="portal-job-filters">
+      ${['All','Urgent','Not started','In progress','Complete','Awaiting approval'].map((f,i)=>
+        `<button onclick="filterPortalJobs('${f}',this)" style="padding:7px 14px;border-radius:16px;border:1px solid var(--line);background:${i===0?'var(--navy)':'#fff'};color:${i===0?'#fff':'var(--ink)'};font:600 12px 'Lato';cursor:pointer">${f}</button>`
+      ).join('')}
+    </div>
+
+    <!-- Jobs table -->
+    <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(26,43,58,.05)">
+      <table style="width:100%;border-collapse:collapse;font-size:13px" id="portal-jobs-table">
+        <thead><tr style="background:#f5f7f9">
+          ${['Job','Location','Type','Priority / Status','Assigned','Cost','Logged'].map(h=>
+            `<th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase;white-space:nowrap">${h}</th>`
+          ).join('')}
+        </tr></thead>
+        <tbody>
+          ${[...JOBS].sort((a,b)=>{
+            const ps={urgent:0,'pending_approval':1,'not-started':2,'in-progress':3,complete:4};
+            const pa=a.priority==='urgent'?0:ps[a.status]||2;
+            const pb=b.priority==='urgent'?0:ps[b.status]||2;
+            return pa-pb;
+          }).map(j=>{
+            const u=HFUSERS.filter(x=>(j.assignees||[]).includes(x.id));
+            const status=j.priority==='urgent'?'urgent':j.status;
+            return `<tr class="portal-job-row" data-status="${status}" style="border-bottom:1px solid #f5f7f9;cursor:pointer" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+              <td style="padding:10px 13px;font-weight:600;color:var(--navy);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${j.title}</td>
+              <td style="padding:10px 13px;color:#7a8494;white-space:nowrap">${j.areaLabel||''}${j.location?' · '+j.location:''}</td>
+              <td style="padding:10px 13px;color:#7a8494;white-space:nowrap">${j.workType||'—'}</td>
+              <td style="padding:10px 13px">
+                <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:${tlCol[status]||'#e8edf3'}22;color:${tlCol[status]||'#1a2b47'}">${tlLabel[status]||status}</span>
+              </td>
+              <td style="padding:10px 13px">
+                <div style="display:flex;gap:3px">
+                  ${u.map(x=>`<div style="width:24px;height:24px;border-radius:50%;background:${x.color};display:grid;place-items:center;font-size:9px;font-weight:700;color:#fff" title="${x.name}">${inits(x.name)}</div>`).join('')}
+                </div>
+              </td>
+              <td style="padding:10px 13px;font-weight:600;color:${(j.cost||0)+(j.labourCost||0)>0?'var(--amber)':'#7a8494'}">${money((j.cost||0)+(j.labourCost||0))}</td>
+              <td style="padding:10px 13px;color:#7a8494;white-space:nowrap">${j.createdAt?.slice(0,10)||'—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+
+  // Wire filter buttons
+  v.querySelectorAll('#portal-job-filters button').forEach(btn=>{
+    btn.onclick=()=>{
+      v.querySelectorAll('#portal-job-filters button').forEach(b=>{b.style.background='#fff';b.style.color='var(--ink)';});
+      btn.style.background='var(--navy)'; btn.style.color='#fff';
+      const f=btn.textContent.toLowerCase().replace(' ','').replace(' ','');
+      v.querySelectorAll('.portal-job-row').forEach(row=>{
+        const s=row.dataset.status;
+        const show = f==='all' || f==='urgent'&&s==='urgent' ||
+          f==='notstarted'&&s==='not-started' || f==='inprogress'&&s==='in-progress' ||
+          f==='complete'&&s==='complete' || f==='awaitingapproval'&&s==='pending_approval';
+        row.style.display=show?'':'none';
+      });
+    };
+  });
 }

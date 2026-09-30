@@ -853,7 +853,7 @@ const FLOW_MODULES = [
   { id:"marketing", name:"MarketingPRO", caption:"Create. Campaign. Convert.",     icon:"📣", colour:"#c85c6b", tint:"#f8e9eb", tabs:["marketing","social"] },
   { id:"task",      name:"TaskPRO",      caption:"Tasks. Teams. Accountability.",  icon:"✅", colour:"#d4a24a", tint:"#faf1e0", tabs:["tasks"] },
   { id:"hoscom",    name:"HosCOM",       caption:"Compliance. Safety. Peace of mind.", icon:"🛡️", colour:"#2a6a4a", tint:"#e8f3ee", tabs:["compDash","compTasks","compActions","compReport"] },
-  { id:"hosfix",    name:"HosFIX",       caption:"Maintenance. Property. Fixed.", icon:"🔧", colour:"#c45c00", tint:"#fff3e8", tabs:["fixDash","fixJobs","fixProjects","fixTeam"] },
+  { id:"hosfix",    name:"HosFIX",       caption:"Maintenance. Property. Fixed.", icon:"🔧", colour:"#c45c00", tint:"#fff3e8", tabs:["fixDash","fixAllJobs","fixProjects","fixInventory","fixTeam"] },
   { id:"asset",     name:"AssetPRO",     caption:"Maintain. Track. Extend.",       icon:"🔧", colour:"#3fa8a0", tint:"#e3f3f1", tabs:["mne","suppliers"] },
   { id:"content",   name:"ContentPRO",   caption:"Brochures. Menus. Collateral.",  icon:"📄", colour:"#5a8fc7", tint:"#e8f0f8", tabs:["quote","brochure","menu"] },
   { id:"insight",   name:"InsightPRO",   caption:"See more. Do more.",             icon:"📈", colour:"#5fa563", tint:"#e8f3e8", tabs:["insight","admin"] }
@@ -876,8 +876,9 @@ const TAB_META = {
   admin:{label:"Admin",icon:"⚙️"},
   compDash:{label:"Compliance Dashboard",icon:"🛡️"}, compTasks:{label:"Scheduled Tasks",icon:"📋"},
   compActions:{label:"Actions",icon:"⚡"}, compReport:{label:"Print Report",icon:"📊"},
-  fixDash:{label:"Maintenance Dashboard",icon:"🔧"}, fixJobs:{label:"All Jobs",icon:"🔨"},
-  fixProjects:{label:"Projects",icon:"📋"}, fixTeam:{label:"Team & Profiles",icon:"👷"}
+  fixDash:{label:"Maintenance Dashboard",icon:"🔧"}, fixAllJobs:{label:"All Jobs",icon:"🔨"},
+  fixProjects:{label:"Projects",icon:"📋"}, fixInventory:{label:"Stock & Inventory",icon:"📦"},
+  fixTeam:{label:"Team & Profiles",icon:"👷"}
 };
 
 /* Which module a tab belongs to (for sidebar grouping / highlighting) */
