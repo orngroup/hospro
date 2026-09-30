@@ -807,6 +807,12 @@ function openDetail(id){
     ${j.photos?.length?`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px">Photos</div>
     <div class="photo-thumbs">${j.photos.map(p=>`<img class="photo-thumb" src="${p}">`).join('')}</div></div>`:''}
 
+    ${(j.materials||[]).length?`<div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px">Materials used</div>
+      ${j.materials.map(m=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f5f7f9;font-size:13px">
+        <span>${m.name}</span><span style="font-weight:700;color:var(--amber)">x${m.qty} · £${(m.qty*m.tradePrice).toFixed(2)}</span>
+      </div>`).join('')}
+    </div>`:''}
     ${j.notes?.length?`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px">Notes</div>
     ${j.notes.map(n=>`<div style="background:#f5f7f9;border-radius:8px;padding:9px;margin-bottom:6px;font-size:13px"><div style="font-size:11px;color:#7a8494;margin-bottom:2px">${n.by} · ${fmtShort(n.at)}</div>${n.text}</div>`).join('')}</div>`:''}
 
@@ -1113,39 +1119,82 @@ function elapsedMs() {
   return (ACTIVE_TIMER.accumulatedMs || 0) + sinceStart;
 }
 
-function startJob(jobId) {
+function startJob(jobId, confirmed) {
   if(ACTIVE_TIMER && ACTIVE_TIMER.jobId !== jobId) {
-    toast('Pause or complete the current job first');
-    return;
+    toast('Pause or complete the current job first'); return;
   }
-  const j = JOBS.find(x => x.id === jobId);
-  if(!j) return;
+  const j = JOBS.find(x=>x.id===jobId); if(!j) return;
+  const isResume = ACTIVE_TIMER && ACTIVE_TIMER.jobId===jobId && ACTIVE_TIMER.state==='paused';
 
-  const now = new Date().toISOString();
-  if(!ACTIVE_TIMER) {
-    // Fresh start
-    ACTIVE_TIMER = {
-      jobId, state: 'running',
-      startedAt: now,        // first ever start
-      currentStart: now,     // this session start
-      accumulatedMs: 0
-    };
-    j.status = 'in-progress';
-    j.startedAt = j.startedAt || now;
-    j.notes = j.notes || [];
-    j.notes.push({text: 'Job started', by: MY_USER?.name || ME, at: now.slice(0,10)});
-  } else {
-    // Resume from pause
-    ACTIVE_TIMER.state = 'running';
-    ACTIVE_TIMER.currentStart = now;
-    j.notes = j.notes || [];
-    j.notes.push({text: 'Job resumed', by: MY_USER?.name || ME, at: now.slice(0,10)});
+  // Step 1: Safety confirmation (first start only, not resume)
+  if(!isResume && !j.safetyConfirmed && confirmed !== 'safe') {
+    showModal(`
+      <div class="sheet-title">⚠️ Safety Check</div>
+      <p style="font-size:14px;color:var(--ink);line-height:1.6;margin-bottom:18px">
+        Before starting work, please confirm the following:
+      </p>
+      <div style="background:#fffbe6;border:1px solid #c78a3b;border-radius:12px;padding:16px;margin-bottom:20px">
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;font-size:14px;line-height:1.5">
+          <input type="checkbox" id="safety-chk" style="width:22px;height:22px;margin-top:1px;flex-shrink:0;accent-color:var(--green)"
+            onchange="document.getElementById('safety-go').disabled=!this.checked;document.getElementById('safety-go').style.opacity=this.checked?'1':'0.4'">
+          <span>The area is safe for works to proceed and there are <strong>no guests in proximity</strong></span>
+        </label>
+      </div>
+      <button id="safety-go" class="btn-p btn-green" style="width:100%;padding:14px;opacity:.4;font-size:15px" disabled
+        onclick="confirmSafety('${jobId}')">✓ Confirmed — Continue</button>
+      <button class="btn-p btn-ghost" style="width:100%;margin-top:8px" onclick="openDetail('${jobId}')">Cancel</button>
+    `); return;
   }
-  saveTimer();
-  saveJobs();
-  // Reopen the detail to reflect new state
-  openDetail(jobId);
+
+  // Step 2: Before photo (first start only)
+  if(!isResume && !j.startPhoto && confirmed !== 'photo') {
+    showModal(`
+      <div class="sheet-title">📷 Before photo</div>
+      <p style="font-size:14px;color:#7a8494;margin-bottom:16px">Take a photo of the job <strong>before</strong> work starts. This records the condition at the outset.</p>
+      <div class="photo-zone required" id="start-pz" onclick="document.getElementById('start-pi').click()">
+        📷 Tap to photograph
+      </div>
+      <input type="file" id="start-pi" accept="image/*" capture="environment" style="display:none" onchange="captureStartPhoto('${jobId}',this)">
+      <div id="start-preview" style="margin-top:8px"></div>
+      <button class="btn-p btn-ghost" style="width:100%;margin-top:14px" onclick="startJobGo('${jobId}')">Skip photo &amp; start</button>
+      <button class="btn-p btn-ghost" style="width:100%;margin-top:6px" onclick="openDetail('${jobId}')">Cancel</button>
+    `); return;
+  }
+
+  // Start / resume
+  const now = new Date().toISOString();
+  if(!ACTIVE_TIMER || ACTIVE_TIMER.jobId!==jobId) {
+    ACTIVE_TIMER={jobId,state:'running',startedAt:now,currentStart:now,accumulatedMs:0};
+    j.status='in-progress'; j.startedAt=j.startedAt||now;
+    j.notes=j.notes||[]; j.notes.push({text:'Job started',by:MY_USER?.name||ME,at:now.slice(0,10)});
+  } else {
+    ACTIVE_TIMER.state='running'; ACTIVE_TIMER.currentStart=now;
+    j.notes=j.notes||[]; j.notes.push({text:'Job resumed',by:MY_USER?.name||ME,at:now.slice(0,10)});
+  }
+  saveTimer(); saveJobs(); openDetail(jobId);
 }
+
+function confirmSafety(jobId) {
+  const j=JOBS.find(x=>x.id===jobId); if(!j) return;
+  j.safetyConfirmed=true;
+  j.notes=j.notes||[]; j.notes.push({text:'Area confirmed safe — no guests in proximity',by:MY_USER?.name||ME,at:todayStr()});
+  saveJobs(); startJob(jobId,'safe');
+}
+
+function captureStartPhoto(jobId,inp) {
+  const f=inp.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=e=>{
+    const j=JOBS.find(x=>x.id===jobId); if(!j) return;
+    j.startPhoto=e.target.result; saveJobs();
+    const pz=document.getElementById('start-pz');
+    const pv=document.getElementById('start-preview');
+    if(pz){pz.className='photo-zone done';pz.innerHTML='✓ Photo saved';}
+    if(pv) pv.innerHTML=`<img src="${e.target.result}" style="width:100%;border-radius:10px;max-height:200px;object-fit:cover">`;
+    setTimeout(()=>startJobGo(jobId),800);
+  }; r.readAsDataURL(f);
+}
+
+function startJobGo(jobId) { startJob(jobId,'photo'); }
 
 function pauseJob(jobId) {
   if(!ACTIVE_TIMER || ACTIVE_TIMER.jobId !== jobId) return;
@@ -1164,48 +1213,75 @@ function pauseJob(jobId) {
   openDetail(jobId);
 }
 
-function completeJob(jobId) {
-  const j = JOBS.find(x => x.id === jobId); if(!j) return;
-  if(j.requiresReceipt && !(j.receipt?.photos || []).length) {
-    toast('Please photograph the receipt before completing'); return;
-  }
-  const now = new Date().toISOString();
-  let totalMs = 0;
-  if(ACTIVE_TIMER && ACTIVE_TIMER.jobId === jobId) {
-    if(ACTIVE_TIMER.state === 'running') {
-      totalMs = (ACTIVE_TIMER.accumulatedMs || 0) + (Date.now() - new Date(ACTIVE_TIMER.currentStart).getTime());
-    } else {
-      totalMs = ACTIVE_TIMER.accumulatedMs || 0;
-    }
-    ACTIVE_TIMER = null; saveTimer();
-  }
-  const totalMins = Math.round(totalMs / 60000);
-  const p = PROFILES[ME] || {};
-  const labourCost = totalMins > 0 && p.costPerHour ? parseFloat(((totalMins / 60) * p.costPerHour).toFixed(2)) : 0;
+function completeJob(jobId, confirmed) {
+  const j=JOBS.find(x=>x.id===jobId); if(!j) return;
+  if(j.requiresReceipt&&!(j.receipt?.photos||[]).length){toast('Please photograph the receipt first');return;}
 
-  // Log time entry
-  if(totalMins > 0) {
-    TIME_LOGS.push({
-      id: makeId(), jobId, userId: ME,
-      startedAt: j.startedAt || now, endedAt: now,
-      durationMins: totalMins
-    });
+  // After photo required before completing
+  if(!j.completionPhoto && confirmed!=='photo') {
+    showModal(`
+      <div class="sheet-title">📷 Completion photo</div>
+      <p style="font-size:14px;color:#7a8494;margin-bottom:16px">Take a photo showing the <strong>completed work</strong> before signing off.</p>
+      <div class="photo-zone required" id="comp-pz" onclick="document.getElementById('comp-pi').click()">
+        📷 Tap to photograph completed work
+      </div>
+      <input type="file" id="comp-pi" accept="image/*" capture="environment" style="display:none" onchange="captureCompletionPhoto('${j.id}',this)">
+      <div id="comp-preview" style="margin-top:8px"></div>
+      <div class="f-field" style="margin-top:12px"><label>Completion notes (optional)</label>
+        <textarea id="comp-note" placeholder="What was done, materials used, any follow-up…" style="min-height:60px"></textarea>
+      </div>
+      <button id="comp-go" class="btn-p btn-green" style="width:100%;margin-top:10px;padding:14px;opacity:.4" disabled onclick="completeJob('${j.id}','photo')">✓ Complete Job</button>
+      <button class="btn-p btn-ghost" style="width:100%;margin-top:6px" onclick="completeJobNow('${j.id}')">Skip photo &amp; complete</button>
+      <button class="btn-p btn-ghost" style="width:100%;margin-top:6px" onclick="openDetail('${j.id}')">Cancel</button>
+    `); return;
+  }
+  completeJobNow(jobId);
+}
+
+function captureCompletionPhoto(jobId,inp) {
+  const f=inp.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=e=>{
+    const j=JOBS.find(x=>x.id===jobId); if(!j) return;
+    j.completionPhoto=e.target.result; saveJobs();
+    const pz=document.getElementById('comp-pz');
+    const pv=document.getElementById('comp-preview');
+    const btn=document.getElementById('comp-go');
+    if(pz){pz.className='photo-zone done';pz.innerHTML='✓ Photo saved';}
+    if(pv) pv.innerHTML=`<img src="${e.target.result}" style="width:100%;border-radius:10px;max-height:180px;object-fit:cover">`;
+    if(btn){btn.disabled=false;btn.style.opacity='1';}
+    toast('Photo captured — tap Complete Job');
+  }; r.readAsDataURL(f);
+}
+
+function completeJobNow(jobId) {
+  const j=JOBS.find(x=>x.id===jobId); if(!j) return;
+  const now=new Date().toISOString();
+  const compNote=document.getElementById('comp-note')?.value?.trim();
+  let totalMs=0;
+  if(ACTIVE_TIMER&&ACTIVE_TIMER.jobId===jobId){
+    totalMs=ACTIVE_TIMER.state==='running'
+      ?(ACTIVE_TIMER.accumulatedMs||0)+(Date.now()-new Date(ACTIVE_TIMER.currentStart).getTime())
+      :(ACTIVE_TIMER.accumulatedMs||0);
+    ACTIVE_TIMER=null; saveTimer();
+  }
+  const totalMins=Math.round(totalMs/60000);
+  const p=PROFILES[ME]||{};
+  const labourCost=(totalMins>=5&&p.costPerHour)?parseFloat(((totalMins/60)*p.costPerHour).toFixed(2)):0;
+  const matCost=(j.materials||[]).reduce((s,m)=>s+(m.qty*m.tradePrice),0);
+  if(totalMins>=5){
+    TIME_LOGS.push({id:makeId(),jobId,userId:ME,startedAt:j.startedAt||now,endedAt:now,durationMins:totalMins});
     saveTimeLogs();
   }
-
-  j.status = 'complete';
-  j.completedAt = now;
-  j.completedBy = MY_USER?.name || ME;
-  if(labourCost > 0) j.labourCost = labourCost;
-  j.totalTimeMins = totalMins;
-  j.notes = j.notes || [];
-  const noteText = totalMins > 0
-    ? `Job completed. Time: ${Math.floor(totalMins/60)}h ${totalMins%60}m${labourCost ? ' · Labour cost: £' + labourCost.toFixed(2) : ''}`
-    : 'Job completed';
-  j.notes.push({text: noteText, by: MY_USER?.name || ME, at: now.slice(0,10)});
-  saveJobs();
-  toast('Job complete ✓');
-  closeModal(); render();
+  j.status='complete'; j.completedAt=now; j.completedBy=MY_USER?.name||ME;
+  if(labourCost>0) j.labourCost=labourCost;
+  j.totalTimeMins=totalMins;
+  j.notes=j.notes||[];
+  let noteText=totalMins>=5?`Job completed. Time: ${Math.floor(totalMins/60)}h ${totalMins%60}m`:'Job completed';
+  if(labourCost>0) noteText+=` · Labour: £${labourCost.toFixed(2)}`;
+  if(matCost>0) noteText+=` · Materials: £${matCost.toFixed(2)}`;
+  j.notes.push({text:noteText,by:MY_USER?.name||ME,at:now.slice(0,10)});
+  if(compNote) j.notes.push({text:compNote,by:MY_USER?.name||ME,at:now.slice(0,10)});
+  saveJobs(); toast('Job complete ✓'); closeModal(); updateBadges(); render();
 }
 
 // ============ TEAM / PROFILES ============
@@ -1248,14 +1324,7 @@ function saveProfile(uid){
 
 
 // ============ SAFETY CHECK
-function confirmSafety(jobId) {
-  const j = JOBS.find(x=>x.id===jobId); if(!j) return;
-  j.safetyConfirmed = true;
-  j.notes = j.notes||[];
-  j.notes.push({text:'Area confirmed safe — no guests in proximity', by:MY_USER?.name||ME, at:todayStr()});
-  saveJobs();
-  startJob(jobId);
-}
+// confirmSafety defined in startJob block above
 
 // ============ SUGGESTIONS
 function showSuggestions(val) {
