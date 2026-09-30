@@ -4853,77 +4853,97 @@ if(location.hash==="#precheckin-form"){ window.addEventListener("DOMContentLoade
 
 /* ============================================================ HOSCOM — Compliance */
 function renderCompDash(v){
+  const tasks=JSON.parse(localStorage.getItem('hosfix_comp_tasks')||'[]');
+  const actions=JSON.parse(localStorage.getItem('hosfix_comp_actions')||'[]');
+  
+  function getStatus(t){
+    if(t.status==='complete') return 'complete';
+    if(!t.due) return 'on-track';
+    const parts=t.due.split('/');
+    if(parts.length<3) return 'on-track';
+    const due=new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));
+    const now=new Date(); now.setHours(0,0,0,0);
+    const diff=Math.floor((due-now)/86400000);
+    if(diff<0) return 'overdue';
+    if(diff<=7) return 'due-soon';
+    return 'on-track';
+  }
+  function fmtDue(due){
+    if(!due) return '—';
+    const parts=due.split('/');
+    if(parts.length<3) return due;
+    const d=new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));
+    const diff=Math.floor((d-new Date().setHours(0,0,0,0))/86400000);
+    const nd=new Date(); nd.setHours(0,0,0,0);
+    const diffDays=Math.floor((d-nd)/86400000);
+    if(diffDays<0) return Math.abs(diffDays)+'d overdue';
+    if(diffDays===0) return 'Due today';
+    if(diffDays<=7) return 'Due in '+diffDays+'d';
+    return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  }
+
+  const overdue=tasks.filter(t=>getStatus(t)==='overdue');
+  const dueSoon=tasks.filter(t=>getStatus(t)==='due-soon');
+  const onTrack=tasks.filter(t=>getStatus(t)==='on-track');
+  const complete=tasks.filter(t=>t.status==='complete');
+  const overdueActions=actions.filter(a=>{
+    if(!a.due) return false;
+    const parts=a.due.split('/');
+    if(parts.length<3) return false;
+    const due=new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));
+    return due<new Date();
+  });
+  
+  const byPerson={};
+  tasks.forEach(t=>(t.assignees||[]).forEach(a=>{
+    byPerson[a]=byPerson[a]||{total:0,overdue:0};
+    byPerson[a].total++;
+    if(getStatus(t)==='overdue') byPerson[a].overdue++;
+  }));
+
   v.innerHTML=`<div style="padding:20px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
       <div>
         <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">Compliance Dashboard</h2>
-        <p style="font-size:13px;color:#7a8494">Brandon Hall Hotel and Spa · Live view of all compliance tasks and actions</p>
+        <p style="font-size:13px;color:#7a8494">Brandon Hall Hotel and Spa · ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</p>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <a href="compliance.html" target="_blank" class="btn" style="background:#2a6a4a;text-decoration:none;font-size:13px;padding:10px 18px">Open full dashboard ↗</a>
-        <a href="tasks.html" target="_blank" class="btn ghost" style="font-size:13px;padding:10px 18px;border:1px solid var(--line);background:#fff;color:var(--navy);text-decoration:none">📱 Mobile app ↗</a>
-        <a href="https://app.saeker.com" target="_blank" class="btn ghost" style="font-size:13px;padding:10px 18px;border:1px solid var(--line);background:#fff;color:var(--navy);text-decoration:none">Saeker ↗</a>
-      </div>
+      <a href="https://app.saeker.com" target="_blank" style="padding:9px 16px;border-radius:9px;background:#2a6a4a;color:#fff;font:700 13px sans-serif;text-decoration:none">Saeker ↗</a>
     </div>
-
-    <div id="hoscom-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:4px solid #d0433b">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:34px;color:#d0433b;font-weight:600">95</div>
-        <div style="font-size:12px;color:#7a8494;margin-top:4px">Total overdue</div></div>
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:4px solid #c45c00">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:34px;color:#c45c00;font-weight:600">94</div>
-        <div style="font-size:12px;color:#7a8494;margin-top:4px">7+ days overdue</div></div>
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:4px solid #c78a3b">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:34px;color:#c78a3b;font-weight:600">5</div>
-        <div style="font-size:12px;color:#7a8494;margin-top:4px">Due this week</div></div>
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:4px solid #2a6a4a">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:34px;color:#2a6a4a;font-weight:600">138</div>
-        <div style="font-size:12px;color:#7a8494;margin-top:4px">Total items tracked</div></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
+      ${[['Overdue',overdue.length,'#dc2626'],['Due this week',dueSoon.length,'#d97706'],['On track',onTrack.length,'#16a34a'],['Complete',complete.length,'#6b7280']].map(([l,n,c])=>`
+        <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);border-top:4px solid ${c}">
+          <div style="font-size:28px;font-weight:700;color:${c}">${n}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:2px">${l}</div>
+        </div>`).join('')}
     </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-      <!-- Most overdue -->
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.05)">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--navy);margin-bottom:12px">Most overdue</div>
-        ${[
-          {name:"Fire Risk Assess - Followup",days:194,who:"Patrik"},
-          {name:"Monthly H&S Meetings",days:181,who:"Team"},
-          {name:"Follow-up Fire Training",days:180,who:"Patrik"},
-          {name:"Level 2 food safety training",days:142,who:"Alia, Patrik"},
-          {name:"Kitchen extract ductwork cleaning",days:120,who:"Patrik"}
-        ].map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f5f7f9;font-size:13px">
-          <span style="font-weight:600;color:var(--navy);flex:1;min-width:0;margin-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</span>
-          <span style="background:#fde8e6;color:#b3261e;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap">${t.days}d</span>
-        </div>`).join("")}
-        <a href="compliance.html" target="_blank" style="display:block;margin-top:10px;font-size:13px;color:#2a6a4a;font-weight:600;text-decoration:none">View all overdue →</a>
-      </div>
-
-      <!-- Team summary -->
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.05)">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--navy);margin-bottom:12px">Team overview</div>
-        ${[
-          {name:"Patrik Vlach",total:138,od:95,isMgr:true},
-          {name:"Alia Taub",total:81,od:72,isMgr:true},
-          {name:"Glenn Randell",total:0,od:0,isMgr:true},
-          {name:"Ruth Addison",total:1,od:1,isMgr:false},
-          {name:"Veronica Webb",total:1,od:1,isMgr:false}
-        ].map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f5f7f9">
-          <div style="width:28px;height:28px;border-radius:50%;background:${p.isMgr?"#b8860b":"#2a6a4a"};${p.isMgr?"border:2px solid #ffd700;":""}display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${p.name.split(" ").map(w=>w[0]).join("")}</div>
-          <div style="flex:1;font-size:13px;font-weight:600;color:var(--navy)">${p.name}${p.isMgr?" ★":""}</div>
-          <div style="font-size:12px;color:#7a8494">${p.total} items</div>
-          ${p.od>0?`<span style="background:#fde8e6;color:#b3261e;font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px">${p.od} OD</span>`:"<span style='color:#2a6a4a;font-size:11px;font-weight:700'>✓</span>"}
-        </div>`).join("")}
-        <a href="compliance.html" target="_blank" style="display:block;margin-top:10px;font-size:13px;color:#2a6a4a;font-weight:600;text-decoration:none">Full by-person view →</a>
-      </div>
+    ${overdueActions.length?`<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:14px;margin-bottom:20px">
+      <div style="font-weight:700;color:#dc2626;margin-bottom:6px">⚡ ${overdueActions.length} overdue actions</div>
+      <a href="https://app.saeker.com" target="_blank" style="font-size:13px;color:#dc2626">View in Saeker ↗</a>
+    </div>`:''}
+    <h3 style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--navy);margin-bottom:12px">By person</h3>
+    <div style="display:grid;gap:8px;margin-bottom:24px">
+      ${Object.entries(byPerson).sort((a,b)=>b[1].overdue-a[1].overdue).map(([name,d])=>`
+        <div style="background:#fff;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--navy);display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">${name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+          <div style="flex:1"><div style="font-weight:600;font-size:14px">${name}</div></div>
+          <div style="font-size:13px;color:#6b7280">${d.total} tasks</div>
+          ${d.overdue?`<span style="background:#fef2f2;color:#dc2626;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px">${d.overdue} OD</span>`:'<span style="color:#16a34a;font-size:13px;font-weight:700">✓</span>'}
+        </div>`).join('')}
     </div>
-
-    <div style="background:#1a2b3a;border-radius:12px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-      <div>
-        <div style="font-weight:700;color:#fff;margin-bottom:3px">Saeker is your primary compliance system</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.6)">This hub shows live status. For official audit records, forms and evidence upload, use Saeker directly.</div>
-      </div>
-      <a href="https://app.saeker.com" target="_blank" style="background:#c9a978;color:#1a2b3a;font-weight:700;font-size:14px;padding:10px 20px;border-radius:9px;text-decoration:none;white-space:nowrap">Open Saeker ↗</a>
-    </div>
+    <h3 style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--navy);margin-bottom:12px">Most overdue</h3>
+    ${overdue.slice(0,8).map(t=>`
+      <div style="background:#fff;border-radius:10px;padding:12px 16px;margin-bottom:8px;border-left:4px solid #dc2626;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+        <div style="font-weight:600;font-size:14px;color:var(--navy);margin-bottom:4px">${t.name}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px">
+          <span style="background:#fef2f2;color:#dc2626;font-weight:700;padding:2px 8px;border-radius:5px">${fmtDue(t.due)}</span>
+          ${t.freq?`<span style="background:#f1f5f9;color:#475569;font-weight:600;padding:2px 8px;border-radius:5px">${t.freq}</span>`:''}
+          <span style="color:#6b7280">${(t.assignees||[]).join(', ')}</span>
+        </div>
+      </div>`).join('')}
+    ${tasks.length===0?`<div style="text-align:center;padding:40px;color:#6b7280">
+      <div style="font-size:48px;margin-bottom:12px">🛡️</div>
+      <p>No compliance data found. Open the HosFIX mobile app first to load tasks.</p>
+    </div>`:''}
   </div>`;
 }
 
@@ -4955,10 +4975,10 @@ function renderCompReport(v){
 /* ============================================================ HOSFIX — Maintenance Portal Views */
 function renderFixDash(v){
   const jobs=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');
-  const open=jobs.filter(j=>j.status!=='done'&&j.status!=='cancelled');
-  const urgent=jobs.filter(j=>j.priority==='urgent'&&j.status!=='done');
+  const open=jobs.filter(j=>j.status!=='complete'&&j.status!=='cancelled');
+  const urgent=jobs.filter(j=>(j.priority==='urgent'||j.status==='urgent')&&j.status!=='complete');
   const pending=jobs.filter(j=>j.status==='pending_approval');
-  const done=jobs.filter(j=>j.status==='done');
+  const done=jobs.filter(j=>j.status==='complete');
   const totalCost=jobs.reduce((s,j)=>s+(j.cost||0),0);
   const money=v=>'£'+Number(v||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
 
@@ -5007,7 +5027,7 @@ function renderFixDash(v){
           </td>
           <td style="padding:10px 13px;color:${j.cost>100?'var(--orange)':'#7a8494'};font-weight:${j.cost>100?700:400}">${money(j.cost)}</td>
           <td style="padding:10px 13px">
-            <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:${j.status==='done'?'#e8f3ee':j.status==='pending_approval'?'#fff0e0':'#e8edf3'};color:${j.status==='done'?'#2a6a4a':j.status==='pending_approval'?'#c45c00':'#1a2b47'}">${j.status==='done'?'✓ Done':j.status==='pending_approval'?'⏳ Approval':j.status}</span>
+            <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:${j.status==='complete'?'#e8f3ee':j.status==='pending_approval'?'#fff0e0':'#e8edf3'};color:${j.status==='complete'?'#2a6a4a':j.status==='pending_approval'?'#c45c00':'#1a2b47'}">${j.status==='complete'?'✓ Done':j.status==='pending_approval'?'⏳ Approval':j.status}</span>
           </td>
         </tr>`).join('')}</tbody>
       </table>
@@ -5265,7 +5285,7 @@ function renderFixAllJobs(v){
   const HFUSERS=[
     {id:"raj",name:"Raj Kumar",color:"#1a2b3a"},{id:"ajay",name:"Ajay Kawa",color:"#c78a3b"},
     {id:"alia",name:"Alia Taub",color:"#5a8fc7"},{id:"glenn",name:"Glenn Randell",color:"#b8860b"},
-    {id:"ruth",name:"Ruth Addison",color:"#be185d"},{id:"patrik",name:"Patrik Vlach",color:"#6366f1"},
+    {id:"ruth",name:"Ruth Addison",color:"#be185d"},{id:"jomy",name:"Jomy",color:"#0891b2"},{id:"patrik",name:"Patrik Vlach",color:"#6366f1"},
     {id:"pete",name:"Pete",color:"#20b2a2"},{id:"herman",name:"Herman Charles",color:"#2a6a4a"},
   ];
   const money=n=>'£'+Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
