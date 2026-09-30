@@ -404,11 +404,18 @@ document.getElementById('lg-btn').onclick=()=>{
 function signOut(){sessionStorage.removeItem('hosfix_user');document.getElementById('login').style.display='flex';document.getElementById('app').style.display='none';}
 
 // VIEW
-function switchView(v,el){
+function switchView(v,el,keepFilter){
   document.getElementById('modal').style.display='none';
-  VIEW=v;FILTER='all';PERSON_FILTER='';
+  VIEW=v;
+  if(!keepFilter) FILTER='all';  // only reset filter if not explicitly preserving it
+  PERSON_FILTER='';
   document.querySelectorAll('.bnav').forEach(b=>b.classList.remove('on'));
   if(el) el.classList.add('on');
+  // highlight correct nav button even when el is null
+  if(!el){
+    const navBtn=document.querySelector('.bnav[data-v="'+v+'"]');
+    if(navBtn) navBtn.classList.add('on');
+  }
   render();
 }
 
@@ -437,7 +444,7 @@ function renderDashboard(){
     ${pending.map(j=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid rgba(196,92,0,.15)">
       <span style="font-weight:600">${j.title}</span><span style="color:var(--orange);font-weight:700">${money(j.cost)}</span>
     </div>`).join('')}
-    <button onclick="setFilter('approval');switchView('jobs',null)" style="width:100%;margin-top:10px;padding:9px;border-radius:9px;border:none;background:var(--orange);color:#fff;font:700 13px 'Lato';cursor:pointer">Review &amp; approve →</button>
+    <button onclick="setFilter('urgent');switchView('jobs',null,true)" style="width:100%;margin-top:10px;padding:9px;border-radius:9px;border:none;background:var(--orange);color:#fff;font:700 13px 'Lato';cursor:pointer">Review &amp; approve →</button>
   </div>`:'';
 
   // team overview — supervisors only
@@ -448,7 +455,7 @@ function renderDashboard(){
       const myOD=mine.filter(j=>j.status==='not-started').length;
       const myIP=mine.filter(j=>j.status==='in-progress').length;
       const myDone=mine.filter(j=>j.status==='complete').length;
-      return `<div class="team-row" onclick="setPersonFilter('${u.id}');switchView('jobs',null)">
+      return `<div class="team-row" onclick="setPersonFilter('${u.id}');switchView('jobs',null,true)">
         <div class="team-av" style="background:${u.color}">${initials(u.name)}</div>
         <div style="flex:1">
           <div class="team-name">${u.name}</div>
@@ -472,10 +479,10 @@ function renderDashboard(){
     <div class="dash-date">${dateStr}</div>
     ${approvalHTML}
     <div class="stat-grid">
-      <div class="stat-card orange" onclick="setFilter('urgent');switchView('jobs',null)"><div class="stat-v">${urgent}</div><div class="stat-k">🟠 Urgent</div></div>
-      <div class="stat-card red" onclick="setFilter('not-started');switchView('jobs',null)"><div class="stat-v">${notStarted}</div><div class="stat-k">🔴 Not started</div></div>
-      <div class="stat-card amber" onclick="setFilter('in-progress');switchView('jobs',null)"><div class="stat-v">${inProg}</div><div class="stat-k">🟡 In progress</div></div>
-      <div class="stat-card green" onclick="setFilter('complete');switchView('jobs',null)"><div class="stat-v">${complete}</div><div class="stat-k">🟢 Complete</div></div>
+      <div class="stat-card orange" onclick="setFilter('urgent');switchView('jobs',null,true)"><div class="stat-v">${urgent}</div><div class="stat-k">🟠 Urgent</div></div>
+      <div class="stat-card red" onclick="setFilter('not-started');switchView('jobs',null,true)"><div class="stat-v">${notStarted}</div><div class="stat-k">🔴 Not started</div></div>
+      <div class="stat-card amber" onclick="setFilter('in-progress');switchView('jobs',null,true)"><div class="stat-v">${inProg}</div><div class="stat-k">🟡 In progress</div></div>
+      <div class="stat-card green" onclick="setFilter('complete');switchView('jobs',null,true)"><div class="stat-v">${complete}</div><div class="stat-k">🟢 Complete</div></div>
     </div>
     ${IS_SUPER?`<div style="background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:16px;box-shadow:0 2px 6px rgba(26,43,58,.05)"><div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:#7a8494">Total jobs</span><span style="font-weight:700">${jobs.length}</span></div><div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span style="color:#7a8494">Total costs logged</span><span style="font-weight:700;color:var(--amber)">${money(totalCost)}</span></div></div>`:''}
     ${teamHTML}
@@ -1039,7 +1046,7 @@ function exportTxt(){
 }
 
 // UTILS
-function setFilter(f){FILTER=f;render();}
+function setFilter(f){FILTER=f;if(typeof render==='function')render();}
 function setPersonFilter(p){PERSON_FILTER=p;render();}
 function openDetailMaterialPicker(jobId) {
   window._jid = jobId;
