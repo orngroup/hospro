@@ -133,7 +133,7 @@ html,body{height:100%;overflow:hidden;font-family:'Lato',system-ui,sans-serif;ba
 
 /* MODAL / SHEET */
 .modal-bg{position:fixed;inset:0;background:rgba(16,29,51,.65);z-index:100;display:flex;align-items:flex-end;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
-.sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}.sheet-inner{flex:1;overflow-y:auto;padding:18px 18px calc(18px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+.sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 18px calc(24px + env(safe-area-inset-bottom))}
 .sheet-handle{width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 14px}
 .sheet-title{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--navy);margin-bottom:14px}
 
@@ -536,7 +536,7 @@ html,body{height:100%;overflow:hidden;font-family:'Lato',system-ui,sans-serif;ba
 
 <!-- MODAL -->
 <div class="modal-bg" id="modal" style="display:none" onclick="handleBgClick(event)">
-  <div class="sheet"><div class="sheet-handle"></div><div class="sheet-inner" id="modal-scroll"><div id="modal-content"></div></div><div id="modal-actions" style="padding:0 18px calc(10px + env(safe-area-inset-bottom));background:#fff;display:none"></div></div>
+  <div class="sheet"><div class="sheet-handle"></div><div id="modal-content"></div></div>
 </div>
 
 <script>
@@ -1480,13 +1480,7 @@ function showModal(html){
   mc.innerHTML=html;
   document.getElementById('modal').style.display='flex';
 }
-// iOS-safe button handler: capture phase fires before scroll containers interfere
-document.addEventListener('touchend', function(e){
-  const btn = e.target.closest('button');
-  if(!btn || !btn.onclick || btn.disabled) return;
-  e.preventDefault(); // prevent ghost click
-  btn.onclick(e);
-}, {passive:false, capture:true});
+// iOS button handling: use touch-action:manipulation on btn-p CSS (see above)
 
 function closeModal(){
   document.getElementById('modal').style.display='none';
