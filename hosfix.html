@@ -133,7 +133,7 @@ html,body{height:100%;overflow:hidden;font-family:'Lato',system-ui,sans-serif;ba
 
 /* MODAL / SHEET */
 .modal-bg{position:fixed;inset:0;background:rgba(16,29,51,.65);z-index:100;display:flex;align-items:flex-end;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
-.sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-height:94vh;overflow-y:auto;padding:18px 18px calc(18px + env(safe-area-inset-bottom))}
+.sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}.sheet-inner{flex:1;overflow-y:auto;padding:18px 18px calc(18px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
 .sheet-handle{width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 14px}
 .sheet-title{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--navy);margin-bottom:14px}
 
@@ -536,7 +536,7 @@ html,body{height:100%;overflow:hidden;font-family:'Lato',system-ui,sans-serif;ba
 
 <!-- MODAL -->
 <div class="modal-bg" id="modal" style="display:none" onclick="handleBgClick(event)">
-  <div class="sheet"><div class="sheet-handle"></div><div id="modal-content"></div></div>
+  <div class="sheet"><div class="sheet-handle"></div><div class="sheet-inner" id="modal-scroll"><div id="modal-content"></div></div><div id="modal-actions" style="padding:0 18px calc(10px + env(safe-area-inset-bottom));background:#fff;display:none"></div></div>
 </div>
 
 <script>
@@ -841,13 +841,6 @@ function openNewJob(pid){
   FS={area:'',location:'',workType:'',title:'',description:'',status:'not-started',priority:'medium',
       assignees:IS_SUPER?[]:[ME],cost:0,requiresReceipt:false,receipt:{description:'',photos:[]},photos:[],projectId:pid||null};
   showModal(buildForm());
-  // Wire file inputs for iOS (must happen after DOM render)
-  const ri=document.getElementById('rcpt-photo-inp');
-  const rz=document.getElementById('rcpt-zone');
-  if(ri&&rz){
-    ri.style.cssText=''; // restore normal
-    rz.addEventListener('click',function(){ri.click();});
-  }
 }
 
 function buildForm(){
@@ -905,8 +898,8 @@ function buildForm(){
       <div class="rb-title">📄 Receipt required — materials up to £${APPROVAL_THRESHOLD}</div>
       <div class="f-field"><label>What was purchased</label><input id="f-rcpt-desc" placeholder="e.g. 2x tap washers, plumber's tape" value="${FS.receipt.description}"></div>
       <div class="f-field" style="margin-bottom:0"><label>Photo of receipt</label>
-        <div class="photo-zone rcpt-zone" id="rcpt-zone" style="cursor:pointer">📸 Tap to photograph receipt</div>
-        <input type="file" id="rcpt-photo-inp" accept="image/*" capture="environment" style="display:none" onchange="addReceiptPhoto(this)">
+        <div class="photo-zone" onclick="document.getElementById('rcpt-photo-inp').click()">📸 Tap to photograph receipt</div>
+        <input type="file" id="rcpt-photo-inp" accept="image/*" capture="environment" style="opacity:0;position:absolute;pointer-events:none" onchange="addReceiptPhoto(this)">
         <div id="rcpt-thumbs" class="photo-thumbs">${(FS.receipt.photos||[]).map(p=>`<img class="photo-thumb" src="${p}">`).join('')}</div>
         <div class="receipt-required" id="rcpt-required" style="display:none">⚠️ Photo of receipt is required before job can be marked complete</div>
       </div>
@@ -935,12 +928,12 @@ function buildForm(){
   </div>
   <div class="f-field"><label>Job photos (max 4)</label>
     <div class="photo-zone" onclick="document.getElementById('job-photo-inp').click()">📷 Tap to add photo or video</div>
-    <input type="file" id="job-photo-inp" accept="image/*,video/*" capture="environment" multiple style="display:none" onchange="addJobPhotos(this)">
+    <input type="file" id="job-photo-inp" accept="image/*,video/*" capture="environment" multiple style="opacity:0;position:absolute;pointer-events:none" onchange="addJobPhotos(this)">
     <div id="job-thumbs" class="photo-thumbs">${(FS.photos||[]).map(p=>`<img class="photo-thumb" src="${p}">`).join('')}</div>
     <div style="font-size:11px;color:#7a8494;margin-top:4px" id="photo-count">${(FS.photos||[]).length}/4 photos</div>
   </div>
 
-  <div class="btn-row" style="position:sticky;bottom:0;background:#fff;padding:10px 0 4px;margin:0 -2px;z-index:10">
+  <div class="btn-row">
     <button class="btn-p btn-navy" onclick="submitJob()">✓ Log job</button>
     <button class="btn-p btn-ghost" onclick="closeModal();switchView('dashboard',document.querySelector('[data-v=dashboard]'))">✕ Cancel</button>
   </div>`;
@@ -1486,26 +1479,15 @@ function showModal(html){
   const mc=document.getElementById('modal-content');
   mc.innerHTML=html;
   document.getElementById('modal').style.display='flex';
-  // Wire all file inputs via addEventListener (iOS Safari safe)
-  mc.querySelectorAll('input[type="file"]').forEach(inp=>{
-    // Wire associated photo-zone click
-    const zoneId=inp.id.replace('-inp','').replace('-pi','').replace('input','zone');
-    const zone=mc.querySelector('.photo-zone')||mc.querySelector('[id="'+zoneId+'"]');
-    // Ensure the input is directly clickable on iOS
-    inp.style.cssText='position:absolute;width:1px;height:1px;opacity:0;overflow:hidden';
-    document.body.appendChild(inp); // move to body so iOS allows click
-    // Re-attach click zones
-    mc.querySelectorAll('.photo-zone,.photo-zone.required').forEach(pz=>{
-      if(!pz._wired){
-        pz._wired=true;
-        pz.style.cursor='pointer';
-        // Find nearest file input
-        const ni=pz.nextElementSibling||mc.querySelector('input[type="file"]');
-        if(ni) pz.addEventListener('click',function(e){e.preventDefault();ni.click();});
-      }
-    });
-  });
 }
+// iOS-safe button handler: capture phase fires before scroll containers interfere
+document.addEventListener('touchend', function(e){
+  const btn = e.target.closest('button');
+  if(!btn || !btn.onclick || btn.disabled) return;
+  e.preventDefault(); // prevent ghost click
+  btn.onclick(e);
+}, {passive:false, capture:true});
+
 function closeModal(){
   document.getElementById('modal').style.display='none';
   // Restore nav highlight to current view
@@ -1593,7 +1575,7 @@ function showSafetyModal(jobId) {
     '<div style="margin-bottom:14px">' +
       '<div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Before photo <span style="font-weight:400;color:#7a8494">(recommended)</span></div>' +
       '<div class="photo-zone" id="before-pz" style="cursor:pointer">📷 Tap to photograph before starting</div>' +
-      '<input type="file" id="before-pi" accept="image/*" capture="environment" style="display:none">' +
+      '<input type="file" id="before-pi" accept="image/*" capture="environment" style="opacity:0;position:absolute;width:0;height:0">' +
       '<div id="before-preview" style="margin-top:8px"></div>' +
     '</div>' +
     '<button id="safety-go" class="btn-p btn-green" style="width:100%;padding:15px;font-size:15px;opacity:.4" disabled>▶ Confirmed — Start Job</button>' +
@@ -1679,7 +1661,7 @@ function showAfterPhotoModal(jobId) {
     '<div class="sheet-title">📷 Completion photo</div>' +
     '<p style="font-size:14px;color:#7a8494;margin-bottom:16px">Take a photo showing the <strong>completed work</strong>.</p>' +
     '<div class="photo-zone required" id="after-pz" style="cursor:pointer">📷 Tap to photograph completed work</div>' +
-    '<input type="file" id="after-pi" accept="image/*" capture="environment" style="display:none">' +
+    '<input type="file" id="after-pi" accept="image/*" capture="environment" style="opacity:0;position:absolute;width:0;height:0">' +
     '<div id="after-preview" style="margin-top:8px"></div>' +
     '<div class="f-field" style="margin-top:12px"><label>Completion notes (optional)</label>' +
       '<textarea id="comp-note" placeholder="What was done, materials used, any follow-up…" style="min-height:60px;width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:14px Lato"></textarea>' +
