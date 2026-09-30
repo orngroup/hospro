@@ -793,5 +793,86 @@ if(su){ ME=su; IS_MANAGER=MANAGERS.includes(ME);
   document.getElementById('tb-user').textContent=ME.split(' ')[0]+' ▾';
   updateBadges(); render(); }
 </script>
+
+<style>
+#hoscom-install-banner{position:fixed;inset:0;background:linear-gradient(160deg,#0d1b2a,#1a2b3a);z-index:500;display:none;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;font-family:'Lato',sans-serif}
+#hoscom-install-banner .ib-title{font-size:26px;color:#fff;margin-bottom:4px;font-weight:700;letter-spacing:2px}
+#hoscom-install-banner .ib-title span{color:#c9a978}
+#hoscom-install-banner .ib-sub{font-size:11px;letter-spacing:4px;color:#c9a978;font-weight:700;margin-bottom:6px}
+#hoscom-install-banner .ib-hotel{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:24px}
+#hoscom-install-banner .ib-steps{background:rgba(255,255,255,.07);border-radius:12px;padding:16px;max-width:320px;width:100%;margin-bottom:20px;text-align:left}
+#hoscom-install-banner .ib-step{display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.85);padding:6px 0}
+#hoscom-install-banner .ib-num{width:24px;height:24px;border-radius:50%;background:#c9a978;color:#1a2b3a;display:grid;place-items:center;font-weight:700;font-size:12px;flex-shrink:0}
+#hoscom-install-banner button{width:100%;max-width:320px;padding:15px;border-radius:12px;border:none;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px}
+#hoscom-ib-install{background:#c9a978;color:#1a2b3a}
+#hoscom-ib-skip{background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:14px}
+#hoscom-notif-banner{position:fixed;bottom:80px;left:12px;right:12px;background:#1a2b3a;border-radius:14px;padding:14px 16px;display:none;align-items:center;gap:12px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#hoscom-notif-banner .nt{flex:1;font-size:13px;color:#fff;line-height:1.4}
+#hoscom-notif-banner .nt b{display:block;font-size:14px;margin-bottom:2px}
+#hoscom-nb-allow{padding:8px 14px;border-radius:9px;border:none;background:#c9a978;color:#1a2b3a;font:700 13px sans-serif;cursor:pointer}
+#hoscom-nb-close{background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:4px}
+</style>
+
+<div id="hoscom-install-banner">
+  <div style="font-size:48px;margin-bottom:16px">🛡️</div>
+  <div class="ib-title">Hos<span>COM</span></div>
+  <div class="ib-sub">COMPLIANCE</div>
+  <div class="ib-hotel">Brandon Hall Hotel and Spa</div>
+  <div class="ib-steps">
+    <div class="ib-step"><div class="ib-num">1</div><span>Tap the <strong style="color:#c9a978">Share</strong> button at the bottom of your browser</span></div>
+    <div class="ib-step"><div class="ib-num">2</div><span>Tap <strong style="color:#c9a978">"Add to Home Screen"</strong></span></div>
+    <div class="ib-step"><div class="ib-num">3</div><span>Tap <strong style="color:#c9a978">"Add"</strong> — Compliance installs as an app</span></div>
+  </div>
+  <button id="hoscom-ib-install">📲 Install Compliance app</button>
+  <button id="hoscom-ib-skip">Continue in browser</button>
+</div>
+
+<div id="hoscom-notif-banner">
+  <span style="font-size:24px;flex-shrink:0">🔔</span>
+  <div class="nt"><b>Enable notifications</b>Get alerts for overdue compliance tasks</div>
+  <button id="hoscom-nb-allow">Allow</button>
+  <button id="hoscom-nb-close">✕</button>
+</div>
+
+<script>
+// PWA install + notifications — HosCOM Compliance
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/tasks-sw.js').catch(e=>console.log('SW:',e));
+}
+const _isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone===true;
+const _seenInstall = localStorage.getItem('hoscom_install_seen');
+
+function showComplianceInstall(){
+  if(_isStandalone||_seenInstall) return;
+  const b=document.getElementById('hoscom-install-banner');
+  if(b) b.style.display='flex';
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  showComplianceInstall();
+  setTimeout(()=>{
+    const nb=document.getElementById('hoscom-notif-banner');
+    if(nb&&Notification&&Notification.permission==='default') nb.style.display='flex';
+  },3000);
+});
+
+document.getElementById('hoscom-ib-skip')?.addEventListener('click',()=>{
+  localStorage.setItem('hoscom_install_seen','1');
+  document.getElementById('hoscom-install-banner').style.display='none';
+});
+document.getElementById('hoscom-ib-install')?.addEventListener('click',()=>{
+  localStorage.setItem('hoscom_install_seen','1');
+  document.getElementById('hoscom-install-banner').style.display='none';
+  if(window._deferredInstall) window._deferredInstall.prompt();
+});
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window._deferredInstall=e;});
+document.getElementById('hoscom-nb-allow')?.addEventListener('click',()=>{
+  document.getElementById('hoscom-notif-banner').style.display='none';
+  Notification.requestPermission().then(p=>{if(p==='granted'){localStorage.setItem('hoscom_notif','1');}});
+});
+document.getElementById('hoscom-nb-close')?.addEventListener('click',()=>{
+  document.getElementById('hoscom-notif-banner').style.display='none';
+});
+</script>
 </body>
 </html>
