@@ -445,8 +445,8 @@ html,body{height:100%;overflow:hidden;font-family:'Lato',system-ui,sans-serif;ba
 <path d="M220.643 125.316C220.518 125.316 220.419 125.264 220.351 125.17C220.278 125.076 220.247 124.956 220.247 124.816C220.257 124.597 220.299 124.461 220.372 124.42C220.455 124.368 220.601 124.336 220.81 124.336C221.252 124.336 221.58 124.264 221.789 124.107C221.997 123.941 222.127 123.748 222.185 123.524C222.237 123.29 222.273 122.977 222.289 122.586V113.566C222.273 113.18 222.237 112.873 222.185 112.649C222.127 112.415 221.997 112.222 221.789 112.066C221.58 111.899 221.252 111.816 220.81 111.816H220.685C220.528 111.816 220.419 111.79 220.351 111.732C220.294 111.68 220.257 111.545 220.247 111.336C220.247 111.201 220.278 111.081 220.351 110.982C220.419 110.889 220.518 110.836 220.643 110.836C221.643 110.878 222.539 110.899 223.33 110.899C224.247 110.899 225.195 110.878 226.185 110.836C226.32 110.836 226.424 110.889 226.497 110.982C226.565 111.081 226.601 111.201 226.601 111.336C226.586 111.56 226.539 111.701 226.455 111.753C226.372 111.795 226.226 111.816 226.018 111.816C225.586 111.816 225.257 111.899 225.039 112.066C224.83 112.222 224.695 112.415 224.643 112.649C224.586 112.873 224.549 113.18 224.539 113.566V122.941C224.58 123.264 224.622 123.514 224.664 123.691C224.705 123.857 224.836 124.014 225.06 124.149C225.294 124.29 225.653 124.352 226.143 124.336H228.185C228.711 124.326 229.112 124.243 229.393 124.086C229.669 123.92 229.882 123.67 230.039 123.336C230.205 123.003 230.398 122.461 230.622 121.711C230.731 121.435 230.987 121.326 231.393 121.378C231.528 121.42 231.653 121.493 231.768 121.586C231.893 121.67 231.945 121.774 231.935 121.899L231.476 124.774C231.435 124.972 231.362 125.102 231.268 125.17C231.185 125.227 231.039 125.253 230.83 125.253H223.372C222.549 125.253 221.643 125.274 220.643 125.316Z" fill="#BB9979"/>
 </svg></div>
   <div class="ib-name">Hos<span>FIX</span></div>
-  <div class="ib-sub">MAINTENANCE & PROPERTY</div>
-  <div class="ib-hotel">Brandon Hall Hotel and Spa</div>
+  <div style="font-size:14px;color:rgba(255,255,255,.75);font-weight:600;margin-bottom:3px;letter-spacing:.5px">Brandon Hall Hotel and Spa</div>
+  <div class="ib-sub" style="font-size:10px;margin-bottom:24px">MAINTENANCE &amp; COMPLIANCE MANAGEMENT</div>
   <div class="ib-steps">
     <div class="ib-step"><div class="ib-step-num">1</div><span>Tap the <strong style="color:var(--gold)">Share</strong> button at the bottom of your browser</span></div>
     <div class="ib-step"><div class="ib-step-num">2</div><span>Tap <strong style="color:var(--gold)">"Add to Home Screen"</strong></span></div>
@@ -513,7 +513,7 @@ html,body{height:100%;overflow:hidden;font-family:'Lato',system-ui,sans-serif;ba
 </div>
 
 <!-- APP -->
-<div id="app">
+<div id="app" style="display:none">
   <div class="topbar">
     <div class="tb-brand" onclick="goHome()" style="cursor:pointer" title="Back to home"><div class="bn">Hos<span>FIX</span></div><div class="bs">BRANDON HALL</div></div>
     <div class="tb-right">
@@ -1963,25 +1963,34 @@ const hasSeenInstall = localStorage.getItem('hosfix_install_seen');
 // Show install banner on first visit (not standalone, not seen before)
 function maybeShowInstallBanner() {
   if(isStandalone || hasSeenInstall) {
-    // Already installed or seen — go straight to login
+    // Already installed or seen — login is already visible, nothing to do
     return;
   }
+  // First visit — show install banner, hide login behind it
   document.getElementById('install-banner').style.display = 'flex';
+  document.getElementById('login').style.display = 'none';
 }
 
 document.getElementById('ib-skip-btn')?.addEventListener('click', () => {
   localStorage.setItem('hosfix_install_seen','1');
   document.getElementById('install-banner').style.display = 'none';
+  document.getElementById('login').style.display = 'flex';
   maybeRequestNotifications();
 });
 
 document.getElementById('ib-install-btn')?.addEventListener('click', () => {
   localStorage.setItem('hosfix_install_seen','1');
-  document.getElementById('install-banner').style.display = 'none';
-  // iOS: show instructions (already shown above)
-  // Android Chrome: use beforeinstallprompt if available
+  // Android Chrome: native install prompt
   if(window._deferredInstall) {
     window._deferredInstall.prompt();
+    window._deferredInstall.userChoice.then(()=>{
+      document.getElementById('install-banner').style.display = 'none';
+      document.getElementById('login').style.display = 'flex';
+    });
+  } else {
+    // iOS: instructions already shown — dismiss and go to login
+    document.getElementById('install-banner').style.display = 'none';
+    document.getElementById('login').style.display = 'flex';
   }
   maybeRequestNotifications();
 });
