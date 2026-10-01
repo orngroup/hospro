@@ -1213,7 +1213,7 @@ function openJobDetail(jobId){
     isPaused?`<div style="background:#fffbe6;border-radius:10px;padding:10px 14px;text-align:center;font:700 13px 'Lato';color:#997300;margin-bottom:8px">⏸ Paused${elapsed?' · '+elapsed+' logged':''}</div>
       <div class="btn-row">
         <button type="button" class="btn btn-green" onclick="resumeJob('${j.id}')">▶ Resume</button>
-        <button type="button" class="btn btn-navy" id="btn-complete">✓ Complete job</button>
+        <button type="button" class="btn btn-navy" onclick="completeJobFlow('${j.id}')">✓ Complete job</button>
       </div>`:
     `<button type="button" class="btn btn-orange" onclick="startJobFlow('${j.id}')">▶ Start job</button>`}
   </div>`:''}
@@ -1237,7 +1237,7 @@ function startJobFlow(jobId){
   let html=`<div class="modal-title">▶ Start job</div>
   <div style="background:#fffbe6;border:1px solid var(--amber);border-radius:12px;padding:14px;margin-bottom:16px">
     <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;font-size:14px;line-height:1.5;touch-action:manipulation">
-      <input type="checkbox" id="safety-chk" style="width:22px;height:22px;margin-top:1px;flex-shrink:0;accent-color:var(--green)">
+      <input type="checkbox" id="safety-chk" style="width:22px;height:22px;margin-top:1px;flex-shrink:0;accent-color:var(--green)" onclick="var b=$('btn-confirm-start');if(b){b.disabled=!this.checked;b.style.opacity=this.checked?'1':'0.4'}">
       <span><strong>Area is safe</strong> — no guests in proximity and safe to proceed</span>
     </label>
   </div>
@@ -1246,7 +1246,7 @@ function startJobFlow(jobId){
     <div class="photo-zone" id="before-zone">📷 Tap to photograph before starting</div>
     <div id="before-preview" style="margin-top:8px"></div>
   </div>
-  <button type="button" class="btn btn-green" id="btn-confirm-start" disabled style="opacity:.4">▶ Confirmed — Start job</button>
+  <button type="button" class="btn btn-green" id="btn-confirm-start" disabled style="opacity:.4" onclick="confirmAndStart()">▶ Confirmed — Start job</button>
   <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>`;
 
   openModal(html);
@@ -1288,6 +1288,28 @@ function startJobFlow(jobId){
     j.notes.push({text:'Area confirmed safe — no guests in proximity',by:MY_USER?.name||ME,at:todayStr()});
     doStartTimer(_jid);
   });
+}
+
+// Global functions for modal buttons that need inline onclick
+
+function confirmAndStart(){
+  const chk=$('safety-chk');
+  if(!chk||!chk.checked){ toast('Please confirm the area is safe'); return; }
+  const j=JOBS.find(x=>x.id===_jid); if(!j) return;
+  j.safetyConfirmed=true;
+  j.notes=j.notes||[];
+  j.notes.push({text:'Area confirmed safe — no guests in proximity',by:MY_USER?.name||ME,at:todayStr()});
+  saveJobs();
+  doStartTimer(_jid);
+}
+
+let _reassignees=[];
+function doReassign(){
+  const j=JOBS.find(x=>x.id===_jid); if(!j) return;
+  j.assignees=_reassignees;
+  j.notes=j.notes||[];
+  j.notes.push({text:'Job reassigned to '+_reassignees.map(id=>USERS.find(u=>u.id===id)?.name||id).join(', '),by:MY_USER?.name||ME,at:todayStr()});
+  saveJobs(); closeModal(); toast('Reassigned ✓'); openJobDetail(_jid);
 }
 
 function saveNote(jobId){
@@ -1528,27 +1550,22 @@ function openReassign(jobId){
     </div>`).join('')}
   <div class="btn-row" style="margin-top:14px">
     <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-    <button type="button" class="btn btn-navy" id="btn-do-reassign">Save</button>
+    <button type="button" class="btn btn-navy" onclick="doReassign()">Save</button>
   </div>`;
 
   openModal(html);
   let newAssignees=[...(j.assignees||[])];
 
-  $('modal-content').querySelectorAll('.arow').forEach(row=>{
+  _reassignees=[...(j.assignees||[])];
+  $('modal-content').querySelectorAll('.arow[data-uid]').forEach(row=>{
     row.addEventListener('click',()=>{
       const uid=row.dataset.uid;
-      const idx=newAssignees.indexOf(uid);
-      if(idx>-1){ newAssignees.splice(idx,1); row.classList.remove('selected'); }
-      else { newAssignees.push(uid); row.classList.add('selected'); }
+      const idx=_reassignees.indexOf(uid);
+      if(idx>-1){ _reassignees.splice(idx,1); row.classList.remove('selected'); }
+      else { _reassignees.push(uid); row.classList.add('selected'); }
     });
   });
-
-  $('btn-do-reassign').addEventListener('click',()=>{
-    j.assignees=newAssignees;
-    j.notes=j.notes||[];
-    j.notes.push({text:'Job reassigned to '+newAssignees.map(id=>USERS.find(u=>u.id===id)?.name||id).join(', '),by:MY_USER?.name||ME,at:todayStr()});
-    saveJobs(); closeModal(); toast('Reassigned ✓'); openJobDetail(jobId);
-  });
+  // btn-do-reassign uses onclick=doReassign()
 }
 
 
@@ -1607,7 +1624,7 @@ function renderReport(){
         <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:3px">👥 TEAM SYNC</div>
         <div style="font-size:12px;color:#2a6a4a">Share all jobs with team members on other devices</div>
       </div>
-      <button type="button" id="btn-sync" style="padding:9px 14px;border-radius:9px;border:none;background:var(--green);color:#fff;font:700 12px 'Lato';cursor:pointer;touch-action:manipulation">📤 Sync</button>
+      <button type="button" onclick="syncJobs()" style="padding:9px 14px;border-radius:9px;border:none;background:var(--green);color:#fff;font:700 12px 'Lato';cursor:pointer;touch-action:manipulation">📤 Sync</button>
     </div>
 
     <div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
@@ -1631,10 +1648,7 @@ function renderReport(){
   </div>`;
 }
 
-// Wire sync button via event delegation (no render wrapping)
-document.addEventListener('click',function(e){
-  if(e.target.id==='btn-sync'||e.target.closest('#btn-sync')) syncJobs();
-});
+// sync button uses inline onclick
 
 function updatePhone(uid, phone){
   const u=USERS.find(x=>x.id===uid); if(!u) return;
@@ -1842,6 +1856,18 @@ function renderCompReport(){
   </div>`;
 }
 
+function markTaskComplete(id){
+  const t=COMP_TASKS.find(x=>x.id===id); if(!t) return;
+  t.status='complete'; t.completedAt=todayStr(); t.completedBy=MY_USER?.name||ME;
+  saveTasks(); toast('Task marked complete ✓'); closeModal(); renderComp();
+}
+
+function reopenTask(id){
+  const t=COMP_TASKS.find(x=>x.id===id); if(!t) return;
+  t.status='open'; t.completedAt=null;
+  saveTasks(); toast('Task reopened'); closeModal(); renderComp();
+}
+
 function openTaskDetail(id){
   const t=COMP_TASKS.find(x=>x.id===id); if(!t) return;
   const s=taskStatus(t);
@@ -1856,18 +1882,13 @@ function openTaskDetail(id){
       <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">
         <span style="color:#7a8494">${k}</span><span style="font-weight:600">${v}</span></div>`).join('')}
   </div>
-  ${t.status!=='complete'?`<button type="button" class="btn btn-green" id="btn-mark-done">✓ Mark complete</button>`:''}
-  ${t.status==='complete'?`<button type="button" class="btn btn-ghost" id="btn-reopen">Reopen task</button>`:''}
+  ${t.status!=='complete'?`<button type="button" class="btn btn-green" onclick="markTaskComplete('${t.id}')">✓ Mark complete</button>`:''}
+  ${t.status==='complete'?`<button type="button" class="btn btn-ghost" onclick="reopenTask('${t.id}')">Reopen task</button>`:''}
   <a href="https://app.saeker.com" target="_blank" class="btn btn-ghost" style="display:block;text-decoration:none;text-align:center;margin-bottom:8px">View in Saeker ↗</a>
   <button type="button" class="btn btn-ghost" onclick="closeModal()">Close</button>`;
 
   openModal(html);
-  $('btn-mark-done')?.addEventListener('click',()=>{
-    t.status='complete'; t.completedAt=todayStr(); saveTasks(); toast('Marked complete ✓'); closeModal(); renderComp();
-  });
-  $('btn-reopen')?.addEventListener('click',()=>{
-    t.status='open'; t.completedAt=null; saveTasks(); toast('Task reopened'); closeModal(); renderComp();
-  });
+  // mark-done and reopen use inline onclick
 }
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
