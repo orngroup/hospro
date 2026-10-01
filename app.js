@@ -203,65 +203,7 @@ async function boot(){
   buildSidebar();
   render();
 }
-function buildSidebar(){
-  const nav=$("#sf-nav"); if(!nav)return;
-  const mods=userModules(SESSION?._key||"ajay.kawa");
-  const groups=typeof MODULE_GROUPS!=="undefined"?MODULE_GROUPS:[];
-  
-  let html=`<button class="sf-nav-item sf-home" data-go="home" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:9px;font-size:13.5px;font-weight:600;color:#c7d2e0;background:none;border:none;cursor:pointer;width:100%;text-align:left">
-    <span style="font-size:16px">🏠</span> Home
-  </button>`;
-
-  // Build by groups
-  groups.forEach(grp=>{
-    const grpMods=mods.filter(m=>grp.modules.includes(m.id));
-    if(!grpMods.length) return;
-    
-    const grpId='grp-'+grp.id;
-    html+=`<div class="sf-nav-group" style="margin-bottom:4px">
-      <button onclick="sfToggleGroup('${grpId}')" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;background:rgba(255,255,255,.06);border:none;border-radius:8px;cursor:pointer;color:#8fa3b8;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:2px">
-        <span>${grp.icon}</span>
-        <span style="flex:1;text-align:left">${grp.label}</span>
-        <span id="${grpId}-arrow" style="font-size:9px;transition:transform .2s">▼</span>
-      </button>
-      <div id="${grpId}" style="overflow:hidden;max-height:500px;transition:max-height .25s ease">`;
-    
-    grpMods.forEach(m=>{
-      // Module header (clickable to first tab)
-      html+=`<button data-go="${m.tabs[0]}" onclick="switchTab('${m.tabs[0]}')" style="display:flex;align-items:center;gap:9px;width:100%;padding:7px 10px 4px;background:none;border:none;cursor:pointer;color:#b8ccdc;font-size:12.5px;font-weight:700;text-align:left;border-radius:6px">
-        <span style="width:7px;height:7px;border-radius:50%;background:${m.colour};flex-shrink:0;display:inline-block"></span>
-        ${m.name}
-      </button>`;
-      // Sub-tabs indented
-      m.tabs.forEach(t=>{
-        const meta=TAB_META[t]; if(!meta) return;
-        html+=`<button class="sf-nav-item" data-go="${t}" onclick="switchTab('${t}')" style="display:flex;align-items:center;gap:8px;width:100%;padding:5px 10px 5px 26px;background:none;border:none;cursor:pointer;color:#8fa3b8;font-size:12px;text-align:left;border-radius:6px">
-          <span style="font-size:12px">${meta.icon}</span> ${meta.label}
-        </button>`;
-      });
-    });
-    html+=`</div></div>`;
-  });
-
-  // Any ungrouped modules
-  const groupedIds=groups.flatMap(g=>g.modules);
-  const ungrouped=mods.filter(m=>!groupedIds.includes(m.id));
-  ungrouped.forEach(m=>{
-    html+=`<div class="sf-nav-group">
-      <div class="sf-nav-head" style="--mc:${m.colour}"><span class="sf-mdot" style="background:${m.colour}"></span>${m.name}</div>`;
-    m.tabs.forEach(t=>{ const meta=TAB_META[t]; if(!meta)return;
-      html+=`<button class="sf-nav-item" data-go="${t}" onclick="switchTab('${t}')"><span class="sf-ico">${meta.icon}</span> ${meta.label}</button>`; });
-    html+=`</div>`;
-  });
-
-  nav.innerHTML=html;
-  
-  // Active state sync
-  syncSidebar();
-  
-  const s=$("#sf-settings"); if(s) s.onclick=()=>switchTab("admin");
-  const lg=$("#sf-logo-home"); if(lg) lg.onclick=()=>switchTab("home");
-}
+function buildSidebar(){ /* sidebar removed */ }
 
 function sfToggleGroup(grpId){
   const el=document.getElementById(grpId);
@@ -285,9 +227,8 @@ function syncSidebar(){
 }
 function render(){
   const v=$("#view"); v.innerHTML="";
-  document.body.classList.toggle("home-active", CURRENT_TAB==="home");
-  syncSidebar();
-  ({home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
+  // home-active class removed (no sidebar)
+    ({home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
     fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
@@ -3843,217 +3784,150 @@ function renderSocialPreview(){
 
 /* ============================================================ HOME / WELCOME */
 function renderHome(v){
-  // ---- simple welcome header ----
-  const topRow=el("div","sf-top-row");
-  const hdr=el("div","sf-welcome");
-  hdr.innerHTML=`<h1>Welcome to <span class="hospro-navy">HOS</span><span class="hospro-teal">PRO</span></h1>
-    <p>Brandon Hall Hotel and Spa</p>`;
-  topRow.appendChild(hdr);
+  const mods = userModules(SESSION?._key||"ajay.kawa").filter(m=>m.id!=="insight");
+  const groups = typeof MODULE_GROUPS!=="undefined" ? MODULE_GROUPS : [];
 
-  // ---- room configurator (top-right, quick access) ----
-  const sc=el("div","sf-panel stay-widget stay-top");
-  sc.innerHTML=`<div class="sf-panel-head"><h3>🛏️ Room Configurator</h3></div>
-    <p class="qs-sub" style="margin:0 0 10px">Enter the party — we'll suggest the best rooms.</p>
-    <div class="sc-inputs">
-      <label>Adults<input id="sc-ad" type="number" min="0" value="2"></label>
-      <label>Children<input id="sc-ch" type="number" min="0" value="0"></label>
-      <label>Infants<input id="sc-in" type="number" min="0" value="0"></label>
-      <button class="btn sm" id="sc-go">Find rooms</button>
-    </div>`;
-  topRow.appendChild(sc);
-  v.appendChild(topRow);
-  const runSC=()=>{
-    const a=parseInt($("#sc-ad").value)||0, c=parseInt($("#sc-ch").value)||0, inf=parseInt($("#sc-in").value)||0;
-    if(!a&&!c&&!inf){ return; }
-    const sol=solveStay(a,c,inf);
-    openStayModal(sol);
-  };
-  $("#sc-go").onclick=runSC;
-  ["sc-ad","sc-ch","sc-in"].forEach(id=>{ const el2=$("#"+id); if(el2) el2.onkeydown=e=>{ if(e.key==="Enter") runSC(); }; });
+  // ── Hide breadcrumb on home ────────────────────────────────────────────────
+  const bc = document.getElementById('sf-breadcrumb');
+  if(bc) bc.style.display = 'none';
 
-  // ---- module cards, one even row (exclude insight from home) ----
-  const mods=userModules(SESSION?._key||"ajay.kawa").filter(m=>m.id!=="insight");
-  // ── Module cards grouped by category ──────────────────────────────────
-  const grpContainer=el("div","");
-  grpContainer.style.cssText="width:100%;margin-bottom:24px";
-  const groups=typeof MODULE_GROUPS!=="undefined"?MODULE_GROUPS:[];
-  const groupedIds=groups.flatMap(g=>g.modules);
-  const allMods=userModules(SESSION?._key||"ajay.kawa");
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  const pipe   = (typeof ENQUIRIES!=="undefined"?ENQUIRIES:[]).filter(e=>['new','proposal','negotiation'].includes(e.stage));
+  const conf   = (typeof ENQUIRIES!=="undefined"?ENQUIRIES:[]).filter(e=>e.stage==='confirmed');
+  const confVal= conf.reduce((t,e)=>t+(e.totalValue||0),0);
+  const thisWk = new Date(); thisWk.setDate(thisWk.getDate()-7);
+  const newWk  = (typeof ENQUIRIES!=="undefined"?ENQUIRIES:[]).filter(e=>new Date(e.created)>thisWk).length;
+  const overdue= (typeof ALL_ACTIONS!=="undefined"?ALL_ACTIONS:[]).filter(a=>a.status!=="done"&&new Date(a.due)<new Date()).length;
+  const tasks  = JSON.parse(localStorage.getItem('sf_tasks')||'[]').filter(t=>t.status!=='done').length;
+  const events = (typeof ENQUIRIES!=="undefined"?ENQUIRIES:[]).filter(e=>e.stage==='confirmed').length;
 
-  groups.forEach(grp=>{
-    const grpMods=allMods.filter(m=>grp.modules.includes(m.id));
-    if(!grpMods.length) return;
-    const grpDiv=document.createElement("div");
-    grpDiv.style.cssText="margin-bottom:24px";
-    grpDiv.innerHTML=`<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb">${grp.icon} ${grp.label}</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px">
-      ${grpMods.map(m=>`<button onclick="switchTab('${m.tabs[0]}')"
-        style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px;background:#fff;border:2px solid #e5e7eb;border-radius:12px;cursor:pointer;text-align:left;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.05)"
-        onmouseover="this.style.borderColor='${m.colour}';this.style.boxShadow='0 4px 14px rgba(0,0,0,.10)'"
-        onmouseout="this.style.borderColor='#e5e7eb';this.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'">
-        <div style="width:38px;height:38px;border-radius:9px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${m.icon}</div>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:#111827">${m.name}</div>
-          <div style="font-size:11px;color:#374151;margin-top:3px;line-height:1.4">${m.caption}</div>
-        </div>
-      </button>`).join("")}
-    </div>`;
-    grpContainer.appendChild(grpDiv);
+  v.innerHTML = '';
+  v.style.padding = '0';
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'min-height:100%;background:#f0f4f8';
+
+  // ── Module cards — 2 rows of 6 ────────────────────────────────────────────
+  const cardsSection = document.createElement('div');
+  cardsSection.style.cssText = 'padding:28px 28px 0';
+
+  // Build 2 rows of 6 from groups order
+  const orderedMods = [];
+  groups.forEach(grp => {
+    const gm = mods.filter(m => grp.modules.includes(m.id));
+    gm.forEach(m => orderedMods.push(m));
   });
-  v.appendChild(grpContainer);
+  // Any not in groups
+  const groupedIds = groups.flatMap(g=>g.modules);
+  mods.filter(m=>!groupedIds.includes(m.id)).forEach(m=>orderedMods.push(m));
 
-  // ---- at-a-glance stats ----
-  const pipe=(typeof pipelineData==="function")?pipelineData():[];
-  const open=pipe.filter(e=>["enquiry","provisional"].includes(e.status));
-  const conf=pipe.filter(e=>e.status==="confirmed");
-  const today=new Date().toISOString().slice(0,10);
-  const weekAgo=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
-  const newThisWeek=pipe.filter(e=>e.created && e.created.slice(0,10)>=weekAgo && !["bob"].includes(e._kind)).length;
-  const overdue=pipe.filter(e=>["enquiry","provisional"].includes(e.status) && e.followUp && e.followUp<today).length;
-  const upcoming=pipe.filter(e=>e.date && /^\d{4}-\d{2}-\d{2}/.test(e.date) && e.date>=today && e.status!=="cancelled")
-    .sort((a,b)=>a.date.localeCompare(b.date));
-  const openTasks=(typeof TaskStore!=="undefined")?TaskStore.all().filter(t=>!t.done).length:0;
-  const stats=el("div","sf-stats6");
-  stats.innerHTML=`
-    <button class="sf-stat" data-go="pipeline"><span class="sf-stat-ic" style="background:#eef2f8">📊</span>
-      <div><span class="sf-stat-v">${open.length}</span><span class="sf-stat-k">Open enquiries</span></div></button>
-    <button class="sf-stat" data-go="pipeline"><span class="sf-stat-ic" style="background:#e6f3ee">💷</span>
-      <div><span class="sf-stat-v">${money(Math.round(conf.reduce((s,e)=>s+(e.value||0),0)))}</span><span class="sf-stat-k">Confirmed value</span></div></button>
-    <button class="sf-stat" data-go="pipeline"><span class="sf-stat-ic" style="background:#eef7ea">🆕</span>
-      <div><span class="sf-stat-v">${newThisWeek}</span><span class="sf-stat-k">New this week</span></div></button>
-    <button class="sf-stat" data-go="pipeline"><span class="sf-stat-ic" style="background:#fdeee3">⚠️</span>
-      <div><span class="sf-stat-v" style="${overdue?'color:#b3261e':''}">${overdue}</span><span class="sf-stat-k">Overdue follow-ups</span></div></button>
-    <button class="sf-stat" data-go="tasks"><span class="sf-stat-ic" style="background:#e8f3e8">✅</span>
-      <div><span class="sf-stat-v">${openTasks}</span><span class="sf-stat-k">Open tasks</span></div></button>
-    <button class="sf-stat" data-go="pipeline"><span class="sf-stat-ic" style="background:#eef2f8">📅</span>
-      <div><span class="sf-stat-v">${upcoming.length}</span><span class="sf-stat-k">Upcoming events</span></div></button>`;
-  v.appendChild(stats);
-  stats.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>switchTab(b.dataset.go));
+  // 2 rows: first 6 and second 6
+  const row1 = orderedMods.slice(0,6);
+  const row2 = orderedMods.slice(6,12);
 
-  // ---- dashboard grid: priorities · upcoming · mini pipeline snapshot ----
-  const grid=el("div","sf-dash-grid");
-  const tasks=(typeof TaskStore!=="undefined")?TaskStore.all().filter(t=>!t.done).slice(0,5):[];
-  const prioRows = tasks.length? tasks.map(t=>`<div class="sf-prio"><span class="sf-prio-check">☐</span>
-      <div class="sf-prio-txt">${t.title}<span class="sf-prio-mod">${t.module||"TaskPRO"}</span></div>
-      <span class="sf-prio-due">${t.due||""}</span></div>`).join("")
-    : open.slice(0,5).map(e=>`<div class="sf-prio"><span class="sf-prio-check">☐</span>
-      <div class="sf-prio-txt">Follow up: ${e.name}<span class="sf-prio-mod">SalesPRO</span></div>
-      <span class="sf-prio-due">${e.followUp?fmtDMY(e.followUp):""}</span></div>`).join("");
-  const upRows = upcoming.slice(0,5).map(e=>{ const d=new Date(e.date);
-    const et=EVENT_TYPES.find(t=>t.id===e.event);
-    return `<div class="sf-up"><div class="sf-up-date"><b>${d.getDate()}</b><span>${d.toLocaleDateString("en-GB",{month:"short"}).toUpperCase()}</span></div>
-      <div class="sf-up-txt">${e.name}<span class="sf-up-sub">${et?et.label:(e.roomName||"Event")}</span></div></div>`;
-  }).join("") || `<div class="qs-sub" style="padding:10px 0">No upcoming events.</div>`;
+  [row1, row2].forEach((row, rowIdx) => {
+    const rowDiv = document.createElement('div');
+    rowDiv.style.cssText = 'display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:12px';
+    row.forEach(m => {
+      const card = document.createElement('button');
+      card.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;background:#fff;border:2px solid #e5e7eb;border-radius:14px;cursor:pointer;text-align:left;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.05);width:100%';
+      card.innerHTML = `
+        <div style="width:40px;height:40px;border-radius:10px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${m.icon}</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#111827;line-height:1.2">${m.name}</div>
+          <div style="font-size:10px;color:#374151;margin-top:3px;line-height:1.4">${m.caption}</div>
+        </div>`;
+      card.onmouseover = () => { card.style.borderColor=m.colour; card.style.boxShadow='0 4px 14px rgba(0,0,0,.10)'; card.style.transform='translateY(-2px)'; };
+      card.onmouseout  = () => { card.style.borderColor='#e5e7eb'; card.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'; card.style.transform=''; };
+      card.onclick = () => renderModuleLanding(m.id);
+      rowDiv.appendChild(card);
+    });
+    cardsSection.appendChild(rowDiv);
+  });
 
-  // mini pipeline snapshot — value by stage
-  const byStage={enquiry:0,provisional:0,confirmed:0};
-  pipe.forEach(e=>{ if(byStage[e.status]!=null) byStage[e.status]+=e.value||0; });
-  const maxStage=Math.max(byStage.enquiry,byStage.provisional,byStage.confirmed,1);
-  grid.innerHTML=`
-    <div class="sf-panel">
-      <div class="sf-panel-head"><h3>Today's Priorities</h3><button class="sf-link" data-go="tasks">View all</button></div>
-      ${prioRows||`<div class="qs-sub" style="padding:10px 0">Nothing outstanding — nice work.</div>`}
-    </div>
-    <div class="sf-panel">
-      <div class="sf-panel-head"><h3>Upcoming Events</h3><button class="sf-link" data-go="pipeline">View all</button></div>
-      ${upRows}
-    </div>
-    <div class="sf-panel">
-      <div class="sf-panel-head"><h3>Pipeline Snapshot</h3><button class="sf-link" data-go="pipeline">Open</button></div>
-      <div class="snap-row"><span class="snap-k">Enquiry</span><div class="snap-bar"><span style="width:${byStage.enquiry/maxStage*100}%;background:#e8cf4a"></span></div><span class="snap-v">${money(Math.round(byStage.enquiry))}</span></div>
-      <div class="snap-row"><span class="snap-k">Provisional</span><div class="snap-bar"><span style="width:${byStage.provisional/maxStage*100}%;background:#e0a030"></span></div><span class="snap-v">${money(Math.round(byStage.provisional))}</span></div>
-      <div class="snap-row"><span class="snap-k">Confirmed</span><div class="snap-bar"><span style="width:${byStage.confirmed/maxStage*100}%;background:#4a9d6a"></span></div><span class="snap-v">${money(Math.round(byStage.confirmed))}</span></div>
-      <div class="snap-tot">Open pipeline: <b>${money(Math.round(open.reduce((s,e)=>s+(e.value||0),0)))}</b></div>
-    </div>`;
-  v.appendChild(grid);
-  grid.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>switchTab(b.dataset.go));
+  wrap.appendChild(cardsSection);
+
+  // ── Stats bar — full width ─────────────────────────────────────────────────
+  const statsBar = document.createElement('div');
+  statsBar.style.cssText = 'display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:16px 28px;margin-top:4px';
+  const stats = [
+    {icon:'📊',val:pipe.length,label:'Open enquiries',colour:'#4a86c7'},
+    {icon:'💰',val:'£'+Math.round(confVal/1000)+'k',label:'Confirmed value',colour:'#2a6a4a'},
+    {icon:'🆕',val:newWk,label:'New this week',colour:'#4a9d7f'},
+    {icon:'⚠️',val:overdue,label:'Overdue follow-ups',colour:'#c78a3b'},
+    {icon:'✅',val:tasks,label:'Open tasks',colour:'#8b5c8f'},
+    {icon:'📅',val:events,label:'Upcoming events',colour:'#4a86c7'},
+  ];
+  stats.forEach(s => {
+    const sc = document.createElement('div');
+    sc.style.cssText = 'background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;align-items:center;gap:10px';
+    sc.innerHTML = `<span style="font-size:22px">${s.icon}</span><div><div style="font-size:22px;font-weight:700;color:${s.colour};line-height:1">${s.val}</div><div style="font-size:11px;color:#374151;margin-top:2px">${s.label}</div></div>`;
+    statsBar.appendChild(sc);
+  });
+  wrap.appendChild(statsBar);
+
+  v.appendChild(wrap);
 }
 
-/* Room configurator results in a dismissable popup (print + close). */
-function openStayModal(sol){
-  const party=`${sol.party.adults} adult${sol.party.adults!==1?"s":""}${sol.party.children?`, ${sol.party.children} child${sol.party.children>1?"ren":""}`:""}${sol.party.infants?`, ${sol.party.infants} infant${sol.party.infants>1?"s":""}`:""}`;
-  document.querySelectorAll(".sc-modal").forEach(m=>m.remove());
-  const wrap=el("div","sc-modal");
-  wrap.innerHTML=`<div class="sc-modal-card" id="sc-print-area">
-    <div class="sc-modal-head">
-      <div><h3>🛏️ Room Configurator</h3><span class="sc-modal-sub">${party}</span></div>
-      <button class="sc-modal-x" id="sc-x">✕</button>
+// ── MODULE LANDING PAGE ────────────────────────────────────────────────────────
+function renderModuleLanding(moduleId){
+  const v = document.getElementById('view');
+  const mods = typeof FLOW_MODULES!=="undefined" ? FLOW_MODULES : [];
+  const m = mods.find(x=>x.id===moduleId);
+  if(!m) return;
+
+  const subcards = (typeof MODULE_SUBCARDS!=="undefined" && MODULE_SUBCARDS[moduleId]) || [];
+
+  // Show breadcrumb
+  const bc = document.getElementById('sf-breadcrumb');
+  const bcLabel = document.getElementById('sf-bc-module');
+  const bcTab   = document.getElementById('sf-bc-tab');
+  if(bc){ bc.style.display='flex'; }
+  if(bcLabel){ bcLabel.textContent = m.name; }
+  if(bcTab){ bcTab.textContent = ''; }
+
+  v.innerHTML = '';
+  v.style.padding = '0';
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding:28px;background:#f0f4f8;min-height:100%';
+
+  // Module header
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'display:flex;align-items:center;gap:14px;margin-bottom:24px';
+  hdr.innerHTML = `
+    <div style="width:52px;height:52px;border-radius:14px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">${m.icon}</div>
+    <div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#1a2b3a;line-height:1">${m.name}</div>
+      <div style="font-size:13px;color:#374151;margin-top:3px">${m.caption}</div>
     </div>
-    <div class="sc-modal-body">${renderStaySolution(sol)}</div>
-    <div class="sc-modal-foot">
-      <button class="btn ghost sm" id="sc-print">🖨 Print</button>
-      <button class="btn sm" id="sc-close">Close</button>
-    </div>
-  </div>`;
-  document.body.appendChild(wrap);
-  const close=()=>wrap.remove();
-  wrap.onclick=(e)=>{ if(e.target===wrap) close(); };
-  wrap.querySelector("#sc-x").onclick=close;
-  wrap.querySelector("#sc-close").onclick=close;
-  wrap.querySelector("#sc-print").onclick=()=>{
-    const w=window.open("","_blank");
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Room allocation</title>
-      <style>body{font-family:Arial,sans-serif;color:#1a2b47;padding:24px;max-width:700px;margin:0 auto}
-      h2{font-family:Georgia,serif}.sc-row{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #eee}
-      .sc-qty{font-weight:800;color:#2f6f9e}.sc-name{font-weight:700;min-width:140px}.sc-fill{flex:1;color:#666}
-      .sc-nums{color:#2f6f9e;font-weight:600}.sc-head{margin:10px 0}.sc-ok{color:#4a7c59;margin-top:12px;font-size:13px}
-      .sc-over{color:#b3261e;margin-top:12px;font-weight:600}</style></head><body>
-      <h2>Brandon Hall Hotel and Spa — Room Allocation</h2>
-      <p style="color:#666">${party} · ${new Date().toLocaleDateString("en-GB")}</p>
-      ${renderStaySolution(sol)}
-      <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
-    w.document.close();
-  };
-  const esc=(e)=>{ if(e.key==="Escape"){ close(); document.removeEventListener("keydown",esc); } };
-  document.addEventListener("keydown",esc);
+    <button onclick="switchTab('home')" style="margin-left:auto;padding:9px 18px;background:#fff;border:2px solid #e5e7eb;border-radius:10px;font:600 13px Lato;color:#1a2b3a;cursor:pointer">🏠 Home</button>`;
+  wrap.appendChild(hdr);
+
+  // Sub-cards grid
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px';
+
+  subcards.forEach(sc => {
+    const card = document.createElement('button');
+    card.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:20px;background:#fff;border:2px solid #e5e7eb;border-radius:14px;cursor:pointer;text-align:left;transition:all .15s;box-shadow:0 1px 4px rgba(0,0,0,.06);width:100%';
+    card.innerHTML = `
+      <div style="width:44px;height:44px;border-radius:11px;background:${m.colour}18;border:2px solid ${m.colour}30;display:flex;align-items:center;justify-content:center;font-size:22px">${sc.icon}</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#111827">${sc.label}</div>
+        <div style="font-size:11px;color:#374151;margin-top:3px;line-height:1.4">${sc.desc}</div>
+      </div>`;
+    card.onmouseover = () => { card.style.borderColor=m.colour; card.style.boxShadow='0 6px 18px rgba(0,0,0,.10)'; card.style.transform='translateY(-2px)'; };
+    card.onmouseout  = () => { card.style.borderColor='#e5e7eb'; card.style.boxShadow='0 1px 4px rgba(0,0,0,.06)'; card.style.transform=''; };
+    card.onclick = () => switchTab(sc.tab);
+    grid.appendChild(card);
+  });
+
+  wrap.appendChild(grid);
+  v.appendChild(wrap);
 }
 
-/* Solver using the real inventory. Allocates actual room numbers.
-   - forms adult pairs (2 per room), assigns children up to room capacity
-   - prefers sofa-bed rooms when a room needs to hold 3 adults / extra bed
-   - prefers interconnecting rooms for families with children
-   - assigns cots for infants (max HOTEL_COTS) */
-function solveStay(adults, children, infants){
-  const pool = (typeof HOTEL_ROOMS!=="undefined") ? HOTEL_ROOMS.map(r=>({...r,used:false})) : [];
-  const cotsAvail = (typeof HOTEL_COTS!=="undefined")?HOTEL_COTS:4;
-  let a=adults, c=children, inf=infants, cotsUsed=0;
-  const assigned=[];
-  const take=(pred)=>{ const r=pool.find(x=>!x.used && pred(x)); if(r){ r.used=true; } return r; };
 
-  // Families first: while children remain, place a room that holds children
-  const familyRooms = ["JSUI","EXE_TRP","PRE_DBL","EXE_DBL","EXE_TWN","CLA_DBL","CLA_TWN"];
-  while(c>0 && (a>0 || c>0)){
-    // prefer a room with higher child capacity / interconnect
-    let r = take(x=>x.children>=2 && x.interconnect) || take(x=>x.children>=2) ||
-            take(x=>x.sofaBed) || take(x=>x.adults>=2);
-    if(!r) break;
-    const pa=Math.min(a, r.adults + (r.sofaBed?1:0));
-    a-=pa;
-    const kidCap = r.children + (r.sofaBed?1:0) + Math.max(0, r.adults-pa);
-    const pc=Math.min(c, Math.max(1,kidCap)); c-=pc;
-    let pin=0; if(inf>0 && cotsUsed<cotsAvail){ pin=1; inf--; cotsUsed++; }
-    assigned.push({room:r, adults:pa, children:pc, infants:pin});
-  }
-  // Remaining adults: 2 per room, cheapest suitable
-  while(a>0){
-    let r = take(x=>x.type==="CLA_DBL"||x.type==="CLA_TWN") || take(x=>x.adults>=2) || take(()=>true);
-    if(!r) break;
-    const pa=Math.min(a, r.adults + (r.sofaBed?1:0)); a-=pa;
-    let pin=0; if(inf>0 && cotsUsed<cotsAvail){ pin=1; inf--; cotsUsed++; }
-    assigned.push({room:r, adults:pa, children:0, infants:pin});
-  }
-  // leftover infants → try to add cots to existing rooms
-  assigned.forEach(x=>{ if(inf>0 && x.infants===0 && cotsUsed<cotsAvail){ x.infants=1; inf--; cotsUsed++; } });
-
-  // group by type for a tidy summary, but keep room numbers
-  const byType={};
-  assigned.forEach(x=>{ const k=x.room.label; if(!byType[k]) byType[k]={label:k,rooms:[],adults:0,children:0,infants:0};
-    byType[k].rooms.push(x.room.n); byType[k].adults+=x.adults; byType[k].children+=x.children; byType[k].infants+=x.infants; });
-
-  return { combo:Object.values(byType), assigned,
-    leftover:{adults:Math.max(0,a),children:Math.max(0,c),infants:Math.max(0,inf)},
-    totalRooms:assigned.length, cotsUsed, party:{adults,children,infants} };
-}
 function renderStaySolution(sol){
   if(!sol.party.adults && !sol.party.children && !sol.party.infants) return `<p class="qs-sub">Enter a party size above.</p>`;
   const over = sol.leftover.adults||sol.leftover.children||sol.leftover.infants;

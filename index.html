@@ -77,15 +77,19 @@ a{color:var(--gold-dk)}
 /* ---------- APP SHELL ---------- */
 /* ---------- STAYFLOW SHELL (sidebar + header) ---------- */
 #app{min-height:100dvh;display:flex}
-.sf-sidebar{width:236px;flex-shrink:0;background:linear-gradient(180deg,#101d33,#0c1729);
-  color:#c7d2e0;position:sticky;top:0;height:100dvh;display:flex;flex-direction:column;overflow-y:auto;z-index:40}
-.sf-logo{padding:20px 20px 4px;cursor:pointer}
-.sf-logo img{width:150px;max-width:100%;display:block}
-.sf-stay{color:#fff}.sf-flow{color:#4db6c4}
-.sf-tagline{padding:0 20px 16px;font-size:9.5px;letter-spacing:1.5px;color:#6b7d95;border-bottom:1px solid rgba(255,255,255,.07)}
-.sf-nav{flex:1;padding:12px 12px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
-.sf-nav-item:hover,.sf-nav-item.active{background:rgba(199,138,59,.18)!important;color:#c78a3b!important}
-.sf-home:hover{background:rgba(255,255,255,.1)!important}
+/* ── Full-width layout (no sidebar) ── */
+.sf-full{width:100%;display:flex;flex-direction:column}
+.sf-header-full{display:flex;align-items:center;gap:12px;padding:0 24px;background:linear-gradient(90deg,#101d33,#0c1729);height:56px;position:sticky;top:0;z-index:40;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.sf-logo-inline img{height:28px;display:block}
+.sf-staff-link{font-size:12px;font-weight:600;color:#8fa3b8;text-decoration:none;white-space:nowrap;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.12)}
+.sf-staff-link:hover{background:rgba(255,255,255,.08);color:#c7d2e0}
+.sf-breadcrumb{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 24px;height:40px;display:flex;align-items:center;gap:8px}
+.sf-bc-home{background:none;border:none;font:600 13px Lato;color:#1a2b3a;cursor:pointer;padding:0}
+.sf-bc-home:hover{color:#c78a3b}
+.sf-bc-sep{color:#d1d5db;font-size:14px}
+.sf-bc-label{font-size:13px;font-weight:700;color:#1a2b3a}
+.sf-bc-tab{font-size:13px;color:#374151}
+.sf-bc-tab::before{content:" › ";color:#d1d5db}
 .sf-nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;font-size:13.5px;
   font-weight:500;color:#b3c0d1;text-align:left;transition:.14s;font-family:var(--brand-sans)}
 .sf-nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
@@ -1100,28 +1104,29 @@ body.home-active nav.tabs{display:none;}
 
 <!-- ================= APP ================= -->
 <div id="app" class="hidden">
-  <aside class="sf-sidebar" id="sf-sidebar">
-    <div class="sf-logo" id="sf-logo-home"><img src="assets/hospro/logo-white.svg" alt="HOSPRO"></div>
-    <div class="sf-tagline">Hospitality, professionally run</div>
-    <nav class="sf-nav" id="sf-nav"></nav>
-    <div class="sf-side-foot">
-      <a href="/staff" target="_blank" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:rgba(74,134,199,.2);color:#8fa3b8;font-size:12px;font-weight:600;text-decoration:none;margin:0 12px 8px">
-        👤 Staff self-service portal →
-      </a>
-      <button class="sf-side-link" id="sf-settings"><span class="sf-ico">⚙️</span> Settings</button>
-      <div class="sf-vendor">HOSPRO · for every part of your hotel</div>
-    </div>
-  </aside>
-  <div class="sf-main">
-    <header class="sf-header">
+  <div class="sf-main sf-full">
+    <header class="sf-header sf-header-full">
+      <div class="sf-logo-inline" id="sf-logo-home" onclick="switchTab('home')" style="cursor:pointer">
+        <img src="assets/hospro/logo-white.svg" alt="HOSPRO" style="height:28px">
+      </div>
       <div class="sf-loc" id="tb-loc">Brandon Hall Hotel and Spa · Coventry</div>
       <div class="sf-search"><input placeholder="🔍 Search…" id="sf-search"></div>
       <div class="sf-spacer"></div>
-      <span id="tb-mode" class="mode-badge">Demo</span>
-      <div class="sf-user"><span class="sf-avatar" id="sf-avatar">—</span>
-        <div class="sf-uwrap"><b id="tb-who">—</b><span class="sf-urole">Sales &amp; Events</span></div></div>
+      <a href="/staff" target="_blank" class="sf-staff-link">👤 Staff portal</a>
+      <span id="tb-mode" class="mode-badge">Live</span>
+      <div class="sf-user">
+        <span class="sf-avatar" id="sf-avatar">—</span>
+        <div class="sf-uwrap"><b id="tb-who">—</b><span class="sf-urole" id="tb-role">Sales &amp; Events</span></div>
+      </div>
       <button class="btn ghost sm" id="tb-logout">Sign out</button>
     </header>
+    <!-- Breadcrumb bar — shown when inside a module -->
+    <div id="sf-breadcrumb" class="sf-breadcrumb" style="display:none">
+      <button onclick="switchTab('home')" class="sf-bc-home">🏠 Home</button>
+      <span class="sf-bc-sep">›</span>
+      <span id="sf-bc-module" class="sf-bc-label"></span>
+      <span id="sf-bc-tab" class="sf-bc-tab"></span>
+    </div>
     <main id="view"></main>
   </div>
 </div>
