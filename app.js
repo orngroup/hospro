@@ -5426,828 +5426,596 @@ function renderFixAllJobs(v){
 
 /* ============================================================ STAFFPRO */
 
-// ── Default data ─────────────────────────────────────────────────────────────
-const STAFF_DEFAULTS = {
-  departments: [
-    { id:'reception',    name:'Reception',       colour:'#4a86c7', minPerShift:1,
-      shifts:['07:00-15:00','15:00-23:00','23:00-07:00'], notes:'Night manager doubles as reception' },
-    { id:'kitchen',      name:'Kitchen',         colour:'#c45c00', minPerShift:2,
-      shifts:['05:30-14:00','13:30-22:00'], notes:'Min: 1 chef + 1 kitchen porter' },
-    { id:'restaurant',   name:'Restaurant F&B',  colour:'#4a9d7f', minPerShift:2,
-      shifts:['06:00-12:00','15:00-23:00'], notes:'Breakfast 1:28 ratio, Dinner 1:7 ratio' },
-    { id:'bar',          name:'Bar',             colour:'#8b5c8f', minPerShift:2,
-      shifts:['15:00-23:00'], notes:'Min 2 staff from 15:00' },
-    { id:'housekeeping', name:'Housekeeping',    colour:'#2a6a4a', minPerShift:1,
-      shifts:['07:00-15:00','09:00-17:00'], notes:'1 housekeeper = 12 rooms/day' },
-    { id:'nights',       name:'Nights',          colour:'#1a2b3a', minPerShift:1,
-      shifts:['23:00-07:00'], notes:'Night manager covers reception 23:00-07:00' },
-    { id:'maintenance',  name:'Maintenance',     colour:'#b8860b', minPerShift:0,
-      shifts:['08:00-16:00'], notes:'As required' },
-    { id:'admin',        name:'Admin/Events',    colour:'#be185d', minPerShift:0,
-      shifts:['08:00-16:00','09:00-17:30'], notes:'Office hours' },
-  ],
-  staff: [
-    // Reception
-    { id:'patrik',    name:'Patrik Vlach',      dept:'reception',    type:'core',    contractHrs:40 },
-    { id:'manjusha',  name:'Manjusha Ushadevi', dept:'reception',    type:'core',    contractHrs:40 },
-    { id:'alice',     name:'Alice Asumeng',     dept:'reception',    type:'core',    contractHrs:40 },
-    { id:'aghil',     name:'Aghil Joy',         dept:'reception',    type:'core',    contractHrs:40 },
-    // Nights
-    { id:'alan',      name:'Alan Wilkins',      dept:'nights',       type:'core',    contractHrs:40 },
-    { id:'amal',      name:'Amal Premkumar',    dept:'nights',       type:'core',    contractHrs:24 },
-    // Kitchen
-    { id:'devendra',  name:'Devendra Subedi',   dept:'kitchen',      type:'core',    contractHrs:40 },
-    { id:'sajeed',    name:'Sajeed',            dept:'kitchen',      type:'relief',  contractHrs:0  },
-    { id:'darryl',    name:'Darryl',            dept:'kitchen',      type:'relief',  contractHrs:0  },
-    { id:'aimee',     name:'Aimee',             dept:'kitchen',      type:'relief',  contractHrs:0  },
-    { id:'david_m',   name:'David Marshall',    dept:'kitchen',      type:'core',    contractHrs:40 },
-    { id:'nathan',    name:'Nathan Field',      dept:'kitchen',      type:'core',    contractHrs:30 },
-    // Bar
-    { id:'jomy',      name:'Jomy Mathai Joy',   dept:'bar',          type:'core',    contractHrs:40 },
-    { id:'rowan',     name:'Rowan Wilkins',     dept:'bar',          type:'core',    contractHrs:37 },
-    // Restaurant F&B
-    { id:'catarina',  name:'Catarina Li',       dept:'restaurant',   type:'core',    contractHrs:40 },
-    { id:'manjinder', name:'Manjinder Shergill', dept:'restaurant',  type:'core',    contractHrs:30 },
-    { id:'sheba',     name:'Sheba Tychicus',    dept:'restaurant',   type:'core',    contractHrs:24 },
-    { id:'dhruv',     name:'Dhruvilsinh C.',    dept:'restaurant',   type:'core',    contractHrs:17 },
-    { id:'darren',    name:'Darren',            dept:'restaurant',   type:'relief',  contractHrs:0  },
-    { id:'nevin',     name:'Nevin',             dept:'restaurant',   type:'relief',  contractHrs:0  },
-    { id:'arthur',    name:'Arthur',            dept:'restaurant',   type:'relief',  contractHrs:0  },
-    // Housekeeping
-    { id:'ruth',      name:'Ruth Addison',      dept:'housekeeping', type:'core',    contractHrs:40 },
-    { id:'rahul',     name:'Rahul Reghunath',   dept:'housekeeping', type:'core',    contractHrs:40 },
-    { id:'tushar',    name:'Tushar Ambekar',    dept:'housekeeping', type:'core',    contractHrs:40 },
-    { id:'hassen',    name:'Hassen',            dept:'housekeeping', type:'relief',  contractHrs:0  },
-    { id:'dushyanth', name:'Dushyanth',         dept:'housekeeping', type:'relief',  contractHrs:0  },
-    { id:'lara',      name:'Lara Jervis',       dept:'housekeeping', type:'core',    contractHrs:32 },
-    { id:'manoj',     name:'Manoj',             dept:'housekeeping', type:'relief',  contractHrs:0  },
-    // Admin
-    { id:'veronica',  name:'Veronica Webb',     dept:'admin',        type:'core',    contractHrs:24 },
-    { id:'natalie',   name:'Natalie Freeman',   dept:'admin',        type:'core',    contractHrs:40 },
-    { id:'nicola',    name:'Nicola',            dept:'admin',        type:'relief',  contractHrs:0  },
-    // Maintenance
-    { id:'glenn',     name:'Glenn Randell',     dept:'maintenance',  type:'core',    contractHrs:40 },
-    { id:'pete',      name:'Pete',              dept:'maintenance',  type:'relief',  contractHrs:0  },
-    { id:'herman',    name:'Herman Charles',    dept:'maintenance',  type:'relief',  contractHrs:0  },
-  ]
-};
+// ── Seed data from Brandon Hall actual rota (w/c 28 Sep 2026) ────────────────
+const SP_STAFF_SEED = [{"id":"veronica_w","name":"Veronica Webb","role":"Finance Assistant","dept":"admin","type":"core","contractHrs":24},{"id":"nicola_c","name":"Nicola","role":"Sales Manager (relief)","dept":"admin","type":"relief","contractHrs":0},{"id":"natalie_f","name":"Natalie Freeman","role":"Events Executive","dept":"admin","type":"core","contractHrs":40},{"id":"patrik_v","name":"Patrik Vlach","role":"Reception Manager","dept":"reception","type":"core","contractHrs":40},{"id":"manjusha_u","name":"Manjusha Ushadevi","role":"Reception Supervisor","dept":"reception","type":"core","contractHrs":40},{"id":"alice_a","name":"Alice Asumeng","role":"Receptionist","dept":"reception","type":"core","contractHrs":40},{"id":"aghil_j","name":"Aghil Joy","role":"Receptionist","dept":"reception","type":"core","contractHrs":40},{"id":"alan_w","name":"Alan Wilkins","role":"Nights Supervisor","dept":"nights","type":"core","contractHrs":40},{"id":"amal_p","name":"Amal Premkumar","role":"Night Porter","dept":"nights","type":"core","contractHrs":24},{"id":"glenn_r","name":"Glenn Randell","role":"Maintenance Manager","dept":"maintenance","type":"core","contractHrs":40},{"id":"pete_m","name":"Pete","role":"Multi-trader","dept":"maintenance","type":"relief","contractHrs":0},{"id":"herman_c","name":"Herman Charles","role":"Multi-trader","dept":"maintenance","type":"relief","contractHrs":0},{"id":"devendra_s","name":"Devendra Subedi","role":"Junior Sous Chef","dept":"kitchen","type":"core","contractHrs":40},{"id":"sajeed","name":"Sajeed","role":"Breakfast Team (relief)","dept":"kitchen","type":"relief","contractHrs":0},{"id":"darryl","name":"Darryl","role":"Head Chef (relief)","dept":"kitchen","type":"relief","contractHrs":0},{"id":"aimee","name":"Aimee","role":"Chef de Partie (relief)","dept":"kitchen","type":"relief","contractHrs":0},{"id":"david_m","name":"David Marshall","role":"Kitchen Porter","dept":"kitchen","type":"core","contractHrs":40},{"id":"nathan_f","name":"Nathan Field","role":"Kitchen Porter","dept":"kitchen","type":"core","contractHrs":30},{"id":"jomy_m","name":"Jomy Mathai Joy","role":"Bar Supervisor","dept":"bar","type":"core","contractHrs":40},{"id":"rowan_w","name":"Rowan Wilkins","role":"Bar Team Member","dept":"bar","type":"core","contractHrs":37},{"id":"catarina_l","name":"Catarina Li","role":"Assistant Manager","dept":"restaurant","type":"core","contractHrs":40},{"id":"manjinder_s","name":"Manjinder Shergill","role":"F&B Supervisor","dept":"restaurant","type":"core","contractHrs":30},{"id":"anael_n","name":"Anael Nkunga","role":"F&B Team Member","dept":"restaurant","type":"core","contractHrs":24},{"id":"sheba_t","name":"Sheba Tychicus","role":"F&B Team Member","dept":"restaurant","type":"core","contractHrs":24},{"id":"dhruv_c","name":"Dhruvilsinh Chauhan","role":"F&B Team Member","dept":"restaurant","type":"core","contractHrs":0},{"id":"reuven","name":"Reuven","role":"F&B Team Member","dept":"restaurant","type":"relief","contractHrs":0},{"id":"jayan","name":"Jayan","role":"F&B Team Member","dept":"restaurant","type":"relief","contractHrs":0},{"id":"arthur","name":"Arthur","role":"F&B Trainee","dept":"restaurant","type":"relief","contractHrs":0},{"id":"darren","name":"Darren","role":"F&B Team Member","dept":"restaurant","type":"relief","contractHrs":0},{"id":"nevin","name":"Nevin","role":"F&B Team Member","dept":"restaurant","type":"relief","contractHrs":0},{"id":"ruth_a","name":"Ruth Addison","role":"Head Housekeeper","dept":"housekeeping","type":"core","contractHrs":40},{"id":"aryan","name":"Aryan","role":"Housekeeping","dept":"housekeeping","type":"relief","contractHrs":0},{"id":"lara_j","name":"Lara Jervis","role":"Housekeeping Team","dept":"housekeeping","type":"core","contractHrs":32},{"id":"rahul_r","name":"Rahul Reghunath","role":"Housekeeping Team","dept":"housekeeping","type":"core","contractHrs":40},{"id":"jitendra","name":"Jitendra","role":"Housekeeping","dept":"housekeeping","type":"relief","contractHrs":0},{"id":"manoj","name":"Manoj","role":"Housekeeping (relief)","dept":"housekeeping","type":"relief","contractHrs":0},{"id":"tushar_a","name":"Tushar Ambekar","role":"Housekeeping Team","dept":"housekeeping","type":"core","contractHrs":40},{"id":"allen","name":"Allen","role":"Housekeeping (relief)","dept":"housekeeping","type":"relief","contractHrs":0},{"id":"hassen","name":"Hassen","role":"Housekeeping (relief)","dept":"housekeeping","type":"relief","contractHrs":0},{"id":"dushyanth","name":"Dushyanth","role":"Housekeeping (relief)","dept":"housekeeping","type":"relief","contractHrs":0}];
+const SP_ROTA_SEED  = {"2026-09-28":{"veronica_w":"08:00-16:00","natalie_f":"09:00-17:30","patrik_v":"15:00-23:00","manjusha_u":"off","alice_a":"holiday","aghil_j":"07:00-15:00","alan_w":"23:00-07:00","amal_p":"off","devendra_s":"off","sajeed":"05:30-14:00","darryl":"off","aimee":"13:30-22:00","david_m":"holiday","nathan_f":"17:00-22:00","jomy_m":"off","rowan_w":"18:00-23:00","catarina_l":"off","manjinder_s":"06:00-12:00","anael_n":"off","sheba_t":"off","dhruv_c":"on call","reuven":"06:30-12:00","jayan":"off","arthur":"on call","darren":"off","nevin":"15:00-22:30","ruth_a":"off","aryan":"on call","lara_j":"off","rahul_r":"06:30-14:30","jitendra":"on call","manoj":"off","tushar_a":"09:00-17:00","allen":"off","hassen":"09:00-16:30","dushyanth":"09:00-16:30"},"2026-09-29":{"veronica_w":"off","natalie_f":"09:00-17:30","patrik_v":"07:00-15:00","manjusha_u":"15:00-23:00","alice_a":"holiday","aghil_j":"off","alan_w":"23:00-07:00","amal_p":"off","devendra_s":"05:30-14:00","sajeed":"17:00-22:00","darryl":"off","aimee":"13:30-22:00","david_m":"holiday","nathan_f":"07:00-12:00","jomy_m":"15:00-23:00","rowan_w":"12:00-20:00","catarina_l":"15:00-23:00","manjinder_s":"06:00-12:00","anael_n":"holiday","sheba_t":"off","dhruv_c":"off","reuven":"off","jayan":"07:00-12:00","arthur":"off","darren":"off","nevin":"off","ruth_a":"09:00-17:00","aryan":"on call","lara_j":"09:00-15:30","rahul_r":"off","jitendra":"off","manoj":"off","tushar_a":"09:00-17:00","allen":"off","hassen":"09:00-16:30","dushyanth":"09:00-16:30"},"2026-09-30":{"veronica_w":"off","natalie_f":"09:00-17:30","patrik_v":"07:00-15:00","manjusha_u":"15:00-23:00","alice_a":"holiday","aghil_j":"off","alan_w":"23:00-07:00","amal_p":"off","devendra_s":"05:30-14:00","sajeed":"17:00-22:00","darryl":"13:30-22:00","aimee":"off","david_m":"holiday","nathan_f":"17:00-22:00","jomy_m":"15:00-23:00","rowan_w":"12:00-20:00","catarina_l":"15:00-23:00","manjinder_s":"06:00-12:00","anael_n":"holiday","sheba_t":"on call","dhruv_c":"07:00-13:30","reuven":"off","jayan":"off","arthur":"18:00-23:00","darren":"18:00-22:00","nevin":"17:00-22:30","ruth_a":"09:00-17:00","aryan":"off","lara_j":"off","rahul_r":"06:30-14:30","jitendra":"on call","manoj":"09:00-16:30","tushar_a":"09:00-17:00","allen":"off","hassen":"09:00-16:30","dushyanth":"09:00-16:30"},"2026-10-01":{"veronica_w":"08:00-16:00","natalie_f":"09:00-17:30","patrik_v":"off","manjusha_u":"07:00-15:00","alice_a":"holiday","aghil_j":"15:00-23:00","alan_w":"23:00-07:00","amal_p":"off","devendra_s":"05:30-14:00","sajeed":"off","darryl":"13:30-22:00","aimee":"off","david_m":"holiday","nathan_f":"07:00-12:00","jomy_m":"15:00-23:00","rowan_w":"off","catarina_l":"15:00-23:00","manjinder_s":"06:00-12:00","anael_n":"off","sheba_t":"06:00-12:00","dhruv_c":"off","reuven":"on call","jayan":"off","arthur":"off","darren":"18:00-22:00","nevin":"off","ruth_a":"09:00-17:00","aryan":"off","lara_j":"09:00-15:30","rahul_r":"off","jitendra":"off","manoj":"09:00-16:30","tushar_a":"09:00-17:00","allen":"09:00-15:30","hassen":"off","dushyanth":"09:00-16:30"},"2026-10-02":{"veronica_w":"07:30-15:30","natalie_f":"in lieu","patrik_v":"07:00-10:00","manjusha_u":"15:00-23:00","alice_a":"off","aghil_j":"07:00-15:00","alan_w":"off","amal_p":"23:00-07:00","devendra_s":"05:30-14:00","sajeed":"17:00-22:00","darryl":"13:30-22:00","aimee":"13:00-22:00","david_m":"holiday","nathan_f":"off","jomy_m":"12:00-20:00","rowan_w":"15:00-23:00","catarina_l":"15:00-23:00","manjinder_s":"06:00-12:00","anael_n":"off","sheba_t":"06:00-12:00","dhruv_c":"off","reuven":"off","jayan":"off","arthur":"off","darren":"15:00-23:00","nevin":"off","ruth_a":"09:00-17:00","aryan":"09:00-14:30","lara_j":"off","rahul_r":"06:30-14:30","jitendra":"09:00-16:30","manoj":"off","tushar_a":"off","allen":"off","hassen":"09:00-16:30","dushyanth":"09:00-16:30"},"2026-10-03":{"veronica_w":"OFF","natalie_f":"OFF","patrik_v":"08:00-14:00","manjusha_u":"07:00-15:00","alice_a":"off","aghil_j":"15:00-23:00","alan_w":"off","amal_p":"23:00-07:00","devendra_s":"off","sajeed":"off","darryl":"13:30-22:00","aimee":"07:00-11:30","david_m":"off","nathan_f":"17:00-20:00","jomy_m":"12:00-20:00","rowan_w":"15:00-23:00","catarina_l":"15:00-23:00","manjinder_s":"off","anael_n":"off","sheba_t":"06:00-12:00","dhruv_c":"07:30-13:00","reuven":"off","jayan":"off","arthur":"off","darren":"15:00-23:00","nevin":"18:00-22:30","ruth_a":"off","aryan":"09:00-16:30","lara_j":"off","rahul_r":"06:30-14:30","jitendra":"on call","manoj":"off","tushar_a":"09:00-17:00","allen":"on call","hassen":"off","dushyanth":"off"},"2026-10-04":{"veronica_w":"OFF","natalie_f":"OFF","patrik_v":"08:00-21:00","manjusha_u":"off","alice_a":"15:00-23:00","aghil_j":"07:00-15:00","alan_w":"23:00-07:00","amal_p":"off","devendra_s":"13:30-22:00","sajeed":"off","darryl":"13:30-22:00","aimee":"07:00-15:00","david_m":"off","nathan_f":"08:00-15:00","jomy_m":"off","rowan_w":"off","catarina_l":"off","manjinder_s":"off","anael_n":"off","sheba_t":"06:00-12:00","dhruv_c":"07:30-13:00","reuven":"08:00-13:00","jayan":"off","arthur":"off","darren":"18:00-23:00","nevin":"15:00-23:00","ruth_a":"09:00-17:00","aryan":"on call","lara_j":"10:00-16:30","rahul_r":"06:30-14:30","jitendra":"off","manoj":"09:00-16:30","tushar_a":"off","allen":"09:00-16:30","hassen":"09:00-16:30","dushyanth":"off"}};
+const SP_FC_SEED    = {"2026-09-28":{"rooms":62,"departures":35,"stayovers":28,"breakfastCovers":94,"dinnerCovers":0,"arrivalRooms":34},"2026-09-29":{"rooms":52,"departures":9,"stayovers":43,"breakfastCovers":58,"dinnerCovers":0,"arrivalRooms":21},"2026-09-30":{"rooms":65,"departures":15,"stayovers":50,"breakfastCovers":65,"dinnerCovers":40,"arrivalRooms":27},"2026-10-01":{"rooms":44,"departures":44,"stayovers":33,"breakfastCovers":69,"dinnerCovers":0,"arrivalRooms":11},"2026-10-02":{"rooms":24,"departures":42,"stayovers":3,"breakfastCovers":54,"dinnerCovers":0,"arrivalRooms":21},"2026-10-03":{"rooms":43,"departures":8,"stayovers":16,"breakfastCovers":37,"dinnerCovers":13,"arrivalRooms":35},"2026-10-04":{"rooms":20,"departures":46,"stayovers":5,"breakfastCovers":70,"dinnerCovers":0,"arrivalRooms":15}};
 
-// ── Storage helpers ───────────────────────────────────────────────────────────
-function getRotaData() {
-  return JSON.parse(localStorage.getItem('staffpro_rota') || 'null') || {};
+// ── Department config ─────────────────────────────────────────────────────────
+const SP_DEPTS = [
+  {id:'admin',        name:'Admin / Events',   colour:'#be185d', minTotal:1,  shifts:['08:00-16:00','09:00-17:30'], note:'Office hours'},
+  {id:'reception',    name:'Reception',         colour:'#4a86c7', minTotal:3,  shifts:['07:00-15:00','15:00-23:00','23:00-07:00'], note:'Min 1 per shift · night mgr covers'},
+  {id:'nights',       name:'Nights',            colour:'#1a2b3a', minTotal:1,  shifts:['23:00-07:00'], note:'1 night manager covers reception'},
+  {id:'maintenance',  name:'Maintenance',       colour:'#b8860b', minTotal:0,  shifts:['08:00-16:00'], note:'As required'},
+  {id:'kitchen',      name:'Kitchen',           colour:'#c45c00', minTotal:2,  shifts:['05:30-14:00','13:30-22:00'], note:'Min 1 chef + 1 KP per service'},
+  {id:'bar',          name:'Bar',               colour:'#8b5c8f', minTotal:2,  shifts:['15:00-23:00'], note:'Min 2 staff from 15:00'},
+  {id:'restaurant',   name:'Restaurant F&B',    colour:'#4a9d7f', minTotal:2,  shifts:['06:00-12:00','15:00-23:00'], note:'Breakfast 1:28 · Dinner 1:7'},
+  {id:'housekeeping', name:'Housekeeping',      colour:'#2a6a4a', minTotal:1,  shifts:['07:00-15:00','09:00-17:00'], note:'1 housekeeper = 12 rooms/day'},
+];
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+function spGetStaff()   { return JSON.parse(localStorage.getItem('sp_staff')   || 'null') || JSON.parse(JSON.stringify(SP_STAFF_SEED)); }
+function spSaveStaff(d) { localStorage.setItem('sp_staff',   JSON.stringify(d)); }
+function spGetRota()    { const s=JSON.parse(localStorage.getItem('sp_rota')   || 'null'); return s||JSON.parse(JSON.stringify(SP_ROTA_SEED)); }
+function spSaveRota(d)  { localStorage.setItem('sp_rota',    JSON.stringify(d)); }
+function spGetFC()      { const s=JSON.parse(localStorage.getItem('sp_fc')     || 'null'); return s||JSON.parse(JSON.stringify(SP_FC_SEED)); }
+function spSaveFC(d)    { localStorage.setItem('sp_fc',      JSON.stringify(d)); }
+function spGetMonthly() { return JSON.parse(localStorage.getItem('sp_monthly') || '{}'); }
+function spSaveMonthly(d){localStorage.setItem('sp_monthly', JSON.stringify(d)); }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function spWeekDates(offset){
+  const t=new Date(), m=new Date(t);
+  m.setDate(t.getDate()-((t.getDay()||7)-1)+(offset||0)*7);
+  return Array.from({length:7},(_,i)=>{ const d=new Date(m); d.setDate(m.getDate()+i); return d; });
 }
-function saveRotaData(d) {
-  localStorage.setItem('staffpro_rota', JSON.stringify(d));
-}
-function getForecast() {
-  return JSON.parse(localStorage.getItem('staffpro_forecast') || 'null') || {};
-}
-function saveForecast(d) {
-  localStorage.setItem('staffpro_forecast', JSON.stringify(d));
-}
-function getStaffList() {
-  return JSON.parse(localStorage.getItem('staffpro_staff') || 'null') || STAFF_DEFAULTS.staff;
-}
-function getDeptList() {
-  return JSON.parse(localStorage.getItem('staffpro_depts') || 'null') || STAFF_DEFAULTS.departments;
-}
-function getMonthlyForecast() {
-  return JSON.parse(localStorage.getItem('staffpro_monthly') || 'null') || {};
-}
-function saveMonthlyForecast(d) {
-  localStorage.setItem('staffpro_monthly', JSON.stringify(d));
+function spDK(d){ return d.toISOString().slice(0,10); }
+function spFmt(d){ return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }
+function spShortFmt(d){ return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
+
+function spParseHrs(shift){
+  if(!shift) return 0;
+  const s=shift.toLowerCase().trim();
+  if(['off','holiday','sick','','on call','in lieu'].includes(s)) return 0;
+  const m=shift.match(/(\d{1,2})[:\.](\d{2})\s*[-–]\s*(\d{1,2})[:\.](\d{2})/);
+  if(!m) return 0;
+  let st=+m[1]*60+ +m[2], en=+m[3]*60+ +m[4];
+  if(en<=st) en+=1440;
+  return Math.round((en-st)/60*10)/10;
 }
 
-// ── Date helpers ─────────────────────────────────────────────────────────────
-function getWeekDates(offset=0) {
-  const today = new Date();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - today.getDay() + 1 + (offset * 7));
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    days.push(d);
-  }
-  return days;
-}
-function fmtDate(d) {
-  return d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
-}
-function dateKey(d) {
-  return d.toISOString().slice(0, 10);
-}
-function fmtShortDate(d) {
-  return d.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+function spShiftStyle(shift){
+  if(!shift) return {bg:'#f5f7f9',col:'#bbb',border:'#e0e0e0'};
+  const s=shift.toLowerCase().trim();
+  if(s===''||s==='off') return {bg:'#f5f7f9',col:'#bbb',border:'#e0e0e0'};
+  if(s==='holiday')     return {bg:'#dbeafe',col:'#1d4ed8',border:'#93c5fd'};
+  if(s==='on call')     return {bg:'#fef9c3',col:'#854d0e',border:'#fde047'};
+  if(s==='in lieu')     return {bg:'#f3e8ff',col:'#7e22ce',border:'#c4b5fd'};
+  if(s==='sick')        return {bg:'#fee2e2',col:'#991b1b',border:'#fca5a5'};
+  return {bg:'#dcfce7',col:'#166534',border:'#86efac'};
 }
 
-// ── Staffing requirement calculations ────────────────────────────────────────
-function calcRequired(fc, deptId) {
-  // fc = { rooms, departures, stayovers, breakfastCovers, dinnerCovers }
-  const rooms = fc.rooms || 0;
-  const dep   = fc.departures || 0;
-  const stay  = fc.stayovers || 0;
-  const bkfst = fc.breakfastCovers || Math.round(rooms * 1.8);
-  const dinner = fc.dinnerCovers || 0;
-
-  switch(deptId) {
-    case 'reception':
-      return { early: 1, late: 1, night: 1, total: 3,
-               note: 'Min 1 per shift (07-15, 15-23, 23-07)' };
-    case 'nights':
-      return { night: 1, total: 1, note: 'Night manager covers reception 23:00-07:00' };
-    case 'housekeeping': {
-      const hrsNeeded = (dep * 0.542) + (stay * 0.333); // 32.5min dep / 20min stay in hrs
-      const staffNeeded = Math.ceil(hrsNeeded / 7.5); // ~7.5hr productive shift
-      const minStaff = Math.max(1, staffNeeded);
-      return { staffNeeded: minStaff, hrsNeeded: Math.round(hrsNeeded * 10) / 10,
-               dep, stay, total: minStaff,
-               note: dep + ' dep (×32.5m) + ' + stay + ' stay (×20m) = ' + Math.round(hrsNeeded*60) + ' min total' };
-    }
-    case 'restaurant': {
-      const bkfstStaff = Math.ceil(bkfst / 28); // 1 per 25-30, use 28
-      const dinnerStaff = Math.ceil(dinner / 7); // 1 per 6-8, use 7
-      return { breakfast: Math.max(1, bkfstStaff), dinner: Math.max(0, dinnerStaff),
-               bkfstCovers: bkfst, dinnerCovers: dinner,
-               total: Math.max(1, bkfstStaff) + Math.max(0, dinnerStaff),
-               note: bkfst + ' bkfst covers ÷28 = ' + bkfstStaff + ' · ' + dinner + ' dinner covers ÷7 = ' + dinnerStaff };
-    }
-    case 'kitchen': {
-      const bkfstStaff = Math.ceil(bkfst / 28);
-      const dinnerStaff = dinner > 0 ? 2 : 1; // always need chef + KP
-      return { breakfast: Math.max(2, bkfstStaff), dinner: dinnerStaff,
-               total: Math.max(2, bkfstStaff) + (dinner > 0 ? dinnerStaff : 0),
-               note: 'Min 1 chef + 1 KP per service. Breakfast mirrors F&B.' };
-    }
-    case 'bar':
-      return { pm: 2, total: 2, note: 'Min 2 staff 15:00-23:00' };
-    case 'maintenance':
-      return { total: 1, note: 'Minimum 1 on call' };
-    case 'admin':
-      return { total: 1, note: 'Business hours cover' };
-    default:
-      return { total: 1, note: '' };
+function spCalcRequired(fc, deptId){
+  const rooms=fc&&fc.rooms||0, dep=fc&&fc.departures||0, stay=fc&&fc.stayovers||0;
+  const bk=fc&&fc.breakfastCovers||Math.round(rooms*1.8), din=fc&&fc.dinnerCovers||0;
+  switch(deptId){
+    case 'reception':    return {needed:3, note:'3 shifts: 07-15, 15-23, 23-07'};
+    case 'nights':       return {needed:1, note:'Night manager 23:00-07:00'};
+    case 'kitchen':      return {needed:Math.max(2,Math.ceil(bk/28)+(din>0?1:0)), note:bk+' bkfst ÷28 + dinner'};
+    case 'restaurant':   return {needed:Math.max(1,Math.ceil(bk/28))+(din>0?Math.ceil(din/7):0), note:bk+' bkfst covers, '+din+' dinner'};
+    case 'bar':          return {needed:2, note:'Min 2 from 15:00'};
+    case 'housekeeping': { const hrs=(dep*0.542)+(stay*0.333); return {needed:Math.max(1,Math.ceil(hrs/7.5)), note:dep+'dep+'+stay+'stay = '+Math.round(hrs*60)+'min'}; }
+    case 'maintenance':  return {needed:1, note:'Min 1 on call'};
+    case 'admin':        return {needed:1, note:'Office hours'};
+    default:             return {needed:1, note:''};
   }
 }
 
-// Count staff rostered for a dept on a given day
-function countRostered(rota, dateK, deptId) {
-  const dayRota = rota[dateK] || {};
-  const staff = getStaffList().filter(s => s.dept === deptId);
-  let count = 0;
-  staff.forEach(s => {
-    const shift = dayRota[s.id];
-    if (shift && shift !== 'off' && shift !== 'OFF' && shift !== 'holiday' && shift !== '') count++;
-  });
-  return count;
+function spCountRostered(rota, dk, deptId){
+  const staff=spGetStaff().filter(s=>s.dept===deptId);
+  const day=rota[dk]||{};
+  return staff.filter(s=>{ const sh=(day[s.id]||'').toLowerCase().trim(); return sh&&sh!=='off'&&sh!==''; }).length;
 }
 
-// ── Shared styles ─────────────────────────────────────────────────────────────
-const ROTA_COLOURS = {
-  navy:'#1a2b3a', amber:'#c78a3b', green:'#2a6a4a',
-  red:'#b3261e', orange:'#c45c00', teal:'#4a9d7f', purple:'#6366f1'
-};
+// Global state
+let spWeekOffset=0, spFcWeekOffset=0, spMonthOff=0;
 
-function statusPill(label, colour, bg) {
-  return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;color:${colour};background:${bg};white-space:nowrap">${label}</span>`;
-}
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderRotaDash(v){
+  const rota=spGetRota(), fc=spGetFC(), staff=spGetStaff();
+  const today=new Date(), todayK=spDK(today);
+  const days=spWeekDates(0);
+  const todayFC=fc[todayK]||{};
 
-// ── DASHBOARD ────────────────────────────────────────────────────────────────
-function renderRotaDash(v) {
-  const rota = getRotaData();
-  const forecast = getForecast();
-  const depts = getDeptList();
-  const today = new Date();
-  const todayK = dateKey(today);
-  const fc = forecast[todayK] || {};
-  const days = getWeekDates(0);
-  let weekWarnings = 0;
-
-  // Build dept status cards for today
-  let deptCards = '';
-  depts.forEach(dept => {
-    const req = calcRequired(fc, dept.id);
-    const rostered = countRostered(rota, todayK, dept.id);
-    const needed = req.total || 1;
-    const ok = rostered >= needed;
-    const warn = rostered === 0 && needed > 0;
-    if (!ok) weekWarnings++;
-    deptCards += `
-      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid ${ok?'#2a6a4a':warn?'#b3261e':'#c45c00'}">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div style="font-weight:700;font-size:13px;color:#1a2b3a">${dept.name}</div>
-          ${ok ? statusPill('✓ Covered','#2a6a4a','#e8f3ee') : warn ? statusPill('⚠ UNDERSTAFFED','#b3261e','#fdecea') : statusPill('⚡ SHORT','#c45c00','#fff3e8')}
-        </div>
-        <div style="display:flex;gap:16px;font-size:12px;color:#7a8494">
-          <span>Rostered: <strong style="color:#1a2b3a">${rostered}</strong></span>
-          <span>Required: <strong style="color:${ok?'#2a6a4a':'#b3261e'}">${needed}</strong></span>
-        </div>
-        <div style="font-size:11px;color:#9ca3af;margin-top:4px">${req.note||''}</div>
-      </div>`;
-  });
-
-  // Week at a glance - rooms forecast
-  let weekRow = '';
-  days.forEach(d => {
-    const k = dateKey(d);
-    const f = forecast[k] || {};
-    const isToday = k === todayK;
-    weekRow += `<td style="text-align:center;padding:8px 4px;font-size:12px;${isToday?'background:#e8f3ee;border-radius:6px':''}">
-      <div style="font-weight:700;color:#1a2b3a">${f.rooms||'-'}</div>
-      <div style="color:#9ca3af;font-size:10px">${d.toLocaleDateString('en-GB',{weekday:'short'})}</div>
-    </td>`;
-  });
-
-  v.innerHTML = `
-    <div style="padding:20px;max-width:1100px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <div>
-          <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a">Staff Dashboard</div>
-          <div style="font-size:13px;color:#7a8494">Today · ${today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button onclick="switchTab('rotaWeek')" 
-            style="padding:8px 14px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">
-            📋 Weekly Rota
-          </button>
-          <button onclick="switchTab('rotaForecast')" 
-            style="padding:8px 14px;background:#c78a3b;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">
-            📈 Update Forecast
-          </button>
-        </div>
+  let deptCards='';
+  SP_DEPTS.forEach(dept=>{
+    const req=spCalcRequired(todayFC,dept.id);
+    const rostered=spCountRostered(rota,todayK,dept.id);
+    const ok=rostered>=req.needed;
+    deptCards+=`<div onclick="switchTab('rotaWeek')" style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid ${ok?'#2a6a4a':req.needed===0?'#e0e0e0':'#b3261e'};cursor:pointer;transition:box-shadow .2s" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.12)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.07)'">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-weight:700;font-size:13px;color:#1a2b3a">${dept.name}</div>
+        <span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:${ok?'#dcfce7':req.needed===0?'#f5f7f9':'#fee2e2'};color:${ok?'#166534':req.needed===0?'#9ca3af':'#991b1b'}">${ok?'✓ Covered':req.needed===0?'—':'⚠ Short'}</span>
       </div>
-
-      ${weekWarnings > 0 ? `<div style="background:#fdecea;border:1px solid #f5c6c6;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#b3261e;font-weight:600">
-        ⚠️ ${weekWarnings} department${weekWarnings>1?'s':''} understaffed or unconfirmed for today — check rota below
-      </div>` : `<div style="background:#e8f3ee;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#2a6a4a;font-weight:600">
-        ✅ All departments covered for today
-      </div>`}
-
-      <!-- Today Rooms Forecast Summary -->
-      <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
-        <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Week · Rooms In House</div>
-        <table style="width:100%;border-collapse:collapse"><tr>${weekRow}</tr></table>
-        <div style="margin-top:10px;display:flex;gap:16px;font-size:12px;color:#7a8494;flex-wrap:wrap">
-          <span>Today · Rooms: <strong>${fc.rooms||'Not set'}</strong></span>
-          <span>Departures: <strong>${fc.departures||'—'}</strong></span>
-          <span>Stayovers: <strong>${fc.stayovers||'—'}</strong></span>
-          <span>Breakfast covers: <strong>${fc.breakfastCovers||'—'}</strong></span>
-          <span>Dinner forecast: <strong>${fc.dinnerCovers||'—'}</strong></span>
-        </div>
-        ${!fc.rooms ? `<div style="margin-top:8px;font-size:12px;color:#c45c00">⚡ No forecast entered for today — <a href="#" onclick="switchTab('rotaForecast');return false" style="color:#c45c00;font-weight:700">add forecast →</a></div>` : ''}
+      <div style="display:flex;gap:14px;font-size:12px;color:#7a8494">
+        <span>Rostered: <b style="color:#1a2b3a">${rostered}</b></span>
+        <span>Required: <b style="color:${ok?'#166534':'#991b1b'}">${req.needed}</b></span>
       </div>
-
-      <!-- Department Status Grid -->
-      <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Today · Department Staffing</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
-        ${deptCards}
-      </div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:3px">${req.note}</div>
     </div>`;
+  });
+
+  const weekStrip=days.map(d=>{
+    const k=spDK(d), f=fc[k]||{}, isT=k===todayK;
+    return `<td style="text-align:center;padding:6px 4px;background:${isT?'#e8f3ee':''};border-radius:6px">
+      <div style="font-weight:700;font-size:14px;color:${f.rooms?'#1a2b3a':'#d1d5db'}">${f.rooms||'—'}</div>
+      <div style="font-size:10px;color:#9ca3af">${d.toLocaleDateString('en-GB',{weekday:'short'})}</div>
+    </td>`;
+  }).join('');
+
+  v.innerHTML=`<div style="padding:20px;max-width:1100px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a">Staff Dashboard</div>
+        <div style="font-size:13px;color:#7a8494">Today · ${today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="switchTab('rotaWeek')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">📋 Weekly Rota</button>
+        <button onclick="switchTab('rotaForecast')" style="padding:9px 16px;background:#c78a3b;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">📈 Update Forecast</button>
+        <button onclick="spPrintRota()" style="padding:9px 16px;background:#2a6a4a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">🖨 Print Rota</button>
+      </div>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+      <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Rooms In House — This Week</div>
+      <table style="width:100%"><tr>${weekStrip}</tr></table>
+      <div style="margin-top:10px;display:flex;gap:16px;font-size:12px;flex-wrap:wrap">
+        <span style="color:#7a8494">Today: <b style="color:#1a2b3a">${todayFC.rooms||'—'} rooms</b></span>
+        <span style="color:#7a8494">Dep: <b>${todayFC.departures||'—'}</b></span>
+        <span style="color:#7a8494">Stay: <b>${todayFC.stayovers||'—'}</b></span>
+        <span style="color:#7a8494">Bkfst: <b>${todayFC.breakfastCovers||'—'}</b></span>
+        <span style="color:#7a8494">Dinner: <b>${todayFC.dinnerCovers||'—'}</b></span>
+      </div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Today · Department Staffing <span style="font-size:11px;font-weight:400;color:#9ca3af;text-transform:none">— click any card to open rota</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">${deptCards}</div>
+  </div>`;
 }
 
 // ── WEEKLY ROTA ───────────────────────────────────────────────────────────────
-let rotaWeekOffset = 0;
+function renderRotaWeek(v){
+  const rota=spGetRota(), fc=spGetFC(), staff=spGetStaff();
+  const days=spWeekDates(spWeekOffset), todayK=spDK(new Date());
 
-function shiftColour(shift) {
-  if (!shift) return { bg:'#f5f7f9', col:'#bbb', border:'#e8e8e8' };
-  const s = shift.toLowerCase().trim();
-  if (s === 'off' || s === '') return { bg:'#f5f7f9', col:'#bbb', border:'#e8e8e8' };
-  if (s === 'holiday') return { bg:'#e8f0f8', col:'#4a86c7', border:'#4a86c7' };
-  if (s === 'on call') return { bg:'#fff8e6', col:'#c78a3b', border:'#c78a3b' };
-  if (s === 'sick') return { bg:'#fdecea', col:'#b3261e', border:'#b3261e' };
-  // timed shift - green
-  return { bg:'#e8f3ee', col:'#2a6a4a', border:'#2a6a4a' };
-}
-
-function renderRotaWeek(v) {
-  const rota = getRotaData();
-  const forecast = getForecast();
-  const days = getWeekDates(rotaWeekOffset);
-  const depts = getDeptList();
-  const staff = getStaffList();
-  const todayK = dateKey(new Date());
-
-  const weekLabel = `Week commencing ${fmtShortDate(days[0])} – ${fmtShortDate(days[6])}`;
-
-  // Day header cells
-  const dayHeaders = days.map(d => {
-    const k = dateKey(d);
-    const isToday = k === todayK;
-    const fc = forecast[k] || {};
-    return `<th style="min-width:120px;max-width:140px;padding:8px 4px;text-align:center;
-        background:${isToday ? '#1a2b3a' : '#f5f7f9'};
-        color:${isToday ? '#fff' : '#1a2b3a'};
-        border-radius:8px 8px 0 0;border-bottom:2px solid ${isToday ? '#c78a3b' : '#e0e0e0'}">
-      <div style="font-size:12px;font-weight:700">${d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase()}</div>
-      <div style="font-size:10px;opacity:.7;margin-top:1px">${fmtShortDate(d)}</div>
-      ${fc.rooms ? `<div style="font-size:10px;margin-top:3px;opacity:.8">🛏 ${fc.rooms} rooms</div>` : ''}
+  const dayHeads=days.map(d=>{
+    const k=spDK(d), f=fc[k]||{}, isT=k===todayK;
+    return `<th style="min-width:130px;padding:8px 4px;text-align:center;background:${isT?'#1a2b3a':'#f5f7f9'};color:${isT?'#fff':'#1a2b3a'};border-radius:8px 8px 0 0">
+      <div style="font-size:11px;font-weight:700">${d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase()}</div>
+      <div style="font-size:10px;opacity:.7">${spShortFmt(d)}</div>
+      ${f.rooms?`<div style="font-size:10px;margin-top:2px;opacity:.8">🛏 ${f.rooms}</div>`:''}
     </th>`;
   }).join('');
 
-  // Build rows by department
-  let tableBody = '';
-  depts.forEach(dept => {
-    const deptStaff = staff.filter(s => s.dept === dept.id);
-    if (!deptStaff.length) return;
+  let body='';
+  SP_DEPTS.forEach(dept=>{
+    const ds=staff.filter(s=>s.dept===dept.id);
+    if(!ds.length) return;
 
-    // Required vs rostered summary row
-    const reqCells = days.map(d => {
-      const k = dateKey(d);
-      const fc = forecast[k] || {};
-      const req = calcRequired(fc, dept.id);
-      const rostered = countRostered(rota, k, dept.id);
-      const needed = req.total || 0;
-      const ok = rostered >= needed;
-      const isToday = k === todayK;
-      return `<td style="padding:3px 2px;text-align:center;background:${isToday?'#f0f4f8':''}">
-        <span style="display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;
-          background:${ok?'#e8f3ee':'#fdecea'};color:${ok?'#2a6a4a':'#b3261e'}">
-          ${rostered}/${needed}${ok?' ✓':' ⚠'}
-        </span>
+    // Required row
+    const reqCells=days.map(d=>{
+      const k=spDK(d), f=fc[k]||{}, req=spCalcRequired(f,dept.id);
+      const ros=spCountRostered(rota,k,dept.id), ok=ros>=req.needed;
+      return `<td style="padding:3px 2px;text-align:center">
+        <span style="padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:${ok?'#dcfce7':'#fee2e2'};color:${ok?'#166534':'#991b1b'}">${ros}/${req.needed}${ok?' ✓':' ⚠'}</span>
       </td>`;
     }).join('');
 
-    // Department header
-    tableBody += `<tr>
-      <td colspan="${days.length + 1}" style="padding:8px 10px 4px;background:${dept.colour}12;
-          border-top:3px solid ${dept.colour};border-bottom:1px solid ${dept.colour}30">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="width:10px;height:10px;border-radius:50%;background:${dept.colour};display:inline-block"></span>
-            <span style="font-weight:700;font-size:12px;color:${dept.colour};text-transform:uppercase;letter-spacing:.5px">${dept.name}</span>
-            <span style="font-size:11px;color:#9ca3af">${dept.notes||''}</span>
-          </div>
-          <span style="font-size:10px;color:#9ca3af">Required staff per day:</span>
-        </div>
-      </td>
-    </tr>
-    <tr style="background:#fafafa">
-      <td style="padding:3px 10px;font-size:10px;color:#9ca3af;font-style:italic;white-space:nowrap">Staff needed ↓ rostered ↑</td>
-      ${reqCells}
-    </tr>`;
+    body+=`<tr><td colspan="9" style="padding:7px 10px 4px;background:${dept.colour}15;border-top:3px solid ${dept.colour}">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${dept.colour};display:inline-block"></span>
+        <b style="font-size:12px;color:${dept.colour};text-transform:uppercase;letter-spacing:.5px">${dept.name}</b>
+        <span style="font-size:11px;color:#9ca3af">${dept.note}</span>
+        <span style="margin-left:auto;font-size:10px;color:#9ca3af">rostered/needed per day →</span>
+      </div>
+    </td></tr>
+    <tr style="background:#fafafa"><td style="padding:2px 10px;font-size:10px;color:#9ca3af;font-style:italic">Coverage</td>${reqCells}</tr>`;
 
-    // Staff rows
-    deptStaff.forEach(s => {
-      const weekHrs = days.reduce((tot, d) => {
-        const shift = (rota[dateKey(d)]||{})[s.id] || '';
-        // parse HH:MM-HH:MM to get hours
-        const m = shift.match(/(\d{1,2})[:\.](\d{2})\s*[-–]\s*(\d{1,2})[:\.](\d{2})/);
-        if (!m) return tot;
-        let start = parseInt(m[1])*60+parseInt(m[2]);
-        let end = parseInt(m[3])*60+parseInt(m[4]);
-        if (end < start) end += 24*60; // overnight
-        return tot + (end-start)/60;
-      }, 0);
-
-      const dayCells = days.map(d => {
-        const k = dateKey(d);
-        const shift = (rota[k]||{})[s.id] || '';
-        const c = shiftColour(shift);
-        const isToday = k === todayK;
-        return `<td style="padding:2px 2px;text-align:center;background:${isToday?'#f0f4f8':''}">
-          <input type="text"
-            value="${shift}"
-            data-staff="${s.id}"
-            data-date="${k}"
-            onchange="updateRotaCell(this)"
+    ds.forEach(s=>{
+      const wkHrs=days.reduce((t,d)=>t+spParseHrs((rota[spDK(d)]||{})[s.id]||''),0);
+      const cells=days.map(d=>{
+        const k=spDK(d), sh=(rota[k]||{})[s.id]||'', c=spShiftStyle(sh), isT=k===todayK;
+        return `<td style="padding:2px 2px;background:${isT?'#f0f9ff':''}">
+          <input type="text" value="${sh}" data-sid="${s.id}" data-dk="${k}"
+            onchange="spUpdateCell(this)"
             placeholder="off"
-            style="width:112px;padding:5px 4px;
-              border:1.5px solid ${c.border};
-              border-radius:6px;
-              font-size:11px;font-family:Lato;
-              text-align:center;
-              background:${c.bg};
-              color:${c.col};
-              cursor:text;outline:none">
+            style="width:122px;padding:5px 3px;border:1.5px solid ${c.border};border-radius:7px;font:11px Lato;text-align:center;background:${c.bg};color:${c.col};outline:none;cursor:text"
+            onfocus="this.select()">
         </td>`;
       }).join('');
 
-      tableBody += `<tr style="border-bottom:1px solid #f0f0f0" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
-        <td style="padding:6px 10px;white-space:nowrap;min-width:160px">
-          <div style="font-size:12px;font-weight:600;color:#1a2b3a">${s.name}</div>
-          <div style="font-size:10px;color:#9ca3af">${s.type==='relief'?'Relief':s.contractHrs+'h/wk'} · <span style="color:${weekHrs>0?'#2a6a4a':'#bbb'}">${Math.round(weekHrs*10)/10}h this week</span></div>
+      body+=`<tr style="border-bottom:1px solid #f0f0f0" onmouseover="this.style.background='#fafffe'" onmouseout="this.style.background=''">
+        <td style="padding:6px 10px;min-width:170px;white-space:nowrap">
+          <div style="display:flex;align-items:center;gap:7px">
+            <div style="width:28px;height:28px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${s.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#1a2b3a">${s.name}</div>
+              <div style="font-size:10px;color:#9ca3af">${s.role||''} · <span style="color:${wkHrs>0?'#166534':'#9ca3af'}">${Math.round(wkHrs*10)/10}h</span></div>
+            </div>
+          </div>
         </td>
-        ${dayCells}
+        ${cells}
       </tr>`;
     });
   });
 
-  // Total staff per day footer
-  const totalCells = days.map(d => {
-    const k = dateKey(d);
-    const total = staff.reduce((n,s) => {
-      const sh = (rota[k]||{})[s.id]||'';
-      return n + (sh && sh.toLowerCase()!=='off' && sh.toLowerCase()!=='holiday' && sh!=='' ? 1 : 0);
-    }, 0);
-    const isToday = k === todayK;
-    return `<td style="padding:8px 4px;text-align:center;background:${isToday?'#1a2b3a':'#1a2b3a'};color:#fff">
-      <div style="font-weight:700;font-size:14px">${total}</div>
-      <div style="font-size:9px;opacity:.7">on duty</div>
-    </td>`;
+  // Total row
+  const totals=days.map(d=>{
+    const k=spDK(d), tot=staff.filter(s=>{ const sh=(rota[k]||{})[s.id]||''; return sh&&sh.toLowerCase()!=='off'&&sh!==''; }).length;
+    return `<td style="padding:8px 4px;text-align:center;background:#1a2b3a;color:#fff"><b style="font-size:13px">${tot}</b><div style="font-size:9px;opacity:.7">on duty</div></td>`;
   }).join('');
 
-  v.innerHTML = `
-    <div style="padding:16px 20px;max-width:1300px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-        <div>
-          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Weekly Rota</div>
-          <div style="font-size:12px;color:#7a8494">${weekLabel} · Click any cell to edit shift times</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button onclick="rotaWeekOffset--;renderRotaWeek(document.getElementById('view'))"
-            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">← Prev week</button>
-          <button onclick="rotaWeekOffset=0;renderRotaWeek(document.getElementById('view'))"
-            style="padding:7px 14px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font-size:12px;font-weight:600">This week</button>
-          <button onclick="rotaWeekOffset++;renderRotaWeek(document.getElementById('view'))"
-            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">Next week →</button>
-          <button onclick="switchTab('rotaForecast')"
-            style="padding:7px 14px;background:#c78a3b;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📈 Update forecast</button>
-          <button onclick="exportRota()"
-            style="padding:7px 14px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📥 Export CSV</button>
-        </div>
+  v.innerHTML=`<div style="padding:16px 20px;max-width:1300px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Weekly Rota</div>
+        <div style="font-size:12px;color:#7a8494">Week commencing ${spShortFmt(days[0])} · Click any cell to edit</div>
       </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button onclick="spWeekOffset--;renderRotaWeek(document.getElementById('view'))" style="padding:7px 11px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:12px">← Prev</button>
+        <button onclick="spWeekOffset=0;renderRotaWeek(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font:600 12px Lato">This week</button>
+        <button onclick="spWeekOffset++;renderRotaWeek(document.getElementById('view'))" style="padding:7px 11px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:12px">Next →</button>
+        <button onclick="spAddStaffModal()" style="padding:7px 12px;background:#6366f1;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">+ Add staff</button>
+        <button onclick="switchTab('rotaForecast')" style="padding:7px 12px;background:#c78a3b;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📈 Forecast</button>
+        <button onclick="spApproveRota()" style="padding:7px 12px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">✓ Approve & Print</button>
+        <button onclick="spExportCSV()" style="padding:7px 12px;background:#4a86c7;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📥 Export</button>
+      </div>
+    </div>
 
-      <!-- Legend -->
-      <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;font-size:11px">
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:3px;background:#e8f3ee;border:1.5px solid #2a6a4a;display:inline-block"></span> Timed shift</span>
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:3px;background:#f5f7f9;border:1.5px solid #e8e8e8;display:inline-block"></span> Off</span>
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:3px;background:#e8f0f8;border:1.5px solid #4a86c7;display:inline-block"></span> Holiday</span>
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:3px;background:#fff8e6;border:1.5px solid #c78a3b;display:inline-block"></span> On call</span>
-        <span style="color:#2a6a4a;font-weight:700">✓ = covered</span>
-        <span style="color:#b3261e;font-weight:700">⚠ = understaffed</span>
-      </div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;font-size:11px;flex-wrap:wrap">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#dcfce7;border:1px solid #86efac;display:inline-block"></span>Timed shift</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#f5f7f9;border:1px solid #e0e0e0;display:inline-block"></span>Off</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#dbeafe;border:1px solid #93c5fd;display:inline-block"></span>Holiday</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#fef9c3;border:1px solid #fde047;display:inline-block"></span>On call</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#f3e8ff;border:1px solid #c4b5fd;display:inline-block"></span>In lieu</span>
+      <span style="color:#166534;font-weight:700">✓ Covered</span> <span style="color:#991b1b;font-weight:700">⚠ Understaffed</span>
+    </div>
 
-      <div style="overflow-x:auto;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.08)">
-        <table style="border-collapse:collapse;width:100%;min-width:900px;background:#fff">
-          <thead>
-            <tr>
-              <th style="text-align:left;padding:8px 10px;font-size:11px;color:#7a8494;text-transform:uppercase;background:#f5f7f9;min-width:160px">Team Member</th>
-              ${dayHeaders}
-            </tr>
-          </thead>
-          <tbody>
-            ${tableBody}
-            <tr style="border-top:2px solid #1a2b3a">
-              <td style="padding:8px 10px;font-size:11px;font-weight:700;color:#fff;background:#1a2b3a;text-transform:uppercase">Total on duty</td>
-              ${totalCells}
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div style="margin-top:10px;font-size:11px;color:#9ca3af">
-        Enter shifts as 09:00-17:00 · Type "off" for rest days · "holiday" for annual leave · "on call" for standby. Changes save automatically.
-      </div>
-    </div>`;
+    <div style="overflow-x:auto;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.08)">
+      <table style="border-collapse:collapse;width:100%;min-width:900px;background:#fff">
+        <thead><tr>
+          <th style="text-align:left;padding:8px 10px;font-size:11px;color:#7a8494;text-transform:uppercase;background:#f5f7f9;border-radius:8px 0 0 0">Team Member</th>
+          ${dayHeads}
+        </tr></thead>
+        <tbody>${body}
+          <tr style="border-top:2px solid #1a2b3a">
+            <td style="padding:8px 10px;font:700 11px Lato;color:#fff;background:#1a2b3a;text-transform:uppercase;border-radius:0 0 0 8px">Total on duty</td>
+            ${totals}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:#9ca3af">All changes auto-save · Shifts: 09:00-17:00 · off · holiday · on call · sick · in lieu</div>
+  </div>`;
+}
+
+function spUpdateCell(input){
+  const rota=spGetRota(), dk=input.dataset.dk, sid=input.dataset.sid;
+  if(!rota[dk]) rota[dk]={};
+  rota[dk][sid]=input.value.trim();
+  spSaveRota(rota);
+  const c=spShiftStyle(input.value.trim());
+  input.style.background=c.bg; input.style.color=c.col; input.style.borderColor=c.border;
 }
 
 // ── FORECAST ─────────────────────────────────────────────────────────────────
-let forecastWeekOffset = 0;
+function renderRotaForecast(v){
+  const fc=spGetFC(), rota=spGetRota();
+  const days=spWeekDates(spFcWeekOffset);
 
-function renderRotaForecast(v) {
-  const forecast = getForecast();
-  const rota = getRotaData();
-  const depts = getDeptList();
-  const days = getWeekDates(forecastWeekOffset);
-  const todayK = dateKey(new Date());
-
-  let fcRows = days.map(d => {
-    const k = dateKey(d);
-    const f = forecast[k] || {};
-    const isToday = k === todayK;
-
-    // Calc dept requirements
-    const reqs = depts.map(dept => {
-      const req = calcRequired(f, dept.id);
-      const rostered = countRostered(rota, k, dept.id);
-      const needed = req.total || 0;
-      const ok = rostered >= needed;
-      return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;border-bottom:1px solid #f5f7f9">
+  const cards=days.map(d=>{
+    const k=spDK(d), f=fc[k]||{}, isT=k===spDK(new Date());
+    const reqs=SP_DEPTS.map(dept=>{
+      const req=spCalcRequired(f,dept.id), ros=spCountRostered(rota,k,dept.id), ok=ros>=req.needed;
+      return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f5f7f9">
         <span style="color:#7a8494">${dept.name}</span>
-        <span style="font-weight:700;color:${ok?'#2a6a4a':'#b3261e'}">${rostered}/${needed} ${ok?'✓':'⚠'}</span>
+        <span style="font-weight:700;color:${ok?'#166534':'#991b1b'}">${ros}/${req.needed} ${ok?'✓':'⚠'}</span>
       </div>`;
     }).join('');
 
-    return `<div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);${isToday?'border:2px solid #1a2b3a':''}">
+    return `<div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);${isT?'border:2px solid #1a2b3a':''}">
       <div style="font-weight:700;font-size:13px;color:#1a2b3a;margin-bottom:10px">
         ${d.toLocaleDateString('en-GB',{weekday:'long'})}
-        <span style="font-size:11px;font-weight:400;color:#9ca3af">${fmtShortDate(d)}${isToday?' · Today':''}</span>
+        <span style="font-size:11px;font-weight:400;color:#9ca3af"> ${spShortFmt(d)}${isT?' · Today':''}</span>
       </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
-        <div>
-          <label style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Rooms in house</label>
-          <input type="number" value="${f.rooms||''}" min="0" max="120" placeholder="0"
-            data-date="${k}" data-field="rooms" onchange="updateForecastCell(this)"
-            style="width:100%;padding:7px;border:1.5px solid #e0e0e0;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
-        </div>
-        <div>
-          <label style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Departures</label>
-          <input type="number" value="${f.departures||''}" min="0" max="120" placeholder="0"
-            data-date="${k}" data-field="departures" onchange="updateForecastCell(this)"
-            style="width:100%;padding:7px;border:1.5px solid #e0e0e0;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
-        </div>
-        <div>
-          <label style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Stayovers</label>
-          <input type="number" value="${f.stayovers||''}" min="0" max="120" placeholder="0"
-            data-date="${k}" data-field="stayovers" onchange="updateForecastCell(this)"
-            style="width:100%;padding:7px;border:1.5px solid #e0e0e0;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
-        </div>
-        <div>
-          <label style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Bkfst covers</label>
-          <input type="number" value="${f.breakfastCovers||''}" min="0" placeholder="auto"
-            data-date="${k}" data-field="breakfastCovers" onchange="updateForecastCell(this)"
-            style="width:100%;padding:7px;border:1.5px solid #e0e0e0;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
-        </div>
-        <div style="grid-column:span 2">
-          <label style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Dinner covers</label>
-          <input type="number" value="${f.dinnerCovers||''}" min="0" placeholder="0"
-            data-date="${k}" data-field="dinnerCovers" onchange="updateForecastCell(this)"
-            style="width:100%;padding:7px;border:1.5px solid #e0e0e0;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
-        </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+        ${[
+          ['rooms','Rooms in house','🛏'],
+          ['departures','Departures','🚪'],
+          ['stayovers','Stayovers','🔄'],
+          ['breakfastCovers','Breakfast covers','☕'],
+          ['dinnerCovers','Dinner covers','🍽'],
+        ].map(([field,label,icon],i)=>`<div${i===4?' style="grid-column:span 2"':''}>
+          <label style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px">${icon} ${label}</label>
+          <input type="number" value="${f[field]||''}" min="0" placeholder="0"
+            data-dk="${k}" data-field="${field}"
+            oninput="spUpdateFC(this)"
+            style="width:100%;padding:8px;border:1.5px solid #e0e0e0;border-radius:7px;font:700 14px Lato;color:#1a2b3a;margin-top:2px">
+        </div>`).join('')}
       </div>
-
       <div style="border-top:1px solid #f0f0f0;padding-top:8px">
-        <div style="font-size:10px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Staff Required vs Rostered</div>
+        <div style="font-size:10px;font-weight:700;color:#1a2b3a;text-transform:uppercase;margin-bottom:5px">Required vs Rostered</div>
         ${reqs}
       </div>
     </div>`;
   }).join('');
 
-  v.innerHTML = `
-    <div style="padding:20px;max-width:1100px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-        <div>
-          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Occupancy Forecast</div>
-          <div style="font-size:13px;color:#7a8494">Enter rooms sold and covers — staffing requirements update automatically</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button onclick="forecastWeekOffset--;renderRotaForecast(document.getElementById('view'))"
-            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">← Prev</button>
-          <button onclick="forecastWeekOffset=0;renderRotaForecast(document.getElementById('view'))"
-            style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font-size:12px;font-weight:600">This Week</button>
-          <button onclick="forecastWeekOffset++;renderRotaForecast(document.getElementById('view'))"
-            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">Next →</button>
-        </div>
+  v.innerHTML=`<div style="padding:20px;max-width:1100px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Occupancy Forecast</div>
+        <div style="font-size:12px;color:#7a8494">Enter rooms sold and covers — staffing requirements update live</div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
-        ${fcRows}
+      <div style="display:flex;gap:8px">
+        <button onclick="spFcWeekOffset--;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">← Prev</button>
+        <button onclick="spFcWeekOffset=0;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font:600 12px Lato">This week</button>
+        <button onclick="spFcWeekOffset++;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">Next →</button>
+        <button onclick="switchTab('rotaWeek')" style="padding:7px 12px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">← Back to Rota</button>
       </div>
-    </div>`;
+    </div>
+    <div style="background:#e8f3ee;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#166534">
+      ✅ All forecast values auto-save as you type. Breakfast covers auto-calculate from rooms × 1.8 if left blank.
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">${cards}</div>
+  </div>`;
 }
 
-function updateForecastCell(input) {
-  const forecast = getForecast();
-  const k = input.dataset.date;
-  const field = input.dataset.field;
-  if (!forecast[k]) forecast[k] = {};
-  forecast[k][field] = parseInt(input.value) || 0;
-  // Auto-calc breakfast covers from rooms if not set
-  if (field === 'rooms' && !forecast[k].breakfastCovers) {
-    forecast[k].breakfastCovers = Math.round((parseInt(input.value)||0) * 1.8);
-  }
-  saveForecast(forecast);
-  // Re-render the required vs rostered section for this day
+function spUpdateFC(input){
+  const fc=spGetFC(), k=input.dataset.dk, field=input.dataset.field;
+  if(!fc[k]) fc[k]={};
+  fc[k][field]=parseInt(input.value)||0;
+  if(field==='rooms'&&!fc[k].breakfastCovers) fc[k].breakfastCovers=Math.round((parseInt(input.value)||0)*1.8);
+  spSaveFC(fc);
+  // Live refresh required vs rostered
   renderRotaForecast(document.getElementById('view'));
 }
 
 // ── MONTHLY PLAN ─────────────────────────────────────────────────────────────
-let monthOffset = 0;
+function renderRotaMonthly(v){
+  const monthly=spGetMonthly(), fc=spGetFC();
+  const today=new Date();
+  const vd=new Date(today.getFullYear(),today.getMonth()+spMonthOff,1);
+  const mn=vd.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const dim=new Date(vd.getFullYear(),vd.getMonth()+1,0).getDate();
+  const fd=vd.getDay()||7;
+  const mk=`${vd.getFullYear()}-${String(vd.getMonth()+1).padStart(2,'0')}`;
+  let tot=0,bkt=0,dint=0;
+  for(let i=1;i<=dim;i++){const dk=`${mk}-${String(i).padStart(2,'0')}`;const f=monthly[dk]||fc[dk]||{};tot+=f.rooms||0;bkt+=f.breakfastCovers||Math.round((f.rooms||0)*1.8);dint+=f.dinnerCovers||0;}
 
-function renderRotaMonthly(v) {
-  const monthly = getMonthlyForecast();
-  const today = new Date();
-  const viewDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
-  const monthName = viewDate.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
-  const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 0).getDate();
-  const firstDay = viewDate.getDay() || 7; // Mon=1
-  const monthKey = `${viewDate.getFullYear()}-${String(viewDate.getMonth()+1).padStart(2,'0')}`;
-
-  // Summary totals for month
-  let totalRooms=0, totalBkfst=0, totalDinner=0;
-  for (let i=1; i<=daysInMonth; i++) {
-    const dk = `${monthKey}-${String(i).padStart(2,'0')}`;
-    const f = monthly[dk] || {};
-    totalRooms += f.rooms||0;
-    totalBkfst += f.breakfastCovers || Math.round((f.rooms||0)*1.8);
-    totalDinner += f.dinnerCovers||0;
-  }
-
-  // Calendar cells
-  let calCells = '';
-  // Empty cells for start of month
-  for (let i=1; i<firstDay; i++) calCells += '<td style="padding:4px;background:#fafafa;border:1px solid #f0f0f0"></td>';
-
-  for (let day=1; day<=daysInMonth; day++) {
-    const dk = `${monthKey}-${String(day).padStart(2,'0')}`;
-    const f = monthly[dk] || {};
-    const isToday = dk === dateKey(today);
-    const occ = f.rooms ? Math.round(f.rooms/120*100) : null;
-    const occColor = occ === null ? '#9ca3af' : occ >= 80 ? '#2a6a4a' : occ >= 50 ? '#c78a3b' : '#b3261e';
-
-    calCells += `<td style="padding:4px;border:1px solid #f0f0f0;vertical-align:top;${isToday?'background:#e8f3ee':''}">
-      <div style="font-size:11px;font-weight:700;color:#1a2b3a;margin-bottom:3px">${day}</div>
-      <input type="number" value="${f.rooms||''}" min="0" max="120" placeholder="—"
-        data-dk="${dk}" data-field="rooms"
-        onchange="updateMonthlyCell(this)"
-        title="Rooms in house"
-        style="width:100%;padding:3px;border:1px solid #e0e0e0;border-radius:4px;font:700 11px Lato;text-align:center;color:${occColor}">
-      <input type="number" value="${f.dinnerCovers||''}" min="0" placeholder="din"
-        data-dk="${dk}" data-field="dinnerCovers"
-        onchange="updateMonthlyCell(this)"
-        title="Dinner covers"
-        style="width:100%;margin-top:2px;padding:3px;border:1px solid #e0e0e0;border-radius:4px;font:10px Lato;text-align:center;color:#8b5c8f">
+  let cells='';
+  for(let i=1;i<fd;i++) cells+=`<td style="border:1px solid #f0f0f0;background:#fafafa"></td>`;
+  for(let day=1;day<=dim;day++){
+    const dk=`${mk}-${String(day).padStart(2,'0')}`;
+    const f=monthly[dk]||fc[dk]||{};
+    const isT=dk===spDK(today);
+    const occ=f.rooms?Math.round(f.rooms/120*100):null;
+    const oc=occ===null?'#e0e0e0':occ>=80?'#166534':occ>=50?'#854d0e':'#991b1b';
+    cells+=`<td style="padding:4px;border:1px solid #f0f0f0;vertical-align:top;${isT?'background:#e8f3ee':''}">
+      <div style="font-size:11px;font-weight:700;color:#1a2b3a">${day}</div>
+      <input type="number" value="${f.rooms||''}" min="0" max="120" placeholder="—" data-dk="${dk}" data-field="rooms" onchange="spUpdateMonthly(this)" title="Rooms" style="width:100%;padding:2px;border:1px solid #e0e0e0;border-radius:4px;font:700 11px Lato;text-align:center;color:${oc}">
+      <input type="number" value="${f.dinnerCovers||''}" min="0" placeholder="din" data-dk="${dk}" data-field="dinnerCovers" onchange="spUpdateMonthly(this)" title="Dinner covers" style="width:100%;margin-top:2px;padding:2px;border:1px solid #e0e0e0;border-radius:4px;font:10px Lato;text-align:center;color:#8b5c8f">
     </td>`;
   }
+  const end=7-((fd-1+dim)%7); if(end<7) for(let i=0;i<end;i++) cells+=`<td style="border:1px solid #f0f0f0;background:#fafafa"></td>`;
+  const allCells=cells.split('</td>').filter(Boolean).map(c=>c+'</td>');
+  let calRows=''; for(let i=0;i<allCells.length;i+=7) calRows+=`<tr>${allCells.slice(i,i+7).join('')}</tr>`;
 
-  // Pad end
-  const totalCells = (firstDay - 1) + daysInMonth;
-  const endPad = (7 - (totalCells % 7)) % 7;
-  for (let i=0; i<endPad; i++) calCells += '<td style="padding:4px;background:#fafafa;border:1px solid #f0f0f0"></td>';
-
-  v.innerHTML = `
-    <div style="padding:20px;max-width:1000px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-        <div>
-          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Monthly Forecast</div>
-          <div style="font-size:13px;color:#7a8494">Enter rooms per night for the month · dinner covers where known</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button onclick="monthOffset--;renderRotaMonthly(document.getElementById('view'))"
-            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">← Prev</button>
-          <span style="font-weight:700;font-size:14px;color:#1a2b3a;padding:0 4px">${monthName}</span>
-          <button onclick="monthOffset++;renderRotaMonthly(document.getElementById('view'))"
-            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">Next →</button>
-        </div>
+  v.innerHTML=`<div style="padding:20px;max-width:920px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Monthly Forecast</div>
+        <div style="font-size:12px;color:#7a8494">Top field = rooms in house · Bottom = dinner covers</div>
       </div>
-
-      <!-- Month summary -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div style="display:flex;gap:7px;align-items:center">
+        <button onclick="spMonthOff--;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">← Prev</button>
+        <b style="padding:0 6px;font-size:14px">${mn}</b>
+        <button onclick="spMonthOff++;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">Next →</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      ${[['🛏 Room Nights',tot,'#1a2b3a'],['☕ Est Breakfast',bkt,'#4a9d7f'],['🍽 Dinner Covers',dint,'#8b5c8f']].map(([l,n,c])=>`
         <div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center">
-          <div style="font-size:24px;font-weight:700;color:#1a2b3a">${totalRooms}</div>
-          <div style="font-size:11px;color:#9ca3af;text-transform:uppercase">Total Room Nights</div>
-        </div>
-        <div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center">
-          <div style="font-size:24px;font-weight:700;color:#4a9d7f">${totalBkfst}</div>
-          <div style="font-size:11px;color:#9ca3af;text-transform:uppercase">Est. Breakfast Covers</div>
-        </div>
-        <div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center">
-          <div style="font-size:24px;font-weight:700;color:#8b5c8f">${totalDinner}</div>
-          <div style="font-size:11px;color:#9ca3af;text-transform:uppercase">Dinner Covers</div>
-        </div>
+          <div style="font-size:24px;font-weight:700;color:${c}">${n}</div>
+          <div style="font-size:11px;color:#9ca3af;text-transform:uppercase">${l}</div>
+        </div>`).join('')}
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+      <div style="font-size:11px;color:#9ca3af;margin-bottom:8px">
+        <span style="color:#166534">■</span> 80%+ 
+        <span style="color:#854d0e;margin-left:8px">■</span> 50-79%
+        <span style="color:#991b1b;margin-left:8px">■</span> Below 50%
       </div>
-
-      <!-- Calendar -->
-      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
-        <div style="font-size:11px;color:#9ca3af;margin-bottom:6px">Top field = rooms in house · Bottom field = dinner covers · Colour = occupancy level</div>
-        <table style="width:100%;border-collapse:collapse">
-          <thead>
-            <tr>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<th style="padding:6px;text-align:center;font-size:11px;font-weight:700;color:#7a8494">${d}</th>`).join('')}</tr>
-          </thead>
-          <tbody>
-            ${(() => {
-              let rows2='', cells=calCells.split('</td>').filter(Boolean).map(c=>c+'</td>');
-              for(let i=0;i<cells.length;i+=7) rows2+=`<tr>${cells.slice(i,i+7).join('')}</tr>`;
-              return rows2;
-            })()}
-          </tbody>
-        </table>
-      </div>
-      <div style="margin-top:8px;display:flex;gap:16px;font-size:11px;color:#9ca3af;flex-wrap:wrap">
-        <span style="color:#2a6a4a">■ 80%+ occupancy</span>
-        <span style="color:#c78a3b">■ 50-79%</span>
-        <span style="color:#b3261e">■ Below 50%</span>
-      </div>
-    </div>`;
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<th style="padding:5px;text-align:center;font-size:11px;color:#7a8494">${d}</th>`).join('')}</tr></thead>
+        <tbody>${calRows}</tbody>
+      </table>
+    </div>
+  </div>`;
 }
 
-function updateMonthlyCell(input) {
-  const monthly = getMonthlyForecast();
-  const dk = input.dataset.dk;
-  const field = input.dataset.field;
-  if (!monthly[dk]) monthly[dk] = {};
-  monthly[dk][field] = parseInt(input.value) || 0;
-  saveMonthlyForecast(monthly);
-  // Also sync to weekly forecast if in same week
-  const forecast = getForecast();
-  if (!forecast[dk]) forecast[dk] = {};
-  if (field === 'rooms') {
-    forecast[dk].rooms = parseInt(input.value)||0;
-    if(!forecast[dk].breakfastCovers) forecast[dk].breakfastCovers = Math.round((parseInt(input.value)||0)*1.8);
-  }
-  if (field === 'dinnerCovers') forecast[dk].dinnerCovers = parseInt(input.value)||0;
-  saveForecast(forecast);
+function spUpdateMonthly(input){
+  const monthly=spGetMonthly(), fc=spGetFC();
+  const dk=input.dataset.dk, field=input.dataset.field;
+  if(!monthly[dk]) monthly[dk]={};
+  monthly[dk][field]=parseInt(input.value)||0;
+  spSaveMonthly(monthly);
+  if(!fc[dk]) fc[dk]={};
+  fc[dk][field]=parseInt(input.value)||0;
+  if(field==='rooms'&&!fc[dk].breakfastCovers) fc[dk].breakfastCovers=Math.round((parseInt(input.value)||0)*1.8);
+  spSaveFC(fc);
 }
 
 // ── SETTINGS & STAFF ─────────────────────────────────────────────────────────
-function renderRotaSettings(v) {
-  const staff = getStaffList();
-  const depts = getDeptList();
-
-  const deptTabs = depts.map(d =>
-    `<button onclick="showDeptStaff('${d.id}')" id="dst-${d.id}"
-      style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;font:600 11px Lato;cursor:pointer;color:#1a2b3a;white-space:nowrap">
-      ${d.name}
-    </button>`
-  ).join('');
-
-  const allStaffRows = staff.map(s => {
-    const dept = depts.find(d => d.id === s.dept);
+function renderRotaSettings(v){
+  const staff=spGetStaff();
+  const rows=staff.map(s=>{
+    const dept=SP_DEPTS.find(d=>d.id===s.dept)||{name:s.dept,colour:'#eee'};
     return `<tr style="border-bottom:1px solid #f5f7f9">
-      <td style="padding:8px 12px">
-        <div style="font-size:13px;font-weight:600;color:#1a2b3a">${s.name}</div>
-      </td>
-      <td style="padding:8px 6px">
-        <span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;background:${dept?.colour||'#eee'}25;color:${dept?.colour||'#666'};font-weight:600">${dept?.name||s.dept}</span>
-      </td>
+      <td style="padding:8px 10px"><b style="font-size:13px;color:#1a2b3a">${s.name}</b><div style="font-size:11px;color:#9ca3af">${s.role||''}</div></td>
+      <td style="padding:8px 6px"><span style="padding:2px 8px;border-radius:8px;font-size:11px;background:${dept.colour}20;color:${dept.colour};font-weight:600">${dept.name}</span></td>
       <td style="padding:8px 6px;font-size:12px;color:#7a8494">${s.type==='relief'?'Relief/Agency':'Core'}</td>
-      <td style="padding:8px 6px;font-size:12px;color:#1a2b3a">${s.contractHrs>0?s.contractHrs+'h/wk':'—'}</td>
+      <td style="padding:8px 6px;font-size:12px">${s.contractHrs>0?s.contractHrs+'h/wk':'—'}</td>
       <td style="padding:8px 6px">
-        <select onchange="changeStaffDept('${s.id}',this.value)" style="padding:4px;border:1px solid #e0e0e0;border-radius:6px;font-size:11px">
-          ${depts.map(d=>`<option value="${d.id}" ${s.dept===d.id?'selected':''}>${d.name}</option>`).join('')}
+        <select onchange="spMoveDept('${s.id}',this.value)" style="padding:4px 6px;border:1px solid #e0e0e0;border-radius:6px;font-size:11px">
+          ${SP_DEPTS.map(d=>`<option value="${d.id}"${s.dept===d.id?' selected':''}>${d.name}</option>`).join('')}
         </select>
+      </td>
+      <td style="padding:8px 6px">
+        <button onclick="spRemoveStaff('${s.id}')" style="padding:3px 8px;border:1px solid #fee2e2;border-radius:6px;background:#fff;color:#991b1b;font-size:11px;cursor:pointer">Remove</button>
       </td>
     </tr>`;
   }).join('');
 
-  // Min staffing levels editor
-  const minLevels = depts.map(d => `
-    <tr style="border-bottom:1px solid #f5f7f9">
-      <td style="padding:8px 12px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${d.colour}"></span>
-          <span style="font-size:13px;font-weight:600;color:#1a2b3a">${d.name}</span>
-        </div>
-      </td>
-      <td style="padding:8px 6px">
-        <input type="number" value="${d.minPerShift}" min="0" max="20"
-          onchange="updateMinLevel('${d.id}',this.value)"
-          style="width:60px;padding:5px;border:1px solid #e0e0e0;border-radius:6px;font:700 13px Lato;text-align:center">
-      </td>
-      <td style="padding:8px 6px;font-size:12px;color:#7a8494">${d.notes||''}</td>
-    </tr>`).join('');
+  v.innerHTML=`<div style="padding:20px;max-width:900px">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a;margin-bottom:4px">Settings & Staff</div>
+    <div style="font-size:13px;color:#7a8494;margin-bottom:18px">Manage team members and departments · ${staff.length} staff members</div>
 
-  v.innerHTML = `
-    <div style="padding:20px;max-width:900px">
-      <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a;margin-bottom:4px">Settings & Staff</div>
-      <div style="font-size:13px;color:#7a8494;margin-bottom:20px">Manage team members, departments and minimum staffing levels</div>
-
-      <!-- Min Staffing Levels -->
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Minimum Staffing Levels</div>
-        <table style="width:100%;border-collapse:collapse">
-          <thead><tr>
-            <th style="text-align:left;padding:6px 12px;font-size:11px;color:#9ca3af">Department</th>
-            <th style="text-align:left;padding:6px;font-size:11px;color:#9ca3af">Min per shift</th>
-            <th style="text-align:left;padding:6px;font-size:11px;color:#9ca3af">Notes</th>
-          </tr></thead>
-          <tbody>${minLevels}</tbody>
-        </table>
+    <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <b style="font-size:12px;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px">Team Members</b>
+        <button onclick="spAddStaffModal()" style="padding:7px 14px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">+ Add member</button>
       </div>
-
-      <!-- Staff List -->
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-          <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px">Staff Members (${staff.length})</div>
-          <button onclick="addStaffPrompt()" style="padding:7px 14px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">+ Add Staff Member</button>
-        </div>
-        <table style="width:100%;border-collapse:collapse">
-          <thead><tr>
-            <th style="text-align:left;padding:6px 12px;font-size:11px;color:#9ca3af">Name</th>
-            <th style="text-align:left;padding:6px;font-size:11px;color:#9ca3af">Department</th>
-            <th style="text-align:left;padding:6px;font-size:11px;color:#9ca3af">Type</th>
-            <th style="text-align:left;padding:6px;font-size:11px;color:#9ca3af">Contract</th>
-            <th style="text-align:left;padding:6px;font-size:11px;color:#9ca3af">Move dept</th>
-          </tr></thead>
-          <tbody>${allStaffRows}</tbody>
-        </table>
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#f5f7f9">
+          ${['Name','Department','Type','Contract','Move dept',''].map(h=>`<th style="text-align:left;padding:7px 10px;font-size:11px;color:#9ca3af;text-transform:uppercase">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
       </div>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+      <b style="font-size:12px;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:12px">Minimum Staffing Rules</b>
+      ${SP_DEPTS.map(d=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f7f9">
+        <span style="width:10px;height:10px;border-radius:50%;background:${d.colour};flex-shrink:0"></span>
+        <span style="font-size:13px;font-weight:600;color:#1a2b3a;width:160px">${d.name}</span>
+        <span style="font-size:12px;color:#7a8494;flex:1">${d.note}</span>
+        <span style="font-size:12px;font-weight:700;color:#1a2b3a">Min: ${d.minTotal}</span>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function spMoveDept(sid, deptId){
+  const staff=spGetStaff(), s=staff.find(x=>x.id===sid);
+  if(s){ s.dept=deptId; spSaveStaff(staff); toast('Staff updated ✓'); }
+}
+function spRemoveStaff(sid){
+  if(!confirm('Remove this staff member from the rota?')) return;
+  const staff=spGetStaff().filter(s=>s.id!==sid);
+  spSaveStaff(staff); renderRotaSettings(document.getElementById('view'));
+}
+
+// ── ADD STAFF MODAL ───────────────────────────────────────────────────────────
+function spAddStaffModal(){
+  const deptOpts=SP_DEPTS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  const html=`<div style="padding:4px">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:#1a2b3a;margin-bottom:14px">Add staff member</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div><label style="font-size:11px;color:#9ca3af;text-transform:uppercase;display:block;margin-bottom:3px">Full name</label>
+        <input id="sp-add-name" type="text" placeholder="e.g. John Smith" style="width:100%;padding:9px;border:1.5px solid #e0e0e0;border-radius:8px;font:14px Lato"></div>
+      <div><label style="font-size:11px;color:#9ca3af;text-transform:uppercase;display:block;margin-bottom:3px">Role / job title</label>
+        <input id="sp-add-role" type="text" placeholder="e.g. F&B Team Member" style="width:100%;padding:9px;border:1.5px solid #e0e0e0;border-radius:8px;font:14px Lato"></div>
+      <div><label style="font-size:11px;color:#9ca3af;text-transform:uppercase;display:block;margin-bottom:3px">Department</label>
+        <select id="sp-add-dept" style="width:100%;padding:9px;border:1.5px solid #e0e0e0;border-radius:8px;font:14px Lato">${deptOpts}</select></div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1"><label style="font-size:11px;color:#9ca3af;text-transform:uppercase;display:block;margin-bottom:3px">Type</label>
+          <select id="sp-add-type" style="width:100%;padding:9px;border:1.5px solid #e0e0e0;border-radius:8px;font:14px Lato"><option value="core">Core</option><option value="relief">Relief/Agency</option></select></div>
+        <div style="flex:1"><label style="font-size:11px;color:#9ca3af;text-transform:uppercase;display:block;margin-bottom:3px">Contract hrs/wk</label>
+          <input id="sp-add-hrs" type="number" value="0" min="0" style="width:100%;padding:9px;border:1.5px solid #e0e0e0;border-radius:8px;font:14px Lato"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="spDoAddStaff()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Add to rota</button>
+      <button onclick="closeModal()" style="padding:11px 16px;border:1px solid #e0e0e0;border-radius:9px;background:#fff;font:14px Lato;cursor:pointer">Cancel</button>
+    </div>
+  </div>`;
+  openModal(html);
+}
+function spDoAddStaff(){
+  const name=document.getElementById('sp-add-name')?.value?.trim();
+  if(!name){ toast('Please enter a name'); return; }
+  const staff=spGetStaff();
+  const id=name.toLowerCase().replace(/[^a-z0-9]/g,'_')+'_'+Date.now();
+  staff.push({
+    id, name,
+    role: document.getElementById('sp-add-role')?.value?.trim()||'',
+    dept: document.getElementById('sp-add-dept')?.value||'admin',
+    type: document.getElementById('sp-add-type')?.value||'core',
+    contractHrs: parseInt(document.getElementById('sp-add-hrs')?.value)||0
+  });
+  spSaveStaff(staff);
+  closeModal(); toast('✓ '+name+' added to rota');
+  renderRotaWeek(document.getElementById('view'));
+}
+
+// ── APPROVE & PRINT ───────────────────────────────────────────────────────────
+function spApproveRota(){
+  const rota=spGetRota(), fc=spGetFC(), staff=spGetStaff();
+  const days=spWeekDates(spWeekOffset);
+  const weekLabel=`Week commencing ${spShortFmt(days[0])} – ${spShortFmt(days[6])}`;
+
+  let deptSections='';
+  SP_DEPTS.forEach(dept=>{
+    const ds=staff.filter(s=>s.dept===dept.id);
+    if(!ds.length) return;
+    const rows=ds.map(s=>{
+      const shifts=days.map(d=>{
+        const sh=(rota[spDK(d)]||{})[s.id]||'—';
+        return `<td style="border:1px solid #e0e0e0;padding:5px 4px;text-align:center;font-size:10px;white-space:nowrap;${sh.includes(':')?'background:#f0fdf4':'sh'==='holiday'?'background:#eff6ff':''}">${sh}</td>`;
+      }).join('');
+      const wh=days.reduce((t,d)=>t+spParseHrs((rota[spDK(d)]||{})[s.id]||''),0);
+      return `<tr><td style="border:1px solid #e0e0e0;padding:5px 7px;font-size:11px;font-weight:600">${s.name}</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 4px;font-size:10px;color:#666">${s.role||''}</td>
+        ${rows}
+        <td style="border:1px solid #e0e0e0;padding:5px 4px;text-align:center;font-size:11px;font-weight:700">${Math.round(wh*10)/10}h</td>
+      </tr>`;
+    }).join('');
+    deptSections+=`<div style="margin-bottom:16px;break-inside:avoid">
+      <div style="background:${dept.colour};color:#fff;padding:5px 8px;font-size:11px;font-weight:700;text-transform:uppercase;border-radius:4px 4px 0 0">${dept.name}</div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e0e0e0">
+        <thead><tr style="background:#f5f7f9">
+          <th style="border:1px solid #e0e0e0;padding:5px 7px;font-size:10px;text-align:left">Name</th>
+          <th style="border:1px solid #e0e0e0;padding:5px;font-size:10px;text-align:left">Role</th>
+          ${days.map(d=>`<th style="border:1px solid #e0e0e0;padding:5px 4px;font-size:10px;text-align:center">${d.toLocaleDateString('en-GB',{weekday:'short'})}<br>${spShortFmt(d)}</th>`).join('')}
+          <th style="border:1px solid #e0e0e0;padding:5px 4px;font-size:10px">Hrs</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
     </div>`;
+  });
+
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Brandon Hall Rota — ${weekLabel}</title>
+  <style>body{font-family:Arial,sans-serif;padding:20px;color:#1a2b3a}h1{font-size:18px;margin-bottom:4px}h2{font-size:13px;color:#666;font-weight:400;margin:0 0 16px}
+  @media print{@page{size:A3 landscape;margin:10mm}}</style></head>
+  <body>
+  <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px">
+    <div><h1>Brandon Hall Hotel & Spa — Staff Rota</h1><h2>${weekLabel} · Approved ${new Date().toLocaleDateString('en-GB')}</h2></div>
+    <div style="text-align:right;font-size:11px;color:#666">Generated by HosPRO StaffPRO<br>CONFIDENTIAL — Staff Use Only</div>
+  </div>
+  ${deptSections}
+  <div style="margin-top:16px;font-size:10px;color:#888">
+    Key: Green = timed shift · Blue = Holiday · Yellow = On call · Purple = In lieu<br>
+    Approved by: _________________ Date: _________________
+  </div>
+  <script>window.onload=()=>window.print();</script>
+  </body></html>`);
+  win.document.close();
 }
 
-function updateMinLevel(deptId, val) {
-  const depts = JSON.parse(localStorage.getItem('staffpro_depts') || 'null') || STAFF_DEFAULTS.departments;
-  const dept = depts.find(d => d.id === deptId);
-  if (dept) dept.minPerShift = parseInt(val) || 0;
-  localStorage.setItem('staffpro_depts', JSON.stringify(depts));
-}
+function spPrintRota(){ spApproveRota(); }
 
-function changeStaffDept(staffId, newDept) {
-  const staff = getStaffList();
-  const s = staff.find(x => x.id === staffId);
-  if (s) s.dept = newDept;
-  localStorage.setItem('staffpro_staff', JSON.stringify(staff));
-  toast('Staff updated ✓');
-}
-
-function addStaffPrompt() {
-  const name = prompt('Staff member name:');
-  if (!name) return;
-  const depts = getDeptList();
-  const deptName = prompt('Department (' + depts.map(d=>d.id).join(', ') + '):');
-  const dept = depts.find(d => d.id === deptName || d.name.toLowerCase() === deptName?.toLowerCase());
-  if (!dept) { alert('Unknown department'); return; }
-  const staff = getStaffList();
-  staff.push({ id: name.toLowerCase().replace(/\s+/g,'_')+'_'+Date.now(), name, dept: dept.id, type:'core', contractHrs:0 });
-  localStorage.setItem('staffpro_staff', JSON.stringify(staff));
-  renderRotaSettings(document.getElementById('view'));
+function spExportCSV(){
+  const rota=spGetRota(), staff=spGetStaff(), days=spWeekDates(spWeekOffset);
+  let csv='Name,Role,Department,'+days.map(d=>spFmt(d)).join(',')+',Weekly Hrs\n';
+  staff.forEach(s=>{
+    const shifts=days.map(d=>(rota[spDK(d)]||{})[s.id]||'off');
+    const hrs=days.reduce((t,d)=>t+spParseHrs((rota[spDK(d)]||{})[s.id]||''),0);
+    csv+=`"${s.name}","${s.role||''}","${s.dept}",`+shifts.map(x=>`"${x}"`).join(',')+`,"${Math.round(hrs*10)/10}"
+`;
+  });
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:'brandon-hall-rota.csv'});
+  a.click();
 }
