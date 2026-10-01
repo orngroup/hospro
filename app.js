@@ -230,7 +230,9 @@ function render(){
   ({home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
-    fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam }[CURRENT_TAB]||renderRooms)(v);
+    fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
+    rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings
+  }[CURRENT_TAB]||renderRooms)(v);
 }
 
 /* ============================================================ ROOMS */
