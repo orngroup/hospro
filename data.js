@@ -856,7 +856,8 @@ const FLOW_MODULES = [
   { id:"hosfix",    name:"HosFIX",       caption:"Maintenance. Property. Fixed.", icon:"🔧", colour:"#c45c00", tint:"#fff3e8", tabs:["fixDash","fixAllJobs","fixProjects","fixInventory","fixTeam"] },
   { id:"asset",     name:"AssetPRO",     caption:"Maintain. Track. Extend.",       icon:"🔧", colour:"#3fa8a0", tint:"#e3f3f1", tabs:["mne","suppliers"] },
   { id:"content",   name:"ContentPRO",   caption:"Brochures. Menus. Collateral.",  icon:"📄", colour:"#5a8fc7", tint:"#e8f0f8", tabs:["quote","brochure","menu"] },
-  { id:"insight",   name:"InsightPRO",   caption:"See more. Do more.",             icon:"📈", colour:"#5fa563", tint:"#e8f3e8", tabs:["insight","admin"] }
+  { id:"insight",   name:"InsightPRO",   caption:"See more. Do more.",             icon:"📈", colour:"#5fa563", tint:"#e8f3e8", tabs:["insight","admin"] },
+  { id:"staffpro",  name:"StaffPRO",     caption:"Rota. Forecast. Staffing.",       icon:"👥", colour:"#1a2b3a", tint:"#e8eaed", tabs:["rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings"] }
 ];
 
 /* Tab metadata (label + icon) for sidebar links and cards */

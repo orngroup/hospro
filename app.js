@@ -5421,3 +5421,797 @@ function renderFixAllJobs(v){
     };
   });
 }
+
+/* ============================================================ STAFFPRO */
+
+// ── Default data ─────────────────────────────────────────────────────────────
+const STAFF_DEFAULTS = {
+  departments: [
+    { id:'reception',    name:'Reception',       colour:'#4a86c7', minPerShift:1,
+      shifts:['07:00-15:00','15:00-23:00','23:00-07:00'], notes:'Night manager doubles as reception' },
+    { id:'kitchen',      name:'Kitchen',         colour:'#c45c00', minPerShift:2,
+      shifts:['05:30-14:00','13:30-22:00'], notes:'Min: 1 chef + 1 kitchen porter' },
+    { id:'restaurant',   name:'Restaurant F&B',  colour:'#4a9d7f', minPerShift:2,
+      shifts:['06:00-12:00','15:00-23:00'], notes:'Breakfast 1:28 ratio, Dinner 1:7 ratio' },
+    { id:'bar',          name:'Bar',             colour:'#8b5c8f', minPerShift:2,
+      shifts:['15:00-23:00'], notes:'Min 2 staff from 15:00' },
+    { id:'housekeeping', name:'Housekeeping',    colour:'#2a6a4a', minPerShift:1,
+      shifts:['07:00-15:00','09:00-17:00'], notes:'1 housekeeper = 12 rooms/day' },
+    { id:'nights',       name:'Nights',          colour:'#1a2b3a', minPerShift:1,
+      shifts:['23:00-07:00'], notes:'Night manager covers reception 23:00-07:00' },
+    { id:'maintenance',  name:'Maintenance',     colour:'#b8860b', minPerShift:0,
+      shifts:['08:00-16:00'], notes:'As required' },
+    { id:'admin',        name:'Admin/Events',    colour:'#be185d', minPerShift:0,
+      shifts:['08:00-16:00','09:00-17:30'], notes:'Office hours' },
+  ],
+  staff: [
+    // Reception
+    { id:'patrik',    name:'Patrik Vlach',      dept:'reception',    type:'core',    contractHrs:40 },
+    { id:'manjusha',  name:'Manjusha Ushadevi', dept:'reception',    type:'core',    contractHrs:40 },
+    { id:'alice',     name:'Alice Asumeng',     dept:'reception',    type:'core',    contractHrs:40 },
+    { id:'aghil',     name:'Aghil Joy',         dept:'reception',    type:'core',    contractHrs:40 },
+    // Nights
+    { id:'alan',      name:'Alan Wilkins',      dept:'nights',       type:'core',    contractHrs:40 },
+    { id:'amal',      name:'Amal Premkumar',    dept:'nights',       type:'core',    contractHrs:24 },
+    // Kitchen
+    { id:'devendra',  name:'Devendra Subedi',   dept:'kitchen',      type:'core',    contractHrs:40 },
+    { id:'sajeed',    name:'Sajeed',            dept:'kitchen',      type:'relief',  contractHrs:0  },
+    { id:'darryl',    name:'Darryl',            dept:'kitchen',      type:'relief',  contractHrs:0  },
+    { id:'aimee',     name:'Aimee',             dept:'kitchen',      type:'relief',  contractHrs:0  },
+    { id:'david_m',   name:'David Marshall',    dept:'kitchen',      type:'core',    contractHrs:40 },
+    { id:'nathan',    name:'Nathan Field',      dept:'kitchen',      type:'core',    contractHrs:30 },
+    // Bar
+    { id:'jomy',      name:'Jomy Mathai Joy',   dept:'bar',          type:'core',    contractHrs:40 },
+    { id:'rowan',     name:'Rowan Wilkins',     dept:'bar',          type:'core',    contractHrs:37 },
+    // Restaurant F&B
+    { id:'catarina',  name:'Catarina Li',       dept:'restaurant',   type:'core',    contractHrs:40 },
+    { id:'manjinder', name:'Manjinder Shergill', dept:'restaurant',  type:'core',    contractHrs:30 },
+    { id:'sheba',     name:'Sheba Tychicus',    dept:'restaurant',   type:'core',    contractHrs:24 },
+    { id:'dhruv',     name:'Dhruvilsinh C.',    dept:'restaurant',   type:'core',    contractHrs:17 },
+    { id:'darren',    name:'Darren',            dept:'restaurant',   type:'relief',  contractHrs:0  },
+    { id:'nevin',     name:'Nevin',             dept:'restaurant',   type:'relief',  contractHrs:0  },
+    { id:'arthur',    name:'Arthur',            dept:'restaurant',   type:'relief',  contractHrs:0  },
+    // Housekeeping
+    { id:'ruth',      name:'Ruth Addison',      dept:'housekeeping', type:'core',    contractHrs:40 },
+    { id:'rahul',     name:'Rahul Reghunath',   dept:'housekeeping', type:'core',    contractHrs:40 },
+    { id:'tushar',    name:'Tushar Ambekar',    dept:'housekeeping', type:'core',    contractHrs:40 },
+    { id:'hassen',    name:'Hassen',            dept:'housekeeping', type:'relief',  contractHrs:0  },
+    { id:'dushyanth', name:'Dushyanth',         dept:'housekeeping', type:'relief',  contractHrs:0  },
+    { id:'lara',      name:'Lara Jervis',       dept:'housekeeping', type:'core',    contractHrs:32 },
+    { id:'manoj',     name:'Manoj',             dept:'housekeeping', type:'relief',  contractHrs:0  },
+    // Admin
+    { id:'veronica',  name:'Veronica Webb',     dept:'admin',        type:'core',    contractHrs:24 },
+    { id:'natalie',   name:'Natalie Freeman',   dept:'admin',        type:'core',    contractHrs:40 },
+    { id:'nicola',    name:'Nicola',            dept:'admin',        type:'relief',  contractHrs:0  },
+    // Maintenance
+    { id:'glenn',     name:'Glenn Randell',     dept:'maintenance',  type:'core',    contractHrs:40 },
+    { id:'pete',      name:'Pete',              dept:'maintenance',  type:'relief',  contractHrs:0  },
+    { id:'herman',    name:'Herman Charles',    dept:'maintenance',  type:'relief',  contractHrs:0  },
+  ]
+};
+
+// ── Storage helpers ───────────────────────────────────────────────────────────
+function getRotaData() {
+  return JSON.parse(localStorage.getItem('staffpro_rota') || 'null') || {};
+}
+function saveRotaData(d) {
+  localStorage.setItem('staffpro_rota', JSON.stringify(d));
+}
+function getForecast() {
+  return JSON.parse(localStorage.getItem('staffpro_forecast') || 'null') || {};
+}
+function saveForecast(d) {
+  localStorage.setItem('staffpro_forecast', JSON.stringify(d));
+}
+function getStaffList() {
+  return JSON.parse(localStorage.getItem('staffpro_staff') || 'null') || STAFF_DEFAULTS.staff;
+}
+function getDeptList() {
+  return JSON.parse(localStorage.getItem('staffpro_depts') || 'null') || STAFF_DEFAULTS.departments;
+}
+function getMonthlyForecast() {
+  return JSON.parse(localStorage.getItem('staffpro_monthly') || 'null') || {};
+}
+function saveMonthlyForecast(d) {
+  localStorage.setItem('staffpro_monthly', JSON.stringify(d));
+}
+
+// ── Date helpers ─────────────────────────────────────────────────────────────
+function getWeekDates(offset=0) {
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - today.getDay() + 1 + (offset * 7));
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+function fmtDate(d) {
+  return d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+}
+function dateKey(d) {
+  return d.toISOString().slice(0, 10);
+}
+function fmtShortDate(d) {
+  return d.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+}
+
+// ── Staffing requirement calculations ────────────────────────────────────────
+function calcRequired(fc, deptId) {
+  // fc = { rooms, departures, stayovers, breakfastCovers, dinnerCovers }
+  const rooms = fc.rooms || 0;
+  const dep   = fc.departures || 0;
+  const stay  = fc.stayovers || 0;
+  const bkfst = fc.breakfastCovers || Math.round(rooms * 1.8);
+  const dinner = fc.dinnerCovers || 0;
+
+  switch(deptId) {
+    case 'reception':
+      return { early: 1, late: 1, night: 1, total: 3,
+               note: 'Min 1 per shift (07-15, 15-23, 23-07)' };
+    case 'nights':
+      return { night: 1, total: 1, note: 'Night manager covers reception 23:00-07:00' };
+    case 'housekeeping': {
+      const hrsNeeded = (dep * 0.542) + (stay * 0.333); // 32.5min dep / 20min stay in hrs
+      const staffNeeded = Math.ceil(hrsNeeded / 7.5); // ~7.5hr productive shift
+      const minStaff = Math.max(1, staffNeeded);
+      return { staffNeeded: minStaff, hrsNeeded: Math.round(hrsNeeded * 10) / 10,
+               dep, stay, total: minStaff,
+               note: dep + ' dep (×32.5m) + ' + stay + ' stay (×20m) = ' + Math.round(hrsNeeded*60) + ' min total' };
+    }
+    case 'restaurant': {
+      const bkfstStaff = Math.ceil(bkfst / 28); // 1 per 25-30, use 28
+      const dinnerStaff = Math.ceil(dinner / 7); // 1 per 6-8, use 7
+      return { breakfast: Math.max(1, bkfstStaff), dinner: Math.max(0, dinnerStaff),
+               bkfstCovers: bkfst, dinnerCovers: dinner,
+               total: Math.max(1, bkfstStaff) + Math.max(0, dinnerStaff),
+               note: bkfst + ' bkfst covers ÷28 = ' + bkfstStaff + ' · ' + dinner + ' dinner covers ÷7 = ' + dinnerStaff };
+    }
+    case 'kitchen': {
+      const bkfstStaff = Math.ceil(bkfst / 28);
+      const dinnerStaff = dinner > 0 ? 2 : 1; // always need chef + KP
+      return { breakfast: Math.max(2, bkfstStaff), dinner: dinnerStaff,
+               total: Math.max(2, bkfstStaff) + (dinner > 0 ? dinnerStaff : 0),
+               note: 'Min 1 chef + 1 KP per service. Breakfast mirrors F&B.' };
+    }
+    case 'bar':
+      return { pm: 2, total: 2, note: 'Min 2 staff 15:00-23:00' };
+    case 'maintenance':
+      return { total: 1, note: 'Minimum 1 on call' };
+    case 'admin':
+      return { total: 1, note: 'Business hours cover' };
+    default:
+      return { total: 1, note: '' };
+  }
+}
+
+// Count staff rostered for a dept on a given day
+function countRostered(rota, dateK, deptId) {
+  const dayRota = rota[dateK] || {};
+  const staff = getStaffList().filter(s => s.dept === deptId);
+  let count = 0;
+  staff.forEach(s => {
+    const shift = dayRota[s.id];
+    if (shift && shift !== 'off' && shift !== 'OFF' && shift !== 'holiday' && shift !== '') count++;
+  });
+  return count;
+}
+
+// ── Shared styles ─────────────────────────────────────────────────────────────
+const ROTA_COLOURS = {
+  navy:'#1a2b3a', amber:'#c78a3b', green:'#2a6a4a',
+  red:'#b3261e', orange:'#c45c00', teal:'#4a9d7f', purple:'#6366f1'
+};
+
+function statusPill(label, colour, bg) {
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;color:${colour};background:${bg};white-space:nowrap">${label}</span>`;
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderRotaDash(v) {
+  const rota = getRotaData();
+  const forecast = getForecast();
+  const depts = getDeptList();
+  const today = new Date();
+  const todayK = dateKey(today);
+  const fc = forecast[todayK] || {};
+  const days = getWeekDates(0);
+  let weekWarnings = 0;
+
+  // Build dept status cards for today
+  let deptCards = '';
+  depts.forEach(dept => {
+    const req = calcRequired(fc, dept.id);
+    const rostered = countRostered(rota, todayK, dept.id);
+    const needed = req.total || 1;
+    const ok = rostered >= needed;
+    const warn = rostered === 0 && needed > 0;
+    if (!ok) weekWarnings++;
+    deptCards += `
+      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid ${ok?'#2a6a4a':warn?'#b3261e':'#c45c00'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-weight:700;font-size:13px;color:#1a2b3a">${dept.name}</div>
+          ${ok ? statusPill('✓ Covered','#2a6a4a','#e8f3ee') : warn ? statusPill('⚠ UNDERSTAFFED','#b3261e','#fdecea') : statusPill('⚡ SHORT','#c45c00','#fff3e8')}
+        </div>
+        <div style="display:flex;gap:16px;font-size:12px;color:#7a8494">
+          <span>Rostered: <strong style="color:#1a2b3a">${rostered}</strong></span>
+          <span>Required: <strong style="color:${ok?'#2a6a4a':'#b3261e'}">${needed}</strong></span>
+        </div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:4px">${req.note||''}</div>
+      </div>`;
+  });
+
+  // Week at a glance - rooms forecast
+  let weekRow = '';
+  days.forEach(d => {
+    const k = dateKey(d);
+    const f = forecast[k] || {};
+    const isToday = k === todayK;
+    weekRow += `<td style="text-align:center;padding:8px 4px;font-size:12px;${isToday?'background:#e8f3ee;border-radius:6px':''}">
+      <div style="font-weight:700;color:#1a2b3a">${f.rooms||'-'}</div>
+      <div style="color:#9ca3af;font-size:10px">${d.toLocaleDateString('en-GB',{weekday:'short'})}</div>
+    </td>`;
+  });
+
+  v.innerHTML = `
+    <div style="padding:20px;max-width:1100px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a">Staff Dashboard</div>
+          <div style="font-size:13px;color:#7a8494">Today · ${today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="document.querySelector('[data-tab=rotaWeek]').click()" 
+            style="padding:8px 14px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">
+            📋 Weekly Rota
+          </button>
+          <button onclick="document.querySelector('[data-tab=rotaForecast]').click()" 
+            style="padding:8px 14px;background:#c78a3b;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">
+            📈 Update Forecast
+          </button>
+        </div>
+      </div>
+
+      ${weekWarnings > 0 ? `<div style="background:#fdecea;border:1px solid #f5c6c6;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#b3261e;font-weight:600">
+        ⚠️ ${weekWarnings} department${weekWarnings>1?'s':''} understaffed or unconfirmed for today — check rota below
+      </div>` : `<div style="background:#e8f3ee;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#2a6a4a;font-weight:600">
+        ✅ All departments covered for today
+      </div>`}
+
+      <!-- Today Rooms Forecast Summary -->
+      <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Week · Rooms In House</div>
+        <table style="width:100%;border-collapse:collapse"><tr>${weekRow}</tr></table>
+        <div style="margin-top:10px;display:flex;gap:16px;font-size:12px;color:#7a8494;flex-wrap:wrap">
+          <span>Today · Rooms: <strong>${fc.rooms||'Not set'}</strong></span>
+          <span>Departures: <strong>${fc.departures||'—'}</strong></span>
+          <span>Stayovers: <strong>${fc.stayovers||'—'}</strong></span>
+          <span>Breakfast covers: <strong>${fc.breakfastCovers||'—'}</strong></span>
+          <span>Dinner forecast: <strong>${fc.dinnerCovers||'—'}</strong></span>
+        </div>
+        ${!fc.rooms ? `<div style="margin-top:8px;font-size:12px;color:#c45c00">⚡ No forecast entered for today — <a href="#" onclick="document.querySelector('[data-tab=rotaForecast]').click();return false" style="color:#c45c00;font-weight:700">add forecast →</a></div>` : ''}
+      </div>
+
+      <!-- Department Status Grid -->
+      <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Today · Department Staffing</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+        ${deptCards}
+      </div>
+    </div>`;
+}
+
+// ── WEEKLY ROTA ───────────────────────────────────────────────────────────────
+let rotaWeekOffset = 0;
+
+function renderRotaWeek(v) {
+  const rota = getRotaData();
+  const forecast = getForecast();
+  const days = getWeekDates(rotaWeekOffset);
+  const depts = getDeptList();
+  const staff = getStaffList();
+  const todayK = dateKey(new Date());
+
+  const weekLabel = `Week commencing ${fmtShortDate(days[0])}`;
+  const dayHeaders = days.map(d => {
+    const k = dateKey(d);
+    const isToday = k === todayK;
+    return `<th style="min-width:110px;padding:8px 6px;text-align:center;font-size:11px;font-weight:700;color:${isToday?'#fff':'#1a2b3a'};background:${isToday?'#1a2b3a':'#f5f7f9'};border-radius:6px">
+      ${d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase()}<br>
+      <span style="font-weight:400;font-size:10px">${fmtShortDate(d)}</span>
+    </th>`;
+  }).join('');
+
+  // Render by department
+  let rows = '';
+  depts.forEach(dept => {
+    const deptStaff = staff.filter(s => s.dept === dept.id);
+    if (deptStaff.length === 0) return;
+
+    // Dept header row
+    rows += `<tr>
+      <td colspan="9" style="background:${dept.colour}15;padding:8px 12px;border-top:2px solid ${dept.colour}">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${dept.colour}"></span>
+          <span style="font-weight:700;font-size:12px;color:${dept.colour};text-transform:uppercase;letter-spacing:.5px">${dept.name}</span>
+          <span style="font-size:11px;color:#9ca3af">${dept.notes||''}</span>
+        </div>
+      </td>
+    </tr>`;
+
+    // Staffing requirement row
+    rows += `<tr style="background:#fafafa">
+      <td style="padding:6px 12px;font-size:11px;color:#9ca3af;font-style:italic">Required</td>
+      ${days.map(d => {
+        const k = dateKey(d);
+        const fc = forecast[k] || {};
+        const req = calcRequired(fc, dept.id);
+        const rostered = countRostered(rota, k, dept.id);
+        const needed = req.total || 0;
+        const ok = rostered >= needed;
+        return `<td style="text-align:center;padding:4px">
+          <span style="font-size:11px;font-weight:700;color:${ok?'#2a6a4a':'#b3261e'}">${rostered}/${needed}</span>
+        </td>`;
+      }).join('')}
+    </tr>`;
+
+    // Staff rows
+    deptStaff.forEach(s => {
+      rows += `<tr style="border-bottom:1px solid #f0f0f0" id="rrow-${s.id}">
+        <td style="padding:7px 12px;white-space:nowrap">
+          <div style="font-size:12px;font-weight:600;color:#1a2b3a">${s.name}</div>
+          <div style="font-size:10px;color:#9ca3af">${s.type==='relief'?'Relief':s.contractHrs+'h/wk'}</div>
+        </td>
+        ${days.map(d => {
+          const k = dateKey(d);
+          const shift = (rota[k]||{})[s.id] || '';
+          const isOff = ['off','OFF','holiday','on call',''].includes(shift.toLowerCase?.()|| shift);
+          return `<td style="padding:3px;text-align:center">
+            <input type="text" 
+              value="${shift}"
+              data-staff="${s.id}" 
+              data-date="${k}"
+              onchange="updateRotaCell(this)"
+              placeholder="off"
+              style="width:96px;padding:5px 6px;border:1px solid ${isOff?'#e8e8e8':'#c78a3b'};border-radius:6px;font-size:11px;text-align:center;background:${isOff?'#f9fafb':'#fffbf3'};color:${isOff?'#9ca3af':'#1a2b3a'};font-family:Lato">
+          </td>`;
+        }).join('')}
+      </tr>`;
+    });
+  });
+
+  // Total staff per day
+  let totalsRow = days.map(d => {
+    const k = dateKey(d);
+    const total = staff.reduce((n, s) => {
+      const shift = (rota[k]||{})[s.id] || '';
+      return n + (['off','OFF','holiday',''].includes(shift.toLowerCase?.()|| shift) ? 0 : 1);
+    }, 0);
+    return `<td style="text-align:center;padding:6px;font-weight:700;font-size:12px;color:#1a2b3a">${total}</td>`;
+  }).join('');
+
+  v.innerHTML = `
+    <div style="padding:20px;max-width:1200px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Weekly Rota</div>
+          <div style="font-size:13px;color:#7a8494">${weekLabel}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="rotaWeekOffset--;renderRotaWeek(document.getElementById('main-content'))" 
+            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">← Prev</button>
+          <button onclick="rotaWeekOffset=0;renderRotaWeek(document.getElementById('main-content'))" 
+            style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font-size:12px;font-weight:600">This Week</button>
+          <button onclick="rotaWeekOffset++;renderRotaWeek(document.getElementById('main-content'))" 
+            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">Next →</button>
+          <button onclick="exportRota()" 
+            style="padding:7px 14px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📥 Export</button>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table style="border-collapse:collapse;width:100%;min-width:800px">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:8px 12px;font-size:11px;color:#7a8494;text-transform:uppercase;white-space:nowrap">Team Member</th>
+              ${dayHeaders}
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+            <tr style="background:#1a2b3a15;border-top:2px solid #1a2b3a">
+              <td style="padding:8px 12px;font-size:11px;font-weight:700;color:#1a2b3a">TOTAL ON DUTY</td>
+              ${totalsRow}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:#9ca3af">
+        Type shifts in HH:MM-HH:MM format (e.g. 09:00-17:00) · Type "off" for days off · "holiday" for annual leave · "on call" for standby.
+        Changes save automatically.
+      </div>
+    </div>`;
+}
+
+function updateRotaCell(input) {
+  const rota = getRotaData();
+  const dateK = input.dataset.date;
+  const staffId = input.dataset.staff;
+  if (!rota[dateK]) rota[dateK] = {};
+  rota[dateK][staffId] = input.value.trim();
+  saveRotaData(rota);
+  // Update cell style
+  const isOff = ['off','OFF','holiday','on call',''].includes(input.value.toLowerCase?.() || input.value);
+  input.style.borderColor = isOff ? '#e8e8e8' : '#c78a3b';
+  input.style.background = isOff ? '#f9fafb' : '#fffbf3';
+  input.style.color = isOff ? '#9ca3af' : '#1a2b3a';
+}
+
+function exportRota() {
+  const rota = getRotaData();
+  const staff = getStaffList();
+  const days = getWeekDates(rotaWeekOffset);
+  let csv = 'Name,Department,' + days.map(d => fmtDate(d)).join(',') + '\n';
+  staff.forEach(s => {
+    const shifts = days.map(d => (rota[dateKey(d)]||{})[s.id] || 'off');
+    csv += `"${s.name}","${s.dept}",` + shifts.map(x => `"${x}"`).join(',') + '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'brandon-hall-rota.csv'; a.click();
+}
+
+// ── FORECAST ─────────────────────────────────────────────────────────────────
+let forecastWeekOffset = 0;
+
+function renderRotaForecast(v) {
+  const forecast = getForecast();
+  const rota = getRotaData();
+  const depts = getDeptList();
+  const days = getWeekDates(forecastWeekOffset);
+  const todayK = dateKey(new Date());
+
+  let fcRows = days.map(d => {
+    const k = dateKey(d);
+    const f = forecast[k] || {};
+    const isToday = k === todayK;
+
+    // Calc dept requirements
+    const reqs = depts.map(dept => {
+      const req = calcRequired(f, dept.id);
+      const rostered = countRostered(rota, k, dept.id);
+      const needed = req.total || 0;
+      const ok = rostered >= needed;
+      return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;border-bottom:1px solid #f5f7f9">
+        <span style="color:#7a8494">${dept.name}</span>
+        <span style="font-weight:700;color:${ok?'#2a6a4a':'#b3261e'}">${rostered}/${needed} ${ok?'✓':'⚠'}</span>
+      </div>`;
+    }).join('');
+
+    return `<div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);${isToday?'border:2px solid #1a2b3a':''}">
+      <div style="font-weight:700;font-size:13px;color:#1a2b3a;margin-bottom:10px">
+        ${d.toLocaleDateString('en-GB',{weekday:'long'})}
+        <span style="font-size:11px;font-weight:400;color:#9ca3af">${fmtShortDate(d)}${isToday?' · Today':''}</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+        <div>
+          <label style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Rooms in house</label>
+          <input type="number" value="${f.rooms||''}" min="0" max="120" placeholder="0"
+            data-date="${k}" data-field="rooms" onchange="updateForecastCell(this)"
+            style="width:100%;padding:7px;border:1.5px solid #e0e0e0;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
+        </div>
+        <div>
+          <label style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Departures</label>
+          <input type="number" value="${f.departures||''}" min="0" max="120" placeholder="0"
+            data-date="${k}" data-field="departures" onchange="updateForecastCell(this)"
+            style="width:100%;padding:7px;border:1.5px solid #e0e0e0;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
+        </div>
+        <div>
+          <label style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Stayovers</label>
+          <input type="number" value="${f.stayovers||''}" min="0" max="120" placeholder="0"
+            data-date="${k}" data-field="stayovers" onchange="updateForecastCell(this)"
+            style="width:100%;padding:7px;border:1.5px solid #e0e0e0;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
+        </div>
+        <div>
+          <label style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Bkfst covers</label>
+          <input type="number" value="${f.breakfastCovers||''}" min="0" placeholder="auto"
+            data-date="${k}" data-field="breakfastCovers" onchange="updateForecastCell(this)"
+            style="width:100%;padding:7px;border:1.5px solid #e0e0e0;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
+        </div>
+        <div style="grid-column:span 2">
+          <label style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Dinner covers</label>
+          <input type="number" value="${f.dinnerCovers||''}" min="0" placeholder="0"
+            data-date="${k}" data-field="dinnerCovers" onchange="updateForecastCell(this)"
+            style="width:100%;padding:7px;border:1.5px solid #e0e0e0;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #f0f0f0;padding-top:8px">
+        <div style="font-size:10px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Staff Required vs Rostered</div>
+        ${reqs}
+      </div>
+    </div>`;
+  }).join('');
+
+  v.innerHTML = `
+    <div style="padding:20px;max-width:1100px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Occupancy Forecast</div>
+          <div style="font-size:13px;color:#7a8494">Enter rooms sold and covers — staffing requirements update automatically</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="forecastWeekOffset--;renderRotaForecast(document.getElementById('main-content'))"
+            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">← Prev</button>
+          <button onclick="forecastWeekOffset=0;renderRotaForecast(document.getElementById('main-content'))"
+            style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font-size:12px;font-weight:600">This Week</button>
+          <button onclick="forecastWeekOffset++;renderRotaForecast(document.getElementById('main-content'))"
+            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">Next →</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+        ${fcRows}
+      </div>
+    </div>`;
+}
+
+function updateForecastCell(input) {
+  const forecast = getForecast();
+  const k = input.dataset.date;
+  const field = input.dataset.field;
+  if (!forecast[k]) forecast[k] = {};
+  forecast[k][field] = parseInt(input.value) || 0;
+  // Auto-calc breakfast covers from rooms if not set
+  if (field === 'rooms' && !forecast[k].breakfastCovers) {
+    forecast[k].breakfastCovers = Math.round((parseInt(input.value)||0) * 1.8);
+  }
+  saveForecast(forecast);
+  // Re-render the required vs rostered section for this day
+  renderRotaForecast(document.getElementById('main-content'));
+}
+
+// ── MONTHLY PLAN ─────────────────────────────────────────────────────────────
+let monthOffset = 0;
+
+function renderRotaMonthly(v) {
+  const monthly = getMonthlyForecast();
+  const today = new Date();
+  const viewDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const monthName = viewDate.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
+  const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 0).getDate();
+  const firstDay = viewDate.getDay() || 7; // Mon=1
+  const monthKey = `${viewDate.getFullYear()}-${String(viewDate.getMonth()+1).padStart(2,'0')}`;
+
+  // Summary totals for month
+  let totalRooms=0, totalBkfst=0, totalDinner=0;
+  for (let i=1; i<=daysInMonth; i++) {
+    const dk = `${monthKey}-${String(i).padStart(2,'0')}`;
+    const f = monthly[dk] || {};
+    totalRooms += f.rooms||0;
+    totalBkfst += f.breakfastCovers || Math.round((f.rooms||0)*1.8);
+    totalDinner += f.dinnerCovers||0;
+  }
+
+  // Calendar cells
+  let calCells = '';
+  // Empty cells for start of month
+  for (let i=1; i<firstDay; i++) calCells += '<td style="padding:4px;background:#fafafa;border:1px solid #f0f0f0"></td>';
+
+  for (let day=1; day<=daysInMonth; day++) {
+    const dk = `${monthKey}-${String(day).padStart(2,'0')}`;
+    const f = monthly[dk] || {};
+    const isToday = dk === dateKey(today);
+    const occ = f.rooms ? Math.round(f.rooms/120*100) : null;
+    const occColor = occ === null ? '#9ca3af' : occ >= 80 ? '#2a6a4a' : occ >= 50 ? '#c78a3b' : '#b3261e';
+
+    calCells += `<td style="padding:4px;border:1px solid #f0f0f0;vertical-align:top;${isToday?'background:#e8f3ee':''}">
+      <div style="font-size:11px;font-weight:700;color:#1a2b3a;margin-bottom:3px">${day}</div>
+      <input type="number" value="${f.rooms||''}" min="0" max="120" placeholder="—"
+        data-dk="${dk}" data-field="rooms"
+        onchange="updateMonthlyCell(this)"
+        title="Rooms in house"
+        style="width:100%;padding:3px;border:1px solid #e0e0e0;border-radius:4px;font:700 11px Lato;text-align:center;color:${occColor}">
+      <input type="number" value="${f.dinnerCovers||''}" min="0" placeholder="din"
+        data-dk="${dk}" data-field="dinnerCovers"
+        onchange="updateMonthlyCell(this)"
+        title="Dinner covers"
+        style="width:100%;margin-top:2px;padding:3px;border:1px solid #e0e0e0;border-radius:4px;font:10px Lato;text-align:center;color:#8b5c8f">
+    </td>`;
+  }
+
+  // Pad end
+  const totalCells = (firstDay - 1) + daysInMonth;
+  const endPad = (7 - (totalCells % 7)) % 7;
+  for (let i=0; i<endPad; i++) calCells += '<td style="padding:4px;background:#fafafa;border:1px solid #f0f0f0"></td>';
+
+  v.innerHTML = `
+    <div style="padding:20px;max-width:1000px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Monthly Forecast</div>
+          <div style="font-size:13px;color:#7a8494">Enter rooms per night for the month · dinner covers where known</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="monthOffset--;renderRotaMonthly(document.getElementById('main-content'))"
+            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">← Prev</button>
+          <span style="font-weight:700;font-size:14px;color:#1a2b3a;padding:0 4px">${monthName}</span>
+          <button onclick="monthOffset++;renderRotaMonthly(document.getElementById('main-content'))"
+            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">Next →</button>
+        </div>
+      </div>
+
+      <!-- Month summary -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+        <div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#1a2b3a">${totalRooms}</div>
+          <div style="font-size:11px;color:#9ca3af;text-transform:uppercase">Total Room Nights</div>
+        </div>
+        <div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#4a9d7f">${totalBkfst}</div>
+          <div style="font-size:11px;color:#9ca3af;text-transform:uppercase">Est. Breakfast Covers</div>
+        </div>
+        <div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#8b5c8f">${totalDinner}</div>
+          <div style="font-size:11px;color:#9ca3af;text-transform:uppercase">Dinner Covers</div>
+        </div>
+      </div>
+
+      <!-- Calendar -->
+      <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="font-size:11px;color:#9ca3af;margin-bottom:6px">Top field = rooms in house · Bottom field = dinner covers · Colour = occupancy level</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<th style="padding:6px;text-align:center;font-size:11px;font-weight:700;color:#7a8494">${d}</th>`).join('')}</tr>
+          </thead>
+          <tbody>
+            ${(() => {
+              let rows2='', cells=calCells.split('</td>').filter(Boolean).map(c=>c+'</td>');
+              for(let i=0;i<cells.length;i+=7) rows2+=`<tr>${cells.slice(i,i+7).join('')}</tr>`;
+              return rows2;
+            })()}
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:16px;font-size:11px;color:#9ca3af;flex-wrap:wrap">
+        <span style="color:#2a6a4a">■ 80%+ occupancy</span>
+        <span style="color:#c78a3b">■ 50-79%</span>
+        <span style="color:#b3261e">■ Below 50%</span>
+      </div>
+    </div>`;
+}
+
+function updateMonthlyCell(input) {
+  const monthly = getMonthlyForecast();
+  const dk = input.dataset.dk;
+  const field = input.dataset.field;
+  if (!monthly[dk]) monthly[dk] = {};
+  monthly[dk][field] = parseInt(input.value) || 0;
+  saveMonthlyForecast(monthly);
+  // Also sync to weekly forecast if in same week
+  const forecast = getForecast();
+  if (!forecast[dk]) forecast[dk] = {};
+  if (field === 'rooms') {
+    forecast[dk].rooms = parseInt(input.value)||0;
+    if(!forecast[dk].breakfastCovers) forecast[dk].breakfastCovers = Math.round((parseInt(input.value)||0)*1.8);
+  }
+  if (field === 'dinnerCovers') forecast[dk].dinnerCovers = parseInt(input.value)||0;
+  saveForecast(forecast);
+}
+
+// ── SETTINGS & STAFF ─────────────────────────────────────────────────────────
+function renderRotaSettings(v) {
+  const staff = getStaffList();
+  const depts = getDeptList();
+
+  const deptTabs = depts.map(d =>
+    `<button onclick="showDeptStaff('${d.id}')" id="dst-${d.id}"
+      style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;font:600 11px Lato;cursor:pointer;color:#1a2b3a;white-space:nowrap">
+      ${d.name}
+    </button>`
+  ).join('');
+
+  const allStaffRows = staff.map(s => {
+    const dept = depts.find(d => d.id === s.dept);
+    return `<tr style="border-bottom:1px solid #f5f7f9">
+      <td style="padding:8px 12px">
+        <div style="font-size:13px;font-weight:600;color:#1a2b3a">${s.name}</div>
+      </td>
+      <td style="padding:8px 6px">
+        <span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;background:${dept?.colour||'#eee'}25;color:${dept?.colour||'#666'};font-weight:600">${dept?.name||s.dept}</span>
+      </td>
+      <td style="padding:8px 6px;font-size:12px;color:#7a8494">${s.type==='relief'?'Relief/Agency':'Core'}</td>
+      <td style="padding:8px 6px;font-size:12px;color:#1a2b3a">${s.contractHrs>0?s.contractHrs+'h/wk':'—'}</td>
+      <td style="padding:8px 6px">
+        <select onchange="changeStaffDept('${s.id}',this.value)" style="padding:4px;border:1px solid #e0e0e0;border-radius:6px;font-size:11px">
+          ${depts.map(d=>`<option value="${d.id}" ${s.dept===d.id?'selected':''}>${d.name}</option>`).join('')}
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Min staffing levels editor
+  const minLevels = depts.map(d => `
+    <tr style="border-bottom:1px solid #f5f7f9">
+      <td style="padding:8px 12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${d.colour}"></span>
+          <span style="font-size:13px;font-weight:600;color:#1a2b3a">${d.name}</span>
+        </div>
+      </td>
+      <td style="padding:8px 6px">
+        <input type="number" value="${d.minPerShift}" min="0" max="20"
+          onchange="updateMinLevel('${d.id}',this.value)"
+          style="width:60px;padding:5px;border:1px solid #e0e0e0;border-radius:6px;font:700 13px Lato;text-align:center">
+      </td>
+      <td style="padding:8px 6px;font-size:12px;color:#7a8494">${d.notes||''}</td>
+    </tr>`).join('');
+
+  v.innerHTML = `
+    <div style="padding:20px;max-width:900px">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a;margin-bottom:4px">Settings & Staff</div>
+      <div style="font-size:13px;color:#7a8494;margin-bottom:20px">Manage team members, departments and minimum staffing levels</div>
+
+      <!-- Min Staffing Levels -->
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Minimum Staffing Levels</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th style="text-align:left;padding:6px 12px;font-size:11px;color:#9ca3af">Department</th>
+            <th style="text-align:left;padding:6px;font-size:11px;color:#9ca3af">Min per shift</th>
+            <th style="text-align:left;padding:6px;font-size:11px;color:#9ca3af">Notes</th>
+          </tr></thead>
+          <tbody>${minLevels}</tbody>
+        </table>
+      </div>
+
+      <!-- Staff List -->
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px">Staff Members (${staff.length})</div>
+          <button onclick="addStaffPrompt()" style="padding:7px 14px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">+ Add Staff Member</button>
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th style="text-align:left;padding:6px 12px;font-size:11px;color:#9ca3af">Name</th>
+            <th style="text-align:left;padding:6px;font-size:11px;color:#9ca3af">Department</th>
+            <th style="text-align:left;padding:6px;font-size:11px;color:#9ca3af">Type</th>
+            <th style="text-align:left;padding:6px;font-size:11px;color:#9ca3af">Contract</th>
+            <th style="text-align:left;padding:6px;font-size:11px;color:#9ca3af">Move dept</th>
+          </tr></thead>
+          <tbody>${allStaffRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function updateMinLevel(deptId, val) {
+  const depts = JSON.parse(localStorage.getItem('staffpro_depts') || 'null') || STAFF_DEFAULTS.departments;
+  const dept = depts.find(d => d.id === deptId);
+  if (dept) dept.minPerShift = parseInt(val) || 0;
+  localStorage.setItem('staffpro_depts', JSON.stringify(depts));
+}
+
+function changeStaffDept(staffId, newDept) {
+  const staff = getStaffList();
+  const s = staff.find(x => x.id === staffId);
+  if (s) s.dept = newDept;
+  localStorage.setItem('staffpro_staff', JSON.stringify(staff));
+  toast('Staff updated ✓');
+}
+
+function addStaffPrompt() {
+  const name = prompt('Staff member name:');
+  if (!name) return;
+  const depts = getDeptList();
+  const deptName = prompt('Department (' + depts.map(d=>d.id).join(', ') + '):');
+  const dept = depts.find(d => d.id === deptName || d.name.toLowerCase() === deptName?.toLowerCase());
+  if (!dept) { alert('Unknown department'); return; }
+  const staff = getStaffList();
+  staff.push({ id: name.toLowerCase().replace(/\s+/g,'_')+'_'+Date.now(), name, dept: dept.id, type:'core', contractHrs:0 });
+  localStorage.setItem('staffpro_staff', JSON.stringify(staff));
+  renderRotaSettings(document.getElementById('main-content'));
+}
