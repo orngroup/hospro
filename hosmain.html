@@ -803,9 +803,28 @@ function renderJobs(){
         f==='in-progress'?'🟡 In progress':'🟢 Complete'
       }</span>`).join('')}
   </div><div style="padding:0 0 80px">`;
-  jobs.forEach(j=>{ html+=jobCard(j); });
-  html+=`</div>`;
+  if(jobs.length===0){
+    html+=`<div style="text-align:center;padding:40px 20px">
+      <div style="font-size:48px;margin-bottom:14px">📋</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--navy);margin-bottom:8px">No jobs yet</div>
+      <div style="font-size:13px;color:#7a8494;margin-bottom:20px">Ask your manager to share a sync link, or tap below if you have one</div>
+      <button type="button" class="btn btn-navy" style="max-width:280px;margin:0 auto" onclick="promptSyncLink()">📲 Import jobs from sync link</button>
+    </div>`;
+  } else {
+    jobs.forEach(j=>{ html+=jobCard(j); });
+  }
+  html+='</div>';
   return html;
+}
+
+function promptSyncLink(){
+  const link=prompt('Paste the sync link your manager shared:');
+  if(!link) return;
+  // Extract hash
+  const hash=link.includes('#sync=')?link.split('#sync=')[1]:link;
+  if(!hash){ toast('Invalid link'); return; }
+  location.hash='sync='+hash;
+  checkSyncHash();
 }
 
 function jobCard(j){
@@ -1151,7 +1170,7 @@ function openJobDetail(jobId){
   ${!isDone?`<div style="margin-bottom:14px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px">Materials used</div>
-      <button type="button" id="btn-add-mat" style="padding:5px 12px;border-radius:8px;border:none;background:var(--navy);color:#fff;font:700 12px 'Lato';cursor:pointer;touch-action:manipulation">+ Add stock</button>
+      <button type="button" onclick="openStockPicker('${j.id}')" style="padding:5px 12px;border-radius:8px;border:none;background:var(--navy);color:#fff;font:700 12px 'Lato';cursor:pointer;touch-action:manipulation">+ Add stock</button>
     </div>
     <div style="background:#f5f7f9;border-radius:10px;padding:10px" id="mat-list">
       ${(j.materials||[]).length
@@ -1182,21 +1201,21 @@ function openJobDetail(jobId){
     <label>Add note / update</label>
     <textarea id="det-note" placeholder="Progress update, parts needed, completed works…" style="min-height:60px"></textarea>
   </div>
-  <button type="button" class="btn btn-ghost" id="btn-save-note" style="margin-bottom:12px">Save note</button>`:''}
+  <button type="button" class="btn btn-ghost" onclick="saveNote('${j.id}')" style="margin-bottom:12px">Save note</button>`:''}
 
   <!-- Timer / action buttons -->
   ${!isDone&&canStart?`<div style="margin-bottom:8px">
     ${isRunning?`<div style="background:#e8f3ee;border-radius:10px;padding:10px 14px;text-align:center;font:700 13px 'Lato';color:var(--green);margin-bottom:8px">⏱ In progress${elapsed?' · '+elapsed:''}</div>
       <div class="btn-row">
-        <button type="button" class="btn btn-ghost" id="btn-pause">⏸ Pause</button>
-        <button type="button" class="btn btn-green" id="btn-complete">✓ Complete job</button>
+        <button type="button" class="btn btn-ghost" onclick="pauseJob('${j.id}')">⏸ Pause</button>
+        <button type="button" class="btn btn-green" onclick="completeJobFlow('${j.id}')">✓ Complete job</button>
       </div>`:
     isPaused?`<div style="background:#fffbe6;border-radius:10px;padding:10px 14px;text-align:center;font:700 13px 'Lato';color:#997300;margin-bottom:8px">⏸ Paused${elapsed?' · '+elapsed+' logged':''}</div>
       <div class="btn-row">
-        <button type="button" class="btn btn-green" id="btn-resume">▶ Resume</button>
+        <button type="button" class="btn btn-green" onclick="resumeJob('${j.id}')">▶ Resume</button>
         <button type="button" class="btn btn-navy" id="btn-complete">✓ Complete job</button>
       </div>`:
-    `<button type="button" class="btn btn-orange" id="btn-start">▶ Start job</button>`}
+    `<button type="button" class="btn btn-orange" onclick="startJobFlow('${j.id}')">▶ Start job</button>`}
   </div>`:''}
   ${isDone?`<div style="background:#e8f3ee;border-radius:10px;padding:12px;text-align:center;margin-bottom:12px">
     <div style="font:700 14px 'Lato';color:var(--green)">✓ Completed by ${j.completedBy||'team'}</div>
@@ -1206,19 +1225,7 @@ function openJobDetail(jobId){
 
   openModal(html);
 
-  // Wire all buttons via addEventListener (NEVER inline onclick for critical actions)
-  $('btn-add-mat')?.addEventListener('click',()=>openStockPicker(jobId));
-  $('btn-save-note')?.addEventListener('click',()=>{
-    const note=($('det-note')?.value||'').trim();
-    if(!note){ toast('Type a note first'); return; }
-    j.notes=j.notes||[];
-    j.notes.push({text:note,by:MY_USER?.name||ME,at:todayStr()});
-    saveJobs(); toast('Note saved ✓'); openJobDetail(jobId);
-  });
-  $('btn-start')?.addEventListener('click',()=>startJobFlow(jobId));
-  $('btn-pause')?.addEventListener('click',()=>pauseJob(jobId));
-  $('btn-resume')?.addEventListener('click',()=>resumeJob(jobId));
-  $('btn-complete')?.addEventListener('click',()=>completeJobFlow(jobId));
+  // buttons use inline onclick
 }
 
 
@@ -1283,6 +1290,20 @@ function startJobFlow(jobId){
   });
 }
 
+function saveNote(jobId){
+  const j=JOBS.find(x=>x.id===jobId); if(!j) return;
+  const note=($('det-note')?.value||'').trim();
+  if(!note){ toast('Type a note first'); return; }
+  j.notes=j.notes||[];
+  j.notes.push({text:note,by:MY_USER?.name||ME,at:todayStr()});
+  saveJobs(); toast('Note saved ✓'); openJobDetail(jobId);
+}
+
+function finishStockPicker(){
+  closeModal();
+  if(_jid) openJobDetail(_jid);
+}
+
 function doStartTimer(jobId){
   const j=JOBS.find(x=>x.id===jobId); if(!j) return;
   const now=new Date().toISOString();
@@ -1323,7 +1344,7 @@ function completeJobFlow(jobId){
     <label>Completion notes (optional)</label>
     <textarea id="comp-note" placeholder="What was done, materials used, any follow-up needed…" style="min-height:60px"></textarea>
   </div>
-  <button type="button" class="btn btn-green" id="btn-do-complete">✓ Complete job</button>
+  <button type="button" class="btn btn-green" onclick="doCompleteJob(_jid)">✓ Complete job</button>
   <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>`;
 
   openModal(html);
@@ -1348,7 +1369,7 @@ function completeJobFlow(jobId){
     reader.readAsDataURL(file);
   });
 
-  $('btn-do-complete').addEventListener('click',()=>doCompleteJob(_jid));
+  // btn-do-complete uses inline onclick
 }
 
 function doCompleteJob(jobId){
@@ -1453,7 +1474,7 @@ function openStockPicker(jobId){
         </div>`;
       }).join('')}
     </div>
-    <button type="button" class="btn btn-navy" id="btn-done-mat" style="margin-top:12px">✓ Done — back to job</button>`;
+    <button type="button" class="btn btn-navy" onclick="finishStockPicker()" style="margin-top:12px">✓ Done — back to job</button>`;
 
     openModal(html);
 
@@ -1488,7 +1509,7 @@ function openStockPicker(jobId){
       });
     });
 
-    $('btn-done-mat').addEventListener('click',()=>{ closeModal(); openJobDetail(jobId); });
+    // done button uses inline onclick
   }
 
   renderPicker();
