@@ -916,20 +916,30 @@ function renderNewJobForm(){
 
   <div class="btn-row" style="margin-top:18px">
     <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-    <button type="button" class="btn btn-navy btn-full" id="nj-submit">✓ Log job</button>
+    <button type="button" class="btn btn-navy btn-full" onclick="submitJob()">✓ Log job</button>
   </div>`;
 
   openModal(html);
 
   // Wire events AFTER modal is in DOM
-  // Module toggle
-  $('mod-maint').addEventListener('click',()=>{ FS.module='maintenance'; renderNewJobForm(); });
-  $('mod-comp').addEventListener('click',()=>{ FS.module='compliance'; renderNewJobForm(); });
+  // Module toggle - just update styles, no re-render
+  $('mod-maint').addEventListener('click',()=>{
+    FS.module='maintenance';
+    $('mod-maint').style.cssText='border-color:var(--orange);background:#fff3e8;color:var(--orange)';
+    $('mod-comp').style.cssText='border-color:var(--line);background:#fff;color:var(--ink)';
+  });
+  $('mod-comp').addEventListener('click',()=>{
+    FS.module='compliance';
+    $('mod-comp').style.cssText='border-color:var(--green);background:#e8f3ee;color:var(--green)';
+    $('mod-maint').style.cssText='border-color:var(--line);background:#fff;color:var(--ink)';
+  });
 
-  // Photo zone for new job
+  // Photo zone — use global input element
+  if($('_nj_photo_inp')) document.body.removeChild($('_nj_photo_inp'));
   const njPhotoInp=document.createElement('input');
+  njPhotoInp.id='_nj_photo_inp';
   njPhotoInp.type='file'; njPhotoInp.accept='image/*'; njPhotoInp.capture='environment';
-  njPhotoInp.style.cssText='position:absolute;opacity:0;width:1px;height:1px;top:-100px';
+  njPhotoInp.style.cssText='position:fixed;top:-200px;left:-200px;opacity:0;width:1px;height:1px';
   document.body.appendChild(njPhotoInp);
   $('nj-photo-zone').addEventListener('click',()=>njPhotoInp.click());
   njPhotoInp.addEventListener('change',function(){
@@ -941,7 +951,6 @@ function renderNewJobForm(){
       const pv=$('nj-photo-preview');
       if(pz){pz.className='photo-zone captured';pz.textContent='✓ Photo added';}
       if(pv) pv.innerHTML='<img src="'+e.target.result+'" style="width:100%;border-radius:10px;max-height:150px;object-fit:cover">';
-      document.body.removeChild(njPhotoInp);
       toast('Photo added ✓');
     };
     reader.readAsDataURL(file);
@@ -972,8 +981,7 @@ function renderNewJobForm(){
     });
   }
 
-  // Submit — this is the critical one
-  $('nj-submit').addEventListener('click', submitJob);
+  // submit via inline onclick on button
 }
 
 function setFS(key,val,el,cls,parentClass){
@@ -987,6 +995,8 @@ function setFS(key,val,el,cls,parentClass){
 }
 
 function submitJob(){
+  try{
+
   // Read values from DOM
   const title=($('nj-title')?.value||'').trim();
   if(!title){ toast('⚠️ Please add a job title'); return; }
@@ -1055,6 +1065,11 @@ function submitJob(){
     showWANotifyModal(job, waLinks);
   } else {
     toast(needsApproval?'Job logged — awaiting approval ✓':'Job logged ✓');
+  }
+
+  } catch(err){
+    toast('Error: '+err.message);
+    console.error('submitJob error:', err);
   }
 }
 
