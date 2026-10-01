@@ -233,7 +233,8 @@ function render(){
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
     fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
     rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings,
-    staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs
+    staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs,
+    brandDocs:renderBrandDocs
   }[CURRENT_TAB]||renderRooms)(v);
 }
 
@@ -3784,7 +3785,7 @@ function renderSocialPreview(){
 
 /* ============================================================ HOME / WELCOME */
 function renderHome(v){
-  const mods = userModules(SESSION?._key||"ajay.kawa").filter(m=>m.id!=="insight");
+  const mods = userModules(SESSION?._key||"ajay.kawa");
   const groups = typeof MODULE_GROUPS!=="undefined" ? MODULE_GROUPS : [];
 
   // ── Hide breadcrumb on home ────────────────────────────────────────────────
@@ -3823,11 +3824,10 @@ function renderHome(v){
 
   // 2 rows: first 6 and second 6
   const row1 = orderedMods.slice(0,6);
-  const row2 = orderedMods.slice(6,12);
 
-  [row1, row2].forEach((row, rowIdx) => {
+  [row1].forEach((row, rowIdx) => {
     const rowDiv = document.createElement('div');
-    rowDiv.style.cssText = 'display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:12px';
+    rowDiv.style.cssText = 'display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:16px';
     row.forEach(m => {
       const card = document.createElement('button');
       card.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;background:#fff;border:2px solid #e5e7eb;border-radius:14px;cursor:pointer;text-align:left;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.05);width:100%';
@@ -4036,7 +4036,7 @@ function renderHome(v){
   const enqs = typeof ENQUIRIES!=="undefined" ? ENQUIRIES : [];
   const stages = ['new','proposal','negotiation','confirmed','lost'];
   const stageLabels = {new:'New',proposal:'Proposal',negotiation:'Negotiation',confirmed:'Confirmed',lost:'Lost'};
-  const stageColours = {new:'#4a86c7',proposal:'#8b5c8f',negotiation:'#c78a3b',confirmed:'#2a6a4a',lost:'#9ca3af'};
+  const stageColours = {new:'#4a86c7',proposal:'#8b5c8f',negotiation:'#c78a3b',confirmed:'#2a6a4a',lost:'#374151'};
   const stageCounts = {};
   stages.forEach(s=>stageCounts[s]=enqs.filter(e=>e.stage===s).length);
   const total = enqs.length||1;
@@ -4100,61 +4100,94 @@ function renderHome(v){
   v.appendChild(wrap);
 }
 
-// ── MODULE LANDING PAGE ────────────────────────────────────────────────────────
+// ── MODULE LANDING PAGE — with background image ────────────────────────────────
+const MOD_BG = {
+  hosops:    "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=1600&q=60",
+  hossales:  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1600&q=60",
+  hosvenue:  "https://images.unsplash.com/photo-1587017539504-67cfbddac569?w=1600&q=60",
+  hosstudio: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=1600&q=60",
+  hosbrand:  "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=60",
+  hospeople: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1600&q=60",
+};
+
 function renderModuleLanding(moduleId){
-  const v = document.getElementById('view');
+  const v = document.getElementById("view");
   const mods = typeof FLOW_MODULES!=="undefined" ? FLOW_MODULES : [];
   const m = mods.find(x=>x.id===moduleId);
   if(!m) return;
 
+  // HosBRAND goes straight to brandDocs
+  if(moduleId==="hosbrand"){ switchTab("brandDocs"); return; }
+
   const subcards = (typeof MODULE_SUBCARDS!=="undefined" && MODULE_SUBCARDS[moduleId]) || [];
 
-  // Show breadcrumb
-  const bc = document.getElementById('sf-breadcrumb');
-  const bcLabel = document.getElementById('sf-bc-module');
-  const bcTab   = document.getElementById('sf-bc-tab');
-  if(bc){ bc.style.display='flex'; }
-  if(bcLabel){ bcLabel.textContent = m.name; }
-  if(bcTab){ bcTab.textContent = ''; }
+  // Breadcrumb
+  const bc=document.getElementById("sf-breadcrumb");
+  const bcLabel=document.getElementById("sf-bc-module");
+  const bcTab=document.getElementById("sf-bc-tab");
+  if(bc) bc.style.display="flex";
+  if(bcLabel) bcLabel.textContent=m.name;
+  if(bcTab) bcTab.textContent="";
 
-  v.innerHTML = '';
-  v.style.padding = '0';
+  v.innerHTML="";
+  v.style.padding="0";
 
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'padding:28px;background:#f0f4f8;min-height:100%';
+  const bgUrl = MOD_BG[moduleId]||"";
+
+  // Full-height wrapper with background image
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "min-height:100%;position:relative;overflow:hidden";
+
+  // Background image overlay
+  if(bgUrl){
+    const bgDiv = document.createElement("div");
+    bgDiv.style.cssText = `position:absolute;inset:0;background:url(${bgUrl}) center/cover no-repeat;opacity:.13;z-index:0;pointer-events:none`;
+    wrap.appendChild(bgDiv);
+  }
+
+  // Colour wash overlay
+  const colourWash = document.createElement("div");
+  colourWash.style.cssText = `position:absolute;inset:0;background:linear-gradient(135deg,${m.colour}22,#f0f4f8ee);z-index:0;pointer-events:none`;
+  wrap.appendChild(colourWash);
+
+  // Content layer
+  const content = document.createElement("div");
+  content.style.cssText = "position:relative;z-index:1;padding:32px";
 
   // Module header
-  const hdr = document.createElement('div');
-  hdr.style.cssText = 'display:flex;align-items:center;gap:14px;margin-bottom:24px';
-  hdr.innerHTML = `
-    <div style="width:52px;height:52px;border-radius:14px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">${m.icon}</div>
-    <div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#1a2b3a;line-height:1">${m.name}</div>
-      <div style="font-size:13px;color:#374151;margin-top:3px">${m.caption}</div>
-    </div>
-    <button onclick="switchTab('home')" style="margin-left:auto;padding:9px 18px;background:#fff;border:2px solid #e5e7eb;border-radius:10px;font:600 13px Lato;color:#1a2b3a;cursor:pointer">🏠 Home</button>`;
-  wrap.appendChild(hdr);
+  content.innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:28px">
+      <div style="width:60px;height:60px;border-radius:16px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;box-shadow:0 4px 16px ${m.colour}66">${m.icon}</div>
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:700;color:#1a2b3a;line-height:1">${m.name}</div>
+        <div style="font-size:13px;color:#374151;margin-top:4px">${m.caption}</div>
+      </div>
+      <button onclick="switchTab('home')" style="margin-left:auto;padding:10px 20px;background:#fff;border:2px solid #e5e7eb;border-radius:10px;font:600 13px Lato;color:#1a2b3a;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.06)">🏠 Home</button>
+    </div>`;
 
-  // Sub-cards grid
-  const grid = document.createElement('div');
-  grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px';
+  // Sub-cards grid — larger cards, 3-4 per row max for readability
+  const colCount = subcards.length <= 3 ? subcards.length : subcards.length <= 6 ? 3 : 4;
+  const grid = document.createElement("div");
+  grid.style.cssText = `display:grid;grid-template-columns:repeat(${colCount},1fr);gap:16px`;
 
   subcards.forEach(sc => {
-    const card = document.createElement('button');
-    card.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:20px;background:#fff;border:2px solid #e5e7eb;border-radius:14px;cursor:pointer;text-align:left;transition:all .15s;box-shadow:0 1px 4px rgba(0,0,0,.06);width:100%';
+    const card = document.createElement("button");
+    card.style.cssText = "display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:22px;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border:2px solid rgba(255,255,255,.9);border-radius:16px;cursor:pointer;text-align:left;transition:all .18s;box-shadow:0 2px 10px rgba(0,0,0,.08);width:100%";
     card.innerHTML = `
-      <div style="width:44px;height:44px;border-radius:11px;background:${m.colour}18;border:2px solid ${m.colour}30;display:flex;align-items:center;justify-content:center;font-size:22px">${sc.icon}</div>
-      <div>
-        <div style="font-size:14px;font-weight:700;color:#111827">${sc.label}</div>
-        <div style="font-size:11px;color:#374151;margin-top:3px;line-height:1.4">${sc.desc}</div>
-      </div>`;
-    card.onmouseover = () => { card.style.borderColor=m.colour; card.style.boxShadow='0 6px 18px rgba(0,0,0,.10)'; card.style.transform='translateY(-2px)'; };
-    card.onmouseout  = () => { card.style.borderColor='#e5e7eb'; card.style.boxShadow='0 1px 4px rgba(0,0,0,.06)'; card.style.transform=''; };
+      <div style="width:50px;height:50px;border-radius:13px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 3px 10px ${m.colour}55">${sc.icon}</div>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;color:#111827;line-height:1.2">${sc.label}</div>
+        <div style="font-size:12px;color:#374151;margin-top:5px;line-height:1.5">${sc.desc}</div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:${m.colour};display:flex;align-items:center;gap:4px">Open <span>→</span></div>`;
+    card.onmouseover = ()=>{ card.style.background="#fff"; card.style.borderColor=m.colour; card.style.transform="translateY(-4px)"; card.style.boxShadow=`0 12px 28px rgba(0,0,0,.12)`; };
+    card.onmouseout  = ()=>{ card.style.background="rgba(255,255,255,.92)"; card.style.borderColor="rgba(255,255,255,.9)"; card.style.transform=""; card.style.boxShadow="0 2px 10px rgba(0,0,0,.08)"; };
     card.onclick = () => switchTab(sc.tab);
     grid.appendChild(card);
   });
 
-  wrap.appendChild(grid);
+  content.appendChild(grid);
+  wrap.appendChild(content);
   v.appendChild(wrap);
 }
 
@@ -5971,6 +6004,107 @@ function spExportCSV(){
   let csv='Name,Role,Department,Staff Code,'+days.map(d=>spFmt(d)).join(',')+',Weekly Hrs\n';
   staff.forEach(s=>{const shifts=days.map(d=>(rota[spDK(d)]||{})[s.id]||'off'),hrs=days.reduce((t,d)=>t+spParseHrs((rota[spDK(d)]||{})[s.id]||''),0);csv+=`"${s.name}","${s.role||''}","${s.dept}","${s.staffCode||''}",`+shifts.map(x=>`"${x}"`).join(',')+`,"${Math.round(hrs*10)/10}"\n`;});
   const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:'brandon-hall-rota.csv'});a.click();
+}
+
+
+// ── HosBRAND — Brochures & Downloads ─────────────────────────────────────────
+const BH_DOCS = [
+  { category: "Events & Celebrations",
+    colour: "#8b5c8f",
+    docs: [
+      { title:"Party Packages 2026",          icon:"🎉", file:"party-packages-2026.pdf",              desc:"Full event party packages with pricing" },
+      { title:"Baby Shower Packages 2026",    icon:"👶", file:"baby-shower-packages-2026.pdf",         desc:"Special £29.00–£37.50 pp · Private room hire" },
+      { title:"Celebration of Life 2026",     icon:"🕊", file:"celebration-of-life-packages-2026.pdf", desc:"Warm & respectful · £27.50–£33.00 pp" },
+      { title:"Masonic Events 2026",          icon:"🔷", file:"masonic-packages-2026.pdf",             desc:"Masonic gathering packages" },
+    ]
+  },
+  { category: "Weddings",
+    colour: "#c85c6b",
+    docs: [
+      { title:"Weddings 2026",                icon:"💍", file:"wedding-brochure-2026.pdf",             desc:"Full wedding brochure 2026–2027" },
+      { title:"Self-Catering Weddings 2026",  icon:"🏡", file:"self-catering-wedding-brochure-2026.pdf",desc:"Your venue, your caterer, your way" },
+    ]
+  },
+  { category: "Meetings & Events",
+    colour: "#2f6f9e",
+    docs: [
+      { title:"Meetings & Events",            icon:"🤝", file:"meetings-and-events.pdf",              desc:"Full meetings and events guide" },
+    ]
+  },
+  { category: "The Clarendon — Menus",
+    colour: "#4a9d7f",
+    docs: [
+      { title:"Restaurant Menu",              icon:"🍽", file:"clarendon-restaurant-menu.pdf",         desc:"Full à la carte restaurant menu" },
+      { title:"Lunch Menu",                   icon:"🥗", file:"clarendon-lunch-menu.pdf",              desc:"Clarendon lunch menu" },
+      { title:"Dinner, Bed & Breakfast Menu", icon:"🌙", file:"clarendon-dinner-bed-breakfast-menu.pdf",desc:"DBB package menu" },
+      { title:"Wine List",                    icon:"🍷", file:"clarendon-wine-list.pdf",               desc:"Full wine list" },
+      { title:"Restaurant & Bar Wine List",   icon:"🥂", file:"clarendon-restaurant-bar-wine-list.pdf",desc:"Restaurant & bar wine selection" },
+    ]
+  },
+];
+
+// Base path for uploaded PDFs — served from GitHub Pages root
+const BH_PDF_BASE = "/";
+
+function renderBrandDocs(v){
+  // Show breadcrumb
+  const bc = document.getElementById("sf-breadcrumb");
+  const bcLabel = document.getElementById("sf-bc-module");
+  const bcTab   = document.getElementById("sf-bc-tab");
+  if(bc){ bc.style.display="flex"; }
+  if(bcLabel) bcLabel.textContent = "HosBRAND";
+  if(bcTab)   bcTab.textContent   = "Brochures & Downloads";
+
+  v.innerHTML = "";
+  v.style.padding = "0";
+
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "min-height:100%;background:#f0f4f8;padding:28px";
+
+  // Header
+  wrap.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px">
+      <div style="width:52px;height:52px;border-radius:14px;background:#1a2b3a;display:flex;align-items:center;justify-content:center;font-size:26px">📁</div>
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#1a2b3a">HosBRAND</div>
+        <div style="font-size:13px;color:#374151">Brandon Hall Hotel &amp; Spa — Brochures, Menus &amp; Brand Downloads</div>
+      </div>
+      <button onclick="switchTab('home')" style="margin-left:auto;padding:9px 18px;background:#fff;border:2px solid #e5e7eb;border-radius:10px;font:600 13px Lato;color:#1a2b3a;cursor:pointer">🏠 Home</button>
+    </div>`;
+
+  BH_DOCS.forEach(cat => {
+    const section = document.createElement("div");
+    section.style.cssText = "margin-bottom:28px";
+    section.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid ${cat.colour}">
+      <span style="width:10px;height:10px;border-radius:50%;background:${cat.colour};display:inline-block"></span>
+      <span style="font-size:13px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.8px">${cat.category}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
+      ${cat.docs.map(doc => `
+        <div style="background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid ${cat.colour};display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <span style="font-size:28px;flex-shrink:0">${doc.icon}</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#1a2b3a;line-height:1.3">${doc.title}</div>
+              <div style="font-size:11px;color:#374151;margin-top:3px">${doc.desc}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:auto">
+            <a href="${BH_PDF_BASE}${doc.file}" target="_blank" rel="noopener"
+              style="flex:1;padding:8px 12px;background:#1a2b3a;color:#fff;border-radius:8px;font:600 12px Lato;text-decoration:none;text-align:center;display:block">
+              👁 View
+            </a>
+            <a href="${BH_PDF_BASE}${doc.file}" download
+              style="flex:1;padding:8px 12px;background:#fff;color:#1a2b3a;border:1.5px solid #1a2b3a;border-radius:8px;font:600 12px Lato;text-decoration:none;text-align:center;display:block">
+              ⬇ Download
+            </a>
+          </div>
+        </div>`).join("")}
+    </div>`;
+    wrap.appendChild(section);
+  });
+
+  v.appendChild(wrap);
 }
 
 /* ============================================================ HOSSTAFF */

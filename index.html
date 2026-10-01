@@ -77,6 +77,19 @@ a{color:var(--gold-dk)}
 /* ---------- APP SHELL ---------- */
 /* ---------- STAYFLOW SHELL (sidebar + header) ---------- */
 #app{min-height:100dvh;display:flex}
+/* ── Quick link pills ── */
+.sf-ql-link{padding:5px 10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:7px;font:600 11px Lato;color:#c7d2e0;text-decoration:none;white-space:nowrap;transition:all .15s}
+.sf-ql-link:hover{background:rgba(199,138,59,.3);border-color:#c78a3b;color:#fff}
+
+/* ── Module landing background images ── */
+.sf-module-bg{position:relative;min-height:100%;overflow:hidden}
+.sf-module-bg::before{content:"";position:absolute;inset:0;background-size:cover;background-position:center;opacity:.12;z-index:0;pointer-events:none}
+.sf-module-bg > *{position:relative;z-index:1}
+
+/* ── Sub-card styles ── */
+.sf-subcard{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:20px;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border:2px solid rgba(255,255,255,.8);border-radius:14px;cursor:pointer;text-align:left;transition:all .15s;box-shadow:0 2px 8px rgba(0,0,0,.08);width:100%}
+.sf-subcard:hover{background:#fff;transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.12)}
+
 /* ── Full-width layout (no sidebar) ── */
 .sf-full{width:100%;display:flex;flex-direction:column}
 .sf-header-full{display:flex;align-items:center;gap:12px;padding:0 24px;background:linear-gradient(90deg,#101d33,#0c1729);height:56px;position:sticky;top:0;z-index:40;box-shadow:0 2px 8px rgba(0,0,0,.2)}
@@ -1106,13 +1119,27 @@ body.home-active nav.tabs{display:none;}
 <div id="app" class="hidden">
   <div class="sf-main sf-full">
     <header class="sf-header sf-header-full">
-      <div class="sf-logo-inline" id="sf-logo-home" onclick="switchTab('home')" style="cursor:pointer">
-        <img src="assets/hospro/logo-white.svg" alt="HOSPRO" style="height:28px">
+      <div class="sf-logo-inline" id="sf-logo-home" onclick="switchTab('home')" style="cursor:pointer;display:flex;align-items:center;gap:10px">
+        <img src="assets/hospro/logo-white.svg" alt="HOSPRO" style="height:24px;opacity:.7">
+        <div style="width:1px;height:28px;background:rgba(255,255,255,.2)"></div>
+        <div style="display:flex;flex-direction:column;line-height:1.1">
+          <span style="font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:700;color:#fff;letter-spacing:.5px">BRANDON HALL</span>
+          <span style="font-size:9px;color:#8fa3b8;letter-spacing:1.5px;text-transform:uppercase">Hotel &amp; Spa</span>
+        </div>
       </div>
       <div class="sf-loc" id="tb-loc">Brandon Hall Hotel and Spa · Coventry</div>
       <div class="sf-search"><input placeholder="🔍 Search…" id="sf-search"></div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <a href="https://guestline.eu.auth0.com/login?state=hKFo2SA3YXhjWWszV2JfR2liT0ZtdExwSVFjSDVVZDI1SVVNVaFupWxvZ2luo3RpZNkgRGcya0JIWnBnLTdPV2pEQUI5ckU1M08xSEcyeDA1MkejY2lk2SBhM1RTRmg3OVpzWXBFcnZFSU5Pa2VvekhiSVBZUTNvYw&client=a3TSFh79ZsYpErvEINOkeozHbIPYQ3oc&protocol=oauth2&useRefreshTokensFallback=true&issuer=https%3A%2F%2Fguestline.eu.auth0.com%2F&scope=openid%20profile%20email%20offline_access&audience=https%3A%2F%2Fguestline.app&redirect_uri=https%3A%2F%2Fpms.eu.guestline.net%2Frezlynx%2FRLXWebForms%2Fsys%2Fwfrm_sys_LogOn.aspx%3Fsso_autoLogon%3Dtrue%26siteId%3DBRANDHALL&siteid=BRANDHALL&rezlynxlogin=true&response_type=code&response_mode=query"
+           target="_blank" rel="noopener" class="sf-ql-link">🏨 PMS</a>
+        <a href="https://7hospitalitymanagement.saeker.com/login"
+           target="_blank" rel="noopener" class="sf-ql-link">🛡 Saeker</a>
+        <a href="https://www.brandonhallhotelandspa.com"
+           target="_blank" rel="noopener" class="sf-ql-link">🌐 Website</a>
+        <a href="/staff" target="_blank" rel="noopener" class="sf-ql-link">👤 Staff</a>
+        <a href="https://visitcoventry.co.uk/" target="_blank" rel="noopener" class="sf-ql-link">📍 Coventry</a>
+      </div>
       <div class="sf-spacer"></div>
-      <a href="/staff" target="_blank" class="sf-staff-link">👤 Staff portal</a>
       <span id="tb-mode" class="mode-badge">Live</span>
       <div class="sf-user">
         <span class="sf-avatar" id="sf-avatar">—</span>

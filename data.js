@@ -847,30 +847,27 @@ const BROCHURE_TEMPLATES = {
    ============================================================ */
 const // Module groups for collapsible sidebar
 MODULE_GROUPS = [
-  { id:'guest',    label:'Guest & Revenue',   icon:'🏨', colour:'#4a9d7f',
-    modules:['events','room','sales','corp','marketing'] },
-  { id:'ops',     label:'Hotel Operations',   icon:'⚙️', colour:'#c45c00',
-    modules:['hosfix','hoscom','asset','task'] },
-  { id:'people',  label:'People & Shifts',    icon:'👥', colour:'#4a86c7',
-    modules:['hosstaff','hosshift'] },
-  { id:'business',label:'Business & Content', icon:'📊', colour:'#8b5c8f',
-    modules:['content'] },
+  { id:'ops',     label:'Operations',          icon:'🔧', colour:'#c45c00', modules:['hosops'] },
+  { id:'sales',   label:'Sales & Events',      icon:'💼', colour:'#8b5c8f', modules:['hossales'] },
+  { id:'venue',   label:'Venue & Corporate',   icon:'🏛', colour:'#2f6f9e', modules:['hosvenue'] },
+  { id:'studio',  label:'Marketing & Creative',icon:'📣', colour:'#c85c6b', modules:['hosstudio'] },
+  { id:'brand',   label:'Brand & Downloads',   icon:'📁', colour:'#1a2b3a', modules:['hosbrand'] },
+  { id:'people',  label:'People & Shifts',     icon:'👥', colour:'#4a86c7', modules:['hospeople'] },
 ];
 
 FLOW_MODULES = [
-  { id:"events",    name:"EventsPRO",    caption:"Plan. Organise. Deliver.",       icon:"📅", colour:"#4a9d7f", tint:"#e6f3ee", tabs:["chat","dining","beverage"] },
-  { id:"room",      name:"RoomPRO",      caption:"Keep operations in flow.",       icon:"🛏️", colour:"#4a86c7", tint:"#e6eff8", tabs:["rooms","groupconfig","packages"] },
-  { id:"sales",     name:"SalesPRO",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","quotes","profit","contracts","payments"] },
-  { id:"corp",      name:"StayCORP",      caption:"Corporate guests & rates.",       icon:"🏢", colour:"#2f6f9e", tint:"#e6eef5", tabs:["precheckin","corpdb","corprates","feedback"] },
-  { id:"marketing", name:"MarketingPRO", caption:"Create. Campaign. Convert.",     icon:"📣", colour:"#c85c6b", tint:"#f8e9eb", tabs:["marketing","social"] },
-  { id:"task",      name:"TaskPRO",      caption:"Tasks. Teams. Accountability.",  icon:"✅", colour:"#d4a24a", tint:"#faf1e0", tabs:["tasks"] },
-  { id:"hoscom",    name:"HosCOM",       caption:"Compliance. Safety. Peace of mind.", icon:"🛡️", colour:"#2a6a4a", tint:"#e8f3ee", tabs:["compDash","compTasks","compActions","compReport"] },
-  { id:"hosfix",    name:"HosFIX",       caption:"Maintenance. Property. Fixed.", icon:"🔧", colour:"#c45c00", tint:"#fff3e8", tabs:["fixDash","fixAllJobs","fixProjects","fixInventory","fixTeam"] },
-  { id:"asset",     name:"AssetPRO",     caption:"Maintain. Track. Extend.",       icon:"🔧", colour:"#3fa8a0", tint:"#e3f3f1", tabs:["mne","suppliers"] },
-  { id:"content",   name:"ContentPRO",   caption:"Brochures. Menus. Collateral.",  icon:"📄", colour:"#5a8fc7", tint:"#e8f0f8", tabs:["quote","brochure","menu"] },
-
-  { id:"hosshift",  name:"HosSHIFT",    caption:"Rota. Forecast. Shift planning.",  icon:"📅", colour:"#1a2b3a", tint:"#e8eaed", tabs:["rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings"] },
-  { id:"hosstaff",  name:"HosSTAFF",    caption:"People. Contracts. HR.",            icon:"👤", colour:"#4a86c7", tint:"#e6eff8", tabs:["staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs"] }
+  { id:"hosops",    name:"HosOPS",     caption:"Operations. Maintenance. Compliance.", icon:"🔧", colour:"#c45c00", tint:"#fff3e8",
+    tabs:["fixDash","fixAllJobs","fixProjects","fixInventory","fixTeam","compDash","compTasks","compActions","compReport","tasks","beverage","mne","suppliers"] },
+  { id:"hossales",  name:"HosSALES",   caption:"Sales. Events. Dining. Revenue.",      icon:"💼", colour:"#8b5c8f", tint:"#f1e9f2",
+    tabs:["pipeline","quotes","profit","contracts","payments","dining","chat"] },
+  { id:"hosvenue",  name:"HosVENUE",   caption:"Venue. Rooms. Corporate. Stays.",      icon:"🏛", colour:"#2f6f9e", tint:"#e6eef5",
+    tabs:["rooms","groupconfig","packages","precheckin","corpdb","corprates","feedback"] },
+  { id:"hosstudio", name:"HosSTUDIO",  caption:"Marketing. Campaigns. Creative.",      icon:"📣", colour:"#c85c6b", tint:"#f8e9eb",
+    tabs:["marketing","social","quote","brochure","menu"] },
+  { id:"hosbrand",  name:"HosBRAND",   caption:"Brochures. Menus. Downloads.",         icon:"📁", colour:"#1a2b3a", tint:"#e8eaed",
+    tabs:["brandDocs"] },
+  { id:"hospeople", name:"HosPEOPLE",  caption:"People. Shifts. HR. Leave.",           icon:"👥", colour:"#4a86c7", tint:"#e6eff8",
+    tabs:["rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings","staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs"] },
 ];
 
 /* Tab metadata (label + icon) for sidebar links and cards */
@@ -902,6 +899,7 @@ const TAB_META = {
   rotaMonthly:{label:"Monthly Plan",icon:"📅"},
   rotaSettings:{label:"Shift Settings",icon:"⚙️"},
   staffDash:{label:"Staff Overview",icon:"👥"},
+  brandDocs:{label:"Brochures & Downloads",icon:"📁"},
   staffProfiles:{label:"Staff Profiles",icon:"👤"},
   staffLeave:{label:"Leave Requests",icon:"🌴"},
   staffLeaveAdmin:{label:"Approve Leave",icon:"✅"},
@@ -943,69 +941,53 @@ const PRECHECKIN_FIELDS = [
 ];
 
 const MODULE_SUBCARDS = {
-  "events": [
-    {tab:"chat",label:"Events Chat",icon:"💬",desc:"Plan & coordinate events"},
-    {tab:"dining",label:"Dining & Banqueting",icon:"🍽",desc:"F&B event setup"},
-    {tab:"beverage",label:"Beverage Management",icon:"🍷",desc:"Drinks packages & bars"}
+  "hosops": [
+    {tab:"fixDash",     label:"Maintenance Dashboard", icon:"🔧", desc:"Live jobs overview & stats"},
+    {tab:"fixAllJobs",  label:"All Jobs",               icon:"📋", desc:"Full maintenance jobs list"},
+    {tab:"fixProjects", label:"Projects",               icon:"🏗", desc:"Ongoing property projects"},
+    {tab:"fixInventory",label:"Stock & Inventory",      icon:"📦", desc:"Parts, materials & costs"},
+    {tab:"compDash",    label:"Compliance Dashboard",   icon:"🛡", desc:"Overview & compliance score"},
+    {tab:"compTasks",   label:"Compliance Tasks",       icon:"✅", desc:"All 33 compliance tasks"},
+    {tab:"compActions", label:"Actions",                icon:"⚡", desc:"Outstanding actions"},
+    {tab:"tasks",       label:"Task Board",             icon:"📌", desc:"All team tasks & to-dos"},
+    {tab:"beverage",    label:"Beverage Management",    icon:"🍷", desc:"Drinks, packages & bars"},
+    {tab:"mne",         label:"Assets & M&E",           icon:"🔩", desc:"Equipment & asset tracking"},
   ],
-  "room": [
-    {tab:"rooms",label:"Meeting Rooms",icon:"🛏",desc:"Room availability & config"},
-    {tab:"groupconfig",label:"Group Configurator",icon:"⚙️",desc:"Set up group bookings"},
-    {tab:"packages",label:"Packages",icon:"📦",desc:"Room & event packages"}
+  "hossales": [
+    {tab:"pipeline",    label:"Sales Pipeline",         icon:"📊", desc:"Active leads & deals"},
+    {tab:"quotes",      label:"Quotes & Proposals",     icon:"📄", desc:"Create & manage quotes"},
+    {tab:"profit",      label:"Profit Tool",            icon:"💰", desc:"P&L and margin calculator"},
+    {tab:"contracts",   label:"Agreements",             icon:"📝", desc:"Signed contracts"},
+    {tab:"payments",    label:"Payments",               icon:"💳", desc:"Payment schedules"},
+    {tab:"dining",      label:"Dining & Banqueting",    icon:"🍽", desc:"F&B event setup & menus"},
+    {tab:"chat",        label:"Events Planning",        icon:"💬", desc:"Event coordination & chat"},
   ],
-  "sales": [
-    {tab:"pipeline",label:"Sales Pipeline",icon:"📊",desc:"Active leads & deals"},
-    {tab:"quotes",label:"Quotes List",icon:"📄",desc:"Proposals & quotes"},
-    {tab:"profit",label:"Profit Tool",icon:"💰",desc:"P&L and margins"},
-    {tab:"contracts",label:"Agreements",icon:"📝",desc:"Signed contracts"},
-    {tab:"payments",label:"Payments",icon:"💳",desc:"Payment schedules"}
+  "hosvenue": [
+    {tab:"rooms",       label:"Meeting Rooms",          icon:"🛏", desc:"Room availability & setup"},
+    {tab:"groupconfig", label:"Room Configurator",      icon:"⚙️", desc:"Layouts & configurations"},
+    {tab:"packages",    label:"Packages",               icon:"📦", desc:"Room & event packages"},
+    {tab:"corpdb",      label:"Corporate Database",     icon:"🏢", desc:"Company accounts & contacts"},
+    {tab:"corprates",   label:"Corporate Rates",        icon:"💷", desc:"Rate agreements & tariffs"},
+    {tab:"precheckin",  label:"Pre Check-in Setup",     icon:"🏨", desc:"Corporate guest check-in"},
+    {tab:"feedback",    label:"Guest Feedback",         icon:"⭐", desc:"Reviews & guest responses"},
   ],
-  "corp": [
-    {tab:"precheckin",label:"Pre Check-in",icon:"🏨",desc:"Corporate guest setup"},
-    {tab:"corpdb",label:"Corporate Database",icon:"🏢",desc:"Company accounts"},
-    {tab:"corprates",label:"Corporate Rates",icon:"💷",desc:"Rate agreements"},
-    {tab:"feedback",label:"Guest Feedback",icon:"⭐",desc:"Reviews & responses"}
+  "hosstudio": [
+    {tab:"marketing",   label:"Campaigns",              icon:"📣", desc:"Marketing campaigns & email"},
+    {tab:"social",      label:"Social Media",           icon:"📱", desc:"Posts & content scheduling"},
+    {tab:"quote",       label:"Quote Builder",          icon:"💼", desc:"Instant quote generator"},
+    {tab:"brochure",    label:"Brochure Builder",       icon:"📄", desc:"Sales brochures & collateral"},
+    {tab:"menu",        label:"Menu Builder",           icon:"🍽", desc:"Menus & F&B collateral"},
   ],
-  "marketing": [
-    {tab:"marketing",label:"Campaigns",icon:"📣",desc:"Marketing campaigns"},
-    {tab:"social",label:"Social Media",icon:"📱",desc:"Posts & scheduling"}
+  "hosbrand": [
+    {tab:"brandDocs",   label:"All Downloads",          icon:"📁", desc:"Brochures, menus & brand assets"},
   ],
-  "task": [
-    {tab:"tasks",label:"Task Board",icon:"✅",desc:"All tasks & to-dos"}
-  ],
-  "hoscom": [
-    {tab:"compDash",label:"Dashboard",icon:"🛡",desc:"Overview & scores"},
-    {tab:"compTasks",label:"Tasks",icon:"📋",desc:"All compliance tasks"},
-    {tab:"compActions",label:"Actions",icon:"⚡",desc:"Outstanding actions"},
-    {tab:"compReport",label:"Reports",icon:"📊",desc:"Compliance reports"}
-  ],
-  "hosfix": [
-    {tab:"fixDash",label:"Dashboard",icon:"🔧",desc:"Overview & stats"},
-    {tab:"fixAllJobs",label:"All Jobs",icon:"📋",desc:"Full jobs list"},
-    {tab:"fixProjects",label:"Projects",icon:"🏗",desc:"Ongoing projects"},
-    {tab:"fixInventory",label:"Stock & Inventory",icon:"📦",desc:"Parts & materials"},
-    {tab:"fixTeam",label:"Team",icon:"👷",desc:"Maintenance team"}
-  ],
-  "asset": [
-    {tab:"mne",label:"Assets & M&E",icon:"🔧",desc:"Equipment & assets"},
-    {tab:"suppliers",label:"Suppliers",icon:"🏭",desc:"Supplier database"}
-  ],
-  "content": [
-    {tab:"quote",label:"Quote Builder",icon:"💼",desc:"Instant quote generator"},
-    {tab:"brochure",label:"Brochure Builder",icon:"📄",desc:"Sales brochures"},
-    {tab:"menu",label:"Menu Builder",icon:"🍽",desc:"Menus & collateral"}
-  ],
-  "hosshift": [
-    {tab:"rotaDash",label:"Dashboard",icon:"📊",desc:"Staffing overview"},
-    {tab:"rotaWeek",label:"Weekly Rota",icon:"📋",desc:"View & edit shifts"},
-    {tab:"rotaForecast",label:"Occupancy Forecast",icon:"📈",desc:"Forecast & staffing"},
-    {tab:"rotaMonthly",label:"Monthly Plan",icon:"📅",desc:"Monthly overview"},
-    {tab:"rotaSettings",label:"Settings",icon:"⚙️",desc:"Staff & departments"}
-  ],
-  "hosstaff": [
-    {tab:"staffDash",label:"Overview",icon:"👥",desc:"HR dashboard"},
-    {tab:"staffProfiles",label:"Staff Profiles",icon:"👤",desc:"All staff profiles"},
-    {tab:"staffLeaveAdmin",label:"Leave Management",icon:"🌴",desc:"Approve & manage leave"},
-    {tab:"staffDocs",label:"Documents",icon:"📁",desc:"Contracts & ID"}
+  "hospeople": [
+    {tab:"rotaDash",    label:"Shift Dashboard",        icon:"📊", desc:"Today's staffing overview"},
+    {tab:"rotaWeek",    label:"Weekly Rota",            icon:"📋", desc:"View & edit weekly shifts"},
+    {tab:"rotaForecast",label:"Occupancy Forecast",     icon:"📈", desc:"Forecast & staff planning"},
+    {tab:"rotaMonthly", label:"Monthly Plan",           icon:"📅", desc:"Monthly occupancy overview"},
+    {tab:"staffProfiles",label:"Staff Profiles",        icon:"👤", desc:"All 38 staff profiles & HR"},
+    {tab:"staffLeaveAdmin",label:"Leave Management",    icon:"🌴", desc:"Approve & manage leave"},
+    {tab:"rotaSettings",label:"Shift Settings",         icon:"⚙️", desc:"Staff & department settings"},
   ],
 };
