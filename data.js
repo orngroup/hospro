@@ -882,7 +882,12 @@ const TAB_META = {
   compActions:{label:"Actions",icon:"⚡"}, compReport:{label:"Print Report",icon:"📊"},
   fixDash:{label:"Maintenance Dashboard",icon:"🔧"}, fixAllJobs:{label:"All Jobs",icon:"🔨"},
   fixProjects:{label:"Projects",icon:"📋"}, fixInventory:{label:"Stock & Inventory",icon:"📦"},
-  fixTeam:{label:"Team & Profiles",icon:"👷"}
+  fixTeam:{label:"Team & Profiles",icon:"👷"},
+  rotaDash:{label:"Staff Dashboard",icon:"📊"},
+  rotaWeek:{label:"Weekly Rota",icon:"📋"},
+  rotaForecast:{label:"Occupancy Forecast",icon:"📈"},
+  rotaMonthly:{label:"Monthly Plan",icon:"📅"},
+  rotaSettings:{label:"Settings & Staff",icon:"⚙️"}
 };
 
 /* Which module a tab belongs to (for sidebar grouping / highlighting) */

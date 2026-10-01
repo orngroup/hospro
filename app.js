@@ -5666,11 +5666,11 @@ function renderRotaDash(v) {
           <div style="font-size:13px;color:#7a8494">Today · ${today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
         </div>
         <div style="display:flex;gap:8px">
-          <button onclick="document.querySelector('[data-tab=rotaWeek]').click()" 
+          <button onclick="switchTab('rotaWeek')" 
             style="padding:8px 14px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">
             📋 Weekly Rota
           </button>
-          <button onclick="document.querySelector('[data-tab=rotaForecast]').click()" 
+          <button onclick="switchTab('rotaForecast')" 
             style="padding:8px 14px;background:#c78a3b;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">
             📈 Update Forecast
           </button>
@@ -5694,7 +5694,7 @@ function renderRotaDash(v) {
           <span>Breakfast covers: <strong>${fc.breakfastCovers||'—'}</strong></span>
           <span>Dinner forecast: <strong>${fc.dinnerCovers||'—'}</strong></span>
         </div>
-        ${!fc.rooms ? `<div style="margin-top:8px;font-size:12px;color:#c45c00">⚡ No forecast entered for today — <a href="#" onclick="document.querySelector('[data-tab=rotaForecast]').click();return false" style="color:#c45c00;font-weight:700">add forecast →</a></div>` : ''}
+        ${!fc.rooms ? `<div style="margin-top:8px;font-size:12px;color:#c45c00">⚡ No forecast entered for today — <a href="#" onclick="switchTab('rotaForecast');return false" style="color:#c45c00;font-weight:700">add forecast →</a></div>` : ''}
       </div>
 
       <!-- Department Status Grid -->
@@ -5708,6 +5708,17 @@ function renderRotaDash(v) {
 // ── WEEKLY ROTA ───────────────────────────────────────────────────────────────
 let rotaWeekOffset = 0;
 
+function shiftColour(shift) {
+  if (!shift) return { bg:'#f5f7f9', col:'#bbb', border:'#e8e8e8' };
+  const s = shift.toLowerCase().trim();
+  if (s === 'off' || s === '') return { bg:'#f5f7f9', col:'#bbb', border:'#e8e8e8' };
+  if (s === 'holiday') return { bg:'#e8f0f8', col:'#4a86c7', border:'#4a86c7' };
+  if (s === 'on call') return { bg:'#fff8e6', col:'#c78a3b', border:'#c78a3b' };
+  if (s === 'sick') return { bg:'#fdecea', col:'#b3261e', border:'#b3261e' };
+  // timed shift - green
+  return { bg:'#e8f3ee', col:'#2a6a4a', border:'#2a6a4a' };
+}
+
 function renderRotaWeek(v) {
   const rota = getRotaData();
   const forecast = getForecast();
@@ -5716,154 +5727,177 @@ function renderRotaWeek(v) {
   const staff = getStaffList();
   const todayK = dateKey(new Date());
 
-  const weekLabel = `Week commencing ${fmtShortDate(days[0])}`;
+  const weekLabel = `Week commencing ${fmtShortDate(days[0])} – ${fmtShortDate(days[6])}`;
+
+  // Day header cells
   const dayHeaders = days.map(d => {
     const k = dateKey(d);
     const isToday = k === todayK;
-    return `<th style="min-width:110px;padding:8px 6px;text-align:center;font-size:11px;font-weight:700;color:${isToday?'#fff':'#1a2b3a'};background:${isToday?'#1a2b3a':'#f5f7f9'};border-radius:6px">
-      ${d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase()}<br>
-      <span style="font-weight:400;font-size:10px">${fmtShortDate(d)}</span>
+    const fc = forecast[k] || {};
+    return `<th style="min-width:120px;max-width:140px;padding:8px 4px;text-align:center;
+        background:${isToday ? '#1a2b3a' : '#f5f7f9'};
+        color:${isToday ? '#fff' : '#1a2b3a'};
+        border-radius:8px 8px 0 0;border-bottom:2px solid ${isToday ? '#c78a3b' : '#e0e0e0'}">
+      <div style="font-size:12px;font-weight:700">${d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase()}</div>
+      <div style="font-size:10px;opacity:.7;margin-top:1px">${fmtShortDate(d)}</div>
+      ${fc.rooms ? `<div style="font-size:10px;margin-top:3px;opacity:.8">🛏 ${fc.rooms} rooms</div>` : ''}
     </th>`;
   }).join('');
 
-  // Render by department
-  let rows = '';
+  // Build rows by department
+  let tableBody = '';
   depts.forEach(dept => {
     const deptStaff = staff.filter(s => s.dept === dept.id);
-    if (deptStaff.length === 0) return;
+    if (!deptStaff.length) return;
 
-    // Dept header row
-    rows += `<tr>
-      <td colspan="9" style="background:${dept.colour}15;padding:8px 12px;border-top:2px solid ${dept.colour}">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${dept.colour}"></span>
-          <span style="font-weight:700;font-size:12px;color:${dept.colour};text-transform:uppercase;letter-spacing:.5px">${dept.name}</span>
-          <span style="font-size:11px;color:#9ca3af">${dept.notes||''}</span>
+    // Required vs rostered summary row
+    const reqCells = days.map(d => {
+      const k = dateKey(d);
+      const fc = forecast[k] || {};
+      const req = calcRequired(fc, dept.id);
+      const rostered = countRostered(rota, k, dept.id);
+      const needed = req.total || 0;
+      const ok = rostered >= needed;
+      const isToday = k === todayK;
+      return `<td style="padding:3px 2px;text-align:center;background:${isToday?'#f0f4f8':''}">
+        <span style="display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;
+          background:${ok?'#e8f3ee':'#fdecea'};color:${ok?'#2a6a4a':'#b3261e'}">
+          ${rostered}/${needed}${ok?' ✓':' ⚠'}
+        </span>
+      </td>`;
+    }).join('');
+
+    // Department header
+    tableBody += `<tr>
+      <td colspan="${days.length + 1}" style="padding:8px 10px 4px;background:${dept.colour}12;
+          border-top:3px solid ${dept.colour};border-bottom:1px solid ${dept.colour}30">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:10px;height:10px;border-radius:50%;background:${dept.colour};display:inline-block"></span>
+            <span style="font-weight:700;font-size:12px;color:${dept.colour};text-transform:uppercase;letter-spacing:.5px">${dept.name}</span>
+            <span style="font-size:11px;color:#9ca3af">${dept.notes||''}</span>
+          </div>
+          <span style="font-size:10px;color:#9ca3af">Required staff per day:</span>
         </div>
       </td>
-    </tr>`;
-
-    // Staffing requirement row
-    rows += `<tr style="background:#fafafa">
-      <td style="padding:6px 12px;font-size:11px;color:#9ca3af;font-style:italic">Required</td>
-      ${days.map(d => {
-        const k = dateKey(d);
-        const fc = forecast[k] || {};
-        const req = calcRequired(fc, dept.id);
-        const rostered = countRostered(rota, k, dept.id);
-        const needed = req.total || 0;
-        const ok = rostered >= needed;
-        return `<td style="text-align:center;padding:4px">
-          <span style="font-size:11px;font-weight:700;color:${ok?'#2a6a4a':'#b3261e'}">${rostered}/${needed}</span>
-        </td>`;
-      }).join('')}
+    </tr>
+    <tr style="background:#fafafa">
+      <td style="padding:3px 10px;font-size:10px;color:#9ca3af;font-style:italic;white-space:nowrap">Staff needed ↓ rostered ↑</td>
+      ${reqCells}
     </tr>`;
 
     // Staff rows
     deptStaff.forEach(s => {
-      rows += `<tr style="border-bottom:1px solid #f0f0f0" id="rrow-${s.id}">
-        <td style="padding:7px 12px;white-space:nowrap">
+      const weekHrs = days.reduce((tot, d) => {
+        const shift = (rota[dateKey(d)]||{})[s.id] || '';
+        // parse HH:MM-HH:MM to get hours
+        const m = shift.match(/(\d{1,2})[:\.](\d{2})\s*[-–]\s*(\d{1,2})[:\.](\d{2})/);
+        if (!m) return tot;
+        let start = parseInt(m[1])*60+parseInt(m[2]);
+        let end = parseInt(m[3])*60+parseInt(m[4]);
+        if (end < start) end += 24*60; // overnight
+        return tot + (end-start)/60;
+      }, 0);
+
+      const dayCells = days.map(d => {
+        const k = dateKey(d);
+        const shift = (rota[k]||{})[s.id] || '';
+        const c = shiftColour(shift);
+        const isToday = k === todayK;
+        return `<td style="padding:2px 2px;text-align:center;background:${isToday?'#f0f4f8':''}">
+          <input type="text"
+            value="${shift}"
+            data-staff="${s.id}"
+            data-date="${k}"
+            onchange="updateRotaCell(this)"
+            placeholder="off"
+            style="width:112px;padding:5px 4px;
+              border:1.5px solid ${c.border};
+              border-radius:6px;
+              font-size:11px;font-family:Lato;
+              text-align:center;
+              background:${c.bg};
+              color:${c.col};
+              cursor:text;outline:none">
+        </td>`;
+      }).join('');
+
+      tableBody += `<tr style="border-bottom:1px solid #f0f0f0" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
+        <td style="padding:6px 10px;white-space:nowrap;min-width:160px">
           <div style="font-size:12px;font-weight:600;color:#1a2b3a">${s.name}</div>
-          <div style="font-size:10px;color:#9ca3af">${s.type==='relief'?'Relief':s.contractHrs+'h/wk'}</div>
+          <div style="font-size:10px;color:#9ca3af">${s.type==='relief'?'Relief':s.contractHrs+'h/wk'} · <span style="color:${weekHrs>0?'#2a6a4a':'#bbb'}">${Math.round(weekHrs*10)/10}h this week</span></div>
         </td>
-        ${days.map(d => {
-          const k = dateKey(d);
-          const shift = (rota[k]||{})[s.id] || '';
-          const isOff = ['off','OFF','holiday','on call',''].includes(shift.toLowerCase?.()|| shift);
-          return `<td style="padding:3px;text-align:center">
-            <input type="text" 
-              value="${shift}"
-              data-staff="${s.id}" 
-              data-date="${k}"
-              onchange="updateRotaCell(this)"
-              placeholder="off"
-              style="width:96px;padding:5px 6px;border:1px solid ${isOff?'#e8e8e8':'#c78a3b'};border-radius:6px;font-size:11px;text-align:center;background:${isOff?'#f9fafb':'#fffbf3'};color:${isOff?'#9ca3af':'#1a2b3a'};font-family:Lato">
-          </td>`;
-        }).join('')}
+        ${dayCells}
       </tr>`;
     });
   });
 
-  // Total staff per day
-  let totalsRow = days.map(d => {
+  // Total staff per day footer
+  const totalCells = days.map(d => {
     const k = dateKey(d);
-    const total = staff.reduce((n, s) => {
-      const shift = (rota[k]||{})[s.id] || '';
-      return n + (['off','OFF','holiday',''].includes(shift.toLowerCase?.()|| shift) ? 0 : 1);
+    const total = staff.reduce((n,s) => {
+      const sh = (rota[k]||{})[s.id]||'';
+      return n + (sh && sh.toLowerCase()!=='off' && sh.toLowerCase()!=='holiday' && sh!=='' ? 1 : 0);
     }, 0);
-    return `<td style="text-align:center;padding:6px;font-weight:700;font-size:12px;color:#1a2b3a">${total}</td>`;
+    const isToday = k === todayK;
+    return `<td style="padding:8px 4px;text-align:center;background:${isToday?'#1a2b3a':'#1a2b3a'};color:#fff">
+      <div style="font-weight:700;font-size:14px">${total}</div>
+      <div style="font-size:9px;opacity:.7">on duty</div>
+    </td>`;
   }).join('');
 
   v.innerHTML = `
-    <div style="padding:20px;max-width:1200px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div style="padding:16px 20px;max-width:1300px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
         <div>
           <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Weekly Rota</div>
-          <div style="font-size:13px;color:#7a8494">${weekLabel}</div>
+          <div style="font-size:12px;color:#7a8494">${weekLabel} · Click any cell to edit shift times</div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button onclick="rotaWeekOffset--;renderRotaWeek(document.getElementById('main-content'))" 
-            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">← Prev</button>
-          <button onclick="rotaWeekOffset=0;renderRotaWeek(document.getElementById('main-content'))" 
-            style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font-size:12px;font-weight:600">This Week</button>
-          <button onclick="rotaWeekOffset++;renderRotaWeek(document.getElementById('main-content'))" 
-            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">Next →</button>
-          <button onclick="exportRota()" 
-            style="padding:7px 14px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📥 Export</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button onclick="rotaWeekOffset--;renderRotaWeek(document.getElementById('view'))"
+            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">← Prev week</button>
+          <button onclick="rotaWeekOffset=0;renderRotaWeek(document.getElementById('view'))"
+            style="padding:7px 14px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font-size:12px;font-weight:600">This week</button>
+          <button onclick="rotaWeekOffset++;renderRotaWeek(document.getElementById('view'))"
+            style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">Next week →</button>
+          <button onclick="switchTab('rotaForecast')"
+            style="padding:7px 14px;background:#c78a3b;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📈 Update forecast</button>
+          <button onclick="exportRota()"
+            style="padding:7px 14px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📥 Export CSV</button>
         </div>
       </div>
 
-      <div style="overflow-x:auto">
-        <table style="border-collapse:collapse;width:100%;min-width:800px">
+      <!-- Legend -->
+      <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;font-size:11px">
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:3px;background:#e8f3ee;border:1.5px solid #2a6a4a;display:inline-block"></span> Timed shift</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:3px;background:#f5f7f9;border:1.5px solid #e8e8e8;display:inline-block"></span> Off</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:3px;background:#e8f0f8;border:1.5px solid #4a86c7;display:inline-block"></span> Holiday</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:3px;background:#fff8e6;border:1.5px solid #c78a3b;display:inline-block"></span> On call</span>
+        <span style="color:#2a6a4a;font-weight:700">✓ = covered</span>
+        <span style="color:#b3261e;font-weight:700">⚠ = understaffed</span>
+      </div>
+
+      <div style="overflow-x:auto;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.08)">
+        <table style="border-collapse:collapse;width:100%;min-width:900px;background:#fff">
           <thead>
             <tr>
-              <th style="text-align:left;padding:8px 12px;font-size:11px;color:#7a8494;text-transform:uppercase;white-space:nowrap">Team Member</th>
+              <th style="text-align:left;padding:8px 10px;font-size:11px;color:#7a8494;text-transform:uppercase;background:#f5f7f9;min-width:160px">Team Member</th>
               ${dayHeaders}
             </tr>
           </thead>
           <tbody>
-            ${rows}
-            <tr style="background:#1a2b3a15;border-top:2px solid #1a2b3a">
-              <td style="padding:8px 12px;font-size:11px;font-weight:700;color:#1a2b3a">TOTAL ON DUTY</td>
-              ${totalsRow}
+            ${tableBody}
+            <tr style="border-top:2px solid #1a2b3a">
+              <td style="padding:8px 10px;font-size:11px;font-weight:700;color:#fff;background:#1a2b3a;text-transform:uppercase">Total on duty</td>
+              ${totalCells}
             </tr>
           </tbody>
         </table>
       </div>
       <div style="margin-top:10px;font-size:11px;color:#9ca3af">
-        Type shifts in HH:MM-HH:MM format (e.g. 09:00-17:00) · Type "off" for days off · "holiday" for annual leave · "on call" for standby.
-        Changes save automatically.
+        Enter shifts as 09:00-17:00 · Type "off" for rest days · "holiday" for annual leave · "on call" for standby. Changes save automatically.
       </div>
     </div>`;
-}
-
-function updateRotaCell(input) {
-  const rota = getRotaData();
-  const dateK = input.dataset.date;
-  const staffId = input.dataset.staff;
-  if (!rota[dateK]) rota[dateK] = {};
-  rota[dateK][staffId] = input.value.trim();
-  saveRotaData(rota);
-  // Update cell style
-  const isOff = ['off','OFF','holiday','on call',''].includes(input.value.toLowerCase?.() || input.value);
-  input.style.borderColor = isOff ? '#e8e8e8' : '#c78a3b';
-  input.style.background = isOff ? '#f9fafb' : '#fffbf3';
-  input.style.color = isOff ? '#9ca3af' : '#1a2b3a';
-}
-
-function exportRota() {
-  const rota = getRotaData();
-  const staff = getStaffList();
-  const days = getWeekDates(rotaWeekOffset);
-  let csv = 'Name,Department,' + days.map(d => fmtDate(d)).join(',') + '\n';
-  staff.forEach(s => {
-    const shifts = days.map(d => (rota[dateKey(d)]||{})[s.id] || 'off');
-    csv += `"${s.name}","${s.dept}",` + shifts.map(x => `"${x}"`).join(',') + '\n';
-  });
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'brandon-hall-rota.csv'; a.click();
 }
 
 // ── FORECAST ─────────────────────────────────────────────────────────────────
@@ -5947,11 +5981,11 @@ function renderRotaForecast(v) {
           <div style="font-size:13px;color:#7a8494">Enter rooms sold and covers — staffing requirements update automatically</div>
         </div>
         <div style="display:flex;gap:8px">
-          <button onclick="forecastWeekOffset--;renderRotaForecast(document.getElementById('main-content'))"
+          <button onclick="forecastWeekOffset--;renderRotaForecast(document.getElementById('view'))"
             style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">← Prev</button>
-          <button onclick="forecastWeekOffset=0;renderRotaForecast(document.getElementById('main-content'))"
+          <button onclick="forecastWeekOffset=0;renderRotaForecast(document.getElementById('view'))"
             style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font-size:12px;font-weight:600">This Week</button>
-          <button onclick="forecastWeekOffset++;renderRotaForecast(document.getElementById('main-content'))"
+          <button onclick="forecastWeekOffset++;renderRotaForecast(document.getElementById('view'))"
             style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">Next →</button>
         </div>
       </div>
@@ -5973,7 +6007,7 @@ function updateForecastCell(input) {
   }
   saveForecast(forecast);
   // Re-render the required vs rostered section for this day
-  renderRotaForecast(document.getElementById('main-content'));
+  renderRotaForecast(document.getElementById('view'));
 }
 
 // ── MONTHLY PLAN ─────────────────────────────────────────────────────────────
@@ -6038,10 +6072,10 @@ function renderRotaMonthly(v) {
           <div style="font-size:13px;color:#7a8494">Enter rooms per night for the month · dinner covers where known</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button onclick="monthOffset--;renderRotaMonthly(document.getElementById('main-content'))"
+          <button onclick="monthOffset--;renderRotaMonthly(document.getElementById('view'))"
             style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">← Prev</button>
           <span style="font-weight:700;font-size:14px;color:#1a2b3a;padding:0 4px">${monthName}</span>
-          <button onclick="monthOffset++;renderRotaMonthly(document.getElementById('main-content'))"
+          <button onclick="monthOffset++;renderRotaMonthly(document.getElementById('view'))"
             style="padding:7px 12px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer">Next →</button>
         </div>
       </div>
@@ -6215,5 +6249,5 @@ function addStaffPrompt() {
   const staff = getStaffList();
   staff.push({ id: name.toLowerCase().replace(/\s+/g,'_')+'_'+Date.now(), name, dept: dept.id, type:'core', contractHrs:0 });
   localStorage.setItem('staffpro_staff', JSON.stringify(staff));
-  renderRotaSettings(document.getElementById('main-content'));
+  renderRotaSettings(document.getElementById('view'));
 }
