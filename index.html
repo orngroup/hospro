@@ -92,16 +92,16 @@ a{color:var(--gold-dk)}
 
 /* ── Full-width layout (no sidebar) ── */
 .sf-full{width:100%;display:flex;flex-direction:column}
-.sf-header-full{display:flex;align-items:center;gap:12px;padding:0 24px;background:linear-gradient(90deg,#101d33,#0c1729);height:56px;position:sticky;top:0;z-index:40;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.sf-header-full{display:flex;align-items:center;gap:12px;padding:0 24px;background:#1a2b3a;height:56px;position:sticky;top:0;z-index:40;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .sf-logo-inline img{height:28px;display:block}
 .sf-staff-link{font-size:12px;font-weight:600;color:#8fa3b8;text-decoration:none;white-space:nowrap;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.12)}
 .sf-staff-link:hover{background:rgba(255,255,255,.08);color:#c7d2e0}
-.sf-breadcrumb{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 24px;height:40px;display:flex;align-items:center;gap:8px}
-.sf-bc-home{background:none;border:none;font:600 13px Lato;color:#1a2b3a;cursor:pointer;padding:0}
+.sf-breadcrumb{background:#243447;border-bottom:1px solid rgba(255,255,255,.1);padding:0 24px;height:40px;display:flex;align-items:center;gap:8px}
+.sf-bc-home{background:none;border:none;font:600 13px Lato;color:#8fa3b8;cursor:pointer;padding:0}
 .sf-bc-home:hover{color:#c78a3b}
-.sf-bc-sep{color:#d1d5db;font-size:14px}
-.sf-bc-label{font-size:13px;font-weight:700;color:#1a2b3a}
-.sf-bc-tab{font-size:13px;color:#374151}
+.sf-bc-sep{color:#4a6070;font-size:14px}
+.sf-bc-label{font-size:13px;font-weight:700;color:#c7d2e0}
+.sf-bc-tab{font-size:13px;color:#8fa3b8}
 .sf-bc-tab::before{content:" › ";color:#d1d5db}
 .sf-nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;font-size:13.5px;
   font-weight:500;color:#b3c0d1;text-align:left;transition:.14s;font-family:var(--brand-sans)}
@@ -118,11 +118,11 @@ a{color:var(--gold-dk)}
 .sf-side-link:hover{background:rgba(255,255,255,.06);color:#fff}
 .sf-vendor{font-size:9.5px;color:#5a6b83;padding:10px 12px 4px}
 .sf-main{flex:1;min-width:0;display:flex;flex-direction:column}
-.sf-header{display:flex;align-items:center;gap:16px;padding:12px 26px;background:#fff;
-  border-bottom:1px solid var(--brand-beige);position:sticky;top:0;z-index:30}
-.sf-loc{font-size:13px;color:var(--brand-navy);font-weight:600;font-family:var(--brand-sans)}
+.sf-header{display:flex;align-items:center;gap:16px;padding:12px 26px;background:#1a2b3a;
+  border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:30}
+.sf-loc{font-size:13px;color:#8fa3b8;font-weight:600;font-family:var(--brand-sans)}
 .sf-search{flex:0 1 320px}
-.sf-search input{width:100%;padding:9px 14px;border:1px solid var(--brand-beige);border-radius:22px;background:#f6f8fa;font-size:13px}
+.sf-search input{border:1.5px solid rgba(255,255,255,.2);border-radius:10px;padding:7px 14px;font-size:13px;background:rgba(255,255,255,.1);color:#fff;outline:none;width:260px}
 .sf-spacer{flex:1}
 .sf-user{display:flex;align-items:center;gap:9px}
 .sf-avatar{width:36px;height:36px;border-radius:50%;background:var(--brand-navy);color:#fff;
@@ -1143,9 +1143,9 @@ body.home-active nav.tabs{display:none;}
       <span id="tb-mode" class="mode-badge">Live</span>
       <div class="sf-user">
         <span class="sf-avatar" id="sf-avatar">—</span>
-        <div class="sf-uwrap"><b id="tb-who">—</b><span class="sf-urole" id="tb-role">Sales &amp; Events</span></div>
+        <div class="sf-uwrap"><b id="tb-who" style="color:#fff">—</b><span class="sf-urole" id="tb-role" style="color:#8fa3b8">Sales &amp; Events</span></div>
       </div>
-      <button class="btn ghost sm" id="tb-logout">Sign out</button>
+      <button class="btn ghost sm" id="tb-logout" style="border-color:rgba(255,255,255,.3);color:#c7d2e0">Sign out</button>
     </header>
     <!-- Breadcrumb bar — shown when inside a module -->
     <div id="sf-breadcrumb" class="sf-breadcrumb" style="display:none">

@@ -3806,7 +3806,7 @@ function renderHome(v){
   v.style.padding = '0';
 
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'min-height:100%;background:#f0f4f8';
+  wrap.style.cssText = 'min-height:100%;background:#1a2b3a';
 
   // ── Module cards — 2 rows of 6 ────────────────────────────────────────────
   const cardsSection = document.createElement('div');
@@ -3866,34 +3866,6 @@ function renderHome(v){
   });
   wrap.appendChild(statsBar);
 
-  // ── Quick Links bar ─────────────────────────────────────────────────────────
-  const qlBar = document.createElement('div');
-  qlBar.style.cssText = 'display:flex;align-items:center;gap:10px;padding:0 28px 14px;flex-wrap:wrap';
-
-  const quickLinks = [
-    {label:'🏨 Guestline PMS',   url:'https://guestline.eu.auth0.com/login?state=hKFo2SA3YXhjWWszV2JfR2liT0ZtdExwSVFjSDVVZDI1SVVNVaFupWxvZ2luo3RpZNkgRGcya0JIWnBnLTdPV2pEQUI5ckU1M08xSEcyeDA1MkejY2lk2SBhM1RTRmg3OVpzWXBFcnZFSU5Pa2VvekhiSVBZUTNvYw&client=a3TSFh79ZsYpErvEINOkeozHbIPYQ3oc&protocol=oauth2&useRefreshTokensFallback=true&issuer=https%3A%2F%2Fguestline.eu.auth0.com%2F&scope=openid%20profile%20email%20offline_access&audience=https%3A%2F%2Fguestline.app&redirect_uri=https%3A%2F%2Fpms.eu.guestline.net%2Frezlynx%2FRLXWebForms%2Fsys%2Fwfrm_sys_LogOn.aspx%3Fsso_autoLogon%3Dtrue%26siteId%3DBRANDHALL&siteid=BRANDHALL&rezlynxlogin=true&siteidrequired=true&sso_autologon=true&siteId=BRANDHALL&siteIdRequired=true&response_type=code&response_mode=query'},
-    {label:'🛡 Saeker Compliance', url:'https://7hospitalitymanagement.saeker.com/login'},
-    {label:'🌐 Hotel Website',     url:'https://www.brandonhallhotelandspa.com'},
-    {label:'📍 Visit Coventry',    url:'https://visitcoventry.co.uk/'},
-  ];
-
-  const qlLabel = document.createElement('span');
-  qlLabel.style.cssText = 'font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap';
-  qlLabel.textContent = 'Quick links:';
-  qlBar.appendChild(qlLabel);
-
-  quickLinks.forEach(ql => {
-    const a = document.createElement('a');
-    a.href = ql.url;
-    a.target = '_blank';
-    a.rel = 'noopener';
-    a.textContent = ql.label;
-    a.style.cssText = 'padding:6px 14px;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;font:600 12px Lato;color:#1a2b3a;text-decoration:none;white-space:nowrap;transition:all .15s';
-    a.onmouseover = () => { a.style.borderColor='#1a2b3a'; a.style.background='#1a2b3a'; a.style.color='#fff'; };
-    a.onmouseout  = () => { a.style.borderColor='#e5e7eb'; a.style.background='#fff'; a.style.color='#1a2b3a'; };
-    qlBar.appendChild(a);
-  });
-  wrap.appendChild(qlBar);
 
   // ── Dashboard section ────────────────────────────────────────────────────────
   const dash = document.createElement('div');
@@ -4134,25 +4106,13 @@ function renderModuleLanding(moduleId){
 
   const bgUrl = MOD_BG[moduleId]||"";
 
-  // Full-height wrapper with background image
+  // Full-height wrapper — solid brand background
   const wrap = document.createElement("div");
-  wrap.style.cssText = "min-height:100%;position:relative;overflow:hidden";
-
-  // Background image overlay
-  if(bgUrl){
-    const bgDiv = document.createElement("div");
-    bgDiv.style.cssText = `position:absolute;inset:0;background:url(${bgUrl}) center/cover no-repeat;opacity:.13;z-index:0;pointer-events:none`;
-    wrap.appendChild(bgDiv);
-  }
-
-  // Colour wash overlay
-  const colourWash = document.createElement("div");
-  colourWash.style.cssText = `position:absolute;inset:0;background:linear-gradient(135deg,${m.colour}22,#f0f4f8ee);z-index:0;pointer-events:none`;
-  wrap.appendChild(colourWash);
+  wrap.style.cssText = "min-height:100%;background:#1a2b3a;position:relative";
 
   // Content layer
   const content = document.createElement("div");
-  content.style.cssText = "position:relative;z-index:1;padding:32px";
+  content.style.cssText = "padding:32px";
 
   // Module header
   content.innerHTML = `
@@ -4176,7 +4136,7 @@ function renderModuleLanding(moduleId){
     card.innerHTML = `
       <div style="width:50px;height:50px;border-radius:13px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 3px 10px ${m.colour}55">${sc.icon}</div>
       <div style="flex:1">
-        <div style="font-size:15px;font-weight:700;color:#111827;line-height:1.2">${sc.label}</div>
+        <div style="font-size:15px;font-weight:700;color:#1a2b3a;line-height:1.2">${sc.label}</div>
         <div style="font-size:12px;color:#374151;margin-top:5px;line-height:1.5">${sc.desc}</div>
       </div>
       <div style="font-size:11px;font-weight:700;color:${m.colour};display:flex;align-items:center;gap:4px">Open <span>→</span></div>`;
@@ -5307,9 +5267,9 @@ function openPortalJobDetail(jobId){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
         ${[['Priority',(j.priority||'medium')],['Module',j.module||'maintenance'],['Cost est.','£'+(j.cost||0).toFixed(2)],['Logged',j.createdAt?j.createdAt.slice(0,10):'—'],['Started',j.startedAt?j.startedAt.slice(0,10):'—'],['Completed',j.completedAt?j.completedAt.slice(0,10):'—']].map(([k,v])=>'<div style="background:#f9fafb;border-radius:8px;padding:10px"><div style="font-size:11px;color:#374151;margin-bottom:2px">'+k+'</div><div style="font-weight:700;font-size:13px">'+v+'</div></div>').join('')}
       </div>
-      ${assignees.length?'<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Assigned to</div><div style="display:flex;gap:8px">'+assignees.map(u=>'<div style="display:flex;align-items:center;gap:7px;background:#f5f7f9;border-radius:20px;padding:5px 12px 5px 5px"><div style="width:28px;height:28px;border-radius:50%;background:'+u.color+';display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff">'+u.name.split(' ').map(w=>w[0]).join('').slice(0,2)+'</div><span style="font-size:13px;font-weight:600">'+u.name+'</span></div>').join('')+'</div></div>':''}
-      ${(j.materials||[]).length?'<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Materials used</div>'+j.materials.map(m=>'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f5f7f9;font-size:13px"><span>'+m.name+'</span><span style="font-weight:700">x'+m.qty+' · £'+(m.qty*m.tradePrice).toFixed(2)+'</span></div>').join('')+'</div>':''}
-      ${(j.notes||[]).length?'<div><div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Notes</div>'+j.notes.map(n=>'<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:6px"><div style="font-size:11px;color:#374151;margin-bottom:3px">'+n.by+' · '+n.at+'</div><div style="font-size:13px">'+n.text+'</div></div>').join('')+'</div>':''}
+      ${assignees.length?'<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:#c7d2e0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Assigned to</div><div style="display:flex;gap:8px">'+assignees.map(u=>'<div style="display:flex;align-items:center;gap:7px;background:#f5f7f9;border-radius:20px;padding:5px 12px 5px 5px"><div style="width:28px;height:28px;border-radius:50%;background:'+u.color+';display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff">'+u.name.split(' ').map(w=>w[0]).join('').slice(0,2)+'</div><span style="font-size:13px;font-weight:600">'+u.name+'</span></div>').join('')+'</div></div>':''}
+      ${(j.materials||[]).length?'<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:#c7d2e0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Materials used</div>'+j.materials.map(m=>'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f5f7f9;font-size:13px"><span>'+m.name+'</span><span style="font-weight:700">x'+m.qty+' · £'+(m.qty*m.tradePrice).toFixed(2)+'</span></div>').join('')+'</div>':''}
+      ${(j.notes||[]).length?'<div><div style="font-size:11px;font-weight:700;color:#c7d2e0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Notes</div>'+j.notes.map(n=>'<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:6px"><div style="font-size:11px;color:#374151;margin-bottom:3px">'+n.by+' · '+n.at+'</div><div style="font-size:13px">'+n.text+'</div></div>').join('')+'</div>':''}
     </div>`;
   document.body.appendChild(modal);
   modal.addEventListener('click',e=>{ if(e.target===modal) modal.remove(); });
@@ -5731,9 +5691,9 @@ function renderRotaDash(v){
     </div>`;
   });
   const weekStrip=days.map(d=>{const k=spDK(d),f=fc[k]||{},isT=k===todayK;return`<td style="text-align:center;padding:6px 4px;background:${isT?'#e8f3ee':''};border-radius:6px"><div style="font-weight:700;font-size:14px;color:${f.rooms?'#1a2b3a':'#d1d5db'}">${f.rooms||'—'}</div><div style="font-size:10px;color:#374151">${d.toLocaleDateString('en-GB',{weekday:'short'})}</div></td>`;}).join('');
-  v.innerHTML=`<div style="padding:20px;max-width:1100px">
+  v.innerHTML=`<div style="padding:20px 28px;max-width:1300px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
-      <div><div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a">HosSHIFT Dashboard</div>
+      <div><div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#ffffff">HosSHIFT Dashboard</div>
       <div style="font-size:13px;color:#374151">Today · ${today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="switchTab('rotaWeek')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">📋 Weekly Rota</button>
@@ -5742,7 +5702,7 @@ function renderRotaDash(v){
       </div>
     </div>
     <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
-      <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Rooms In House — This Week</div>
+      <div style="font-size:11px;font-weight:700;color:#c7d2e0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Rooms In House — This Week</div>
       <table style="width:100%"><tr>${weekStrip}</tr></table>
       <div style="margin-top:10px;display:flex;gap:16px;font-size:12px;flex-wrap:wrap">
         <span style="color:#374151">Today: <b style="color:#1a2b3a">${todayFC.rooms||'—'} rooms</b></span>
@@ -5752,7 +5712,7 @@ function renderRotaDash(v){
         <span style="color:#374151">Dinner: <b>${todayFC.dinnerCovers||'—'}</b></span>
       </div>
     </div>
-    <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Today · Department Staffing</div>
+    <div style="font-size:11px;font-weight:700;color:#c7d2e0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Today · Department Staffing</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">${deptCards}</div>
   </div>`;
 }
@@ -5779,12 +5739,12 @@ function renderRotaWeek(v){
   const totals=days.map(d=>{const k=spDK(d),tot=staff.filter(s=>{const sh=(rota[k]||{})[s.id]||'';return sh&&sh.toLowerCase()!=='off'&&sh!=='';}).length;return`<td style="padding:8px 4px;text-align:center;background:#1a2b3a;color:#fff"><b style="font-size:13px">${tot}</b><div style="font-size:9px;opacity:.7">on duty</div></td>`;}).join('');
   v.innerHTML=`<div style="padding:16px 20px;max-width:1300px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Weekly Rota</div>
+      <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Weekly Rota</div>
       <div style="font-size:12px;color:#374151">Week commencing ${spShortFmt(days[0])} · Click any cell to edit · Click name to edit staff</div></div>
       <div style="display:flex;gap:7px;flex-wrap:wrap">
-        <button onclick="spWeekOffset--;renderRotaWeek(document.getElementById('view'))" style="padding:7px 11px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;color:#1a2b3a">← Prev</button>
+        <button onclick="spWeekOffset--;renderRotaWeek(document.getElementById('view'))" style="padding:7px 11px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;font-size:12px;color:#fff">← Prev</button>
         <button onclick="spWeekOffset=0;renderRotaWeek(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font:600 12px Lato">This week</button>
-        <button onclick="spWeekOffset++;renderRotaWeek(document.getElementById('view'))" style="padding:7px 11px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;color:#1a2b3a">Next →</button>
+        <button onclick="spWeekOffset++;renderRotaWeek(document.getElementById('view'))" style="padding:7px 11px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;font-size:12px;color:#fff">Next →</button>
         <button onclick="spAddStaffModal()" style="padding:7px 12px;background:#6366f1;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">+ Add</button>
         <button onclick="switchTab('rotaForecast')" style="padding:7px 12px;background:#c78a3b;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📈 Forecast</button>
         <button onclick="spApproveRota()" style="padding:7px 12px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">✓ Approve & Print</button>
@@ -5827,14 +5787,14 @@ function renderRotaForecast(v){
       <div style="border-top:1px solid #f0f0f0;padding-top:8px"><div style="font-size:10px;font-weight:700;color:#1a2b3a;text-transform:uppercase;margin-bottom:5px">Required vs Rostered</div>${reqs}</div>
     </div>`;
   }).join('');
-  v.innerHTML=`<div style="padding:20px;max-width:1100px">
+  v.innerHTML=`<div style="padding:20px 28px;max-width:1300px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-      <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Occupancy Forecast</div>
+      <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Occupancy Forecast</div>
       <div style="font-size:12px;color:#374151">Enter rooms sold and covers — staffing requirements update live. Auto-saves as you type.</div></div>
       <div style="display:flex;gap:8px">
-        <button onclick="spFcWeekOffset--;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;color:#1a2b3a">← Prev</button>
+        <button onclick="spFcWeekOffset--;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">← Prev</button>
         <button onclick="spFcWeekOffset=0;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font:600 12px Lato">This week</button>
-        <button onclick="spFcWeekOffset++;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;color:#1a2b3a">Next →</button>
+        <button onclick="spFcWeekOffset++;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">Next →</button>
         <button onclick="spCreateRotaFromForecast()" style="padding:7px 14px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:700 13px Lato;cursor:pointer">⚡ Create draft rota</button>
         <button onclick="switchTab('rotaWeek')" style="padding:7px 12px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">← Back to Rota</button>
       </div>
@@ -5861,12 +5821,12 @@ function renderRotaMonthly(v){
   const allCells=cells.split('</td>').filter(Boolean).map(c=>c+'</td>');let calRows='';for(let i=0;i<allCells.length;i+=7)calRows+=`<tr>${allCells.slice(i,i+7).join('')}</tr>`;
   v.innerHTML=`<div style="padding:20px;max-width:920px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-      <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Monthly Forecast</div>
+      <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Monthly Forecast</div>
       <div style="font-size:12px;color:#374151">Top = rooms · Bottom = dinner covers · Colour = occupancy</div></div>
       <div style="display:flex;gap:7px;align-items:center">
-        <button onclick="spMonthOff--;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;color:#1a2b3a">← Prev</button>
+        <button onclick="spMonthOff--;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">← Prev</button>
         <b style="padding:0 6px;font-size:14px;color:#1a2b3a">${mn}</b>
-        <button onclick="spMonthOff++;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;color:#1a2b3a">Next →</button>
+        <button onclick="spMonthOff++;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">Next →</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
@@ -5888,7 +5848,7 @@ function renderRotaSettings(v){
   const staff=spGetStaff();
   const rows=staff.map(s=>{const dept=SP_DEPTS.find(d=>d.id===s.dept)||{name:s.dept,colour:'#4a86c7'};const wkHrs=0;return`<tr style="border-bottom:1px solid #f5f7f9"><td style="padding:8px 10px"><b style="font-size:13px;color:#1a2b3a">${s.name}</b><div style="font-size:11px;color:#374151">${s.role||''} · ${s.staffCode||''}</div></td><td style="padding:8px 6px"><span style="padding:2px 8px;border-radius:8px;font-size:11px;background:${dept.colour}20;color:${dept.colour};font-weight:600">${dept.name}</span></td><td style="padding:8px 6px;font-size:12px;color:#374151">${s.type==='relief'?'Relief':'Core'}</td><td style="padding:8px 6px;font-size:12px;color:#1a2b3a">${s.contractHrs>0?s.contractHrs+'h/wk':'—'}</td><td style="padding:8px 6px;font-size:12px;color:#1a2b3a">${s.hourlyRate>0?'£'+s.hourlyRate+'/h':'—'}</td><td style="padding:8px 6px"><select onchange="spMoveDept('${s.id}',this.value)" style="padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;color:#1a2b3a">${SP_DEPTS.map(d=>`<option value="${d.id}"${s.dept===d.id?' selected':''}>${d.name}</option>`).join('')}</select></td><td style="padding:8px 6px"><button onclick="spRemoveStaff('${s.id}')" style="padding:3px 8px;border:1px solid #fee2e2;border-radius:6px;background:#fff;color:#991b1b;font-size:11px;cursor:pointer">Remove</button></td></tr>`;}).join('');
   v.innerHTML=`<div style="padding:20px;max-width:1000px">
-    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a;margin-bottom:4px">HosSHIFT Settings</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff;margin-bottom:4px">HosSHIFT Settings</div>
     <div style="font-size:13px;color:#374151;margin-bottom:18px">${staff.length} staff members · Click name in rota to edit shifts</div>
     <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -6059,7 +6019,7 @@ function renderBrandDocs(v){
   v.style.padding = "0";
 
   const wrap = document.createElement("div");
-  wrap.style.cssText = "min-height:100%;background:#f0f4f8;padding:28px";
+  wrap.style.cssText = "min-height:100%;background:#1a2b3a;padding:28px";
 
   // Header
   wrap.innerHTML = `
@@ -6195,10 +6155,10 @@ function renderStaffDash(v){
     </div>`;
   }).join('') || '<div style="padding:12px 0;color:#374151;font-size:13px">No pending requests</div>';
 
-  v.innerHTML = `<div style="padding:20px;max-width:1100px">
+  v.innerHTML = `<div style="padding:20px 28px;max-width:1300px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
       <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a">HosSTAFF Dashboard</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#ffffff">HosSTAFF Dashboard</div>
         <div style="font-size:13px;color:#374151">${profiles.length} staff members · ${pending.length} leave requests pending</div>
       </div>
       <div style="display:flex;gap:8px">
@@ -6288,7 +6248,7 @@ function renderStaffProfiles(v){
   v.innerHTML = `<div style="padding:20px;max-width:1200px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Staff Profiles</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Staff Profiles</div>
         <div style="font-size:12px;color:#374151">${filtered.length} of ${profiles.length} staff members</div>
       </div>
       <button onclick="hsAddStaffModal()" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">+ Add staff member</button>
@@ -6468,7 +6428,7 @@ function hsOpenProfile(staffId){
     <!-- Tab 3: Documents (hidden) -->
     <div id="hs-tab-3" style="display:none">
       <div style="background:#f0f9ff;border-radius:10px;padding:16px;text-align:center;margin-bottom:12px">
-        <div style="font-size:13px;color:#374151;margin-bottom:8px">Upload documents for this staff member</div>
+        <div style="font-size:13px;color:#8fa3b8;margin-bottom:8px">Upload documents for this staff member</div>
         <div style="font-size:11px;color:#374151;margin-bottom:12px">Contract · ID · Right to work · DBS · Certificates</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           ${['Employment Contract','Photo ID','Right to Work','DBS Certificate','Training Certificate','Other'].map(docType=>`<div style="background:#fff;border:1.5px dashed #d1d5db;border-radius:8px;padding:10px;cursor:pointer;text-align:center" onclick="toast('Document upload — connect to file storage to enable')">
@@ -6554,10 +6514,10 @@ function renderStaffLeaveAdmin(v){
     </tr>`;
   }).join('') || `<tr><td colspan="7" style="padding:20px;text-align:center;color:#374151;font-size:13px">No ${filter} leave requests</td></tr>`;
 
-  v.innerHTML = `<div style="padding:20px;max-width:1100px">
+  v.innerHTML = `<div style="padding:20px 28px;max-width:1300px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Leave Management</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Leave Management</div>
         <div style="font-size:12px;color:#374151">${leave.filter(l=>l.status==='pending').length} pending · ${leave.filter(l=>l.status==='approved').length} approved</div>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap">
@@ -6697,7 +6657,7 @@ function hsDoAddStaff(){
 function renderStaffLeave(v){ renderStaffLeaveAdmin(v); }
 function renderStaffDocs(v){
   v.innerHTML=`<div style="padding:20px;max-width:800px">
-    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a;margin-bottom:8px">Documents</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff;margin-bottom:8px">Documents</div>
     <div style="font-size:13px;color:#374151;margin-bottom:16px">Open a staff profile to upload and manage their documents</div>
     <button onclick="switchTab('staffProfiles')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">← Staff Profiles</button>
   </div>`;
