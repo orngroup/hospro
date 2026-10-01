@@ -845,7 +845,19 @@ const BROCHURE_TEMPLATES = {
 /* ============================================================
    HOSPRO — modules (sidebar + welcome cards) + role access
    ============================================================ */
-const FLOW_MODULES = [
+const // Module groups for collapsible sidebar
+MODULE_GROUPS = [
+  { id:'guest',    label:'Guest & Revenue',   icon:'🏨', colour:'#4a9d7f',
+    modules:['events','room','sales','corp','marketing'] },
+  { id:'ops',     label:'Hotel Operations',   icon:'⚙️', colour:'#c45c00',
+    modules:['hosfix','hoscom','asset','task'] },
+  { id:'people',  label:'People & Shifts',    icon:'👥', colour:'#4a86c7',
+    modules:['hosstaff','hosshift'] },
+  { id:'business',label:'Business & Content', icon:'📊', colour:'#8b5c8f',
+    modules:['content','insight'] },
+];
+
+FLOW_MODULES = [
   { id:"events",    name:"EventsPRO",    caption:"Plan. Organise. Deliver.",       icon:"📅", colour:"#4a9d7f", tint:"#e6f3ee", tabs:["chat","dining","beverage"] },
   { id:"room",      name:"RoomPRO",      caption:"Keep operations in flow.",       icon:"🛏️", colour:"#4a86c7", tint:"#e6eff8", tabs:["rooms","groupconfig","packages"] },
   { id:"sales",     name:"SalesPRO",     caption:"Leads. Proposals. Growth.",      icon:"📊", colour:"#8b5c8f", tint:"#f1e9f2", tabs:["pipeline","quotes","profit","contracts","payments"] },
@@ -857,7 +869,8 @@ const FLOW_MODULES = [
   { id:"asset",     name:"AssetPRO",     caption:"Maintain. Track. Extend.",       icon:"🔧", colour:"#3fa8a0", tint:"#e3f3f1", tabs:["mne","suppliers"] },
   { id:"content",   name:"ContentPRO",   caption:"Brochures. Menus. Collateral.",  icon:"📄", colour:"#5a8fc7", tint:"#e8f0f8", tabs:["quote","brochure","menu"] },
   { id:"insight",   name:"InsightPRO",   caption:"See more. Do more.",             icon:"📈", colour:"#5fa563", tint:"#e8f3e8", tabs:["insight","admin"] },
-  { id:"staffpro",  name:"StaffPRO",     caption:"Rota. Forecast. Staffing.",       icon:"👥", colour:"#1a2b3a", tint:"#e8eaed", tabs:["rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings"] }
+  { id:"hosshift",  name:"HosSHIFT",    caption:"Rota. Forecast. Shift planning.",  icon:"📅", colour:"#1a2b3a", tint:"#e8eaed", tabs:["rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings"] },
+  { id:"hosstaff",  name:"HosSTAFF",    caption:"People. Contracts. HR.",            icon:"👤", colour:"#4a86c7", tint:"#e6eff8", tabs:["staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs"] }
 ];
 
 /* Tab metadata (label + icon) for sidebar links and cards */
@@ -883,11 +896,16 @@ const TAB_META = {
   fixDash:{label:"Maintenance Dashboard",icon:"🔧"}, fixAllJobs:{label:"All Jobs",icon:"🔨"},
   fixProjects:{label:"Projects",icon:"📋"}, fixInventory:{label:"Stock & Inventory",icon:"📦"},
   fixTeam:{label:"Team & Profiles",icon:"👷"},
-  rotaDash:{label:"Staff Dashboard",icon:"📊"},
+  rotaDash:{label:"Shift Dashboard",icon:"📊"},
   rotaWeek:{label:"Weekly Rota",icon:"📋"},
   rotaForecast:{label:"Occupancy Forecast",icon:"📈"},
   rotaMonthly:{label:"Monthly Plan",icon:"📅"},
-  rotaSettings:{label:"Settings & Staff",icon:"⚙️"}
+  rotaSettings:{label:"Shift Settings",icon:"⚙️"},
+  staffDash:{label:"Staff Overview",icon:"👥"},
+  staffProfiles:{label:"Staff Profiles",icon:"👤"},
+  staffLeave:{label:"Leave Requests",icon:"🌴"},
+  staffLeaveAdmin:{label:"Approve Leave",icon:"✅"},
+  staffDocs:{label:"Documents",icon:"📁"}
 };
 
 /* Which module a tab belongs to (for sidebar grouping / highlighting) */

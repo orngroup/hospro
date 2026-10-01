@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HosSTAFF — Brandon Hall Staff Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Lato:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Lato',sans-serif;background:#f0f4f8;min-height:100vh;color:#111827}
+.header{background:linear-gradient(135deg,#1a2b3a,#0c1729);padding:20px 24px;display:flex;align-items:center;gap:14px}
+.header-logo{font-family:'Cormorant Garamond',serif;color:#fff;font-size:22px;font-weight:700}
+.header-logo span{color:#c78a3b}
+.header-sub{font-size:11px;color:#8fa3b8;letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+.screen{display:none;min-height:calc(100vh - 72px);padding:24px 16px}
+.screen.active{display:block}
+.card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.08);max-width:500px;margin:0 auto}
+h2{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a;margin-bottom:6px}
+p.sub{font-size:13px;color:#374151;margin-bottom:20px}
+.field{margin-bottom:14px}
+label{display:block;font-size:12px;font-weight:700;color:#1a2b3a;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+input,select,textarea{width:100%;padding:11px 14px;border:2px solid #d1d5db;border-radius:9px;font:14px 'Lato';color:#111827;outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:#1a2b3a}
+.btn{width:100%;padding:13px;border:none;border-radius:10px;font:700 15px 'Lato';cursor:pointer;transition:opacity .15s}
+.btn-navy{background:#1a2b3a;color:#fff}
+.btn-green{background:#2a6a4a;color:#fff}
+.btn-ghost{background:#fff;color:#1a2b3a;border:2px solid #1a2b3a}
+.btn:hover{opacity:.88}
+.pill{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700}
+.pill-green{background:#dcfce7;color:#166534}
+.pill-amber{background:#fef9c3;color:#854d0e}
+.pill-red{background:#fee2e2;color:#991b1b}
+.pill-blue{background:#dbeafe;color:#1d4ed8}
+.leave-bar-bg{background:#e5e7eb;border-radius:8px;height:10px;margin:6px 0 2px}
+.leave-bar{background:#2a6a4a;border-radius:8px;height:10px;transition:width .4s}
+.stat-card{background:#f9fafb;border-radius:12px;padding:14px;text-align:center}
+.stat-num{font-size:28px;font-weight:700;color:#1a2b3a}
+.stat-label{font-size:11px;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a2b3a;color:#fff;padding:12px 20px;border-radius:10px;font:600 13px Lato;z-index:999;display:none}
+.divider{border:none;border-top:1px solid #e5e7eb;margin:16px 0}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-logo">Hos<span>STAFF</span></div>
+    <div class="header-sub">Brandon Hall Hotel & Spa — Staff Portal</div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- Screen 1: Sign in -->
+<div id="scr-signin" class="screen active">
+  <div style="max-width:440px;margin:40px auto">
+    <div class="card">
+      <h2>Staff Sign In</h2>
+      <p class="sub">Enter your staff ID to access your profile and request leave.</p>
+      <div class="field">
+        <label>Staff ID</label>
+        <input id="staff-id-input" type="text" placeholder="e.g. BH001" oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter') doSignIn()">
+      </div>
+      <div id="signin-err" style="color:#991b1b;font-size:13px;margin-bottom:10px;display:none">Staff ID not found. Please check and try again.</div>
+      <button class="btn btn-navy" onclick="doSignIn()">Sign in →</button>
+      <p style="font-size:11px;color:#374151;text-align:center;margin-top:12px">Your staff ID is on your contract and payslips.<br>Contact your manager if you need help.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Screen 2: Confirm identity -->
+<div id="scr-confirm" class="screen">
+  <div style="max-width:440px;margin:40px auto">
+    <div class="card">
+      <h2 id="confirm-name"></h2>
+      <p class="sub" id="confirm-role"></p>
+      <div style="background:#f0f9ff;border-radius:10px;padding:14px;margin-bottom:18px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div id="confirm-avatar" style="width:50px;height:50px;border-radius:50%;background:#4a86c7;display:flex;align-items:center;justify-content:center;font:700 16px Lato;color:#fff;flex-shrink:0"></div>
+          <div>
+            <div id="confirm-dept" style="font-size:13px;color:#374151"></div>
+            <div id="confirm-code" style="font-size:12px;color:#374151;margin-top:2px"></div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:14px;font-weight:600;color:#1a2b3a;margin-bottom:14px">Is this you?</p>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-green" onclick="doConfirm()">✓ Yes, that's me</button>
+        <button class="btn btn-ghost" onclick="showScreen('scr-signin')">← No, go back</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Screen 3: Staff dashboard -->
+<div id="scr-dashboard" class="screen">
+  <div style="max-width:600px;margin:0 auto">
+
+    <!-- Profile header -->
+    <div style="background:#fff;border-radius:16px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:14px;display:flex;align-items:center;gap:14px;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div id="dash-avatar" style="width:52px;height:52px;border-radius:50%;background:#4a86c7;display:flex;align-items:center;justify-content:center;font:700 16px Lato;color:#fff;flex-shrink:0"></div>
+        <div>
+          <div id="dash-name" style="font-size:18px;font-weight:700;color:#1a2b3a"></div>
+          <div id="dash-role" style="font-size:12px;color:#374151;margin-top:2px"></div>
+        </div>
+      </div>
+      <button onclick="showScreen('scr-signin');CURRENT_STAFF=null" style="padding:7px 12px;border:1.5px solid #d1d5db;border-radius:8px;background:#fff;font:600 12px Lato;color:#374151;cursor:pointer">Sign out</button>
+    </div>
+
+    <!-- Leave summary -->
+    <div style="background:#fff;border-radius:16px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">Annual Leave</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+        <div class="stat-card">
+          <div class="stat-num" id="leave-remaining" style="color:#166534">—</div>
+          <div class="stat-label">Days left</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="leave-used" style="color:#991b1b">—</div>
+          <div class="stat-label">Days used</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="leave-pending" style="color:#854d0e">—</div>
+          <div class="stat-label">Days pending</div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#374151;margin-bottom:4px">
+          <span>Leave used</span>
+          <span id="leave-pct">0%</span>
+        </div>
+        <div class="leave-bar-bg"><div id="leave-bar" class="leave-bar" style="width:0%"></div></div>
+        <div style="font-size:11px;color:#374151;margin-top:3px" id="leave-allowance-label">of 0 days annual entitlement</div>
+      </div>
+    </div>
+
+    <!-- Recent leave -->
+    <div style="background:#fff;border-radius:16px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px">Leave History</div>
+        <button onclick="showScreen('scr-request')" style="padding:7px 14px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:700 12px Lato;cursor:pointer">+ Request leave</button>
+      </div>
+      <div id="leave-history">
+        <div style="font-size:13px;color:#374151;text-align:center;padding:12px">No leave requests yet</div>
+      </div>
+    </div>
+
+    <!-- Contact details -->
+    <div style="background:#fff;border-radius:16px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">My Details</div>
+      <div id="my-details" style="font-size:13px;color:#374151;line-height:1.9"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Screen 4: Request leave -->
+<div id="scr-request" class="screen">
+  <div style="max-width:480px;margin:0 auto">
+    <div class="card">
+      <button onclick="showScreen('scr-dashboard')" style="background:none;border:none;font-size:13px;color:#374151;cursor:pointer;margin-bottom:14px;font-weight:600">← Back to my profile</button>
+      <h2>Request Annual Leave</h2>
+      <p class="sub">Your request will be sent to your manager for approval.</p>
+
+      <div id="req-leave-avail" style="background:#f0fdf4;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#166534;font-weight:600"></div>
+
+      <div class="field">
+        <label>Leave type</label>
+        <select id="req-type">
+          <option>Annual leave</option>
+          <option>Sick leave</option>
+          <option>Compassionate leave</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field">
+          <label>From date</label>
+          <input type="date" id="req-from" onchange="updateDays()">
+        </div>
+        <div class="field">
+          <label>To date</label>
+          <input type="date" id="req-to" onchange="updateDays()">
+        </div>
+      </div>
+      <div id="days-preview" style="background:#f9fafb;border-radius:8px;padding:10px;font-size:13px;color:#374151;margin-bottom:14px;display:none"></div>
+      <div class="field">
+        <label>Notes (optional)</label>
+        <textarea id="req-notes" rows="3" placeholder="Any additional information for your manager..."></textarea>
+      </div>
+      <div id="req-conflict" style="background:#fef9c3;border-radius:8px;padding:10px;font-size:12px;color:#854d0e;font-weight:600;margin-bottom:12px;display:none"></div>
+      <div id="req-err" style="color:#991b1b;font-size:13px;margin-bottom:10px;display:none"></div>
+      <button class="btn btn-green" onclick="submitLeaveRequest()">Submit leave request</button>
+    </div>
+  </div>
+</div>
+
+<!-- Screen 5: Submitted -->
+<div id="scr-submitted" class="screen">
+  <div style="max-width:440px;margin:60px auto;text-align:center">
+    <div style="font-size:64px;margin-bottom:16px">✅</div>
+    <h2 style="margin-bottom:8px">Request submitted!</h2>
+    <p class="sub" style="text-align:center;margin-bottom:24px">Your leave request has been sent to your manager. You'll be notified once it's been reviewed.</p>
+    <div id="submitted-summary" style="background:#f9fafb;border-radius:12px;padding:16px;margin-bottom:20px;font-size:13px;color:#374151;text-align:left"></div>
+    <button class="btn btn-navy" onclick="showScreen('scr-dashboard');buildDashboard()">← Back to my profile</button>
+  </div>
+</div>
+
+<script>
+let CURRENT_STAFF = null;
+
+// Load data from HosPRO localStorage (shared same domain)
+function getProfiles(){ return JSON.parse(localStorage.getItem('hs_profiles')||'null')||[]; }
+function getLeave(){ return JSON.parse(localStorage.getItem('hs_leave')||'[]'); }
+function saveLeave(d){ localStorage.setItem('hs_leave',JSON.stringify(d)); }
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function toast(msg, duration=3000){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.style.display='block';
+  setTimeout(()=>t.style.display='none', duration);
+}
+
+function doSignIn(){
+  const code = document.getElementById('staff-id-input').value.trim().toUpperCase();
+  if(!code){ return; }
+  const profiles = getProfiles();
+  const p = profiles.find(x=>x.staffCode===code || x.id===code);
+  if(!p){
+    document.getElementById('signin-err').style.display='block';
+    return;
+  }
+  document.getElementById('signin-err').style.display='none';
+  CURRENT_STAFF = p;
+
+  // Confirm screen
+  document.getElementById('confirm-name').textContent = p.name;
+  document.getElementById('confirm-role').textContent = p.role || p.dept;
+  document.getElementById('confirm-avatar').textContent = p.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+  document.getElementById('confirm-dept').textContent = '📍 ' + (p.dept||'');
+  document.getElementById('confirm-code').textContent = 'Staff ID: ' + p.staffCode;
+  showScreen('scr-confirm');
+}
+
+function doConfirm(){
+  if(!CURRENT_STAFF) return;
+  buildDashboard();
+  showScreen('scr-dashboard');
+}
+
+function buildDashboard(){
+  const p = CURRENT_STAFF;
+  if(!p) return;
+  const leave = getLeave().filter(l=>l.staffId===p.id);
+  const approved = leave.filter(l=>l.status==='approved').reduce((t,l)=>t+(l.days||0),0);
+  const pending  = leave.filter(l=>l.status==='pending').reduce((t,l)=>t+(l.days||0),0);
+  const allowance = p.leaveAllowance || 0;
+  const remaining = Math.max(0, allowance - approved);
+  const pct = allowance>0 ? Math.round(approved/allowance*100) : 0;
+
+  // Avatar
+  const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+  document.getElementById('dash-avatar').textContent = initials;
+  document.getElementById('dash-name').textContent = p.name;
+  document.getElementById('dash-role').textContent = (p.role||'') + ' · ' + p.staffCode;
+
+  // Leave stats
+  document.getElementById('leave-remaining').textContent = remaining;
+  document.getElementById('leave-used').textContent = approved;
+  document.getElementById('leave-pending').textContent = pending;
+  document.getElementById('leave-bar').style.width = pct+'%';
+  document.getElementById('leave-pct').textContent = pct+'%';
+  document.getElementById('leave-allowance-label').textContent = 'of '+allowance+' days annual entitlement';
+
+  // Leave history
+  const hist = leave.sort((a,b)=>b.from.localeCompare(a.from));
+  document.getElementById('leave-history').innerHTML = hist.length ? hist.map(l=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:13px">
+      <div>
+        <div style="font-weight:600;color:#1a2b3a">${l.from} → ${l.to}</div>
+        <div style="color:#374151;font-size:11px;margin-top:2px">${l.days} day${l.days!==1?'s':''} · ${l.reason||'Annual leave'}</div>
+      </div>
+      <span class="pill pill-${l.status==='approved'?'green':l.status==='declined'?'red':'amber'}">${l.status}</span>
+    </div>`).join('') : '<div style="font-size:13px;color:#374151;text-align:center;padding:12px">No leave requests yet</div>';
+
+  // Details
+  const details = [
+    ['Department', p.dept],
+    ['Contract', p.contract || '—'],
+    ['Contract hours', p.contractHrs > 0 ? p.contractHrs+'h/week' : '—'],
+    ['Phone on file', p.phone || '—'],
+    ['Email on file', p.email || '—'],
+    ['Start date', p.startDate || '—'],
+  ].map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f3f4f6">
+    <span style="font-weight:600;color:#1a2b3a">${k}</span>
+    <span style="color:#374151">${v}</span>
+  </div>`).join('');
+  document.getElementById('my-details').innerHTML = details;
+
+  // Request screen avail label
+  document.getElementById('req-leave-avail').textContent = `You have ${remaining} days of annual leave remaining`;
+}
+
+function updateDays(){
+  const from = document.getElementById('req-from').value;
+  const to = document.getElementById('req-to').value;
+  if(!from||!to) return;
+  const days = Math.max(0, Math.round((new Date(to)-new Date(from))/(1000*60*60*24))+1);
+  const preview = document.getElementById('days-preview');
+  preview.style.display = 'block';
+  preview.innerHTML = `<b>${days} working day${days!==1?'s':''}</b> requested (${from} to ${to})`;
+
+  // Check conflicts - same dept
+  if(!CURRENT_STAFF) return;
+  const allLeave = getLeave();
+  const profiles = getProfiles();
+  const deptLeave = allLeave.filter(l=>{
+    if(l.staffId===CURRENT_STAFF.id) return false;
+    if(l.status==='declined') return false;
+    const p=profiles.find(x=>x.id===l.staffId);
+    return p?.dept === CURRENT_STAFF.dept && l.from<=to && l.to>=from;
+  });
+  const conflict = document.getElementById('req-conflict');
+  if(deptLeave.length>0){
+    const names=deptLeave.map(l=>profiles.find(x=>x.id===l.staffId)?.name||'colleague').join(', ');
+    conflict.style.display='block';
+    conflict.textContent=`⚠ Heads up: ${names} ${deptLeave.length===1?'also has':'also have'} leave during this period. Your manager will check coverage.`;
+  } else {
+    conflict.style.display='none';
+  }
+}
+
+function submitLeaveRequest(){
+  if(!CURRENT_STAFF){ toast('Please sign in first'); return; }
+  const from = document.getElementById('req-from').value;
+  const to   = document.getElementById('req-to').value;
+  const type = document.getElementById('req-type').value;
+  const notes= document.getElementById('req-notes').value;
+  const err  = document.getElementById('req-err');
+
+  if(!from||!to){ err.style.display='block'; err.textContent='Please select dates'; return; }
+  if(new Date(to)<new Date(from)){ err.style.display='block'; err.textContent='End date must be after start date'; return; }
+  err.style.display='none';
+
+  const days = Math.max(1, Math.round((new Date(to)-new Date(from))/(1000*60*60*24))+1);
+  const allowance = CURRENT_STAFF.leaveAllowance||0;
+  const used = getLeave().filter(l=>l.staffId===CURRENT_STAFF.id&&l.status==='approved').reduce((t,l)=>t+l.days,0);
+  const remaining = allowance-used;
+
+  if(type==='Annual leave' && days>remaining){
+    err.style.display='block';
+    err.textContent=`You only have ${remaining} days remaining. Please adjust your request.`;
+    return;
+  }
+
+  const leave = getLeave();
+  const req = {
+    id: 'lv'+Date.now(),
+    staffId: CURRENT_STAFF.id,
+    staffName: CURRENT_STAFF.name,
+    dept: CURRENT_STAFF.dept,
+    from, to, days,
+    reason: type + (notes ? ' — '+notes : ''),
+    status: 'pending',
+    submittedAt: new Date().toISOString().slice(0,10)
+  };
+  leave.push(req);
+  saveLeave(leave);
+
+  // Show submitted screen
+  document.getElementById('submitted-summary').innerHTML=`
+    <div style="margin-bottom:6px"><b>Name:</b> ${CURRENT_STAFF.name}</div>
+    <div style="margin-bottom:6px"><b>Dates:</b> ${from} to ${to} (${days} day${days!==1?'s':''})</div>
+    <div style="margin-bottom:6px"><b>Type:</b> ${type}</div>
+    <div><b>Status:</b> <span class="pill pill-amber">Pending approval</span></div>`;
+  showScreen('scr-submitted');
+}
+
+// Set min date for requests to today
+window.onload = ()=>{
+  const today = new Date().toISOString().slice(0,10);
+  const fromEl = document.getElementById('req-from');
+  const toEl   = document.getElementById('req-to');
+  if(fromEl) fromEl.min = today;
+  if(toEl)   toEl.min   = today;
+};
+</script>
+</body>
+</html>

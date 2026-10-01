@@ -206,18 +206,78 @@ async function boot(){
 function buildSidebar(){
   const nav=$("#sf-nav"); if(!nav)return;
   const mods=userModules(SESSION?._key||"ajay.kawa");
-  let html=`<button class="sf-nav-item sf-home" data-go="home"><span class="sf-ico">🏠</span> Home</button>`;
-  mods.forEach(m=>{
+  const groups=typeof MODULE_GROUPS!=="undefined"?MODULE_GROUPS:[];
+  
+  let html=`<button class="sf-nav-item sf-home" data-go="home" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:9px;font-size:13.5px;font-weight:600;color:#c7d2e0;background:none;border:none;cursor:pointer;width:100%;text-align:left">
+    <span style="font-size:16px">🏠</span> Home
+  </button>`;
+
+  // Build by groups
+  groups.forEach(grp=>{
+    const grpMods=mods.filter(m=>grp.modules.includes(m.id));
+    if(!grpMods.length) return;
+    
+    const grpId='grp-'+grp.id;
+    html+=`<div class="sf-nav-group" style="margin-bottom:4px">
+      <button onclick="sfToggleGroup('${grpId}')" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;background:rgba(255,255,255,.06);border:none;border-radius:8px;cursor:pointer;color:#8fa3b8;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:2px">
+        <span>${grp.icon}</span>
+        <span style="flex:1;text-align:left">${grp.label}</span>
+        <span id="${grpId}-arrow" style="font-size:9px;transition:transform .2s">▼</span>
+      </button>
+      <div id="${grpId}" style="overflow:hidden;max-height:500px;transition:max-height .25s ease">`;
+    
+    grpMods.forEach(m=>{
+      // Module header (clickable to first tab)
+      html+=`<button data-go="${m.tabs[0]}" onclick="switchTab('${m.tabs[0]}')" style="display:flex;align-items:center;gap:9px;width:100%;padding:7px 10px 4px;background:none;border:none;cursor:pointer;color:#b8ccdc;font-size:12.5px;font-weight:700;text-align:left;border-radius:6px">
+        <span style="width:7px;height:7px;border-radius:50%;background:${m.colour};flex-shrink:0;display:inline-block"></span>
+        ${m.name}
+      </button>`;
+      // Sub-tabs indented
+      m.tabs.forEach(t=>{
+        const meta=TAB_META[t]; if(!meta) return;
+        html+=`<button class="sf-nav-item" data-go="${t}" onclick="switchTab('${t}')" style="display:flex;align-items:center;gap:8px;width:100%;padding:5px 10px 5px 26px;background:none;border:none;cursor:pointer;color:#8fa3b8;font-size:12px;text-align:left;border-radius:6px">
+          <span style="font-size:12px">${meta.icon}</span> ${meta.label}
+        </button>`;
+      });
+    });
+    html+=`</div></div>`;
+  });
+
+  // Any ungrouped modules
+  const groupedIds=groups.flatMap(g=>g.modules);
+  const ungrouped=mods.filter(m=>!groupedIds.includes(m.id));
+  ungrouped.forEach(m=>{
     html+=`<div class="sf-nav-group">
       <div class="sf-nav-head" style="--mc:${m.colour}"><span class="sf-mdot" style="background:${m.colour}"></span>${m.name}</div>`;
     m.tabs.forEach(t=>{ const meta=TAB_META[t]; if(!meta)return;
-      html+=`<button class="sf-nav-item" data-go="${t}"><span class="sf-ico">${meta.icon}</span> ${meta.label}</button>`; });
+      html+=`<button class="sf-nav-item" data-go="${t}" onclick="switchTab('${t}')"><span class="sf-ico">${meta.icon}</span> ${meta.label}</button>`; });
     html+=`</div>`;
   });
+
   nav.innerHTML=html;
-  nav.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>switchTab(b.dataset.go));
+  
+  // Active state sync
+  syncSidebar();
+  
   const s=$("#sf-settings"); if(s) s.onclick=()=>switchTab("admin");
   const lg=$("#sf-logo-home"); if(lg) lg.onclick=()=>switchTab("home");
+}
+
+function sfToggleGroup(grpId){
+  const el=document.getElementById(grpId);
+  const arrow=document.getElementById(grpId+'-arrow');
+  if(!el) return;
+  const collapsed=el.style.maxHeight==='0px';
+  el.style.maxHeight=collapsed?'500px':'0px';
+  if(arrow) arrow.style.transform=collapsed?'':'rotate(-90deg)';
+}
+
+function syncSidebar(){
+  document.querySelectorAll("#sf-nav [data-go]").forEach(b=>{
+    const isActive=b.dataset.go===CURRENT_TAB;
+    b.style.background=isActive?'rgba(199,138,59,.25)':'';
+    b.style.color=isActive?'#c78a3b':'';
+  });
 }
 function syncSidebar(){
   document.querySelectorAll("#sf-nav [data-go]").forEach(b=>
@@ -231,7 +291,8 @@ function render(){
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
     fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
-    rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings
+    rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings,
+    staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs
   }[CURRENT_TAB]||renderRooms)(v);
 }
 
@@ -869,16 +930,16 @@ function downloadBrochurePDF(){
       .stats{display:flex;gap:14px;margin:14px 0}
       .stats div{flex:1;background:#f7f8fa;border-radius:8px;padding:12px;text-align:center}
       .stats b{display:block;font-family:'Cormorant Garamond',serif;font-size:22px;color:#1a2b47}
-      .stats span{font-size:11px;color:#7a8494}
+      .stats span{font-size:11px;color:#374151}
       .room-block{margin:18px 0;padding-bottom:16px;border-bottom:1px solid #e3e7ee}
       .rb-title{font-family:'Cormorant Garamond',serif;font-size:20px;color:#1a2b47;margin:0}
-      .rb-title span{font-size:13px;color:#7a8494;font-family:'Inter',sans-serif}
+      .rb-title span{font-size:13px;color:#374151;font-family:'Inter',sans-serif}
       .rb-pkg{display:inline-block;background:#eef2f8;color:#1a2b47;font-size:12px;font-weight:600;padding:3px 10px;border-radius:6px;margin-top:6px}
-      .foot-note{margin-top:24px;font-size:10px;color:#7a8494;border-top:1px solid #e3e7ee;padding-top:12px}
+      .foot-note{margin-top:24px;font-size:10px;color:#374151;border-top:1px solid #e3e7ee;padding-top:12px}
       .terms{column-count:2;column-gap:24px;font-size:8.5px;line-height:1.45}
       .term{break-inside:avoid;margin-bottom:9px}
       .pay-pdf{margin-top:8px}
-      .pay-pdf th{font-size:11px;color:#7a8494;font-weight:600}
+      .pay-pdf th{font-size:11px;color:#374151;font-weight:600}
       .pay-pdf td{font-size:12.5px}
       .terms-pg{page-break-before:always}
       .cost-page table{margin-bottom:6px}
@@ -1007,14 +1068,14 @@ function downloadKitchenSheet(){
     <style>@page{margin:16mm}body{font-family:'Inter',Arial,sans-serif;color:#1a2230;font-size:12px}
     .top{display:flex;justify-content:space-between;border-bottom:3px solid #1a2b47;padding-bottom:10px;margin-bottom:14px}
     h1{font-family:Georgia,serif;font-size:22px;color:#1a2b47;margin:0}
-    .muted{color:#7a8494;font-size:11px}.sub{color:#7a8494;font-size:10.5px}
+    .muted{color:#374151;font-size:11px}.sub{color:#374151;font-size:10.5px}
     h2{font-size:13px;color:#9d7d5f;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.5px}
     table{width:100%;border-collapse:collapse;margin-top:4px}
     th{background:#1a2b47;color:#fff;text-align:left;padding:7px 8px;font-size:11px}
     td{padding:7px 8px;border-bottom:1px solid #e3e7ee;vertical-align:top}
     .info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 20px;font-size:12px;margin-bottom:6px}
     .info b{color:#3a4256}
-    .note{margin-top:24px;font-size:10px;color:#7a8494;border-top:1px solid #e3e7ee;padding-top:10px}</style></head><body>
+    .note{margin-top:24px;font-size:10px;color:#374151;border-top:1px solid #e3e7ee;padding-top:10px}</style></head><body>
     <div class="top"><div><h1>Function / Kitchen Sheet</h1><div class="muted">Brandon Hall Hotel and Spa · Operations</div></div>
       <div style="text-align:right"><b>${ref}</b><br><span class="muted">${new Date().toLocaleDateString("en-GB")}</span></div></div>
     <div class="info">
@@ -1031,7 +1092,7 @@ function downloadKitchenSheet(){
       <table><tr><th>Item</th><th style="text-align:center">Qty</th><th>Unit</th></tr>
       ${foodItems.map(f=>`<tr><td>${f.name}</td><td style="text-align:center">${f.qty}</td><td>${f.unit}</td></tr>`).join("")}</table>`:""}
     <h2>Notes for kitchen &amp; ops</h2>
-    <table><tr><td style="height:80px;color:#7a8494">Dietary requirements, service timings, allergen notes, special requests…</td></tr></table>
+    <table><tr><td style="height:80px;color:#374151">Dietary requirements, service timings, allergen notes, special requests…</td></tr></table>
     <div class="note">Internal operations document. English beef/lamb, English pork, British dairy where specified. Confirm final numbers 72h before event.</div>
     <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
   win.document.close();
@@ -2118,7 +2179,7 @@ function printProfit(){
   win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Profitability — ${p.name}</title>
     <style>@page{margin:20mm}body{font-family:'Inter',Arial,sans-serif;color:#1a2230;font-size:12px}
     .top{border-bottom:2px solid #1a2b47;padding-bottom:12px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end}
-    h1{font-family:Georgia,serif;font-size:24px;color:#1a2b47;margin:0}.muted{color:#7a8494;font-size:11px}
+    h1{font-family:Georgia,serif;font-size:24px;color:#1a2b47;margin:0}.muted{color:#374151;font-size:11px}
     h2{font-size:14px;color:#9d7d5f;margin:18px 0 6px;border-bottom:1px solid #e8dccf;padding-bottom:3px}
     table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1px solid #e3e7ee;text-align:left}
     .r{text-align:right}.neg{color:#b3261e}.hero{background:#1a2b47;color:#fff;border-radius:10px;padding:16px;margin:14px 0;text-align:center}
@@ -2333,16 +2394,16 @@ function printMnE(mode){
     .logo{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;letter-spacing:5px;color:#1a2b47}
     .sub{font-size:11px;letter-spacing:4px;color:#c9a978;font-weight:700}
     h1{font-family:'Cormorant Garamond',serif;font-size:22px;color:#1a2b47;margin:12px 0 4px;text-align:center}
-    .meta{text-align:center;font-size:11px;color:#7a8494;margin-bottom:14px}
+    .meta{text-align:center;font-size:11px;color:#374151;margin-bottom:14px}
     .intro{font-size:11.5px;background:#f6f8f9;border-radius:8px;padding:10px 12px;margin-bottom:14px}
     .ddr{font-size:11px;border:1px solid #e3e7ee;border-left:3px solid #c9a978;border-radius:6px;padding:9px 12px;margin-bottom:16px;background:#fffdf9}
     .room{margin-bottom:16px;break-inside:avoid}
     .room-h{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid #e3e7ee;padding-bottom:5px;margin-bottom:6px}
     .room-h h2{font-family:'Cormorant Garamond',serif;font-size:18px;color:#1a2b47;margin:0}
-    .cap{font-size:11px;color:#7a8494;flex:1}
+    .cap{font-size:11px;color:#374151;flex:1}
     .ready{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px}
-    .ready.ry{background:#e8f3ee;color:#2a6a4a}.ready.rn{background:#fdecec;color:#b3261e}.ready.rt{background:#eef2f4;color:#7a8494}
-    .cur{font-size:11px;margin-bottom:3px}.cmt{font-size:10.5px;color:#7a8494;font-style:italic;margin-bottom:5px}
+    .ready.ry{background:#e8f3ee;color:#2a6a4a}.ready.rn{background:#fdecec;color:#b3261e}.ready.rt{background:#eef2f4;color:#374151}
+    .cur{font-size:11px;margin-bottom:3px}.cmt{font-size:10.5px;color:#374151;font-style:italic;margin-bottom:5px}
     .facilities{display:flex;gap:8px;margin:4px 0 6px;flex-wrap:wrap}
     .fac{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px}
     .fac.y{background:#e8f3ee;color:#2a6a4a}.fac.n{background:#fdecec;color:#b3261e}
@@ -2352,13 +2413,13 @@ function printMnE(mode){
     th{background:#1a2b47;color:#fff;text-align:left;padding:6px 8px;font-size:10px;font-weight:700}
     td{padding:5px 8px;border-bottom:1px solid #eef2f4}
     td.c,th.c{text-align:center}
-    td.cat{color:#7a8494;font-size:10px}
+    td.cat{color:#374151;font-size:10px}
     td.st{text-transform:capitalize;font-weight:700}
     .st-needed{color:#b3261e}.st-ordered{color:#c07a3e}.st-delivered{color:#2f6f9e}.st-installed{color:#4a9d6a}
     td.fill{background:#fbfcfd;border:1px solid #e3e7ee;min-width:70px}
-    td.none{color:#7a8494;font-style:italic}
-    .foot{margin-top:20px;border-top:1px solid #e3e7ee;padding-top:10px;font-size:10px;color:#7a8494}
-    .sign{margin-top:24px;display:flex;gap:40px}.sign div{flex:1;border-top:1px solid #1a2b47;padding-top:5px;font-size:10px;color:#7a8494}
+    td.none{color:#374151;font-style:italic}
+    .foot{margin-top:20px;border-top:1px solid #e3e7ee;padding-top:10px;font-size:10px;color:#374151}
+    .sign{margin-top:24px;display:flex;gap:40px}.sign div{flex:1;border-top:1px solid #1a2b47;padding-top:5px;font-size:10px;color:#374151}
     </style></head><body>
     <div class="doc-h"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL AND SPA</div></div>
     <h1>${title}</h1>
@@ -2396,7 +2457,7 @@ function printBudgetApproval(){
     .logo{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;letter-spacing:5px;color:#1a2b47}
     .sub{font-size:11px;letter-spacing:4px;color:#c9a978;font-weight:700}
     h1{font-family:'Cormorant Garamond',serif;font-size:22px;text-align:center;color:#1a2b47;margin:12px 0 4px}
-    .meta{text-align:center;font-size:11px;color:#7a8494;margin-bottom:14px}
+    .meta{text-align:center;font-size:11px;color:#374151;margin-bottom:14px}
     .room{margin-bottom:14px;break-inside:avoid}
     .room-h{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #e3e7ee;padding-bottom:4px;margin-bottom:5px}
     .room-h h3{font-family:'Cormorant Garamond',serif;font-size:17px;color:#1a2b47}
@@ -2410,8 +2471,8 @@ function printBudgetApproval(){
     .approve h4{font-family:'Cormorant Garamond',serif;font-size:16px;color:#1a2b47;margin-bottom:10px}
     .sigrow{display:flex;gap:40px;margin-top:24px}
     .sigbox{flex:1}.sigline{height:44px;border-bottom:1.5px solid #1a2b47}
-    .siglabel{font-size:11px;color:#7a8494;margin-top:5px}
-    .foot{margin-top:22px;font-size:10px;color:#7a8494;text-align:center}
+    .siglabel{font-size:11px;color:#374151;margin-top:5px}
+    .foot{margin-top:22px;font-size:10px;color:#374151;text-align:center}
     </style></head><body>
     <div class="h"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL AND SPA</div></div>
     <h1>Meetings &amp; Events — Capital Budget Approval</h1>
@@ -2473,17 +2534,17 @@ function printJobSheets(){
     .sub{font-size:10px;letter-spacing:4px;color:#c9a978;font-weight:700}
     h1{font-family:'Cormorant Garamond',serif;font-size:22px;text-align:center;color:#1a2b47;margin:12px 0 2px}
     .rm{text-align:center;font-size:15px;font-weight:700;color:#1a2b47}
-    .meta{text-align:center;font-size:11px;color:#7a8494;margin-bottom:12px}
+    .meta{text-align:center;font-size:11px;color:#374151;margin-bottom:12px}
     .cmt{font-size:11px;background:#f6f8f9;border-radius:6px;padding:8px 10px;margin-bottom:10px}
     table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px}
     th{background:#1a2b47;color:#fff;text-align:left;padding:7px 8px;font-size:10.5px}
     td{padding:9px 8px;border-bottom:1px solid #e3e7ee;vertical-align:top}
     .tick{font-size:16px;text-align:center;width:28px}.c{text-align:center}
-    .note{min-width:150px}.none{color:#7a8494;font-style:italic}
+    .note{min-width:150px}.none{color:#374151;font-style:italic}
     .works{border:1px solid #e3e7ee;border-radius:8px;padding:12px;font-size:12px}
     .works .lines{height:90px;background-image:repeating-linear-gradient(#fff,#fff 27px,#e3e7ee 28px);margin-top:8px}
     .sigrow{display:flex;gap:30px;margin-top:22px}.sigbox{flex:1}
-    .sigline{height:40px;border-bottom:1.5px solid #1a2b47}.siglabel{font-size:11px;color:#7a8494;margin-top:5px}
+    .sigline{height:40px;border-bottom:1.5px solid #1a2b47}.siglabel{font-size:11px;color:#374151;margin-top:5px}
     </style></head><body>${pages}
     <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>`);
   win.document.close();
@@ -2784,13 +2845,13 @@ function bevWeeklyReport(){
     .logo{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;letter-spacing:5px;color:#1a2b47}
     .sub{font-size:11px;letter-spacing:4px;color:#c9a978;font-weight:700}
     h1{font-family:'Cormorant Garamond',serif;font-size:22px;text-align:center;color:#1a2b47;margin:12px 0 4px}
-    .meta{text-align:center;font-size:11px;color:#7a8494;margin-bottom:16px}
+    .meta{text-align:center;font-size:11px;color:#374151;margin-bottom:16px}
     table{width:100%;border-collapse:collapse;font-size:12px}
     th{background:#1a2b47;color:#fff;text-align:left;padding:7px 8px;font-size:10.5px}
     td{padding:6px 8px;border-bottom:1px solid #eef2f4}.r{text-align:right}
     .tot{margin-top:14px;background:#f6f8f9;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;font-weight:700;font-size:15px;color:#1a2b47}
-    .foot{margin-top:20px;font-size:10px;color:#7a8494;text-align:center}
-    .none{text-align:center;color:#7a8494;padding:30px}</style></head><body>
+    .foot{margin-top:20px;font-size:10px;color:#374151;text-align:center}
+    .none{text-align:center;color:#374151;padding:30px}</style></head><body>
     <div class="h"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL AND SPA</div></div>
     <h1>Weekly Beverage Usage</h1>
     <div class="meta">${from} – ${today} · signed-out stock</div>
@@ -2964,14 +3025,14 @@ function printMenu(){
     .logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;letter-spacing:3px;color:#1a2b47}
     .sub2{font-size:10px;letter-spacing:4px;color:#BB9979;margin-bottom:30px}
     h1{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;margin:0 0 4px;color:#1a2b47}
-    .subtitle{font-style:italic;color:#7a8494;font-size:14px;margin-bottom:26px}
+    .subtitle{font-style:italic;color:#374151;font-size:14px;margin-bottom:26px}
     .course{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:#BB9979;
       margin:26px 0 12px;text-transform:uppercase;letter-spacing:2px;position:relative}
     .course::before,.course::after{content:"";position:absolute;top:50%;width:40px;height:1px;background:#e0d5c5}
     .course::before{left:calc(50% - 90px)}.course::after{right:calc(50% - 90px)}
     .dish{margin-bottom:14px}.dn{font-family:'Cormorant Garamond',serif;font-size:16px;color:#1a2230}
     .dn .dp{color:#9d7d5f;font-size:14px;margin-left:8px}
-    .dd{font-size:12px;color:#7a8494;font-style:italic;margin-top:2px}
+    .dd{font-size:12px;color:#374151;font-style:italic;margin-top:2px}
     .price{font-family:'Cormorant Garamond',serif;font-size:20px;color:#1a2b47;margin:28px 0 0;font-weight:600}
     .footer{font-size:9.5px;color:#9aa2ad;margin-top:34px;border-top:1px solid #e8dccf;padding-top:14px;line-height:1.5}</style>
     </head><body><div class="menu">
@@ -3214,7 +3275,7 @@ function renderGroupConfig(v){
 
     // Detailed allocation list
     const detailRows=r.allocation.map((a,i)=>`
-      <tr><td style="color:#7a8494;font-size:12px">Room ${i+1}</td><td>${a.type}</td>
+      <tr><td style="color:#374151;font-size:12px">Room ${i+1}</td><td>${a.type}</td>
         <td class="r">${a.adultsIn} adult${a.adultsIn!==1?"s":""}${a.childrenIn?`, ${a.childrenIn} child`:""}${a.babies?`, cot`:""}${a.extraBed?" + extra bed":""}</td>
         <td class="r">${money(a.pricePerRoom+(a.extraBed?a.extraBedPrice:0))}/night</td></tr>`).join("");
 
@@ -3239,7 +3300,7 @@ function renderGroupConfig(v){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
         <div class="opt" style="border:1px solid var(--line);border-radius:12px;padding:16px">
           <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--navy);font-weight:600">B&B</div>
-          <div style="font-size:12px;color:#7a8494;margin-bottom:8px">${money(bbRate)} per person per night</div>
+          <div style="font-size:12px;color:#374151;margin-bottom:8px">${money(bbRate)} per person per night</div>
           <table style="width:100%;font-size:13px;border-collapse:collapse">
             <tr><td>Rooms</td><td style="text-align:right">${money(totalRoomCost)}</td></tr>
             <tr><td>Breakfast (${totalPeople} guests × ${nights} nights)</td><td style="text-align:right">${money(mealsBB)}</td></tr>
@@ -3251,7 +3312,7 @@ function renderGroupConfig(v){
             <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--navy);font-weight:600">Dinner B&B</div>
             <span style="font-size:11px;font-weight:700;background:#e6f6f4;color:#159187;padding:2px 10px;border-radius:10px">Recommended</span>
           </div>
-          <div style="font-size:12px;color:#7a8494;margin-bottom:8px">${money(dbbRate)} per person per night</div>
+          <div style="font-size:12px;color:#374151;margin-bottom:8px">${money(dbbRate)} per person per night</div>
           <table style="width:100%;font-size:13px;border-collapse:collapse">
             <tr><td>Rooms</td><td style="text-align:right">${money(totalRoomCost)}</td></tr>
             <tr><td>Dinner, B&B (${totalPeople} guests × ${nights} nights)</td><td style="text-align:right">${money(mealsDbb)}</td></tr>
@@ -3266,7 +3327,7 @@ function renderGroupConfig(v){
         ${detailRows}
         </table>
       </div>
-      <div style="margin-top:12px;font-size:12px;color:#7a8494">
+      <div style="margin-top:12px;font-size:12px;color:#374151">
         Extra beds: £25/night · Cots: complimentary · Babies not included in meal plan pricing.
         <br>All rates subject to availability and confirmation.
       </div>
@@ -3285,7 +3346,7 @@ function renderGroupConfig(v){
     .logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;letter-spacing:5px;color:#1a2b47}
     .sub{font-size:10px;letter-spacing:4px;color:#c9a978;font-weight:700}
     h1{font-family:'Cormorant Garamond',serif;font-size:22px;text-align:center;margin:10px 0 4px}
-    .meta{text-align:center;font-size:11px;color:#7a8494;margin-bottom:14px}
+    .meta{text-align:center;font-size:11px;color:#374151;margin-bottom:14px}
     .facts{display:flex;gap:12px;justify-content:center;margin-bottom:14px}
     .fact{background:#f5f7f9;border-radius:8px;padding:10px 16px;text-align:center}
     .fact b{display:block;font-size:18px;color:#1a2b47;font-family:'Cormorant Garamond',serif}
@@ -3297,7 +3358,7 @@ function renderGroupConfig(v){
     .opt.rec{border-color:#c9a978}
     .opt h3{font-family:'Cormorant Garamond',serif;font-size:16px;color:#1a2b47;margin-bottom:4px}
     .big{font-size:18px;font-weight:700;color:#1a2b47}
-    .foot{margin-top:16px;font-size:10px;color:#7a8494;text-align:center;border-top:1px solid #e3e7ee;padding-top:8px}
+    .foot{margin-top:16px;font-size:10px;color:#374151;text-align:center;border-top:1px solid #e3e7ee;padding-top:8px}
     </style></head><body>
     <div class="h"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL AND SPA</div></div>
     <h1>Group Room Allocation</h1>
@@ -3648,7 +3709,7 @@ function produceBrochurePDF(){
     .ri{color:#3a4256;font-size:11.5px}
     .cta{background:#1a2b47;color:#fff;border-radius:10px;padding:18px 22px;margin-top:22px;text-align:center;font-size:14px}
     .cta b{font-family:'Cormorant Garamond',serif;font-size:18px;display:block;margin-bottom:4px}
-    .foot{margin-top:20px;font-size:10px;color:#7a8494;text-align:center;border-top:1px solid #e8dccf;padding-top:14px}
+    .foot{margin-top:20px;font-size:10px;color:#374151;text-align:center;border-top:1px solid #e8dccf;padding-top:14px}
     .issued{position:absolute;top:14mm;right:16mm;z-index:3;color:#fff;font-size:10px;opacity:.85}</style>
     </head><body>
     <div class="hero"><div class="issued">Issued ${issued}</div>
@@ -3660,7 +3721,7 @@ function produceBrochurePDF(){
       ${imgs.length?`<div class="imgrow">${imgs.map(u=>`<img src="${u}">`).join("")}</div>`:""}
       <h2 style="margin-top:18px">Our Rates</h2><div class="rule"></div>
       <table>${rates}</table>
-      ${b.ratesNote?`<p style="font-size:10.5px;color:#7a8494;margin-top:10px">${b.ratesNote}</p>`:""}
+      ${b.ratesNote?`<p style="font-size:10.5px;color:#374151;margin-top:10px">${b.ratesNote}</p>`:""}
       ${b.cta?`<div class="cta"><b>${b.cta}</b>+44 (0)247 710 2555 · events@brandonhallhotelandspa.com</div>`:""}
       <div class="foot">Brandon Hall Hotel and Spa · Main Street, Brandon, Wolston, Coventry CV8 3FW · brandonhallhotelandspa.com</div>
     </div>
@@ -3812,15 +3873,34 @@ function renderHome(v){
 
   // ---- module cards, one even row (exclude insight from home) ----
   const mods=userModules(SESSION?._key||"ajay.kawa").filter(m=>m.id!=="insight");
-  const cardRow=el("div","sf-modules");
-  cardRow.innerHTML=mods.map(m=>`
-    <button class="sf-modcard" data-go="${m.tabs[0]}" style="--mc:${m.colour};--mt:${m.tint}">
-      <span class="sf-modico" style="background:${m.colour}">${m.icon}</span>
-      <span class="sf-modname">${m.name.includes("PRO")?m.name.replace("PRO","")+"<b>PRO</b>":m.name}</span>
-      <span class="sf-modcap">${m.caption}</span>
-    </button>`).join("");
-  v.appendChild(cardRow);
-  cardRow.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>switchTab(b.dataset.go));
+  // ── Module cards grouped by category ──────────────────────────────────
+  const grpContainer=el("div","");
+  grpContainer.style.cssText="width:100%;margin-bottom:24px";
+  const groups=typeof MODULE_GROUPS!=="undefined"?MODULE_GROUPS:[];
+  const groupedIds=groups.flatMap(g=>g.modules);
+  const allMods=userModules(SESSION?._key||"ajay.kawa");
+
+  groups.forEach(grp=>{
+    const grpMods=allMods.filter(m=>grp.modules.includes(m.id));
+    if(!grpMods.length) return;
+    const grpDiv=document.createElement("div");
+    grpDiv.style.cssText="margin-bottom:24px";
+    grpDiv.innerHTML=`<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb">${grp.icon} ${grp.label}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px">
+      ${grpMods.map(m=>`<button onclick="switchTab('${m.tabs[0]}')"
+        style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px;background:#fff;border:2px solid #e5e7eb;border-radius:12px;cursor:pointer;text-align:left;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.05)"
+        onmouseover="this.style.borderColor='${m.colour}';this.style.boxShadow='0 4px 14px rgba(0,0,0,.10)'"
+        onmouseout="this.style.borderColor='#e5e7eb';this.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'">
+        <div style="width:38px;height:38px;border-radius:9px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${m.icon}</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#111827">${m.name}</div>
+          <div style="font-size:11px;color:#374151;margin-top:3px;line-height:1.4">${m.caption}</div>
+        </div>
+      </button>`).join("")}
+    </div>`;
+    grpContainer.appendChild(grpDiv);
+  });
+  v.appendChild(grpContainer);
 
   // ---- at-a-glance stats ----
   const pipe=(typeof pipelineData==="function")?pipelineData():[];
@@ -4588,14 +4668,14 @@ h1{font-family:'Cormorant Garamond',serif;font-size:30px;text-align:center;color
 h2{font-family:'Cormorant Garamond',serif;font-size:21px;color:#1a2b47;margin:24px 0 10px;border-bottom:2px solid #eef2f4;padding-bottom:5px}
 .ct-intro{font-size:14px;margin-bottom:16px}
 .ct-details{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:8px}
-.ct-details td{padding:8px 10px;border-bottom:1px solid #eef2f4}.ct-details td:first-child{color:#7a8494;width:40%}
+.ct-details td{padding:8px 10px;border-bottom:1px solid #eef2f4}.ct-details td:first-child{color:#374151;width:40%}
 .ct-notes{background:#f6f8f9;border-radius:8px;padding:12px;font-size:13px;margin-top:10px}
 .ct-terms{column-count:2;column-gap:22px;font-size:9px;line-height:1.5;margin-top:8px}
 .term{break-inside:avoid;margin-bottom:9px}.term b{color:#1a2b47;font-size:9.5px;display:block}.term p{margin:2px 0 0}
 .ct-sigrow{display:flex;gap:30px;margin-top:20px}.ct-sigbox{flex:1}
 .ct-sigline{height:50px;border-bottom:2px solid #1a2b47;display:flex;align-items:flex-end;padding-bottom:4px}
 .ct-sigd{font-family:'Cormorant Garamond',serif;font-size:26px;color:#1a2b47}
-.ct-siglabel{font-size:11px;color:#7a8494;margin-top:6px}`;
+.ct-siglabel{font-size:11px;color:#374151;margin-top:6px}`;
 
 /* ============================================================ QUOTES LIST */
 let QUOTES_FILTER={status:"",search:""};
@@ -4907,7 +4987,7 @@ function renderCompDash(v){
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
       <div>
         <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">Compliance Dashboard</h2>
-        <p style="font-size:13px;color:#7a8494">Brandon Hall Hotel and Spa · ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</p>
+        <p style="font-size:13px;color:#374151">Brandon Hall Hotel and Spa · ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</p>
       </div>
       <a href="https://app.saeker.com" target="_blank" style="padding:9px 16px;border-radius:9px;background:#2a6a4a;color:#fff;font:700 13px sans-serif;text-decoration:none">Saeker ↗</a>
     </div>
@@ -4952,7 +5032,7 @@ function renderCompDash(v){
 function renderCompTasks(v){
   v.innerHTML=`<div style="padding:20px;text-align:center">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Scheduled Tasks</div>
-    <p style="font-size:14px;color:#7a8494;margin-bottom:20px">View and manage all 33 scheduled compliance tasks — sortable by priority, category and due date.</p>
+    <p style="font-size:14px;color:#374151;margin-bottom:20px">View and manage all 33 scheduled compliance tasks — sortable by priority, category and due date.</p>
     <a href="compliance.html" target="_blank" class="btn" style="background:#2a6a4a;text-decoration:none;display:inline-block;margin-bottom:12px">Open full task list ↗</a>
     <br><a href="tasks.html" target="_blank" style="font-size:13px;color:#2a6a4a;font-weight:600;text-decoration:none">📱 Open mobile app for staff →</a>
   </div>`;
@@ -4961,7 +5041,7 @@ function renderCompTasks(v){
 function renderCompActions(v){
   v.innerHTML=`<div style="padding:20px;text-align:center">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Actions</div>
-    <p style="font-size:14px;color:#7a8494;margin-bottom:20px">105 outstanding actions from your Saeker audits — 73 overdue. View, assign and track progress.</p>
+    <p style="font-size:14px;color:#374151;margin-bottom:20px">105 outstanding actions from your Saeker audits — 73 overdue. View, assign and track progress.</p>
     <a href="compliance.html#actions" target="_blank" class="btn" style="background:#2a6a4a;text-decoration:none;display:inline-block">Open actions list ↗</a>
   </div>`;
 }
@@ -4969,7 +5049,7 @@ function renderCompActions(v){
 function renderCompReport(v){
   v.innerHTML=`<div style="padding:20px;text-align:center">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Compliance Report</div>
-    <p style="font-size:14px;color:#7a8494;margin-bottom:20px">Full printable report — per person breakdown, overdue items, completed tasks. Ready to print for Saeker update.</p>
+    <p style="font-size:14px;color:#374151;margin-bottom:20px">Full printable report — per person breakdown, overdue items, completed tasks. Ready to print for Saeker update.</p>
     <a href="compliance.html" target="_blank" class="btn" style="background:#2a6a4a;text-decoration:none;display:inline-block">Open &amp; print report ↗</a>
   </div>`;
 }
@@ -4988,7 +5068,7 @@ function renderFixDash(v){
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
       <div>
         <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Maintenance</h2>
-        <p style="font-size:13px;color:#7a8494">Brandon Hall Hotel and Spa · Property & Maintenance Management</p>
+        <p style="font-size:13px;color:#374151">Brandon Hall Hotel and Spa · Property & Maintenance Management</p>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open mobile app ↗</a>
@@ -5006,7 +5086,7 @@ function renderFixDash(v){
       ${[['🟠 Urgent',urgent.length,'var(--orange)'],['Open jobs',open.length,'var(--red)'],['Completed',done.length,'var(--green)'],[`Total costs`,money(totalCost),'var(--amber)']].map(([l,v2,c])=>
         `<div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:3px solid ${c}">
           <div style="font-family:'Cormorant Garamond',serif;font-size:30px;color:${c};font-weight:600">${v2}</div>
-          <div style="font-size:12px;color:#7a8494;margin-top:4px">${l}</div></div>`
+          <div style="font-size:12px;color:#374151;margin-top:4px">${l}</div></div>`
       ).join('')}
     </div>
 
@@ -5015,15 +5095,15 @@ function renderFixDash(v){
     <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(26,43,58,.05)">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead><tr style="background:#f5f7f9">
-          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase">Job</th>
-          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase">Location</th>
-          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase">Priority</th>
-          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase">Cost</th>
-          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase">Status</th>
+          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase">Job</th>
+          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase">Location</th>
+          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase">Priority</th>
+          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase">Cost</th>
+          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase">Status</th>
         </tr></thead>
         <tbody>${jobs.slice(0,10).map(j=>`<tr style="border-bottom:1px solid #f5f7f9">
           <td style="padding:10px 13px;font-weight:600;color:var(--navy)">${j.title}</td>
-          <td style="padding:10px 13px;color:#7a8494">${j.area||''}${j.location?' · '+j.location:''}</td>
+          <td style="padding:10px 13px;color:#374151">${j.area||''}${j.location?' · '+j.location:''}</td>
           <td style="padding:10px 13px">
             <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:${j.priority==='urgent'?'#fff0e0':j.priority==='high'?'#fde8e6':j.priority==='medium'?'#fffbe6':'#e8f3ee'};color:${j.priority==='urgent'?'#c45c00':j.priority==='high'?'#b3261e':j.priority==='medium'?'#997300':'#2a6a4a'}">${j.priority}</span>
           </td>
@@ -5034,7 +5114,7 @@ function renderFixDash(v){
         </tr>`).join('')}</tbody>
       </table>
     </div>`:`<div style="background:#fff;border-radius:12px;padding:40px;text-align:center;box-shadow:0 2px 8px rgba(26,43,58,.05)">
-      <div style="font-size:14px;color:#7a8494">No maintenance jobs logged yet.</div>
+      <div style="font-size:14px;color:#374151">No maintenance jobs logged yet.</div>
       <a href="hosfix.html" target="_blank" style="display:inline-block;margin-top:12px;padding:11px 20px;background:#c45c00;color:#fff;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none">Open HosFIX mobile app →</a>
     </div>`}
   </div>`;
@@ -5043,7 +5123,7 @@ function renderFixDash(v){
 function renderFixJobs(v){
   v.innerHTML=`<div style="padding:20px;text-align:center">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">All Maintenance Jobs</div>
-    <p style="font-size:14px;color:#7a8494;margin-bottom:20px">Log and manage jobs on the mobile app — use the dashboard above for a full overview.</p>
+    <p style="font-size:14px;color:#374151;margin-bottom:20px">Log and manage jobs on the mobile app — use the dashboard above for a full overview.</p>
     <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;display:inline-block">Open HosFIX mobile app ↗</a>
   </div>`;
 }
@@ -5051,7 +5131,7 @@ function renderFixJobs(v){
 function renderFixProjects(v){
   v.innerHTML=`<div style="padding:20px;text-align:center">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Maintenance Projects</div>
-    <p style="font-size:14px;color:#7a8494;margin-bottom:20px">Spa Refurbishment, Woodland Maintenance, Bedroom Refurb and more — manage projects on the mobile app.</p>
+    <p style="font-size:14px;color:#374151;margin-bottom:20px">Spa Refurbishment, Woodland Maintenance, Bedroom Refurb and more — manage projects on the mobile app.</p>
     <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;display:inline-block">Open HosFIX mobile app ↗</a>
   </div>`;
 }
@@ -5079,7 +5159,7 @@ function openPortalJobDetail(jobId){
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
   modal.innerHTML=`
     <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;position:relative">
-      <button onclick="document.getElementById('portal-job-modal').remove()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af">✕</button>
+      <button onclick="document.getElementById('portal-job-modal').remove()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#374151">✕</button>
       <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#1a2b3a;margin-bottom:6px;padding-right:30px">${j.title}</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
         <span style="background:${statusCol}20;color:${statusCol};font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px">${status}</span>
@@ -5087,11 +5167,11 @@ function openPortalJobDetail(jobId){
       </div>
       ${j.description?'<p style="font-size:13px;color:#6b7280;margin-bottom:16px;line-height:1.5">'+j.description+'</p>':''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-        ${[['Priority',(j.priority||'medium')],['Module',j.module||'maintenance'],['Cost est.','£'+(j.cost||0).toFixed(2)],['Logged',j.createdAt?j.createdAt.slice(0,10):'—'],['Started',j.startedAt?j.startedAt.slice(0,10):'—'],['Completed',j.completedAt?j.completedAt.slice(0,10):'—']].map(([k,v])=>'<div style="background:#f9fafb;border-radius:8px;padding:10px"><div style="font-size:11px;color:#9ca3af;margin-bottom:2px">'+k+'</div><div style="font-weight:700;font-size:13px">'+v+'</div></div>').join('')}
+        ${[['Priority',(j.priority||'medium')],['Module',j.module||'maintenance'],['Cost est.','£'+(j.cost||0).toFixed(2)],['Logged',j.createdAt?j.createdAt.slice(0,10):'—'],['Started',j.startedAt?j.startedAt.slice(0,10):'—'],['Completed',j.completedAt?j.completedAt.slice(0,10):'—']].map(([k,v])=>'<div style="background:#f9fafb;border-radius:8px;padding:10px"><div style="font-size:11px;color:#374151;margin-bottom:2px">'+k+'</div><div style="font-weight:700;font-size:13px">'+v+'</div></div>').join('')}
       </div>
       ${assignees.length?'<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Assigned to</div><div style="display:flex;gap:8px">'+assignees.map(u=>'<div style="display:flex;align-items:center;gap:7px;background:#f5f7f9;border-radius:20px;padding:5px 12px 5px 5px"><div style="width:28px;height:28px;border-radius:50%;background:'+u.color+';display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff">'+u.name.split(' ').map(w=>w[0]).join('').slice(0,2)+'</div><span style="font-size:13px;font-weight:600">'+u.name+'</span></div>').join('')+'</div></div>':''}
       ${(j.materials||[]).length?'<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Materials used</div>'+j.materials.map(m=>'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f5f7f9;font-size:13px"><span>'+m.name+'</span><span style="font-weight:700">x'+m.qty+' · £'+(m.qty*m.tradePrice).toFixed(2)+'</span></div>').join('')+'</div>':''}
-      ${(j.notes||[]).length?'<div><div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Notes</div>'+j.notes.map(n=>'<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:6px"><div style="font-size:11px;color:#9ca3af;margin-bottom:3px">'+n.by+' · '+n.at+'</div><div style="font-size:13px">'+n.text+'</div></div>').join('')+'</div>':''}
+      ${(j.notes||[]).length?'<div><div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Notes</div>'+j.notes.map(n=>'<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:6px"><div style="font-size:11px;color:#374151;margin-bottom:3px">'+n.by+' · '+n.at+'</div><div style="font-size:13px">'+n.text+'</div></div>').join('')+'</div>':''}
     </div>`;
   document.body.appendChild(modal);
   modal.addEventListener('click',e=>{ if(e.target===modal) modal.remove(); });
@@ -5117,7 +5197,7 @@ function renderFixTeam(v){
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:12px">
       <div>
         <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Team &amp; Profiles</h2>
-        <p style="font-size:13px;color:#7a8494">Staff profiles, contracted hours, rates and productivity. Edit profiles to update rates.</p>
+        <p style="font-size:13px;color:#374151">Staff profiles, contracted hours, rates and productivity. Edit profiles to update rates.</p>
       </div>
       <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open HosFIX app ↗</a>
     </div>
@@ -5131,7 +5211,7 @@ function renderFixTeam(v){
         ['Total labour cost',money(HFUSERS.reduce((s,u)=>{const p=PROFILES[u.id]||{};const mins=totalMins(LOGS.filter(l=>l.userId===u.id));return s+((mins/60)*(p.costPerHour||0));},0)),'var(--amber)']
       ].map(([l,v2,c])=>`<div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:3px solid ${c}">
         <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:${c};font-weight:600">${v2}</div>
-        <div style="font-size:12px;color:#7a8494;margin-top:4px">${l}</div></div>`).join('')}
+        <div style="font-size:12px;color:#374151;margin-top:4px">${l}</div></div>`).join('')}
     </div>
 
     <!-- Staff cards -->
@@ -5151,9 +5231,9 @@ function renderFixTeam(v){
             <div style="width:48px;height:48px;border-radius:50%;background:${u.color};display:grid;place-items:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0">${inits(u.name)}</div>
             <div style="flex:1">
               <div style="font-weight:700;font-size:16px;color:var(--navy)">${u.name}</div>
-              <div style="font-size:12px;color:#7a8494;margin-top:1px">${u.role}</div>
-              ${p.email?`<div style="font-size:12px;color:#7a8494;margin-top:3px">✉️ <a href="mailto:${p.email}" style="color:#7a8494">${p.email}</a></div>`:''}
-              ${p.mobile?`<div style="font-size:12px;color:#7a8494;margin-top:1px">📱 ${p.mobile}</div>`:''}
+              <div style="font-size:12px;color:#374151;margin-top:1px">${u.role}</div>
+              ${p.email?`<div style="font-size:12px;color:#374151;margin-top:3px">✉️ <a href="mailto:${p.email}" style="color:#374151">${p.email}</a></div>`:''}
+              ${p.mobile?`<div style="font-size:12px;color:#374151;margin-top:1px">📱 ${p.mobile}</div>`:''}
             </div>
             <button onclick="editFixProfile('${u.id}')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;font:600 12px 'Lato';cursor:pointer;color:var(--navy)">Edit</button>
           </div>
@@ -5165,23 +5245,23 @@ function renderFixTeam(v){
               [myHours+'h','Time logged','var(--navy)']
             ].map(([val,label,color])=>`<div style="background:#f5f7f9;border-radius:9px;padding:10px;text-align:center">
               <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:${color}">${val}</div>
-              <div style="font-size:10px;color:#7a8494;margin-top:2px">${label}</div>
+              <div style="font-size:10px;color:#374151;margin-top:2px">${label}</div>
             </div>`).join('')}
           </div>
           ${p.costPerHour?`
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
             <div style="background:#f5f7f9;border-radius:9px;padding:10px;text-align:center">
               <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--amber)">${money(myCost)}</div>
-              <div style="font-size:10px;color:#7a8494;margin-top:2px">Labour cost logged</div>
+              <div style="font-size:10px;color:#374151;margin-top:2px">Labour cost logged</div>
             </div>
             <div style="background:#f5f7f9;border-radius:9px;padding:10px;text-align:center">
               <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--navy)">£${p.costPerHour}/hr</div>
-              <div style="font-size:10px;color:#7a8494;margin-top:2px">${p.weeklyHours||'?'}h/wk contracted</div>
+              <div style="font-size:10px;color:#374151;margin-top:2px">${p.weeklyHours||'?'}h/wk contracted</div>
             </div>
           </div>
-          <div style="font-size:11px;color:#7a8494;margin-bottom:4px">Weekly hours utilisation — ${myHours}h of ${p.weeklyHours||'?'}h (${pct}%)</div>
-          <div style="background:#f0f2f5;border-radius:4px;height:8px"><div style="height:8px;border-radius:4px;width:${pct}%;background:${pctColor};transition:.3s"></div></div>`:'<div style="font-size:12px;color:#7a8494;font-style:italic">Set hourly rate to track costs</div>'}
-          ${p.notes?`<div style="font-size:12px;color:#7a8494;margin-top:8px;font-style:italic;padding-top:8px;border-top:1px solid var(--line)">${p.notes}</div>`:''}
+          <div style="font-size:11px;color:#374151;margin-bottom:4px">Weekly hours utilisation — ${myHours}h of ${p.weeklyHours||'?'}h (${pct}%)</div>
+          <div style="background:#f0f2f5;border-radius:4px;height:8px"><div style="height:8px;border-radius:4px;width:${pct}%;background:${pctColor};transition:.3s"></div></div>`:'<div style="font-size:12px;color:#374151;font-style:italic">Set hourly rate to track costs</div>'}
+          ${p.notes?`<div style="font-size:12px;color:#374151;margin-top:8px;font-style:italic;padding-top:8px;border-top:1px solid var(--line)">${p.notes}</div>`:''}
         </div>`;
       }).join('')}
     </div>
@@ -5244,7 +5324,7 @@ function renderFixInventory(v){
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:12px">
       <div>
         <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Stock &amp; Inventory</h2>
-        <p style="font-size:13px;color:#7a8494">Maintenance stock levels, trade prices and reorder alerts. Update stock on the mobile app.</p>
+        <p style="font-size:13px;color:#374151">Maintenance stock levels, trade prices and reorder alerts. Update stock on the mobile app.</p>
       </div>
       <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;font-size:13px;padding:10px 18px">📱 Update stock on app ↗</a>
     </div>
@@ -5258,7 +5338,7 @@ function renderFixInventory(v){
         ['Stock value',money(totalValue),'var(--amber)']
       ].map(([l,v2,c])=>`<div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:3px solid ${c}">
         <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:${c};font-weight:600">${v2}</div>
-        <div style="font-size:12px;color:#7a8494;margin-top:4px">${l}</div></div>`).join('')}
+        <div style="font-size:12px;color:#374151;margin-top:4px">${l}</div></div>`).join('')}
     </div>
 
     ${lowItems.length?`<div style="background:#fde8e6;border:1px solid var(--red);border-radius:12px;padding:14px;margin-bottom:20px">
@@ -5266,9 +5346,9 @@ function renderFixInventory(v){
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">
         ${lowItems.map(i=>`<div style="background:#fff;border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
           <div><div style="font-weight:600;font-size:13px">${i.name}</div>
-          <div style="font-size:11px;color:#7a8494">${i.supplier}</div></div>
+          <div style="font-size:11px;color:#374151">${i.supplier}</div></div>
           <div style="text-align:right"><div style="font-weight:700;color:var(--red);font-size:14px">${i.stock} left</div>
-          <div style="font-size:11px;color:#7a8494">min: ${i.minStock}</div></div>
+          <div style="font-size:11px;color:#374151">min: ${i.minStock}</div></div>
         </div>`).join('')}
       </div>
     </div>`:''}
@@ -5288,17 +5368,17 @@ function renderFixInventory(v){
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
             <div style="flex:1;margin-right:8px">
               <div style="font-weight:700;font-size:13px;color:var(--navy);line-height:1.3">${i.name}</div>
-              <div style="font-size:11px;color:#7a8494;margin-top:3px">${i.supplier}</div>
+              <div style="font-size:11px;color:#374151;margin-top:3px">${i.supplier}</div>
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:${isLow?'var(--red)':'var(--navy)'};font-weight:600;line-height:1">${i.stock}</div>
-              <div style="font-size:10px;color:#7a8494">${i.unit}s</div>
+              <div style="font-size:10px;color:#374151">${i.unit}s</div>
             </div>
           </div>
           <div style="background:#f0f2f5;border-radius:3px;height:4px;margin-bottom:8px">
             <div style="height:4px;border-radius:3px;width:${pct}%;background:${barCol};transition:.3s"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:#7a8494">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#374151">
             <span>${money(i.tradePrice)} / ${i.unit}</span>
             <span>Min: ${i.minStock} · Value: ${money(i.stock*i.tradePrice)}</span>
           </div>
@@ -5344,7 +5424,7 @@ function renderFixAllJobs(v){
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
       <div>
         <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">All Maintenance Jobs</h2>
-        <p style="font-size:13px;color:#7a8494">${JOBS.length} jobs total · ${open.length} open · ${done.length} complete</p>
+        <p style="font-size:13px;color:#374151">${JOBS.length} jobs total · ${open.length} open · ${done.length} complete</p>
       </div>
       <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open mobile app ↗</a>
     </div>
@@ -5359,7 +5439,7 @@ function renderFixAllJobs(v){
         ['Total cost',money(totalCost),'var(--navy)']
       ].map(([l,v2,c])=>`<div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 6px rgba(26,43,58,.05);border-top:3px solid ${c}">
         <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:${c};font-weight:600">${v2}</div>
-        <div style="font-size:11px;color:#7a8494;margin-top:3px">${l}</div></div>`).join('')}
+        <div style="font-size:11px;color:#374151;margin-top:3px">${l}</div></div>`).join('')}
     </div>
 
     <!-- Filter row -->
@@ -5374,7 +5454,7 @@ function renderFixAllJobs(v){
       <table style="width:100%;border-collapse:collapse;font-size:13px" id="portal-jobs-table">
         <thead><tr style="background:#f5f7f9">
           ${['Job','Location','Type','Priority / Status','Assigned','Cost','Logged'].map(h=>
-            `<th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#7a8494;text-transform:uppercase;white-space:nowrap">${h}</th>`
+            `<th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;white-space:nowrap">${h}</th>`
           ).join('')}
         </tr></thead>
         <tbody>
@@ -5388,8 +5468,8 @@ function renderFixAllJobs(v){
             const status=j.priority==='urgent'?'urgent':j.status;
             return `<tr class="portal-job-row" data-status="${status}" style="border-bottom:1px solid #f5f7f9;cursor:pointer" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
               <td style="padding:10px 13px;font-weight:600;color:var(--navy);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${j.title}</td>
-              <td style="padding:10px 13px;color:#7a8494;white-space:nowrap">${j.areaLabel||''}${j.location?' · '+j.location:''}</td>
-              <td style="padding:10px 13px;color:#7a8494;white-space:nowrap">${j.workType||'—'}</td>
+              <td style="padding:10px 13px;color:#374151;white-space:nowrap">${j.areaLabel||''}${j.location?' · '+j.location:''}</td>
+              <td style="padding:10px 13px;color:#374151;white-space:nowrap">${j.workType||'—'}</td>
               <td style="padding:10px 13px">
                 <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:${tlCol[status]||'#e8edf3'}22;color:${tlCol[status]||'#1a2b47'}">${tlLabel[status]||status}</span>
               </td>
@@ -5399,7 +5479,7 @@ function renderFixAllJobs(v){
                 </div>
               </td>
               <td style="padding:10px 13px;font-weight:600;color:${(j.cost||0)+(j.labourCost||0)>0?'var(--amber)':'#7a8494'}">${money((j.cost||0)+(j.labourCost||0))}</td>
-              <td style="padding:10px 13px;color:#7a8494;white-space:nowrap">${j.createdAt?.slice(0,10)||'—'}</td>
+              <td style="padding:10px 13px;color:#374151;white-space:nowrap">${j.createdAt?.slice(0,10)||'—'}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -5423,3 +5503,964 @@ function renderFixAllJobs(v){
     };
   });
 }
+
+
+// ── HosSHIFT / HosSTAFF shared staff storage ──────────────────────────────
+const HS_REAL_STAFF = [{"id":"veronica_webb_2","staffCode":"BH001","name":"Veronica Webb","role":"Finance Assistant","dept":"admin","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":14.42,"weeklyWage":576.8,"workDays":[1,0,0,1,1,0,0],"standardShift":"08:00-16:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"nicola_3","staffCode":"BH002","name":"Nicola","role":"Sales Manager","dept":"admin","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":0,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief cover","docs":[]},{"id":"natalie_freeman_4","staffCode":"BH003","name":"Natalie Freeman","role":"Events Executive","dept":"admin","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":13.0,"weeklyWage":520.0,"workDays":[1,1,1,1,1,0,0],"standardShift":"09:00-17:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"patrik_vlach_5","staffCode":"BH004","name":"Patrik Vlach","role":"Reception Manager","dept":"reception","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":15.0,"weeklyWage":600.0,"workDays":[1,1,1,0,1,1,1],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Shift lead","docs":[]},{"id":"manjusha_ushadevi_6","staffCode":"BH005","name":"Manjusha Ushadevi","role":"Reception Supervisor","dept":"reception","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":12.98,"weeklyWage":519.2,"workDays":[0,1,1,1,1,1,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"alice_asumeng_7","staffCode":"BH006","name":"Alice Asumeng","role":"Receptionist","dept":"reception","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":12.71,"weeklyWage":508.4,"workDays":[1,1,1,1,0,0,1],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"aghil_joy_8","staffCode":"BH007","name":"Aghil Joy","role":"Receptionist","dept":"reception","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":12.71,"weeklyWage":508.4,"workDays":[1,0,0,1,1,1,1],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"alan_wilkins_9","staffCode":"BH008","name":"Alan Wilkins","role":"Nights Supervisor","dept":"nights","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":13.94,"weeklyWage":557.6,"workDays":[1,1,1,1,0,0,1],"standardShift":"23:00-07:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"amal_premkumar_10","staffCode":"BH009","name":"Amal Premkumar","role":"Night Porter","dept":"nights","type":"core","contract":"Zero hours","contractHrs":20,"hourlyRate":13.71,"weeklyWage":274.2,"workDays":[0,0,0,0,1,1,0],"standardShift":"23:00-07:00","leaveAllowance":15,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"glenn_randell_11","staffCode":"BH010","name":"Glenn Randell","role":"Maintenance Manager","dept":"maintenance","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":16.0,"weeklyWage":640.0,"workDays":[1,1,1,1,1,0,0],"standardShift":"08:00-16:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"pete_12","staffCode":"BH011","name":"Pete","role":"Multi-trader (Elec)","dept":"maintenance","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":0,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"As required","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Electrical","docs":[]},{"id":"herman_charles_13","staffCode":"BH012","name":"Herman Charles","role":"Multi-trader","dept":"maintenance","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":0,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"As required","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Non-electrical","docs":[]},{"id":"devendra_subedi_14","staffCode":"BH013","name":"Devendra Subedi","role":"Junior Sous Chef","dept":"kitchen","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":18.02,"weeklyWage":720.8,"workDays":[0,1,1,1,1,0,1],"standardShift":"05:30-14:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"sajeed_15","staffCode":"BH014","name":"Sajeed","role":"Breakfast Team","dept":"kitchen","type":"relief","contract":"Full-time","contractHrs":24,"hourlyRate":13.8,"weeklyWage":331.2,"workDays":[0,0,0,0,0,0,0],"standardShift":"05:30-14:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"david_marshall_16","staffCode":"BH015","name":"David Marshall","role":"Kitchen Porter","dept":"kitchen","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[1,1,1,1,1,0,0],"standardShift":"07:00-15:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"nathan_field_17","staffCode":"BH016","name":"Nathan Field","role":"Kitchen Porter","dept":"kitchen","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[1,1,1,1,0,1,1],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"jomy_mathai_joy_18","staffCode":"BH017","name":"Jomy Mathai Joy","role":"Bar Supervisor","dept":"bar","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":12.98,"weeklyWage":519.2,"workDays":[0,1,1,1,1,1,0],"standardShift":"15:00-23:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"rowan_wilkins_19","staffCode":"BH018","name":"Rowan Wilkins","role":"Bar Team Member","dept":"bar","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":12.71,"weeklyWage":508.4,"workDays":[1,1,1,0,1,1,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"catarina_li_20","staffCode":"BH019","name":"Catarina Li","role":"Assistant Manager","dept":"restaurant","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":14.0,"weeklyWage":560.0,"workDays":[0,1,1,1,1,1,0],"standardShift":"15:00-23:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"manjinder_shergill_21","staffCode":"BH020","name":"Manjinder Shergill","role":"F&B Supervisor","dept":"restaurant","type":"core","contract":"Full-time","contractHrs":30,"hourlyRate":12.98,"weeklyWage":389.4,"workDays":[1,1,1,1,1,0,0],"standardShift":"06:00-12:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"anael_nkunga_22","staffCode":"BH021","name":"Anael Nkunga","role":"F&B Team Member","dept":"restaurant","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"sheba_tychicus_23","staffCode":"BH022","name":"Sheba Tychicus","role":"F&B Team Member","dept":"restaurant","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.0,"weeklyWage":0,"workDays":[0,0,1,1,1,1,1],"standardShift":"06:00-12:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"dhruvilsinh_chauhan_24","staffCode":"BH023","name":"Dhruvilsinh Chauhan","role":"F&B Team Member","dept":"restaurant","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"reuven_25","staffCode":"BH024","name":"Reuven","role":"F&B Team Member","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"jayan_26","staffCode":"BH025","name":"Jayan","role":"F&B Team Member","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"arthur_27","staffCode":"BH026","name":"Arthur","role":"F&B Trainee","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Trainee","docs":[]},{"id":"darren_28","staffCode":"BH027","name":"Darren","role":"F&B Team Member","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"nevin_29","staffCode":"BH028","name":"Nevin","role":"F&B Team Member","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"ruth_addison_30","staffCode":"BH029","name":"Ruth Addison","role":"Head Housekeeper","dept":"housekeeping","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":14.42,"weeklyWage":576.8,"workDays":[0,1,1,1,1,0,1],"standardShift":"09:00-17:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"aryan_31","staffCode":"BH030","name":"Aryan","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"lara_jervis_32","staffCode":"BH031","name":"Lara Jervis","role":"Housekeeping Team","dept":"housekeeping","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,1,0,1,0,0,1],"standardShift":"09:00-15:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"rahul_reghunath_33","staffCode":"BH032","name":"Rahul Reghunath","role":"Housekeeping Team","dept":"housekeeping","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[1,0,1,0,1,1,1],"standardShift":"06:30-14:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"jitendra_34","staffCode":"BH033","name":"Jitendra","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"manoj_35","staffCode":"BH034","name":"Manoj","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"tushar_ambekar_36","staffCode":"BH035","name":"Tushar Ambekar","role":"Housekeeping Team","dept":"housekeeping","type":"core","contract":"Zero hours","contractHrs":40,"hourlyRate":13.71,"weeklyWage":548.4,"workDays":[1,1,1,1,0,1,0],"standardShift":"09:00-17:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"allen_37","staffCode":"BH036","name":"Allen","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"hassen_38","staffCode":"BH037","name":"Hassen","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"dushyanth_39","staffCode":"BH038","name":"Dushyanth","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[1,1,1,1,1,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]}];
+
+function spGetStaff(){
+  const stored = localStorage.getItem('sp_staff');
+  if(stored) return JSON.parse(stored);
+  // First load - seed from real data
+  localStorage.setItem('sp_staff', JSON.stringify(HS_REAL_STAFF));
+  return HS_REAL_STAFF.slice();
+}
+function spSaveStaff(d){ localStorage.setItem('sp_staff', JSON.stringify(d)); }
+function hsGetProfilesSeeded(){
+  const stored = localStorage.getItem('hs_profiles');
+  if(stored) return JSON.parse(stored);
+  // Build from real staff data
+  const profiles = HS_REAL_STAFF.map(s=>({
+    ...s,
+    leaveUsed:0, leavePending:0,
+    docs:[], probationDate:'',
+    dob:s.dob||'', address:s.address||'',
+    phone:s.phone||'', email:s.email||'',
+    niNumber:s.niNumber||'',
+    emergencyName:s.emergencyName||'',
+    emergencyPhone:s.emergencyPhone||'',
+    emergencyRel:s.emergencyRel||'',
+  }));
+  localStorage.setItem('hs_profiles', JSON.stringify(profiles));
+  return profiles;
+}
+
+
+/* ============================================================ HosSHIFT — Rota & Forecast */
+
+// ── Seed data ─────────────────────────────────────────────────────────────────
+const SP_ROTA_SEED = {"2026-09-28":{"veronica_w_2":"08:00-16:00","natalie_f_3":"09:00-17:30","patrik_v_4":"15:00-23:00","manjusha_u_5":"off","alice_a_6":"holiday","aghil_j_7":"07:00-15:00","alan_w_8":"23:00-07:00","amal_p_9":"off","devendra_s_13":"off","sajeed_14":"05:30-14:00","david_m_15":"holiday","nathan_f_16":"17:00-22:00","jomy_m_17":"off","rowan_w_18":"18:00-23:00","catarina_l_19":"off","manjinder_s_20":"06:00-12:00","sheba_t_22":"off","ruth_a_29":"off","rahul_r_32":"06:30-14:30","tushar_a_35":"09:00-17:00","hassen_37":"09:00-16:30","dushyanth_38":"09:00-16:30"},"2026-09-29":{"veronica_w_2":"off","natalie_f_3":"09:00-17:30","patrik_v_4":"07:00-15:00","manjusha_u_5":"15:00-23:00","alice_a_6":"holiday","alan_w_8":"23:00-07:00","devendra_s_13":"05:30-14:00","sajeed_14":"17:00-22:00","nathan_f_16":"07:00-12:00","jomy_m_17":"15:00-23:00","rowan_w_18":"12:00-20:00","catarina_l_19":"15:00-23:00","manjinder_s_20":"06:00-12:00","ruth_a_29":"09:00-17:00","rahul_r_32":"off","lara_j_31":"09:00-15:30","tushar_a_35":"09:00-17:00","hassen_37":"09:00-16:30","dushyanth_38":"09:00-16:30"},"2026-09-30":{"natalie_f_3":"09:00-17:30","patrik_v_4":"07:00-15:00","manjusha_u_5":"15:00-23:00","alice_a_6":"holiday","aghil_j_7":"off","alan_w_8":"23:00-07:00","devendra_s_13":"05:30-14:00","sajeed_14":"17:00-22:00","nathan_f_16":"17:00-22:00","jomy_m_17":"15:00-23:00","rowan_w_18":"12:00-20:00","catarina_l_19":"15:00-23:00","manjinder_s_20":"06:00-12:00","sheba_t_22":"on call","ruth_a_29":"09:00-17:00","rahul_r_32":"06:30-14:30","manoj_34":"09:00-16:30","tushar_a_35":"09:00-17:00","hassen_37":"09:00-16:30","dushyanth_38":"09:00-16:30"},"2026-10-01":{"veronica_w_2":"08:00-16:00","natalie_f_3":"09:00-17:30","aghil_j_7":"15:00-23:00","alan_w_8":"23:00-07:00","devendra_s_13":"05:30-14:00","nathan_f_16":"07:00-12:00","jomy_m_17":"15:00-23:00","catarina_l_19":"15:00-23:00","manjinder_s_20":"06:00-12:00","sheba_t_22":"06:00-12:00","ruth_a_29":"09:00-17:00","tushar_a_35":"09:00-17:00","allen_36":"09:00-15:30","hassen_37":"off","dushyanth_38":"09:00-16:30"},"2026-10-02":{"veronica_w_2":"07:30-15:30","natalie_f_3":"in lieu","patrik_v_4":"07:00-10:00","manjusha_u_5":"15:00-23:00","aghil_j_7":"07:00-15:00","amal_p_9":"23:00-07:00","devendra_s_13":"05:30-14:00","sajeed_14":"17:00-22:00","jomy_m_17":"12:00-20:00","rowan_w_18":"15:00-23:00","catarina_l_19":"15:00-23:00","manjinder_s_20":"06:00-12:00","sheba_t_22":"06:00-12:00","ruth_a_29":"09:00-17:00","aryan_30":"09:00-14:30","rahul_r_32":"06:30-14:30","jitendra_33":"09:00-16:30","tushar_a_35":"off","hassen_37":"09:00-16:30"},"2026-10-03":{"patrik_v_4":"08:00-14:00","manjusha_u_5":"07:00-15:00","alice_a_6":"off","aghil_j_7":"15:00-23:00","amal_p_9":"23:00-07:00","devendra_s_13":"off","sajeed_14":"off","nathan_f_16":"17:00-20:00","jomy_m_17":"12:00-20:00","rowan_w_18":"15:00-23:00","catarina_l_19":"15:00-23:00","sheba_t_22":"06:00-12:00","dhruv_c_23":"07:30-13:00","ruth_a_29":"off","aryan_30":"09:00-16:30","lara_j_31":"off","rahul_r_32":"06:30-14:30","tushar_a_35":"09:00-17:00","allen_36":"on call","hassen_37":"off","dushyanth_38":"off"},"2026-10-04":{"patrik_v_4":"08:00-21:00","alice_a_6":"15:00-23:00","aghil_j_7":"07:00-15:00","alan_w_8":"23:00-07:00","devendra_s_13":"13:30-22:00","nathan_f_16":"08:00-15:00","rowan_w_18":"off","catarina_l_19":"off","sheba_t_22":"06:00-12:00","dhruv_c_23":"07:30-13:00","ruth_a_29":"09:00-17:00","aryan_30":"on call","lara_j_31":"10:00-16:30","rahul_r_32":"06:30-14:30","manoj_34":"09:00-16:30","tushar_a_35":"off","allen_36":"09:00-16:30","hassen_37":"09:00-16:30"}};
+
+const SP_FC_SEED = {"2026-09-28":{"rooms":62,"departures":35,"stayovers":28,"breakfastCovers":94,"dinnerCovers":0},"2026-09-29":{"rooms":52,"departures":9,"stayovers":43,"breakfastCovers":58,"dinnerCovers":0},"2026-09-30":{"rooms":65,"departures":15,"stayovers":50,"breakfastCovers":65,"dinnerCovers":40},"2026-10-01":{"rooms":44,"departures":44,"stayovers":33,"breakfastCovers":69,"dinnerCovers":0},"2026-10-02":{"rooms":24,"departures":42,"stayovers":3,"breakfastCovers":54,"dinnerCovers":0},"2026-10-03":{"rooms":43,"departures":8,"stayovers":16,"breakfastCovers":37,"dinnerCovers":13},"2026-10-04":{"rooms":20,"departures":46,"stayovers":5,"breakfastCovers":70,"dinnerCovers":0}};
+
+const SP_DEPTS = [
+  {id:'admin',       name:'Admin / Events',  colour:'#be185d',minTotal:1, shifts:['08:00-16:00','09:00-17:30'],    note:'Office hours'},
+  {id:'reception',   name:'Reception',        colour:'#4a86c7',minTotal:3, shifts:['07:00-15:00','15:00-23:00','23:00-07:00'], note:'Min 1 per shift'},
+  {id:'nights',      name:'Nights',           colour:'#1a2b3a',minTotal:1, shifts:['23:00-07:00'],                  note:'Night manager covers reception'},
+  {id:'maintenance', name:'Maintenance',      colour:'#b8860b',minTotal:0, shifts:['08:00-16:00'],                  note:'As required'},
+  {id:'kitchen',     name:'Kitchen',          colour:'#c45c00',minTotal:2, shifts:['05:30-14:00','13:30-22:00'],    note:'Min 1 chef + 1 KP'},
+  {id:'bar',         name:'Bar',              colour:'#8b5c8f',minTotal:2, shifts:['15:00-23:00'],                  note:'Min 2 from 15:00'},
+  {id:'restaurant',  name:'Restaurant F&B',   colour:'#4a9d7f',minTotal:2, shifts:['06:00-12:00','15:00-23:00'],    note:'Breakfast 1:28 · Dinner 1:7'},
+  {id:'housekeeping',name:'Housekeeping',     colour:'#2a6a4a',minTotal:1, shifts:['07:00-15:00','09:00-17:00'],    note:'1 per 12 rooms'},
+];
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+function spGetRota()    {const s=localStorage.getItem('sp_rota');   return s?JSON.parse(s):JSON.parse(JSON.stringify(SP_ROTA_SEED));}
+function spSaveRota(d)  {localStorage.setItem('sp_rota',   JSON.stringify(d));}
+function spGetFC()      {const s=localStorage.getItem('sp_fc');     return s?JSON.parse(s):JSON.parse(JSON.stringify(SP_FC_SEED));}
+function spSaveFC(d)    {localStorage.setItem('sp_fc',     JSON.stringify(d));}
+function spGetMonthly() {return JSON.parse(localStorage.getItem('sp_monthly')||'{}');}
+function spSaveMonthly(d){localStorage.setItem('sp_monthly',JSON.stringify(d));}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+let spWeekOffset=0,spFcWeekOffset=0,spMonthOff=0;
+function spWeekDates(off){const t=new Date(),m=new Date(t);m.setDate(t.getDate()-((t.getDay()||7)-1)+(off||0)*7);return Array.from({length:7},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d;});}
+function spDK(d){return d.toISOString().slice(0,10);}
+function spShortFmt(d){return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
+function spFmt(d){return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}
+function spParseHrs(shift){if(!shift)return 0;const s=shift.toLowerCase().trim();if(['off','holiday','sick','','on call','in lieu'].includes(s))return 0;const m=shift.match(/(\d{1,2})[:\.](\d{2})\s*[-]\s*(\d{1,2})[:\.](\d{2})/);if(!m)return 0;let st=+m[1]*60+ +m[2],en=+m[3]*60+ +m[4];if(en<=st)en+=1440;return Math.round((en-st)/60*10)/10;}
+function spShiftStyle(shift){if(!shift)return{bg:'#f5f7f9',col:'#374151',border:'#e0e0e0'};const s=shift.toLowerCase().trim();if(s===''||s==='off')return{bg:'#f5f7f9',col:'#374151',border:'#e0e0e0'};if(s==='holiday')return{bg:'#dbeafe',col:'#1d4ed8',border:'#93c5fd'};if(s==='on call')return{bg:'#fef9c3',col:'#854d0e',border:'#fde047'};if(s==='in lieu')return{bg:'#f3e8ff',col:'#7e22ce',border:'#c4b5fd'};if(s==='sick')return{bg:'#fee2e2',col:'#991b1b',border:'#fca5a5'};return{bg:'#dcfce7',col:'#166534',border:'#86efac'};}
+function spCalcRequired(fc,deptId){const rooms=fc&&fc.rooms||0,dep=fc&&fc.departures||0,stay=fc&&fc.stayovers||0,bk=fc&&fc.breakfastCovers||Math.round(rooms*1.8),din=fc&&fc.dinnerCovers||0;switch(deptId){case 'reception':return{needed:3,note:'07-15, 15-23, 23-07'};case 'nights':return{needed:1,note:'Night manager 23-07'};case 'kitchen':return{needed:Math.max(2,Math.ceil(bk/28)+(din>0?1:0)),note:bk+' bkfst ÷28'};case 'restaurant':return{needed:Math.max(1,Math.ceil(bk/28))+(din>0?Math.ceil(din/7):0),note:bk+' bkfst, '+din+' dinner'};case 'bar':return{needed:2,note:'Min 2 from 15:00'};case 'housekeeping':{const hrs=(dep*0.542)+(stay*0.333);return{needed:Math.max(1,Math.ceil(hrs/7.5)),note:dep+'dep+'+stay+'stay'};}case 'maintenance':return{needed:1,note:'On call'};case 'admin':return{needed:1,note:'Office hours'};default:return{needed:1,note:''};}}
+function spCountRostered(rota,dk,deptId){const staff=spGetStaff().filter(s=>s.dept===deptId),day=rota[dk]||{};return staff.filter(s=>{const sh=(day[s.id]||'').toLowerCase().trim();return sh&&sh!=='off'&&sh!=='';}).length;}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderRotaDash(v){
+  const rota=spGetRota(),fc=spGetFC(),staff=spGetStaff();
+  const today=new Date(),todayK=spDK(today),days=spWeekDates(0),todayFC=fc[todayK]||{};
+  let deptCards='';
+  SP_DEPTS.forEach(dept=>{
+    const req=spCalcRequired(todayFC,dept.id),rostered=spCountRostered(rota,todayK,dept.id),ok=rostered>=req.needed;
+    deptCards+=`<div onclick="switchTab('rotaWeek')" style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid ${ok?'#2a6a4a':'#b3261e'};cursor:pointer" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.12)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.07)'">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-weight:700;font-size:13px;color:#1a2b3a">${dept.name}</div>
+        <span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:${ok?'#dcfce7':'#fee2e2'};color:${ok?'#166534':'#991b1b'}">${ok?'✓ Covered':'⚠ Short'}</span>
+      </div>
+      <div style="display:flex;gap:14px;font-size:12px;color:#374151">
+        <span>Rostered: <b style="color:#1a2b3a">${rostered}</b></span>
+        <span>Required: <b style="color:${ok?'#166534':'#991b1b'}">${req.needed}</b></span>
+      </div>
+      <div style="font-size:11px;color:#374151;margin-top:3px">${req.note}</div>
+    </div>`;
+  });
+  const weekStrip=days.map(d=>{const k=spDK(d),f=fc[k]||{},isT=k===todayK;return`<td style="text-align:center;padding:6px 4px;background:${isT?'#e8f3ee':''};border-radius:6px"><div style="font-weight:700;font-size:14px;color:${f.rooms?'#1a2b3a':'#d1d5db'}">${f.rooms||'—'}</div><div style="font-size:10px;color:#374151">${d.toLocaleDateString('en-GB',{weekday:'short'})}</div></td>`;}).join('');
+  v.innerHTML=`<div style="padding:20px;max-width:1100px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+      <div><div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a">HosSHIFT Dashboard</div>
+      <div style="font-size:13px;color:#374151">Today · ${today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="switchTab('rotaWeek')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">📋 Weekly Rota</button>
+        <button onclick="switchTab('rotaForecast')" style="padding:9px 16px;background:#c78a3b;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">📈 Update Forecast</button>
+        <button onclick="spApproveRota()" style="padding:9px 16px;background:#2a6a4a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">🖨 Print Rota</button>
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+      <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Rooms In House — This Week</div>
+      <table style="width:100%"><tr>${weekStrip}</tr></table>
+      <div style="margin-top:10px;display:flex;gap:16px;font-size:12px;flex-wrap:wrap">
+        <span style="color:#374151">Today: <b style="color:#1a2b3a">${todayFC.rooms||'—'} rooms</b></span>
+        <span style="color:#374151">Departures: <b>${todayFC.departures||'—'}</b></span>
+        <span style="color:#374151">Stayovers: <b>${todayFC.stayovers||'—'}</b></span>
+        <span style="color:#374151">Bkfst: <b>${todayFC.breakfastCovers||'—'}</b></span>
+        <span style="color:#374151">Dinner: <b>${todayFC.dinnerCovers||'—'}</b></span>
+      </div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Today · Department Staffing</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">${deptCards}</div>
+  </div>`;
+}
+
+// ── WEEKLY ROTA ───────────────────────────────────────────────────────────────
+function renderRotaWeek(v){
+  const rota=spGetRota(),fc=spGetFC(),staff=spGetStaff(),days=spWeekDates(spWeekOffset),todayK=spDK(new Date());
+  const dayHeads=days.map(d=>{const k=spDK(d),f=fc[k]||{},isT=k===todayK;return`<th style="min-width:130px;padding:8px 4px;text-align:center;background:${isT?'#1a2b3a':'#f5f7f9'};color:${isT?'#fff':'#1a2b3a'};border-radius:8px 8px 0 0"><div style="font-size:11px;font-weight:700">${d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase()}</div><div style="font-size:10px;opacity:.7">${spShortFmt(d)}</div>${f.rooms?`<div style="font-size:10px;margin-top:2px;opacity:.8">🛏 ${f.rooms}</div>`:''}</th>`;}).join('');
+  let body='';
+  SP_DEPTS.forEach(dept=>{
+    const ds=staff.filter(s=>s.dept===dept.id);if(!ds.length)return;
+    const reqCells=days.map(d=>{const k=spDK(d),f=fc[k]||{},req=spCalcRequired(f,dept.id),ros=spCountRostered(rota,k,dept.id),ok=ros>=req.needed;return`<td style="padding:3px 2px;text-align:center"><span style="padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:${ok?'#dcfce7':'#fee2e2'};color:${ok?'#166534':'#991b1b'}">${ros}/${req.needed}${ok?' ✓':' ⚠'}</span></td>`;}).join('');
+    body+=`<tr><td colspan="9" style="padding:7px 10px 4px;background:${dept.colour}15;border-top:3px solid ${dept.colour}"><div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:${dept.colour};display:inline-block"></span><b style="font-size:12px;color:${dept.colour};text-transform:uppercase;letter-spacing:.5px">${dept.name}</b><span style="font-size:11px;color:#374151">${dept.note}</span><span style="margin-left:auto;font-size:10px;color:#374151">rostered/needed →</span></div></td></tr>
+    <tr style="background:#fafafa"><td style="padding:2px 10px;font-size:10px;color:#374151;font-style:italic">Coverage</td>${reqCells}</tr>`;
+    ds.forEach(s=>{
+      const wkHrs=days.reduce((t,d)=>t+spParseHrs((rota[spDK(d)]||{})[s.id]||''),0);
+      const cells=days.map(d=>{const k=spDK(d),sh=(rota[k]||{})[s.id]||'',c=spShiftStyle(sh),isT=k===todayK;return`<td style="padding:2px 2px;background:${isT?'#f0f9ff':''}"><input type="text" value="${sh}" data-sid="${s.id}" data-dk="${k}" onchange="spUpdateCell(this)" placeholder="off" style="width:122px;padding:5px 3px;border:1.5px solid ${c.border};border-radius:7px;font:11px Lato;text-align:center;background:${c.bg};color:${c.col};outline:none" onfocus="this.select()"></td>`;}).join('');
+      body+=`<tr style="border-bottom:1px solid #f0f0f0" onmouseover="this.style.background='#fafffe'" onmouseout="this.style.background=''">
+        <td style="padding:6px 10px;min-width:170px;white-space:nowrap"><div style="display:flex;align-items:center;gap:7px"><div style="width:28px;height:28px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${s.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div><div><div style="font-size:12px;font-weight:600;color:#1a2b3a;cursor:pointer" onclick="spEditStaffModal('${s.id}')" title="Click to edit">${s.name}</div><div style="font-size:10px;color:#374151">${s.role||''} · <span style="color:${wkHrs>0?'#166534':'#374151'}">${Math.round(wkHrs*10)/10}h</span></div></div></div></td>
+        ${cells}
+      </tr>`;
+    });
+  });
+  const totals=days.map(d=>{const k=spDK(d),tot=staff.filter(s=>{const sh=(rota[k]||{})[s.id]||'';return sh&&sh.toLowerCase()!=='off'&&sh!=='';}).length;return`<td style="padding:8px 4px;text-align:center;background:#1a2b3a;color:#fff"><b style="font-size:13px">${tot}</b><div style="font-size:9px;opacity:.7">on duty</div></td>`;}).join('');
+  v.innerHTML=`<div style="padding:16px 20px;max-width:1300px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Weekly Rota</div>
+      <div style="font-size:12px;color:#374151">Week commencing ${spShortFmt(days[0])} · Click any cell to edit · Click name to edit staff</div></div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button onclick="spWeekOffset--;renderRotaWeek(document.getElementById('view'))" style="padding:7px 11px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;color:#1a2b3a">← Prev</button>
+        <button onclick="spWeekOffset=0;renderRotaWeek(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font:600 12px Lato">This week</button>
+        <button onclick="spWeekOffset++;renderRotaWeek(document.getElementById('view'))" style="padding:7px 11px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;color:#1a2b3a">Next →</button>
+        <button onclick="spAddStaffModal()" style="padding:7px 12px;background:#6366f1;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">+ Add</button>
+        <button onclick="switchTab('rotaForecast')" style="padding:7px 12px;background:#c78a3b;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📈 Forecast</button>
+        <button onclick="spApproveRota()" style="padding:7px 12px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">✓ Approve & Print</button>
+        <button onclick="spExportCSV()" style="padding:7px 12px;background:#4a86c7;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📥 Export</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;font-size:11px;flex-wrap:wrap;color:#374151">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#dcfce7;border:1px solid #86efac;display:inline-block"></span>Shift</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#f5f7f9;border:1px solid #e0e0e0;display:inline-block"></span>Off</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#dbeafe;border:1px solid #93c5fd;display:inline-block"></span>Holiday</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#fef9c3;border:1px solid #fde047;display:inline-block"></span>On call</span>
+      <b style="color:#166534">✓ Covered</b> <b style="color:#991b1b">⚠ Short</b>
+    </div>
+    <div style="overflow-x:auto;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.08)">
+      <table style="border-collapse:collapse;width:100%;min-width:900px;background:#fff">
+        <thead><tr><th style="text-align:left;padding:8px 10px;font-size:11px;color:#374151;text-transform:uppercase;background:#f5f7f9">Team Member</th>${dayHeads}</tr></thead>
+        <tbody>${body}<tr style="border-top:2px solid #1a2b3a"><td style="padding:8px 10px;font:700 11px Lato;color:#fff;background:#1a2b3a;text-transform:uppercase">Total on duty</td>${totals}</tr></tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:#374151">All changes auto-save · Enter: 09:00-17:00, off, holiday, on call, sick, in lieu</div>
+  </div>`;
+}
+
+function spUpdateCell(input){const rota=spGetRota(),dk=input.dataset.dk,sid=input.dataset.sid;if(!rota[dk])rota[dk]={};rota[dk][sid]=input.value.trim();spSaveRota(rota);const c=spShiftStyle(input.value.trim());input.style.background=c.bg;input.style.color=c.col;input.style.borderColor=c.border;}
+
+// ── FORECAST ─────────────────────────────────────────────────────────────────
+function renderRotaForecast(v){
+  const fc=spGetFC(),rota=spGetRota(),days=spWeekDates(spFcWeekOffset);
+  const cards=days.map(d=>{
+    const k=spDK(d),f=fc[k]||{},isT=k===spDK(new Date());
+    const reqs=SP_DEPTS.map(dept=>{const req=spCalcRequired(f,dept.id),ros=spCountRostered(rota,k,dept.id),ok=ros>=req.needed;return`<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f5f7f9"><span style="color:#374151">${dept.name}</span><span style="font-weight:700;color:${ok?'#166534':'#991b1b'}">${ros}/${req.needed} ${ok?'✓':'⚠'}</span></div>`;}).join('');
+    return`<div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);${isT?'border:2px solid #1a2b3a':''}">
+      <div style="font-weight:700;font-size:13px;color:#1a2b3a;margin-bottom:10px">${d.toLocaleDateString('en-GB',{weekday:'long'})} <span style="font-size:11px;font-weight:400;color:#374151">${spShortFmt(d)}${isT?' · Today':''}</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+        ${[['rooms','🛏 Rooms',f.rooms],['departures','🚪 Departures',f.departures],['stayovers','🔄 Stayovers',f.stayovers],['breakfastCovers','☕ Breakfast covers',f.breakfastCovers],['dinnerCovers','🍽 Dinner covers',f.dinnerCovers]].map(([field,label,val],i)=>`<div${i===4?' style="grid-column:span 2"':''}>
+          <label style="font-size:10px;color:#374151;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:2px">${label}</label>
+          <input type="number" value="${val||''}" min="0" placeholder="0" data-dk="${k}" data-field="${field}" oninput="spUpdateFC(this)" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
+        </div>`).join('')}
+      </div>
+      <div style="border-top:1px solid #f0f0f0;padding-top:8px"><div style="font-size:10px;font-weight:700;color:#1a2b3a;text-transform:uppercase;margin-bottom:5px">Required vs Rostered</div>${reqs}</div>
+    </div>`;
+  }).join('');
+  v.innerHTML=`<div style="padding:20px;max-width:1100px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Occupancy Forecast</div>
+      <div style="font-size:12px;color:#374151">Enter rooms sold and covers — staffing requirements update live. Auto-saves as you type.</div></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="spFcWeekOffset--;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;color:#1a2b3a">← Prev</button>
+        <button onclick="spFcWeekOffset=0;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font:600 12px Lato">This week</button>
+        <button onclick="spFcWeekOffset++;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;color:#1a2b3a">Next →</button>
+        <button onclick="spCreateRotaFromForecast()" style="padding:7px 14px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:700 13px Lato;cursor:pointer">⚡ Create draft rota</button>
+        <button onclick="switchTab('rotaWeek')" style="padding:7px 12px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">← Back to Rota</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">${cards}</div>
+  </div>`;
+}
+
+function spUpdateFC(input){const fc=spGetFC(),k=input.dataset.dk,field=input.dataset.field;if(!fc[k])fc[k]={};fc[k][field]=parseInt(input.value)||0;if(field==='rooms'&&!fc[k].breakfastCovers)fc[k].breakfastCovers=Math.round((parseInt(input.value)||0)*1.8);spSaveFC(fc);}
+
+// ── MONTHLY ───────────────────────────────────────────────────────────────────
+function renderRotaMonthly(v){
+  const monthly=spGetMonthly(),fc=spGetFC(),today=new Date();
+  const vd=new Date(today.getFullYear(),today.getMonth()+spMonthOff,1);
+  const mn=vd.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const dim=new Date(vd.getFullYear(),vd.getMonth()+1,0).getDate(),fd=vd.getDay()||7;
+  const mk=`${vd.getFullYear()}-${String(vd.getMonth()+1).padStart(2,'0')}`;
+  let tot=0,bkt=0,dint=0;
+  for(let i=1;i<=dim;i++){const dk=`${mk}-${String(i).padStart(2,'0')}`,f=monthly[dk]||fc[dk]||{};tot+=f.rooms||0;bkt+=f.breakfastCovers||Math.round((f.rooms||0)*1.8);dint+=f.dinnerCovers||0;}
+  let cells='';
+  for(let i=1;i<fd;i++)cells+=`<td style="border:1px solid #f0f0f0;background:#fafafa"></td>`;
+  for(let day=1;day<=dim;day++){const dk=`${mk}-${String(day).padStart(2,'0')}`,f=monthly[dk]||fc[dk]||{},isT=dk===spDK(today),occ=f.rooms?Math.round(f.rooms/120*100):null,oc=occ===null?'#e0e0e0':occ>=80?'#166534':occ>=50?'#854d0e':'#991b1b';cells+=`<td style="padding:4px;border:1px solid #f0f0f0;vertical-align:top;${isT?'background:#e8f3ee':''}"><div style="font-size:11px;font-weight:700;color:#1a2b3a">${day}</div><input type="number" value="${f.rooms||''}" min="0" max="120" placeholder="—" data-dk="${dk}" data-field="rooms" onchange="spUpdateMonthly(this)" title="Rooms" style="width:100%;padding:2px;border:1px solid #d1d5db;border-radius:4px;font:700 11px Lato;text-align:center;color:${oc}"><input type="number" value="${f.dinnerCovers||''}" min="0" placeholder="din" data-dk="${dk}" data-field="dinnerCovers" onchange="spUpdateMonthly(this)" title="Dinner" style="width:100%;margin-top:2px;padding:2px;border:1px solid #d1d5db;border-radius:4px;font:10px Lato;text-align:center;color:#8b5c8f"></td>`;}
+  const end=7-((fd-1+dim)%7);if(end<7)for(let i=0;i<end;i++)cells+=`<td style="border:1px solid #f0f0f0;background:#fafafa"></td>`;
+  const allCells=cells.split('</td>').filter(Boolean).map(c=>c+'</td>');let calRows='';for(let i=0;i<allCells.length;i+=7)calRows+=`<tr>${allCells.slice(i,i+7).join('')}</tr>`;
+  v.innerHTML=`<div style="padding:20px;max-width:920px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Monthly Forecast</div>
+      <div style="font-size:12px;color:#374151">Top = rooms · Bottom = dinner covers · Colour = occupancy</div></div>
+      <div style="display:flex;gap:7px;align-items:center">
+        <button onclick="spMonthOff--;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;color:#1a2b3a">← Prev</button>
+        <b style="padding:0 6px;font-size:14px;color:#1a2b3a">${mn}</b>
+        <button onclick="spMonthOff++;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;color:#1a2b3a">Next →</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      ${[['🛏 Room Nights',tot,'#1a2b3a'],['☕ Est Breakfast',bkt,'#4a9d7f'],['🍽 Dinner Covers',dint,'#8b5c8f']].map(([l,n,c])=>`<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center"><div style="font-size:24px;font-weight:700;color:${c}">${n}</div><div style="font-size:11px;color:#374151;text-transform:uppercase">${l}</div></div>`).join('')}
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<th style="padding:5px;text-align:center;font-size:11px;color:#374151">${d}</th>`).join('')}</tr></thead>
+        <tbody>${calRows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function spUpdateMonthly(input){const monthly=spGetMonthly(),fc=spGetFC(),dk=input.dataset.dk,field=input.dataset.field;if(!monthly[dk])monthly[dk]={};monthly[dk][field]=parseInt(input.value)||0;spSaveMonthly(monthly);if(!fc[dk])fc[dk]={};fc[dk][field]=parseInt(input.value)||0;if(field==='rooms'&&!fc[dk].breakfastCovers)fc[dk].breakfastCovers=Math.round((parseInt(input.value)||0)*1.8);spSaveFC(fc);}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+function renderRotaSettings(v){
+  const staff=spGetStaff();
+  const rows=staff.map(s=>{const dept=SP_DEPTS.find(d=>d.id===s.dept)||{name:s.dept,colour:'#4a86c7'};const wkHrs=0;return`<tr style="border-bottom:1px solid #f5f7f9"><td style="padding:8px 10px"><b style="font-size:13px;color:#1a2b3a">${s.name}</b><div style="font-size:11px;color:#374151">${s.role||''} · ${s.staffCode||''}</div></td><td style="padding:8px 6px"><span style="padding:2px 8px;border-radius:8px;font-size:11px;background:${dept.colour}20;color:${dept.colour};font-weight:600">${dept.name}</span></td><td style="padding:8px 6px;font-size:12px;color:#374151">${s.type==='relief'?'Relief':'Core'}</td><td style="padding:8px 6px;font-size:12px;color:#1a2b3a">${s.contractHrs>0?s.contractHrs+'h/wk':'—'}</td><td style="padding:8px 6px;font-size:12px;color:#1a2b3a">${s.hourlyRate>0?'£'+s.hourlyRate+'/h':'—'}</td><td style="padding:8px 6px"><select onchange="spMoveDept('${s.id}',this.value)" style="padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;color:#1a2b3a">${SP_DEPTS.map(d=>`<option value="${d.id}"${s.dept===d.id?' selected':''}>${d.name}</option>`).join('')}</select></td><td style="padding:8px 6px"><button onclick="spRemoveStaff('${s.id}')" style="padding:3px 8px;border:1px solid #fee2e2;border-radius:6px;background:#fff;color:#991b1b;font-size:11px;cursor:pointer">Remove</button></td></tr>`;}).join('');
+  v.innerHTML=`<div style="padding:20px;max-width:1000px">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a;margin-bottom:4px">HosSHIFT Settings</div>
+    <div style="font-size:13px;color:#374151;margin-bottom:18px">${staff.length} staff members · Click name in rota to edit shifts</div>
+    <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <b style="font-size:12px;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px">Team</b>
+        <button onclick="spAddStaffModal()" style="padding:7px 14px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">+ Add member</button>
+      </div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#f5f7f9">${['Name','Department','Type','Hours','Rate','Move',''].map(h=>`<th style="text-align:left;padding:7px 10px;font-size:11px;color:#374151;text-transform:uppercase">${h}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>
+  </div>`;
+}
+
+function spMoveDept(sid,deptId){const staff=spGetStaff(),s=staff.find(x=>x.id===sid);if(s){s.dept=deptId;spSaveStaff(staff);if(typeof toast==='function')toast('Staff updated ✓');}}
+function spRemoveStaff(sid){if(!confirm('Remove this staff member from the rota?'))return;spSaveStaff(spGetStaff().filter(s=>s.id!==sid));renderRotaSettings(document.getElementById('view'));}
+
+// ── ADD STAFF MODAL ───────────────────────────────────────────────────────────
+function spAddStaffModal(){
+  const deptOpts=SP_DEPTS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  openModal(`<div style="padding:4px">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:#1a2b3a;margin-bottom:14px">Add staff member</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Full name</label>
+        <input id="sp-add-name" type="text" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:14px Lato;color:#1a2b3a"></div>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Role</label>
+        <input id="sp-add-role" type="text" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:14px Lato;color:#1a2b3a"></div>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Department</label>
+        <select id="sp-add-dept" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:14px Lato;color:#1a2b3a">${deptOpts}</select></div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1"><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Type</label>
+          <select id="sp-add-type" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:14px Lato;color:#1a2b3a"><option value="core">Core</option><option value="relief">Relief</option></select></div>
+        <div style="flex:1"><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Hours/wk</label>
+          <input id="sp-add-hrs" type="number" value="0" min="0" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:14px Lato;color:#1a2b3a"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="spDoAddStaff()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Add to rota</button>
+      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
+    </div>
+  </div>`);
+}
+
+function spDoAddStaff(){
+  const name=document.getElementById('sp-add-name')?.value?.trim();
+  if(!name){if(typeof toast==='function')toast('Please enter a name');return;}
+  const staff=spGetStaff();
+  const id=name.toLowerCase().replace(/[^a-z0-9]/g,'_')+'_'+Date.now();
+  staff.push({id,staffCode:'BH'+String(staff.length+1).padStart(3,'0'),name,role:document.getElementById('sp-add-role')?.value?.trim()||'',dept:document.getElementById('sp-add-dept')?.value||'admin',type:document.getElementById('sp-add-type')?.value||'core',contractHrs:parseInt(document.getElementById('sp-add-hrs')?.value)||0,hourlyRate:0});
+  spSaveStaff(staff);closeModal();if(typeof toast==='function')toast('✓ '+name+' added');
+  renderRotaWeek(document.getElementById('view'));
+}
+
+function spEditStaffModal(staffId){
+  const staff=spGetStaff(),s=staff.find(x=>x.id===staffId);if(!s)return;
+  const dept=SP_DEPTS.find(d=>d.id===s.dept)||{name:s.dept,colour:'#1a2b3a',shifts:[]};
+  const days=spWeekDates(spWeekOffset),rota=spGetRota();
+  const rows=days.map((d,i)=>{const k=spDK(d),sh=(rota[k]||{})[s.id]||'off';const shiftOpts=(dept.shifts.length?dept.shifts:[]).concat(['off','holiday','on call','sick','in lieu']).map(x=>`<option value="${x}"${sh===x?' selected':''}>${x}</option>`).join('');return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #e5e7eb"><div style="width:36px;font-size:12px;font-weight:700;color:#1a2b3a">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]}</div><div style="font-size:11px;color:#374151;width:80px">${spShortFmt(d)}</div><select data-dk="${k}" data-sid="${s.id}" onchange="spCellSelect(this)" style="flex:1;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:600 12px Lato;color:#1a2b3a">${shiftOpts}</select></div>`;}).join('');
+  openModal(`<div style="max-height:85vh;overflow-y:auto;padding:4px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div style="width:42px;height:42px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font:700 14px Lato;color:#fff">${s.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+      <div><div style="font-size:16px;font-weight:700;color:#1a2b3a">${s.name}</div><div style="font-size:12px;color:#374151">${s.role||''} · ${dept.name}</div></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:#1a2b3a;margin-bottom:8px">This week's shifts:</div>
+    ${rows}
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="closeModal()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ Done — shifts auto-saved</button>
+    </div>
+  </div>`);
+}
+
+function spCellSelect(sel){const rota=spGetRota(),k=sel.dataset.dk,sid=sel.dataset.sid;if(!rota[k])rota[k]={};rota[k][sid]=sel.value;spSaveRota(rota);}
+
+function spCreateRotaFromForecast(){
+  const fc=spGetFC(),staff=spGetStaff(),rota=spGetRota(),days=spWeekDates(spFcWeekOffset);
+  days.forEach(d=>{
+    const k=spDK(d),f=fc[k]||{};if(!rota[k])rota[k]={};
+    const bk=f.breakfastCovers||Math.round((f.rooms||0)*1.8),din=f.dinnerCovers||0,dep=f.departures||0,stay=f.stayovers||0;
+    const needs={reception:3,nights:1,kitchen:Math.max(2,Math.ceil(bk/28)+(din>0?1:0)),restaurant:Math.max(1,Math.ceil(bk/28))+(din>0?Math.ceil(din/7):0),bar:2,housekeeping:Math.max(1,Math.ceil(((dep*0.542)+(stay*0.333))/7.5)),maintenance:1,admin:1};
+    SP_DEPTS.forEach(dept=>{
+      const deptStaff=staff.filter(s=>s.dept===dept.id),needed=needs[dept.id]||0;
+      const sorted=[...deptStaff.filter(s=>s.type==='core'),...deptStaff.filter(s=>s.type!=='core')];
+      let assigned=0;
+      sorted.forEach(s=>{
+        const existing=(rota[k][s.id]||'').toLowerCase();
+        if(existing&&existing!=='off'&&existing!=='')return;
+        if(assigned<needed&&dept.shifts&&dept.shifts.length>0){rota[k][s.id]=dept.shifts[assigned%dept.shifts.length];assigned++;}
+        else if(!rota[k][s.id])rota[k][s.id]='off';
+      });
+    });
+  });
+  spSaveRota(rota);spWeekOffset=spFcWeekOffset;
+  if(typeof toast==='function')toast('✓ Draft rota created — review in Weekly Rota');
+  switchTab('rotaWeek');
+}
+
+function spApproveRota(){
+  const rota=spGetRota(),staff=spGetStaff(),days=spWeekDates(spWeekOffset);
+  const weekLabel=`Week commencing ${spShortFmt(days[0])} – ${spShortFmt(days[6])}`;
+  let deptSections='';
+  SP_DEPTS.forEach(dept=>{
+    const ds=staff.filter(s=>s.dept===dept.id);if(!ds.length)return;
+    const rows=ds.map(s=>{const shifts=days.map(d=>{const sh=(rota[spDK(d)]||{})[s.id]||'—';return`<td style="border:1px solid #e0e0e0;padding:5px 4px;text-align:center;font-size:10px;white-space:nowrap;background:${sh.includes(':')?'#f0fdf4':sh==='holiday'?'#eff6ff':'#fff'}">${sh}</td>`;}).join('');const wh=days.reduce((t,d)=>t+spParseHrs((rota[spDK(d)]||{})[s.id]||''),0);return`<tr><td style="border:1px solid #e0e0e0;padding:5px 7px;font-size:11px;font-weight:600">${s.name}</td><td style="border:1px solid #e0e0e0;padding:5px 4px;font-size:10px;color:#374151">${s.role||''}</td>${rows}<td style="border:1px solid #e0e0e0;padding:5px 4px;text-align:center;font-size:11px;font-weight:700">${Math.round(wh*10)/10}h</td></tr>`;}).join('');
+    deptSections+=`<div style="margin-bottom:16px;break-inside:avoid"><div style="background:${dept.colour};color:#fff;padding:5px 8px;font-size:11px;font-weight:700;text-transform:uppercase;border-radius:4px 4px 0 0">${dept.name}</div><table style="width:100%;border-collapse:collapse;border:1px solid #e0e0e0"><thead><tr style="background:#f5f7f9"><th style="border:1px solid #e0e0e0;padding:5px 7px;font-size:10px;text-align:left">Name</th><th style="border:1px solid #e0e0e0;padding:5px;font-size:10px;text-align:left">Role</th>${days.map(d=>`<th style="border:1px solid #e0e0e0;padding:5px 4px;font-size:10px;text-align:center">${d.toLocaleDateString('en-GB',{weekday:'short'})}<br>${spShortFmt(d)}</th>`).join('')}<th style="border:1px solid #e0e0e0;padding:5px 4px;font-size:10px">Hrs</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  });
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Brandon Hall Rota — ${weekLabel}</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#1a2b3a}@media print{@page{size:A3 landscape;margin:10mm}}</style></head><body><div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px"><div><h1 style="font-size:18px;margin:0 0 4px">Brandon Hall Hotel & Spa — Staff Rota</h1><h2 style="font-size:13px;color:#374151;font-weight:400;margin:0">${weekLabel} · Approved ${new Date().toLocaleDateString('en-GB')}</h2></div><div style="text-align:right;font-size:11px;color:#374151">HosPRO HosSHIFT<br>CONFIDENTIAL</div></div>${deptSections}<div style="margin-top:16px;font-size:10px;color:#6b7280">Approved by: _________________ Date: _________________</div><script>window.onload=()=>window.print();<\/script></body></html>`);
+  win.document.close();
+}
+
+function spExportCSV(){
+  const rota=spGetRota(),staff=spGetStaff(),days=spWeekDates(spWeekOffset);
+  let csv='Name,Role,Department,Staff Code,'+days.map(d=>spFmt(d)).join(',')+',Weekly Hrs\n';
+  staff.forEach(s=>{const shifts=days.map(d=>(rota[spDK(d)]||{})[s.id]||'off'),hrs=days.reduce((t,d)=>t+spParseHrs((rota[spDK(d)]||{})[s.id]||''),0);csv+=`"${s.name}","${s.role||''}","${s.dept}","${s.staffCode||''}",`+shifts.map(x=>`"${x}"`).join(',')+`,"${Math.round(hrs*10)/10}"\n`;});
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:'brandon-hall-rota.csv'});a.click();
+}
+
+/* ============================================================ HOSSTAFF */
+
+// ── Default annual leave entitlements ────────────────────────────────────────
+const HS_LEAVE_DEFAULTS = {
+  fullTime: 28,  // days statutory + BH
+  partTime: 20,
+  zeroHours: 0
+};
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+function hsGetProfiles()  { return hsGetProfilesSeeded(); }
+function hsSaveProfiles(d){ localStorage.setItem('hs_profiles',  JSON.stringify(d)); }
+function hsGetLeave()     { return JSON.parse(localStorage.getItem('hs_leave')     || '[]'); }
+function hsSaveLeave(d)   { localStorage.setItem('hs_leave',     JSON.stringify(d)); }
+
+function hsBuildDefaultProfiles(){
+  // Built from real staff register — SP_STAFF_SEED already has all HR fields
+  const shift = spGetStaff ? spGetStaff() : [];
+  return shift.map(s => ({
+    id: s.id,
+    staffCode: s.staffCode || 'BH000',
+    name: s.name,
+    role: s.role || '',
+    dept: s.dept,
+    type: s.type,
+    contract: s.contract || 'Zero hours',
+    contractHrs: s.contractHrs || 0,
+    hourlyRate: s.hourlyRate || 0,
+    weeklyWage: s.weeklyWage || 0,
+    workDays: s.workDays || [0,0,0,0,0,0,0],
+    standardShift: s.standardShift || '',
+    startDate: s.startDate || '',
+    probationPassed: s.probationPassed || false,
+    probationDate: '',
+    dob: s.dob || '',
+    address: s.address || '',
+    phone: s.phone || '',
+    email: s.email || '',
+    emergencyName: s.emergencyName || '',
+    emergencyPhone: s.emergencyPhone || '',
+    emergencyRel: s.emergencyRel || '',
+    niNumber: s.niNumber || '',
+    leaveAllowance: s.leaveAllowance || 28,
+    leaveUsed: s.leaveUsed || 0,
+    leavePending: s.leavePending || 0,
+    docs: s.docs || [],
+    notes: s.notes || ''
+  }));
+}
+
+function hsGetProfile(staffCode){
+  return hsGetProfiles().find(p => p.staffCode === staffCode || p.id === staffCode);
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderStaffDash(v){
+  const profiles = hsGetProfiles();
+  const leave = hsGetLeave();
+  const pending = leave.filter(l => l.status === 'pending');
+  const approved = leave.filter(l => l.status === 'approved');
+  const today = new Date().toISOString().slice(0,10);
+  const onLeave = approved.filter(l => l.from <= today && l.to >= today);
+
+  const depts = {};
+  profiles.forEach(p => { depts[p.dept] = (depts[p.dept]||0)+1; });
+
+  const deptCards = Object.entries(depts).map(([d,n]) => {
+    const dept = SP_DEPTS ? SP_DEPTS.find(x=>x.id===d) : null;
+    return `<div style="background:#fff;border-radius:10px;padding:12px;border-left:4px solid ${dept?.colour||'#4a86c7'}">
+      <div style="font-size:20px;font-weight:700;color:#1a2b3a">${n}</div>
+      <div style="font-size:12px;color:#374151">${dept?.name||d}</div>
+    </div>`;
+  }).join('');
+
+  const pendingRows = pending.slice(0,5).map(l => {
+    const p = profiles.find(x=>x.id===l.staffId);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #e5e7eb">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#1a2b3a">${p?.name||'Unknown'}</div>
+        <div style="font-size:11px;color:#374151">${l.from} → ${l.to} · ${l.days} day${l.days!==1?'s':''}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="hsApproveLeave('${l.id}')" style="padding:5px 10px;background:#2a6a4a;color:#fff;border:none;border-radius:6px;font:600 11px Lato;cursor:pointer">✓ Approve</button>
+        <button onclick="hsDeclineLeave('${l.id}')" style="padding:5px 10px;background:#b3261e;color:#fff;border:none;border-radius:6px;font:600 11px Lato;cursor:pointer">✗ Decline</button>
+      </div>
+    </div>`;
+  }).join('') || '<div style="padding:12px 0;color:#374151;font-size:13px">No pending requests</div>';
+
+  v.innerHTML = `<div style="padding:20px;max-width:1100px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a">HosSTAFF Dashboard</div>
+        <div style="font-size:13px;color:#374151">${profiles.length} staff members · ${pending.length} leave requests pending</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="switchTab('staffProfiles')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">👤 Staff Profiles</button>
+        <button onclick="switchTab('staffLeaveAdmin')" style="padding:9px 16px;background:#c78a3b;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">🌴 Leave Requests ${pending.length>0?'<span style="background:#b3261e;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px">'+pending.length+'</span>':''}</button>
+        <button onclick="hsAddStaffModal()" style="padding:9px 16px;background:#4a86c7;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">+ Add staff</button>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center">
+        <div style="font-size:32px;font-weight:700;color:#1a2b3a">${profiles.length}</div>
+        <div style="font-size:12px;color:#374151;text-transform:uppercase">Total Staff</div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center">
+        <div style="font-size:32px;font-weight:700;color:#c78a3b">${pending.length}</div>
+        <div style="font-size:12px;color:#374151;text-transform:uppercase">Pending Leave</div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center">
+        <div style="font-size:32px;font-weight:700;color:#2a6a4a">${onLeave.length}</div>
+        <div style="font-size:12px;color:#374151;text-transform:uppercase">On Leave Today</div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center">
+        <div style="font-size:32px;font-weight:700;color:#4a86c7">${profiles.filter(p=>!p.probationPassed&&p.startDate).length}</div>
+        <div style="font-size:12px;color:#374151;text-transform:uppercase">On Probation</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Pending Leave Requests</div>
+        ${pendingRows}
+        ${pending.length>5?`<button onclick="switchTab('staffLeaveAdmin')" style="margin-top:8px;padding:6px 12px;border:1px solid #1a2b3a;border-radius:7px;background:#fff;font:600 12px Lato;cursor:pointer;color:#1a2b3a">View all ${pending.length} requests →</button>`:''}
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">By Department</div>
+        <div style="display:flex;flex-direction:column;gap:8px">${deptCards}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── STAFF PROFILES ─────────────────────────────────────────────────────────────
+function renderStaffProfiles(v){
+  const profiles = hsGetProfiles();
+  const deptFilter = window._hsDeptFilter || 'all';
+  const search = window._hsSearch || '';
+
+  let filtered = profiles;
+  if(deptFilter !== 'all') filtered = filtered.filter(p => p.dept === deptFilter);
+  if(search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.staffCode.toLowerCase().includes(search.toLowerCase()));
+
+  const depts = SP_DEPTS || [];
+
+  const rows = filtered.map(p => {
+    const dept = depts.find(d=>d.id===p.dept)||{name:p.dept,colour:'#4a86c7'};
+    const leave = hsGetLeave().filter(l=>l.staffId===p.id);
+    const leaveUsed = leave.filter(l=>l.status==='approved').reduce((t,l)=>t+l.days,0);
+    const leaveRemaining = Math.max(0, p.leaveAllowance - leaveUsed);
+    return `<tr onclick="hsOpenProfile('${p.id}')" style="border-bottom:1px solid #e5e7eb;cursor:pointer" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background=''">
+      <td style="padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font:700 12px Lato;color:#fff;flex-shrink:0">${p.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#1a2b3a">${p.name}</div>
+            <div style="font-size:11px;color:#374151">${p.staffCode}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 8px;font-size:12px;color:#1a2b3a">${p.role||'—'}</td>
+      <td style="padding:10px 8px"><span style="padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;background:${dept.colour}20;color:${dept.colour}">${dept.name}</span></td>
+      <td style="padding:10px 8px"><span style="padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;background:${p.contract==='Full-time'?'#dcfce7':p.contract==='Part-time'?'#dbeafe':'#fef9c3'};color:${p.contract==='Full-time'?'#166534':p.contract==='Part-time'?'#1d4ed8':'#854d0e'}">${p.contract||'—'}</span></td>
+      <td style="padding:10px 8px;font-size:12px;color:#1a2b3a">${p.contractHrs>0?p.contractHrs+'h/wk':'—'}</td>
+      <td style="padding:10px 8px;font-size:12px">
+        <div style="font-size:11px;color:#374151">Remaining: <b style="color:${leaveRemaining<5?'#b3261e':'#166534'}">${leaveRemaining}d</b></div>
+        <div style="font-size:10px;color:#374151">of ${p.leaveAllowance}d</div>
+      </td>
+      <td style="padding:10px 8px">
+        ${p.probationPassed?'<span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#dcfce7;color:#166534">✓ Passed</span>':'<span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#fef9c3;color:#854d0e">Probation</span>'}
+      </td>
+      <td style="padding:10px 8px">
+        <button onclick="event.stopPropagation();hsOpenProfile('${p.id}')" style="padding:5px 10px;border:1.5px solid #1a2b3a;border-radius:7px;background:#fff;font:600 11px Lato;cursor:pointer;color:#1a2b3a">View →</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  v.innerHTML = `<div style="padding:20px;max-width:1200px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Staff Profiles</div>
+        <div style="font-size:12px;color:#374151">${filtered.length} of ${profiles.length} staff members</div>
+      </div>
+      <button onclick="hsAddStaffModal()" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">+ Add staff member</button>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <input type="text" placeholder="🔍 Search name or staff ID..." value="${search}"
+        oninput="window._hsSearch=this.value;renderStaffProfiles(document.getElementById('view'))"
+        style="flex:1;min-width:200px;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:9px;font:13px Lato;color:#1a2b3a">
+      <select onchange="window._hsDeptFilter=this.value;renderStaffProfiles(document.getElementById('view'))"
+        style="padding:9px 12px;border:1.5px solid #d1d5db;border-radius:9px;font:13px Lato;color:#1a2b3a">
+        <option value="all"${deptFilter==='all'?' selected':''}>All departments</option>
+        ${(SP_DEPTS||[]).map(d=>`<option value="${d.id}"${deptFilter===d.id?' selected':''}>${d.name}</option>`).join('')}
+      </select>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#1a2b3a">
+          ${['Staff Member','Role','Department','Contract','Hours','Annual Leave','Status',''].map(h=>`<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.5px">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows||'<tr><td colspan="8" style="padding:20px;text-align:center;color:#374151">No staff found</td></tr>'}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ── STAFF PROFILE DETAIL ──────────────────────────────────────────────────────
+function hsOpenProfile(staffId){
+  const profiles = hsGetProfiles();
+  const p = profiles.find(x=>x.id===staffId || x.staffCode===staffId);
+  if(!p) return;
+  const dept = (SP_DEPTS||[]).find(d=>d.id===p.dept)||{name:p.dept,colour:'#4a86c7'};
+  const leave = hsGetLeave().filter(l=>l.staffId===p.id);
+  const leaveApproved = leave.filter(l=>l.status==='approved').reduce((t,l)=>t+l.days,0);
+  const leavePending = leave.filter(l=>l.status==='pending').reduce((t,l)=>t+l.days,0);
+  const leaveRemaining = Math.max(0, p.leaveAllowance - leaveApproved);
+
+  const leaveHistory = leave.sort((a,b)=>b.from.localeCompare(a.from)).map(l=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #e5e7eb;font-size:12px">
+      <div>
+        <b style="color:#1a2b3a">${l.from} → ${l.to}</b>
+        <span style="color:#374151"> · ${l.days} days · ${l.reason||'Annual leave'}</span>
+      </div>
+      <span style="padding:2px 7px;border-radius:6px;font-size:11px;font-weight:700;background:${l.status==='approved'?'#dcfce7':l.status==='declined'?'#fee2e2':'#fef9c3'};color:${l.status==='approved'?'#166534':l.status==='declined'?'#991b1b':'#854d0e'}">${l.status}</span>
+    </div>`).join('') || '<div style="color:#374151;font-size:12px;padding:8px 0">No leave history</div>';
+
+  const html = `<div style="max-height:85vh;overflow-y:auto;padding:4px">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+      <div style="width:56px;height:56px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font:700 18px Lato;color:#fff;flex-shrink:0">${p.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+      <div>
+        <div style="font-size:20px;font-weight:700;color:#1a2b3a">${p.name}</div>
+        <div style="font-size:13px;color:#374151">${p.role||''} · <span style="padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;background:${dept.colour}20;color:${dept.colour}">${dept.name}</span></div>
+        <div style="font-size:12px;color:#374151;margin-top:2px">Staff ID: <b>${p.staffCode}</b></div>
+      </div>
+      <button onclick="closeModal()" style="margin-left:auto;background:none;border:none;font-size:22px;cursor:pointer;color:#374151">✕</button>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:16px">
+      ${['Personal','Contract','Leave','Documents'].map((tab,i)=>`<button onclick="hsProfileTab(this,'${staffId}',${i})" class="hs-ptab" style="padding:8px 14px;border:none;border-bottom:${i===0?'2px solid #1a2b3a':'2px solid transparent'};background:none;font:${i===0?'700':'500'} 13px Lato;color:${i===0?'#1a2b3a':'#374151'};cursor:pointer;margin-bottom:-2px">${tab}</button>`).join('')}
+    </div>
+
+    <!-- Tab 0: Personal -->
+    <div id="hs-tab-0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        ${[
+          ['Date of Birth','dob','date'],['Phone','phone','tel'],['Email','email','email'],
+          ['NI Number','niNumber','text'],['Start Date','startDate','date'],['Probation Date','probationDate','date']
+        ].map(([label,key,type])=>`<div>
+          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">${label}</label>
+          <input type="${type}" value="${p[key]||''}" data-field="${key}" data-staffid="${staffId}"
+            onchange="hsSaveField(this)"
+            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+        </div>`).join('')}
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Address</label>
+        <textarea data-field="address" data-staffid="${staffId}" onchange="hsSaveField(this)"
+          style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a;min-height:60px;resize:vertical">${p.address||''}</textarea>
+      </div>
+      <div style="background:#f0f9ff;border-radius:10px;padding:12px;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:700;color:#1a2b3a;margin-bottom:8px">Emergency Contact</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          ${[['Name','emergencyName'],['Phone','emergencyPhone'],['Relationship','emergencyRel']].map(([label,key])=>`<div>
+            <label style="font-size:11px;color:#374151;display:block;margin-bottom:2px">${label}</label>
+            <input value="${p[key]||''}" data-field="${key}" data-staffid="${staffId}" onchange="hsSaveField(this)"
+              style="width:100%;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:12px Lato;color:#1a2b3a">
+          </div>`).join('')}
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:6px">Working days</label>
+        <div style="display:flex;gap:4px">
+          ${[0,1,2,3,4,5,6].map(i=>'<span style="display:inline-block;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:'+((p.workDays||[])[i]?'#dcfce7':'#f3f4f6')+';color:'+((p.workDays||[])[i]?'#166534':'#374151')+'">'+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]+'</span>').join('')}
+        </div>
+        ${p.standardShift?'<div style="font-size:12px;color:#374151;margin-top:6px">Standard shift: <b>'+p.standardShift+'</b></div>':''}
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Notes</label>
+        <textarea data-field="notes" data-staffid="${staffId}" onchange="hsSaveField(this)"
+          style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a;min-height:50px;resize:vertical">${p.notes||''}</textarea>
+      </div>
+    </div>
+
+    <!-- Tab 1: Contract (hidden) -->
+    <div id="hs-tab-1" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        ${[['Role / Job Title','role','text'],['Standard Shift','standardShift','text']].map(([l,k,t])=>`<div>
+          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">${l}</label>
+          <input type="text" value="${k==='dept_display'?dept.name:(p[k]||'')}}" ${k==='dept_display'?'disabled':''} data-field="${k}" data-staffid="${staffId}" onchange="hsSaveField(this)"
+            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+        </div>`).join('')}
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Contract Type</label>
+          <select data-field="contract" data-staffid="${staffId}" onchange="hsSaveField(this);hsUpdateLeaveAllowance('${staffId}')"
+            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+            ${['Full-time','Part-time','Zero hours'].map(c=>`<option${p.contract===c?' selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Contract Hours/Week</label>
+          <input type="number" value="${p.contractHrs||0}" data-field="contractHrs" data-staffid="${staffId}" onchange="hsSaveField(this)"
+            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Hourly Rate (£)</label>
+          <input type="number" step="0.01" value="${p.hourlyRate||''}" data-field="hourlyRate" data-staffid="${staffId}" onchange="hsSaveField(this)"
+            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Annual Leave Allowance (days)</label>
+          <input type="number" value="${p.leaveAllowance||0}" data-field="leaveAllowance" data-staffid="${staffId}" onchange="hsSaveField(this)"
+            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Staff Type</label>
+          <select data-field="type" data-staffid="${staffId}" onchange="hsSaveField(this)"
+            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+            <option${p.type==='core'?' selected':''}>core</option>
+            <option${p.type==='relief'?' selected':''}>relief</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;background:#f9fafb;border-radius:10px;padding:12px">
+        <input type="checkbox" id="hs-prob-${staffId}" ${p.probationPassed?'checked':''} data-field="probationPassed" data-staffid="${staffId}" onchange="hsSaveField(this)"
+          style="width:18px;height:18px;accent-color:#2a6a4a">
+        <label for="hs-prob-${staffId}" style="font-size:13px;font-weight:600;color:#1a2b3a;cursor:pointer">Probation period passed</label>
+        <span style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;background:${p.probationPassed?'#dcfce7':'#fef9c3'};color:${p.probationPassed?'#166534':'#854d0e'}">${p.probationPassed?'✓ Passed':'Pending'}</span>
+      </div>
+    </div>
+
+    <!-- Tab 2: Leave (hidden) -->
+    <div id="hs-tab-2" style="display:none">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+        <div style="background:#dcfce7;border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#166534">${leaveRemaining}</div>
+          <div style="font-size:11px;color:#166534;font-weight:600">Days remaining</div>
+        </div>
+        <div style="background:#fee2e2;border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#991b1b">${leaveApproved}</div>
+          <div style="font-size:11px;color:#991b1b;font-weight:600">Days used</div>
+        </div>
+        <div style="background:#fef9c3;border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#854d0e">${leavePending}</div>
+          <div style="font-size:11px;color:#854d0e;font-weight:600">Days pending</div>
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;margin-bottom:8px">Leave History</div>
+        ${leaveHistory}
+      </div>
+      <button onclick="hsManagerLeaveModal('${staffId}')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">+ Add leave entry</button>
+    </div>
+
+    <!-- Tab 3: Documents (hidden) -->
+    <div id="hs-tab-3" style="display:none">
+      <div style="background:#f0f9ff;border-radius:10px;padding:16px;text-align:center;margin-bottom:12px">
+        <div style="font-size:13px;color:#374151;margin-bottom:8px">Upload documents for this staff member</div>
+        <div style="font-size:11px;color:#374151;margin-bottom:12px">Contract · ID · Right to work · DBS · Certificates</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          ${['Employment Contract','Photo ID','Right to Work','DBS Certificate','Training Certificate','Other'].map(docType=>`<div style="background:#fff;border:1.5px dashed #d1d5db;border-radius:8px;padding:10px;cursor:pointer;text-align:center" onclick="toast('Document upload — connect to file storage to enable')">
+            <div style="font-size:20px;margin-bottom:4px">📄</div>
+            <div style="font-size:11px;font-weight:600;color:#1a2b3a">${docType}</div>
+            <div style="font-size:10px;color:#374151">Click to upload</div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  openModal(html);
+}
+
+function hsProfileTab(btn, staffId, tabIdx){
+  document.querySelectorAll('.hs-ptab').forEach((b,i)=>{
+    b.style.fontWeight = i===tabIdx?'700':'500';
+    b.style.color = i===tabIdx?'#1a2b3a':'#374151';
+    b.style.borderBottom = i===tabIdx?'2px solid #1a2b3a':'2px solid transparent';
+    const tab = document.getElementById('hs-tab-'+i);
+    if(tab) tab.style.display = i===tabIdx?'block':'none';
+  });
+}
+
+function hsSaveField(input){
+  const profiles = hsGetProfiles();
+  const p = profiles.find(x=>x.id===input.dataset.staffid);
+  if(!p) return;
+  const field = input.dataset.field;
+  const val = input.type==='checkbox' ? input.checked : (input.type==='number' ? (parseFloat(input.value)||0) : input.value);
+  p[field] = val;
+  hsSaveProfiles(profiles);
+  toast('Saved ✓');
+}
+
+function hsUpdateLeaveAllowance(staffId){
+  const profiles = hsGetProfiles();
+  const p = profiles.find(x=>x.id===staffId); if(!p) return;
+  p.leaveAllowance = p.contract==='Full-time' ? 28 : p.contract==='Part-time' ? 20 : 0;
+  hsSaveProfiles(profiles);
+}
+
+// ── LEAVE ADMIN ───────────────────────────────────────────────────────────────
+function renderStaffLeaveAdmin(v){
+  const leave = hsGetLeave();
+  const profiles = hsGetProfiles();
+  const filter = window._hsLeaveFilter || 'pending';
+
+  const filtered = filter==='all' ? leave : leave.filter(l=>l.status===filter);
+  const sorted = filtered.sort((a,b)=>b.from.localeCompare(a.from));
+
+  const rows = sorted.map(l=>{
+    const p = profiles.find(x=>x.id===l.staffId);
+    const dept = (SP_DEPTS||[]).find(d=>d.id===p?.dept)||{name:'',colour:'#4a86c7'};
+    // Check for conflicts (same dept on same dates)
+    const conflicts = leave.filter(other =>
+      other.id !== l.id &&
+      other.status !== 'declined' &&
+      profiles.find(x=>x.id===other.staffId)?.dept === p?.dept &&
+      other.from <= l.to && other.to >= l.from
+    );
+    return `<tr style="border-bottom:1px solid #e5e7eb">
+      <td style="padding:10px 12px">
+        <div style="font-size:13px;font-weight:700;color:#1a2b3a">${p?.name||'Unknown'}</div>
+        <div style="font-size:11px;color:#374151">${p?.staffCode||''} · <span style="color:${dept.colour};font-weight:600">${dept.name}</span></div>
+      </td>
+      <td style="padding:10px 8px;font-size:12px;color:#1a2b3a">${l.from}<br><span style="color:#374151">to ${l.to}</span></td>
+      <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#1a2b3a">${l.days}d</td>
+      <td style="padding:10px 8px;font-size:12px;color:#374151">${l.reason||'Annual leave'}</td>
+      <td style="padding:10px 8px">
+        ${conflicts.length>0?`<div style="background:#fef9c3;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;color:#854d0e">⚠ ${conflicts.length} conflict${conflicts.length>1?'s':''} in dept</div>`:'<span style="color:#166534;font-size:11px;font-weight:600">✓ No conflicts</span>'}
+      </td>
+      <td style="padding:10px 8px">
+        <span style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;background:${l.status==='approved'?'#dcfce7':l.status==='declined'?'#fee2e2':'#fef9c3'};color:${l.status==='approved'?'#166534':l.status==='declined'?'#991b1b':'#854d0e'}">${l.status}</span>
+      </td>
+      <td style="padding:10px 8px">
+        ${l.status==='pending'?`<div style="display:flex;gap:6px">
+          <button onclick="hsApproveLeave('${l.id}')" style="padding:5px 10px;background:#2a6a4a;color:#fff;border:none;border-radius:6px;font:600 11px Lato;cursor:pointer">✓ Approve</button>
+          <button onclick="hsDeclineLeave('${l.id}')" style="padding:5px 10px;background:#b3261e;color:#fff;border:none;border-radius:6px;font:600 11px Lato;cursor:pointer">✗ Decline</button>
+        </div>`:'<span style="font-size:11px;color:#374151">Processed</span>'}
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="7" style="padding:20px;text-align:center;color:#374151;font-size:13px">No ${filter} leave requests</td></tr>`;
+
+  v.innerHTML = `<div style="padding:20px;max-width:1100px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">Leave Management</div>
+        <div style="font-size:12px;color:#374151">${leave.filter(l=>l.status==='pending').length} pending · ${leave.filter(l=>l.status==='approved').length} approved</div>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        ${['pending','approved','declined','all'].map(f=>`<button onclick="window._hsLeaveFilter='${f}';renderStaffLeaveAdmin(document.getElementById('view'))"
+          style="padding:7px 12px;border:1.5px solid ${filter===f?'#1a2b3a':'#d1d5db'};border-radius:8px;background:${filter===f?'#1a2b3a':'#fff'};color:${filter===f?'#fff':'#1a2b3a'};font:600 12px Lato;cursor:pointer">
+          ${f.charAt(0).toUpperCase()+f.slice(1)}${f==='pending'&&leave.filter(l=>l.status==='pending').length>0?' ('+leave.filter(l=>l.status==='pending').length+')':''}
+        </button>`).join('')}
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#1a2b3a">
+          ${['Staff Member','Dates','Days','Reason','Conflicts','Status','Action'].map(h=>`<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#fff;text-transform:uppercase">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function hsApproveLeave(leaveId){
+  const leave = hsGetLeave();
+  const l = leave.find(x=>x.id===leaveId); if(!l) return;
+  l.status = 'approved'; l.approvedBy = SESSION?._key||'manager'; l.approvedAt = new Date().toISOString().slice(0,10);
+  hsSaveLeave(leave); toast('Leave approved ✓');
+  renderStaffLeaveAdmin(document.getElementById('view'));
+}
+function hsDeclineLeave(leaveId){
+  const leave = hsGetLeave();
+  const l = leave.find(x=>x.id===leaveId); if(!l) return;
+  l.status = 'declined'; l.declinedAt = new Date().toISOString().slice(0,10);
+  hsSaveLeave(leave); toast('Leave declined');
+  renderStaffLeaveAdmin(document.getElementById('view'));
+}
+
+function hsManagerLeaveModal(staffId){
+  const html=`<div style="padding:4px">
+    <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:14px">Add Leave Entry</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">From</label>
+          <input type="date" id="hs-ml-from" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
+        <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">To</label>
+          <input type="date" id="hs-ml-to" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
+      </div>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Reason</label>
+        <select id="hs-ml-reason" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+          <option>Annual leave</option><option>Sick leave</option><option>Compassionate</option><option>Training</option><option>Other</option>
+        </select></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="hsDoManagerLeave('${staffId}')" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Save entry</button>
+      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
+    </div>
+  </div>`;
+  openModal(html);
+}
+
+function hsDoManagerLeave(staffId){
+  const from=document.getElementById('hs-ml-from')?.value;
+  const to=document.getElementById('hs-ml-to')?.value;
+  if(!from||!to){ toast('Please select dates'); return; }
+  const days=Math.max(1,Math.round((new Date(to)-new Date(from))/(1000*60*60*24))+1);
+  const leave=hsGetLeave();
+  leave.push({id:'lv'+Date.now(),staffId,from,to,days,reason:document.getElementById('hs-ml-reason')?.value||'Annual leave',status:'approved',approvedBy:'manager',approvedAt:new Date().toISOString().slice(0,10)});
+  hsSaveLeave(leave);
+  closeModal(); toast('Leave entry saved ✓');
+}
+
+// ── ADD STAFF FROM HosSTAFF ────────────────────────────────────────────────────
+function hsAddStaffModal(){
+  const deptOpts=(SP_DEPTS||[]).map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  const html=`<div style="padding:4px">
+    <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:14px">Add Staff Member</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      ${[
+        ['Full name','hs-n','text'],['Role / Job title','hs-r','text'],
+        ['Email','hs-e','email'],['Phone','hs-ph','tel'],
+        ['Start date','hs-sd','date'],['Date of birth','hs-dob','date'],
+      ].map(([l,id,t])=>`<div${id==='hs-n'?' style="grid-column:span 2"':''}>
+        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">${l}</label>
+        <input type="${t}" id="${id}" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+      </div>`).join('')}
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Department</label>
+        <select id="hs-d" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">${deptOpts}</select></div>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Contract</label>
+        <select id="hs-c" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+          <option>Full-time</option><option>Part-time</option><option>Zero hours</option>
+        </select></div>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Contract hrs/wk</label>
+        <input type="number" id="hs-h" value="0" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Hourly rate (£)</label>
+        <input type="number" id="hs-hr" step="0.01" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="hsDoAddStaff()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Add to HosSTAFF</button>
+      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
+    </div>
+  </div>`;
+  openModal(html);
+}
+
+function hsDoAddStaff(){
+  const name=document.getElementById('hs-n')?.value?.trim();
+  if(!name){toast('Please enter a name');return;}
+  const profiles=hsGetProfiles();
+  const id='staff_'+Date.now();
+  const contract=document.getElementById('hs-c')?.value||'Zero hours';
+  const newP={
+    id, staffCode:'BH'+String(profiles.length+1).padStart(3,'0'),
+    name, role:document.getElementById('hs-r')?.value||'',
+    dept:document.getElementById('hs-d')?.value||'admin',
+    email:document.getElementById('hs-e')?.value||'',
+    phone:document.getElementById('hs-ph')?.value||'',
+    dob:document.getElementById('hs-dob')?.value||'',
+    startDate:document.getElementById('hs-sd')?.value||'',
+    contract, type:'core',
+    contractHrs:parseInt(document.getElementById('hs-h')?.value)||0,
+    hourlyRate:parseFloat(document.getElementById('hs-hr')?.value)||0,
+    leaveAllowance:contract==='Full-time'?28:contract==='Part-time'?20:0,
+    leaveUsed:0,leavePending:0,probationPassed:false,
+    probationDate:'',niNumber:'',address:'',
+    emergencyName:'',emergencyPhone:'',emergencyRel:'',
+    docs:[],notes:''
+  };
+  profiles.push(newP);
+  // Also add to HosSHIFT staff
+  const shiftStaff=spGetStaff();
+  shiftStaff.push({id,name,role:newP.role,dept:newP.dept,type:'core',contractHrs:newP.contractHrs,hourlyRate:newP.hourlyRate});
+  spSaveStaff(shiftStaff);
+  hsSaveProfiles(profiles);
+  closeModal(); toast('✓ '+name+' added to HosSTAFF');
+  renderStaffProfiles(document.getElementById('view'));
+}
+
+// Wire render functions
+function renderStaffLeave(v){ renderStaffLeaveAdmin(v); }
+function renderStaffDocs(v){
+  v.innerHTML=`<div style="padding:20px;max-width:800px">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a;margin-bottom:8px">Documents</div>
+    <div style="font-size:13px;color:#374151;margin-bottom:16px">Open a staff profile to upload and manage their documents</div>
+    <button onclick="switchTab('staffProfiles')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">← Staff Profiles</button>
+  </div>`;
+}
+
