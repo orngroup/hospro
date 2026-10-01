@@ -649,26 +649,31 @@ if('serviceWorker' in navigator){
 }
 
 function maybeAskNotifications(){
-  if(!('Notification' in window)) return;
+  try{
+  if(typeof Notification==='undefined'||!('Notification' in window)) return;
   if(Notification.permission==='granted'||Notification.permission==='denied') return;
   const nb=$('notif-banner'); if(!nb) return;
   nb.style.display='flex';
+  }catch(e){}
 }
 document.addEventListener('DOMContentLoaded',()=>{
   const ab=$('btn-notif-allow');
   if(ab) ab.addEventListener('click',()=>{
     $('notif-banner').style.display='none';
-    Notification.requestPermission().then(p=>{ if(p==='granted') toast('Notifications enabled ✓'); });
+    if(typeof Notification!=='undefined') Notification.requestPermission().then(p=>{ if(p==='granted') toast('Notifications enabled ✓'); });
   });
   const cb=$('btn-notif-close');
   if(cb) cb.addEventListener('click',()=>{ $('notif-banner').style.display='none'; });
 });
 
 function sendNotif(title,body,tag){
-  if(Notification.permission!=='granted') return;
-  const opts={body,icon:'/assets/icon-192.png',badge:'/assets/icon-192.png',tag,vibrate:[200,100,200]};
-  if(swReg) swReg.showNotification(title,opts);
-  else new Notification(title,opts);
+  try{
+    if(typeof Notification==='undefined') return;
+    if(Notification.permission!=='granted') return;
+    const opts={body,icon:'/assets/icon-192.png',badge:'/assets/icon-192.png',tag,vibrate:[200,100,200]};
+    if(swReg) swReg.showNotification(title,opts);
+    else new Notification(title,opts);
+  }catch(e){}
 }
 
 // ── MAINTENANCE NAV ──────────────────────────────────────────────────────────
