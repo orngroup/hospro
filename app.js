@@ -3866,6 +3866,237 @@ function renderHome(v){
   });
   wrap.appendChild(statsBar);
 
+  // ── Quick Links bar ─────────────────────────────────────────────────────────
+  const qlBar = document.createElement('div');
+  qlBar.style.cssText = 'display:flex;align-items:center;gap:10px;padding:0 28px 14px;flex-wrap:wrap';
+
+  const quickLinks = [
+    {label:'🏨 Guestline PMS',   url:'https://guestline.eu.auth0.com/login?state=hKFo2SA3YXhjWWszV2JfR2liT0ZtdExwSVFjSDVVZDI1SVVNVaFupWxvZ2luo3RpZNkgRGcya0JIWnBnLTdPV2pEQUI5ckU1M08xSEcyeDA1MkejY2lk2SBhM1RTRmg3OVpzWXBFcnZFSU5Pa2VvekhiSVBZUTNvYw&client=a3TSFh79ZsYpErvEINOkeozHbIPYQ3oc&protocol=oauth2&useRefreshTokensFallback=true&issuer=https%3A%2F%2Fguestline.eu.auth0.com%2F&scope=openid%20profile%20email%20offline_access&audience=https%3A%2F%2Fguestline.app&redirect_uri=https%3A%2F%2Fpms.eu.guestline.net%2Frezlynx%2FRLXWebForms%2Fsys%2Fwfrm_sys_LogOn.aspx%3Fsso_autoLogon%3Dtrue%26siteId%3DBRANDHALL&siteid=BRANDHALL&rezlynxlogin=true&siteidrequired=true&sso_autologon=true&siteId=BRANDHALL&siteIdRequired=true&response_type=code&response_mode=query'},
+    {label:'🛡 Saeker Compliance', url:'https://7hospitalitymanagement.saeker.com/login'},
+    {label:'🌐 Hotel Website',     url:'https://www.brandonhallhotelandspa.com'},
+    {label:'📍 Visit Coventry',    url:'https://visitcoventry.co.uk/'},
+  ];
+
+  const qlLabel = document.createElement('span');
+  qlLabel.style.cssText = 'font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap';
+  qlLabel.textContent = 'Quick links:';
+  qlBar.appendChild(qlLabel);
+
+  quickLinks.forEach(ql => {
+    const a = document.createElement('a');
+    a.href = ql.url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = ql.label;
+    a.style.cssText = 'padding:6px 14px;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;font:600 12px Lato;color:#1a2b3a;text-decoration:none;white-space:nowrap;transition:all .15s';
+    a.onmouseover = () => { a.style.borderColor='#1a2b3a'; a.style.background='#1a2b3a'; a.style.color='#fff'; };
+    a.onmouseout  = () => { a.style.borderColor='#e5e7eb'; a.style.background='#fff'; a.style.color='#1a2b3a'; };
+    qlBar.appendChild(a);
+  });
+  wrap.appendChild(qlBar);
+
+  // ── Dashboard section ────────────────────────────────────────────────────────
+  const dash = document.createElement('div');
+  dash.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;padding:0 28px 28px';
+
+  // ── Panel helper ─────────────────────────────────────────────────────────────
+  function mkPanel(title, icon, colour, content){
+    const p = document.createElement('div');
+    p.style.cssText = 'background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);overflow:hidden';
+    p.innerHTML = `<div style="padding:13px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:8px">
+      <span style="font-size:18px">${icon}</span>
+      <span style="font-size:13px;font-weight:700;color:#1a2b3a">${title}</span>
+      <div style="width:8px;height:8px;border-radius:50%;background:${colour};margin-left:auto"></div>
+    </div>
+    <div style="padding:14px 16px">${content}</div>`;
+    return p;
+  }
+
+  // ── Panel 1: Maintenance jobs ─────────────────────────────────────────────
+  const jobs = JSON.parse(localStorage.getItem('hf_jobs')||'[]');
+  const jobsUrgent  = jobs.filter(j=>j.priority==='urgent'&&j.status!=='complete').length;
+  const jobsOpen    = jobs.filter(j=>j.status==='not_started').length;
+  const jobsWIP     = jobs.filter(j=>j.status==='in_progress').length;
+  const jobsDone    = jobs.filter(j=>j.status==='complete').length;
+  const recentJobs  = jobs.filter(j=>j.status!=='complete').sort((a,b)=>b.createdAt-a.createdAt).slice(0,4);
+
+  const jobRows = recentJobs.map(j=>`
+    <div onclick="switchTab('fixAllJobs')" style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f5f7f9;cursor:pointer">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#1a2b3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${j.title||'Untitled'}</div>
+        <div style="font-size:10px;color:#374151">${j.location||''}</div>
+      </div>
+      <span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;white-space:nowrap;background:${j.priority==='urgent'?'#fee2e2':j.status==='in_progress'?'#fef9c3':'#f5f7f9'};color:${j.priority==='urgent'?'#991b1b':j.status==='in_progress'?'#854d0e':'#374151'}">${j.priority==='urgent'?'⚡ Urgent':j.status==='in_progress'?'In progress':'Not started'}</span>
+    </div>`).join('') || '<div style="font-size:12px;color:#374151;padding:8px 0">No open jobs</div>';
+
+  const maintContent = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">
+      ${[['⚡',jobsUrgent,'Urgent','#b3261e','#fee2e2'],['🔵',jobsOpen,'Not started','#1d4ed8','#dbeafe'],['🟡',jobsWIP,'In progress','#854d0e','#fef9c3'],['✅',jobsDone,'Complete','#166534','#dcfce7']].map(([ic,n,l,col,bg])=>`
+        <div style="text-align:center;background:${bg};border-radius:8px;padding:8px 4px;cursor:pointer" onclick="switchTab('fixAllJobs')">
+          <div style="font-size:18px;font-weight:700;color:${col}">${n}</div>
+          <div style="font-size:9px;color:${col};font-weight:600;text-transform:uppercase">${l}</div>
+        </div>`).join('')}
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Recent open jobs</div>
+    ${jobRows}
+    <button onclick="switchTab('fixAllJobs')" style="margin-top:10px;width:100%;padding:8px;border:1.5px solid #1a2b3a;border-radius:8px;background:#fff;font:600 12px Lato;color:#1a2b3a;cursor:pointer">View all jobs →</button>`;
+
+  dash.appendChild(mkPanel('HosFIX — Maintenance','🔧','#b8860b',maintContent));
+
+  // ── Panel 2: Compliance summary ───────────────────────────────────────────
+  const compTasks = typeof ALL_COMP_TASKS!=="undefined" ? ALL_COMP_TASKS : [];
+  const now = new Date();
+  const compOverdue  = compTasks.filter(t=>t.status!=='done'&&new Date(t.dueDate)<now).length;
+  const compDueSoon  = compTasks.filter(t=>{const d=new Date(t.dueDate);return t.status!=='done'&&d>=now&&d<new Date(now.getTime()+7*864e5);}).length;
+  const compOnTrack  = compTasks.filter(t=>t.status!=='done'&&new Date(t.dueDate)>=new Date(now.getTime()+7*864e5)).length;
+  const compDone     = compTasks.filter(t=>t.status==='done').length;
+  const compPct      = compTasks.length>0?Math.round(compDone/compTasks.length*100):0;
+
+  const topOverdue = compTasks.filter(t=>t.status!=='done'&&new Date(t.dueDate)<now)
+    .sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate)).slice(0,4);
+  const compRows = topOverdue.map(t=>{
+    const days=Math.round((now-new Date(t.dueDate))/(864e5));
+    return`<div onclick="switchTab('compTasks')" style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f5f7f9;cursor:pointer">
+      <div style="font-size:12px;font-weight:600;color:#1a2b3a;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title||t.name||'Task'}</div>
+      <span style="font-size:10px;font-weight:700;color:#991b1b;white-space:nowrap">${days}d overdue</span>
+    </div>`;}).join('') || '<div style="font-size:12px;color:#166534;padding:8px 0">✓ No overdue tasks</div>';
+
+  const compContent = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">
+      ${[['⚠',compOverdue,'Overdue','#991b1b','#fee2e2'],['⏰',compDueSoon,'Due soon','#854d0e','#fef9c3'],['✓',compOnTrack,'On track','#166534','#dcfce7']].map(([ic,n,l,col,bg])=>`
+        <div style="text-align:center;background:${bg};border-radius:8px;padding:8px 4px">
+          <div style="font-size:20px;font-weight:700;color:${col}">${n}</div>
+          <div style="font-size:9px;color:${col};font-weight:600;text-transform:uppercase">${l}</div>
+        </div>`).join('')}
+    </div>
+    <div style="background:#f5f7f9;border-radius:8px;padding:10px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#374151;margin-bottom:5px">
+        <span>Overall compliance</span><span style="font-weight:700;color:${compPct>=80?'#166534':compPct>=50?'#854d0e':'#991b1b'}">${compPct}%</span>
+      </div>
+      <div style="background:#e5e7eb;border-radius:6px;height:8px">
+        <div style="background:${compPct>=80?'#2a6a4a':compPct>=50?'#c78a3b':'#b3261e'};border-radius:6px;height:8px;width:${compPct}%;transition:width .4s"></div>
+      </div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Most overdue</div>
+    ${compRows}
+    <button onclick="switchTab('compDash')" style="margin-top:10px;width:100%;padding:8px;border:1.5px solid #1a2b3a;border-radius:8px;background:#fff;font:600 12px Lato;color:#1a2b3a;cursor:pointer">View compliance →</button>`;
+
+  dash.appendChild(mkPanel('HosCOM — Compliance','🛡','#2a6a4a',compContent));
+
+  // ── Panel 3: HosSHIFT + HosSTAFF snapshot ────────────────────────────────
+  const rota = JSON.parse(localStorage.getItem('sp_rota')||'{}');
+  const staffList = JSON.parse(localStorage.getItem('sp_staff')||'[]');
+  const todayK = new Date().toISOString().slice(0,10);
+  const todayRota = rota[todayK]||{};
+  const onDuty  = Object.values(todayRota).filter(s=>s&&s.toLowerCase()!=='off'&&s!=='').length;
+  const onHoliday= Object.values(todayRota).filter(s=>s&&s.toLowerCase()==='holiday').length;
+
+  // Leave pending
+  const leave = JSON.parse(localStorage.getItem('hs_leave')||'[]');
+  const pendingLeave = leave.filter(l=>l.status==='pending').length;
+
+  // Today's dept coverage
+  const SP_DEPTS_SNAP = typeof SP_DEPTS!=="undefined" ? SP_DEPTS : [];
+  const deptRows = SP_DEPTS_SNAP.slice(0,5).map(dept=>{
+    const ds = staffList.filter(s=>s.dept===dept.id);
+    const rostered = ds.filter(s=>{const sh=(todayRota[s.id]||'').toLowerCase();return sh&&sh!=='off'&&sh!=='';}).length;
+    const ok = rostered>=1;
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f5f7f9">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${dept.colour};display:inline-block"></span>
+        <span style="font-size:12px;color:#1a2b3a;font-weight:600">${dept.name}</span>
+      </div>
+      <span style="font-size:11px;font-weight:700;color:${ok?'#166534':'#991b1b'}">${rostered} on shift ${ok?'✓':'⚠'}</span>
+    </div>`;}).join('');
+
+  const peopleContent = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">
+      ${[['👷',onDuty,'On shift today','#1d4ed8','#dbeafe'],['🌴',onHoliday,'On holiday','#166534','#dcfce7'],['⏳',pendingLeave,'Leave pending','#854d0e','#fef9c3']].map(([ic,n,l,col,bg])=>`
+        <div style="text-align:center;background:${bg};border-radius:8px;padding:8px 4px">
+          <div style="font-size:20px;font-weight:700;color:${col}">${n}</div>
+          <div style="font-size:9px;color:${col};font-weight:600;text-transform:uppercase">${l}</div>
+        </div>`).join('')}
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Today's coverage</div>
+    ${deptRows}
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button onclick="switchTab('rotaWeek')" style="flex:1;padding:8px;border:1.5px solid #1a2b3a;border-radius:8px;background:#fff;font:600 12px Lato;color:#1a2b3a;cursor:pointer">📋 Rota</button>
+      <button onclick="switchTab('staffLeaveAdmin')" style="flex:1;padding:8px;border:1.5px solid #c78a3b;border-radius:8px;background:#fff;font:600 12px Lato;color:#c78a3b;cursor:pointer">🌴 Leave${pendingLeave>0?' ('+pendingLeave+')':''}</button>
+    </div>`;
+
+  dash.appendChild(mkPanel('People & Shifts','👥','#4a86c7',peopleContent));
+
+  wrap.appendChild(dash);
+
+  // ── Row 2 dashboard: Sales pipeline + Tasks + Events ──────────────────────
+  const dash2 = document.createElement('div');
+  dash2.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 28px 28px';
+
+  // Sales pipeline panel
+  const enqs = typeof ENQUIRIES!=="undefined" ? ENQUIRIES : [];
+  const stages = ['new','proposal','negotiation','confirmed','lost'];
+  const stageLabels = {new:'New',proposal:'Proposal',negotiation:'Negotiation',confirmed:'Confirmed',lost:'Lost'};
+  const stageColours = {new:'#4a86c7',proposal:'#8b5c8f',negotiation:'#c78a3b',confirmed:'#2a6a4a',lost:'#9ca3af'};
+  const stageCounts = {};
+  stages.forEach(s=>stageCounts[s]=enqs.filter(e=>e.stage===s).length);
+  const total = enqs.length||1;
+
+  const pipelineBars = stages.filter(s=>s!=='lost').map(s=>`
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+        <span style="font-weight:600;color:#1a2b3a">${stageLabels[s]}</span>
+        <span style="color:#374151">${stageCounts[s]} enquiries</span>
+      </div>
+      <div style="background:#f0f4f8;border-radius:6px;height:10px">
+        <div style="background:${stageColours[s]};border-radius:6px;height:10px;width:${Math.round(stageCounts[s]/total*100)}%;transition:width .4s"></div>
+      </div>
+    </div>`).join('');
+
+  const recentEnqs = enqs.filter(e=>!['confirmed','lost'].includes(e.stage)).slice(0,3).map(e=>`
+    <div onclick="switchTab('pipeline')" style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f5f7f9;cursor:pointer">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#1a2b3a">${e.company||e.name||'Enquiry'}</div>
+        <div style="font-size:10px;color:#374151">${e.eventType||''} · ${e.pax?e.pax+' pax':''}</div>
+      </div>
+      <span style="font-size:11px;font-weight:700;color:${stageColours[e.stage]||'#374151'}">${stageLabels[e.stage]||e.stage}</span>
+    </div>`).join('');
+
+  const salesContent = `
+    <div style="margin-bottom:14px">${pipelineBars}</div>
+    <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Active enquiries</div>
+    ${recentEnqs||'<div style="font-size:12px;color:#374151">No active enquiries</div>'}
+    <button onclick="switchTab('pipeline')" style="margin-top:10px;width:100%;padding:8px;border:1.5px solid #4a86c7;border-radius:8px;background:#fff;font:600 12px Lato;color:#4a86c7;cursor:pointer">Open Sales Pipeline →</button>`;
+
+  dash2.appendChild(mkPanel('SalesPRO — Pipeline','📊','#4a86c7',salesContent));
+
+  // Tasks panel
+  const taskList = JSON.parse(localStorage.getItem('sf_tasks')||'[]');
+  const taskOpen  = taskList.filter(t=>t.status!=='done');
+  const taskOverdue= taskOpen.filter(t=>t.due&&new Date(t.due)<now);
+  const taskDueSoon= taskOpen.filter(t=>{const d=new Date(t.due);return t.due&&d>=now&&d<new Date(now.getTime()+3*864e5);});
+  const taskRows = taskOpen.slice(0,5).map(t=>{
+    const isOverdue=t.due&&new Date(t.due)<now;
+    const isDueSoon=t.due&&new Date(t.due)>=now&&new Date(t.due)<new Date(now.getTime()+3*864e5);
+    return`<div onclick="switchTab('tasks')" style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f5f7f9;cursor:pointer">
+      <div style="font-size:12px;font-weight:600;color:#1a2b3a;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title||'Task'}</div>
+      ${t.due?`<span style="font-size:10px;font-weight:700;white-space:nowrap;color:${isOverdue?'#991b1b':isDueSoon?'#854d0e':'#374151'}">${isOverdue?'Overdue':isDueSoon?'Due soon':new Date(t.due).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>`:''}
+    </div>`;}).join('') || '<div style="font-size:12px;color:#166534;padding:8px 0">✓ No open tasks</div>';
+
+  const tasksContent = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">
+      ${[['⚠',taskOverdue.length,'Overdue','#991b1b','#fee2e2'],['⏰',taskDueSoon.length,'Due soon','#854d0e','#fef9c3'],['📋',taskOpen.length,'Total open','#1d4ed8','#dbeafe']].map(([ic,n,l,col,bg])=>`
+        <div style="text-align:center;background:${bg};border-radius:8px;padding:8px 4px">
+          <div style="font-size:20px;font-weight:700;color:${col}">${n}</div>
+          <div style="font-size:9px;color:${col};font-weight:600;text-transform:uppercase">${l}</div>
+        </div>`).join('')}
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Open tasks</div>
+    ${taskRows}
+    <button onclick="switchTab('tasks')" style="margin-top:10px;width:100%;padding:8px;border:1.5px solid #8b5c8f;border-radius:8px;background:#fff;font:600 12px Lato;color:#8b5c8f;cursor:pointer">Open TaskPRO →</button>`;
+
+  dash2.appendChild(mkPanel('TaskPRO — Open Tasks','✅','#8b5c8f',tasksContent));
+
+  wrap.appendChild(dash2);
   v.appendChild(wrap);
 }
 
