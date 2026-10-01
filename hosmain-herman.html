@@ -230,6 +230,12 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
   background:rgba(26,43,58,.92);color:#fff;padding:10px 20px;border-radius:20px;
   font:700 14px 'Lato';z-index:999;display:none;white-space:nowrap}
 </style>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<!-- v202610011935 -->
+
+<script>window.PRESET_USER="herman";</script>
 </head>
 <body>
 
@@ -462,9 +468,6 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
 
 <div id="toast"></div>
 
-<script>
-window.PRESET_USER='herman';
-</script>
 <script>
 
 'use strict';
@@ -710,7 +713,7 @@ function signOut(){
 // ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
 let swReg=null;
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/hosmain-sw.js')
+  navigator.serviceWorker.register('/hosmain-sw.js?v=202610011935')
     .then(r=>{swReg=r;}).catch(()=>{});
 }
 
@@ -2074,6 +2077,14 @@ document.addEventListener('DOMContentLoaded',()=>{
       checkSyncHash();
       return;
     }
+  }
+
+  // Personal URL — skip login, show over-18 confirmation
+  if(PRESET_USER && USERS.find(u=>u.id===PRESET_USER)){
+    showScreen('scr-dob');
+    showDOBScreen();
+    checkSyncHash();
+    return;
   }
 
   // First visit check
