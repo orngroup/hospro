@@ -446,15 +446,15 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
 
 // ── DATA ────────────────────────────────────────────────────────────────────
 const USERS = [
-  {"id":"raj",    "name":"Raj Kumar",      "role":"Property Director",            "level":3, "color":"#1a2b3a", "supervisor":true,  "seeCosts":true},
-  {"id":"ajay",   "name":"Ajay Kawa",      "role":"Director",                     "level":3, "color":"#c78a3b", "supervisor":true,  "seeCosts":true},
-  {"id":"alia",   "name":"Alia Taub",      "role":"Director",                     "level":3, "color":"#5a8fc7", "supervisor":true,  "seeCosts":true},
-  {"id":"glenn",  "name":"Glenn Randell",  "role":"Maintenance Manager",          "level":2, "color":"#b8860b", "supervisor":true,  "seeCosts":false},
-  {"id":"ruth",   "name":"Ruth Addison",   "role":"Head of Housekeeping",         "level":2, "color":"#be185d", "supervisor":true,  "seeCosts":false},
-  {"id":"patrik", "name":"Patrik Vlach",   "role":"Front Office Manager",         "level":2, "color":"#6366f1", "supervisor":true,  "seeCosts":false},
-  {"id":"pete",   "name":"Pete",           "role":"Multi-trader (electrical)",    "level":1, "color":"#20b2a2", "supervisor":false, "seeCosts":false},
-  {"id":"jomy",   "name":"Jomy",          "role":"Bar Manager",                  "level":2, "color":"#0891b2", "supervisor":true,  "seeCosts":false},
-  {"id":"herman", "name":"Herman Charles", "role":"Multi-trader (non-electrical)","level":1, "color":"#2a6a4a", "supervisor":false, "seeCosts":false},
+  {"id":"raj",    "name":"Raj Kumar",      "role":"Property Director",            "level":3, "color":"#1a2b3a", "supervisor":true,  "seeCosts":true,  "whatsapp":"447770873886"},
+  {"id":"ajay",   "name":"Ajay Kawa",      "role":"Director",                     "level":3, "color":"#c78a3b", "supervisor":true,  "seeCosts":true,  "whatsapp":"447747031186"},
+  {"id":"alia",   "name":"Alia Taub",      "role":"Director",                     "level":3, "color":"#5a8fc7", "supervisor":true,  "seeCosts":true,  "whatsapp":"447771515553"},
+  {"id":"glenn",  "name":"Glenn Randell",  "role":"Maintenance Manager",          "level":2, "color":"#b8860b", "supervisor":true,  "seeCosts":false, "whatsapp":"447875659025"},
+  {"id":"ruth",   "name":"Ruth Addison",   "role":"Head of Housekeeping",         "level":2, "color":"#be185d", "supervisor":true,  "seeCosts":false, "whatsapp":"447810171310"},
+  {"id":"patrik", "name":"Patrik Vlach",   "role":"Front Office Manager",         "level":2, "color":"#6366f1", "supervisor":true,  "seeCosts":false, "whatsapp":"447777622638"},
+  {"id":"pete",   "name":"Pete",           "role":"Multi-trader (electrical)",    "level":1, "color":"#20b2a2", "supervisor":false, "seeCosts":false, "whatsapp":"447460680369"},
+  {"id":"jomy",   "name":"Jomy",          "role":"Bar Manager",                  "level":2, "color":"#0891b2", "supervisor":true,  "seeCosts":false, "whatsapp":"447436401901"},
+  {"id":"herman", "name":"Herman Charles", "role":"Multi-trader (non-electrical)","level":1, "color":"#2a6a4a", "supervisor":false, "seeCosts":false, "whatsapp":"447956606261"},
 ];
 
 const SUPERVISORS = ['raj','ajay','alia','glenn','ruth','patrik','jomy'];
@@ -1004,14 +1004,29 @@ function submitJob(){
   JOBS.unshift(job);
   saveJobs();
 
-  // Notifications
+  // Send WhatsApp notifications to assignees
+  const jobUrl = 'https://brandon.hospro.co.uk/hosfix.html#job='+job.id;
+  const wasSentTo = [];
   assignees.forEach(uid=>{
     if(uid===ME) return;
-    sendNotif('🔧 New job assigned',title,'assign-'+job.id);
+    const u=USERS.find(x=>x.id===uid); if(!u) return;
+    // Local push notification (if PWA installed)
+    sendNotif('🔧 New job assigned', title, 'assign-'+job.id);
+    // WhatsApp link notification
+    if(u.whatsapp){
+      const lines=['🔧 *HosFIX — New job allocated*','','*'+title+'*'];
+      if(job.location) lines.push('📍 '+job.location);
+      if(job.priority==='urgent') lines.push('🔴 URGENT');
+      lines.push('','Tap to open:',jobUrl);
+      const msg=encodeURIComponent(lines.join('\n'));
+      window.open('https://wa.me/'+u.whatsapp+'?text='+msg,'_blank');
+      wasSentTo.push(u.name);
+    }
   });
 
   closeModal();
-  toast(needsApproval?'Job logged — awaiting approval ✓':'Job logged ✓');
+  const sentMsg = wasSentTo.length ? ' — WhatsApp sent to '+wasSentTo.join(', ') : '';
+  toast(needsApproval?'Job logged — awaiting approval ✓':'Job logged ✓'+sentMsg, 3500);
   VIEW='jobs'; FILTER='all';
   $('bnav').querySelectorAll('.bnav').forEach(b=>b.classList.remove('on'));
   $('bnav').querySelector('[data-v="jobs"]')?.classList.add('on');
@@ -1290,9 +1305,34 @@ function doCompleteJob(jobId){
   j.notes.push({text:`Job completed${mins>0?' · '+Math.floor(mins/60)+'h '+mins%60+'m':''}`,by:MY_USER?.name||ME,at:todayStr()});
   if(note) j.notes.push({text:note,by:MY_USER?.name||ME,at:todayStr()});
   saveJobs();
-  // Notify managers
-  sendNotif('✅ Job completed',''+j.title+' — completed by '+(MY_USER?.name||ME),'complete-'+jobId);
-  closeModal(); toast('Job complete ✓');
+  // Notify managers via push
+  sendNotif('✅ Job completed', j.title+' — completed by '+(MY_USER?.name||ME), 'complete-'+jobId);
+  // WhatsApp to management on completion
+  const compUrl='https://brandon.hospro.co.uk/hosfix.html#job='+jobId;
+  const clines=['✅ *HosFIX — Job completed*','','*'+j.title+'*'];
+  if(j.location) clines.push('📍 '+j.location);
+  clines.push('👷 Completed by: '+(MY_USER?.name||ME),'','Tap to view:',compUrl);
+  const compMsg=encodeURIComponent(clines.join('\n'));
+  // Only notify if completed by a trader (not a director)
+  // Extra contacts (not app users) — always notified on completion
+  const EXTRA_NOTIFY=[
+    {name:'Veronica',whatsapp:'447460726601'},
+    {name:'Manjusha',whatsapp:'447767182364'}
+  ];
+  EXTRA_NOTIFY.forEach(c=>{
+    const el=['✅ *HosFIX — Job completed*','','*'+j.title+'*'];
+    if(j.location) el.push('📍 '+j.location);
+    el.push('👷 '+(MY_USER?.name||ME),'','View: '+compUrl);
+    window.open('https://wa.me/'+c.whatsapp+'?text='+encodeURIComponent(el.join('\n')),'_blank');
+  });
+  if(!IS_APPROVER){
+    ['raj','ajay','alia','glenn'].forEach(uid=>{
+      if(uid===ME) return;
+      const u=USERS.find(x=>x.id===uid);
+      if(u?.whatsapp) window.open('https://wa.me/'+u.whatsapp+'?text='+compMsg,'_blank');
+    });
+  }
+  closeModal(); toast('Job complete ✓ — managers notified');
   updateTimerBar(); render();
 }
 
@@ -1458,6 +1498,18 @@ function renderReport(){
   return `<div style="padding:14px">
     <div style="font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--navy);margin-bottom:16px">Report</div>
     
+    ${IS_APPROVER?`<div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+      <div style="font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📱 WhatsApp numbers</div>
+      <div style="font-size:12px;color:#7a8494;margin-bottom:10px">Set numbers so WhatsApp opens automatically when jobs are assigned</div>
+      ${USERS.map(u=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div class="av" style="background:${u.color};width:28px;height:28px;font-size:10px">${initials(u.name)}</div>
+        <div style="font-size:12px;font-weight:600;width:90px">${u.name.split(' ')[0]}</div>
+        <input type="tel" placeholder="447700123456" value="${u.whatsapp||''}"
+          style="flex:1;padding:7px 10px;border:1.5px solid var(--line);border-radius:8px;font:13px 'Lato'"
+          data-uid="${u.id}" oninput="updatePhone('${u.id}',this.value)">
+      </div>`).join('')}
+    </div>`:''}
+    
     <div style="background:#e8f3ee;border-radius:12px;padding:13px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
       <div style="flex:1">
         <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:3px">👥 TEAM SYNC</div>
@@ -1492,6 +1544,23 @@ document.addEventListener('click',function(e){
   if(e.target.id==='btn-sync'||e.target.closest('#btn-sync')) syncJobs();
 });
 
+function updatePhone(uid, phone){
+  const u=USERS.find(x=>x.id===uid); if(!u) return;
+  u.whatsapp=phone.replace(/[^0-9]/g,'');
+  // Save to localStorage
+  const phones=JSON.parse(localStorage.getItem('hf_phones')||'{}');
+  phones[uid]=u.whatsapp;
+  localStorage.setItem('hf_phones',JSON.stringify(phones));
+}
+
+// Load saved phone numbers on startup
+function loadPhones(){
+  const phones=JSON.parse(localStorage.getItem('hf_phones')||'{}');
+  Object.entries(phones).forEach(([uid,phone])=>{
+    const u=USERS.find(x=>x.id===uid); if(u) u.whatsapp=phone;
+  });
+}
+
 function syncJobs(){
   const data={jobs:JOBS,ts:Date.now(),by:MY_USER?.name||ME};
   const url=location.origin+location.pathname+'#sync='+btoa(encodeURIComponent(JSON.stringify(data)));
@@ -1501,6 +1570,21 @@ function syncJobs(){
 }
 
 function checkSyncHash(){
+  // Direct job link: #job=<id>
+  if(location.hash.startsWith('#job=')){
+    const jobId=location.hash.replace('#job=','');
+    history.replaceState(null,'',location.pathname);
+    // Open maintenance module and show the job
+    setTimeout(()=>{
+      if(!ME){ toast('Please sign in to view this job'); return; }
+      ACTIVE_MODULE='maintenance'; VIEW='jobs';
+      $('scr-home').classList.remove('active');
+      $('app').style.display='flex';
+      buildMaintenanceNav(); render();
+      setTimeout(()=>openJobDetail(jobId), 300);
+    }, 500);
+    return;
+  }
   if(!location.hash.startsWith('#sync=')) return;
   try{
     const data=JSON.parse(decodeURIComponent(atob(location.hash.replace('#sync=',''))));
@@ -1699,6 +1783,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   initInstall();
   initLogin();
 
+  loadPhones();
   // Restore session
   const saved=sessionStorage.getItem('hf_user');
   if(saved){

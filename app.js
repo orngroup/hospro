@@ -5055,6 +5055,46 @@ function renderFixProjects(v){
 }
 
 /* ============================================================ HOSFIX — TEAM & PROFILES (portal only) */
+function openPortalJobDetail(jobId){
+  const JOBS=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');
+  const j=JOBS.find(x=>x.id===jobId); if(!j) return;
+  const HFUSERS=[
+    {id:"raj",name:"Raj Kumar",color:"#1a2b3a"},{id:"ajay",name:"Ajay Kawa",color:"#c78a3b"},
+    {id:"alia",name:"Alia Taub",color:"#5a8fc7"},{id:"glenn",name:"Glenn Randell",color:"#b8860b"},
+    {id:"ruth",name:"Ruth Addison",color:"#be185d"},{id:"patrik",name:"Patrik Vlach",color:"#6366f1"},
+    {id:"pete",name:"Pete",color:"#20b2a2"},{id:"jomy",name:"Jomy",color:"#0891b2"},
+    {id:"herman",name:"Herman Charles",color:"#2a6a4a"}
+  ];
+  const assignees=(j.assignees||[]).map(id=>HFUSERS.find(u=>u.id===id)).filter(Boolean);
+  const status=j.status==='complete'?'Complete':j.status==='in-progress'?'In progress':j.priority==='urgent'?'URGENT':'Not started';
+  const statusCol=j.status==='complete'?'#2a6a4a':j.priority==='urgent'?'#c45c00':j.status==='in-progress'?'#c78a3b':'#b3261e';
+  
+  // Build modal
+  const existing=document.getElementById('portal-job-modal');
+  if(existing) existing.remove();
+  const modal=document.createElement('div');
+  modal.id='portal-job-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`
+    <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;position:relative">
+      <button onclick="document.getElementById('portal-job-modal').remove()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af">✕</button>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#1a2b3a;margin-bottom:6px;padding-right:30px">${j.title}</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <span style="background:${statusCol}20;color:${statusCol};font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px">${status}</span>
+        ${j.areaLabel?'<span style="background:#f1f5f9;color:#475569;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px">📍 '+j.areaLabel+(j.location?' · '+j.location:'')+'</span>':''}
+      </div>
+      ${j.description?'<p style="font-size:13px;color:#6b7280;margin-bottom:16px;line-height:1.5">'+j.description+'</p>':''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        ${[['Priority',(j.priority||'medium')],['Module',j.module||'maintenance'],['Cost est.','£'+(j.cost||0).toFixed(2)],['Logged',j.createdAt?j.createdAt.slice(0,10):'—'],['Started',j.startedAt?j.startedAt.slice(0,10):'—'],['Completed',j.completedAt?j.completedAt.slice(0,10):'—']].map(([k,v])=>'<div style="background:#f9fafb;border-radius:8px;padding:10px"><div style="font-size:11px;color:#9ca3af;margin-bottom:2px">'+k+'</div><div style="font-weight:700;font-size:13px">'+v+'</div></div>').join('')}
+      </div>
+      ${assignees.length?'<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Assigned to</div><div style="display:flex;gap:8px">'+assignees.map(u=>'<div style="display:flex;align-items:center;gap:7px;background:#f5f7f9;border-radius:20px;padding:5px 12px 5px 5px"><div style="width:28px;height:28px;border-radius:50%;background:'+u.color+';display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff">'+u.name.split(' ').map(w=>w[0]).join('').slice(0,2)+'</div><span style="font-size:13px;font-weight:600">'+u.name+'</span></div>').join('')+'</div></div>':''}
+      ${(j.materials||[]).length?'<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Materials used</div>'+j.materials.map(m=>'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f5f7f9;font-size:13px"><span>'+m.name+'</span><span style="font-weight:700">x'+m.qty+' · £'+(m.qty*m.tradePrice).toFixed(2)+'</span></div>').join('')+'</div>':''}
+      ${(j.notes||[]).length?'<div><div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Notes</div>'+j.notes.map(n=>'<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:6px"><div style="font-size:11px;color:#9ca3af;margin-bottom:3px">'+n.by+' · '+n.at+'</div><div style="font-size:13px">'+n.text+'</div></div>').join('')+'</div>':''}
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{ if(e.target===modal) modal.remove(); });
+}
+
 function renderFixTeam(v){
   const HFUSERS=[
     {id:"raj",    name:"Raj Kumar",     role:"Property Director",            color:"#1a2b3a"},
