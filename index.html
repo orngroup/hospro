@@ -1027,75 +1027,12 @@ body.home-active nav.tabs{display:none;}
     </div>
     <button class="btn block" id="lg-btn">Sign in</button>
     <div class="login-err" id="lg-err"></div>
-    <div class="login-hint">Access code is <b>BH</b> followed by your initials.</div>
-    <div style="margin-top:18px;border-top:1px solid rgba(255,255,255,.1);padding-top:14px;text-align:center">
-      <button class="login-hint" id="lg-request-access" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;text-decoration:underline">Not registered? Request access</button>
-    </div>
+    <div class="login-hint" style="font-size:11px;color:rgba(255,255,255,.4);margin-top:8px;text-align:center">Brandon Hall Hotel & Spa — HosPRO Platform</div>
+    
   </div>
   <div class="hp-login-foot">HOSPRO · hospro.co.uk</div>
 </div>
 
-<!-- ACCESS OVERLAY: email verification + terms (see ACCESS in app.js) -->
-<style>
-#access-request .ar-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:32px;max-width:500px;width:100%;backdrop-filter:blur(10px)}
-#access-request .ar-terms{max-height:170px;overflow-y:auto;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:14px 16px;font-size:12.5px;line-height:1.55;color:rgba(255,255,255,.75)}
-#access-request .ar-terms ol{padding-left:18px;margin:8px 0 0} #access-request .ar-terms li{margin-bottom:7px}
-#access-request .ar-terms b{color:#fff}
-#access-request .ar-check{display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-size:13px;color:rgba(255,255,255,.8);cursor:pointer}
-#access-request .ar-check input{width:18px;height:18px;margin-top:1px;accent-color:#c9a978;flex:none}
-#access-request .ar-btn{width:100%;margin-top:18px;padding:15px;background:#c9a978;color:#1a2b3a;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
-#access-request .ar-btn:disabled{opacity:.6;cursor:default}
-#access-request .ar-link{background:none;border:none;color:rgba(255,255,255,.55);font-size:12.5px;cursor:pointer;text-decoration:underline;font-family:inherit}
-#access-request .ar-ok{background:rgba(42,106,74,.3);border:1px solid rgba(42,106,74,.5);border-radius:12px;padding:18px;color:#bfe8cf;font-size:14px;line-height:1.6;text-align:center}
-@media(max-width:520px){#access-request .ar-card{padding:22px}}
-</style>
-<div id="access-request" class="hidden" style="position:fixed;inset:0;background:linear-gradient(135deg,#0d1b2a,#1a2b3a);z-index:9999;display:flex;flex-direction:column;align-items:center;padding:28px 16px;overflow-y:auto">
-  <img src="assets/hospro/logo-white.svg" style="width:130px;margin:auto 0 22px;opacity:.9" alt="HOSPRO">
-  <div class="ar-card">
-    <div style="text-align:center;margin-bottom:20px">
-      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#fff;font-weight:600;letter-spacing:1px">Welcome to HOSPRO</div>
-      <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:8px;line-height:1.6">This portal is for the exclusive use of <b style="color:#c9a978" data-tenant="hotelName"></b> staff and authorised personnel. Verify your email to use it on this device.</div>
-    </div>
-
-    <!-- 1. Details + terms -->
-    <div id="ar-state-form">
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div><label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.5px;margin-bottom:6px" for="ar-name">YOUR FULL NAME</label><input id="ar-name" placeholder="e.g. Jane Smith" style="width:100%;padding:13px 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none;font-family:inherit" autocomplete="name"></div>
-        <div><label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.5px;margin-bottom:6px" for="ar-email">YOUR EMAIL ADDRESS</label><input id="ar-email" type="email" placeholder="you@example.com" style="width:100%;padding:13px 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none;font-family:inherit" autocomplete="email"></div>
-        <div><label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.5px;margin-bottom:6px" for="ar-role">ROLE / DEPARTMENT</label><input id="ar-role" placeholder="e.g. Events Manager" style="width:100%;padding:13px 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none;font-family:inherit"></div>
-        <div><label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.5px;margin-bottom:6px" for="ar-location">LOCATION / HOTEL</label><input id="ar-location" style="width:100%;padding:13px 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none;font-family:inherit"></div>
-        <div><label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.5px;margin-bottom:6px" for="ar-ip">YOUR IP ADDRESS <span style="font-weight:400;color:rgba(255,255,255,.4)">(detected automatically)</span></label><input id="ar-ip" placeholder="Detecting…" style="width:100%;padding:13px 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none;font-family:inherit;color:#c9a978;font-weight:700;font-family:monospace" readonly></div>
-        <div><label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.5px;margin-bottom:6px">TERMS OF USE</label><div class="ar-terms" id="ar-terms" tabindex="0"></div>
-          <label class="ar-check"><input type="checkbox" id="ar-accept"><span>I have read and accept the terms of use for the <span data-tenant="hotelName"></span> HOSPRO portal.</span></label></div>
-      </div>
-      <button id="ar-submit" class="ar-btn">Email my verification link</button>
-      <div id="ar-msg" style="margin-top:12px;text-align:center;font-size:13px;color:#f8b4b4;min-height:1em"></div>
-    </div>
-
-    <!-- 2. Link sent -->
-    <div id="ar-state-sent" class="hidden">
-      <div class="ar-ok">✉️ We've emailed a secure verification link to<br><b id="ar-sent-email" style="color:#fff"></b><br><br>Open the email <b>on this device</b> and tap the link. It works once and expires after a short time.</div>
-      <p style="font-size:12.5px;color:rgba(255,255,255,.5);text-align:center;margin-top:14px;line-height:1.6">Can't see it? Check your junk or spam folder for an email from HOSPRO.</p>
-      <div style="display:flex;justify-content:center;gap:18px;margin-top:8px"><button class="ar-link" id="ar-resend">Send it again</button><button class="ar-link" id="ar-change">Use a different email</button></div>
-    </div>
-
-    <!-- 3. Link opened on another device: confirm email -->
-    <div id="ar-state-confirm" class="hidden">
-      <p style="color:rgba(255,255,255,.8);font-size:14px;line-height:1.6;text-align:center">To finish verifying on this device, please confirm the email address you used.</p>
-      <input id="ar-confirm-email" type="email" placeholder="you@example.com" style="width:100%;padding:13px 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none;font-family:inherit;margin-top:10px" autocomplete="email">
-      <button id="ar-confirm-btn" class="ar-btn">Confirm and continue</button>
-      <div id="ar-confirm-err" style="margin-top:10px;text-align:center;font-size:13px;color:#f8b4b4"></div>
-    </div>
-
-    <!-- 4. Verified -->
-    <div id="ar-state-done" class="hidden">
-      <div class="ar-ok">✓ Thank you, <b id="ar-done-name"></b>. Your email is verified and this device is registered.<br>Taking you to sign in…</div>
-    </div>
-
-    <div style="margin-top:16px;text-align:center"><button class="ar-link" id="ar-already">Already registered on this device? Sign in</button></div>
-  </div>
-  <div style="margin:20px 0 auto;font-size:11px;color:rgba(255,255,255,.3);text-align:center">HOSPRO · <span data-tenant="hotelName"></span> · Authorised use only</div>
-</div>
 
 <!-- ================= APP ================= -->
 <div id="app" class="hidden">
