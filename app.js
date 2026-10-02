@@ -173,6 +173,7 @@ function render(){
     rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings,
     staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs,
     brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography,
+    hosbrand:v=>renderModuleLanding("hosbrand"),
     hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR
   }[CURRENT_TAB]||renderRooms)(v);
 }
@@ -4284,7 +4285,6 @@ function renderModuleLanding(moduleId){
   if(!m) return;
 
   // HosBRAND goes straight to brandDocs
-  if(moduleId==="hosbrand"){ switchTab("brandDocs"); return; }
   if(moduleId==="hoshub"){ switchTab("hubDocs"); return; }
 
   const subcards = (typeof MODULE_SUBCARDS!=="undefined" && MODULE_SUBCARDS[moduleId]) || [];
@@ -6595,76 +6595,40 @@ const BH_DOCS = [
 const BH_PDF_BASE = "/";
 
 function renderBrandDocs(v){
-  // Show breadcrumb
-  const bc = document.getElementById("sf-breadcrumb");
-  const bcLabel = document.getElementById("sf-bc-module");
-  const bcTab   = document.getElementById("sf-bc-tab");
-  if(bc){ bc.style.display="flex"; }
-  if(bcLabel) bcLabel.textContent = "HosBRAND";
-  if(bcTab)   bcTab.textContent   = "Brochures & Downloads";
+  v.innerHTML=''; v.style.padding='0';
+  const wrap=document.createElement('div');
+  wrap.style.cssText='padding:28px;min-height:100%';
 
-  v.innerHTML = "";
-  v.style.padding = "0";
-
-  const wrap = document.createElement("div");
-  wrap.style.cssText = "min-height:100%;background:#1a2b3a;padding:28px";
-
-  // Header
-  wrap.innerHTML = `
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px">
-      <div style="width:52px;height:52px;border-radius:14px;background:#1a2b3a;display:flex;align-items:center;justify-content:center;font-size:26px">📁</div>
+  wrap.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
       <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#1a2b3a">HosBRAND</div>
-        <div style="font-size:13px;color:#374151">Brandon Hall Hotel &amp; Spa — Brochures, Menus &amp; Brand Downloads</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Menus & Wine Lists</div>
+        <div style="font-size:13px;color:#8fa3b8">The Clarendon — downloadable menus and wine lists</div>
       </div>
-      <button onclick="switchTab('home')" style="margin-left:auto;padding:9px 18px;background:#fff;border:2px solid #e5e7eb;border-radius:10px;font:600 13px Lato;color:#1a2b3a;cursor:pointer">🏠 Home</button>
-    </div>`;
-
-  BH_DOCS.forEach(cat => {
-    const section = document.createElement("div");
-    section.style.cssText = "margin-bottom:28px";
-    section.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid ${cat.colour}">
-      <span style="width:10px;height:10px;border-radius:50%;background:${cat.colour};display:inline-block"></span>
-      <span style="font-size:13px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.8px">${cat.category}</span>
+      <button onclick="switchTab('hosbrand')" style="padding:8px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;color:#fff;cursor:pointer">← Back to HosBRAND</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
-      ${cat.docs.map(doc => `
-        <div style="background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid ${cat.colour};display:flex;flex-direction:column;gap:10px">
-          <div style="display:flex;align-items:flex-start;gap:10px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
+      ${BH_DOCS.flatMap(cat=>cat.docs).map(doc=>`
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px;border-left:3px solid #4a9d7f;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:12px;align-items:flex-start">
             <span style="font-size:28px;flex-shrink:0">${doc.icon}</span>
             <div>
-              <div style="font-size:13px;font-weight:700;color:#1a2b3a;line-height:1.3">${doc.title}</div>
-              <div style="font-size:11px;color:#374151;margin-top:3px">${doc.desc}</div>
+              <div style="font-size:14px;font-weight:700;color:#fff">${doc.title}</div>
+              <div style="font-size:11px;color:#8fa3b8;margin-top:3px">${doc.desc}</div>
             </div>
           </div>
           <div style="display:flex;gap:8px;margin-top:auto">
-            <a href="${BH_PDF_BASE}${doc.file}" target="_blank" rel="noopener"
-              style="flex:1;padding:8px 12px;background:#1a2b3a;color:#fff;border-radius:8px;font:600 12px Lato;text-decoration:none;text-align:center;display:block">
-              👁 View
-            </a>
-            <a href="${BH_PDF_BASE}${doc.file}" download
-              style="flex:1;padding:8px 12px;background:#fff;color:#1a2b3a;border:1.5px solid #1a2b3a;border-radius:8px;font:600 12px Lato;text-decoration:none;text-align:center;display:block">
-              ⬇ Download
-            </a>
+            <a href="/${doc.file}" target="_blank" rel="noopener"
+               style="flex:1;padding:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">👁 View</a>
+            <a href="/${doc.file}" download
+               style="flex:1;padding:8px;background:#c78a3b;border:none;border-radius:8px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">⬇ Download</a>
           </div>
-        </div>`).join("")}
+        </div>`).join('')}
     </div>`;
-    wrap.appendChild(section);
-  });
-
   v.appendChild(wrap);
 }
 
-/* ============================================================ HOSSTAFF */
 
-// ── Default annual leave entitlements ────────────────────────────────────────
-const HS_LEAVE_DEFAULTS = {
-  fullTime: 28,  // days statutory + BH
-  partTime: 20,
-  zeroHours: 0
-};
-
-// ── Storage ───────────────────────────────────────────────────────────────────
 function hsGetProfiles()  { return hsGetProfilesSeeded(); }
 function hsSaveProfiles(d){ localStorage.setItem('hs_profiles',  JSON.stringify(d)); }
 function hsGetLeave()     { return JSON.parse(localStorage.getItem('hs_leave')     || '[]'); }
@@ -7311,9 +7275,12 @@ function renderBrandLogos(v){
   const wrap = document.createElement('div');
   wrap.style.cssText = 'padding:28px;min-height:100%';
   wrap.innerHTML = `
-    <div style="margin-bottom:24px">
-      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Logos & Brand Assets</div>
-      <div style="font-size:13px;color:#8fa3b8">Official Brandon Hall Hotel & Spa brand assets — use approved versions only</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Logos & Brand Assets</div>
+        <div style="font-size:13px;color:#8fa3b8">Official Brandon Hall Hotel & Spa brand assets — use approved versions only</div>
+      </div>
+      <button onclick="switchTab('hosbrand')" style="padding:8px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;color:#fff;cursor:pointer">← Back to HosBRAND</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
       ${[
@@ -7340,9 +7307,12 @@ function renderBrandPhotography(v){
   const wrap = document.createElement('div');
   wrap.style.cssText = 'padding:28px;min-height:100%';
   wrap.innerHTML = `
-    <div style="margin-bottom:24px">
-      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Photography Library</div>
-      <div style="font-size:13px;color:#8fa3b8">Approved hotel photography — bedrooms, venue, gardens, dining, spa</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Photography Library</div>
+        <div style="font-size:13px;color:#8fa3b8">Approved hotel photography — bedrooms, venue, gardens, dining, spa</div>
+      </div>
+      <button onclick="switchTab('hosbrand')" style="padding:8px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;color:#fff;cursor:pointer">← Back to HosBRAND</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
       ${['Exterior & Gardens','Bedrooms & Suites','Event Spaces','The Clarendon Restaurant','Spa & Wellness','Weddings & Events','Aerial Photography','Team & Service'].map(cat => `
@@ -7381,9 +7351,12 @@ function renderBrandCollateral(v){
     ]},
   ];
 
-  wrap.innerHTML = `<div style="margin-bottom:24px">
-    <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Collateral & Brochures</div>
-    <div style="font-size:13px;color:#8fa3b8">All event packages, brochures and downloadable sales collateral</div>
+  wrap.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Collateral & Brochures</div>
+      <div style="font-size:13px;color:#8fa3b8">All event packages, brochures and downloadable sales collateral</div>
+    </div>
+    <button onclick="switchTab('hosbrand')" style="padding:8px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;color:#fff;cursor:pointer">← Back to HosBRAND</button>
   </div>`;
 
   BH_COLLATERAL.forEach(cat => {
