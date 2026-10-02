@@ -2783,122 +2783,230 @@ const BevStore={
     if(!this.log.length){ try{ this.log=JSON.parse(localStorage.getItem("bh_bev_log")||"[]"); }catch{} }
   }
 };
+
+// ── Bar & Beverage Stock — seeded 2 Oct 2026 from physical count ─────────────
+const BEV_STOCK_SEED = [{"id":"bev001","category":"Beer & Lager","supplier":"Matthew Clark","code":"00026639","name":"Corona 4.5%","pack":"330ml x24","unitPrice":25.09,"qty":5.67,"unit":"bottles","totalValue":142.26,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev002","category":"Beer & Lager","supplier":"Brakes","code":"119918","name":"Peroni Nastro Gluten Free NRB","pack":"330ml x24","unitPrice":37.45,"qty":4.5,"unit":"bottles","totalValue":168.53,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev003","category":"Beer & Lager","supplier":"","code":"","name":"Kopperberg Strawberry & Lime 0%","pack":"12 pack","unitPrice":12.34,"qty":1.42,"unit":"packs","totalValue":17.52,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev004","category":"Beer & Lager","supplier":"Heineken","code":"HK-HEIN00-NRB","name":"Heineken 0.0 NRB","pack":"330ml x24","unitPrice":42.04,"qty":4.21,"unit":"bottles","totalValue":176.99,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev005","category":"Cider","supplier":"Matthew Clark","code":"00033298","name":"Bulmers Red Berry & Lime","pack":"500ml x12","unitPrice":22.85,"qty":0.75,"unit":"bottles","totalValue":17.14,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev006","category":"Kegs","supplier":"Heineken","code":"HK-BEAV50","name":"Beavertown Neck Oil IPA","pack":"50L keg","unitPrice":268.43,"qty":2,"unit":"kegs","totalValue":536.86,"par":2,"lastCount":"2026-10-02","notes":""},{"id":"bev007","category":"Kegs","supplier":"Heineken","code":"HK-CRUZ50","name":"Cruzcampo","pack":"50L keg","unitPrice":133.42,"qty":2,"unit":"kegs","totalValue":266.84,"par":2,"lastCount":"2026-10-02","notes":""},{"id":"bev008","category":"Kegs","supplier":"Heineken","code":"HK-GUINNESS50","name":"Guinness Original","pack":"50L keg","unitPrice":155.82,"qty":2,"unit":"kegs","totalValue":311.64,"par":2,"lastCount":"2026-10-02","notes":""},{"id":"bev009","category":"Kegs","supplier":"Heineken","code":"HK-HEIN00-20","name":"Heineken 0.0","pack":"20L keg","unitPrice":0,"qty":0,"unit":"kegs","totalValue":0,"par":2,"lastCount":"2026-10-02","notes":""},{"id":"bev010","category":"Kegs","supplier":"Heineken","code":"HK-MORETTI50","name":"Birra Moretti","pack":"50L keg","unitPrice":150.26,"qty":3.7,"unit":"kegs","totalValue":555.96,"par":2,"lastCount":"2026-10-02","notes":""},{"id":"bev011","category":"Kegs","supplier":"Heineken","code":"HK-ORCHARD30","name":"Orchard Thieves Apple","pack":"30L keg","unitPrice":83.23,"qty":3.2,"unit":"kegs","totalValue":266.34,"par":2,"lastCount":"2026-10-02","notes":""},{"id":"bev012","category":"Liqueurs","supplier":"Matthew Clark","code":"00010137","name":"Drambuie","pack":"70cl","unitPrice":21.46,"qty":0,"unit":"bottles","totalValue":0.0,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev013","category":"Liqueurs","supplier":"Matthew Clark","code":"00010637","name":"Cointreau","pack":"70cl","unitPrice":20.77,"qty":1,"unit":"bottles","totalValue":20.77,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev014","category":"Liqueurs","supplier":"Matthew Clark","code":"00015527","name":"Disaronno Amaretto","pack":"70cl","unitPrice":17.5,"qty":1,"unit":"bottles","totalValue":17.5,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev015","category":"Liqueurs","supplier":"Matthew Clark","code":"00015530","name":"Baileys Irish Cream","pack":"70cl","unitPrice":13.13,"qty":3,"unit":"bottles","totalValue":39.39,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev016","category":"Liqueurs","supplier":"Matthew Clark","code":"00020110","name":"Aperol Aperitivo","pack":"70cl","unitPrice":11.98,"qty":3,"unit":"bottles","totalValue":35.94,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev017","category":"Liqueurs","supplier":"Matthew Clark","code":"00022497","name":"St Germain Elderflower","pack":"70cl","unitPrice":28.17,"qty":1,"unit":"bottles","totalValue":28.17,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev018","category":"Liqueurs","supplier":"Matthew Clark","code":"00029384","name":"Briot Creme de Cacao Dark","pack":"70cl","unitPrice":23.03,"qty":0.5,"unit":"bottles","totalValue":11.52,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev019","category":"Liqueurs","supplier":"Matthew Clark","code":"00031499","name":"Edinburgh R&G Liqueur 20%","pack":"50cl","unitPrice":10.52,"qty":2,"unit":"bottles","totalValue":21.04,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev020","category":"Liqueurs","supplier":"Matthew Clark","code":"00040723","name":"Kahlua Coffee Liqueur","pack":"70cl","unitPrice":14.52,"qty":2,"unit":"bottles","totalValue":29.04,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev021","category":"Liqueurs","supplier":"Matthew Clark","code":"00045236","name":"Malibu","pack":"1.5L","unitPrice":27.01,"qty":1,"unit":"bottles","totalValue":27.01,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev022","category":"Liqueurs","supplier":"Matthew Clark","code":"00046985","name":"M Briz Cacao Brown 20%","pack":"70cl","unitPrice":9.8,"qty":0,"unit":"bottles","totalValue":0.0,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev023","category":"Liqueurs","supplier":"","code":"","name":"Campari","pack":"70cl","unitPrice":16.75,"qty":1,"unit":"bottles","totalValue":16.75,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev024","category":"Liqueurs","supplier":"","code":"","name":"Martini Rosso","pack":"70cl","unitPrice":10.49,"qty":1.5,"unit":"bottles","totalValue":15.73,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev025","category":"Liqueurs","supplier":"","code":"","name":"Licor 43","pack":"70cl","unitPrice":21.24,"qty":1.2,"unit":"bottles","totalValue":25.49,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev026","category":"Liqueurs","supplier":"","code":"","name":"Coco Real Squeeze Coconut","pack":"","unitPrice":6.49,"qty":1.5,"unit":"bottles","totalValue":9.73,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev027","category":"Soft Drinks & Mixers","supplier":"Matthew Clark","code":"00040437","name":"Britvic Lime Cordial PET","pack":"1L x12","unitPrice":24.67,"qty":0.3,"unit":"cases","totalValue":7.4,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev028","category":"Soft Drinks & Mixers","supplier":"Matthew Clark","code":"00040439","name":"Britvic Blackcurrant Cordial PET","pack":"1L x12","unitPrice":24.67,"qty":1.25,"unit":"cases","totalValue":30.84,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev029","category":"Soft Drinks & Mixers","supplier":"Matthew Clark","code":"00042132","name":"Harrogate Still NRB","pack":"330ml x24","unitPrice":8.77,"qty":3.96,"unit":"cases","totalValue":34.73,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev030","category":"Soft Drinks & Mixers","supplier":"Matthew Clark","code":"00042133","name":"Harrogate Sparkling 750ml NRB","pack":"750ml x12","unitPrice":8.21,"qty":2.92,"unit":"cases","totalValue":23.97,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev031","category":"Soft Drinks & Mixers","supplier":"Matthew Clark","code":"00042134","name":"Harrogate Sparkling 330ml NRB","pack":"330ml x24","unitPrice":8.77,"qty":0.75,"unit":"cases","totalValue":6.58,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev032","category":"Soft Drinks & Mixers","supplier":"Brakes","code":"10734","name":"Folkington's Pure Orange Juice","pack":"250ml","unitPrice":13.49,"qty":58,"unit":"bottles","totalValue":782.42,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev033","category":"Soft Drinks & Mixers","supplier":"Brakes","code":"10735","name":"Folkington's Pure Apple Juice","pack":"250ml","unitPrice":14.49,"qty":37,"unit":"bottles","totalValue":536.13,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev034","category":"Soft Drinks & Mixers","supplier":"Brakes","code":"FT-TONIC","name":"Fever Tree Tonic Water","pack":"200ml x8","unitPrice":17.44,"qty":19.5,"unit":"cases","totalValue":340.08,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev035","category":"Soft Drinks & Mixers","supplier":"Heineken","code":"HK-COKE-NRB","name":"Coca Cola NRB","pack":"330ml x24","unitPrice":32.23,"qty":4.54,"unit":"cases","totalValue":146.32,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev036","category":"Soft Drinks & Mixers","supplier":"Heineken","code":"HK-COKEZERO-NRB","name":"Coca Cola Zero NRB","pack":"330ml x24","unitPrice":30.09,"qty":3.42,"unit":"cases","totalValue":102.91,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev037","category":"Soft Drinks & Mixers","supplier":"Heineken","code":"HK-DIETCOKE-NRB","name":"Diet Coke NRB","pack":"330ml x24","unitPrice":30.18,"qty":7.33,"unit":"cases","totalValue":221.22,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev038","category":"Soft Drinks & Mixers","supplier":"Heineken","code":"HK-FRANKLIN","name":"Franklin Brewed Ginger Beer","pack":"200ml x24","unitPrice":20.45,"qty":1.71,"unit":"cases","totalValue":34.97,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev039","category":"Soft Drinks & Mixers","supplier":"Heineken","code":"HK-FT-LIGHTTON","name":"Fever Tree Light Tonic","pack":"200ml x24","unitPrice":16.94,"qty":6.83,"unit":"cases","totalValue":115.7,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev040","category":"Soft Drinks & Mixers","supplier":"Heineken","code":"HK-FT-PREMLEM","name":"Fever Tree Premium Lemonade","pack":"200ml x24","unitPrice":17.93,"qty":4.67,"unit":"cases","totalValue":83.73,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev041","category":"Soft Drinks & Mixers","supplier":"Heineken","code":"HK-FT-SODA","name":"Fever Tree Soda Water","pack":"200ml x24","unitPrice":16.94,"qty":4.54,"unit":"cases","totalValue":76.91,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev042","category":"Soft Drinks & Mixers","supplier":"Heineken","code":"HK-J2O-APPMAN","name":"J2O Apple & Mango","pack":"275ml x24","unitPrice":27.9,"qty":1.75,"unit":"cases","totalValue":48.82,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev043","category":"Soft Drinks & Mixers","supplier":"Heineken","code":"HK-J2O-APPRASP","name":"J2O Apple & Raspberry","pack":"275ml x24","unitPrice":27.9,"qty":1.63,"unit":"cases","totalValue":45.48,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev044","category":"Soft Drinks & Mixers","supplier":"Heineken","code":"HK-J2O-ORGPAS","name":"J2O Orange & Passionfruit","pack":"275ml x24","unitPrice":27.9,"qty":2.21,"unit":"cases","totalValue":61.66,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev045","category":"Soft Drinks & Mixers","supplier":"","code":"","name":"Schwepps Lime Cordial","pack":"12 pack","unitPrice":22.22,"qty":0.5,"unit":"packs","totalValue":11.11,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev046","category":"Soft Drinks & Mixers","supplier":"","code":"","name":"Moni Watermelon","pack":"","unitPrice":5.49,"qty":1.5,"unit":"bottles","totalValue":8.23,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev047","category":"Soft Drinks & Mixers","supplier":"","code":"","name":"Monin Grenadine","pack":"","unitPrice":5.49,"qty":1.5,"unit":"bottles","totalValue":8.23,"par":24,"lastCount":"2026-10-02","notes":""},{"id":"bev048","category":"Sparkling","supplier":"Matthew Clark","code":"00029604","name":"Galanti Prosecco Frizzante","pack":"75cl x6","unitPrice":7.43,"qty":16,"unit":"bottles","totalValue":118.88,"par":6,"lastCount":"2026-10-02","notes":""},{"id":"bev049","category":"Sparkling","supplier":"","code":"","name":"Galanti Prosecco Ros\u00e9","pack":"75cl x6","unitPrice":7.43,"qty":5,"unit":"bottles","totalValue":37.15,"par":6,"lastCount":"2026-10-02","notes":""},{"id":"bev050","category":"Sparkling","supplier":"Matthew Clark","code":"00044719","name":"Casa Bottega Prosecco","pack":"75cl x6","unitPrice":7.78,"qty":0,"unit":"bottles","totalValue":0.0,"par":6,"lastCount":"2026-10-02","notes":""},{"id":"bev051","category":"Sparkling","supplier":"","code":"","name":"Prosecco Acquerello","pack":"75cl x12","unitPrice":6.29,"qty":20,"unit":"bottles","totalValue":125.8,"par":6,"lastCount":"2026-10-02","notes":""},{"id":"bev052","category":"Sparkling / Champagne","supplier":"Matthew Clark","code":"00011087","name":"Taittinger Brut Reserve","pack":"75cl x6","unitPrice":33.45,"qty":3,"unit":"bottles","totalValue":100.35,"par":6,"lastCount":"2026-10-02","notes":""},{"id":"bev053","category":"Spirits - Cognac","supplier":"Heineken","code":"HK-COURVOISIER","name":"Courvoisier VS 40%","pack":"70cl","unitPrice":24.57,"qty":2.3,"unit":"bottles","totalValue":56.51,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev054","category":"Spirits - Cognac","supplier":"","code":"","name":"Hennessy","pack":"70cl","unitPrice":32.08,"qty":1.5,"unit":"bottles","totalValue":48.12,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev055","category":"Spirits - Cognac","supplier":"","code":"","name":"Remy Martin","pack":"70cl","unitPrice":33.42,"qty":1.6,"unit":"bottles","totalValue":53.47,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev056","category":"Spirits - Gin","supplier":"Matthew Clark","code":"00015492","name":"Bombay Sapphire Gin","pack":"70cl","unitPrice":19.68,"qty":4.3,"unit":"bottles","totalValue":84.62,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev057","category":"Spirits - Gin","supplier":"Matthew Clark","code":"00027837","name":"Gin Mare","pack":"70cl","unitPrice":32.56,"qty":2.7,"unit":"bottles","totalValue":87.91,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev058","category":"Spirits - Gin","supplier":"Matthew Clark","code":"00038189","name":"Edinburgh R&G Gin 40%","pack":"70cl","unitPrice":21.92,"qty":1.3,"unit":"bottles","totalValue":28.5,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev059","category":"Spirits - Gin","supplier":"Matthew Clark","code":"00040240","name":"Tanqueray No.Ten 47.3%","pack":"70cl","unitPrice":28.82,"qty":1,"unit":"bottles","totalValue":28.82,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev060","category":"Spirits - Gin","supplier":"Matthew Clark","code":"00046586","name":"Gordons Pink 35%","pack":"70cl","unitPrice":14.73,"qty":2.75,"unit":"bottles","totalValue":40.51,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev061","category":"Spirits - Gin","supplier":"Heineken","code":"HK-BOMBAY-CITRON","name":"Bombay Citron Presse 37.5%","pack":"70cl","unitPrice":22.45,"qty":1,"unit":"bottles","totalValue":22.45,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev062","category":"Spirits - Gin","supplier":"Heineken","code":"HK-GORDGIN","name":"Gordons Gin 37.5%","pack":"70cl","unitPrice":15.88,"qty":1.3,"unit":"bottles","totalValue":20.64,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev063","category":"Spirits - Gin","supplier":"Heineken","code":"HK-GORDMOR","name":"Gordons Morello Cherry 37.5%","pack":"70cl","unitPrice":17.87,"qty":1.75,"unit":"bottles","totalValue":31.27,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev064","category":"Spirits - Gin","supplier":"Heineken","code":"HK-HENDRICKS","name":"Hendricks Gin 41.4%","pack":"70cl","unitPrice":26.73,"qty":2,"unit":"bottles","totalValue":53.46,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev065","category":"Spirits - Gin","supplier":"","code":"","name":"Pimms","pack":"70cl","unitPrice":16.42,"qty":3,"unit":"bottles","totalValue":49.26,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev066","category":"Spirits - Gin","supplier":"","code":"","name":"Hendricks Orange","pack":"70cl","unitPrice":27.0,"qty":1,"unit":"bottles","totalValue":27.0,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev067","category":"Spirits - Gin","supplier":"Heineken","code":"HK-TANQ-AF","name":"Tanqueray Alcohol Free 0%","pack":"70cl","unitPrice":13.52,"qty":1,"unit":"bottles","totalValue":13.52,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev068","category":"Spirits - Rum","supplier":"Matthew Clark","code":"00015799","name":"Captain Morgan Spiced","pack":"1.5L","unitPrice":31.04,"qty":1.2,"unit":"bottles","totalValue":37.25,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev069","category":"Spirits - Rum","supplier":"","code":"","name":"Captain Morgan Dark Rum","pack":"70cl","unitPrice":15.96,"qty":1.75,"unit":"bottles","totalValue":27.93,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev070","category":"Spirits - Rum","supplier":"","code":"","name":"Captain Morgan Dark Spiced","pack":"70cl","unitPrice":19.91,"qty":1.75,"unit":"bottles","totalValue":34.84,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev071","category":"Spirits - Rum","supplier":"Matthew Clark","code":"00026502","name":"Kraken Black Spiced Rum","pack":"70cl","unitPrice":25.04,"qty":2.2,"unit":"bottles","totalValue":55.09,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev072","category":"Spirits - Rum","supplier":"Heineken","code":"HK-BACARDI","name":"Bacardi Rum 37.5%","pack":"70cl","unitPrice":17.28,"qty":0.25,"unit":"bottles","totalValue":4.32,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev073","category":"Spirits - Tequila","supplier":"Matthew Clark","code":"00047387","name":"Jose Cuervo Esp Gold 35%","pack":"70cl","unitPrice":18.15,"qty":0.75,"unit":"bottles","totalValue":13.61,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev074","category":"Spirits - Tequila","supplier":"Heineken","code":"HK-JC-SILVER","name":"Jose Cuervo Silver 35%","pack":"70cl","unitPrice":19.8,"qty":2,"unit":"bottles","totalValue":39.6,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev075","category":"Spirits - Tequila","supplier":"","code":"","name":"Buen Amigo Gold","pack":"70cl","unitPrice":15.89,"qty":0.9,"unit":"bottles","totalValue":14.3,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev076","category":"Spirits - Tequila","supplier":"","code":"","name":"Buen Amigo Silver","pack":"70cl","unitPrice":15.89,"qty":1.8,"unit":"bottles","totalValue":28.6,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev077","category":"Spirits - Tequila","supplier":"","code":"","name":"Casamigos","pack":"70cl","unitPrice":35.39,"qty":0.8,"unit":"bottles","totalValue":28.31,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev078","category":"Spirits - Vodka","supplier":"Heineken","code":"HK-ABS-BLUE","name":"Absolut Blue 40%","pack":"70cl","unitPrice":16.18,"qty":2.5,"unit":"bottles","totalValue":40.45,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev079","category":"Spirits - Vodka","supplier":"Heineken","code":"HK-ABS-RASP","name":"Absolut Raspberri 38%","pack":"70cl","unitPrice":17.77,"qty":0.75,"unit":"bottles","totalValue":13.33,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev080","category":"Spirits - Vodka","supplier":"Heineken","code":"HK-ABS-VAN","name":"Absolut Vanilia 38%","pack":"70cl","unitPrice":17.82,"qty":2.2,"unit":"bottles","totalValue":39.2,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev081","category":"Spirits - Vodka","supplier":"Heineken","code":"HK-GREYGOOSE","name":"Grey Goose Vodka 40%","pack":"70cl","unitPrice":35.24,"qty":1.7,"unit":"bottles","totalValue":59.91,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev082","category":"Spirits - Vodka","supplier":"Heineken","code":"HK-SMIRNOFF","name":"Smirnoff Red 37.5%","pack":"70cl","unitPrice":13.61,"qty":1,"unit":"bottles","totalValue":13.61,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev083","category":"Spirits - Whiskey","supplier":"Brakes","code":"130920","name":"Jameson Irish Whiskey","pack":"70cl","unitPrice":24.11,"qty":1,"unit":"bottles","totalValue":24.11,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev084","category":"Spirits - Whiskey","supplier":"Heineken","code":"HK-BULLEIT","name":"Bulleit Bourbon 45%","pack":"70cl","unitPrice":25.85,"qty":1,"unit":"bottles","totalValue":25.85,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev085","category":"Spirits - Whiskey","supplier":"Heineken","code":"HK-JD-TENN","name":"Jack Daniels Tennessee 40%","pack":"70cl","unitPrice":20.79,"qty":2,"unit":"bottles","totalValue":41.58,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev086","category":"Spirits - Whiskey","supplier":"","code":"","name":"JD Tennessee Honey","pack":"70cl","unitPrice":24.35,"qty":3.5,"unit":"bottles","totalValue":85.23,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev087","category":"Spirits - Whiskey","supplier":"","code":"","name":"Fireball","pack":"70cl","unitPrice":22.3,"qty":0.8,"unit":"bottles","totalValue":17.84,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev088","category":"Spirits - Whiskey","supplier":"","code":"","name":"Jager","pack":"70cl","unitPrice":21.66,"qty":0.7,"unit":"bottles","totalValue":15.16,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev089","category":"Spirits - Whisky","supplier":"Matthew Clark","code":"00010520","name":"Laphroaig 10yo","pack":"70cl","unitPrice":36.16,"qty":1.65,"unit":"bottles","totalValue":59.66,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev090","category":"Spirits - Whisky","supplier":"Matthew Clark","code":"00018213","name":"Monkey Shoulder Malt","pack":"70cl","unitPrice":21.94,"qty":1,"unit":"bottles","totalValue":21.94,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev091","category":"Spirits - Whisky","supplier":"Matthew Clark","code":"00046437","name":"Glenmorangie Orig 12yo","pack":"70cl","unitPrice":28.33,"qty":1.5,"unit":"bottles","totalValue":42.49,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev092","category":"Spirits - Whisky","supplier":"Matthew Clark","code":"00047689","name":"Famous Grouse Whisky","pack":"70cl","unitPrice":14.2,"qty":0,"unit":"bottles","totalValue":0.0,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev093","category":"Spirits - Whisky","supplier":"Heineken","code":"HK-CHIVAS","name":"Chivas Regal 12yo 40%","pack":"70cl","unitPrice":29.39,"qty":1,"unit":"bottles","totalValue":29.39,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev094","category":"Spirits - Whisky","supplier":"Heineken","code":"HK-GLENFIDDICH","name":"Glenfiddich Special 40%","pack":"70cl","unitPrice":32.17,"qty":4.4,"unit":"bottles","totalValue":141.55,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev095","category":"Spirits - Whisky","supplier":"Heineken","code":"HK-TALISKER","name":"Talisker 10yo 45.8%","pack":"70cl","unitPrice":37.0,"qty":0.8,"unit":"bottles","totalValue":29.6,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev096","category":"Spirits - Whisky","supplier":"","code":"","name":"Dow's Port","pack":"75cl x6","unitPrice":67.5,"qty":0.67,"unit":"bottles","totalValue":45.23,"par":3,"lastCount":"2026-10-02","notes":""},{"id":"bev097","category":"Wine - Red","supplier":"Matthew Clark","code":"00029058","name":"Nederburg HH Motorcycle","pack":"75cl","unitPrice":12.68,"qty":6,"unit":"bottles","totalValue":76.08,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev098","category":"Wine - Red","supplier":"Matthew Clark","code":"00044810","name":"Corte Vigna Merlot","pack":"75cl","unitPrice":4.95,"qty":52,"unit":"bottles","totalValue":257.4,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev099","category":"Wine - Red","supplier":"Matthew Clark","code":"00047057","name":"Nyala Cabernet Sauvignon 12.5%","pack":"75cl","unitPrice":5.09,"qty":13,"unit":"bottles","totalValue":66.17,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev100","category":"Wine - Red","supplier":"","code":"","name":"Club De Campo Malbec","pack":"75cl","unitPrice":7.65,"qty":7.6,"unit":"bottles","totalValue":58.14,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev101","category":"Wine - Red","supplier":"","code":"","name":"St Hallett Shiraz","pack":"75cl","unitPrice":12.43,"qty":23,"unit":"bottles","totalValue":285.89,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev102","category":"Wine - Red","supplier":"","code":"","name":"Rioja","pack":"75cl x6","unitPrice":36.42,"qty":1.5,"unit":"bottles","totalValue":54.63,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev103","category":"Wine - Red","supplier":"","code":"","name":"Bello Pino","pack":"75cl","unitPrice":6.09,"qty":51,"unit":"bottles","totalValue":310.59,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev104","category":"Wine - Ros\u00e9","supplier":"Matthew Clark","code":"00047138","name":"Mirabello Forever Summer 12.5%","pack":"75cl","unitPrice":10.4,"qty":48.9,"unit":"bottles","totalValue":508.56,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev105","category":"Wine - Ros\u00e9","supplier":"Matthew Clark","code":"00048286","name":"Wicked Lady White Zinfandel","pack":"75cl","unitPrice":4.72,"qty":14.9,"unit":"bottles","totalValue":70.33,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev106","category":"Wine - Ros\u00e9","supplier":"","code":"","name":"Bello Ros\u00e9","pack":"75cl","unitPrice":6.09,"qty":30,"unit":"bottles","totalValue":182.7,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev107","category":"Wine - White","supplier":"Matthew Clark","code":"00043818","name":"Icauna Petit Chablis","pack":"75cl","unitPrice":12.0,"qty":6,"unit":"bottles","totalValue":72.0,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev108","category":"Wine - White","supplier":"Matthew Clark","code":"00045856","name":"Nyala Sauvignon Blanc 11%","pack":"75cl","unitPrice":4.81,"qty":24,"unit":"bottles","totalValue":115.44,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev109","category":"Wine - White","supplier":"Matthew Clark","code":"00046063","name":"Vita Lucido Pinot Grigio 10.5%","pack":"75cl","unitPrice":5.11,"qty":42.9,"unit":"bottles","totalValue":219.22,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev110","category":"Wine - White","supplier":"Matthew Clark","code":"00049002","name":"Icauna Chablis","pack":"75cl","unitPrice":13.95,"qty":0,"unit":"bottles","totalValue":0.0,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev111","category":"Wine - White","supplier":"","code":"","name":"Haystack Chardonnay","pack":"75cl","unitPrice":8.16,"qty":4.2,"unit":"bottles","totalValue":34.27,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev112","category":"Wine - White","supplier":"","code":"","name":"Villa Blanche Chardonnay","pack":"75cl","unitPrice":8.89,"qty":8,"unit":"bottles","totalValue":71.12,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev113","category":"Wine - White","supplier":"","code":"","name":"Turtle Bay Sauvignon Blanc","pack":"75cl","unitPrice":8.29,"qty":51,"unit":"bottles","totalValue":422.79,"par":12,"lastCount":"2026-10-02","notes":""},{"id":"bev114","category":"Wine - White","supplier":"","code":"","name":"Serrenello","pack":"75cl","unitPrice":5.49,"qty":4,"unit":"bottles","totalValue":21.96,"par":12,"lastCount":"2026-10-02","notes":""}];
+
+const BEV_CATS = ['Beer & Lager','Cider','Kegs','Spirits - Gin','Spirits - Vodka',
+  'Spirits - Rum','Spirits - Whisky','Spirits - Whiskey','Spirits - Tequila',
+  'Spirits - Cognac','Liqueurs','Wine - Red','Wine - White','Wine - Rosé',
+  'Sparkling','Sparkling / Champagne','Soft Drinks & Mixers'];
+
+function bevGetStock(){
+  const stored=localStorage.getItem('bh_bev_stock');
+  if(stored) return JSON.parse(stored);
+  const seed=BEV_STOCK_SEED.map(s=>Object.assign({},s));
+  localStorage.setItem('bh_bev_stock',JSON.stringify(seed));
+  return seed;
+}
+function bevSave(d){ localStorage.setItem('bh_bev_stock',JSON.stringify(d)); }
+
 function renderBeverage(v){
-  v.appendChild(head("Beverage Management","Live bar stock, usage and value. Staff sign stock in and out on the iPad screen in the stock room; this is the dashboard and reporting side."));
-  const info=el("div","quote-panel");
-  const bevUrl=location.href.split("#")[0].replace(/index\.html$/,"").replace(/\/$/,"")+"/beverage.html";
-  info.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-    <div><b>📱 Stock room screen</b><div class="qs-sub">Open this on the iPad on the stock room wall — PIN protected (0356).</div></div>
-    <div class="dual-btn" style="margin:0"><a class="btn" href="${bevUrl}" target="_blank">Open iPad screen</a>
-    <button class="btn ghost" id="bev-copy">Copy link</button></div></div>`;
-  v.appendChild(info);
-  const cp=$("#bev-copy"); if(cp) cp.onclick=()=>{ navigator.clipboard?.writeText(bevUrl); cp.textContent="Copied"; };
+  v.innerHTML=''; v.style.padding='0';
+  const stock=bevGetStock();
+  const search=window._bevSearch||'', cat=window._bevCat||'all';
+  let items=stock;
+  if(search) items=items.filter(i=>i.name.toLowerCase().includes(search.toLowerCase())||i.category.toLowerCase().includes(search.toLowerCase())||i.supplier.toLowerCase().includes(search.toLowerCase()));
+  if(cat!=='all') items=items.filter(i=>i.category===cat);
 
-  const mount=el("div"); mount.innerHTML=`<p class="qs-sub" style="padding:16px">Loading stock…</p>`; v.appendChild(mount);
-  BevStore.load().then(()=>{
-    const items=Object.values(BevStore.levels);
-    const totVal=items.reduce((s,p)=>s+p.stock*(p.price||0),0);
-    const low=items.filter(p=>p.stock>0&&p.stock<2);
-    const out=items.filter(p=>p.stock<=0);
-    // weekly usage from log
-    const weekAgo=new Date(Date.now()-7*864e5).toISOString();
-    const weekOut=BevStore.log.filter(e=>e.type==="remove"&&e.at>=weekAgo);
-    const weekUsageVal=weekOut.reduce((s,e)=>{ const p=BevStore.levels[e.id]; return s+Math.abs(e.delta)*((p&&p.price)||0); },0);
+  const totalVal=stock.reduce((t,i)=>t+i.totalValue,0);
+  const lowStock=stock.filter(i=>i.qty<i.par&&i.qty>0).length;
+  const outOfStock=stock.filter(i=>i.qty===0).length;
+  const lastCount=stock[0]?.lastCount||'';
 
-    const stats=el("div","stat-cards");
-    stats.innerHTML=`
-      <div class="stat-card"><div class="sc-v">${money2dp(totVal)}</div><div class="sc-k">Stock value (ex-VAT)</div></div>
-      <div class="stat-card"><div class="sc-v">${items.length}</div><div class="sc-k">Products</div></div>
-      <div class="stat-card" style="${low.length?'border-left:3px solid #c78a3b':''}"><div class="sc-v" style="${low.length?'color:#c78a3b':''}">${low.length}</div><div class="sc-k">Low stock</div></div>
-      <div class="stat-card" style="${out.length?'border-left:3px solid #b3261e':''}"><div class="sc-v" style="${out.length?'color:#b3261e':''}">${out.length}</div><div class="sc-k">Out of stock</div></div>
-      <div class="stat-card"><div class="sc-v">${money2dp(weekUsageVal)}</div><div class="sc-k">Used this week</div></div>`;
-    mount.innerHTML=""; mount.appendChild(stats);
+  // Category totals
+  const catTotals={};
+  BEV_CATS.forEach(c=>{ const its=stock.filter(i=>i.category===c); catTotals[c]={count:its.length,value:its.reduce((t,i)=>t+i.totalValue,0),low:its.filter(i=>i.qty<i.par&&i.qty>0).length}; });
 
-    // toolbar
-    const tb=el("div","pipe-toolbar");
-    tb.innerHTML=`<div class="rag-legend"><span>Stock by category. Export a weekly usage report for records or ordering.</span></div>
-      <div class="pipe-actions">
-        <button class="btn" id="bev-report">📊 Weekly usage report</button>
-        <button class="btn ghost" id="bev-export">⬇ Export stock (CSV)</button>
-      </div>`;
-    mount.appendChild(tb);
-    $("#bev-report").onclick=()=>bevWeeklyReport();
-    $("#bev-export").onclick=()=>bevExportCSV();
+  const rows=items.map(item=>{
+    const isLow=item.qty>0&&item.qty<item.par;
+    const isOut=item.qty===0;
+    const rowBg=isOut?'#fff5f5':isLow?'#fffbeb':'';
+    const qtyCol=isOut?'#991b1b':isLow?'#854d0e':'#166534';
+    return `<tr style="border-bottom:1px solid #e5e7eb;${rowBg?'background:'+rowBg:''}">
+      <td style="padding:9px 12px">
+        <div style="font-size:13px;font-weight:600;color:#1a2b3a">${item.name}</div>
+        <div style="font-size:11px;color:#374151">${item.supplier||''}</div>
+      </td>
+      <td style="padding:9px 8px"><span style="font-size:11px;color:#374151;background:#f3f4f6;padding:2px 7px;border-radius:8px">${item.category}</span></td>
+      <td style="padding:9px 8px;font-size:11px;color:#374151">${item.pack||''}</td>
+      <td style="padding:9px 8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="bevAdjQty('${item.id}',-0.25)" style="width:26px;height:26px;border:1.5px solid #d1d5db;border-radius:6px;background:#fff;font:600 13px Lato;cursor:pointer;color:#374151;display:flex;align-items:center;justify-content:center">−</button>
+          <input type="number" step="0.25" min="0" value="${item.qty}" data-id="${item.id}"
+            onchange="bevUpdateQty(this)"
+            style="width:60px;padding:5px;border:1.5px solid #d1d5db;border-radius:6px;font:600 13px Lato;text-align:center;color:${qtyCol}">
+          <button onclick="bevAdjQty('${item.id}',0.25)" style="width:26px;height:26px;border:1.5px solid #d1d5db;border-radius:6px;background:#fff;font:600 13px Lato;cursor:pointer;color:#374151;display:flex;align-items:center;justify-content:center">+</button>
+        </div>
+      </td>
+      <td style="padding:9px 8px;font-size:12px;color:#374151">Par: ${item.par}</td>
+      <td style="padding:9px 8px;font-size:12px;font-weight:600;color:#1a2b3a">£${item.totalValue.toFixed(2)}</td>
+      <td style="padding:9px 8px">
+        ${isOut?'<span style="font-size:11px;font-weight:700;color:#991b1b">OUT</span>':isLow?'<span style="font-size:11px;font-weight:700;color:#854d0e">⚠ Low</span>':'<span style="font-size:11px;color:#166534">✓ OK</span>'}
+      </td>
+    </tr>`;
+  }).join('');
 
-    // stock table grouped by category
-    const cats={}; items.forEach(p=>{ (cats[p.cat]=cats[p.cat]||[]).push(p); });
-    const panel=el("div","quote-panel");
-    panel.innerHTML=Object.keys(cats).sort().map(cat=>{
-      const rows=cats[cat].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{
-        const val=p.stock*(p.price||0); const lowf=p.stock<2;
-        return `<tr><td>${p.name}</td><td>${p.pack||p.unit}</td><td>${p.sup||"—"}</td>
-          <td class="r ${lowf?'':''}" style="${lowf?'color:#b3261e;font-weight:700':''}">${(+p.stock).toLocaleString("en-GB",{maximumFractionDigits:2})}</td>
-          <td class="r">${money2dp(p.price)}</td><td class="r">${money2dp(val)}</td></tr>`;
-      }).join("");
-      const catVal=cats[cat].reduce((s,p)=>s+p.stock*(p.price||0),0);
-      return `<div class="bev-cat"><div class="bev-cat-h"><h3>${cat}</h3><span>${money2dp(catVal)}</span></div>
-        <div class="tbl-scroll"><table class="ct-table"><tr><th>Product</th><th>Pack</th><th>Supplier</th><th class="r">Stock</th><th class="r">Unit £</th><th class="r">Value</th></tr>${rows}</table></div></div>`;
-    }).join("");
-    mount.appendChild(panel);
+  v.innerHTML=`<div style="padding:20px 28px;min-height:100%;background:#f0f4f8">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a">Bar Stock</div>
+        <div style="font-size:13px;color:#374151">Last count: ${lastCount ? new Date(lastCount).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : '—'} · ${items.length} of ${stock.length} items shown</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="bevImportModal()" style="padding:8px 14px;background:#2f6f9e;color:#fff;border:none;border-radius:8px;font:700 12px Lato;cursor:pointer">📤 Upload count</button>
+        <button onclick="bevAddItem()" style="padding:8px 14px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:700 12px Lato;cursor:pointer">+ Add item</button>
+        <button onclick="bevExport()" style="padding:8px 14px;background:#fff;border:1.5px solid #d1d5db;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">⬇ Export</button>
+      </div>
+    </div>
 
-    // recent movements
-    if(BevStore.log.length){
-      const logp=el("div","quote-panel");
-      logp.innerHTML=`<div class="sec-title" style="margin-top:0">Recent movements</div>
-        <div class="tbl-scroll"><table class="ct-table"><tr><th>When</th><th>Product</th><th>Type</th><th class="r">Qty</th><th>By</th><th>Note</th></tr>
-        ${BevStore.log.slice(0,30).map(e=>`<tr><td>${new Date(e.at).toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</td>
-          <td>${e.name}</td><td><span class="pay-pill" style="background:${e.type==="remove"?"#fdecec;color:#b3261e":"#e8f3ee;color:#2a6a4a"}">${e.type==="remove"?"Out":"In"}</span></td>
-          <td class="r">${e.delta>0?"+":""}${(+e.delta).toLocaleString("en-GB",{maximumFractionDigits:2})}</td><td>${e.staff||"—"}</td><td class="qs-sub">${e.note||""}</td></tr>`).join("")}
-        </table></div>`;
-      mount.appendChild(logp);
-    }
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+      ${[
+        {label:'Total Stock Value',val:'£'+totalVal.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}),col:'#1a2b3a',bg:'#fff'},
+        {label:'Items',val:stock.length,col:'#1a2b3a',bg:'#fff'},
+        {label:'Low Stock',val:lowStock,col:'#854d0e',bg:'#fffbeb'},
+        {label:'Out of Stock',val:outOfStock,col:'#991b1b',bg:'#fff5f5'},
+      ].map(s=>`<div style="background:${s.bg};border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+        <div style="font-size:22px;font-weight:700;color:${s.col}">${s.val}</div>
+        <div style="font-size:11px;color:#374151;margin-top:2px">${s.label}</div>
+      </div>`).join('')}
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <input type="text" placeholder="🔍 Search..." value="${search}"
+        oninput="window._bevSearch=this.value;renderBeverage(document.getElementById('view'))"
+        style="flex:1;min-width:180px;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:9px;font:13px Lato;color:#1a2b3a;background:#fff">
+      <select onchange="window._bevCat=this.value;renderBeverage(document.getElementById('view'))"
+        style="padding:9px 12px;border:1.5px solid #d1d5db;border-radius:9px;font:13px Lato;color:#1a2b3a;background:#fff">
+        <option value="all"${cat==='all'?' selected':''}>All categories</option>
+        ${BEV_CATS.map(c=>`<option value="${c}"${cat===c?' selected':''}>${c} (${catTotals[c]?.count||0})</option>`).join('')}
+      </select>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#1a2b3a">
+          ${['Product','Category','Pack Size','Qty (editable)','Par Level','Value','Status'].map(h=>`<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.4px">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function bevUpdateQty(input){
+  const stock=bevGetStock(), id=input.dataset.id, item=stock.find(i=>i.id===id); if(!item) return;
+  const newQty=parseFloat(input.value)||0;
+  item.qty=Math.max(0,newQty);
+  item.totalValue=Math.round(item.qty*item.unitPrice*100)/100;
+  item.lastCount=new Date().toISOString().slice(0,10);
+  bevSave(stock);
+  // Update displayed value
+  const row=input.closest('tr');
+  if(row){
+    const valCell=row.cells[5]; if(valCell) valCell.textContent='£'+item.totalValue.toFixed(2);
+    const statCell=row.cells[6];
+    if(statCell) statCell.innerHTML=item.qty===0?'<span style="font-size:11px;font-weight:700;color:#991b1b">OUT</span>':item.qty<item.par?'<span style="font-size:11px;font-weight:700;color:#854d0e">⚠ Low</span>':'<span style="font-size:11px;color:#166534">✓ OK</span>';
+  }
+  toast('Qty updated ✓');
+}
+
+function bevAdjQty(id,delta){
+  const stock=bevGetStock(), item=stock.find(i=>i.id===id); if(!item) return;
+  item.qty=Math.max(0,Math.round((item.qty+delta)*100)/100);
+  item.totalValue=Math.round(item.qty*item.unitPrice*100)/100;
+  item.lastCount=new Date().toISOString().slice(0,10);
+  bevSave(stock);
+  renderBeverage(document.getElementById('view'));
+}
+
+function bevAddItem(){
+  openModal(`<div style="padding:4px"><div style="font-size:16px;font-weight:700;color:#1a2b3a;margin-bottom:14px">Add stock item</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div style="grid-column:span 2"><label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase">Product name</label>
+        <input type="text" id="bev-name" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
+      <div><label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase">Category</label>
+        <select id="bev-cat" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+          ${BEV_CATS.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div><label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase">Supplier</label>
+        <input type="text" id="bev-sup" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
+      <div><label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase">Unit price (ex-VAT)</label>
+        <input type="number" id="bev-price" step="0.01" placeholder="0.00" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
+      <div><label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase">Current qty</label>
+        <input type="number" id="bev-qty" step="0.25" placeholder="0" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
+      <div><label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase">Par level</label>
+        <input type="number" id="bev-par" placeholder="6" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
+      <div><label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase">Pack size</label>
+        <input type="text" id="bev-pack" placeholder="70cl" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="bevDoAdd()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Add item</button>
+      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
+    </div></div>`);
+}
+
+function bevDoAdd(){
+  const name=document.getElementById('bev-name')?.value.trim(); if(!name){toast('Enter a name');return;}
+  const qty=parseFloat(document.getElementById('bev-qty')?.value)||0;
+  const price=parseFloat(document.getElementById('bev-price')?.value)||0;
+  const stock=bevGetStock();
+  stock.push({id:'bev'+Date.now(),name,category:document.getElementById('bev-cat')?.value||'Other',supplier:document.getElementById('bev-sup')?.value||'',
+    pack:document.getElementById('bev-pack')?.value||'',unitPrice:price,qty,totalValue:Math.round(qty*price*100)/100,
+    par:parseInt(document.getElementById('bev-par')?.value)||6,lastCount:new Date().toISOString().slice(0,10),notes:''});
+  bevSave(stock); closeModal(); renderBeverage(document.getElementById('view')); toast('✓ Item added');
+}
+
+function bevExport(){
+  const stock=bevGetStock();
+  const csv=['Category,Supplier,Product,Pack,Qty,Par,Unit Price,Total Value,Status,Last Count',
+    ...stock.map(i=>[i.category,i.supplier,i.name,i.pack,i.qty,i.par,i.unitPrice,i.totalValue.toFixed(2),
+      i.qty===0?'OUT':i.qty<i.par?'LOW':'OK',i.lastCount].map(v=>`"${v}"`).join(','))].join('\n');
+  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='brandon-hall-bar-stock-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  toast('✓ Stock exported to CSV');
+}
+
+function bevImportModal(){
+  openModal(`<div style="padding:4px">
+    <div style="font-size:16px;font-weight:700;color:#1a2b3a;margin-bottom:8px">📤 Upload stock count</div>
+    <div style="font-size:13px;color:#374151;margin-bottom:14px">Upload a CSV with columns: Product, Qty<br>or the same format as the export.</div>
+    <input type="file" id="bev-csv-file" accept=".csv" style="width:100%;margin-bottom:12px">
+    <div id="bev-import-preview" style="font-size:12px;color:#374151;margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="bevProcessImport()" style="flex:1;padding:11px;background:#2f6f9e;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Import & update</button>
+      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
+    </div>
+  </div>`);
+  document.getElementById('bev-csv-file')?.addEventListener('change',function(){
+    const f=this.files[0]; if(!f) return;
+    const r=new FileReader(); r.onload=e=>{
+      const lines=e.target.result.split('\n').slice(1).filter(l=>l.trim());
+      document.getElementById('bev-import-preview').textContent='Found '+lines.length+' items in file — click Import to update quantities';
+    }; r.readAsText(f);
   });
 }
-function bevWeeklyReport(){
-  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
-  const outs=BevStore.log.filter(e=>e.type==="remove"&&e.at>=weekAgo);
-  // aggregate usage per product
-  const usage={};
-  outs.forEach(e=>{ const p=BevStore.levels[e.id]; if(!usage[e.id]) usage[e.id]={name:e.name,cat:p?p.cat:"",unit:p?p.unit:"",qty:0,val:0,price:p?p.price:0};
-    usage[e.id].qty+=Math.abs(e.delta); usage[e.id].val+=Math.abs(e.delta)*((p&&p.price)||0); });
-  const rows=Object.values(usage).sort((a,b)=>b.val-a.val);
-  const total=rows.reduce((s,r)=>s+r.val,0);
-  const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
-  const from=new Date(Date.now()-7*864e5).toLocaleDateString("en-GB");
-  const win=window.open("","_blank");
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Weekly Beverage Usage — Brandon Hall</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
-    <style>@page{margin:16mm}body{font-family:'Lato',sans-serif;color:#2a3644;font-size:12px;max-width:820px;margin:0 auto;padding:14px}
-    .h{text-align:center;border-bottom:3px solid #1a2b47;padding-bottom:12px;margin-bottom:14px}
-    .logo{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;letter-spacing:5px;color:#1a2b47}
-    .sub{font-size:11px;letter-spacing:4px;color:#c9a978;font-weight:700}
-    h1{font-family:'Cormorant Garamond',serif;font-size:22px;text-align:center;color:#1a2b47;margin:12px 0 4px}
-    .meta{text-align:center;font-size:11px;color:#374151;margin-bottom:16px}
-    table{width:100%;border-collapse:collapse;font-size:12px}
-    th{background:#1a2b47;color:#fff;text-align:left;padding:7px 8px;font-size:10.5px}
-    td{padding:6px 8px;border-bottom:1px solid #eef2f4}.r{text-align:right}
-    .tot{margin-top:14px;background:#f6f8f9;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;font-weight:700;font-size:15px;color:#1a2b47}
-    .foot{margin-top:20px;font-size:10px;color:#374151;text-align:center}
-    .none{text-align:center;color:#374151;padding:30px}</style></head><body>
-    <div class="h"><div class="logo">BRANDON HALL</div><div class="sub">HOTEL AND SPA</div></div>
-    <h1>Weekly Beverage Usage</h1>
-    <div class="meta">${from} – ${today} · signed-out stock</div>
-    ${rows.length?`<table><tr><th>Product</th><th>Category</th><th class="r">Qty used</th><th class="r">Unit £</th><th class="r">Value (ex-VAT)</th></tr>
-      ${rows.map(r=>`<tr><td>${r.name}</td><td>${r.cat}</td><td class="r">${r.qty.toLocaleString("en-GB",{maximumFractionDigits:2})} ${r.unit}</td><td class="r">${money2dp(r.price)}</td><td class="r">${money2dp(r.val)}</td></tr>`).join("")}</table>
-      <div class="tot"><span>Total usage value (ex-VAT)</span><span>${money2dp(total)}</span></div>`
-      :`<div class="none">No stock signed out in the last 7 days.</div>`}
-    <div class="foot">Brandon Hall Hotel and Spa · Beverage Management · Generated ${today}</div>
-    <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>`);
-  win.document.close();
+
+function bevProcessImport(){
+  const fileInput=document.getElementById('bev-csv-file');
+  if(!fileInput?.files[0]){toast('Please select a CSV file');return;}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const lines=e.target.result.split('\n').filter(l=>l.trim());
+    const stock=bevGetStock();
+    let updated=0;
+    lines.slice(1).forEach(line=>{
+      const cols=line.split(',').map(c=>c.replace(/^"|"$/g,'').trim());
+      const nameCol=cols[2]||cols[0]; const qtyCol=parseFloat(cols[4]||cols[1])||0;
+      const item=stock.find(i=>i.name.toLowerCase()===nameCol.toLowerCase());
+      if(item){ item.qty=qtyCol; item.totalValue=Math.round(item.qty*item.unitPrice*100)/100; item.lastCount=new Date().toISOString().slice(0,10); updated++; }
+    });
+    bevSave(stock); closeModal();
+    renderBeverage(document.getElementById('view'));
+    toast('✓ Updated '+updated+' items from import');
+  };
+  reader.readAsText(fileInput.files[0]);
 }
-function bevExportCSV(){
-  const items=Object.values(BevStore.levels).sort((a,b)=>(a.cat+a.name).localeCompare(b.cat+b.name));
-  const rows=[["Category","Product","Pack","Supplier","Code","Stock","Unit price ex-VAT","Stock value ex-VAT"]];
-  items.forEach(p=>rows.push([p.cat,p.name,p.pack,p.sup,p.code,p.stock,(p.price||0).toFixed(2),(p.stock*(p.price||0)).toFixed(2)]));
-  const csv=rows.map(r=>r.map(c=>`"${String(c==null?"":c).replace(/"/g,'""')}"`).join(",")).join("\n");
-  const blob=new Blob([csv],{type:"text/csv"}); const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob); a.download="Brandon_Hall_Beverage_Stock_"+new Date().toISOString().slice(0,10)+".csv"; a.click();
-}
+
 
 function renderDining(v){
   v.appendChild(head("Dining & Bars","Our restaurant, bar and terrace — seating plans, capacities and features."));
