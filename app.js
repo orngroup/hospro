@@ -5605,6 +5605,56 @@ function renderCompReport(v){
 }
 
 /* ============================================================ HOSFIX — Maintenance Portal Views */
+
+// ── filterInvCat — inventory category filter tabs ────────────────────────────
+function filterInvCat(cat, btn){
+  // Highlight active button
+  const bar = btn?.closest('[style*="flex-wrap:wrap"]') || btn?.parentElement;
+  if(bar){ bar.querySelectorAll('button').forEach(b=>{
+    b.style.background = '#fff'; b.style.color = 'var(--ink,#1a2b3a)';
+  }); }
+  if(btn){ btn.style.background = 'var(--navy,#1a2b3a)'; btn.style.color = '#fff'; }
+
+  // Filter the inv-grid cards
+  const grid = document.getElementById('inv-grid');
+  if(!grid) return;
+  grid.querySelectorAll('[data-cat]').forEach(card => {
+    const match = cat === 'All' || card.dataset.cat === cat;
+    card.style.display = match ? '' : 'none';
+  });
+}
+
+// ── filterPortalJobs — fix dash job filter pills ──────────────────────────────
+function filterPortalJobs(filter, btn){
+  // Highlight active pill
+  const bar = document.getElementById('portal-job-filters');
+  if(bar){ bar.querySelectorAll('button').forEach(b=>{
+    b.style.background = '#fff'; b.style.color = 'var(--ink,#1a2b3a)';
+  }); }
+  if(btn){ btn.style.background = 'var(--navy,#1a2b3a)'; btn.style.color = '#fff'; }
+
+  // Filter table rows in portal-jobs-table
+  const tbl = document.getElementById('portal-jobs-table');
+  if(!tbl) return;
+  tbl.querySelectorAll('tbody tr[data-status]').forEach(row => {
+    const s = (row.dataset.status||'').toLowerCase();
+    const p = (row.dataset.priority||'').toLowerCase();
+    let show = false;
+    if(filter === 'All') show = true;
+    else if(filter === 'Urgent') show = p === 'urgent' || s === 'urgent';
+    else if(filter === 'Not started') show = s === 'open' || s === 'not started';
+    else if(filter === 'In progress') show = s === 'in progress' || s === 'in-progress' || s === 'started';
+    else if(filter === 'Complete') show = s === 'complete' || s === 'completed';
+    else if(filter === 'Awaiting approval') show = s === 'awaiting approval' || s === 'pending approval';
+    row.style.display = show ? '' : 'none';
+  });
+
+  // Update count badge if present
+  const visible = tbl ? tbl.querySelectorAll('tbody tr[data-status]:not([style*="none"])').length : 0;
+  const badge = document.getElementById('portal-jobs-count');
+  if(badge) badge.textContent = visible + ' job' + (visible !== 1 ? 's' : '');
+}
+
 function renderFixDash(v){
   const jobs=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');
   const open=jobs.filter(j=>j.status!=='complete'&&j.status!=='cancelled');
@@ -5911,7 +5961,7 @@ function renderFixInventory(v){
     <!-- Items grid -->
     <div id="inv-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
       ${INVENTORY.map(i=>{
-        const isLow=i.stock<=i.minStock;
+        const isLow=i.stock<=(i.minStock||i.min||0);
         const pct=Math.min(100,Math.round(i.stock/(i.minStock*3||1)*100));
         const barCol=isLow?'var(--red)':pct<60?'var(--amber)':'var(--green)';
         return `<div class="inv-card" data-cat="${i.category}" style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 6px rgba(26,43,58,.05);border-left:4px solid ${isLow?'var(--red)':'var(--line)'}">
@@ -6128,6 +6178,18 @@ function spCalcRequired(fc,deptId){const rooms=fc&&fc.rooms||0,dep=fc&&fc.depart
 function spCountRostered(rota,dk,deptId){const staff=spGetStaff().filter(s=>s.dept===deptId),day=rota[dk]||{};return staff.filter(s=>{const sh=(day[s.id]||'').toLowerCase().trim();return sh&&sh!=='off'&&sh!=='';}).length;}
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
+
+// ── openModal shim — rota/HosFIX code calls openModal(html), portal has showModal ──
+function openModal(html){ showModal('','',html); }
+function toast(msg,dur=2500){
+  let t=document.getElementById('hsp-toast');
+  if(!t){ t=document.createElement('div'); t.id='hsp-toast';
+    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a2b3a;color:#fff;padding:10px 20px;border-radius:20px;font:600 13px Lato,sans-serif;z-index:9999;pointer-events:none;transition:opacity .3s';
+    document.body.appendChild(t); }
+  t.textContent=msg; t.style.opacity='1';
+  clearTimeout(t._t); t._t=setTimeout(()=>t.style.opacity='0',dur);
+}
+
 function renderRotaDash(v){
   const rota=spGetRota(),fc=spGetFC(),staff=spGetStaff();
   const today=new Date(),todayK=spDK(today),days=spWeekDates(0),todayFC=fc[todayK]||{};
@@ -6176,53 +6238,128 @@ function renderRotaDash(v){
 // ── WEEKLY ROTA ───────────────────────────────────────────────────────────────
 function renderRotaWeek(v){
   const rota=spGetRota(),fc=spGetFC(),staff=spGetStaff(),days=spWeekDates(spWeekOffset),todayK=spDK(new Date());
-  const dayHeads=days.map(d=>{const k=spDK(d),f=fc[k]||{},isT=k===todayK;return`<th style="min-width:130px;padding:8px 4px;text-align:center;background:${isT?'#1a2b3a':'#f5f7f9'};color:${isT?'#fff':'#1a2b3a'};border-radius:8px 8px 0 0"><div style="font-size:11px;font-weight:700">${d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase()}</div><div style="font-size:10px;opacity:.7">${spShortFmt(d)}</div>${f.rooms?`<div style="font-size:10px;margin-top:2px;opacity:.8">🛏 ${f.rooms}</div>`:''}</th>`;}).join('');
-  let body='';
-  SP_DEPTS.forEach(dept=>{
-    const ds=staff.filter(s=>s.dept===dept.id);if(!ds.length)return;
-    const reqCells=days.map(d=>{const k=spDK(d),f=fc[k]||{},req=spCalcRequired(f,dept.id),ros=spCountRostered(rota,k,dept.id),ok=ros>=req.needed;return`<td style="padding:3px 2px;text-align:center"><span style="padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:${ok?'#dcfce7':'#fee2e2'};color:${ok?'#166534':'#991b1b'}">${ros}/${req.needed}${ok?' ✓':' ⚠'}</span></td>`;}).join('');
-    body+=`<tr><td colspan="9" style="padding:7px 10px 4px;background:${dept.colour}15;border-top:3px solid ${dept.colour}"><div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:${dept.colour};display:inline-block"></span><b style="font-size:12px;color:${dept.colour};text-transform:uppercase;letter-spacing:.5px">${dept.name}</b><span style="font-size:11px;color:#374151">${dept.note}</span><span style="margin-left:auto;font-size:10px;color:#374151">rostered/needed →</span></div></td></tr>
-    <tr style="background:#fafafa"><td style="padding:2px 10px;font-size:10px;color:#374151;font-style:italic">Coverage</td>${reqCells}</tr>`;
-    ds.forEach(s=>{
-      const wkHrs=days.reduce((t,d)=>t+spParseHrs((rota[spDK(d)]||{})[s.id]||''),0);
-      const cells=days.map(d=>{const k=spDK(d),sh=(rota[k]||{})[s.id]||'',c=spShiftStyle(sh),isT=k===todayK;return`<td style="padding:2px 2px;background:${isT?'#f0f9ff':''}"><input type="text" value="${sh}" data-sid="${s.id}" data-dk="${k}" onchange="spUpdateCell(this)" placeholder="off" style="width:122px;padding:5px 3px;border:1.5px solid ${c.border};border-radius:7px;font:11px Lato;text-align:center;background:${c.bg};color:${c.col};outline:none" onfocus="this.select()"></td>`;}).join('');
-      body+=`<tr style="border-bottom:1px solid #f0f0f0" onmouseover="this.style.background='#fafffe'" onmouseout="this.style.background=''">
-        <td style="padding:6px 10px;min-width:170px;white-space:nowrap"><div style="display:flex;align-items:center;gap:7px"><div style="width:28px;height:28px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${s.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div><div><div style="font-size:12px;font-weight:600;color:#1a2b3a;cursor:pointer" onclick="spEditStaffModal('${s.id}')" title="Click to edit">${s.name}</div><div style="font-size:10px;color:#374151">${s.role||''} · <span style="color:${wkHrs>0?'#166534':'#374151'}">${Math.round(wkHrs*10)/10}h</span></div></div></div></td>
+  
+  // Group staff by department
+  const depts = SP_DEPTS.filter(d=>staff.some(s=>s.dept===d.id));
+
+  // Day headers
+  const dayHeads=days.map(d=>{
+    const k=spDK(d),f=fc[k]||{},isT=k===todayK;
+    return`<th style="min-width:120px;padding:8px 4px;text-align:center;background:${isT?'#1a2b3a':'#f5f7f9'};color:${isT?'#fff':'#1a2b3a'};font-size:11px;font-weight:700">
+      <div>${d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase()}</div>
+      <div style="font-size:10px;opacity:.7">${d.getDate()} ${d.toLocaleDateString('en-GB',{month:'short'})}</div>
+      ${f.rooms?`<div style="font-size:10px;margin-top:3px;opacity:.8">🛏 ${f.rooms}</div>`:''}
+    </th>`;
+  }).join('');
+
+  // Build rows — one per staff member, grouped by dept
+  let rows = '';
+  depts.forEach(dept=>{
+    const deptStaff = staff.filter(s=>s.dept===dept.id);
+    if(!deptStaff.length) return;
+    const shiftOpts = (dept.shifts&&dept.shifts.length?dept.shifts:[
+      '07:00-15:00','08:00-16:00','09:00-17:00','15:00-23:00','23:00-07:00'
+    ]).concat(['off','holiday','on call','sick','in lieu']);
+
+    // Dept header row
+    rows += `<tr><td colspan="${days.length+2}" style="padding:8px 12px;background:${dept.colour||'#1a2b3a'};color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">${dept.name}</td></tr>`;
+
+    deptStaff.forEach(s=>{
+      const cells = days.map(d=>{
+        const k=spDK(d), sh=(rota[k]||{})[s.id]||'off';
+        const isOff=sh==='off', isHol=sh==='holiday', isOut=sh==='on call'||sh==='sick'||sh==='in lieu';
+        const cellBg = isHol?'#fef3c7':isOut?'#fee2e2':isOff?'#f9fafb':'#f0fdf4';
+        const opts=shiftOpts.map(x=>`<option value="${x}"${sh===x?' selected':''}>${x}</option>`).join('');
+        return`<td style="padding:4px;background:${cellBg}">
+          <select data-dk="${k}" data-sid="${s.id}" onchange="spCellSelect(this)"
+            style="width:100%;padding:4px 2px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;color:#1a2b3a;background:${cellBg};cursor:pointer;text-align:center">
+            ${opts}
+          </select>
+        </td>`;
+      }).join('');
+
+      const hrs = days.reduce((t,d)=>{
+        const sh=(rota[spDK(d)]||{})[s.id]||'off';
+        if(sh==='off'||sh==='holiday'||sh==='sick'||sh==='in lieu'||sh==='on call') return t;
+        const m=sh.match(/(\d+):(\d+)-(\d+):(\d+)/);
+        if(m){ const h=(+m[3]*60+ +m[4]- +m[1]*60- +m[2])/60; return t+(h<0?h+24:h); }
+        return t+8;
+      },0);
+
+      const initials = s.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      rows += `<tr style="border-bottom:1px solid #e5e7eb" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+        <td style="padding:8px 10px;min-width:160px;background:#fff;position:sticky;left:0;z-index:1;box-shadow:2px 0 4px rgba(0,0,0,.05)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:30px;height:30px;border-radius:50%;background:${dept.colour||'#1a2b3a'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font:700 11px Lato;color:#fff">${initials}</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#1a2b3a">${s.name}</div>
+              <div style="font-size:10px;color:#374151">${s.role||''}</div>
+            </div>
+          </div>
+        </td>
         ${cells}
+        <td style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:${hrs>0?'#166534':'#374151'};background:#fff">${hrs>0?hrs.toFixed(1)+'h':'—'}</td>
+        <td style="padding:4px 8px;background:#fff">
+          <button onclick="spEditStaffModal('${s.id}')" title="Edit staff details & contract"
+            style="padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;background:#fff;font:600 10px Lato;cursor:pointer;color:#374151;white-space:nowrap">✏ Edit</button>
+        </td>
       </tr>`;
     });
   });
-  const totals=days.map(d=>{const k=spDK(d),tot=staff.filter(s=>{const sh=(rota[k]||{})[s.id]||'';return sh&&sh.toLowerCase()!=='off'&&sh!=='';}).length;return`<td style="padding:8px 4px;text-align:center;background:#1a2b3a;color:#fff"><b style="font-size:13px">${tot}</b><div style="font-size:9px;opacity:.7">on duty</div></td>`;}).join('');
-  v.innerHTML=`<div style="padding:16px 20px;max-width:1300px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Weekly Rota</div>
-      <div style="font-size:12px;color:#374151">Week commencing ${spShortFmt(days[0])} · Click any cell to edit · Click name to edit staff</div></div>
-      <div style="display:flex;gap:7px;flex-wrap:wrap">
-        <button onclick="spWeekOffset--;renderRotaWeek(document.getElementById('view'))" style="padding:7px 11px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;font-size:12px;color:#fff">← Prev</button>
-        <button onclick="spWeekOffset=0;renderRotaWeek(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font:600 12px Lato">This week</button>
-        <button onclick="spWeekOffset++;renderRotaWeek(document.getElementById('view'))" style="padding:7px 11px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;font-size:12px;color:#fff">Next →</button>
-        <button onclick="spAddStaffModal()" style="padding:7px 12px;background:#6366f1;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">+ Add</button>
-        <button onclick="switchTab('rotaForecast')" style="padding:7px 12px;background:#c78a3b;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📈 Forecast</button>
-        <button onclick="spApproveRota()" style="padding:7px 12px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">✓ Approve & Print</button>
-        <button onclick="spExportCSV()" style="padding:7px 12px;background:#4a86c7;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">📥 Export</button>
+
+  // Dept coverage summary row per dept
+  let coverageRows = '';
+  depts.forEach(dept=>{
+    const needed = days.map(d=>{
+      const k=spDK(d),f=fc[k]||{};
+      const req=spCalcRequired(f,dept.id);
+      const ros=spCountRostered(rota,k,dept.id);
+      const ok=ros>=req.needed;
+      return`<td style="padding:4px 8px;text-align:center;background:${ok?'#f0fdf4':'#fff5f5'};font-size:11px;font-weight:700;color:${ok?'#166534':'#991b1b'}">${ros}/${req.needed}</td>`;
+    }).join('');
+    coverageRows += `<tr style="border-top:2px solid #e5e7eb">
+      <td style="padding:6px 10px;background:#f9fafb;font-size:11px;font-weight:700;color:#374151;position:sticky;left:0;z-index:1">${dept.name} coverage</td>
+      ${needed}
+      <td colspan="2" style="background:#f9fafb"></td>
+    </tr>`;
+  });
+
+  v.innerHTML=`<div style="padding:20px 28px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#fff">Weekly Rota</div>
+        <div style="font-size:12px;color:#8fa3b8">Week commencing ${spShortFmt(days[0])} — click any shift cell to change directly</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="spWeekOffset--;renderRotaWeek(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font:600 12px Lato">← Prev</button>
+        <button onclick="spWeekOffset=0;renderRotaWeek(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #c78a3b;border-radius:8px;background:#c78a3b;color:#fff;cursor:pointer;font:700 12px Lato">This week</button>
+        <button onclick="spWeekOffset++;renderRotaWeek(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font:600 12px Lato">Next →</button>
+        <button onclick="spAddStaffModal()" style="padding:7px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;cursor:pointer;color:#fff">+ Add staff</button>
+        <button onclick="spApproveRota()" style="padding:7px 14px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:700 12px Lato;cursor:pointer">✓ Approve</button>
+        <button onclick="spExportCSV()" style="padding:7px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;cursor:pointer;color:#fff">⬇ Export</button>
       </div>
     </div>
-    <div style="display:flex;gap:10px;margin-bottom:10px;font-size:11px;flex-wrap:wrap;color:#374151">
-      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#dcfce7;border:1px solid #86efac;display:inline-block"></span>Shift</span>
-      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#f5f7f9;border:1px solid #e0e0e0;display:inline-block"></span>Off</span>
-      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#dbeafe;border:1px solid #93c5fd;display:inline-block"></span>Holiday</span>
-      <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:#fef9c3;border:1px solid #fde047;display:inline-block"></span>On call</span>
-      <b style="color:#166534">✓ Covered</b> <b style="color:#991b1b">⚠ Short</b>
-    </div>
-    <div style="overflow-x:auto;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.08)">
-      <table style="border-collapse:collapse;width:100%;min-width:900px;background:#fff">
-        <thead><tr><th style="text-align:left;padding:8px 10px;font-size:11px;color:#374151;text-transform:uppercase;background:#f5f7f9">Team Member</th>${dayHeads}</tr></thead>
-        <tbody>${body}<tr style="border-top:2px solid #1a2b3a"><td style="padding:8px 10px;font:700 11px Lato;color:#fff;background:#1a2b3a;text-transform:uppercase">Total on duty</td>${totals}</tr></tbody>
+
+    <div style="background:#fff;border-radius:12px;overflow:auto;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+      <table style="width:100%;border-collapse:collapse;min-width:900px">
+        <thead>
+          <tr style="background:#f5f7f9">
+            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;position:sticky;left:0;background:#f5f7f9;z-index:2;min-width:160px">Staff Member</th>
+            ${dayHeads}
+            <th style="padding:10px 8px;text-align:center;font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase">Hrs</th>
+            <th style="padding:10px 8px;min-width:70px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+          ${coverageRows}
+        </tbody>
       </table>
     </div>
-    <div style="margin-top:8px;font-size:11px;color:#374151">All changes auto-save · Enter: 09:00-17:00, off, holiday, on call, sick, in lieu</div>
+    <div style="margin-top:10px;font-size:11px;color:#8fa3b8">💡 Click any shift dropdown to change directly. Coverage row shows rostered vs minimum required per dept. Changes save instantly.</div>
   </div>`;
 }
+
 
 function spUpdateCell(input){const rota=spGetRota(),dk=input.dataset.dk,sid=input.dataset.sid;if(!rota[dk])rota[dk]={};rota[dk][sid]=input.value.trim();spSaveRota(rota);const c=spShiftStyle(input.value.trim());input.style.background=c.bg;input.style.color=c.col;input.style.borderColor=c.border;}
 
@@ -6758,80 +6895,102 @@ function renderStaffProfiles(v){
   const profiles = hsGetProfiles();
   const deptFilter = window._hsDeptFilter || 'all';
   const search = window._hsSearch || '';
+  const depts = SP_DEPTS || [];
 
   let filtered = profiles;
   if(deptFilter !== 'all') filtered = filtered.filter(p => p.dept === deptFilter);
-  if(search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.staffCode.toLowerCase().includes(search.toLowerCase()));
+  if(search) filtered = filtered.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.staffCode||'').toLowerCase().includes(search.toLowerCase()) ||
+    (p.role||'').toLowerCase().includes(search.toLowerCase())
+  );
 
-  const depts = SP_DEPTS || [];
-
-  const rows = filtered.map(p => {
-    const dept = depts.find(d=>d.id===p.dept)||{name:p.dept,colour:'#4a86c7'};
-    const leave = hsGetLeave().filter(l=>l.staffId===p.id);
-    const leaveUsed = leave.filter(l=>l.status==='approved').reduce((t,l)=>t+l.days,0);
-    const leaveRemaining = Math.max(0, p.leaveAllowance - leaveUsed);
-    return `<tr onclick="hsOpenProfile('${p.id}')" style="border-bottom:1px solid #e5e7eb;cursor:pointer" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background=''">
-      <td style="padding:10px 12px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font:700 12px Lato;color:#fff;flex-shrink:0">${p.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:#1a2b3a">${p.name}</div>
-            <div style="font-size:11px;color:#374151">${p.staffCode}</div>
-          </div>
-        </div>
-      </td>
-      <td style="padding:10px 8px;font-size:12px;color:#1a2b3a">${p.role||'—'}</td>
-      <td style="padding:10px 8px"><span style="padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;background:${dept.colour}20;color:${dept.colour}">${dept.name}</span></td>
-      <td style="padding:10px 8px"><span style="padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;background:${p.contract==='Full-time'?'#dcfce7':p.contract==='Part-time'?'#dbeafe':'#fef9c3'};color:${p.contract==='Full-time'?'#166534':p.contract==='Part-time'?'#1d4ed8':'#854d0e'}">${p.contract||'—'}</span></td>
-      <td style="padding:10px 8px;font-size:12px;color:#1a2b3a">${p.contractHrs>0?p.contractHrs+'h/wk':'—'}</td>
-      <td style="padding:10px 8px;font-size:12px">
-        <div style="font-size:11px;color:#374151">Remaining: <b style="color:${leaveRemaining<5?'#b3261e':'#166534'}">${leaveRemaining}d</b></div>
-        <div style="font-size:10px;color:#374151">of ${p.leaveAllowance}d</div>
-      </td>
-      <td style="padding:10px 8px">
-        ${p.probationPassed?'<span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#dcfce7;color:#166534">✓ Passed</span>':'<span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#fef9c3;color:#854d0e">Probation</span>'}
-      </td>
-      <td style="padding:10px 8px">
-        <div style="display:flex;gap:6px">
-          <button onclick="event.stopPropagation();hsOpenProfile('${p.id}')" style="padding:5px 10px;border:1.5px solid #1a2b3a;border-radius:7px;background:#fff;font:600 11px Lato;cursor:pointer;color:#1a2b3a">Edit →</button>
-          <button onclick="event.stopPropagation();hsDeleteStaff('${p.id}')" style="padding:5px 10px;border:1.5px solid #fee2e2;border-radius:7px;background:#fff;font:600 11px Lato;cursor:pointer;color:#991b1b">✕</button>
-        </div>
-      </td>
-    </tr>`;
+  // Dept summary cards
+  const deptCards = depts.map(d=>{
+    const count = profiles.filter(p=>p.dept===d.id).length;
+    const active = deptFilter === d.id;
+    return `<button onclick="window._hsDeptFilter='${d.id}';window._hsSearch='';renderStaffProfiles(document.getElementById('view'))"
+      style="flex:1;min-width:120px;padding:14px 10px;background:${active?d.colour:'rgba(255,255,255,.07)'};border:2px solid ${active?d.colour:'rgba(255,255,255,.12)'};border-radius:12px;cursor:pointer;text-align:center;transition:all .15s"
+      onmouseover="this.style.background='${d.colour}';this.style.borderColor='${d.colour}'"
+      onmouseout="this.style.background='${active?d.colour:'rgba(255,255,255,.07)'}';this.style.borderColor='${active?d.colour:'rgba(255,255,255,.12)'}'">
+      <div style="font-size:22px;font-weight:700;color:#fff">${count}</div>
+      <div style="font-size:11px;font-weight:700;color:#fff;margin-top:3px;white-space:nowrap">${d.name}</div>
+    </button>`;
   }).join('');
 
-  v.innerHTML = `<div style="padding:20px;max-width:1200px">
+  // Staff cards grid
+  const cards = filtered.map(p => {
+    const dept = depts.find(d=>d.id===p.dept)||{name:p.dept||'—',colour:'#4a86c7'};
+    const leave = hsGetLeave().filter(l=>l.staffId===p.id);
+    const leaveUsed = leave.filter(l=>l.status==='approved').reduce((t,l)=>t+l.days,0);
+    const leaveRemaining = Math.max(0,(p.leaveAllowance||28)-leaveUsed);
+    const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    return `<div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-top:3px solid ${dept.colour};display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:42px;height:42px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font:700 14px Lato;color:#fff;flex-shrink:0">${initials}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:#1a2b3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+          <div style="font-size:11px;color:#374151">${p.role||'—'}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div style="background:#f9fafb;border-radius:7px;padding:6px 8px">
+          <div style="font-size:10px;color:#374151;text-transform:uppercase;letter-spacing:.3px">Department</div>
+          <div style="font-size:11px;font-weight:700;color:#1a2b3a;margin-top:2px">${dept.name}</div>
+        </div>
+        <div style="background:#f9fafb;border-radius:7px;padding:6px 8px">
+          <div style="font-size:10px;color:#374151;text-transform:uppercase;letter-spacing:.3px">Contract</div>
+          <div style="font-size:11px;font-weight:700;color:#1a2b3a;margin-top:2px">${p.contract||'—'}</div>
+        </div>
+        <div style="background:#f9fafb;border-radius:7px;padding:6px 8px">
+          <div style="font-size:10px;color:#374151;text-transform:uppercase;letter-spacing:.3px">Hours/wk</div>
+          <div style="font-size:11px;font-weight:700;color:#1a2b3a;margin-top:2px">${p.contractHrs>0?p.contractHrs+'h':'—'}</div>
+        </div>
+        <div style="background:${leaveRemaining<5?'#fff5f5':'#f0fdf4'};border-radius:7px;padding:6px 8px">
+          <div style="font-size:10px;color:#374151;text-transform:uppercase;letter-spacing:.3px">Leave left</div>
+          <div style="font-size:11px;font-weight:700;color:${leaveRemaining<5?'#991b1b':'#166534'};margin-top:2px">${leaveRemaining}d of ${p.leaveAllowance||28}d</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:2px">
+        <span style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:${p.probationPassed?'#dcfce7':'#fef9c3'};color:${p.probationPassed?'#166534':'#854d0e'}">${p.probationPassed?'✓ Passed':'Probation'}</span>
+        <span style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#e0f2fe;color:#0369a1">${p.staffCode||''}</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="hsOpenProfile('${p.id}')" style="flex:1;padding:8px;border:1.5px solid #1a2b3a;border-radius:8px;background:#fff;font:700 12px Lato;cursor:pointer;color:#1a2b3a">✏ Edit</button>
+        <button onclick="if(confirm('Remove ${p.name.replace(/'/g,"\\'")} from staff?'))hsDeleteStaff('${p.id}')" style="padding:8px 10px;border:1.5px solid #fecaca;border-radius:8px;background:#fff;font:700 12px Lato;cursor:pointer;color:#991b1b">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  v.innerHTML = `<div style="padding:24px 28px;min-height:100%">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Staff Profiles</div>
-        <div style="font-size:12px;color:#374151">${filtered.length} of ${profiles.length} staff members</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff">Staff Profiles</div>
+        <div style="font-size:12px;color:#8fa3b8">${filtered.length} of ${profiles.length} staff members</div>
       </div>
-      <button onclick="hsAddStaffModal()" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">+ Add staff member</button>
+      <button onclick="hsAddStaffModal()" style="padding:9px 18px;background:#4a86c7;color:#fff;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer">+ Add staff member</button>
     </div>
 
-    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-      <input type="text" placeholder="🔍 Search name or staff ID..." value="${search}"
-        oninput="window._hsSearch=this.value;renderStaffProfiles(document.getElementById('view'))"
-        style="flex:1;min-width:200px;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:9px;font:13px Lato;color:#1a2b3a">
-      <select onchange="window._hsDeptFilter=this.value;renderStaffProfiles(document.getElementById('view'))"
-        style="padding:9px 12px;border:1.5px solid #d1d5db;border-radius:9px;font:13px Lato;color:#1a2b3a">
-        <option value="all"${deptFilter==='all'?' selected':''}>All departments</option>
-        ${(SP_DEPTS||[]).map(d=>`<option value="${d.id}"${deptFilter===d.id?' selected':''}>${d.name}</option>`).join('')}
-      </select>
+    <!-- Dept filter cards -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button onclick="window._hsDeptFilter='all';window._hsSearch='';renderStaffProfiles(document.getElementById('view'))"
+        style="padding:10px 16px;background:${deptFilter==='all'?'#1a2b3a':'rgba(255,255,255,.07)'};border:2px solid ${deptFilter==='all'?'#c78a3b':'rgba(255,255,255,.12)'};border-radius:10px;cursor:pointer;font:700 12px Lato;color:#fff">
+        All (${profiles.length})
+      </button>
+      ${deptCards}
     </div>
 
-    <div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);overflow:hidden">
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:#1a2b3a">
-          ${['Staff Member','Role','Department','Contract','Hours','Annual Leave','Status',''].map(h=>`<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.5px">${h}</th>`).join('')}
-        </tr></thead>
-        <tbody>${rows||'<tr><td colspan="8" style="padding:20px;text-align:center;color:#374151">No staff found</td></tr>'}</tbody>
-      </table>
-    </div>
+    <!-- Search -->
+    <input type="text" placeholder="🔍 Search name, staff ID or role..." value="${search}"
+      oninput="window._hsSearch=this.value;renderStaffProfiles(document.getElementById('view'))"
+      style="width:100%;padding:11px 14px;background:#fff;border:1.5px solid #d1d5db;border-radius:10px;font:13px Lato;color:#1a2b3a;margin-bottom:16px;outline:none">
+
+    <!-- Cards grid -->
+    ${cards || '<div style="text-align:center;padding:40px;color:#8fa3b8;font-size:14px">No staff found</div>'}
   </div>`;
 }
 
-// ── STAFF PROFILE DETAIL ──────────────────────────────────────────────────────
+
 function hsOpenProfile(staffId){
   const profiles = hsGetProfiles();
   const p = profiles.find(x=>x.id===staffId || x.staffCode===staffId);
@@ -7438,7 +7597,10 @@ function renderHubDocs(v){
           <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
           <div style="font-size:11px;color:#8fa3b8;margin-top:2px">${HUB_CATEGORIES[d.tab]?.label||d.category} · ${d.type||''} · ${d.date||''}</div>
         </div>
-        <span style="font-size:11px;color:#4a9d7f;font-weight:700;white-space:nowrap">Filed</span>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          ${d.fileData?`<button onclick="hubOpenFile('${d.id}')" style="padding:5px 10px;background:#2f6f9e;color:#fff;border:none;border-radius:7px;font:700 11px Lato;cursor:pointer">📂 Open</button>`:''}
+          <button onclick="hubDeleteDoc('${d.id}')" style="padding:5px 8px;border:1px solid rgba(239,68,68,.4);border-radius:7px;background:transparent;font:600 11px Lato;color:#f87171;cursor:pointer">✕</button>
+        </div>
       </div>`).join('')}
     </div>`:'<div style="text-align:center;padding:40px 20px"><div style="font-size:48px;margin-bottom:12px">📂</div><div style="font-size:15px;color:#8fa3b8">No documents filed yet</div><div style="font-size:13px;color:#5a7082;margin-top:6px">Click + File document to add your first document</div></div>'}
   </div>`;
@@ -7450,6 +7612,22 @@ function renderHubSection(v, tabId){
   const cat = HUB_CATEGORIES[tabId];
   if(!cat){ v.innerHTML='<div style="padding:28px;color:#fff">Section not found</div>'; return; }
   const saved = JSON.parse(localStorage.getItem('hoshub_docs')||'[]').filter(d=>d.tab===tabId);
+  const sorted = saved.slice().sort((a,b)=>b.date.localeCompare(a.date));
+
+  const rows = sorted.map(d=>{
+    const hasFile = !!d.fileData;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:8px">
+      <span style="font-size:24px;flex-shrink:0">${cat.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:#1a2b3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
+        <div style="font-size:11px;color:#374151;margin-top:2px">${d.type||''} · Filed ${d.date||''} ${d.notes?'· '+d.notes:''}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        ${hasFile?`<button onclick="hubOpenFile('${d.id}')" style="padding:6px 12px;background:#2f6f9e;color:#fff;border:none;border-radius:7px;font:700 11px Lato;cursor:pointer">📂 Open</button>`:'<span style="font-size:11px;color:#9ca3af;padding:6px">No file</span>'}
+        <button onclick="hubDeleteDoc('${d.id}')" style="padding:6px 10px;border:1px solid #fecaca;border-radius:7px;background:#fff;font:700 11px Lato;cursor:pointer;color:#991b1b">✕</button>
+      </div>
+    </div>`;
+  }).join('');
 
   v.innerHTML=`<div style="padding:28px;min-height:100%">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
@@ -7462,28 +7640,129 @@ function renderHubSection(v, tabId){
         <button onclick="hubUploadModal('${tabId}')" style="padding:8px 16px;background:#4a9d7f;color:#fff;border:none;border-radius:8px;font:700 12px Lato;cursor:pointer">+ Add document</button>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:20px">
+
+    <!-- Type quick-add tiles -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:20px">
       ${cat.types.map(type=>{
         const count=saved.filter(d=>d.type===type).length;
-        return `<div style="padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px;cursor:pointer"
-          onclick="hubUploadModal('${tabId}','${type}')">
+        return `<button onclick="hubUploadModal('${tabId}','${type}')"
+          style="padding:12px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);border-radius:10px;cursor:pointer;text-align:left"
+          onmouseover="this.style.background='rgba(255,255,255,.14)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
           <div style="font-size:12px;font-weight:700;color:#fff">${type}</div>
-          <div style="font-size:11px;color:#8fa3b8;margin-top:3px">${count} filed · + Add</div>
-        </div>`;
+          <div style="font-size:10px;color:#8fa3b8;margin-top:3px">${count} filed · + Add</div>
+        </button>`;
       }).join('')}
     </div>
-    ${saved.length>0?`<div style="display:flex;flex-direction:column;gap:8px">
-      ${saved.map(d=>`<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px">
-        <span style="font-size:24px">📄</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:#fff">${d.name}</div>
-          <div style="font-size:11px;color:#8fa3b8;margin-top:2px">${d.type||''} · Filed ${d.date||''} ${d.notes?'· '+d.notes:''}</div>
-        </div>
-        <button onclick="hubDeleteDoc('${d.id}')" style="padding:4px 10px;border:1px solid rgba(239,68,68,.4);border-radius:6px;background:transparent;font:600 11px Lato;color:#f87171;cursor:pointer">Remove</button>
-      </div>`).join('')}
-    </div>`:'<div style="text-align:center;padding:30px;color:#8fa3b8;font-size:13px">No documents in this section yet</div>'}
+
+    <!-- Filed documents list -->
+    ${rows||'<div style="text-align:center;padding:40px;background:rgba(255,255,255,.04);border-radius:12px"><div style="font-size:40px;margin-bottom:10px">📂</div><div style="font-size:14px;color:#8fa3b8">No documents filed yet</div><div style="font-size:12px;color:#5a7082;margin-top:6px">Click + Add document to file your first document</div></div>'}
   </div>`;
 }
+
+// ── HosHUB Upload Modal ───────────────────────────────────────────────────────
+function hubUploadModal(tabId, preType){
+  const cat = HUB_CATEGORIES[tabId||'hubDocs']||{label:'Document',types:['Other']};
+  const typeOpts = cat.types.map(t=>`<option value="${t}"${preType===t?' selected':''}>${t}</option>`).join('');
+  const allTabs = Object.entries(HUB_CATEGORIES||{}).map(([k,c])=>`<option value="${k}"${tabId===k?' selected':''}>${c.label}</option>`).join('');
+
+  openModal(`<div style="padding:4px;max-width:420px">
+    <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:16px">📎 File a document</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Document name *</label>
+        <input type="text" id="hub-name" placeholder="e.g. Supplier agreement — SYSCO 2026"
+          style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a;outline:none">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Section</label>
+          <select id="hub-tab" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
+            ${allTabs}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Type</label>
+          <select id="hub-type" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
+            ${typeOpts}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Date</label>
+        <input type="date" id="hub-date" value="${new Date().toISOString().slice(0,10)}"
+          style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Notes (optional)</label>
+        <input type="text" id="hub-notes" placeholder="e.g. Signed copy · expires Dec 2027"
+          style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Attach file (PDF, Word, image)</label>
+        <input type="file" id="hub-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
+          style="width:100%;padding:6px;border:1.5px solid #d1d5db;border-radius:8px;font:12px Lato;color:#1a2b3a;background:#f9fafb">
+        <div style="font-size:10px;color:#374151;margin-top:4px">Files are stored in your browser. Max ~5MB per file.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="hubDoUpload()" style="flex:1;padding:11px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ File document</button>
+      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:600 14px Lato;cursor:pointer;color:#1a2b3a">Cancel</button>
+    </div>
+  </div>`);
+}
+
+function hubDoUpload(){
+  const name  = document.getElementById('hub-name')?.value?.trim();
+  const tab   = document.getElementById('hub-tab')?.value;
+  const type  = document.getElementById('hub-type')?.value;
+  const date  = document.getElementById('hub-date')?.value;
+  const notes = document.getElementById('hub-notes')?.value?.trim();
+  const file  = document.getElementById('hub-file')?.files?.[0];
+
+  if(!name){ toast('Please enter a document name'); return; }
+
+  const save = ()=>{
+    const docs = JSON.parse(localStorage.getItem('hoshub_docs')||'[]');
+    docs.unshift({ id:'hub'+Date.now(), name, tab, type, date, notes,
+      fileData: save._fd||null, fileName: file?.name||null, fileType: file?.type||null });
+    localStorage.setItem('hoshub_docs', JSON.stringify(docs));
+    closeModal();
+    const v = document.getElementById('view');
+    if(tab==='hubDocs') renderHubDocs(v); else renderHubSection(v, tab);
+    toast('✓ Document filed');
+  };
+
+  if(file){
+    if(file.size > 6*1024*1024){ toast('File too large — max 5MB'); return; }
+    const reader = new FileReader();
+    reader.onload = e=>{ save._fd = e.target.result; save(); };
+    reader.readAsDataURL(file);
+  } else {
+    save._fd = null; save();
+  }
+}
+
+function hubOpenFile(docId){
+  const docs = JSON.parse(localStorage.getItem('hoshub_docs')||'[]');
+  const doc = docs.find(d=>d.id===docId);
+  if(!doc?.fileData){ toast('No file attached to this document'); return; }
+  // Open in new tab
+  const a = document.createElement('a');
+  a.href = doc.fileData;
+  a.download = doc.fileName || doc.name;
+  a.target = '_blank';
+  a.click();
+}
+
+function hubDeleteDoc(docId){
+  if(!confirm('Remove this document?')) return;
+  const docs = JSON.parse(localStorage.getItem('hoshub_docs')||'[]').filter(d=>d.id!==docId);
+  localStorage.setItem('hoshub_docs', JSON.stringify(docs));
+  const v = document.getElementById('view');
+  if(v) renderHubDocs(v);
+  toast('Document removed');
+}
+
 
 function renderHubContracts(v){ renderHubSection(v,'hubContracts'); }
 function renderHubSuppliers(v) { renderHubSection(v,'hubSuppliers');  }

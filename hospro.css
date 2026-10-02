@@ -598,3 +598,51 @@ html, body {
 .hidden { display: none !important; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .flex-center { display: flex; align-items: center; justify-content: center; }
+
+
+/* ── Legibility overrides — ensure all text on white backgrounds is dark ── */
+.view-panel, #view {
+  --text-body: #1a2b3a;
+  --text-sub: #374151;
+  --text-muted: #6b7280;
+}
+
+/* White card text always dark */
+.bg-white, [style*="background:#fff"], [style*="background: #fff"] {
+  color: #1a2b3a;
+}
+
+/* Table cells always readable */
+td, th { color: #1a2b3a; }
+td[style*="color:#374151"] { color: #1a2b3a !important; }
+
+/* Input text always dark */
+input, select, textarea {
+  color: #1a2b3a !important;
+  background: #fff;
+}
+
+/* Dark panel text white */
+[style*="background:#1a2b3a"] { color: #fff; }
+[style*="background: #1a2b3a"] { color: #fff; }
+
+/* Labels always readable */
+label { color: #1a2b3a; }
+
+/* Ensure modal text is dark on white */
+#modal-root .modal, .modal-sheet, #modal-content {
+  color: #1a2b3a;
+}
+#modal-root .modal input,
+#modal-root .modal select,
+#modal-root .modal label,
+.modal-sheet input,
+.modal-sheet select,
+.modal-sheet label {
+  color: #1a2b3a;
+}
+
+/* Hub/Rota panels — content on dark bg stays white, card content stays dark */
+#view table td { color: #1a2b3a; }
+#view table th { color: inherit; }
+
