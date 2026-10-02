@@ -7,10 +7,17 @@
 const USE_FIREBASE = false;
 
 const USERS = {
-  "ajay.kawa":        { name:"Ajay Kawa",        code:"BHAK", role:"admin" },
-  "raj.kumar":        { name:"Raj Kumar",        code:"BHRK", role:"admin" },
-  "alia.taub":        { name:"Alia Taub",        code:"BHAT", role:"admin" },
-  "nicola.cartwright":{ name:"Nicola Cartwright", code:"BHNC", role:"admin" }
+  "ajay.kawa":        { name:"Ajay Kawa",         code:"BHAK", role:"admin",    title:"Sales & Events Manager" },
+  "raj.kumar":        { name:"Raj Kumar",          code:"BHRK", role:"admin",    title:"General Manager" },
+  "alia.taub":        { name:"Alia Taub",          code:"BHAT", role:"admin",    title:"Operations Manager" },
+  "nicola.cartwright":{ name:"Nicola Cartwright",  code:"BHNC", role:"admin",    title:"Sales Manager" },
+  "natalie.freeman":  { name:"Natalie Freeman",    code:"BHNF", role:"admin",    title:"Events Executive" },
+  "patrik.vlach":     { name:"Patrik Vlach",       code:"BHPV", role:"admin",    title:"Reception Manager" },
+  "glenn.randell":    { name:"Glenn Randell",      code:"BHGR", role:"fixer",    title:"Maintenance Manager" },
+  "pete":             { name:"Pete",               code:"BHPE", role:"fixer",    title:"Multi-trader" },
+  "herman.charles":   { name:"Herman Charles",     code:"BHHC", role:"fixer",    title:"Multi-trader" },
+  "ruth.addison":     { name:"Ruth Addison",       code:"BHRA", role:"reporter", title:"Head Housekeeper" },
+  "jomy.joy":         { name:"Jomy Mathai Joy",    code:"BHJJ", role:"reporter", title:"Bar Supervisor" },
 };
 
 const LAYOUT_LABELS = { boardroom:"Boardroom", ushape:"U-Shape",
@@ -125,11 +132,14 @@ To deny, no action needed.
 
 /* ============================================================ AUTH */
 $("#lg-btn").onclick = async ()=>{
-  const u=$("#lg-user").value, pw=$("#lg-pw").value.trim().toUpperCase();
+  const uRaw=$("#lg-user").value.trim().toLowerCase();
+  const pw=$("#lg-pw")?.value.trim().toUpperCase() || $("#lg-pass")?.value.trim().toUpperCase() || "";
   const err=$("#lg-err"); err.textContent="";
-  if(!u){ err.textContent="Please select your name."; return; }
-  const user=USERS[u];
-  if(!user){ err.textContent="Unknown user."; return; }
+  if(!uRaw){ err.textContent="Please enter your username."; return; }
+  const user=USERS[uRaw];
+  if(!user){ err.textContent="Username not recognised. Please check and try again."; return; }
+  if(pw && user.code && pw!==user.code){ err.textContent="Incorrect password. Please try again."; return; }
+  const u=uRaw;
 
   const btn=$("#lg-btn"); btn.disabled=true; const label=btn.textContent; btn.textContent="Signing in…";
   // Try Firebase first; fall back to demo (local) auth
@@ -234,7 +244,7 @@ function render(){
     fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
     rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings,
     staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs,
-    brandDocs:renderBrandDocs
+    brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography
   }[CURRENT_TAB]||renderRooms)(v);
 }
 
@@ -5969,28 +5979,6 @@ function spExportCSV(){
 
 // ── HosBRAND — Brochures & Downloads ─────────────────────────────────────────
 const BH_DOCS = [
-  { category: "Events & Celebrations",
-    colour: "#8b5c8f",
-    docs: [
-      { title:"Party Packages 2026",          icon:"🎉", file:"party-packages-2026.pdf",              desc:"Full event party packages with pricing" },
-      { title:"Baby Shower Packages 2026",    icon:"👶", file:"baby-shower-packages-2026.pdf",         desc:"Special £29.00–£37.50 pp · Private room hire" },
-      { title:"Celebration of Life 2026",     icon:"🕊", file:"celebration-of-life-packages-2026.pdf", desc:"Warm & respectful · £27.50–£33.00 pp" },
-      { title:"Masonic Events 2026",          icon:"🔷", file:"masonic-packages-2026.pdf",             desc:"Masonic gathering packages" },
-    ]
-  },
-  { category: "Weddings",
-    colour: "#c85c6b",
-    docs: [
-      { title:"Weddings 2026",                icon:"💍", file:"wedding-brochure-2026.pdf",             desc:"Full wedding brochure 2026–2027" },
-      { title:"Self-Catering Weddings 2026",  icon:"🏡", file:"self-catering-wedding-brochure-2026.pdf",desc:"Your venue, your caterer, your way" },
-    ]
-  },
-  { category: "Meetings & Events",
-    colour: "#2f6f9e",
-    docs: [
-      { title:"Meetings & Events",            icon:"🤝", file:"meetings-and-events.pdf",              desc:"Full meetings and events guide" },
-    ]
-  },
   { category: "The Clarendon — Menus",
     colour: "#4a9d7f",
     docs: [
@@ -6661,5 +6649,112 @@ function renderStaffDocs(v){
     <div style="font-size:13px;color:#374151;margin-bottom:16px">Open a staff profile to upload and manage their documents</div>
     <button onclick="switchTab('staffProfiles')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">← Staff Profiles</button>
   </div>`;
+}
+
+
+// ── HosBRAND — Logos, Photography, Collateral sub-sections ────────────────────
+
+function renderBrandLogos(v){
+  v.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding:28px;min-height:100%';
+  wrap.innerHTML = `
+    <div style="margin-bottom:24px">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Logos & Brand Assets</div>
+      <div style="font-size:13px;color:#8fa3b8">Official Brandon Hall Hotel & Spa brand assets — use approved versions only</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+      ${[
+        {title:'Primary Logo — Dark',      desc:'Navy on white · For all print and digital use',              file:'bh-logo.svg',  preview:'🏨'},
+        {title:'Primary Logo — Light',     desc:'White on dark · For dark backgrounds',                       file:'bh-logo.svg',  preview:'🏨'},
+        {title:'BH Monogram',              desc:'Icon mark only · For social media & app icons',              file:'',             preview:'🔷'},
+        {title:'Colour Palette',           desc:'Brand colours: Navy #1A2B3A · Gold #C78A3B · Cream',         file:'',             preview:'🎨'},
+        {title:'Brand Guidelines PDF',     desc:'Full brand guidelines — typography, colour, usage rules',    file:'',             preview:'📋'},
+        {title:'Email Signature',          desc:'Standard email signature template for all team members',     file:'',             preview:'✉️'},
+      ].map(item => `<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="width:52px;height:52px;border-radius:12px;background:rgba(199,138,59,.2);border:1px solid rgba(199,138,59,.3);display:flex;align-items:center;justify-content:center;font-size:26px">${item.preview}</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#fff">${item.title}</div>
+          <div style="font-size:11px;color:#8fa3b8;margin-top:4px;line-height:1.5">${item.desc}</div>
+        </div>
+        ${item.file ? `<div style="display:flex;gap:8px"><a href="/${item.file}" target="_blank" style="flex:1;padding:7px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">👁 View</a><a href="/${item.file}" download style="flex:1;padding:7px;background:#c78a3b;border:none;border-radius:7px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">⬇ Download</a></div>` : `<div style="padding:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:7px;font:11px Lato;color:#8fa3b8;text-align:center">Upload via GitHub to enable download</div>`}
+      </div>`).join('')}
+    </div>`;
+  v.appendChild(wrap);
+}
+
+function renderBrandPhotography(v){
+  v.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding:28px;min-height:100%';
+  wrap.innerHTML = `
+    <div style="margin-bottom:24px">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Photography Library</div>
+      <div style="font-size:13px;color:#8fa3b8">Approved hotel photography — bedrooms, venue, gardens, dining, spa</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+      ${['Exterior & Gardens','Bedrooms & Suites','Event Spaces','The Clarendon Restaurant','Spa & Wellness','Weddings & Events','Aerial Photography','Team & Service'].map(cat => `
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;cursor:pointer;transition:all .15s"
+          onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
+          <div style="font-size:32px;margin-bottom:10px">📷</div>
+          <div style="font-size:13px;font-weight:700;color:#fff">${cat}</div>
+          <div style="font-size:11px;color:#8fa3b8;margin-top:4px">Upload images to enable library</div>
+        </div>`).join('')}
+    </div>
+    <div style="margin-top:20px;padding:16px;background:rgba(199,138,59,.1);border:1px solid rgba(199,138,59,.3);border-radius:10px">
+      <div style="font-size:12px;font-weight:700;color:#c78a3b;margin-bottom:4px">📤 To add photography</div>
+      <div style="font-size:12px;color:#8fa3b8">Upload approved hotel images to the GitHub repo in a /photos folder. Contact your HosPRO administrator to enable the image library.</div>
+    </div>`;
+  v.appendChild(wrap);
+}
+
+function renderBrandCollateral(v){
+  v.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding:28px;min-height:100%';
+
+  const BH_COLLATERAL = [
+    { category:"Events & Celebrations", colour:"#8b5c8f", docs:[
+      {title:"Party Packages 2026",         icon:"🎉", file:"party-packages-2026.pdf",               desc:"Full event party packages with pricing"},
+      {title:"Baby Shower Packages 2026",   icon:"👶", file:"baby-shower-packages-2026.pdf",          desc:"£29.00–£37.50 pp · Private room hire included"},
+      {title:"Celebration of Life 2026",    icon:"🕊", file:"celebration-of-life-packages-2026.pdf",  desc:"Warm & respectful · £27.50–£33.00 pp"},
+      {title:"Masonic Events 2026",         icon:"🔷", file:"masonic-packages-2026.pdf",              desc:"Masonic gathering packages"},
+    ]},
+    { category:"Weddings", colour:"#c85c6b", docs:[
+      {title:"Weddings 2026",               icon:"💍", file:"wedding-brochure-2026.pdf",              desc:"Full wedding brochure 2026–2027"},
+      {title:"Self-Catering Weddings 2026", icon:"🏡", file:"self-catering-wedding-brochure-2026.pdf",desc:"Your venue, your caterer, your way"},
+    ]},
+    { category:"Meetings & Events", colour:"#2f6f9e", docs:[
+      {title:"Meetings & Events Guide",     icon:"🤝", file:"meetings-and-events.pdf",               desc:"Full meetings and events guide"},
+    ]},
+  ];
+
+  wrap.innerHTML = `<div style="margin-bottom:24px">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Collateral & Brochures</div>
+    <div style="font-size:13px;color:#8fa3b8">All event packages, brochures and downloadable sales collateral</div>
+  </div>`;
+
+  BH_COLLATERAL.forEach(cat => {
+    const sec = document.createElement('div');
+    sec.style.cssText = 'margin-bottom:24px';
+    sec.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.1)">
+      <span style="width:10px;height:10px;border-radius:50%;background:${cat.colour};display:inline-block"></span>
+      <span style="font-size:12px;font-weight:700;color:#c7d2e0;text-transform:uppercase;letter-spacing:.8px">${cat.category}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
+      ${cat.docs.map(doc => `<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:18px;border-left:3px solid ${cat.colour};display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <span style="font-size:26px;flex-shrink:0">${doc.icon}</span>
+          <div><div style="font-size:13px;font-weight:700;color:#fff">${doc.title}</div><div style="font-size:11px;color:#8fa3b8;margin-top:3px">${doc.desc}</div></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <a href="/${doc.file}" target="_blank" style="flex:1;padding:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">👁 View</a>
+          <a href="/${doc.file}" download style="flex:1;padding:8px;background:#c78a3b;border:none;border-radius:7px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">⬇ Download</a>
+        </div>
+      </div>`).join('')}
+    </div>`;
+    wrap.appendChild(sec);
+  });
+  v.appendChild(wrap);
 }
 
