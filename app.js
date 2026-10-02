@@ -5784,7 +5784,15 @@ function spUpdateMonthly(input){const monthly=spGetMonthly(),fc=spGetFC(),dk=inp
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
 function renderRotaSettings(v){
   const staff=spGetStaff();
-  const rows=staff.map(s=>{const dept=SP_DEPTS.find(d=>d.id===s.dept)||{name:s.dept,colour:'#4a86c7'};const wkHrs=0;return`<tr style="border-bottom:1px solid #f5f7f9"><td style="padding:8px 10px"><b style="font-size:13px;color:#1a2b3a">${s.name}</b><div style="font-size:11px;color:#374151">${s.role||''} · ${s.staffCode||''}</div></td><td style="padding:8px 6px"><span style="padding:2px 8px;border-radius:8px;font-size:11px;background:${dept.colour}20;color:${dept.colour};font-weight:600">${dept.name}</span></td><td style="padding:8px 6px;font-size:12px;color:#374151">${s.type==='relief'?'Relief':'Core'}</td><td style="padding:8px 6px;font-size:12px;color:#1a2b3a">${s.contractHrs>0?s.contractHrs+'h/wk':'—'}</td><td style="padding:8px 6px;font-size:12px;color:#1a2b3a">${s.hourlyRate>0?'£'+s.hourlyRate+'/h':'—'}</td><td style="padding:8px 6px"><select onchange="spMoveDept('${s.id}',this.value)" style="padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;color:#1a2b3a">${SP_DEPTS.map(d=>`<option value="${d.id}"${s.dept===d.id?' selected':''}>${d.name}</option>`).join('')}</select></td><td style="padding:8px 6px"><button onclick="spRemoveStaff('${s.id}')" style="padding:3px 8px;border:1px solid #fee2e2;border-radius:6px;background:#fff;color:#991b1b;font-size:11px;cursor:pointer">Remove</button></td></tr>`;}).join('');
+  const rows=staff.map(s=>{const dept=SP_DEPTS.find(d=>d.id===s.dept)||{name:s.dept,colour:'#4a86c7'};const wkHrs=0;return`<tr style="border-bottom:1px solid #f5f7f9"><td style="padding:8px 10px"><b style="font-size:13px;color:#1a2b3a">${s.name}</b><div style="font-size:11px;color:#374151">${s.role||''} · ${s.staffCode||''}</div></td><td style="padding:8px 6px"><span style="padding:2px 8px;border-radius:8px;font-size:11px;background:${dept.colour}20;color:${dept.colour};font-weight:600">${dept.name}</span></td><td style="padding:8px 6px;font-size:12px;color:#374151">${s.type==='relief'?'Relief':'Core'}</td><td style="padding:8px 6px;font-size:12px;color:#1a2b3a">${s.contractHrs>0?s.contractHrs+'h/wk':'—'}</td><td style="padding:8px 6px;font-size:12px;color:#1a2b3a">${s.hourlyRate>0?'£'+s.hourlyRate+'/h':'—'}</td><td style="padding:8px 6px"><select onchange="spMoveDept('${s.id}',this.value)" style="padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;color:#1a2b3a">${SP_DEPTS.map(d=>`<option value="${d.id}"${s.dept===d.id?' selected':''}>${d.name}</option>`).join('')}</select></td>
+      <td style="padding:8px 6px">
+        <div style="display:flex;gap:3px">
+          ${['M','T','W','T','F','S','S'].map((day,i)=>`<label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer">
+            <input type="checkbox" ${(s.workDays||[])[i]?'checked':''} onchange="spToggleWorkDay('${s.id}',${i},this.checked)" style="width:14px;height:14px;accent-color:#2a6a4a">
+            <span style="font-size:9px;font-weight:700;color:#374151">${day}</span>
+          </label>`).join('')}
+        </div>
+      </td><td style="padding:8px 6px"><button onclick="spRemoveStaff('${s.id}')" style="padding:3px 8px;border:1px solid #fee2e2;border-radius:6px;background:#fff;color:#991b1b;font-size:11px;cursor:pointer">Remove</button></td></tr>`;}).join('');
   v.innerHTML=`<div style="padding:20px;max-width:1000px">
     <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff;margin-bottom:4px">HosSHIFT Settings</div>
     <div style="font-size:13px;color:#374151;margin-bottom:18px">${staff.length} staff members · Click name in rota to edit shifts</div>
@@ -5794,7 +5802,7 @@ function renderRotaSettings(v){
         <button onclick="spAddStaffModal()" style="padding:7px 14px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">+ Add member</button>
       </div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:#f5f7f9">${['Name','Department','Type','Hours','Rate','Move',''].map(h=>`<th style="text-align:left;padding:7px 10px;font-size:11px;color:#374151;text-transform:uppercase">${h}</th>`).join('')}</tr></thead>
+        <thead><tr style="background:#f5f7f9">${['Name','Department','Type','Hours','Rate','Move','Working Days',''].map(h=>`<th style="text-align:left;padding:7px 10px;font-size:11px;color:#374151;text-transform:uppercase">${h}</th>`).join('')}</tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
     </div>
@@ -5841,22 +5849,126 @@ function spDoAddStaff(){
 }
 
 function spEditStaffModal(staffId){
-  const staff=spGetStaff(),s=staff.find(x=>x.id===staffId);if(!s)return;
+  const staff=spGetStaff(), s=staff.find(x=>x.id===staffId); if(!s) return;
   const dept=SP_DEPTS.find(d=>d.id===s.dept)||{name:s.dept,colour:'#1a2b3a',shifts:[]};
-  const days=spWeekDates(spWeekOffset),rota=spGetRota();
-  const rows=days.map((d,i)=>{const k=spDK(d),sh=(rota[k]||{})[s.id]||'off';const shiftOpts=(dept.shifts.length?dept.shifts:[]).concat(['off','holiday','on call','sick','in lieu']).map(x=>`<option value="${x}"${sh===x?' selected':''}>${x}</option>`).join('');return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #e5e7eb"><div style="width:36px;font-size:12px;font-weight:700;color:#1a2b3a">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]}</div><div style="font-size:11px;color:#374151;width:80px">${spShortFmt(d)}</div><select data-dk="${k}" data-sid="${s.id}" onchange="spCellSelect(this)" style="flex:1;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:600 12px Lato;color:#1a2b3a">${shiftOpts}</select></div>`;}).join('');
-  openModal(`<div style="max-height:85vh;overflow-y:auto;padding:4px">
+  const days=spWeekDates(spWeekOffset), rota=spGetRota();
+  const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const workDays = s.workDays || [0,0,0,0,0,0,0];
+
+  const shiftOpts=(dept.shifts.length?dept.shifts:[]).concat(['off','holiday','on call','sick','in lieu']);
+
+  const weekRows=days.map((d,i)=>{
+    const k=spDK(d), sh=(rota[k]||{})[s.id]||'off';
+    const opts=shiftOpts.map(x=>`<option value="${x}"${sh===x?' selected':''}>${x}</option>`).join('');
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #e5e7eb">
+      <div style="width:36px;font-size:12px;font-weight:700;color:#1a2b3a">${DAYS[i]}</div>
+      <div style="font-size:11px;color:#374151;width:80px">${d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div>
+      <select data-dk="${k}" data-sid="${s.id}" onchange="spCellSelect(this)"
+        style="flex:1;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:600 12px Lato;color:#1a2b3a;cursor:pointer">
+        ${opts}
+      </select>
+    </div>`;
+  }).join('');
+
+  // Working days checkboxes
+  const dayChecks=DAYS.map((day,i)=>`
+    <label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+      <input type="checkbox" id="wd-${i}-${s.id}" ${workDays[i]?'checked':''}
+        onchange="spToggleWorkDay('${s.id}',${i},this.checked)"
+        style="width:18px;height:18px;accent-color:#2a6a4a;cursor:pointer">
+      <span style="font-size:10px;font-weight:700;color:#374151">${day}</span>
+    </label>`).join('');
+
+  const html=`<div style="max-height:85vh;overflow-y:auto;padding:4px">
+    <!-- Header -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
       <div style="width:42px;height:42px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font:700 14px Lato;color:#fff">${s.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
-      <div><div style="font-size:16px;font-weight:700;color:#1a2b3a">${s.name}</div><div style="font-size:12px;color:#374151">${s.role||''} · ${dept.name}</div></div>
+      <div>
+        <div style="font-size:16px;font-weight:700;color:#1a2b3a">${s.name}</div>
+        <div style="font-size:12px;color:#374151">${s.role||''} · ${dept.name}</div>
+      </div>
+      <button onclick="closeModal()" style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;color:#374151">✕</button>
     </div>
-    <div style="font-size:12px;font-weight:700;color:#1a2b3a;margin-bottom:8px">This week's shifts:</div>
-    ${rows}
+
+    <!-- Contract details -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;padding:12px;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb">
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#374151;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Contract type</label>
+        <select id="sp-ct-${s.id}" onchange="spSaveContractField('${s.id}','contract',this.value)"
+          style="width:100%;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:12px Lato;color:#1a2b3a">
+          ${['Full-time','Part-time','Zero hours'].map(c=>`<option${s.contract===c?' selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#374151;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Hours / week</label>
+        <input type="number" id="sp-hrs-${s.id}" value="${s.contractHrs||0}" min="0"
+          onchange="spSaveContractField('${s.id}','contractHrs',+this.value)"
+          style="width:100%;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:600 12px Lato;color:#1a2b3a">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#374151;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Hourly rate (£)</label>
+        <input type="number" step="0.01" id="sp-rate-${s.id}" value="${s.hourlyRate||''}"
+          onchange="spSaveContractField('${s.id}','hourlyRate',+this.value)"
+          placeholder="e.g. 12.50"
+          style="width:100%;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:600 12px Lato;color:#1a2b3a">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#374151;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Standard shift</label>
+        <select id="sp-shift-${s.id}" onchange="spSaveContractField('${s.id}','standardShift',this.value)"
+          style="width:100%;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:12px Lato;color:#1a2b3a">
+          <option value="">— select —</option>
+          ${(dept.shifts.length?dept.shifts:['07:00-15:00','08:00-16:00','09:00-17:00','15:00-23:00','23:00-07:00']).map(sh=>`<option value="${sh}"${s.standardShift===sh?' selected':''}>${sh}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <!-- Working days checkboxes -->
+    <div style="margin-bottom:14px;padding:12px;background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0">
+      <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">✓ Days they work</div>
+      <div style="display:flex;justify-content:space-between;gap:4px">
+        ${dayChecks}
+      </div>
+    </div>
+
+    <!-- This week's shifts -->
+    <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">This week's shifts</div>
+    ${weekRows}
+
     <div style="display:flex;gap:8px;margin-top:14px">
-      <button onclick="closeModal()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ Done — shifts auto-saved</button>
+      <button onclick="closeModal()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ Done — saves automatically</button>
     </div>
-  </div>`);
+  </div>`;
+  openModal(html);
 }
+
+function spToggleWorkDay(staffId, dayIdx, checked){
+  const staff=spGetStaff(), s=staff.find(x=>x.id===staffId); if(!s) return;
+  if(!s.workDays) s.workDays=[0,0,0,0,0,0,0];
+  s.workDays[dayIdx] = checked ? 1 : 0;
+  spSaveStaff(staff);
+  // Also sync to HosSTAFF profiles
+  const profiles=JSON.parse(localStorage.getItem('hs_profiles')||'null');
+  if(profiles){
+    const p=profiles.find(x=>x.id===staffId);
+    if(p){ p.workDays=s.workDays; localStorage.setItem('hs_profiles',JSON.stringify(profiles)); }
+  }
+}
+
+function spSaveContractField(staffId, field, value){
+  const staff=spGetStaff(), s=staff.find(x=>x.id===staffId); if(!s) return;
+  s[field]=value;
+  if(field==='contractHrs') s.weeklyWage=Math.round(value*(s.hourlyRate||0)*100)/100;
+  if(field==='hourlyRate')  s.weeklyWage=Math.round((s.contractHrs||0)*value*100)/100;
+  spSaveStaff(staff);
+  // Sync to HosSTAFF
+  const profiles=JSON.parse(localStorage.getItem('hs_profiles')||'null');
+  if(profiles){
+    const p=profiles.find(x=>x.id===staffId);
+    if(p){ p[field]=value; if(field==='contractHrs'||field==='hourlyRate') p.weeklyWage=s.weeklyWage; localStorage.setItem('hs_profiles',JSON.stringify(profiles)); }
+  }
+  if(typeof toast==='function') toast('✓ Saved');
+}
+
 
 function spCellSelect(sel){const rota=spGetRota(),k=sel.dataset.dk,sid=sel.dataset.sid;if(!rota[k])rota[k]={};rota[k][sid]=sel.value;spSaveRota(rota);}
 
@@ -6264,6 +6376,19 @@ function hsOpenProfile(staffId){
         </div>
         ${p.standardShift?'<div style="font-size:12px;color:#374151;margin-top:6px">Standard shift: <b>'+p.standardShift+'</b></div>':''}
       </div>
+      <!-- Working days checkboxes -->
+      <div style="margin-bottom:10px;padding:12px;background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0">
+        <label style="font-size:10px;font-weight:700;color:#166534;display:block;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">✓ Days they work</label>
+        <div style="display:flex;justify-content:space-between;gap:4px">
+          ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((day,i)=>`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+            <input type="checkbox" ${(p.workDays||[])[i]?'checked':''}
+              onchange="hsToggleWorkDay('${staffId}',${i},this.checked)"
+              style="width:18px;height:18px;accent-color:#2a6a4a;cursor:pointer">
+            <span style="font-size:10px;font-weight:700;color:#374151">${day}</span>
+          </label>`).join('')}
+        </div>
+        ${p.standardShift?`<div style="font-size:12px;color:#374151;margin-top:8px">Standard shift: <b style="color:#1a2b3a">${p.standardShift}</b></div>`:''}
+      </div>
       <div>
         <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Notes</label>
         <textarea data-field="notes" data-staffid="${staffId}" onchange="hsSaveField(this)"
@@ -6368,6 +6493,18 @@ function hsProfileTab(btn, staffId, tabIdx){
     const tab = document.getElementById('hs-tab-'+i);
     if(tab) tab.style.display = i===tabIdx?'block':'none';
   });
+}
+
+function hsToggleWorkDay(staffId, dayIdx, checked){
+  const profiles=hsGetProfiles(), p=profiles.find(x=>x.id===staffId); if(!p) return;
+  if(!p.workDays) p.workDays=[0,0,0,0,0,0,0];
+  p.workDays[dayIdx] = checked ? 1 : 0;
+  hsSaveProfiles(profiles);
+  // Sync to HosSHIFT
+  const staff=spGetStaff?spGetStaff():[];
+  const s=staff.find(x=>x.id===staffId);
+  if(s){ s.workDays=p.workDays; if(typeof spSaveStaff==='function') spSaveStaff(staff); }
+  toast('Saved ✓');
 }
 
 function hsSaveField(input){
