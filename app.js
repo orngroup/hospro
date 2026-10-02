@@ -172,7 +172,8 @@ function render(){
     fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
     rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings,
     staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs,
-    brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography
+    brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography,
+    hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR
   }[CURRENT_TAB]||renderRooms)(v);
 }
 
@@ -4018,6 +4019,7 @@ const MOD_BG = {
   hosstudio: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=1600&q=60",
   hosbrand:  "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=60",
   hospeople: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1600&q=60",
+  hoshub:    "https://images.unsplash.com/photo-1568667256549-094345857637?w=1600&q=60",
 };
 
 function renderModuleLanding(moduleId){
@@ -4028,6 +4030,7 @@ function renderModuleLanding(moduleId){
 
   // HosBRAND goes straight to brandDocs
   if(moduleId==="hosbrand"){ switchTab("brandDocs"); return; }
+  if(moduleId==="hoshub"){ switchTab("hubDocs"); return; }
 
   const subcards = (typeof MODULE_SUBCARDS!=="undefined" && MODULE_SUBCARDS[moduleId]) || [];
 
@@ -4279,50 +4282,306 @@ function showPrecheckinFields(v){
 }
 
 /* Corporate database — aggregates pre-check-ins by company */
+
+// ── Corporate Database — 66 accounts from 2025 register ──────────────────────
+const CORP_DB_SEED = [{"id":"corp001","company":"AGCO","rate":"\u00a387.00 B&B","contact":"National Account","phone":"","email":"","status":"rfp","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp002","company":"Antalis","rate":"\u00a393.00 B&B","contact":"Jim McKenzie","phone":"07979 652518","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp003","company":"Atos","rate":"\u00a390.00 B&B","contact":"","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp004","company":"AP Racing","rate":"\u00a390.00 B&B","contact":"","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp005","company":"APTIV","rate":"\u00a390.00 B&B","contact":"Rosie Smith","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp006","company":"AVL","rate":"\u00a393.00 B&B","contact":"National Account","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp007","company":"BBC","rate":"\u00a382.00 B&B","contact":"National Account","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp008","company":"Baader","rate":"\u00a395.00 B&B","contact":"Paula Bains","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp009","company":"Belgrade Theatre","rate":"12% off BAR","contact":"Rich","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp010","company":"Borg Warner","rate":"\u00a393.00 B&B","contact":"Jonathan Weston","phone":"07826 870507","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp011","company":"Caldwell","rate":"\u00a391.00 B&B","contact":"Alastair Wheeler","phone":"02476 437900","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp012","company":"CJC Procurement","rate":"\u00a395.00 B&B","contact":"Chris Cliffe","phone":"","email":"chris@cjcprocurement.co.uk","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp013","company":"Company of Master Jewellers","rate":"\u00a389.00 B&B","contact":"Karen Cobley","phone":"","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp014","company":"DHL (National)","rate":"\u00a383.00 B&B","contact":"National Account","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp015","company":"McKesson (Celesio)","rate":"\u00a392.00 B&B","contact":"Michelle Parkes","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp016","company":"Edgetech","rate":"\u00a390.00 B&B","contact":"Claire Fordham","phone":"02476 639931","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp017","company":"Emerald Automotive","rate":"\u00a391.00 B&B","contact":"Ellie Tempest","phone":"01268 247991","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp018","company":"FANUC","rate":"\u00a395.00 B&B","contact":"Martine Padfield","phone":"","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp019","company":"Fraikin","rate":"\u00a390.00 B&B","contact":"Amanda Goyer / Anita Cook","phone":"02476 472358","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp020","company":"G4S","rate":"\u00a392.00 B&B","contact":"National Account","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp021","company":"GE Power","rate":"\u00a393.00 B&B","contact":"Jon Wheeler","phone":"07917 072372","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp022","company":"Geely Group","rate":"\u00a392.00 B&B","contact":"Chris Fincham","phone":"02476 572086","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp023","company":"Georg Fischer","rate":"\u00a390.00 B&B","contact":"Stacy Alexander","phone":"02476 533701","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp024","company":"Government","rate":"\u00a380.00 B&B","contact":"National Account","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp025","company":"HMG Paints","rate":"\u00a396.00 B&B","contact":"Paul Walker","phone":"0161 205 7631","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp026","company":"JLR","rate":"\u00a387.00 B&B","contact":"National Account","phone":"","email":"","status":"rfp","notes":"RFP. Nic loaded courtesy rate","lastContact":"","followUp":"","agreements":[]},{"id":"corp027","company":"KASAI Group","rate":"\u00a395.00 B&B","contact":"Karen Walmsley","phone":"0191 415 7000","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp028","company":"Keller","rate":"\u00a391.00 B&B","contact":"Deborah Bryan","phone":"02476 511266","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp029","company":"Keoghs","rate":"\u00a392.00 B&B","contact":"Sara Pearce","phone":"01204 677154","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp030","company":"Lear","rate":"\u00a395.00 B&B","contact":"Elizabeth Dennt","phone":"","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp031","company":"Lorian / GP Strat","rate":"\u00a390.00 B&B","contact":"John Wagstaff","phone":"","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp032","company":"MACE","rate":"\u00a393.00 B&B","contact":"National Account","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp033","company":"McCarthy & Stone","rate":"\u00a395.00 B&B","contact":"Becky Booth","phone":"02476 441199","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp034","company":"McLaren","rate":"\u00a390.00 B&B","contact":"Hollie Cosby","phone":"0121 770 8288","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp035","company":"Menzies","rate":"\u00a390.00 B&B","contact":"Cary Martin","phone":"","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp036","company":"Morgan Sindall via Priority","rate":"\u00a390.00 B&B","contact":"Adam Woods","phone":"","email":"","status":"called","notes":"Contracting","lastContact":"","followUp":"","agreements":[]},{"id":"corp037","company":"Mr Garcha","rate":"\u00a3105.00 B&B Executive","contact":"Mr Garcha","phone":"","email":"deepgarcha@aol.com","status":"inactive","notes":"Contract finished","lastContact":"","followUp":"","agreements":[]},{"id":"corp038","company":"NAEC","rate":"\u00a395.00 B&B","contact":"Kate Varvedo","phone":"","email":"katev@stoneleighevents.com","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp039","company":"N&C Associates","rate":"TBD","contact":"Penny Knifton","phone":"","email":"penny.knifton@westmidlands.police.uk","status":"active","notes":"Rate loaded","lastContact":"","followUp":"","agreements":[]},{"id":"corp040","company":"Orbital Response","rate":"\u00a395.00 B&B","contact":"Michael Harper","phone":"01993 319807","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp041","company":"Orchid Northern Systems","rate":"\u00a385.00 / \u00a390.00 Executive","contact":"Paul Kershaw","phone":"07894 946912","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp042","company":"Penso","rate":"\u00a392.00 B&B","contact":"Mandy Sahota","phone":"02476 217760","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp043","company":"Peugeot","rate":"\u00a387.00 B&B / \u00a3102.00 DBB","contact":"Virginie Goodlad","phone":"","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp044","company":"Quick Service Logistics","rate":"\u00a390.00 B&B","contact":"Nigel Atkins","phone":"07557 215662","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp045","company":"Real Health","rate":"\u00a394.00 B&B / \u00a3114.00 DBB","contact":"Rory Mcmillen","phone":"02476 996883","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp046","company":"Rob Spiers","rate":"\u00a395.00 B&B","contact":"Rob Spiers","phone":"","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp047","company":"Royal Mail","rate":"\u00a386.00 B&B","contact":"National Account","phone":"","email":"","status":"rfp","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp048","company":"Ryton","rate":"\u00a392.00 / \u00a375.00","contact":"Nicola Pearson","phone":"0121 712 6061","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp049","company":"Sainsbury's (Coventry)","rate":"\u00a379.00 B&B","contact":"Kevin Wiseman","phone":"07880 796826","email":"","status":"called","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp050","company":"Saint Gobain / Jewsons","rate":"\u00a392.00 B&B","contact":"Catherine Cooper","phone":"02476 438894","email":"","status":"active","notes":"Rate set up loaded","lastContact":"","followUp":"","agreements":[]},{"id":"corp051","company":"Schuropdy","rate":"\u00a390.00 B&B","contact":"Hayley Kinlan","phone":"01749 671709","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp052","company":"SCS","rate":"\u00a387.00 B&B / \u00a3102.00 DBB","contact":"Pauline Preston","phone":"0191 514 6041","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp053","company":"Terry Lindsay","rate":"\u00a382.00 Room only","contact":"Terry Lindsay","phone":"","email":"","status":"active","notes":"Individual","lastContact":"","followUp":"","agreements":[]},{"id":"corp054","company":"TGW","rate":"\u00a391.00 B&B","contact":"Lynn Low","phone":"01858 468855","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp055","company":"The Coventry","rate":"\u00a392.00 B&B","contact":"Vilma Law","phone":"","email":"vilma.law@thecoventry.co.uk","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp056","company":"Triway Solutions","rate":"\u00a391.00 B&B","contact":"Anthony Elkin","phone":"07808 159285","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp057","company":"UK Mail (DHL) via Capita","rate":"\u00a394.00 B&B","contact":"Suzanne Walker","phone":"01753 706070","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp058","company":"VP Defcon","rate":"\u00a387.00 B&B","contact":"Ian Parry","phone":"07714 825777","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp059","company":"Vauxhall via HG","rate":"\u00a387.00 B&B / \u00a3102.00 DBB","contact":"Ben Gash","phone":"","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp060","company":"West Atlantic","rate":"\u00a390.00 B&B","contact":"Amy Rowe","phone":"02476 882679","email":"","status":"rfp","notes":"RFP","lastContact":"","followUp":"","agreements":[]},{"id":"corp061","company":"West Cre8tive","rate":"\u00a392.00 B&B","contact":"Ben Sheared","phone":"","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp062","company":"Whale Tankers","rate":"\u00a390.00 B&B","contact":"Alison Bradnock","phone":"0121 704 5700","email":"","status":"active","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp063","company":"Wolseley","rate":"\u00a390.00 B&B","contact":"Suzie Smith","phone":"01926 705151","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp064","company":"Yazaki","rate":"\u00a395.00 B&B","contact":"Amanda Robinson","phone":"02476 658600","email":"","status":"called","notes":"","lastContact":"","followUp":"","agreements":[]},{"id":"corp065","company":"National Grid","rate":"DDR \u00a335.00 / 24hr \u00a3135.00","contact":"National Account","phone":"","email":"","status":"rfp","notes":"Apr\u2013Mar conference rate","lastContact":"","followUp":"","agreements":[]},{"id":"corp066","company":"Capita Meeting First","rate":"DDR \u00a335.00 / 24hr \u00a3140.00","contact":"National Account","phone":"","email":"","status":"rfp","notes":"Jun\u2013Dec conference rate","lastContact":"","followUp":"","agreements":[]}];
+
+function corpGetAccounts(){
+  const stored = localStorage.getItem('bh_corp_accounts');
+  if(stored) return JSON.parse(stored);
+  localStorage.setItem('bh_corp_accounts', JSON.stringify(CORP_DB_SEED));
+  return CORP_DB_SEED.slice();
+}
+function corpSaveAccounts(d){ localStorage.setItem('bh_corp_accounts', JSON.stringify(d)); }
+
 function renderCorpDb(v){
-  v.appendChild(head("Corporate Database","Every pre check-in, grouped by company — room nights, guests and stay patterns to target corporate rates."));
-  const list=CorpGuestStore.all();
-  if(!list.length){
-    v.appendChild(el("div","empty",`<div class="big">No pre check-ins yet</div>Share the pre check-in link (StayCORP → Pre Check-in Setup) to start building the database.`));
-    return;
-  }
-  const nights=r=>{ if(r.checkin&&r.checkout){ const d=(new Date(r.checkout)-new Date(r.checkin))/864e5; return d>0?Math.round(d):1; } return 1; };
-  const comp={};
-  list.forEach(r=>{ const key=(r.company||"").trim()||"(individual)";
-    const c=comp[key]||(comp[key]={company:key, guests:0, nights:0, stays:0, dinners:0, records:[]});
-    c.guests+=1; c.nights+=nights(r); c.stays+=1; if(r.dinner==="Yes")c.dinners+=1; c.records.push(r); });
-  const companies=Object.values(comp).sort((a,b)=>b.nights-a.nights);
-  const totalNights=companies.reduce((s,c)=>s+c.nights,0);
-  const corpCandidates=companies.filter(c=>c.company!=="(individual)" && c.nights*12>=CORP_THRESHOLD);
+  v.innerHTML=''; v.style.padding='0';
+  const accounts = corpGetAccounts();
+  const search   = window._corpSearch||'';
+  const filter   = window._corpFilter||'all';
+  const sortBy   = window._corpSort||'company';
 
-  const kpis=el("div","stat-cards");
-  kpis.innerHTML=`
-    <div class="stat-card"><div class="sc-v">${list.length}</div><div class="sc-k">Pre check-ins</div></div>
-    <div class="stat-card"><div class="sc-v">${companies.filter(c=>c.company!=="(individual)").length}</div><div class="sc-k">Companies</div></div>
-    <div class="stat-card accent"><div class="sc-v">${totalNights}</div><div class="sc-k">Room nights captured</div></div>
-    <div class="stat-card"><div class="sc-v">${corpCandidates.length}</div><div class="sc-k">Corporate candidates</div></div>`;
-  v.appendChild(kpis);
+  let filtered = accounts;
+  if(search) filtered = filtered.filter(a=>
+    a.company.toLowerCase().includes(search.toLowerCase()) ||
+    (a.contact||'').toLowerCase().includes(search.toLowerCase()));
+  if(filter!=='all') filtered = filtered.filter(a=>a.status===filter);
+  filtered = filtered.sort((a,b)=>a[sortBy]?.localeCompare?.(b[sortBy])||0);
 
-  v.appendChild(el("div","sec-title","Companies"));
-  const t=el("table","data-table");
-  t.innerHTML=`<tr><th>Company</th><th>Guests</th><th>Room nights</th><th>Annualised</th><th>Dinners</th><th></th></tr>`+
-    companies.map(c=>{ const ann=c.nights*12; const cand=c.company!=="(individual)"&&ann>=CORP_THRESHOLD;
-      return `<tr class="${cand?'cand':''}"><td>${c.company}</td><td>${c.guests}</td><td>${c.nights}</td>
-      <td>${ann}</td><td>${c.dinners}</td><td>${cand?'<span class="cand-flag sm">Corporate candidate</span>':''}</td></tr>`;
-    }).join("");
-  v.appendChild(t);
+  const statusColours = {
+    active:'#dcfce7|#166534', called:'#dbeafe|#1d4ed8',
+    rfp:'#fef9c3|#854d0e', inactive:'#f3f4f6|#374151', followup:'#fee2e2|#991b1b'
+  };
+  const statusLabels = {active:'Active',called:'Called',rfp:'RFP',inactive:'Inactive',followup:'Follow up'}; 
 
-  v.appendChild(el("div","sec-title","Recent pre check-ins"));
-  const rt=el("table","data-table");
-  rt.innerHTML=`<tr><th>Guest</th><th>Company</th><th>Check-in</th><th>Nights</th><th>Dinner</th><th>Dietary</th></tr>`+
-    list.slice(0,40).map(r=>`<tr><td>${r.name}</td><td>${r.company||"—"}</td>
-      <td>${r.checkin?new Date(r.checkin).toLocaleDateString("en-GB"):"—"}</td><td>${nights(r)}</td>
-      <td>${r.dinner==="Yes"?(r.dinnerTime||"Yes"):"—"}</td><td>${r.dietary||"—"}</td></tr>`).join("");
-  v.appendChild(rt);
+  const overdue = accounts.filter(a=>a.followUp && new Date(a.followUp) < new Date()).length;
+
+  const rows = filtered.map(a=>{
+    const [bg,col] = (statusColours[a.status]||'#f3f4f6|#374151').split('|');
+    const isOverdue = a.followUp && new Date(a.followUp) < new Date();
+    return `<tr onclick="corpOpenAccount('${a.id}')" style="border-bottom:1px solid #e5e7eb;cursor:pointer"
+      onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background=''">
+      <td style="padding:10px 12px">
+        <div style="font-size:13px;font-weight:700;color:#1a2b3a">${a.company}</div>
+        ${a.contact?`<div style="font-size:11px;color:#374151;margin-top:1px">${a.contact}</div>`:''}
+      </td>
+      <td style="padding:10px 8px;font-size:12px;font-weight:600;color:#1a2b3a">${a.rate||'—'}</td>
+      <td style="padding:10px 8px;font-size:12px;color:#374151">${a.phone||'—'}</td>
+      <td style="padding:10px 8px">
+        <span style="padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;background:${bg};color:${col}">
+          ${statusLabels[a.status]||a.status}
+        </span>
+      </td>
+      <td style="padding:10px 8px;font-size:11px;color:${isOverdue?'#991b1b':'#374151'};font-weight:${isOverdue?'700':'400'}">
+        ${a.followUp ? (isOverdue?'⚠ ':'') + new Date(a.followUp).toLocaleDateString('en-GB') : '—'}
+      </td>
+      <td style="padding:10px 8px;font-size:11px;color:#374151">${a.lastContact ? new Date(a.lastContact).toLocaleDateString('en-GB') : '—'}</td>
+      <td style="padding:10px 8px">
+        <button onclick="event.stopPropagation();corpOpenAccount('${a.id}')"
+          style="padding:5px 10px;border:1.5px solid #1a2b3a;border-radius:7px;background:#fff;font:600 11px Lato;cursor:pointer;color:#1a2b3a">Open →</button>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="7" style="padding:20px;text-align:center;color:#374151">No accounts found</td></tr>`;
+
+  v.innerHTML=`<div style="padding:20px 28px;min-height:100%;background:#f0f4f8">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a">Corporate Database</div>
+        <div style="font-size:13px;color:#374151">${filtered.length} of ${accounts.length} accounts${overdue>0?` · <b style="color:#991b1b">⚠ ${overdue} follow-ups overdue</b>`:''}</div>
+      </div>
+      <button onclick="corpAddModal()" style="padding:9px 18px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer">+ Add account</button>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <input type="text" placeholder="🔍 Search company or contact..." value="${search}"
+        oninput="window._corpSearch=this.value;renderCorpDb(document.getElementById('view'))"
+        style="flex:1;min-width:200px;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:9px;font:13px Lato;color:#1a2b3a;background:#fff">
+      <select onchange="window._corpFilter=this.value;renderCorpDb(document.getElementById('view'))"
+        style="padding:9px 12px;border:1.5px solid #d1d5db;border-radius:9px;font:13px Lato;color:#1a2b3a;background:#fff">
+        ${['all','active','called','rfp','followup','inactive'].map(s=>`<option value="${s}"${filter===s?' selected':''}>${s==='all'?'All statuses':statusLabels[s]||s}</option>`).join('')}
+      </select>
+      <select onchange="window._corpSort=this.value;renderCorpDb(document.getElementById('view'))"
+        style="padding:9px 12px;border:1.5px solid #d1d5db;border-radius:9px;font:13px Lato;color:#1a2b3a;background:#fff">
+        <option value="company">Sort: Company A–Z</option>
+        <option value="followUp">Sort: Follow-up date</option>
+        <option value="lastContact">Sort: Last contacted</option>
+      </select>
+    </div>
+
+    <!-- Status summary pills -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      ${Object.entries(statusLabels).map(([k,l])=>{
+        const cnt=accounts.filter(a=>a.status===k).length;
+        const [bg,col]=(statusColours[k]||'#f3f4f6|#374151').split('|');
+        return `<div onclick="window._corpFilter='${k}';renderCorpDb(document.getElementById('view'))"
+          style="padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;background:${bg};color:${col};cursor:pointer">
+          ${l} (${cnt})</div>`;
+      }).join('')}
+    </div>
+
+    <div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#1a2b3a">
+          ${['Company / Contact','Rate','Phone','Status','Follow-up','Last Contact',''].map(h=>`<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.5px">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
 }
 
-/* ============================================================ GUEST FEEDBACK & QR */
-function feedbackURL(){ return location.href.split("#")[0].replace(/index\.html$/,"").replace(/\/$/,"")+"/feedback.html"; }
+function corpOpenAccount(accountId){
+  const accounts=corpGetAccounts(), a=accounts.find(x=>x.id===accountId);
+  if(!a) return;
+  const [bg,col]=({active:'#dcfce7|#166534',called:'#dbeafe|#1d4ed8',rfp:'#fef9c3|#854d0e',inactive:'#f3f4f6|#374151',followup:'#fee2e2|#991b1b'}[a.status]||'#f3f4f6|#374151').split('|');
+
+  const agreements=(a.agreements||[]).map(ag=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f9fafb;border-radius:8px;margin-bottom:6px">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#1a2b3a">${ag.name}</div>
+        <div style="font-size:11px;color:#374151">${ag.type} · Filed ${ag.date}</div>
+      </div>
+      <button onclick="corpDeleteAgreement('${accountId}','${ag.id}')"
+        style="padding:3px 8px;border:1px solid #fee2e2;border-radius:6px;background:#fff;font:600 10px Lato;color:#991b1b;cursor:pointer">Remove</button>
+    </div>`).join('') || '<div style="font-size:12px;color:#374151;padding:8px 0">No agreements filed</div>';
+
+  const activityLog=(a.activity||[]).slice().reverse().map(act=>`
+    <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0">
+      <div style="font-size:11px;color:#374151;width:80px;flex-shrink:0">${act.date}</div>
+      <div style="font-size:12px;color:#1a2b3a">${act.note}</div>
+    </div>`).join('') || '<div style="font-size:12px;color:#374151">No activity logged</div>';
+
+  openModal(`<div style="max-height:85vh;overflow-y:auto;padding:4px">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a">${a.company}</div>
+        <span style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${bg};color:${col}">${a.status}</span>
+      </div>
+      <button onclick="closeModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#374151">✕</button>
+    </div>
+
+    <!-- Edit fields -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      ${[['Contact name','contact','text'],['Phone','phone','tel'],['Email','email','email'],['Rate','rate','text']].map(([l,f,t])=>`
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">${l}</label>
+          <input type="${t}" value="${a[f]||''}" data-field="${f}" data-id="${accountId}" onchange="corpSaveField(this)"
+            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+        </div>`).join('')}
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Status</label>
+        <select data-field="status" data-id="${accountId}" onchange="corpSaveField(this)"
+          style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+          ${['active','called','rfp','followup','inactive'].map(s=>`<option value="${s}"${a.status===s?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Follow-up date</label>
+        <input type="date" value="${a.followUp||''}" data-field="followUp" data-id="${accountId}" onchange="corpSaveField(this)"
+          style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Last contacted</label>
+        <input type="date" value="${a.lastContact||''}" data-field="lastContact" data-id="${accountId}" onchange="corpSaveField(this)"
+          style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Notes</label>
+      <textarea data-field="notes" data-id="${accountId}" onchange="corpSaveField(this)"
+        style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a;min-height:60px;resize:vertical">${a.notes||''}</textarea>
+    </div>
+
+    <!-- Log activity -->
+    <div style="margin-bottom:14px;padding:12px;background:#f9fafb;border-radius:10px">
+      <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Log activity</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="corp-act-note" placeholder="e.g. Called — left voicemail, chasing Q4 rates"
+          style="flex:1;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+        <button onclick="corpLogActivity('${accountId}')"
+          style="padding:8px 14px;background:#1a2b3a;color:#fff;border:none;border-radius:7px;font:600 12px Lato;cursor:pointer">Log</button>
+      </div>
+    </div>
+
+    <!-- Activity log -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Activity log</div>
+      ${activityLog}
+    </div>
+
+    <!-- Agreements -->
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px">Agreements & documents</div>
+        <button onclick="corpAttachAgreement('${accountId}')"
+          style="padding:5px 10px;background:#4a9d7f;color:#fff;border:none;border-radius:7px;font:600 11px Lato;cursor:pointer">+ Attach</button>
+      </div>
+      ${agreements}
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <button onclick="closeModal();renderCorpDb(document.getElementById('view'))"
+        style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ Done</button>
+      <button onclick="if(confirm('Delete ${a.company}?')){corpDeleteAccount('${accountId}');closeModal();}"
+        style="padding:11px 16px;border:1.5px solid #fee2e2;border-radius:9px;background:#fff;font:600 12px Lato;color:#991b1b;cursor:pointer">Delete</button>
+    </div>
+  </div>`);
+}
+
+function corpSaveField(input){
+  const accounts=corpGetAccounts(), a=accounts.find(x=>x.id===input.dataset.id);
+  if(!a) return;
+  a[input.dataset.field]=input.value;
+  corpSaveAccounts(accounts);
+  toast('Saved ✓');
+}
+
+function corpLogActivity(accountId){
+  const note=document.getElementById('corp-act-note')?.value.trim(); if(!note) return;
+  const accounts=corpGetAccounts(), a=accounts.find(x=>x.id===accountId); if(!a) return;
+  if(!a.activity) a.activity=[];
+  a.activity.push({id:'act'+Date.now(), date:new Date().toLocaleDateString('en-GB'), note});
+  a.lastContact=new Date().toISOString().slice(0,10);
+  corpSaveAccounts(accounts);
+  closeModal(); corpOpenAccount(accountId);
+  toast('Activity logged ✓');
+}
+
+function corpAttachAgreement(accountId){
+  openModal(`<div style="padding:4px">
+    <div style="font-size:16px;font-weight:700;color:#1a2b3a;margin-bottom:14px">Attach agreement</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase">Document name</label>
+        <input type="text" id="agr-name" placeholder="e.g. Rate Agreement 2026" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase">Type</label>
+        <select id="agr-type" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
+          <option>Rate agreement</option><option>Contract</option><option>NDA</option><option>Email confirmation</option><option>Other</option>
+        </select></div>
+      <div style="padding:12px;background:#f9fafb;border-radius:8px;border:1.5px dashed #d1d5db;text-align:center;cursor:pointer"
+        onclick="toast('File upload: connect cloud storage to enable')">
+        <div style="font-size:22px;margin-bottom:4px">📎</div>
+        <div style="font-size:12px;font-weight:600;color:#374151">Attach file</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">Connect Google Drive or SharePoint to enable</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="corpDoAttach('${accountId}')" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Save</button>
+      <button onclick="closeModal();corpOpenAccount('${accountId}')" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
+    </div>
+  </div>`);
+}
+
+function corpDoAttach(accountId){
+  const name=document.getElementById('agr-name')?.value.trim(); if(!name){toast('Enter a name');return;}
+  const type=document.getElementById('agr-type')?.value||'Other';
+  const accounts=corpGetAccounts(), a=accounts.find(x=>x.id===accountId); if(!a) return;
+  if(!a.agreements) a.agreements=[];
+  a.agreements.push({id:'agr'+Date.now(), name, type, date:new Date().toLocaleDateString('en-GB')});
+  corpSaveAccounts(accounts);
+  closeModal(); corpOpenAccount(accountId); toast('Agreement attached ✓');
+}
+
+function corpDeleteAgreement(accountId, agrId){
+  const accounts=corpGetAccounts(), a=accounts.find(x=>x.id===accountId); if(!a) return;
+  a.agreements=(a.agreements||[]).filter(ag=>ag.id!==agrId);
+  corpSaveAccounts(accounts); closeModal(); corpOpenAccount(accountId);
+}
+
+function corpDeleteAccount(accountId){
+  corpSaveAccounts(corpGetAccounts().filter(a=>a.id!==accountId));
+  renderCorpDb(document.getElementById('view')); toast('Account deleted');
+}
+
+function corpAddModal(){
+  openModal(`<div style="padding:4px">
+    <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:14px">Add corporate account</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      ${[['Company name','ca-company','text'],['Rate','ca-rate','text'],['Contact name','ca-contact','text'],['Phone','ca-phone','tel'],['Email','ca-email','email']].map(([l,id,t])=>`
+        <div${id==='ca-company'?' style="grid-column:span 2"':''}>
+          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">${l}</label>
+          <input type="${t}" id="${id}" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
+        </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="corpDoAdd()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Add account</button>
+      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
+    </div>
+  </div>`);
+}
+
+function corpDoAdd(){
+  const company=document.getElementById('ca-company')?.value.trim(); if(!company){toast('Enter company name');return;}
+  const accounts=corpGetAccounts();
+  const newId='corp'+String(accounts.length+1).padStart(3,'0')+'_'+Date.now();
+  accounts.push({id:newId,company,rate:document.getElementById('ca-rate')?.value||'',contact:document.getElementById('ca-contact')?.value||'',
+    phone:document.getElementById('ca-phone')?.value||'',email:document.getElementById('ca-email')?.value||'',
+    status:'active',notes:'',lastContact:'',followUp:'',agreements:[],activity:[]});
+  corpSaveAccounts(accounts); closeModal();
+  renderCorpDb(document.getElementById('view')); toast('✓ '+company+' added');
+}
+
+
 function renderFeedback(v){
   v.appendChild(head("Guest Feedback & Review QR","Print the QR for rooms and checkout. Happy guests go to Google; unhappy guests reach you privately."));
   const url=feedbackURL();
@@ -5568,6 +5827,10 @@ function hsGetProfilesSeeded(){
     emergencyRel:s.emergencyRel||'',
   }));
   localStorage.setItem('hs_profiles', JSON.stringify(profiles));
+  // Seed initial leave data if none exists
+  if(!localStorage.getItem('hs_leave') || JSON.parse(localStorage.getItem('hs_leave')||'[]').length===0){
+    localStorage.setItem('hs_leave', JSON.stringify([{"staffId":"veronica_w_2","from":"2026-10-14","to":"2026-10-18","days":5,"reason":"Annual leave","status":"approved","id":"lv_seed_1","submittedAt":"2026-10-01"},{"staffId":"patrik_v_4","from":"2026-10-07","to":"2026-10-07","days":1,"reason":"Annual leave","status":"approved","id":"lv_seed_2","submittedAt":"2026-10-01"},{"staffId":"ruth_a_29","from":"2026-10-21","to":"2026-10-25","days":5,"reason":"Annual leave","status":"pending","id":"lv_seed_3","submittedAt":"2026-10-01"},{"staffId":"devendra_s_13","from":"2026-11-03","to":"2026-11-07","days":5,"reason":"Annual leave","status":"pending","id":"lv_seed_4","submittedAt":"2026-10-01"},{"staffId":"jomy_m_17","from":"2026-10-28","to":"2026-10-29","days":2,"reason":"Annual leave","status":"approved","id":"lv_seed_5","submittedAt":"2026-10-01"},{"staffId":"alice_a_6","from":"2026-09-29","to":"2026-10-03","days":5,"reason":"Annual leave","status":"approved","id":"lv_seed_6","submittedAt":"2026-10-01"},{"staffId":"manjusha_u_5","from":"2026-10-10","to":"2026-10-10","days":1,"reason":"In lieu","status":"approved","id":"lv_seed_7","submittedAt":"2026-10-01"},{"staffId":"catarina_l_19","from":"2026-10-14","to":"2026-10-16","days":3,"reason":"Annual leave","status":"pending","id":"lv_seed_8","submittedAt":"2026-10-01"},{"staffId":"rahul_r_32","from":"2026-11-10","to":"2026-11-14","days":5,"reason":"Annual leave","status":"pending","id":"lv_seed_9","submittedAt":"2026-10-01"},{"staffId":"tushar_a_35","from":"2026-10-05","to":"2026-10-06","days":2,"reason":"Annual leave","status":"approved","id":"lv_seed_10","submittedAt":"2026-10-01"}]));
+  }
   return profiles;
 }
 
@@ -5713,7 +5976,7 @@ function renderRotaForecast(v){
   const fc=spGetFC(),rota=spGetRota(),days=spWeekDates(spFcWeekOffset);
   const cards=days.map(d=>{
     const k=spDK(d),f=fc[k]||{},isT=k===spDK(new Date());
-    const reqs=SP_DEPTS.map(dept=>{const req=spCalcRequired(f,dept.id),ros=spCountRostered(rota,k,dept.id),ok=ros>=req.needed;return`<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f5f7f9"><span style="color:#374151">${dept.name}</span><span style="font-weight:700;color:${ok?'#166534':'#991b1b'}">${ros}/${req.needed} ${ok?'✓':'⚠'}</span></div>`;}).join('');
+    const reqs=SP_DEPTS.map(dept=>{const req=spCalcRequired(f,dept.id),ros=spCountRostered(rota,k,dept.id),ok=ros>=req.needed;return`<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f5f7f9"><span style="color:#374151">${dept.name}</span><span style="font-weight:700;color:${ok?'#4ade80':'#f87171'}">${ros}/${req.needed} ${ok?'✓':'⚠'}</span></div>`;}).join('');
     return`<div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);${isT?'border:2px solid #1a2b3a':''}">
       <div style="font-weight:700;font-size:13px;color:#1a2b3a;margin-bottom:10px">${d.toLocaleDateString('en-GB',{weekday:'long'})} <span style="font-size:11px;font-weight:400;color:#374151">${spShortFmt(d)}${isT?' · Today':''}</span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
@@ -5722,7 +5985,7 @@ function renderRotaForecast(v){
           <input type="number" value="${val||''}" min="0" placeholder="0" data-dk="${k}" data-field="${field}" oninput="spUpdateFC(this)" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
         </div>`).join('')}
       </div>
-      <div style="border-top:1px solid #f0f0f0;padding-top:8px"><div style="font-size:10px;font-weight:700;color:#1a2b3a;text-transform:uppercase;margin-bottom:5px">Required vs Rostered</div>${reqs}</div>
+      <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:8px"><div style="font-size:10px;font-weight:700;color:#c7d2e0;text-transform:uppercase;margin-bottom:5px">Required vs Rostered</div><div id="fc-req-${k}">${reqs}</div></div>
     </div>`;
   }).join('');
   v.innerHTML=`<div style="padding:20px 28px;max-width:1300px">
@@ -5741,7 +6004,33 @@ function renderRotaForecast(v){
   </div>`;
 }
 
-function spUpdateFC(input){const fc=spGetFC(),k=input.dataset.dk,field=input.dataset.field;if(!fc[k])fc[k]={};fc[k][field]=parseInt(input.value)||0;if(field==='rooms'&&!fc[k].breakfastCovers)fc[k].breakfastCovers=Math.round((parseInt(input.value)||0)*1.8);spSaveFC(fc);}
+function spUpdateFC(input){
+  const fc=spGetFC(), k=input.dataset.dk, field=input.dataset.field;
+  if(!fc[k]) fc[k]={};
+  const val = parseInt(input.value)||0;
+  fc[k][field] = val;
+  // Auto-calc breakfast from rooms (always recalc, not just if empty)
+  if(field==='rooms'){
+    fc[k].breakfastCovers = Math.round(val * 1.8);
+    // Update the breakfast input on screen
+    const bkInput = document.querySelector(`input[data-dk="${k}"][data-field="breakfastCovers"]`);
+    if(bkInput) bkInput.value = fc[k].breakfastCovers;
+  }
+  spSaveFC(fc);
+  // Re-render required vs rostered for this day card only
+  const reqDiv = document.getElementById('fc-req-'+k);
+  if(reqDiv){
+    const rota=spGetRota(), f=fc[k]||{};
+    const reqs = (typeof SP_DEPTS!=='undefined'?SP_DEPTS:[]).map(dept=>{
+      const req=spCalcRequired(f,dept.id), ros=spCountRostered(rota,k,dept.id), ok=ros>=req.needed;
+      return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+        <span style="color:#8fa3b8">${dept.name}</span>
+        <span style="font-weight:700;color:${ok?'#4ade80':'#f87171'}">${ros}/${req.needed} ${ok?'✓':'⚠'}</span>
+      </div>`;
+    }).join('');
+    reqDiv.innerHTML = reqs;
+  }
+}
 
 // ── MONTHLY ───────────────────────────────────────────────────────────────────
 function renderRotaMonthly(v){
@@ -5810,7 +6099,23 @@ function renderRotaSettings(v){
 }
 
 function spMoveDept(sid,deptId){const staff=spGetStaff(),s=staff.find(x=>x.id===sid);if(s){s.dept=deptId;spSaveStaff(staff);if(typeof toast==='function')toast('Staff updated ✓');}}
-function spRemoveStaff(sid){if(!confirm('Remove this staff member from the rota?'))return;spSaveStaff(spGetStaff().filter(s=>s.id!==sid));renderRotaSettings(document.getElementById('view'));}
+function spRemoveStaff(sid){
+  if(!confirm('Remove this staff member from the rota and HR records?')) return;
+  // Remove from HosSHIFT
+  spSaveStaff(spGetStaff().filter(s=>s.id!==sid));
+  // Remove from HosSTAFF profiles
+  const profiles=JSON.parse(localStorage.getItem('hs_profiles')||'null');
+  if(profiles){ localStorage.setItem('hs_profiles',JSON.stringify(profiles.filter(p=>p.id!==sid))); }
+  // Remove from leave records
+  const leave=JSON.parse(localStorage.getItem('hs_leave')||'[]');
+  localStorage.setItem('hs_leave',JSON.stringify(leave.filter(l=>l.staffId!==sid)));
+  // Remove from rota
+  const rota=spGetRota();
+  Object.keys(rota).forEach(dk=>{ if(rota[dk][sid]) delete rota[dk][sid]; });
+  spSaveRota(rota);
+  if(typeof toast==='function') toast('Staff member removed');
+  renderRotaSettings(document.getElementById('view'));
+}
 
 // ── ADD STAFF MODAL ───────────────────────────────────────────────────────────
 function spAddStaffModal(){
@@ -6268,7 +6573,10 @@ function renderStaffProfiles(v){
         ${p.probationPassed?'<span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#dcfce7;color:#166534">✓ Passed</span>':'<span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#fef9c3;color:#854d0e">Probation</span>'}
       </td>
       <td style="padding:10px 8px">
-        <button onclick="event.stopPropagation();hsOpenProfile('${p.id}')" style="padding:5px 10px;border:1.5px solid #1a2b3a;border-radius:7px;background:#fff;font:600 11px Lato;cursor:pointer;color:#1a2b3a">View →</button>
+        <div style="display:flex;gap:6px">
+          <button onclick="event.stopPropagation();hsOpenProfile('${p.id}')" style="padding:5px 10px;border:1.5px solid #1a2b3a;border-radius:7px;background:#fff;font:600 11px Lato;cursor:pointer;color:#1a2b3a">Edit →</button>
+          <button onclick="event.stopPropagation();hsDeleteStaff('${p.id}')" style="padding:5px 10px;border:1.5px solid #fee2e2;border-radius:7px;background:#fff;font:600 11px Lato;cursor:pointer;color:#991b1b">✕</button>
+        </div>
       </td>
     </tr>`;
   }).join('');
@@ -6641,6 +6949,30 @@ function hsDoManagerLeave(staffId){
 }
 
 // ── ADD STAFF FROM HosSTAFF ────────────────────────────────────────────────────
+function hsDeleteStaff(staffId){
+  const profiles=hsGetProfiles(), p=profiles.find(x=>x.id===staffId);
+  if(!p) return;
+  if(!confirm('Remove '+p.name+' from all records? This cannot be undone.')) return;
+  // Remove from HosSTAFF
+  hsSaveProfiles(profiles.filter(x=>x.id!==staffId));
+  // Remove from HosSHIFT
+  if(typeof spGetStaff==='function'){
+    const staff=spGetStaff();
+    if(typeof spSaveStaff==='function') spSaveStaff(staff.filter(s=>s.id!==staffId));
+  }
+  // Remove leave records
+  const leave=hsGetLeave();
+  hsSaveLeave(leave.filter(l=>l.staffId!==staffId));
+  // Remove from rota
+  if(typeof spGetRota==='function'){
+    const rota=spGetRota();
+    Object.keys(rota).forEach(dk=>{ if(rota[dk]&&rota[dk][staffId]) delete rota[dk][staffId]; });
+    if(typeof spSaveRota==='function') spSaveRota(rota);
+  }
+  toast('✓ '+p.name+' removed');
+  renderStaffProfiles(document.getElementById('view'));
+}
+
 function hsAddStaffModal(){
   const deptOpts=(SP_DEPTS||[]).map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
   const html=`<div style="padding:4px">
@@ -6821,5 +7153,175 @@ function renderBrandCollateral(v){
     wrap.appendChild(sec);
   });
   v.appendChild(wrap);
+}
+
+
+/* ============================================================ HosHUB — Document Hub */
+
+const HUB_CATEGORIES = {
+  hubContracts: { label:'Contracts & Agreements', icon:'📝', colour:'#8b5c8f',
+    types:['Venue contracts','Event agreements','Service level agreements','Supplier contracts','NDAs','Partnership agreements'] },
+  hubSuppliers:  { label:'Supplier Agreements', icon:'🏭', colour:'#c45c00',
+    types:['Food & beverage suppliers','Linen & laundry','Maintenance contractors','IT & systems','Cleaning services','Utilities'] },
+  hubFinance:    { label:'Finance Documents', icon:'💰', colour:'#2f6f9e',
+    types:['Invoices','Purchase orders','Monthly P&L reports','Budget plans','Bank statements','Tax documents'] },
+  hubHR:         { label:'HR Documents', icon:'👤', colour:'#4a86c7',
+    types:['Staff handbook','HR policies','Disciplinary records','Training certificates','Right to work checks','Appraisal records'] },
+};
+
+function renderHubDocs(v){
+  v.innerHTML=''; v.style.padding='0';
+  const saved = JSON.parse(localStorage.getItem('hoshub_docs')||'[]');
+  const search = window._hubSearch||'';
+  const filtered = search ? saved.filter(d=>d.name.toLowerCase().includes(search.toLowerCase())||d.category.toLowerCase().includes(search.toLowerCase())) : saved;
+
+  const html=`<div style="padding:28px;min-height:100%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff">HosHUB</div>
+        <div style="font-size:13px;color:#8fa3b8">Document management · ${saved.length} documents filed</div>
+      </div>
+      <button onclick="hubUploadModal()" style="padding:9px 18px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer">+ File document</button>
+    </div>
+    <input type="text" placeholder="🔍 Search documents..." value="${search}"
+      oninput="window._hubSearch=this.value;renderHubDocs(document.getElementById('view'))"
+      style="width:100%;padding:11px 14px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);border-radius:10px;font:13px Lato;color:#fff;outline:none;margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:24px">
+      ${Object.entries(HUB_CATEGORIES).map(([tab,cat])=>{
+        const count=saved.filter(d=>d.tab===tab).length;
+        return `<button onclick="switchTab('${tab}')"
+          style="display:flex;align-items:center;gap:12px;padding:16px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;cursor:pointer;text-align:left;transition:all .15s;width:100%"
+          onmouseover="this.style.background='rgba(255,255,255,.12)';this.style.borderColor='${cat.colour}'"
+          onmouseout="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='rgba(255,255,255,.1)'">
+          <span style="font-size:28px">${cat.icon}</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#fff">${cat.label}</div>
+            <div style="font-size:11px;color:#8fa3b8;margin-top:2px">${count} document${count!==1?'s':''}</div>
+          </div>
+        </button>`;
+      }).join('')}
+    </div>
+    ${filtered.length>0?`
+    <div style="font-size:11px;font-weight:700;color:#8fa3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Recent documents</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${filtered.slice(0,20).map(d=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px">
+        <span style="font-size:22px">${HUB_CATEGORIES[d.tab]?.icon||'📄'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
+          <div style="font-size:11px;color:#8fa3b8;margin-top:2px">${HUB_CATEGORIES[d.tab]?.label||d.category} · ${d.type||''} · ${d.date||''}</div>
+        </div>
+        <span style="font-size:11px;color:#4a9d7f;font-weight:700;white-space:nowrap">Filed</span>
+      </div>`).join('')}
+    </div>`:'<div style="text-align:center;padding:40px 20px"><div style="font-size:48px;margin-bottom:12px">📂</div><div style="font-size:15px;color:#8fa3b8">No documents filed yet</div><div style="font-size:13px;color:#5a7082;margin-top:6px">Click + File document to add your first document</div></div>'}
+  </div>`;
+  v.innerHTML=html;
+}
+
+function renderHubSection(v, tabId){
+  v.innerHTML=''; v.style.padding='0';
+  const cat = HUB_CATEGORIES[tabId];
+  if(!cat){ v.innerHTML='<div style="padding:28px;color:#fff">Section not found</div>'; return; }
+  const saved = JSON.parse(localStorage.getItem('hoshub_docs')||'[]').filter(d=>d.tab===tabId);
+
+  v.innerHTML=`<div style="padding:28px;min-height:100%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff">${cat.icon} ${cat.label}</div>
+        <div style="font-size:13px;color:#8fa3b8">${saved.length} document${saved.length!==1?'s':''} filed</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="switchTab('hubDocs')" style="padding:8px 14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;color:#fff;cursor:pointer">← All documents</button>
+        <button onclick="hubUploadModal('${tabId}')" style="padding:8px 16px;background:#4a9d7f;color:#fff;border:none;border-radius:8px;font:700 12px Lato;cursor:pointer">+ Add document</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:20px">
+      ${cat.types.map(type=>{
+        const count=saved.filter(d=>d.type===type).length;
+        return `<div style="padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px;cursor:pointer"
+          onclick="hubUploadModal('${tabId}','${type}')">
+          <div style="font-size:12px;font-weight:700;color:#fff">${type}</div>
+          <div style="font-size:11px;color:#8fa3b8;margin-top:3px">${count} filed · + Add</div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${saved.length>0?`<div style="display:flex;flex-direction:column;gap:8px">
+      ${saved.map(d=>`<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px">
+        <span style="font-size:24px">📄</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:#fff">${d.name}</div>
+          <div style="font-size:11px;color:#8fa3b8;margin-top:2px">${d.type||''} · Filed ${d.date||''} ${d.notes?'· '+d.notes:''}</div>
+        </div>
+        <button onclick="hubDeleteDoc('${d.id}')" style="padding:4px 10px;border:1px solid rgba(239,68,68,.4);border-radius:6px;background:transparent;font:600 11px Lato;color:#f87171;cursor:pointer">Remove</button>
+      </div>`).join('')}
+    </div>`:'<div style="text-align:center;padding:30px;color:#8fa3b8;font-size:13px">No documents in this section yet</div>'}
+  </div>`;
+}
+
+function renderHubContracts(v){ renderHubSection(v,'hubContracts'); }
+function renderHubSuppliers(v) { renderHubSection(v,'hubSuppliers');  }
+function renderHubFinance(v)   { renderHubSection(v,'hubFinance');    }
+function renderHubHR(v)        { renderHubSection(v,'hubHR');         }
+
+function hubUploadModal(tabId, preType){
+  const cat = tabId ? HUB_CATEGORIES[tabId] : null;
+  const tabOpts = Object.entries(HUB_CATEGORIES).map(([k,c])=>`<option value="${k}"${tabId===k?' selected':''}>${c.label}</option>`).join('');
+  const typeOpts = cat ? cat.types.map(t=>`<option value="${t}"${preType===t?' selected':''}>${t}</option>`).join('') : '';
+
+  openModal(`<div style="padding:4px">
+    <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:14px">📂 File a document</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Document name</label>
+        <input type="text" id="hub-name" placeholder="e.g. Sodexo Supply Agreement 2026" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Category</label>
+        <select id="hub-tab" onchange="hubUpdateTypes(this.value)" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
+          <option value="">— Select category —</option>${tabOpts}
+        </select></div>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Document type</label>
+        <select id="hub-type" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
+          <option value="">— Select type —</option>${typeOpts}
+        </select></div>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Notes (optional)</label>
+        <input type="text" id="hub-notes" placeholder="e.g. Expires Dec 2027 · Review Q3" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
+      <div style="padding:10px;background:#f9fafb;border-radius:8px;border:1.5px dashed #d1d5db;text-align:center;cursor:pointer" onclick="toast('File upload: connect Google Drive or SharePoint to enable cloud storage')">
+        <div style="font-size:22px;margin-bottom:4px">📤</div>
+        <div style="font-size:12px;font-weight:600;color:#374151">Click to attach file</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">PDF, Word, Excel · Connect cloud storage to enable</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="hubSaveDoc()" style="flex:1;padding:11px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ File document</button>
+      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
+    </div>
+  </div>`);
+}
+
+function hubUpdateTypes(tabId){
+  const cat = HUB_CATEGORIES[tabId];
+  const sel = document.getElementById('hub-type');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Select type —</option>' + (cat?cat.types.map(t=>`<option value="${t}">${t}</option>`).join(''):'');
+}
+
+function hubSaveDoc(){
+  const name  = document.getElementById('hub-name')?.value.trim();
+  const tab   = document.getElementById('hub-tab')?.value;
+  const type  = document.getElementById('hub-type')?.value;
+  const notes = document.getElementById('hub-notes')?.value.trim();
+  if(!name||!tab){ toast('Please enter a name and category'); return; }
+  const docs = JSON.parse(localStorage.getItem('hoshub_docs')||'[]');
+  docs.push({ id:'hub'+Date.now(), name, tab, type, notes, date:new Date().toLocaleDateString('en-GB') });
+  localStorage.setItem('hoshub_docs', JSON.stringify(docs));
+  closeModal(); toast('✓ Document filed in HosHUB');
+  const current = document.getElementById('view');
+  if(current) renderHubDocs(current);
+}
+
+function hubDeleteDoc(docId){
+  if(!confirm('Remove this document record?')) return;
+  const docs = JSON.parse(localStorage.getItem('hoshub_docs')||'[]').filter(d=>d.id!==docId);
+  localStorage.setItem('hoshub_docs', JSON.stringify(docs));
+  const current = document.getElementById('view');
+  if(current) renderHubDocs(current);
+  toast('Document removed');
 }
 

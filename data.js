@@ -853,6 +853,7 @@ MODULE_GROUPS = [
   { id:'studio',  label:'Marketing & Creative', icon:'📣', colour:'#c85c6b', modules:['hosstudio'] },
   { id:'brand',   label:'Brand & Downloads',    icon:'📁', colour:'#1a2b3a', modules:['hosbrand'] },
   { id:'people',  label:'People & Shifts',      icon:'👥', colour:'#4a86c7', modules:['hospeople'] },
+  { id:'hub',     label:'Document Hub',          icon:'📂', colour:'#4a9d7f', modules:['hoshub'] },
 ];
 
 FLOW_MODULES = [
@@ -900,6 +901,11 @@ const TAB_META = {
   rotaSettings:{label:"Shift Settings",icon:"⚙️"},
   staffDash:{label:"Staff Overview",icon:"👥"},
   brandLogos:{label:"Logos & Brand Assets",icon:"🎨"},
+  hubDocs:{label:"All Documents",icon:"📂"},
+  hubContracts:{label:"Contracts & Agreements",icon:"📝"},
+  hubSuppliers:{label:"Supplier Agreements",icon:"🏭"},
+  hubFinance:{label:"Finance Documents",icon:"💰"},
+  hubHR:{label:"HR Documents",icon:"👤"},
   brandCollateral:{label:"Collateral & Brochures",icon:"📄"},
   brandPhotography:{label:"Photography",icon:"📷"},
   brandDocs:{label:"All Downloads",icon:"📁"},
@@ -989,6 +995,13 @@ const MODULE_SUBCARDS = {
     {tab:"brandCollateral",  label:"Collateral & Brochures",icon:"📄", desc:"All event packages, brochures & downloadable collateral"},
     {tab:"brandPhotography", label:"Photography",           icon:"📷", desc:"Hotel photography library & approved images"},
     {tab:"brandDocs",        label:"Menus & Wine Lists",    icon:"🍷", desc:"The Clarendon menus, wine lists & F&B downloads"},
+  ],
+  "hoshub": [
+    {tab:"hubDocs",      label:"All Documents",        icon:"📂", desc:"Search and browse all filed documents"},
+    {tab:"hubContracts", label:"Contracts & Agreements",icon:"📝", desc:"Venue, service and employment contracts"},
+    {tab:"hubSuppliers", label:"Supplier Agreements",  icon:"🏭", desc:"Supplier contracts and SLAs"},
+    {tab:"hubFinance",   label:"Finance Documents",    icon:"💰", desc:"Invoices, POs, budgets and reports"},
+    {tab:"hubHR",        label:"HR Documents",         icon:"👤", desc:"Policies, handbooks and HR records"},
   ],
   "hospeople": [
     {tab:"rotaDash",      label:"Shift Dashboard",   icon:"📊", desc:"Today's staffing overview"},
