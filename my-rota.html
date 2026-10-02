@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>My Rota — Brandon Hall Hotel & Spa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Lato',sans-serif;background:#1a2b3a;min-height:100vh;color:#fff}
+
+/* Header */
+.hdr{background:#1a2b3a;border-bottom:1px solid rgba(255,255,255,.1);padding:14px 24px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.hdr-logo{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:#fff}
+.hdr-logo span{color:#c78a3b}
+.hdr-sub{font-size:10px;color:#8fa3b8;letter-spacing:1.5px;text-transform:uppercase}
+.hdr-divider{width:1px;height:32px;background:rgba(255,255,255,.15)}
+.bh-tag{display:flex;flex-direction:column;line-height:1.2}
+.bh-name{font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:600;color:#fff;letter-spacing:.3px}
+.bh-type{font-size:9px;color:#8fa3b8;letter-spacing:1.5px;text-transform:uppercase}
+
+/* Screen system */
+.screen{display:none;padding:28px 20px;max-width:640px;margin:0 auto}
+.screen.active{display:block}
+
+/* Select screen */
+.select-card{background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.12);border-radius:18px;padding:28px;margin-top:32px}
+.select-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:6px}
+.select-sub{font-size:13px;color:#8fa3b8;margin-bottom:24px}
+.select-label{display:block;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#c7d2e0;margin-bottom:8px}
+select.staff-picker{
+  width:100%;padding:12px 16px;
+  background:rgba(255,255,255,.08);
+  border:1.5px solid rgba(255,255,255,.2);
+  border-radius:10px;
+  font:600 15px 'Lato';color:#fff;
+  outline:none;cursor:pointer;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='8'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%238fa3b8' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;
+  padding-right:40px;
+}
+select.staff-picker option{background:#1a2b3a;color:#fff}
+.btn-view{
+  width:100%;padding:14px;margin-top:16px;
+  background:#c78a3b;border:none;border-radius:10px;
+  font:700 15px 'Lato';color:#fff;cursor:pointer;
+  transition:all .15s;letter-spacing:.3px;
+}
+.btn-view:hover{background:#e8b06b;transform:translateY(-1px)}
+
+/* Rota screen */
+.rota-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.rota-name{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:700;color:#fff}
+.rota-role{font-size:13px;color:#8fa3b8;margin-top:2px}
+.rota-period{font-size:12px;color:#c7d2e0;font-weight:600;margin-top:4px}
+.btn-back{
+  padding:8px 16px;background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.2);border-radius:8px;
+  font:600 12px 'Lato';color:#c7d2e0;cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.btn-back:hover{background:rgba(255,255,255,.18);color:#fff}
+
+/* Week summary */
+.week-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.sum-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center}
+.sum-num{font-size:26px;font-weight:700}
+.sum-label{font-size:10px;color:#8fa3b8;text-transform:uppercase;letter-spacing:.6px;margin-top:2px}
+
+/* Day cards */
+.day-card{
+  background:rgba(255,255,255,.05);
+  border:1.5px solid rgba(255,255,255,.09);
+  border-radius:14px;
+  padding:18px;
+  margin-bottom:12px;
+  transition:all .15s;
+}
+.day-card.today{background:rgba(199,138,59,.12);border-color:rgba(199,138,59,.4)}
+.day-card.working{background:rgba(42,106,74,.1);border-color:rgba(42,106,74,.3)}
+.day-card.off{opacity:.6}
+.day-card.holiday{background:rgba(29,78,216,.1);border-color:rgba(29,78,216,.3)}
+.day-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.day-name{font-size:15px;font-weight:700;color:#fff}
+.day-date{font-size:12px;color:#8fa3b8}
+.day-badge{
+  padding:5px 14px;border-radius:20px;
+  font:700 12px 'Lato';white-space:nowrap;
+}
+.badge-working {background:#2a6a4a;color:#fff}
+.badge-off     {background:rgba(255,255,255,.1);color:#8fa3b8}
+.badge-holiday {background:#1d4ed8;color:#fff}
+.badge-oncall  {background:#854d0e;color:#fff}
+.badge-sick    {background:#991b1b;color:#fff}
+.badge-inlieu  {background:#7e22ce;color:#fff}
+.shift-time{font-size:22px;font-weight:700;color:#c78a3b;margin:4px 0}
+.shift-duration{font-size:12px;color:#8fa3b8}
+.today-flag{display:inline-block;background:#c78a3b;color:#fff;font:700 9px 'Lato';
+  text-transform:uppercase;letter-spacing:.6px;padding:2px 7px;border-radius:10px;margin-left:6px}
+
+/* Next shift highlight */
+.next-shift-banner{
+  background:linear-gradient(135deg,rgba(199,138,59,.2),rgba(199,138,59,.08));
+  border:1.5px solid rgba(199,138,59,.4);border-radius:12px;
+  padding:14px 18px;margin-bottom:20px;
+  display:flex;align-items:center;gap:12px;
+}
+.next-icon{font-size:24px}
+.next-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#c78a3b}
+.next-time{font-size:17px;font-weight:700;color:#fff}
+.next-day{font-size:12px;color:#8fa3b8}
+
+/* No shift */
+.no-rota{text-align:center;padding:40px 20px}
+.no-rota-icon{font-size:48px;margin-bottom:12px}
+.no-rota-msg{font-size:15px;color:#8fa3b8}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:rgba(26,43,58,.95);border:1px solid rgba(255,255,255,.2);
+  color:#fff;padding:12px 20px;border-radius:24px;
+  font:600 13px 'Lato';z-index:99;display:none}
+
+/* Responsive */
+@media(max-width:480px){
+  .screen{padding:20px 14px}
+  .rota-name{font-size:24px}
+  .week-summary{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="bh-tag">
+    <span class="bh-name">BRANDON HALL</span>
+    <span class="bh-type">Hotel &amp; Spa</span>
+  </div>
+  <div class="hdr-divider"></div>
+  <div>
+    <div class="hdr-logo">Hos<span>SHIFT</span></div>
+    <div class="hdr-sub">My Rota</div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- Screen 1: Select name -->
+<div id="scr-select" class="screen active">
+  <div class="select-card">
+    <div class="select-title">My Rota</div>
+    <div class="select-sub">Select your name to see your upcoming shifts.</div>
+    <label class="select-label" for="staff-picker">Your name</label>
+    <select class="staff-picker" id="staff-picker">
+      <option value="">— Select your name —</option>
+    </select>
+    <button class="btn-view" onclick="viewRota()">View my shifts →</button>
+  </div>
+</div>
+
+<!-- Screen 2: Rota view -->
+<div id="scr-rota" class="screen">
+  <div class="rota-header">
+    <div>
+      <div class="rota-name" id="rota-name"></div>
+      <div class="rota-role" id="rota-role"></div>
+      <div class="rota-period" id="rota-period"></div>
+    </div>
+    <button class="btn-back" onclick="goBack()">← Change name</button>
+  </div>
+  <div id="next-shift-banner"></div>
+  <div class="week-summary" id="week-summary"></div>
+  <div id="day-cards"></div>
+</div>
+
+<script>
+// ── Shared localStorage with main portal ──────────────────────────────────────
+function getRota() {
+  const stored = localStorage.getItem('sp_rota');
+  if(stored) return JSON.parse(stored);
+  return {};
+}
+
+function getStaff() {
+  const stored = localStorage.getItem('sp_staff');
+  if(stored) return JSON.parse(stored);
+  // Fallback seed — core staff visible without portal loaded
+  return [
+    {id:'veronica_w_2',   name:'Veronica Webb',      role:'Finance Assistant',    dept:'admin'},
+    {id:'natalie_f_3',    name:'Natalie Freeman',     role:'Events Executive',     dept:'admin'},
+    {id:'patrik_v_4',     name:'Patrik Vlach',        role:'Reception Manager',    dept:'reception'},
+    {id:'manjusha_u_5',   name:'Manjusha Ushadevi',   role:'Reception Supervisor', dept:'reception'},
+    {id:'alice_a_6',      name:'Alice Asumeng',       role:'Receptionist',         dept:'reception'},
+    {id:'aghil_j_7',      name:'Aghil Joy',           role:'Receptionist',         dept:'reception'},
+    {id:'alan_w_8',       name:'Alan Wilkins',        role:'Nights Supervisor',    dept:'nights'},
+    {id:'amal_p_9',       name:'Amal Premkumar',      role:'Night Porter',         dept:'nights'},
+    {id:'glenn_r_10',     name:'Glenn Randell',       role:'Maintenance Manager',  dept:'maintenance'},
+    {id:'devendra_s_13',  name:'Devendra Subedi',     role:'Junior Sous Chef',     dept:'kitchen'},
+    {id:'sajeed_14',      name:'Sajeed',              role:'Breakfast Team',       dept:'kitchen'},
+    {id:'david_m_15',     name:'David Marshall',      role:'Kitchen Porter',       dept:'kitchen'},
+    {id:'nathan_f_16',    name:'Nathan Field',        role:'Kitchen Porter',       dept:'kitchen'},
+    {id:'jomy_m_17',      name:'Jomy Mathai Joy',     role:'Bar Supervisor',       dept:'bar'},
+    {id:'rowan_w_18',     name:'Rowan Wilkins',       role:'Bar Team Member',      dept:'bar'},
+    {id:'catarina_l_19',  name:'Catarina Li',         role:'Assistant Manager',    dept:'restaurant'},
+    {id:'manjinder_s_20', name:'Manjinder Shergill',  role:'F&B Supervisor',       dept:'restaurant'},
+    {id:'sheba_t_22',     name:'Sheba Tychicus',      role:'F&B Team Member',      dept:'restaurant'},
+    {id:'dhruv_c_23',     name:'Dhruvilsinh Chauhan', role:'F&B Team Member',      dept:'restaurant'},
+    {id:'ruth_a_29',      name:'Ruth Addison',        role:'Head Housekeeper',     dept:'housekeeping'},
+    {id:'aryan_30',       name:'Aryan',               role:'Housekeeping',         dept:'housekeeping'},
+    {id:'lara_j_31',      name:'Lara Jervis',         role:'Housekeeping Team',    dept:'housekeeping'},
+    {id:'rahul_r_32',     name:'Rahul Reghunath',     role:'Housekeeping Team',    dept:'housekeeping'},
+    {id:'jitendra_33',    name:'Jitendra',            role:'Housekeeping',         dept:'housekeeping'},
+    {id:'manoj_34',       name:'Manoj',               role:'Housekeeping',         dept:'housekeeping'},
+    {id:'tushar_a_35',    name:'Tushar Ambekar',      role:'Housekeeping Team',    dept:'housekeeping'},
+    {id:'allen_36',       name:'Allen',               role:'Housekeeping',         dept:'housekeeping'},
+    {id:'hassen_37',      name:'Hassen',              role:'Housekeeping',         dept:'housekeeping'},
+    {id:'dushyanth_38',   name:'Dushyanth',           role:'Housekeeping',         dept:'housekeeping'},
+  ];
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function weekDates(offsetDays = 0) {
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() || 7) - 1) + offsetDays);
+  return Array.from({length:14}, (_,i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+
+function dk(d) { return d.toISOString().slice(0,10); }
+
+function parseHours(shift) {
+  if(!shift) return 0;
+  const s = shift.toLowerCase().trim();
+  if(['off','holiday','sick','','on call','in lieu'].includes(s)) return 0;
+  const m = shift.match(/(\d{1,2})[:\.](\d{2})\s*[-–]\s*(\d{1,2})[:\.](\d{2})/);
+  if(!m) return 0;
+  let st = +m[1]*60 + +m[2], en = +m[3]*60 + +m[4];
+  if(en <= st) en += 1440;
+  return Math.round((en-st)/60*10)/10;
+}
+
+function shiftType(shift) {
+  if(!shift) return 'off';
+  const s = shift.toLowerCase().trim();
+  if(s===''||s==='off') return 'off';
+  if(s==='holiday') return 'holiday';
+  if(s==='on call') return 'oncall';
+  if(s==='sick') return 'sick';
+  if(s==='in lieu') return 'inlieu';
+  return 'working';
+}
+
+function fmtDate(d) {
+  return d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+}
+function fmtShort(d) {
+  return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+}
+function fmtDay(d) {
+  return d.toLocaleDateString('en-GB',{weekday:'long'});
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(()=>t.style.display='none', 3000);
+}
+
+// ── Populate dropdown ─────────────────────────────────────────────────────────
+function populateDropdown() {
+  const staff = getStaff();
+  const sel = document.getElementById('staff-picker');
+  // Sort alphabetically by name
+  const sorted = [...staff].sort((a,b) => a.name.localeCompare(b.name));
+  sorted.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name + (s.role ? ' — ' + s.role : '');
+    sel.appendChild(opt);
+  });
+}
+
+// ── View rota ─────────────────────────────────────────────────────────────────
+let CURRENT_STAFF_ID = null;
+
+function goBack() {
+  document.getElementById('scr-rota').classList.remove('active');
+  document.getElementById('scr-select').classList.add('active');
+  CURRENT_STAFF_ID = null;
+}
+
+function viewRota() {
+  const sel = document.getElementById('staff-picker');
+  const staffId = sel.value;
+  if(!staffId) { toast('Please select your name'); return; }
+
+  const staff = getStaff();
+  const person = staff.find(s => s.id === staffId);
+  if(!person) { toast('Staff member not found'); return; }
+
+  CURRENT_STAFF_ID = staffId;
+
+  // Show rota screen
+  document.getElementById('scr-select').classList.remove('active');
+  document.getElementById('scr-rota').classList.add('active');
+  window.scrollTo(0,0);
+
+  buildRotaView(person);
+}
+
+function buildRotaView(person) {
+  const rota = getRota();
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const todayK = dk(today);
+
+  // Show next 14 days from today
+  const days = Array.from({length:14}, (_,i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return d;
+  });
+
+  // Header
+  document.getElementById('rota-name').textContent = person.name;
+  document.getElementById('rota-role').textContent = person.role || '';
+  document.getElementById('rota-period').textContent =
+    'Shifts from ' + fmtShort(days[0]) + ' → ' + fmtShort(days[days.length-1]);
+
+  // Calculate stats
+  const myShifts = days.map(d => ({d, shift:(rota[dk(d)]||{})[person.id]||''}));
+  const workDays = myShifts.filter(x => shiftType(x.shift)==='working').length;
+  const totalHrs = myShifts.reduce((t,x) => t+parseHours(x.shift), 0);
+  const offDays  = myShifts.filter(x => shiftType(x.shift)==='off'||x.shift==='').length;
+
+  // Summary
+  document.getElementById('week-summary').innerHTML = [
+    {num: workDays, label:'Shifts', colour:'#c78a3b'},
+    {num: Math.round(totalHrs*10)/10+'h', label:'Hours', colour:'#4a86c7'},
+    {num: offDays,  label:'Days off', colour:'#8fa3b8'},
+  ].map(s=>`<div class="sum-card">
+    <div class="sum-num" style="color:${s.colour}">${s.num}</div>
+    <div class="sum-label">${s.label}</div>
+  </div>`).join('');
+
+  // Next upcoming shift
+  const nextShift = myShifts.find(x => shiftType(x.shift)==='working');
+  const bannerEl = document.getElementById('next-shift-banner');
+  if(nextShift) {
+    const isToday = dk(nextShift.d) === todayK;
+    bannerEl.innerHTML = `<div class="next-shift-banner">
+      <span class="next-icon">${isToday?'⏰':'📅'}</span>
+      <div>
+        <div class="next-label">${isToday ? 'On shift today' : 'Next shift'}</div>
+        <div class="next-time">${nextShift.shift}</div>
+        <div class="next-day">${isToday ? 'Today' : fmtDate(nextShift.d)}</div>
+      </div>
+    </div>`;
+  } else {
+    bannerEl.innerHTML = '';
+  }
+
+  // Day cards
+  const cardsEl = document.getElementById('day-cards');
+  cardsEl.innerHTML = myShifts.map(({d, shift}) => {
+    const key = dk(d);
+    const isToday = key === todayK;
+    const type = shiftType(shift);
+    const hrs = parseHours(shift);
+
+    const cardClass = [
+      'day-card',
+      isToday ? 'today' : '',
+      type === 'working' ? 'working' : '',
+      type === 'off' || !shift ? 'off' : '',
+      type === 'holiday' ? 'holiday' : '',
+    ].filter(Boolean).join(' ');
+
+    const badgeClass = {
+      working:'badge-working', off:'badge-off', holiday:'badge-holiday',
+      oncall:'badge-oncall', sick:'badge-sick', inlieu:'badge-inlieu'
+    }[type] || 'badge-off';
+
+    const badgeLabel = {
+      working: shift, off:'Day off', holiday:'Holiday',
+      oncall:'On call', sick:'Sick leave', inlieu:'In lieu'
+    }[type] || 'Day off';
+
+    return `<div class="${cardClass}">
+      <div class="day-header">
+        <div>
+          <span class="day-name">${fmtDay(d)}${isToday?'<span class="today-flag">today</span>':''}</span>
+          <div class="day-date">${fmtDate(d)}</div>
+        </div>
+        <span class="day-badge ${badgeClass}">${badgeLabel}</span>
+      </div>
+      ${type==='working' ? `<div class="shift-time">${shift}</div>
+        <div class="shift-duration">${hrs} hour${hrs!==1?'s':''} · ${d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.onload = () => {
+  populateDropdown();
+
+  // Auto-select if returning from portal (stored last person)
+  const last = localStorage.getItem('myrota_last');
+  if(last) {
+    const sel = document.getElementById('staff-picker');
+    sel.value = last;
+  }
+
+  // Poll for rota updates every 60 seconds (rota manager may have updated)
+  setInterval(() => {
+    if(CURRENT_STAFF_ID) {
+      const staff = getStaff();
+      const person = staff.find(s => s.id === CURRENT_STAFF_ID);
+      if(person) buildRotaView(person);
+    }
+  }, 60000);
+};
+
+// Save last selected on view
+const origViewRota = viewRota;
+function viewRota() {
+  const sel = document.getElementById('staff-picker');
+  if(sel.value) localStorage.setItem('myrota_last', sel.value);
+  origViewRota && origViewRota();
+}
+// Redefine properly
+window.viewRota = function() {
+  const sel = document.getElementById('staff-picker');
+  const staffId = sel.value;
+  if(!staffId) { toast('Please select your name'); return; }
+  localStorage.setItem('myrota_last', staffId);
+  const staff = getStaff();
+  const person = staff.find(s => s.id === staffId);
+  if(!person) { toast('Staff member not found'); return; }
+  CURRENT_STAFF_ID = staffId;
+  document.getElementById('scr-select').classList.remove('active');
+  document.getElementById('scr-rota').classList.add('active');
+  window.scrollTo(0,0);
+  buildRotaView(person);
+};
+</script>
+</body>
+</html>
