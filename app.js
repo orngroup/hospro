@@ -6237,60 +6237,96 @@ function renderRotaDash(v){
 
 // ── WEEKLY ROTA ───────────────────────────────────────────────────────────────
 function renderRotaWeek(v){
-  const rota=spGetRota(),fc=spGetFC(),staff=spGetStaff(),days=spWeekDates(spWeekOffset),todayK=spDK(new Date());
-  
-  // Group staff by department
-  const depts = SP_DEPTS.filter(d=>staff.some(s=>s.dept===d.id));
+  const rota=spGetRota(), fc=spGetFC(), staff=spGetStaff();
+  const days=spWeekDates(spWeekOffset), todayK=spDK(new Date());
+  const pending=JSON.parse(localStorage.getItem('sp_rota_pending')||'{}');
+  const depts=SP_DEPTS.filter(d=>staff.some(s=>s.dept===d.id));
+
+  // Helper: parse a rota cell (may be string "09:00-17:00" or object {shift,dept})
+  const parseCell=val=>{
+    if(!val||val==='off'||typeof val==='string') return {shift:val||'off',dept:null};
+    if(typeof val==='object') return val;
+    return {shift:val,dept:null};
+  };
+
+  // Build all-dept options for the covering-dept dropdown
+  const deptOpts=SP_DEPTS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
 
   // Day headers
   const dayHeads=days.map(d=>{
-    const k=spDK(d),f=fc[k]||{},isT=k===todayK;
-    return`<th style="min-width:120px;padding:8px 4px;text-align:center;background:${isT?'#1a2b3a':'#f5f7f9'};color:${isT?'#fff':'#1a2b3a'};font-size:11px;font-weight:700">
+    const k=spDK(d), f=fc[k]||{}, isT=k===todayK;
+    return`<th style="min-width:148px;padding:8px 4px;text-align:center;background:${isT?'#1a2b3a':'#f5f7f9'};color:${isT?'#fff':'#1a2b3a'};font-size:11px;font-weight:700;border-bottom:2px solid #e5e7eb">
       <div>${d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase()}</div>
       <div style="font-size:10px;opacity:.7">${d.getDate()} ${d.toLocaleDateString('en-GB',{month:'short'})}</div>
-      ${f.rooms?`<div style="font-size:10px;margin-top:3px;opacity:.8">🛏 ${f.rooms}</div>`:''}
+      ${f.rooms?`<div style="font-size:10px;margin-top:2px;opacity:.8">🛏 ${f.rooms}</div>`:''}
     </th>`;
   }).join('');
 
-  // Build rows — one per staff member, grouped by dept
-  let rows = '';
+  let rows='';
   depts.forEach(dept=>{
-    const deptStaff = staff.filter(s=>s.dept===dept.id);
+    const deptStaff=staff.filter(s=>s.dept===dept.id);
     if(!deptStaff.length) return;
-    const shiftOpts = (dept.shifts&&dept.shifts.length?dept.shifts:[
+
+    const allShifts=(dept.shifts&&dept.shifts.length?dept.shifts:[
       '07:00-15:00','08:00-16:00','09:00-17:00','15:00-23:00','23:00-07:00'
     ]).concat(['off','holiday','on call','sick','in lieu']);
 
-    // Dept header row
-    rows += `<tr><td colspan="${days.length+2}" style="padding:8px 12px;background:${dept.colour||'#1a2b3a'};color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">${dept.name}</td></tr>`;
+    rows+=`<tr><td colspan="${days.length+3}" style="padding:7px 12px;background:${dept.colour};color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">${dept.name}</td></tr>`;
 
     deptStaff.forEach(s=>{
-      const cells = days.map(d=>{
-        const k=spDK(d), sh=(rota[k]||{})[s.id]||'off';
-        const isOff=sh==='off', isHol=sh==='holiday', isOut=sh==='on call'||sh==='sick'||sh==='in lieu';
-        const cellBg = isHol?'#fef3c7':isOut?'#fee2e2':isOff?'#f9fafb':'#f0fdf4';
-        const opts=shiftOpts.map(x=>`<option value="${x}"${sh===x?' selected':''}>${x}</option>`).join('');
-        return`<td style="padding:4px;background:${cellBg}">
-          <select data-dk="${k}" data-sid="${s.id}" onchange="spCellSelect(this)"
-            style="width:100%;padding:4px 2px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;color:#1a2b3a;background:${cellBg};cursor:pointer;text-align:center">
-            ${opts}
+      const initials=s.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      let totalHrs=0;
+
+      const cells=days.map(d=>{
+        const k=spDK(d);
+        const raw=(rota[k]||{})[s.id];
+        const cell=parseCell(raw);
+        const pend=pending[k]?.[s.id];  // pending change not yet approved
+        const display=pend||cell;
+        const sh=display.shift||'off';
+        const covDept=display.dept||s.dept;
+        const isPending=!!pend;
+        const isOff=sh==='off', isHol=sh==='holiday';
+        const isOut=sh==='on call'||sh==='sick'||sh==='in lieu';
+        const isCover=covDept!==s.dept;  // covering a different dept
+
+        // Colour: pending=amber border, cover=purple tint, holiday=yellow, off=grey, working=green
+        const cellBg=isHol?'#fffbeb':isOut?'#fff5f5':isOff?'#f9fafb':isCover?'#f5f0ff':'#f0fdf4';
+        const border=isPending?'2px solid #f59e0b':'1px solid #e5e7eb';
+
+        // Calc hours for total
+        if(!isOff&&!isHol&&!isOut){
+          const m=sh.match(/(\d+):(\d+)-(\d+):(\d+)/);
+          if(m){const h=(+m[3]*60+ +m[4]- +m[1]*60- +m[2])/60; totalHrs+=(h<0?h+24:h);}
+          else totalHrs+=8;
+        }
+
+        const shiftOpts=allShifts.map(x=>`<option value="${x}"${sh===x?' selected':''}>${x}</option>`).join('');
+        const deptOptsWithSel=SP_DEPTS.map(dep=>`<option value="${dep.id}"${covDept===dep.id?' selected':''}>${dep.name}</option>`).join('');
+
+        return`<td style="padding:4px 3px;background:${cellBg};border:${border};position:relative">
+          ${isPending?`<div style="position:absolute;top:2px;right:3px;width:6px;height:6px;border-radius:50%;background:#f59e0b"></div>`:''}
+          ${isCover&&!isPending?`<div style="position:absolute;top:2px;right:3px;font-size:8px;color:#7c3aed;font-weight:700">COVER</div>`:''}
+          <select data-dk="${k}" data-sid="${s.id}" data-type="shift"
+            onchange="spCellChange(this)"
+            style="width:100%;padding:3px 2px;border:1px solid #d1d5db;border-radius:5px;font-size:11px;color:#1a2b3a;background:transparent;cursor:pointer;margin-bottom:3px">
+            ${shiftOpts}
+          </select>
+          <select data-dk="${k}" data-sid="${s.id}" data-type="dept"
+            onchange="spCellChange(this)"
+            style="width:100%;padding:3px 2px;border:1px solid ${isCover?'#7c3aed':'#d1d5db'};border-radius:5px;font-size:10px;color:${isCover?'#7c3aed':'#374151'};background:transparent;cursor:pointer">
+            ${deptOptsWithSel}
           </select>
         </td>`;
       }).join('');
 
-      const hrs = days.reduce((t,d)=>{
-        const sh=(rota[spDK(d)]||{})[s.id]||'off';
-        if(sh==='off'||sh==='holiday'||sh==='sick'||sh==='in lieu'||sh==='on call') return t;
-        const m=sh.match(/(\d+):(\d+)-(\d+):(\d+)/);
-        if(m){ const h=(+m[3]*60+ +m[4]- +m[1]*60- +m[2])/60; return t+(h<0?h+24:h); }
-        return t+8;
-      },0);
+      // Count pending changes for this staff member
+      const pendingCount=days.filter(d=>pending[spDK(d)]?.[s.id]).length;
 
-      const initials = s.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-      rows += `<tr style="border-bottom:1px solid #e5e7eb" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+      rows+=`<tr id="row-${s.id}" style="border-bottom:1px solid #e5e7eb">
         <td style="padding:8px 10px;min-width:160px;background:#fff;position:sticky;left:0;z-index:1;box-shadow:2px 0 4px rgba(0,0,0,.05)">
           <div style="display:flex;align-items:center;gap:8px">
-            <div style="width:30px;height:30px;border-radius:50%;background:${dept.colour||'#1a2b3a'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font:700 11px Lato;color:#fff">${initials}</div>
+            <div style="width:30px;height:30px;border-radius:50%;background:${dept.colour};flex-shrink:0;display:flex;align-items:center;justify-content:center;font:700 11px Lato;color:#fff">${initials}</div>
             <div>
               <div style="font-size:12px;font-weight:700;color:#1a2b3a">${s.name}</div>
               <div style="font-size:10px;color:#374151">${s.role||''}</div>
@@ -6298,1634 +6334,171 @@ function renderRotaWeek(v){
           </div>
         </td>
         ${cells}
-        <td style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:${hrs>0?'#166534':'#374151'};background:#fff">${hrs>0?hrs.toFixed(1)+'h':'—'}</td>
-        <td style="padding:4px 8px;background:#fff">
-          <button onclick="spEditStaffModal('${s.id}')" title="Edit staff details & contract"
-            style="padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;background:#fff;font:600 10px Lato;cursor:pointer;color:#374151;white-space:nowrap">✏ Edit</button>
+        <td style="padding:6px 8px;text-align:center;font-size:11px;font-weight:700;color:${totalHrs>0?'#166534':'#9ca3af'};background:#fff;white-space:nowrap">${totalHrs>0?totalHrs.toFixed(1)+'h':'—'}</td>
+        <td style="padding:4px 6px;background:#fff;min-width:130px">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            ${pendingCount>0?`
+            <button onclick="spApprovePerson('${s.id}')"
+              style="padding:5px 8px;background:#166534;color:#fff;border:none;border-radius:7px;font:700 11px Lato;cursor:pointer;white-space:nowrap">
+              ✓ Save & Approve (${pendingCount})
+            </button>
+            <button onclick="spDiscardPerson('${s.id}')"
+              style="padding:4px 8px;background:#fff;border:1px solid #fecaca;border-radius:7px;font:600 10px Lato;cursor:pointer;color:#991b1b">
+              ✕ Discard
+            </button>`:`
+            <button onclick="spEditStaffModal('${s.id}')"
+              style="padding:5px 8px;border:1px solid #d1d5db;border-radius:7px;background:#fff;font:600 11px Lato;cursor:pointer;color:#374151">
+              ✏ Edit
+            </button>`}
+          </div>
         </td>
       </tr>`;
     });
-  });
 
-  // Dept coverage summary row per dept
-  let coverageRows = '';
-  depts.forEach(dept=>{
-    const needed = days.map(d=>{
-      const k=spDK(d),f=fc[k]||{};
+    // Coverage summary row for this dept
+    const coverageRow=days.map(d=>{
+      const k=spDK(d), f=fc[k]||{};
       const req=spCalcRequired(f,dept.id);
-      const ros=spCountRostered(rota,k,dept.id);
+      // Count rostered in this dept including covers
+      let ros=0;
+      staff.forEach(s=>{
+        const raw=(rota[k]||{})[s.id];
+        const pend=pending[k]?.[s.id];
+        const cell=parseCell(pend||raw);
+        const sh=cell.shift||'off';
+        const covDept=cell.dept||s.dept;
+        if(covDept===dept.id&&sh!=='off'&&sh!=='holiday'&&sh!=='sick'&&sh!=='in lieu') ros++;
+      });
       const ok=ros>=req.needed;
-      return`<td style="padding:4px 8px;text-align:center;background:${ok?'#f0fdf4':'#fff5f5'};font-size:11px;font-weight:700;color:${ok?'#166534':'#991b1b'}">${ros}/${req.needed}</td>`;
+      return`<td style="padding:5px 8px;text-align:center;background:${ok?'#f0fdf4':'#fff5f5'};font-size:11px;font-weight:700;color:${ok?'#166534':'#991b1b'}">${ros}/${req.needed} ${ok?'✓':'⚠'}</td>`;
     }).join('');
-    coverageRows += `<tr style="border-top:2px solid #e5e7eb">
-      <td style="padding:6px 10px;background:#f9fafb;font-size:11px;font-weight:700;color:#374151;position:sticky;left:0;z-index:1">${dept.name} coverage</td>
-      ${needed}
+    rows+=`<tr style="border-top:2px solid #e5e7eb">
+      <td style="padding:5px 12px;background:#f9fafb;font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;position:sticky;left:0;background:#f9fafb;z-index:1">Coverage</td>
+      ${coverageRow}
       <td colspan="2" style="background:#f9fafb"></td>
     </tr>`;
   });
 
+  // Pending banner
+  const totalPending=Object.values(pending).reduce((t,day)=>t+Object.keys(day).length,0);
+
   v.innerHTML=`<div style="padding:20px 28px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    ${totalPending>0?`<div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:13px;font-weight:700;color:#92400e">⏳ ${totalPending} unsaved change${totalPending!==1?'s':''} — approve by person or use Approve All below</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="spApproveAll()" style="padding:7px 14px;background:#166534;color:#fff;border:none;border-radius:8px;font:700 12px Lato;cursor:pointer">✓ Approve All</button>
+        <button onclick="spDiscardAll()" style="padding:7px 12px;background:#fff;border:1px solid #fecaca;border-radius:8px;font:600 12px Lato;cursor:pointer;color:#991b1b">✕ Discard All</button>
+      </div>
+    </div>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
       <div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#fff">Weekly Rota</div>
-        <div style="font-size:12px;color:#8fa3b8">Week commencing ${spShortFmt(days[0])} — click any shift cell to change directly</div>
+        <div style="font-size:12px;color:#8fa3b8">w/c ${spShortFmt(days[0])} · Change any shift or department, then Save & Approve per person</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="spWeekOffset--;renderRotaWeek(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font:600 12px Lato">← Prev</button>
-        <button onclick="spWeekOffset=0;renderRotaWeek(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #c78a3b;border-radius:8px;background:#c78a3b;color:#fff;cursor:pointer;font:700 12px Lato">This week</button>
+        <button onclick="spWeekOffset=0;renderRotaWeek(document.getElementById('view'))" style="padding:7px 14px;border:1px solid #c78a3b;border-radius:8px;background:#c78a3b;color:#fff;cursor:pointer;font:700 12px Lato">This week</button>
         <button onclick="spWeekOffset++;renderRotaWeek(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font:600 12px Lato">Next →</button>
-        <button onclick="spAddStaffModal()" style="padding:7px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;cursor:pointer;color:#fff">+ Add staff</button>
-        <button onclick="spApproveRota()" style="padding:7px 14px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:700 12px Lato;cursor:pointer">✓ Approve</button>
+        <button onclick="spAddStaffModal()" style="padding:7px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;cursor:pointer;color:#fff">+ Staff</button>
         <button onclick="spExportCSV()" style="padding:7px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;cursor:pointer;color:#fff">⬇ Export</button>
       </div>
     </div>
-
+    <div style="font-size:11px;color:#8fa3b8;margin-bottom:10px">
+      🟡 Amber border = pending approval &nbsp;·&nbsp; 🟣 Purple = covering another dept &nbsp;·&nbsp; 🟢 Coverage row = rostered vs minimum
+    </div>
     <div style="background:#fff;border-radius:12px;overflow:auto;box-shadow:0 1px 4px rgba(0,0,0,.08)">
-      <table style="width:100%;border-collapse:collapse;min-width:900px">
+      <table style="width:100%;border-collapse:collapse;min-width:1000px">
         <thead>
           <tr style="background:#f5f7f9">
-            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;position:sticky;left:0;background:#f5f7f9;z-index:2;min-width:160px">Staff Member</th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;position:sticky;left:0;background:#f5f7f9;z-index:2;min-width:160px">Staff</th>
             ${dayHeads}
-            <th style="padding:10px 8px;text-align:center;font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase">Hrs</th>
-            <th style="padding:10px 8px;min-width:70px"></th>
+            <th style="padding:10px 8px;text-align:center;font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;min-width:40px">Hrs</th>
+            <th style="padding:10px 8px;min-width:130px"></th>
           </tr>
         </thead>
-        <tbody>
-          ${rows}
-          ${coverageRows}
-        </tbody>
-      </table>
-    </div>
-    <div style="margin-top:10px;font-size:11px;color:#8fa3b8">💡 Click any shift dropdown to change directly. Coverage row shows rostered vs minimum required per dept. Changes save instantly.</div>
-  </div>`;
-}
-
-
-function spUpdateCell(input){const rota=spGetRota(),dk=input.dataset.dk,sid=input.dataset.sid;if(!rota[dk])rota[dk]={};rota[dk][sid]=input.value.trim();spSaveRota(rota);const c=spShiftStyle(input.value.trim());input.style.background=c.bg;input.style.color=c.col;input.style.borderColor=c.border;}
-
-// ── FORECAST ─────────────────────────────────────────────────────────────────
-function renderRotaForecast(v){
-  const fc=spGetFC(),rota=spGetRota(),days=spWeekDates(spFcWeekOffset);
-  const cards=days.map(d=>{
-    const k=spDK(d),f=fc[k]||{},isT=k===spDK(new Date());
-    const reqs=SP_DEPTS.map(dept=>{const req=spCalcRequired(f,dept.id),ros=spCountRostered(rota,k,dept.id),ok=ros>=req.needed;return`<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f5f7f9"><span style="color:#374151">${dept.name}</span><span style="font-weight:700;color:${ok?'#4ade80':'#f87171'}">${ros}/${req.needed} ${ok?'✓':'⚠'}</span></div>`;}).join('');
-    return`<div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);${isT?'border:2px solid #1a2b3a':''}">
-      <div style="font-weight:700;font-size:13px;color:#1a2b3a;margin-bottom:10px">${d.toLocaleDateString('en-GB',{weekday:'long'})} <span style="font-size:11px;font-weight:400;color:#374151">${spShortFmt(d)}${isT?' · Today':''}</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
-        ${[['rooms','🛏 Rooms',f.rooms],['departures','🚪 Departures',f.departures],['stayovers','🔄 Stayovers',f.stayovers],['breakfastCovers','☕ Breakfast covers',f.breakfastCovers],['dinnerCovers','🍽 Dinner covers',f.dinnerCovers]].map(([field,label,val],i)=>`<div${i===4?' style="grid-column:span 2"':''}>
-          <label style="font-size:10px;color:#374151;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:2px">${label}</label>
-          <input type="number" value="${val||''}" min="0" placeholder="0" data-dk="${k}" data-field="${field}" oninput="spUpdateFC(this)" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
-        </div>`).join('')}
-      </div>
-      <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:8px"><div style="font-size:10px;font-weight:700;color:#c7d2e0;text-transform:uppercase;margin-bottom:5px">Required vs Rostered</div><div id="fc-req-${k}">${reqs}</div></div>
-    </div>`;
-  }).join('');
-  v.innerHTML=`<div style="padding:20px 28px;max-width:1300px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-      <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Occupancy Forecast</div>
-      <div style="font-size:12px;color:#374151">Enter rooms sold and covers — staffing requirements update live. Auto-saves as you type.</div></div>
-      <div style="display:flex;gap:8px">
-        <button onclick="spFcWeekOffset--;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">← Prev</button>
-        <button onclick="spFcWeekOffset=0;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font:600 12px Lato">This week</button>
-        <button onclick="spFcWeekOffset++;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">Next →</button>
-        <button onclick="spCreateRotaFromForecast()" style="padding:7px 14px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:700 13px Lato;cursor:pointer">⚡ Create draft rota</button>
-        <button onclick="switchTab('rotaWeek')" style="padding:7px 12px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">← Back to Rota</button>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">${cards}</div>
-  </div>`;
-}
-
-function spUpdateFC(input){
-  const fc=spGetFC(), k=input.dataset.dk, field=input.dataset.field;
-  if(!fc[k]) fc[k]={};
-  const val = parseInt(input.value)||0;
-  fc[k][field] = val;
-  // Auto-calc breakfast from rooms (always recalc, not just if empty)
-  if(field==='rooms'){
-    fc[k].breakfastCovers = Math.round(val * 1.8);
-    // Update the breakfast input on screen
-    const bkInput = document.querySelector(`input[data-dk="${k}"][data-field="breakfastCovers"]`);
-    if(bkInput) bkInput.value = fc[k].breakfastCovers;
-  }
-  spSaveFC(fc);
-  // Re-render required vs rostered for this day card only
-  const reqDiv = document.getElementById('fc-req-'+k);
-  if(reqDiv){
-    const rota=spGetRota(), f=fc[k]||{};
-    const reqs = (typeof SP_DEPTS!=='undefined'?SP_DEPTS:[]).map(dept=>{
-      const req=spCalcRequired(f,dept.id), ros=spCountRostered(rota,k,dept.id), ok=ros>=req.needed;
-      return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-        <span style="color:#8fa3b8">${dept.name}</span>
-        <span style="font-weight:700;color:${ok?'#4ade80':'#f87171'}">${ros}/${req.needed} ${ok?'✓':'⚠'}</span>
-      </div>`;
-    }).join('');
-    reqDiv.innerHTML = reqs;
-  }
-}
-
-// ── MONTHLY ───────────────────────────────────────────────────────────────────
-function renderRotaMonthly(v){
-  const monthly=spGetMonthly(),fc=spGetFC(),today=new Date();
-  const vd=new Date(today.getFullYear(),today.getMonth()+spMonthOff,1);
-  const mn=vd.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
-  const dim=new Date(vd.getFullYear(),vd.getMonth()+1,0).getDate(),fd=vd.getDay()||7;
-  const mk=`${vd.getFullYear()}-${String(vd.getMonth()+1).padStart(2,'0')}`;
-  let tot=0,bkt=0,dint=0;
-  for(let i=1;i<=dim;i++){const dk=`${mk}-${String(i).padStart(2,'0')}`,f=monthly[dk]||fc[dk]||{};tot+=f.rooms||0;bkt+=f.breakfastCovers||Math.round((f.rooms||0)*1.8);dint+=f.dinnerCovers||0;}
-  let cells='';
-  for(let i=1;i<fd;i++)cells+=`<td style="border:1px solid #f0f0f0;background:#fafafa"></td>`;
-  for(let day=1;day<=dim;day++){const dk=`${mk}-${String(day).padStart(2,'0')}`,f=monthly[dk]||fc[dk]||{},isT=dk===spDK(today),occ=f.rooms?Math.round(f.rooms/120*100):null,oc=occ===null?'#e0e0e0':occ>=80?'#166534':occ>=50?'#854d0e':'#991b1b';cells+=`<td style="padding:4px;border:1px solid #f0f0f0;vertical-align:top;${isT?'background:#e8f3ee':''}"><div style="font-size:11px;font-weight:700;color:#1a2b3a">${day}</div><input type="number" value="${f.rooms||''}" min="0" max="120" placeholder="—" data-dk="${dk}" data-field="rooms" onchange="spUpdateMonthly(this)" title="Rooms" style="width:100%;padding:2px;border:1px solid #d1d5db;border-radius:4px;font:700 11px Lato;text-align:center;color:${oc}"><input type="number" value="${f.dinnerCovers||''}" min="0" placeholder="din" data-dk="${dk}" data-field="dinnerCovers" onchange="spUpdateMonthly(this)" title="Dinner" style="width:100%;margin-top:2px;padding:2px;border:1px solid #d1d5db;border-radius:4px;font:10px Lato;text-align:center;color:#8b5c8f"></td>`;}
-  const end=7-((fd-1+dim)%7);if(end<7)for(let i=0;i<end;i++)cells+=`<td style="border:1px solid #f0f0f0;background:#fafafa"></td>`;
-  const allCells=cells.split('</td>').filter(Boolean).map(c=>c+'</td>');let calRows='';for(let i=0;i<allCells.length;i+=7)calRows+=`<tr>${allCells.slice(i,i+7).join('')}</tr>`;
-  v.innerHTML=`<div style="padding:20px;max-width:920px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-      <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Monthly Forecast</div>
-      <div style="font-size:12px;color:#374151">Top = rooms · Bottom = dinner covers · Colour = occupancy</div></div>
-      <div style="display:flex;gap:7px;align-items:center">
-        <button onclick="spMonthOff--;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">← Prev</button>
-        <b style="padding:0 6px;font-size:14px;color:#1a2b3a">${mn}</b>
-        <button onclick="spMonthOff++;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">Next →</button>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-      ${[['🛏 Room Nights',tot,'#1a2b3a'],['☕ Est Breakfast',bkt,'#4a9d7f'],['🍽 Dinner Covers',dint,'#8b5c8f']].map(([l,n,c])=>`<div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center"><div style="font-size:24px;font-weight:700;color:${c}">${n}</div><div style="font-size:11px;color:#374151;text-transform:uppercase">${l}</div></div>`).join('')}
-    </div>
-    <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<th style="padding:5px;text-align:center;font-size:11px;color:#374151">${d}</th>`).join('')}</tr></thead>
-        <tbody>${calRows}</tbody>
-      </table>
-    </div>
-  </div>`;
-}
-
-function spUpdateMonthly(input){const monthly=spGetMonthly(),fc=spGetFC(),dk=input.dataset.dk,field=input.dataset.field;if(!monthly[dk])monthly[dk]={};monthly[dk][field]=parseInt(input.value)||0;spSaveMonthly(monthly);if(!fc[dk])fc[dk]={};fc[dk][field]=parseInt(input.value)||0;if(field==='rooms'&&!fc[dk].breakfastCovers)fc[dk].breakfastCovers=Math.round((parseInt(input.value)||0)*1.8);spSaveFC(fc);}
-
-// ── SETTINGS ──────────────────────────────────────────────────────────────────
-function renderRotaSettings(v){
-  const staff=spGetStaff();
-  const rows=staff.map(s=>{const dept=SP_DEPTS.find(d=>d.id===s.dept)||{name:s.dept,colour:'#4a86c7'};const wkHrs=0;return`<tr style="border-bottom:1px solid #f5f7f9"><td style="padding:8px 10px"><b style="font-size:13px;color:#1a2b3a">${s.name}</b><div style="font-size:11px;color:#374151">${s.role||''} · ${s.staffCode||''}</div></td><td style="padding:8px 6px"><span style="padding:2px 8px;border-radius:8px;font-size:11px;background:${dept.colour}20;color:${dept.colour};font-weight:600">${dept.name}</span></td><td style="padding:8px 6px;font-size:12px;color:#374151">${s.type==='relief'?'Relief':'Core'}</td><td style="padding:8px 6px;font-size:12px;color:#1a2b3a">${s.contractHrs>0?s.contractHrs+'h/wk':'—'}</td><td style="padding:8px 6px;font-size:12px;color:#1a2b3a">${s.hourlyRate>0?'£'+s.hourlyRate+'/h':'—'}</td><td style="padding:8px 6px"><select onchange="spMoveDept('${s.id}',this.value)" style="padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;color:#1a2b3a">${SP_DEPTS.map(d=>`<option value="${d.id}"${s.dept===d.id?' selected':''}>${d.name}</option>`).join('')}</select></td>
-      <td style="padding:8px 6px">
-        <div style="display:flex;gap:3px">
-          ${['M','T','W','T','F','S','S'].map((day,i)=>`<label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer">
-            <input type="checkbox" ${(s.workDays||[])[i]?'checked':''} onchange="spToggleWorkDay('${s.id}',${i},this.checked)" style="width:14px;height:14px;accent-color:#2a6a4a">
-            <span style="font-size:9px;font-weight:700;color:#374151">${day}</span>
-          </label>`).join('')}
-        </div>
-      </td><td style="padding:8px 6px"><button onclick="spRemoveStaff('${s.id}')" style="padding:3px 8px;border:1px solid #fee2e2;border-radius:6px;background:#fff;color:#991b1b;font-size:11px;cursor:pointer">Remove</button></td></tr>`;}).join('');
-  v.innerHTML=`<div style="padding:20px;max-width:1000px">
-    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff;margin-bottom:4px">HosSHIFT Settings</div>
-    <div style="font-size:13px;color:#374151;margin-bottom:18px">${staff.length} staff members · Click name in rota to edit shifts</div>
-    <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <b style="font-size:12px;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px">Team</b>
-        <button onclick="spAddStaffModal()" style="padding:7px 14px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">+ Add member</button>
-      </div>
-      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:#f5f7f9">${['Name','Department','Type','Hours','Rate','Move','Working Days',''].map(h=>`<th style="text-align:left;padding:7px 10px;font-size:11px;color:#374151;text-transform:uppercase">${h}</th>`).join('')}</tr></thead>
         <tbody>${rows}</tbody>
-      </table></div>
+      </table>
     </div>
   </div>`;
 }
 
-function spMoveDept(sid,deptId){const staff=spGetStaff(),s=staff.find(x=>x.id===sid);if(s){s.dept=deptId;spSaveStaff(staff);if(typeof toast==='function')toast('Staff updated ✓');}}
-function spRemoveStaff(sid){
-  if(!confirm('Remove this staff member from the rota and HR records?')) return;
-  // Remove from HosSHIFT
-  spSaveStaff(spGetStaff().filter(s=>s.id!==sid));
-  // Remove from HosSTAFF profiles
-  const profiles=JSON.parse(localStorage.getItem('hs_profiles')||'null');
-  if(profiles){ localStorage.setItem('hs_profiles',JSON.stringify(profiles.filter(p=>p.id!==sid))); }
-  // Remove from leave records
-  const leave=JSON.parse(localStorage.getItem('hs_leave')||'[]');
-  localStorage.setItem('hs_leave',JSON.stringify(leave.filter(l=>l.staffId!==sid)));
-  // Remove from rota
+// ── Cell change — writes to PENDING, not live rota ────────────────────────────
+function spCellChange(sel){
+  const k=sel.dataset.dk, sid=sel.dataset.sid, type=sel.dataset.type;
   const rota=spGetRota();
-  Object.keys(rota).forEach(dk=>{ if(rota[dk][sid]) delete rota[dk][sid]; });
-  spSaveRota(rota);
-  if(typeof toast==='function') toast('Staff member removed');
-  renderRotaSettings(document.getElementById('view'));
-}
+  const pending=JSON.parse(localStorage.getItem('sp_rota_pending')||'{}');
 
-// ── ADD STAFF MODAL ───────────────────────────────────────────────────────────
-function spAddStaffModal(){
-  const deptOpts=SP_DEPTS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
-  openModal(`<div style="padding:4px">
-    <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:#1a2b3a;margin-bottom:14px">Add staff member</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Full name</label>
-        <input id="sp-add-name" type="text" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:14px Lato;color:#1a2b3a"></div>
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Role</label>
-        <input id="sp-add-role" type="text" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:14px Lato;color:#1a2b3a"></div>
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Department</label>
-        <select id="sp-add-dept" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:14px Lato;color:#1a2b3a">${deptOpts}</select></div>
-      <div style="display:flex;gap:8px">
-        <div style="flex:1"><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Type</label>
-          <select id="sp-add-type" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:14px Lato;color:#1a2b3a"><option value="core">Core</option><option value="relief">Relief</option></select></div>
-        <div style="flex:1"><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Hours/wk</label>
-          <input id="sp-add-hrs" type="number" value="0" min="0" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:14px Lato;color:#1a2b3a"></div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button onclick="spDoAddStaff()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Add to rota</button>
-      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
-    </div>
-  </div>`);
-}
+  // Get current approved cell value
+  const raw=(rota[k]||{})[sid];
+  const approved=typeof raw==='object'&&raw!==null ? raw : {shift:raw||'off',dept:null};
 
-function spDoAddStaff(){
-  const name=document.getElementById('sp-add-name')?.value?.trim();
-  if(!name){if(typeof toast==='function')toast('Please enter a name');return;}
-  const staff=spGetStaff();
-  const id=name.toLowerCase().replace(/[^a-z0-9]/g,'_')+'_'+Date.now();
-  staff.push({id,staffCode:'BH'+String(staff.length+1).padStart(3,'0'),name,role:document.getElementById('sp-add-role')?.value?.trim()||'',dept:document.getElementById('sp-add-dept')?.value||'admin',type:document.getElementById('sp-add-type')?.value||'core',contractHrs:parseInt(document.getElementById('sp-add-hrs')?.value)||0,hourlyRate:0});
-  spSaveStaff(staff);closeModal();if(typeof toast==='function')toast('✓ '+name+' added');
+  // Get other half from existing pending or approved
+  const existing=pending[k]?.[sid]||approved;
+
+  if(!pending[k]) pending[k]={};
+  pending[k][sid] = type==='shift'
+    ? {shift:sel.value, dept:existing.dept||null}
+    : {shift:existing.shift||'off', dept:sel.value};
+
+  localStorage.setItem('sp_rota_pending',JSON.stringify(pending));
+
+  // Re-render to show amber border + Save button
   renderRotaWeek(document.getElementById('view'));
 }
 
-function spEditStaffModal(staffId){
-  const staff=spGetStaff(), s=staff.find(x=>x.id===staffId); if(!s) return;
-  const dept=SP_DEPTS.find(d=>d.id===s.dept)||{name:s.dept,colour:'#1a2b3a',shifts:[]};
-  const days=spWeekDates(spWeekOffset), rota=spGetRota();
-  const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const workDays = s.workDays || [0,0,0,0,0,0,0];
+// ── Approve one person's pending changes ──────────────────────────────────────
+function spApprovePerson(staffId){
+  const rota=spGetRota();
+  const pending=JSON.parse(localStorage.getItem('sp_rota_pending')||'{}');
 
-  const shiftOpts=(dept.shifts.length?dept.shifts:[]).concat(['off','holiday','on call','sick','in lieu']);
-
-  const weekRows=days.map((d,i)=>{
-    const k=spDK(d), sh=(rota[k]||{})[s.id]||'off';
-    const opts=shiftOpts.map(x=>`<option value="${x}"${sh===x?' selected':''}>${x}</option>`).join('');
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #e5e7eb">
-      <div style="width:36px;font-size:12px;font-weight:700;color:#1a2b3a">${DAYS[i]}</div>
-      <div style="font-size:11px;color:#374151;width:80px">${d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div>
-      <select data-dk="${k}" data-sid="${s.id}" onchange="spCellSelect(this)"
-        style="flex:1;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:600 12px Lato;color:#1a2b3a;cursor:pointer">
-        ${opts}
-      </select>
-    </div>`;
-  }).join('');
-
-  // Working days checkboxes
-  const dayChecks=DAYS.map((day,i)=>`
-    <label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
-      <input type="checkbox" id="wd-${i}-${s.id}" ${workDays[i]?'checked':''}
-        onchange="spToggleWorkDay('${s.id}',${i},this.checked)"
-        style="width:18px;height:18px;accent-color:#2a6a4a;cursor:pointer">
-      <span style="font-size:10px;font-weight:700;color:#374151">${day}</span>
-    </label>`).join('');
-
-  const html=`<div style="max-height:85vh;overflow-y:auto;padding:4px">
-    <!-- Header -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-      <div style="width:42px;height:42px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font:700 14px Lato;color:#fff">${s.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
-      <div>
-        <div style="font-size:16px;font-weight:700;color:#1a2b3a">${s.name}</div>
-        <div style="font-size:12px;color:#374151">${s.role||''} · ${dept.name}</div>
-      </div>
-      <button onclick="closeModal()" style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;color:#374151">✕</button>
-    </div>
-
-    <!-- Contract details -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;padding:12px;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb">
-      <div>
-        <label style="font-size:10px;font-weight:700;color:#374151;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Contract type</label>
-        <select id="sp-ct-${s.id}" onchange="spSaveContractField('${s.id}','contract',this.value)"
-          style="width:100%;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:12px Lato;color:#1a2b3a">
-          ${['Full-time','Part-time','Zero hours'].map(c=>`<option${s.contract===c?' selected':''}>${c}</option>`).join('')}
-        </select>
-      </div>
-      <div>
-        <label style="font-size:10px;font-weight:700;color:#374151;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Hours / week</label>
-        <input type="number" id="sp-hrs-${s.id}" value="${s.contractHrs||0}" min="0"
-          onchange="spSaveContractField('${s.id}','contractHrs',+this.value)"
-          style="width:100%;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:600 12px Lato;color:#1a2b3a">
-      </div>
-      <div>
-        <label style="font-size:10px;font-weight:700;color:#374151;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Hourly rate (£)</label>
-        <input type="number" step="0.01" id="sp-rate-${s.id}" value="${s.hourlyRate||''}"
-          onchange="spSaveContractField('${s.id}','hourlyRate',+this.value)"
-          placeholder="e.g. 12.50"
-          style="width:100%;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:600 12px Lato;color:#1a2b3a">
-      </div>
-      <div>
-        <label style="font-size:10px;font-weight:700;color:#374151;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Standard shift</label>
-        <select id="sp-shift-${s.id}" onchange="spSaveContractField('${s.id}','standardShift',this.value)"
-          style="width:100%;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:12px Lato;color:#1a2b3a">
-          <option value="">— select —</option>
-          ${(dept.shifts.length?dept.shifts:['07:00-15:00','08:00-16:00','09:00-17:00','15:00-23:00','23:00-07:00']).map(sh=>`<option value="${sh}"${s.standardShift===sh?' selected':''}>${sh}</option>`).join('')}
-        </select>
-      </div>
-    </div>
-
-    <!-- Working days checkboxes -->
-    <div style="margin-bottom:14px;padding:12px;background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0">
-      <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">✓ Days they work</div>
-      <div style="display:flex;justify-content:space-between;gap:4px">
-        ${dayChecks}
-      </div>
-    </div>
-
-    <!-- This week's shifts -->
-    <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">This week's shifts</div>
-    ${weekRows}
-
-    <div style="display:flex;gap:8px;margin-top:14px">
-      <button onclick="closeModal()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ Done — saves automatically</button>
-    </div>
-  </div>`;
-  openModal(html);
-}
-
-function spToggleWorkDay(staffId, dayIdx, checked){
-  const staff=spGetStaff(), s=staff.find(x=>x.id===staffId); if(!s) return;
-  if(!s.workDays) s.workDays=[0,0,0,0,0,0,0];
-  s.workDays[dayIdx] = checked ? 1 : 0;
-  spSaveStaff(staff);
-  // Also sync to HosSTAFF profiles
-  const profiles=JSON.parse(localStorage.getItem('hs_profiles')||'null');
-  if(profiles){
-    const p=profiles.find(x=>x.id===staffId);
-    if(p){ p.workDays=s.workDays; localStorage.setItem('hs_profiles',JSON.stringify(profiles)); }
-  }
-}
-
-function spSaveContractField(staffId, field, value){
-  const staff=spGetStaff(), s=staff.find(x=>x.id===staffId); if(!s) return;
-  s[field]=value;
-  if(field==='contractHrs') s.weeklyWage=Math.round(value*(s.hourlyRate||0)*100)/100;
-  if(field==='hourlyRate')  s.weeklyWage=Math.round((s.contractHrs||0)*value*100)/100;
-  spSaveStaff(staff);
-  // Sync to HosSTAFF
-  const profiles=JSON.parse(localStorage.getItem('hs_profiles')||'null');
-  if(profiles){
-    const p=profiles.find(x=>x.id===staffId);
-    if(p){ p[field]=value; if(field==='contractHrs'||field==='hourlyRate') p.weeklyWage=s.weeklyWage; localStorage.setItem('hs_profiles',JSON.stringify(profiles)); }
-  }
-  if(typeof toast==='function') toast('✓ Saved');
-}
-
-
-function spCellSelect(sel){const rota=spGetRota(),k=sel.dataset.dk,sid=sel.dataset.sid;if(!rota[k])rota[k]={};rota[k][sid]=sel.value;spSaveRota(rota);}
-
-function spCreateRotaFromForecast(){
-  const fc=spGetFC(),staff=spGetStaff(),rota=spGetRota(),days=spWeekDates(spFcWeekOffset);
-  days.forEach(d=>{
-    const k=spDK(d),f=fc[k]||{};if(!rota[k])rota[k]={};
-    const bk=f.breakfastCovers||Math.round((f.rooms||0)*1.8),din=f.dinnerCovers||0,dep=f.departures||0,stay=f.stayovers||0;
-    const needs={reception:3,nights:1,kitchen:Math.max(2,Math.ceil(bk/28)+(din>0?1:0)),restaurant:Math.max(1,Math.ceil(bk/28))+(din>0?Math.ceil(din/7):0),bar:2,housekeeping:Math.max(1,Math.ceil(((dep*0.542)+(stay*0.333))/7.5)),maintenance:1,admin:1};
-    SP_DEPTS.forEach(dept=>{
-      const deptStaff=staff.filter(s=>s.dept===dept.id),needed=needs[dept.id]||0;
-      const sorted=[...deptStaff.filter(s=>s.type==='core'),...deptStaff.filter(s=>s.type!=='core')];
-      let assigned=0;
-      sorted.forEach(s=>{
-        const existing=(rota[k][s.id]||'').toLowerCase();
-        if(existing&&existing!=='off'&&existing!=='')return;
-        if(assigned<needed&&dept.shifts&&dept.shifts.length>0){rota[k][s.id]=dept.shifts[assigned%dept.shifts.length];assigned++;}
-        else if(!rota[k][s.id])rota[k][s.id]='off';
-      });
-    });
+  Object.keys(pending).forEach(dk=>{
+    if(pending[dk][staffId]!==undefined){
+      if(!rota[dk]) rota[dk]={};
+      rota[dk][staffId]=pending[dk][staffId];
+      delete pending[dk][staffId];
+      if(!Object.keys(pending[dk]).length) delete pending[dk];
+    }
   });
-  spSaveRota(rota);spWeekOffset=spFcWeekOffset;
-  if(typeof toast==='function')toast('✓ Draft rota created — review in Weekly Rota');
-  switchTab('rotaWeek');
+
+  spSaveRota(rota);
+  localStorage.setItem('sp_rota_pending',JSON.stringify(pending));
+  toast('✓ Rota approved for this staff member');
+  renderRotaWeek(document.getElementById('view'));
 }
 
-function spApproveRota(){
-  const rota=spGetRota(),staff=spGetStaff(),days=spWeekDates(spWeekOffset);
-  const weekLabel=`Week commencing ${spShortFmt(days[0])} – ${spShortFmt(days[6])}`;
-  let deptSections='';
-  SP_DEPTS.forEach(dept=>{
-    const ds=staff.filter(s=>s.dept===dept.id);if(!ds.length)return;
-    const rows=ds.map(s=>{const shifts=days.map(d=>{const sh=(rota[spDK(d)]||{})[s.id]||'—';return`<td style="border:1px solid #e0e0e0;padding:5px 4px;text-align:center;font-size:10px;white-space:nowrap;background:${sh.includes(':')?'#f0fdf4':sh==='holiday'?'#eff6ff':'#fff'}">${sh}</td>`;}).join('');const wh=days.reduce((t,d)=>t+spParseHrs((rota[spDK(d)]||{})[s.id]||''),0);return`<tr><td style="border:1px solid #e0e0e0;padding:5px 7px;font-size:11px;font-weight:600">${s.name}</td><td style="border:1px solid #e0e0e0;padding:5px 4px;font-size:10px;color:#374151">${s.role||''}</td>${rows}<td style="border:1px solid #e0e0e0;padding:5px 4px;text-align:center;font-size:11px;font-weight:700">${Math.round(wh*10)/10}h</td></tr>`;}).join('');
-    deptSections+=`<div style="margin-bottom:16px;break-inside:avoid"><div style="background:${dept.colour};color:#fff;padding:5px 8px;font-size:11px;font-weight:700;text-transform:uppercase;border-radius:4px 4px 0 0">${dept.name}</div><table style="width:100%;border-collapse:collapse;border:1px solid #e0e0e0"><thead><tr style="background:#f5f7f9"><th style="border:1px solid #e0e0e0;padding:5px 7px;font-size:10px;text-align:left">Name</th><th style="border:1px solid #e0e0e0;padding:5px;font-size:10px;text-align:left">Role</th>${days.map(d=>`<th style="border:1px solid #e0e0e0;padding:5px 4px;font-size:10px;text-align:center">${d.toLocaleDateString('en-GB',{weekday:'short'})}<br>${spShortFmt(d)}</th>`).join('')}<th style="border:1px solid #e0e0e0;padding:5px 4px;font-size:10px">Hrs</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+// ── Discard one person's pending changes ──────────────────────────────────────
+function spDiscardPerson(staffId){
+  const pending=JSON.parse(localStorage.getItem('sp_rota_pending')||'{}');
+  Object.keys(pending).forEach(dk=>{
+    delete pending[dk][staffId];
+    if(!Object.keys(pending[dk]).length) delete pending[dk];
   });
-  const win=window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><title>Brandon Hall Rota — ${weekLabel}</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#1a2b3a}@media print{@page{size:A3 landscape;margin:10mm}}</style></head><body><div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px"><div><h1 style="font-size:18px;margin:0 0 4px">Brandon Hall Hotel & Spa — Staff Rota</h1><h2 style="font-size:13px;color:#374151;font-weight:400;margin:0">${weekLabel} · Approved ${new Date().toLocaleDateString('en-GB')}</h2></div><div style="text-align:right;font-size:11px;color:#374151">HosPRO HosSHIFT<br>CONFIDENTIAL</div></div>${deptSections}<div style="margin-top:16px;font-size:10px;color:#6b7280">Approved by: _________________ Date: _________________</div><script>window.onload=()=>window.print();<\/script></body></html>`);
-  win.document.close();
+  localStorage.setItem('sp_rota_pending',JSON.stringify(pending));
+  renderRotaWeek(document.getElementById('view'));
 }
 
-function spExportCSV(){
-  const rota=spGetRota(),staff=spGetStaff(),days=spWeekDates(spWeekOffset);
-  let csv='Name,Role,Department,Staff Code,'+days.map(d=>spFmt(d)).join(',')+',Weekly Hrs\n';
-  staff.forEach(s=>{const shifts=days.map(d=>(rota[spDK(d)]||{})[s.id]||'off'),hrs=days.reduce((t,d)=>t+spParseHrs((rota[spDK(d)]||{})[s.id]||''),0);csv+=`"${s.name}","${s.role||''}","${s.dept}","${s.staffCode||''}",`+shifts.map(x=>`"${x}"`).join(',')+`,"${Math.round(hrs*10)/10}"\n`;});
-  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:'brandon-hall-rota.csv'});a.click();
-}
-
-
-// ── HosBRAND — Brochures & Downloads ─────────────────────────────────────────
-const BH_DOCS = [
-  { category: "The Clarendon — Menus",
-    colour: "#4a9d7f",
-    docs: [
-      { title:"Restaurant Menu",              icon:"🍽", file:"clarendon-restaurant-menu.pdf",         desc:"Full à la carte restaurant menu" },
-      { title:"Lunch Menu",                   icon:"🥗", file:"clarendon-lunch-menu.pdf",              desc:"Clarendon lunch menu" },
-      { title:"Dinner, Bed & Breakfast Menu", icon:"🌙", file:"clarendon-dinner-bed-breakfast-menu.pdf",desc:"DBB package menu" },
-      { title:"Wine List",                    icon:"🍷", file:"clarendon-wine-list.pdf",               desc:"Full wine list" },
-      { title:"Restaurant & Bar Wine List",   icon:"🥂", file:"clarendon-restaurant-bar-wine-list.pdf",desc:"Restaurant & bar wine selection" },
-    ]
-  },
-];
-
-// Base path for uploaded PDFs — served from GitHub Pages root
-const BH_PDF_BASE = "/";
-
-function renderBrandDocs(v){
-  v.innerHTML=''; v.style.padding='0';
-  const wrap=document.createElement('div');
-  wrap.style.cssText='padding:28px;min-height:100%';
-
-  wrap.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-      <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Menus & Wine Lists</div>
-        <div style="font-size:13px;color:#8fa3b8">The Clarendon — downloadable menus and wine lists</div>
-      </div>
-      <button onclick="switchTab('hosbrand')" style="padding:8px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;color:#fff;cursor:pointer">← Back to HosBRAND</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
-      ${BH_DOCS.flatMap(cat=>cat.docs).map(doc=>`
-        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px;border-left:3px solid #4a9d7f;display:flex;flex-direction:column;gap:12px">
-          <div style="display:flex;gap:12px;align-items:flex-start">
-            <span style="font-size:28px;flex-shrink:0">${doc.icon}</span>
-            <div>
-              <div style="font-size:14px;font-weight:700;color:#fff">${doc.title}</div>
-              <div style="font-size:11px;color:#8fa3b8;margin-top:3px">${doc.desc}</div>
-            </div>
-          </div>
-          <div style="display:flex;gap:8px;margin-top:auto">
-            <a href="/${doc.file}" target="_blank" rel="noopener"
-               style="flex:1;padding:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">👁 View</a>
-            <a href="/${doc.file}" download
-               style="flex:1;padding:8px;background:#c78a3b;border:none;border-radius:8px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">⬇ Download</a>
-          </div>
-        </div>`).join('')}
-    </div>`;
-  v.appendChild(wrap);
-}
-
-
-function hsGetProfiles()  { return hsGetProfilesSeeded(); }
-function hsSaveProfiles(d){ localStorage.setItem('hs_profiles',  JSON.stringify(d)); }
-function hsGetLeave()     { return JSON.parse(localStorage.getItem('hs_leave')     || '[]'); }
-function hsSaveLeave(d)   { localStorage.setItem('hs_leave',     JSON.stringify(d)); }
-
-function hsBuildDefaultProfiles(){
-  // Built from real staff register — SP_STAFF_SEED already has all HR fields
-  const shift = spGetStaff ? spGetStaff() : [];
-  return shift.map(s => ({
-    id: s.id,
-    staffCode: s.staffCode || 'BH000',
-    name: s.name,
-    role: s.role || '',
-    dept: s.dept,
-    type: s.type,
-    contract: s.contract || 'Zero hours',
-    contractHrs: s.contractHrs || 0,
-    hourlyRate: s.hourlyRate || 0,
-    weeklyWage: s.weeklyWage || 0,
-    workDays: s.workDays || [0,0,0,0,0,0,0],
-    standardShift: s.standardShift || '',
-    startDate: s.startDate || '',
-    probationPassed: s.probationPassed || false,
-    probationDate: '',
-    dob: s.dob || '',
-    address: s.address || '',
-    phone: s.phone || '',
-    email: s.email || '',
-    emergencyName: s.emergencyName || '',
-    emergencyPhone: s.emergencyPhone || '',
-    emergencyRel: s.emergencyRel || '',
-    niNumber: s.niNumber || '',
-    leaveAllowance: s.leaveAllowance || 28,
-    leaveUsed: s.leaveUsed || 0,
-    leavePending: s.leavePending || 0,
-    docs: s.docs || [],
-    notes: s.notes || ''
-  }));
-}
-
-function hsGetProfile(staffCode){
-  return hsGetProfiles().find(p => p.staffCode === staffCode || p.id === staffCode);
-}
-
-// ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function renderStaffDash(v){
-  const profiles = hsGetProfiles();
-  const leave = hsGetLeave();
-  const pending = leave.filter(l => l.status === 'pending');
-  const approved = leave.filter(l => l.status === 'approved');
-  const today = new Date().toISOString().slice(0,10);
-  const onLeave = approved.filter(l => l.from <= today && l.to >= today);
-
-  const depts = {};
-  profiles.forEach(p => { depts[p.dept] = (depts[p.dept]||0)+1; });
-
-  const deptCards = Object.entries(depts).map(([d,n]) => {
-    const dept = SP_DEPTS ? SP_DEPTS.find(x=>x.id===d) : null;
-    return `<div style="background:#fff;border-radius:10px;padding:12px;border-left:4px solid ${dept?.colour||'#4a86c7'}">
-      <div style="font-size:20px;font-weight:700;color:#1a2b3a">${n}</div>
-      <div style="font-size:12px;color:#374151">${dept?.name||d}</div>
-    </div>`;
-  }).join('');
-
-  const pendingRows = pending.slice(0,5).map(l => {
-    const p = profiles.find(x=>x.id===l.staffId);
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #e5e7eb">
-      <div>
-        <div style="font-size:13px;font-weight:600;color:#1a2b3a">${p?.name||'Unknown'}</div>
-        <div style="font-size:11px;color:#374151">${l.from} → ${l.to} · ${l.days} day${l.days!==1?'s':''}</div>
-      </div>
-      <div style="display:flex;gap:6px">
-        <button onclick="hsApproveLeave('${l.id}')" style="padding:5px 10px;background:#2a6a4a;color:#fff;border:none;border-radius:6px;font:600 11px Lato;cursor:pointer">✓ Approve</button>
-        <button onclick="hsDeclineLeave('${l.id}')" style="padding:5px 10px;background:#b3261e;color:#fff;border:none;border-radius:6px;font:600 11px Lato;cursor:pointer">✗ Decline</button>
-      </div>
-    </div>`;
-  }).join('') || '<div style="padding:12px 0;color:#374151;font-size:13px">No pending requests</div>';
-
-  v.innerHTML = `<div style="padding:20px 28px;max-width:1300px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#ffffff">HosSTAFF Dashboard</div>
-        <div style="font-size:13px;color:#374151">${profiles.length} staff members · ${pending.length} leave requests pending</div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button onclick="switchTab('staffProfiles')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">👤 Staff Profiles</button>
-        <button onclick="switchTab('staffLeaveAdmin')" style="padding:9px 16px;background:#c78a3b;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">🌴 Leave Requests ${pending.length>0?'<span style="background:#b3261e;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px">'+pending.length+'</span>':''}</button>
-        <button onclick="hsAddStaffModal()" style="padding:9px 16px;background:#4a86c7;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">+ Add staff</button>
-      </div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center">
-        <div style="font-size:32px;font-weight:700;color:#1a2b3a">${profiles.length}</div>
-        <div style="font-size:12px;color:#374151;text-transform:uppercase">Total Staff</div>
-      </div>
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center">
-        <div style="font-size:32px;font-weight:700;color:#c78a3b">${pending.length}</div>
-        <div style="font-size:12px;color:#374151;text-transform:uppercase">Pending Leave</div>
-      </div>
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center">
-        <div style="font-size:32px;font-weight:700;color:#2a6a4a">${onLeave.length}</div>
-        <div style="font-size:12px;color:#374151;text-transform:uppercase">On Leave Today</div>
-      </div>
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center">
-        <div style="font-size:32px;font-weight:700;color:#4a86c7">${profiles.filter(p=>!p.probationPassed&&p.startDate).length}</div>
-        <div style="font-size:12px;color:#374151;text-transform:uppercase">On Probation</div>
-      </div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
-        <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Pending Leave Requests</div>
-        ${pendingRows}
-        ${pending.length>5?`<button onclick="switchTab('staffLeaveAdmin')" style="margin-top:8px;padding:6px 12px;border:1px solid #1a2b3a;border-radius:7px;background:#fff;font:600 12px Lato;cursor:pointer;color:#1a2b3a">View all ${pending.length} requests →</button>`:''}
-      </div>
-      <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
-        <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">By Department</div>
-        <div style="display:flex;flex-direction:column;gap:8px">${deptCards}</div>
-      </div>
-    </div>
-  </div>`;
-}
-
-// ── STAFF PROFILES ─────────────────────────────────────────────────────────────
-function renderStaffProfiles(v){
-  const profiles = hsGetProfiles();
-  const deptFilter = window._hsDeptFilter || 'all';
-  const search = window._hsSearch || '';
-  const depts = SP_DEPTS || [];
-
-  let filtered = profiles;
-  if(deptFilter !== 'all') filtered = filtered.filter(p => p.dept === deptFilter);
-  if(search) filtered = filtered.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.staffCode||'').toLowerCase().includes(search.toLowerCase()) ||
-    (p.role||'').toLowerCase().includes(search.toLowerCase())
-  );
-
-  // Dept summary cards
-  const deptCards = depts.map(d=>{
-    const count = profiles.filter(p=>p.dept===d.id).length;
-    const active = deptFilter === d.id;
-    return `<button onclick="window._hsDeptFilter='${d.id}';window._hsSearch='';renderStaffProfiles(document.getElementById('view'))"
-      style="flex:1;min-width:120px;padding:14px 10px;background:${active?d.colour:'rgba(255,255,255,.07)'};border:2px solid ${active?d.colour:'rgba(255,255,255,.12)'};border-radius:12px;cursor:pointer;text-align:center;transition:all .15s"
-      onmouseover="this.style.background='${d.colour}';this.style.borderColor='${d.colour}'"
-      onmouseout="this.style.background='${active?d.colour:'rgba(255,255,255,.07)'}';this.style.borderColor='${active?d.colour:'rgba(255,255,255,.12)'}'">
-      <div style="font-size:22px;font-weight:700;color:#fff">${count}</div>
-      <div style="font-size:11px;font-weight:700;color:#fff;margin-top:3px;white-space:nowrap">${d.name}</div>
-    </button>`;
-  }).join('');
-
-  // Staff cards grid
-  const cards = filtered.map(p => {
-    const dept = depts.find(d=>d.id===p.dept)||{name:p.dept||'—',colour:'#4a86c7'};
-    const leave = hsGetLeave().filter(l=>l.staffId===p.id);
-    const leaveUsed = leave.filter(l=>l.status==='approved').reduce((t,l)=>t+l.days,0);
-    const leaveRemaining = Math.max(0,(p.leaveAllowance||28)-leaveUsed);
-    const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    return `<div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-top:3px solid ${dept.colour};display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:42px;height:42px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font:700 14px Lato;color:#fff;flex-shrink:0">${initials}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:#1a2b3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
-          <div style="font-size:11px;color:#374151">${p.role||'—'}</div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div style="background:#f9fafb;border-radius:7px;padding:6px 8px">
-          <div style="font-size:10px;color:#374151;text-transform:uppercase;letter-spacing:.3px">Department</div>
-          <div style="font-size:11px;font-weight:700;color:#1a2b3a;margin-top:2px">${dept.name}</div>
-        </div>
-        <div style="background:#f9fafb;border-radius:7px;padding:6px 8px">
-          <div style="font-size:10px;color:#374151;text-transform:uppercase;letter-spacing:.3px">Contract</div>
-          <div style="font-size:11px;font-weight:700;color:#1a2b3a;margin-top:2px">${p.contract||'—'}</div>
-        </div>
-        <div style="background:#f9fafb;border-radius:7px;padding:6px 8px">
-          <div style="font-size:10px;color:#374151;text-transform:uppercase;letter-spacing:.3px">Hours/wk</div>
-          <div style="font-size:11px;font-weight:700;color:#1a2b3a;margin-top:2px">${p.contractHrs>0?p.contractHrs+'h':'—'}</div>
-        </div>
-        <div style="background:${leaveRemaining<5?'#fff5f5':'#f0fdf4'};border-radius:7px;padding:6px 8px">
-          <div style="font-size:10px;color:#374151;text-transform:uppercase;letter-spacing:.3px">Leave left</div>
-          <div style="font-size:11px;font-weight:700;color:${leaveRemaining<5?'#991b1b':'#166534'};margin-top:2px">${leaveRemaining}d of ${p.leaveAllowance||28}d</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;margin-top:2px">
-        <span style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:${p.probationPassed?'#dcfce7':'#fef9c3'};color:${p.probationPassed?'#166534':'#854d0e'}">${p.probationPassed?'✓ Passed':'Probation'}</span>
-        <span style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#e0f2fe;color:#0369a1">${p.staffCode||''}</span>
-      </div>
-      <div style="display:flex;gap:6px">
-        <button onclick="hsOpenProfile('${p.id}')" style="flex:1;padding:8px;border:1.5px solid #1a2b3a;border-radius:8px;background:#fff;font:700 12px Lato;cursor:pointer;color:#1a2b3a">✏ Edit</button>
-        <button onclick="if(confirm('Remove ${p.name.replace(/'/g,"\\'")} from staff?'))hsDeleteStaff('${p.id}')" style="padding:8px 10px;border:1.5px solid #fecaca;border-radius:8px;background:#fff;font:700 12px Lato;cursor:pointer;color:#991b1b">✕</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  v.innerHTML = `<div style="padding:24px 28px;min-height:100%">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff">Staff Profiles</div>
-        <div style="font-size:12px;color:#8fa3b8">${filtered.length} of ${profiles.length} staff members</div>
-      </div>
-      <button onclick="hsAddStaffModal()" style="padding:9px 18px;background:#4a86c7;color:#fff;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer">+ Add staff member</button>
-    </div>
-
-    <!-- Dept filter cards -->
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-      <button onclick="window._hsDeptFilter='all';window._hsSearch='';renderStaffProfiles(document.getElementById('view'))"
-        style="padding:10px 16px;background:${deptFilter==='all'?'#1a2b3a':'rgba(255,255,255,.07)'};border:2px solid ${deptFilter==='all'?'#c78a3b':'rgba(255,255,255,.12)'};border-radius:10px;cursor:pointer;font:700 12px Lato;color:#fff">
-        All (${profiles.length})
-      </button>
-      ${deptCards}
-    </div>
-
-    <!-- Search -->
-    <input type="text" placeholder="🔍 Search name, staff ID or role..." value="${search}"
-      oninput="window._hsSearch=this.value;renderStaffProfiles(document.getElementById('view'))"
-      style="width:100%;padding:11px 14px;background:#fff;border:1.5px solid #d1d5db;border-radius:10px;font:13px Lato;color:#1a2b3a;margin-bottom:16px;outline:none">
-
-    <!-- Cards grid -->
-    ${cards || '<div style="text-align:center;padding:40px;color:#8fa3b8;font-size:14px">No staff found</div>'}
-  </div>`;
-}
-
-
-function hsOpenProfile(staffId){
-  const profiles = hsGetProfiles();
-  const p = profiles.find(x=>x.id===staffId || x.staffCode===staffId);
-  if(!p) return;
-  const dept = (SP_DEPTS||[]).find(d=>d.id===p.dept)||{name:p.dept,colour:'#4a86c7'};
-  const leave = hsGetLeave().filter(l=>l.staffId===p.id);
-  const leaveApproved = leave.filter(l=>l.status==='approved').reduce((t,l)=>t+l.days,0);
-  const leavePending = leave.filter(l=>l.status==='pending').reduce((t,l)=>t+l.days,0);
-  const leaveRemaining = Math.max(0, p.leaveAllowance - leaveApproved);
-
-  const leaveHistory = leave.sort((a,b)=>b.from.localeCompare(a.from)).map(l=>`
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #e5e7eb;font-size:12px">
-      <div>
-        <b style="color:#1a2b3a">${l.from} → ${l.to}</b>
-        <span style="color:#374151"> · ${l.days} days · ${l.reason||'Annual leave'}</span>
-      </div>
-      <span style="padding:2px 7px;border-radius:6px;font-size:11px;font-weight:700;background:${l.status==='approved'?'#dcfce7':l.status==='declined'?'#fee2e2':'#fef9c3'};color:${l.status==='approved'?'#166534':l.status==='declined'?'#991b1b':'#854d0e'}">${l.status}</span>
-    </div>`).join('') || '<div style="color:#374151;font-size:12px;padding:8px 0">No leave history</div>';
-
-  const html = `<div style="max-height:85vh;overflow-y:auto;padding:4px">
-    <!-- Header -->
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
-      <div style="width:56px;height:56px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font:700 18px Lato;color:#fff;flex-shrink:0">${p.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
-      <div>
-        <div style="font-size:20px;font-weight:700;color:#1a2b3a">${p.name}</div>
-        <div style="font-size:13px;color:#374151">${p.role||''} · <span style="padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;background:${dept.colour}20;color:${dept.colour}">${dept.name}</span></div>
-        <div style="font-size:12px;color:#374151;margin-top:2px">Staff ID: <b>${p.staffCode}</b></div>
-      </div>
-      <button onclick="closeModal()" style="margin-left:auto;background:none;border:none;font-size:22px;cursor:pointer;color:#374151">✕</button>
-    </div>
-
-    <!-- Tabs -->
-    <div style="display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:16px">
-      ${['Personal','Contract','Leave','Documents'].map((tab,i)=>`<button onclick="hsProfileTab(this,'${staffId}',${i})" class="hs-ptab" style="padding:8px 14px;border:none;border-bottom:${i===0?'2px solid #1a2b3a':'2px solid transparent'};background:none;font:${i===0?'700':'500'} 13px Lato;color:${i===0?'#1a2b3a':'#374151'};cursor:pointer;margin-bottom:-2px">${tab}</button>`).join('')}
-    </div>
-
-    <!-- Tab 0: Personal -->
-    <div id="hs-tab-0">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-        ${[
-          ['Date of Birth','dob','date'],['Phone','phone','tel'],['Email','email','email'],
-          ['NI Number','niNumber','text'],['Start Date','startDate','date'],['Probation Date','probationDate','date']
-        ].map(([label,key,type])=>`<div>
-          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">${label}</label>
-          <input type="${type}" value="${p[key]||''}" data-field="${key}" data-staffid="${staffId}"
-            onchange="hsSaveField(this)"
-            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
-        </div>`).join('')}
-      </div>
-      <div style="margin-bottom:10px">
-        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Address</label>
-        <textarea data-field="address" data-staffid="${staffId}" onchange="hsSaveField(this)"
-          style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a;min-height:60px;resize:vertical">${p.address||''}</textarea>
-      </div>
-      <div style="background:#f0f9ff;border-radius:10px;padding:12px;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:700;color:#1a2b3a;margin-bottom:8px">Emergency Contact</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-          ${[['Name','emergencyName'],['Phone','emergencyPhone'],['Relationship','emergencyRel']].map(([label,key])=>`<div>
-            <label style="font-size:11px;color:#374151;display:block;margin-bottom:2px">${label}</label>
-            <input value="${p[key]||''}" data-field="${key}" data-staffid="${staffId}" onchange="hsSaveField(this)"
-              style="width:100%;padding:7px;border:1.5px solid #d1d5db;border-radius:7px;font:12px Lato;color:#1a2b3a">
-          </div>`).join('')}
-        </div>
-      </div>
-      <div style="margin-bottom:10px">
-        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:6px">Working days</label>
-        <div style="display:flex;gap:4px">
-          ${[0,1,2,3,4,5,6].map(i=>'<span style="display:inline-block;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:'+((p.workDays||[])[i]?'#dcfce7':'#f3f4f6')+';color:'+((p.workDays||[])[i]?'#166534':'#374151')+'">'+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]+'</span>').join('')}
-        </div>
-        ${p.standardShift?'<div style="font-size:12px;color:#374151;margin-top:6px">Standard shift: <b>'+p.standardShift+'</b></div>':''}
-      </div>
-      <!-- Working days checkboxes -->
-      <div style="margin-bottom:10px;padding:12px;background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0">
-        <label style="font-size:10px;font-weight:700;color:#166534;display:block;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">✓ Days they work</label>
-        <div style="display:flex;justify-content:space-between;gap:4px">
-          ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((day,i)=>`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
-            <input type="checkbox" ${(p.workDays||[])[i]?'checked':''}
-              onchange="hsToggleWorkDay('${staffId}',${i},this.checked)"
-              style="width:18px;height:18px;accent-color:#2a6a4a;cursor:pointer">
-            <span style="font-size:10px;font-weight:700;color:#374151">${day}</span>
-          </label>`).join('')}
-        </div>
-        ${p.standardShift?`<div style="font-size:12px;color:#374151;margin-top:8px">Standard shift: <b style="color:#1a2b3a">${p.standardShift}</b></div>`:''}
-      </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Notes</label>
-        <textarea data-field="notes" data-staffid="${staffId}" onchange="hsSaveField(this)"
-          style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a;min-height:50px;resize:vertical">${p.notes||''}</textarea>
-      </div>
-    </div>
-
-    <!-- Tab 1: Contract (hidden) -->
-    <div id="hs-tab-1" style="display:none">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-        ${[['Role / Job Title','role','text'],['Standard Shift','standardShift','text']].map(([l,k,t])=>`<div>
-          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">${l}</label>
-          <input type="text" value="${k==='dept_display'?dept.name:(p[k]||'')}}" ${k==='dept_display'?'disabled':''} data-field="${k}" data-staffid="${staffId}" onchange="hsSaveField(this)"
-            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
-        </div>`).join('')}
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Contract Type</label>
-          <select data-field="contract" data-staffid="${staffId}" onchange="hsSaveField(this);hsUpdateLeaveAllowance('${staffId}')"
-            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
-            ${['Full-time','Part-time','Zero hours'].map(c=>`<option${p.contract===c?' selected':''}>${c}</option>`).join('')}
-          </select>
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Contract Hours/Week</label>
-          <input type="number" value="${p.contractHrs||0}" data-field="contractHrs" data-staffid="${staffId}" onchange="hsSaveField(this)"
-            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Hourly Rate (£)</label>
-          <input type="number" step="0.01" value="${p.hourlyRate||''}" data-field="hourlyRate" data-staffid="${staffId}" onchange="hsSaveField(this)"
-            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Annual Leave Allowance (days)</label>
-          <input type="number" value="${p.leaveAllowance||0}" data-field="leaveAllowance" data-staffid="${staffId}" onchange="hsSaveField(this)"
-            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Staff Type</label>
-          <select data-field="type" data-staffid="${staffId}" onchange="hsSaveField(this)"
-            style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
-            <option${p.type==='core'?' selected':''}>core</option>
-            <option${p.type==='relief'?' selected':''}>relief</option>
-          </select>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;background:#f9fafb;border-radius:10px;padding:12px">
-        <input type="checkbox" id="hs-prob-${staffId}" ${p.probationPassed?'checked':''} data-field="probationPassed" data-staffid="${staffId}" onchange="hsSaveField(this)"
-          style="width:18px;height:18px;accent-color:#2a6a4a">
-        <label for="hs-prob-${staffId}" style="font-size:13px;font-weight:600;color:#1a2b3a;cursor:pointer">Probation period passed</label>
-        <span style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;background:${p.probationPassed?'#dcfce7':'#fef9c3'};color:${p.probationPassed?'#166534':'#854d0e'}">${p.probationPassed?'✓ Passed':'Pending'}</span>
-      </div>
-    </div>
-
-    <!-- Tab 2: Leave (hidden) -->
-    <div id="hs-tab-2" style="display:none">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
-        <div style="background:#dcfce7;border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:28px;font-weight:700;color:#166534">${leaveRemaining}</div>
-          <div style="font-size:11px;color:#166534;font-weight:600">Days remaining</div>
-        </div>
-        <div style="background:#fee2e2;border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:28px;font-weight:700;color:#991b1b">${leaveApproved}</div>
-          <div style="font-size:11px;color:#991b1b;font-weight:600">Days used</div>
-        </div>
-        <div style="background:#fef9c3;border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:28px;font-weight:700;color:#854d0e">${leavePending}</div>
-          <div style="font-size:11px;color:#854d0e;font-weight:600">Days pending</div>
-        </div>
-      </div>
-      <div style="margin-bottom:14px">
-        <div style="font-size:12px;font-weight:700;color:#1a2b3a;text-transform:uppercase;margin-bottom:8px">Leave History</div>
-        ${leaveHistory}
-      </div>
-      <button onclick="hsManagerLeaveModal('${staffId}')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">+ Add leave entry</button>
-    </div>
-
-    <!-- Tab 3: Documents (hidden) -->
-    <div id="hs-tab-3" style="display:none">
-      <div style="background:#f0f9ff;border-radius:10px;padding:16px;text-align:center;margin-bottom:12px">
-        <div style="font-size:13px;color:#8fa3b8;margin-bottom:8px">Upload documents for this staff member</div>
-        <div style="font-size:11px;color:#374151;margin-bottom:12px">Contract · ID · Right to work · DBS · Certificates</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          ${['Employment Contract','Photo ID','Right to Work','DBS Certificate','Training Certificate','Other'].map(docType=>`<div style="background:#fff;border:1.5px dashed #d1d5db;border-radius:8px;padding:10px;cursor:pointer;text-align:center" onclick="toast('Document upload — connect to file storage to enable')">
-            <div style="font-size:20px;margin-bottom:4px">📄</div>
-            <div style="font-size:11px;font-weight:600;color:#1a2b3a">${docType}</div>
-            <div style="font-size:10px;color:#374151">Click to upload</div>
-          </div>`).join('')}
-        </div>
-      </div>
-    </div>
-  </div>`;
-
-  openModal(html);
-}
-
-function hsProfileTab(btn, staffId, tabIdx){
-  document.querySelectorAll('.hs-ptab').forEach((b,i)=>{
-    b.style.fontWeight = i===tabIdx?'700':'500';
-    b.style.color = i===tabIdx?'#1a2b3a':'#374151';
-    b.style.borderBottom = i===tabIdx?'2px solid #1a2b3a':'2px solid transparent';
-    const tab = document.getElementById('hs-tab-'+i);
-    if(tab) tab.style.display = i===tabIdx?'block':'none';
+// ── Approve ALL pending changes at once ───────────────────────────────────────
+function spApproveAll(){
+  const rota=spGetRota();
+  const pending=JSON.parse(localStorage.getItem('sp_rota_pending')||'{}');
+  Object.keys(pending).forEach(dk=>{
+    if(!rota[dk]) rota[dk]={};
+    Object.assign(rota[dk],pending[dk]);
   });
+  spSaveRota(rota);
+  localStorage.setItem('sp_rota_pending','{}');
+  toast('✓ All rota changes approved');
+  renderRotaWeek(document.getElementById('view'));
 }
 
-function hsToggleWorkDay(staffId, dayIdx, checked){
-  const profiles=hsGetProfiles(), p=profiles.find(x=>x.id===staffId); if(!p) return;
-  if(!p.workDays) p.workDays=[0,0,0,0,0,0,0];
-  p.workDays[dayIdx] = checked ? 1 : 0;
-  hsSaveProfiles(profiles);
-  // Sync to HosSHIFT
-  const staff=spGetStaff?spGetStaff():[];
-  const s=staff.find(x=>x.id===staffId);
-  if(s){ s.workDays=p.workDays; if(typeof spSaveStaff==='function') spSaveStaff(staff); }
-  toast('Saved ✓');
+// ── Discard ALL pending changes ───────────────────────────────────────────────
+function spDiscardAll(){
+  if(!confirm('Discard all pending rota changes?')) return;
+  localStorage.setItem('sp_rota_pending','{}');
+  renderRotaWeek(document.getElementById('view'));
 }
 
-function hsSaveField(input){
-  const profiles = hsGetProfiles();
-  const p = profiles.find(x=>x.id===input.dataset.staffid);
-  if(!p) return;
-  const field = input.dataset.field;
-  const val = input.type==='checkbox' ? input.checked : (input.type==='number' ? (parseFloat(input.value)||0) : input.value);
-  p[field] = val;
-  hsSaveProfiles(profiles);
-  toast('Saved ✓');
-}
-
-function hsUpdateLeaveAllowance(staffId){
-  const profiles = hsGetProfiles();
-  const p = profiles.find(x=>x.id===staffId); if(!p) return;
-  p.leaveAllowance = p.contract==='Full-time' ? 28 : p.contract==='Part-time' ? 20 : 0;
-  hsSaveProfiles(profiles);
-}
-
-// ── LEAVE ADMIN ───────────────────────────────────────────────────────────────
-function renderStaffLeaveAdmin(v){
-  const leave = hsGetLeave();
-  const profiles = hsGetProfiles();
-  const filter = window._hsLeaveFilter || 'pending';
-
-  const filtered = filter==='all' ? leave : leave.filter(l=>l.status===filter);
-  const sorted = filtered.sort((a,b)=>b.from.localeCompare(a.from));
-
-  const rows = sorted.map(l=>{
-    const p = profiles.find(x=>x.id===l.staffId);
-    const dept = (SP_DEPTS||[]).find(d=>d.id===p?.dept)||{name:'',colour:'#4a86c7'};
-    // Check for conflicts (same dept on same dates)
-    const conflicts = leave.filter(other =>
-      other.id !== l.id &&
-      other.status !== 'declined' &&
-      profiles.find(x=>x.id===other.staffId)?.dept === p?.dept &&
-      other.from <= l.to && other.to >= l.from
-    );
-    return `<tr style="border-bottom:1px solid #e5e7eb">
-      <td style="padding:10px 12px">
-        <div style="font-size:13px;font-weight:700;color:#1a2b3a">${p?.name||'Unknown'}</div>
-        <div style="font-size:11px;color:#374151">${p?.staffCode||''} · <span style="color:${dept.colour};font-weight:600">${dept.name}</span></div>
-      </td>
-      <td style="padding:10px 8px;font-size:12px;color:#1a2b3a">${l.from}<br><span style="color:#374151">to ${l.to}</span></td>
-      <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#1a2b3a">${l.days}d</td>
-      <td style="padding:10px 8px;font-size:12px;color:#374151">${l.reason||'Annual leave'}</td>
-      <td style="padding:10px 8px">
-        ${conflicts.length>0?`<div style="background:#fef9c3;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;color:#854d0e">⚠ ${conflicts.length} conflict${conflicts.length>1?'s':''} in dept</div>`:'<span style="color:#166534;font-size:11px;font-weight:600">✓ No conflicts</span>'}
-      </td>
-      <td style="padding:10px 8px">
-        <span style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;background:${l.status==='approved'?'#dcfce7':l.status==='declined'?'#fee2e2':'#fef9c3'};color:${l.status==='approved'?'#166534':l.status==='declined'?'#991b1b':'#854d0e'}">${l.status}</span>
-      </td>
-      <td style="padding:10px 8px">
-        ${l.status==='pending'?`<div style="display:flex;gap:6px">
-          <button onclick="hsApproveLeave('${l.id}')" style="padding:5px 10px;background:#2a6a4a;color:#fff;border:none;border-radius:6px;font:600 11px Lato;cursor:pointer">✓ Approve</button>
-          <button onclick="hsDeclineLeave('${l.id}')" style="padding:5px 10px;background:#b3261e;color:#fff;border:none;border-radius:6px;font:600 11px Lato;cursor:pointer">✗ Decline</button>
-        </div>`:'<span style="font-size:11px;color:#374151">Processed</span>'}
-      </td>
-    </tr>`;
-  }).join('') || `<tr><td colspan="7" style="padding:20px;text-align:center;color:#374151;font-size:13px">No ${filter} leave requests</td></tr>`;
-
-  v.innerHTML = `<div style="padding:20px 28px;max-width:1300px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Leave Management</div>
-        <div style="font-size:12px;color:#374151">${leave.filter(l=>l.status==='pending').length} pending · ${leave.filter(l=>l.status==='approved').length} approved</div>
-      </div>
-      <div style="display:flex;gap:7px;flex-wrap:wrap">
-        ${['pending','approved','declined','all'].map(f=>`<button onclick="window._hsLeaveFilter='${f}';renderStaffLeaveAdmin(document.getElementById('view'))"
-          style="padding:7px 12px;border:1.5px solid ${filter===f?'#1a2b3a':'#d1d5db'};border-radius:8px;background:${filter===f?'#1a2b3a':'#fff'};color:${filter===f?'#fff':'#1a2b3a'};font:600 12px Lato;cursor:pointer">
-          ${f.charAt(0).toUpperCase()+f.slice(1)}${f==='pending'&&leave.filter(l=>l.status==='pending').length>0?' ('+leave.filter(l=>l.status==='pending').length+')':''}
-        </button>`).join('')}
-      </div>
-    </div>
-    <div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);overflow:hidden">
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:#1a2b3a">
-          ${['Staff Member','Dates','Days','Reason','Conflicts','Status','Action'].map(h=>`<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#fff;text-transform:uppercase">${h}</th>`).join('')}
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  </div>`;
-}
-
-function hsApproveLeave(leaveId){
-  const leave = hsGetLeave();
-  const l = leave.find(x=>x.id===leaveId); if(!l) return;
-  l.status = 'approved'; l.approvedBy = SESSION?._key||'manager'; l.approvedAt = new Date().toISOString().slice(0,10);
-  hsSaveLeave(leave); toast('Leave approved ✓');
-  renderStaffLeaveAdmin(document.getElementById('view'));
-}
-function hsDeclineLeave(leaveId){
-  const leave = hsGetLeave();
-  const l = leave.find(x=>x.id===leaveId); if(!l) return;
-  l.status = 'declined'; l.declinedAt = new Date().toISOString().slice(0,10);
-  hsSaveLeave(leave); toast('Leave declined');
-  renderStaffLeaveAdmin(document.getElementById('view'));
-}
-
-function hsManagerLeaveModal(staffId){
-  const html=`<div style="padding:4px">
-    <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:14px">Add Leave Entry</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">From</label>
-          <input type="date" id="hs-ml-from" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
-        <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">To</label>
-          <input type="date" id="hs-ml-to" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
-      </div>
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Reason</label>
-        <select id="hs-ml-reason" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
-          <option>Annual leave</option><option>Sick leave</option><option>Compassionate</option><option>Training</option><option>Other</option>
-        </select></div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:14px">
-      <button onclick="hsDoManagerLeave('${staffId}')" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Save entry</button>
-      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
-    </div>
-  </div>`;
-  openModal(html);
-}
-
-function hsDoManagerLeave(staffId){
-  const from=document.getElementById('hs-ml-from')?.value;
-  const to=document.getElementById('hs-ml-to')?.value;
-  if(!from||!to){ toast('Please select dates'); return; }
-  const days=Math.max(1,Math.round((new Date(to)-new Date(from))/(1000*60*60*24))+1);
-  const leave=hsGetLeave();
-  leave.push({id:'lv'+Date.now(),staffId,from,to,days,reason:document.getElementById('hs-ml-reason')?.value||'Annual leave',status:'approved',approvedBy:'manager',approvedAt:new Date().toISOString().slice(0,10)});
-  hsSaveLeave(leave);
-  closeModal(); toast('Leave entry saved ✓');
-}
-
-// ── ADD STAFF FROM HosSTAFF ────────────────────────────────────────────────────
-function hsDeleteStaff(staffId){
-  const profiles=hsGetProfiles(), p=profiles.find(x=>x.id===staffId);
-  if(!p) return;
-  if(!confirm('Remove '+p.name+' from all records? This cannot be undone.')) return;
-  // Remove from HosSTAFF
-  hsSaveProfiles(profiles.filter(x=>x.id!==staffId));
-  // Remove from HosSHIFT
-  if(typeof spGetStaff==='function'){
-    const staff=spGetStaff();
-    if(typeof spSaveStaff==='function') spSaveStaff(staff.filter(s=>s.id!==staffId));
-  }
-  // Remove leave records
-  const leave=hsGetLeave();
-  hsSaveLeave(leave.filter(l=>l.staffId!==staffId));
-  // Remove from rota
-  if(typeof spGetRota==='function'){
-    const rota=spGetRota();
-    Object.keys(rota).forEach(dk=>{ if(rota[dk]&&rota[dk][staffId]) delete rota[dk][staffId]; });
-    if(typeof spSaveRota==='function') spSaveRota(rota);
-  }
-  toast('✓ '+p.name+' removed');
-  renderStaffProfiles(document.getElementById('view'));
-}
-
-function hsAddStaffModal(){
-  const deptOpts=(SP_DEPTS||[]).map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
-  const html=`<div style="padding:4px">
-    <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:14px">Add Staff Member</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-      ${[
-        ['Full name','hs-n','text'],['Role / Job title','hs-r','text'],
-        ['Email','hs-e','email'],['Phone','hs-ph','tel'],
-        ['Start date','hs-sd','date'],['Date of birth','hs-dob','date'],
-      ].map(([l,id,t])=>`<div${id==='hs-n'?' style="grid-column:span 2"':''}>
-        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">${l}</label>
-        <input type="${t}" id="${id}" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
-      </div>`).join('')}
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Department</label>
-        <select id="hs-d" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">${deptOpts}</select></div>
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Contract</label>
-        <select id="hs-c" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
-          <option>Full-time</option><option>Part-time</option><option>Zero hours</option>
-        </select></div>
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Contract hrs/wk</label>
-        <input type="number" id="hs-h" value="0" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Hourly rate (£)</label>
-        <input type="number" id="hs-hr" step="0.01" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a"></div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button onclick="hsDoAddStaff()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Add to HosSTAFF</button>
-      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
-    </div>
-  </div>`;
-  openModal(html);
-}
-
-function hsDoAddStaff(){
-  const name=document.getElementById('hs-n')?.value?.trim();
-  if(!name){toast('Please enter a name');return;}
-  const profiles=hsGetProfiles();
-  const id='staff_'+Date.now();
-  const contract=document.getElementById('hs-c')?.value||'Zero hours';
-  const newP={
-    id, staffCode:'BH'+String(profiles.length+1).padStart(3,'0'),
-    name, role:document.getElementById('hs-r')?.value||'',
-    dept:document.getElementById('hs-d')?.value||'admin',
-    email:document.getElementById('hs-e')?.value||'',
-    phone:document.getElementById('hs-ph')?.value||'',
-    dob:document.getElementById('hs-dob')?.value||'',
-    startDate:document.getElementById('hs-sd')?.value||'',
-    contract, type:'core',
-    contractHrs:parseInt(document.getElementById('hs-h')?.value)||0,
-    hourlyRate:parseFloat(document.getElementById('hs-hr')?.value)||0,
-    leaveAllowance:contract==='Full-time'?28:contract==='Part-time'?20:0,
-    leaveUsed:0,leavePending:0,probationPassed:false,
-    probationDate:'',niNumber:'',address:'',
-    emergencyName:'',emergencyPhone:'',emergencyRel:'',
-    docs:[],notes:''
-  };
-  profiles.push(newP);
-  // Also add to HosSHIFT staff
-  const shiftStaff=spGetStaff();
-  shiftStaff.push({id,name,role:newP.role,dept:newP.dept,type:'core',contractHrs:newP.contractHrs,hourlyRate:newP.hourlyRate});
-  spSaveStaff(shiftStaff);
-  hsSaveProfiles(profiles);
-  closeModal(); toast('✓ '+name+' added to HosSTAFF');
-  renderStaffProfiles(document.getElementById('view'));
-}
-
-// Wire render functions
-function renderStaffLeave(v){ renderStaffLeaveAdmin(v); }
-function renderStaffDocs(v){
-  v.innerHTML=`<div style="padding:20px;max-width:800px">
-    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff;margin-bottom:8px">Documents</div>
-    <div style="font-size:13px;color:#374151;margin-bottom:16px">Open a staff profile to upload and manage their documents</div>
-    <button onclick="switchTab('staffProfiles')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">← Staff Profiles</button>
-  </div>`;
-}
+// ── spCellSelect kept as alias (used elsewhere) ───────────────────────────────
+function spCellSelect(sel){ spCellChange(sel); }
 
 
-// ── HosBRAND — Logos, Photography, Collateral sub-sections ────────────────────
-
-function renderBrandLogos(v){
-  v.innerHTML = '';
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'padding:28px;min-height:100%';
-  wrap.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-      <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Logos & Brand Assets</div>
-        <div style="font-size:13px;color:#8fa3b8">Official Brandon Hall Hotel & Spa brand assets — use approved versions only</div>
-      </div>
-      <button onclick="switchTab('hosbrand')" style="padding:8px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;color:#fff;cursor:pointer">← Back to HosBRAND</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
-      ${[
-        {title:'Primary Logo — Dark',      desc:'Navy on white · For all print and digital use',              file:'bh-logo.svg',  preview:'🏨'},
-        {title:'Primary Logo — Light',     desc:'White on dark · For dark backgrounds',                       file:'bh-logo.svg',  preview:'🏨'},
-        {title:'BH Monogram',              desc:'Icon mark only · For social media & app icons',              file:'',             preview:'🔷'},
-        {title:'Colour Palette',           desc:'Brand colours: Navy #1A2B3A · Gold #C78A3B · Cream',         file:'',             preview:'🎨'},
-        {title:'Brand Guidelines PDF',     desc:'Full brand guidelines — typography, colour, usage rules',    file:'',             preview:'📋'},
-        {title:'Email Signature',          desc:'Standard email signature template for all team members',     file:'',             preview:'✉️'},
-      ].map(item => `<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px">
-        <div style="width:52px;height:52px;border-radius:12px;background:rgba(199,138,59,.2);border:1px solid rgba(199,138,59,.3);display:flex;align-items:center;justify-content:center;font-size:26px">${item.preview}</div>
-        <div>
-          <div style="font-size:14px;font-weight:700;color:#fff">${item.title}</div>
-          <div style="font-size:11px;color:#8fa3b8;margin-top:4px;line-height:1.5">${item.desc}</div>
-        </div>
-        ${item.file ? `<div style="display:flex;gap:8px"><a href="/${item.file}" target="_blank" style="flex:1;padding:7px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">👁 View</a><a href="/${item.file}" download style="flex:1;padding:7px;background:#c78a3b;border:none;border-radius:7px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">⬇ Download</a></div>` : `<div style="padding:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:7px;font:11px Lato;color:#8fa3b8;text-align:center">Upload via GitHub to enable download</div>`}
-      </div>`).join('')}
-    </div>`;
-  v.appendChild(wrap);
-}
-
-function renderBrandPhotography(v){
-  v.innerHTML = '';
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'padding:28px;min-height:100%';
-  wrap.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-      <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Photography Library</div>
-        <div style="font-size:13px;color:#8fa3b8">Approved hotel photography — bedrooms, venue, gardens, dining, spa</div>
-      </div>
-      <button onclick="switchTab('hosbrand')" style="padding:8px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;color:#fff;cursor:pointer">← Back to HosBRAND</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
-      ${['Exterior & Gardens','Bedrooms & Suites','Event Spaces','The Clarendon Restaurant','Spa & Wellness','Weddings & Events','Aerial Photography','Team & Service'].map(cat => `
-        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;cursor:pointer;transition:all .15s"
-          onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
-          <div style="font-size:32px;margin-bottom:10px">📷</div>
-          <div style="font-size:13px;font-weight:700;color:#fff">${cat}</div>
-          <div style="font-size:11px;color:#8fa3b8;margin-top:4px">Upload images to enable library</div>
-        </div>`).join('')}
-    </div>
-    <div style="margin-top:20px;padding:16px;background:rgba(199,138,59,.1);border:1px solid rgba(199,138,59,.3);border-radius:10px">
-      <div style="font-size:12px;font-weight:700;color:#c78a3b;margin-bottom:4px">📤 To add photography</div>
-      <div style="font-size:12px;color:#8fa3b8">Upload approved hotel images to the GitHub repo in a /photos folder. Contact your HosPRO administrator to enable the image library.</div>
-    </div>`;
-  v.appendChild(wrap);
-}
-
-function renderBrandCollateral(v){
-  v.innerHTML = '';
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'padding:28px;min-height:100%';
-
-  const BH_COLLATERAL = [
-    { category:"Events & Celebrations", colour:"#8b5c8f", docs:[
-      {title:"Party Packages 2026",         icon:"🎉", file:"party-packages-2026.pdf",               desc:"Full event party packages with pricing"},
-      {title:"Baby Shower Packages 2026",   icon:"👶", file:"baby-shower-packages-2026.pdf",          desc:"£29.00–£37.50 pp · Private room hire included"},
-      {title:"Celebration of Life 2026",    icon:"🕊", file:"celebration-of-life-packages-2026.pdf",  desc:"Warm & respectful · £27.50–£33.00 pp"},
-      {title:"Masonic Events 2026",         icon:"🔷", file:"masonic-packages-2026.pdf",              desc:"Masonic gathering packages"},
-    ]},
-    { category:"Weddings", colour:"#c85c6b", docs:[
-      {title:"Weddings 2026",               icon:"💍", file:"wedding-brochure-2026.pdf",              desc:"Full wedding brochure 2026–2027"},
-      {title:"Self-Catering Weddings 2026", icon:"🏡", file:"self-catering-wedding-brochure-2026.pdf",desc:"Your venue, your caterer, your way"},
-    ]},
-    { category:"Meetings & Events", colour:"#2f6f9e", docs:[
-      {title:"Meetings & Events Guide",     icon:"🤝", file:"meetings-and-events.pdf",               desc:"Full meetings and events guide"},
-    ]},
-  ];
-
-  wrap.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-    <div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Collateral & Brochures</div>
-      <div style="font-size:13px;color:#8fa3b8">All event packages, brochures and downloadable sales collateral</div>
-    </div>
-    <button onclick="switchTab('hosbrand')" style="padding:8px 16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;color:#fff;cursor:pointer">← Back to HosBRAND</button>
-  </div>`;
-
-  BH_COLLATERAL.forEach(cat => {
-    const sec = document.createElement('div');
-    sec.style.cssText = 'margin-bottom:24px';
-    sec.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.1)">
-      <span style="width:10px;height:10px;border-radius:50%;background:${cat.colour};display:inline-block"></span>
-      <span style="font-size:12px;font-weight:700;color:#c7d2e0;text-transform:uppercase;letter-spacing:.8px">${cat.category}</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
-      ${cat.docs.map(doc => `<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:18px;border-left:3px solid ${cat.colour};display:flex;flex-direction:column;gap:12px">
-        <div style="display:flex;gap:10px;align-items:flex-start">
-          <span style="font-size:26px;flex-shrink:0">${doc.icon}</span>
-          <div><div style="font-size:13px;font-weight:700;color:#fff">${doc.title}</div><div style="font-size:11px;color:#8fa3b8;margin-top:3px">${doc.desc}</div></div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <a href="/${doc.file}" target="_blank" style="flex:1;padding:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">👁 View</a>
-          <a href="/${doc.file}" download style="flex:1;padding:8px;background:#c78a3b;border:none;border-radius:7px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">⬇ Download</a>
-        </div>
-      </div>`).join('')}
-    </div>`;
-    wrap.appendChild(sec);
-  });
-  v.appendChild(wrap);
-}
-
-
-/* ============================================================ HosHUB — Document Hub */
-
-const HUB_CATEGORIES = {
-  hubContracts: { label:'Contracts & Agreements', icon:'📝', colour:'#8b5c8f',
-    types:['Venue contracts','Event agreements','Service level agreements','Supplier contracts','NDAs','Partnership agreements'] },
-  hubSuppliers:  { label:'Supplier Agreements', icon:'🏭', colour:'#c45c00',
-    types:['Food & beverage suppliers','Linen & laundry','Maintenance contractors','IT & systems','Cleaning services','Utilities'] },
-  hubFinance:    { label:'Finance Documents', icon:'💰', colour:'#2f6f9e',
-    types:['Invoices','Purchase orders','Monthly P&L reports','Budget plans','Bank statements','Tax documents'] },
-  hubHR:         { label:'HR Documents', icon:'👤', colour:'#4a86c7',
-    types:['Staff handbook','HR policies','Disciplinary records','Training certificates','Right to work checks','Appraisal records'] },
-};
-
-function renderHubDocs(v){
-  v.innerHTML=''; v.style.padding='0';
-  const saved = JSON.parse(localStorage.getItem('hoshub_docs')||'[]');
-  const search = window._hubSearch||'';
-  const filtered = search ? saved.filter(d=>d.name.toLowerCase().includes(search.toLowerCase())||d.category.toLowerCase().includes(search.toLowerCase())) : saved;
-
-  const html=`<div style="padding:28px;min-height:100%">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
-      <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff">HosHUB</div>
-        <div style="font-size:13px;color:#8fa3b8">Document management · ${saved.length} documents filed</div>
-      </div>
-      <button onclick="hubUploadModal()" style="padding:9px 18px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer">+ File document</button>
-    </div>
-    <input type="text" placeholder="🔍 Search documents..." value="${search}"
-      oninput="window._hubSearch=this.value;renderHubDocs(document.getElementById('view'))"
-      style="width:100%;padding:11px 14px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);border-radius:10px;font:13px Lato;color:#fff;outline:none;margin-bottom:20px">
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:24px">
-      ${Object.entries(HUB_CATEGORIES).map(([tab,cat])=>{
-        const count=saved.filter(d=>d.tab===tab).length;
-        return `<button onclick="switchTab('${tab}')"
-          style="display:flex;align-items:center;gap:12px;padding:16px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;cursor:pointer;text-align:left;transition:all .15s;width:100%"
-          onmouseover="this.style.background='rgba(255,255,255,.12)';this.style.borderColor='${cat.colour}'"
-          onmouseout="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='rgba(255,255,255,.1)'">
-          <span style="font-size:28px">${cat.icon}</span>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:#fff">${cat.label}</div>
-            <div style="font-size:11px;color:#8fa3b8;margin-top:2px">${count} document${count!==1?'s':''}</div>
-          </div>
-        </button>`;
-      }).join('')}
-    </div>
-    ${filtered.length>0?`
-    <div style="font-size:11px;font-weight:700;color:#8fa3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Recent documents</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${filtered.slice(0,20).map(d=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px">
-        <span style="font-size:22px">${HUB_CATEGORIES[d.tab]?.icon||'📄'}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
-          <div style="font-size:11px;color:#8fa3b8;margin-top:2px">${HUB_CATEGORIES[d.tab]?.label||d.category} · ${d.type||''} · ${d.date||''}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          ${d.fileData?`<button onclick="hubOpenFile('${d.id}')" style="padding:5px 10px;background:#2f6f9e;color:#fff;border:none;border-radius:7px;font:700 11px Lato;cursor:pointer">📂 Open</button>`:''}
-          <button onclick="hubDeleteDoc('${d.id}')" style="padding:5px 8px;border:1px solid rgba(239,68,68,.4);border-radius:7px;background:transparent;font:600 11px Lato;color:#f87171;cursor:pointer">✕</button>
-        </div>
-      </div>`).join('')}
-    </div>`:'<div style="text-align:center;padding:40px 20px"><div style="font-size:48px;margin-bottom:12px">📂</div><div style="font-size:15px;color:#8fa3b8">No documents filed yet</div><div style="font-size:13px;color:#5a7082;margin-top:6px">Click + File document to add your first document</div></div>'}
-  </div>`;
-  v.innerHTML=html;
-}
-
-function renderHubSection(v, tabId){
-  v.innerHTML=''; v.style.padding='0';
-  const cat = HUB_CATEGORIES[tabId];
-  if(!cat){ v.innerHTML='<div style="padding:28px;color:#fff">Section not found</div>'; return; }
-  const saved = JSON.parse(localStorage.getItem('hoshub_docs')||'[]').filter(d=>d.tab===tabId);
-  const sorted = saved.slice().sort((a,b)=>b.date.localeCompare(a.date));
-
-  const rows = sorted.map(d=>{
-    const hasFile = !!d.fileData;
-    return `<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:8px">
-      <span style="font-size:24px;flex-shrink:0">${cat.icon}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;color:#1a2b3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
-        <div style="font-size:11px;color:#374151;margin-top:2px">${d.type||''} · Filed ${d.date||''} ${d.notes?'· '+d.notes:''}</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
-        ${hasFile?`<button onclick="hubOpenFile('${d.id}')" style="padding:6px 12px;background:#2f6f9e;color:#fff;border:none;border-radius:7px;font:700 11px Lato;cursor:pointer">📂 Open</button>`:'<span style="font-size:11px;color:#9ca3af;padding:6px">No file</span>'}
-        <button onclick="hubDeleteDoc('${d.id}')" style="padding:6px 10px;border:1px solid #fecaca;border-radius:7px;background:#fff;font:700 11px Lato;cursor:pointer;color:#991b1b">✕</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  v.innerHTML=`<div style="padding:28px;min-height:100%">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
-      <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff">${cat.icon} ${cat.label}</div>
-        <div style="font-size:13px;color:#8fa3b8">${saved.length} document${saved.length!==1?'s':''} filed</div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button onclick="switchTab('hubDocs')" style="padding:8px 14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;color:#fff;cursor:pointer">← All documents</button>
-        <button onclick="hubUploadModal('${tabId}')" style="padding:8px 16px;background:#4a9d7f;color:#fff;border:none;border-radius:8px;font:700 12px Lato;cursor:pointer">+ Add document</button>
-      </div>
-    </div>
-
-    <!-- Type quick-add tiles -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:20px">
-      ${cat.types.map(type=>{
-        const count=saved.filter(d=>d.type===type).length;
-        return `<button onclick="hubUploadModal('${tabId}','${type}')"
-          style="padding:12px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);border-radius:10px;cursor:pointer;text-align:left"
-          onmouseover="this.style.background='rgba(255,255,255,.14)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
-          <div style="font-size:12px;font-weight:700;color:#fff">${type}</div>
-          <div style="font-size:10px;color:#8fa3b8;margin-top:3px">${count} filed · + Add</div>
-        </button>`;
-      }).join('')}
-    </div>
-
-    <!-- Filed documents list -->
-    ${rows||'<div style="text-align:center;padding:40px;background:rgba(255,255,255,.04);border-radius:12px"><div style="font-size:40px;margin-bottom:10px">📂</div><div style="font-size:14px;color:#8fa3b8">No documents filed yet</div><div style="font-size:12px;color:#5a7082;margin-top:6px">Click + Add document to file your first document</div></div>'}
-  </div>`;
-}
-
-// ── HosHUB Upload Modal ───────────────────────────────────────────────────────
-function hubUploadModal(tabId, preType){
-  const cat = HUB_CATEGORIES[tabId||'hubDocs']||{label:'Document',types:['Other']};
-  const typeOpts = cat.types.map(t=>`<option value="${t}"${preType===t?' selected':''}>${t}</option>`).join('');
-  const allTabs = Object.entries(HUB_CATEGORIES||{}).map(([k,c])=>`<option value="${k}"${tabId===k?' selected':''}>${c.label}</option>`).join('');
-
-  openModal(`<div style="padding:4px;max-width:420px">
-    <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:16px">📎 File a document</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div>
-        <label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Document name *</label>
-        <input type="text" id="hub-name" placeholder="e.g. Supplier agreement — SYSCO 2026"
-          style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a;outline:none">
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div>
-          <label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Section</label>
-          <select id="hub-tab" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
-            ${allTabs}
-          </select>
-        </div>
-        <div>
-          <label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Type</label>
-          <select id="hub-type" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
-            ${typeOpts}
-          </select>
-        </div>
-      </div>
-      <div>
-        <label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Date</label>
-        <input type="date" id="hub-date" value="${new Date().toISOString().slice(0,10)}"
-          style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
-      </div>
-      <div>
-        <label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Notes (optional)</label>
-        <input type="text" id="hub-notes" placeholder="e.g. Signed copy · expires Dec 2027"
-          style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
-      </div>
-      <div>
-        <label style="font-size:10px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Attach file (PDF, Word, image)</label>
-        <input type="file" id="hub-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
-          style="width:100%;padding:6px;border:1.5px solid #d1d5db;border-radius:8px;font:12px Lato;color:#1a2b3a;background:#f9fafb">
-        <div style="font-size:10px;color:#374151;margin-top:4px">Files are stored in your browser. Max ~5MB per file.</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button onclick="hubDoUpload()" style="flex:1;padding:11px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ File document</button>
-      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:600 14px Lato;cursor:pointer;color:#1a2b3a">Cancel</button>
-    </div>
-  </div>`);
-}
-
-function hubDoUpload(){
-  const name  = document.getElementById('hub-name')?.value?.trim();
-  const tab   = document.getElementById('hub-tab')?.value;
-  const type  = document.getElementById('hub-type')?.value;
-  const date  = document.getElementById('hub-date')?.value;
-  const notes = document.getElementById('hub-notes')?.value?.trim();
-  const file  = document.getElementById('hub-file')?.files?.[0];
-
-  if(!name){ toast('Please enter a document name'); return; }
-
-  const save = ()=>{
-    const docs = JSON.parse(localStorage.getItem('hoshub_docs')||'[]');
-    docs.unshift({ id:'hub'+Date.now(), name, tab, type, date, notes,
-      fileData: save._fd||null, fileName: file?.name||null, fileType: file?.type||null });
-    localStorage.setItem('hoshub_docs', JSON.stringify(docs));
-    closeModal();
-    const v = document.getElementById('view');
-    if(tab==='hubDocs') renderHubDocs(v); else renderHubSection(v, tab);
-    toast('✓ Document filed');
-  };
-
-  if(file){
-    if(file.size > 6*1024*1024){ toast('File too large — max 5MB'); return; }
-    const reader = new FileReader();
-    reader.onload = e=>{ save._fd = e.target.result; save(); };
-    reader.readAsDataURL(file);
-  } else {
-    save._fd = null; save();
-  }
-}
-
-function hubOpenFile(docId){
-  const docs = JSON.parse(localStorage.getItem('hoshub_docs')||'[]');
-  const doc = docs.find(d=>d.id===docId);
-  if(!doc?.fileData){ toast('No file attached to this document'); return; }
-  // Open in new tab
-  const a = document.createElement('a');
-  a.href = doc.fileData;
-  a.download = doc.fileName || doc.name;
-  a.target = '_blank';
-  a.click();
-}
-
-function hubDeleteDoc(docId){
-  if(!confirm('Remove this document?')) return;
-  const docs = JSON.parse(localStorage.getItem('hoshub_docs')||'[]').filter(d=>d.id!==docId);
-  localStorage.setItem('hoshub_docs', JSON.stringify(docs));
-  const v = document.getElementById('view');
-  if(v) renderHubDocs(v);
-  toast('Document removed');
-}
-
-
-function renderHubContracts(v){ renderHubSection(v,'hubContracts'); }
-function renderHubSuppliers(v) { renderHubSection(v,'hubSuppliers');  }
-function renderHubFinance(v)   { renderHubSection(v,'hubFinance');    }
-function renderHubHR(v)        { renderHubSection(v,'hubHR');         }
-
-function hubUploadModal(tabId, preType){
-  const cat = tabId ? HUB_CATEGORIES[tabId] : null;
-  const tabOpts = Object.entries(HUB_CATEGORIES).map(([k,c])=>`<option value="${k}"${tabId===k?' selected':''}>${c.label}</option>`).join('');
-  const typeOpts = cat ? cat.types.map(t=>`<option value="${t}"${preType===t?' selected':''}>${t}</option>`).join('') : '';
-
-  openModal(`<div style="padding:4px">
-    <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:14px">📂 File a document</div>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Document name</label>
-        <input type="text" id="hub-name" placeholder="e.g. Sodexo Supply Agreement 2026" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Category</label>
-        <select id="hub-tab" onchange="hubUpdateTypes(this.value)" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
-          <option value="">— Select category —</option>${tabOpts}
-        </select></div>
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Document type</label>
-        <select id="hub-type" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
-          <option value="">— Select type —</option>${typeOpts}
-        </select></div>
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Notes (optional)</label>
-        <input type="text" id="hub-notes" placeholder="e.g. Expires Dec 2027 · Review Q3" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
-      <div style="padding:10px;background:#f9fafb;border-radius:8px;border:1.5px dashed #d1d5db;text-align:center;cursor:pointer" onclick="toast('File upload: connect Google Drive or SharePoint to enable cloud storage')">
-        <div style="font-size:22px;margin-bottom:4px">📤</div>
-        <div style="font-size:12px;font-weight:600;color:#374151">Click to attach file</div>
-        <div style="font-size:11px;color:#6b7280;margin-top:2px">PDF, Word, Excel · Connect cloud storage to enable</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button onclick="hubSaveDoc()" style="flex:1;padding:11px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ File document</button>
-      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
-    </div>
-  </div>`);
-}
-
-function hubUpdateTypes(tabId){
-  const cat = HUB_CATEGORIES[tabId];
-  const sel = document.getElementById('hub-type');
-  if(!sel) return;
-  sel.innerHTML = '<option value="">— Select type —</option>' + (cat?cat.types.map(t=>`<option value="${t}">${t}</option>`).join(''):'');
-}
-
-function hubSaveDoc(){
-  const name  = document.getElementById('hub-name')?.value.trim();
-  const tab   = document.getElementById('hub-tab')?.value;
-  const type  = document.getElementById('hub-type')?.value;
-  const notes = document.getElementById('hub-notes')?.value.trim();
-  if(!name||!tab){ toast('Please enter a name and category'); return; }
-  const docs = JSON.parse(localStorage.getItem('hoshub_docs')||'[]');
-  docs.push({ id:'hub'+Date.now(), name, tab, type, notes, date:new Date().toLocaleDateString('en-GB') });
-  localStorage.setItem('hoshub_docs', JSON.stringify(docs));
-  closeModal(); toast('✓ Document filed in HosHUB');
-  const current = document.getElementById('view');
-  if(current) renderHubDocs(current);
-}
-
-function hubDeleteDoc(docId){
-  if(!confirm('Remove this document record?')) return;
-  const docs = JSON.parse(localStorage.getItem('hoshub_docs')||'[]').filter(d=>d.id!==docId);
-  localStorage.setItem('hoshub_docs', JSON.stringify(docs));
-  const current = document.getElementById('view');
-  if(current) renderHubDocs(current);
-  toast('Document removed');
-}
-
-
-// ── STUB RENDERERS — sections under development ───────────────────────────────
-function renderQuotes(v){
-  v.innerHTML='';
-  const wrap=document.createElement('div');
-  wrap.style.cssText='padding:28px;min-height:100%;background:#f0f4f8';
-  wrap.innerHTML=`
-    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a;margin-bottom:6px">Quotes & Proposals</div>
-    <div style="font-size:13px;color:#374151;margin-bottom:24px">Create and manage event quotes and proposals</div>
-    <div style="background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center">
-      <div style="font-size:48px;margin-bottom:12px">📄</div>
-      <div style="font-size:16px;font-weight:700;color:#1a2b3a;margin-bottom:8px">Quote Builder</div>
-      <div style="font-size:13px;color:#374151;margin-bottom:20px">Build event and meeting quotes directly from the HosSALES module.<br>Use the Quote Builder in HosSTUDIO for instant PDF quotes.</div>
-      <button onclick="switchTab('quote')" style="padding:10px 22px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Open Quote Builder →</button>
-    </div>`;
-  v.appendChild(wrap);
-}
-
-function renderPreCheckin(v){
-  v.innerHTML='';
-  const wrap=document.createElement('div');
-  wrap.style.cssText='padding:28px;min-height:100%;background:#f0f4f8';
-  const list=JSON.parse(localStorage.getItem('bh_precheckins')||'[]');
-  wrap.innerHTML=`
-    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a;margin-bottom:6px">Pre Check-in Setup</div>
-    <div style="font-size:13px;color:#374151;margin-bottom:20px">Corporate guest pre check-in preferences and requirements</div>
-    <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div style="font-size:14px;font-weight:700;color:#1a2b3a">${list.length} pre check-in profiles</div>
-        <button onclick="preCheckinAdd()" style="padding:8px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:700 12px Lato;cursor:pointer">+ Add profile</button>
-      </div>
-      ${list.length?list.map(p=>`<div style="padding:12px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
-        <div><div style="font-size:13px;font-weight:700;color:#1a2b3a">${p.company}</div>
-        <div style="font-size:11px;color:#374151">${p.guest||''} · ${p.room||''} · ${p.notes||''}</div></div>
-        <button onclick="preCheckinDelete('${p.id}')" style="padding:4px 10px;border:1px solid #fee2e2;border-radius:6px;background:#fff;font:600 11px Lato;color:#991b1b;cursor:pointer">✕</button>
-      </div>`).join(''):'<div style="text-align:center;padding:24px;color:#374151;font-size:13px">No pre check-in profiles yet — add corporate guest preferences above</div>'}
-    </div>`;
-  v.appendChild(wrap);
-}
-function preCheckinAdd(){
-  openModal(`<div style="padding:4px"><div style="font-size:16px;font-weight:700;color:#1a2b3a;margin-bottom:14px">Add pre check-in profile</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      ${[['Company','pc-co','text'],['Guest name','pc-guest','text'],['Room type preference','pc-room','text'],['Special requirements','pc-notes','text']].map(([l,id,t])=>`
-        <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px;text-transform:uppercase">${l}</label>
-        <input type="${t}" id="${id}" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>`).join('')}
-    </div>
-    <div style="display:flex;gap:8px;margin-top:14px">
-      <button onclick="preCheckinSave()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Save</button>
-      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
-    </div></div>`);
-}
-function preCheckinSave(){
-  const list=JSON.parse(localStorage.getItem('bh_precheckins')||'[]');
-  list.push({id:'pc'+Date.now(),company:document.getElementById('pc-co')?.value||'',guest:document.getElementById('pc-guest')?.value||'',room:document.getElementById('pc-room')?.value||'',notes:document.getElementById('pc-notes')?.value||''});
-  localStorage.setItem('bh_precheckins',JSON.stringify(list));
-  closeModal(); renderPreCheckin(document.getElementById('view')); toast('Saved ✓');
-}
-function preCheckinDelete(id){
-  const list=JSON.parse(localStorage.getItem('bh_precheckins')||'[]').filter(p=>p.id!==id);
-  localStorage.setItem('bh_precheckins',JSON.stringify(list));
-  renderPreCheckin(document.getElementById('view'));
-}
-
-function renderBrochure(v){
-  v.innerHTML='';
-  const wrap=document.createElement('div');
-  wrap.style.cssText='padding:28px;min-height:100%;background:#f0f4f8';
-  wrap.innerHTML=`
-    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a;margin-bottom:6px">Brochure Builder</div>
-    <div style="font-size:13px;color:#374151;margin-bottom:24px">Create and customise sales brochures and event collateral</div>
-    <div style="background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center">
-      <div style="font-size:48px;margin-bottom:12px">📑</div>
-      <div style="font-size:16px;font-weight:700;color:#1a2b3a;margin-bottom:8px">Custom Brochure Builder</div>
-      <div style="font-size:13px;color:#374151;margin-bottom:8px">Download ready-made brochures from HosBRAND, or use this builder to create custom materials.</div>
-      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px">
-        <button onclick="switchTab('brandCollateral')" style="padding:10px 18px;background:#8b5c8f;color:#fff;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer">📄 Event Brochures</button>
-        <button onclick="switchTab('brandDocs')" style="padding:10px 18px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer">🍷 Menus & Wine Lists</button>
-      </div>
-    </div>`;
-  v.appendChild(wrap);
-}
-
-function renderMenu(v){
-  v.innerHTML='';
-  const wrap=document.createElement('div');
-  wrap.style.cssText='padding:28px;min-height:100%;background:#f0f4f8';
-  wrap.innerHTML=`
-    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a;margin-bottom:6px">Menu Builder</div>
-    <div style="font-size:13px;color:#374151;margin-bottom:24px">Manage menus and F&B collateral</div>
-    <div style="background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center">
-      <div style="font-size:48px;margin-bottom:12px">🍽</div>
-      <div style="font-size:16px;font-weight:700;color:#1a2b3a;margin-bottom:8px">Clarendon Menus</div>
-      <div style="font-size:13px;color:#374151;margin-bottom:16px">View and download all current Clarendon menus and wine lists from HosBRAND.</div>
-      <button onclick="switchTab('brandDocs')" style="padding:10px 22px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Open Menus & Wine Lists →</button>
-    </div>`;
-  v.appendChild(wrap);
-}
