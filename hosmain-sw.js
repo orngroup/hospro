@@ -1,44 +1,52 @@
 // HosFIX Service Worker — Brandon Hall Hotel and Spa
-const CACHE = 'hosmain-v1';
+// Firebase Cloud Messaging background handler
 
-self.addEventListener('install', e => {
-  self.skipWaiting();
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey: "AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",
+  authDomain: "brandonhall-7bdef.firebaseapp.com",
+  projectId: "brandonhall-7bdef",
+  storageBucket: "brandonhall-7bdef.firebasestorage.app",
+  messagingSenderId: "391317900568",
+  appId: "1:391317900568:web:643c9d6691f7f16d65226d"
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(clients.claim());
-});
+const messaging = firebase.messaging();
 
-// Push notification handler
-self.addEventListener('push', e => {
-  const data = e.data ? e.data.json() : {};
-  const title = data.title || 'HosFIX';
+const CACHE = 'hosmain-v2';
+const ICON  = '/assets/icon-192.png';
+
+// Background FCM messages (app closed / backgrounded)
+messaging.onBackgroundMessage(payload => {
+  const data    = payload.data || payload.notification || {};
+  const title   = data.title || 'HosFIX';
   const options = {
-    body: data.body || '',
-    icon: '/assets/icon-192.png',
-    badge: '/assets/icon-192.png',
-    tag: data.tag || 'hosfix',
-    data: { url: data.url || '/hosmain.html' },
-    requireInteraction: data.urgent || false,
-    vibrate: [200, 100, 200]
+    body:              data.body  || '',
+    icon:              ICON,
+    badge:             ICON,
+    tag:               data.tag   || 'hosfix-' + Date.now(),
+    data:            { url: data.url || '/hosmain.html' },
+    requireInteraction: data.urgent === 'true',
+    vibrate:         [200, 100, 200, 100, 200],
+    sound:           'default'
   };
-  e.waitUntil(self.registration.showNotification(title, options));
+  return self.registration.showNotification(title, options);
 });
 
-// Notification click — open the app
+// Notification tap — open/focus the app
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   const url = e.notification.data?.url || '/hosmain.html';
-  e.waitUntil(clients.matchAll({type:'window'}).then(list => {
-    const existing = list.find(c => c.url.includes('hosfix'));
-    if(existing) return existing.focus();
-    return clients.openWindow(url);
-  }));
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const existing = list.find(c => c.url.includes('hosmain'));
+      if (existing) { existing.focus(); return; }
+      return clients.openWindow(url);
+    })
+  );
 });
 
-// Background sync for offline job saves (future)
-self.addEventListener('sync', e => {
-  if(e.tag === 'sync-jobs') {
-    // Future: sync localStorage jobs to server
-  }
-});
+self.addEventListener('install',  () => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(clients.claim()));

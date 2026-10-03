@@ -234,22 +234,104 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <!-- v202610011935 -->
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
 <!-- ── INSTALL SCREEN ──────────────────────────────────────────────── -->
+<!-- ── ONBOARDING: STEP 1 — ADD TO HOME SCREEN ──────────────────────── -->
 <div id="scr-install" class="screen">
-
   <div class="ib-hosfix">Hos<span>FIX</span></div>
   <div class="ib-hotel">Brandon Hall Hotel and Spa</div>
   <div class="ib-sub">MAINTENANCE &amp; COMPLIANCE MANAGEMENT</div>
-  <div class="ib-steps" style="max-width:340px">
-    <div class="ib-step"><div class="ib-num">1</div><span>Tap the <strong style="color:var(--gold)">Share</strong> button at the bottom of Safari</span></div>
-    <div class="ib-step"><div class="ib-num">2</div><span>Tap <strong style="color:var(--gold)">"Add to Home Screen"</strong></span></div>
-    <div class="ib-step"><div class="ib-num">3</div><span>Tap <strong style="color:var(--gold)">"Add"</strong> — HosFIX installs as an app</span></div>
+
+  <!-- Step indicator -->
+  <div style="display:flex;gap:8px;margin:20px 0 28px">
+    <div style="width:32px;height:4px;border-radius:2px;background:var(--gold)"></div>
+    <div style="width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+    <div style="width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
   </div>
-  <button class="ib-btn ib-primary" id="btn-install">📲 Install HosFIX</button>
-  <button class="ib-btn ib-secondary" id="btn-skip-install">Continue in browser</button>
+
+  <div style="font-size:56px;margin-bottom:16px">📲</div>
+  <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:10px">Add to your home screen</div>
+  <div style="font-size:13px;color:rgba(255,255,255,.65);max-width:300px;text-align:center;line-height:1.6;margin-bottom:28px">
+    Install HosFIX as an app so you can open it instantly and receive job notifications.
+  </div>
+
+  <div class="ib-steps" style="max-width:320px;margin-bottom:28px">
+    <div class="ib-step"><div class="ib-num">1</div><span>Tap the <strong style="color:var(--gold)">Share</strong> button at the bottom of your browser</span></div>
+    <div class="ib-step"><div class="ib-num">2</div><span>Tap <strong style="color:var(--gold)">"Add to Home Screen"</strong></span></div>
+    <div class="ib-step"><div class="ib-num">3</div><span>Tap <strong style="color:var(--gold)">"Add"</strong> — HosFIX appears on your home screen</span></div>
+  </div>
+
+  <button class="ib-btn ib-primary" id="btn-install" onclick="onbInstallClick()">📲 Install HosFIX</button>
+  <button class="ib-btn ib-secondary" id="btn-skip-install" onclick="onbGoStep2()">Already installed — continue →</button>
+</div>
+
+<!-- ── ONBOARDING: STEP 2 — NOTIFICATIONS ───────────────────────────────── -->
+<div id="scr-onb-notif" class="screen" style="display:none">
+  <div class="ib-hosfix">Hos<span>FIX</span></div>
+  <div class="ib-hotel">Brandon Hall Hotel and Spa</div>
+
+  <!-- Step indicator -->
+  <div style="display:flex;gap:8px;margin:20px 0 28px">
+    <div style="width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+    <div style="width:32px;height:4px;border-radius:2px;background:var(--gold)"></div>
+    <div style="width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+  </div>
+
+  <div style="font-size:56px;margin-bottom:16px">🔔</div>
+  <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:10px">Enable notifications</div>
+  <div style="font-size:13px;color:rgba(255,255,255,.65);max-width:300px;text-align:center;line-height:1.6;margin-bottom:28px">
+    Get a real buzz on your phone when a job is assigned to you or completed — even when the app is closed.
+  </div>
+
+  <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:16px 20px;max-width:300px;width:100%;margin-bottom:28px;text-align:left">
+    <div style="font-size:12px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">You'll be notified when:</div>
+    <div style="font-size:13px;color:rgba(255,255,255,.8);line-height:2">
+      🔧 A job is assigned to you<br>
+      ✅ A job you're on is completed<br>
+      📋 You're added to a new job
+    </div>
+  </div>
+
+  <button class="ib-btn ib-primary" onclick="onbRequestNotif()">🔔 Allow notifications</button>
+  <button class="ib-btn ib-secondary" onclick="onbGoStep3()">Skip for now</button>
+  <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:12px;max-width:260px;text-align:center">
+    You can enable notifications later in your phone settings
+  </div>
+</div>
+
+<!-- ── ONBOARDING: STEP 3 — SELFIE / PROFILE PIC ───────────────────────── -->
+<div id="scr-onb-selfie" class="screen" style="display:none">
+  <div class="ib-hosfix">Hos<span>FIX</span></div>
+  <div class="ib-hotel">Brandon Hall Hotel and Spa</div>
+
+  <!-- Step indicator -->
+  <div style="display:flex;gap:8px;margin:20px 0 28px">
+    <div style="width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+    <div style="width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+    <div style="width:32px;height:4px;border-radius:2px;background:var(--gold)"></div>
+  </div>
+
+  <div id="onb-selfie-preview" style="width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.1);border:3px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:40px;margin-bottom:16px;overflow:hidden">
+    <span id="onb-selfie-placeholder">🤳</span>
+    <img id="onb-selfie-img" style="display:none;width:100%;height:100%;object-fit:cover">
+  </div>
+
+  <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:10px">Add your photo</div>
+  <div style="font-size:13px;color:rgba(255,255,255,.65);max-width:300px;text-align:center;line-height:1.6;margin-bottom:28px">
+    Take a quick selfie — it appears on your profile and in job assignments so the team knows who's who.
+  </div>
+
+  <input type="file" id="onb-selfie-input" accept="image/*" capture="user" style="display:none" onchange="onbSelfieChosen(this)">
+
+  <button class="ib-btn ib-primary" onclick="document.getElementById('onb-selfie-input').click()">📷 Take selfie</button>
+  <button class="ib-btn ib-secondary" id="onb-selfie-save" style="display:none" onclick="onbSaveSelfie()">✓ Save photo &amp; sign in</button>
+  <button class="ib-btn ib-secondary" onclick="onbGoSignIn()">Skip — sign in without photo</button>
 </div>
 
 <!-- ── LOGIN SCREEN ──────────────────────────────────────────────────── -->
@@ -593,9 +675,7 @@ const seenInstall = localStorage.getItem('hf_install_seen');
 
 function initInstall(){
   $('btn-install').onclick = ()=>{
-    localStorage.setItem('hf_install_seen','1');
-    if(window._deferredPrompt){ window._deferredPrompt.prompt(); }
-    showScreen('scr-login');
+    onbInstallClick();
   };
   $('btn-skip-install').onclick = ()=>{
     localStorage.setItem('hf_install_seen','1');
@@ -1521,7 +1601,7 @@ function doCompleteJob(jobId){
   sendNotif('✅ Job completed', j.title+' — completed by '+(MY_USER?.name||ME), 'complete-'+jobId);
   // In-app notification to admins on completion
   const admins=USERS.filter(u=>NOTIFY_ON_COMPLETE.includes(u.id));
-  sendAdminNotification(job,'complete');
+  sendAdminNotification(job,'complete'); fcmNotify('job_completed',job,[]);
   html+='<button type="button" class="btn btn-ghost" style="margin-top:6px" onclick="closeModal()">Done</button>';
   openModal(html);
   updateTimerBar(); render();
@@ -1743,8 +1823,19 @@ function showDOBScreen(){
   const av=$('dob-avatar');
   const nm=$('dob-name');
   const rl=$('dob-role');
-  if(av) av.textContent=u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  if(av) av.style.background=u.color;
+  // Show selfie if stored, otherwise initials
+  const selfie=localStorage.getItem('hf_selfie_'+u.id);
+  if(av){
+    if(selfie){
+      av.style.backgroundImage='url('+selfie+')';
+      av.style.backgroundSize='cover';
+      av.style.backgroundPosition='center';
+      av.textContent='';
+    } else {
+      av.textContent=u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      av.style.background=u.color||'var(--navy)';
+    }
+  }
   if(nm) nm.textContent=u.name;
   if(rl) rl.textContent=u.role;
 }
@@ -2022,17 +2113,27 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(PRESET_USER && USERS.find(u=>u.id===PRESET_USER)){
     showScreen('scr-dob');
     showDOBScreen();
+    if(localStorage.getItem('hf_notif_granted')==='1') fcmRegisterToken(ME);
     checkSyncHash();
     return;
   }
 
-  // First visit check
-  const installed=window.matchMedia('(display-mode:standalone)').matches||navigator.standalone===true;
-  const seen=localStorage.getItem('hf_install_seen');
-  if(!installed&&!seen){
+  // Onboarding / install check
+  const installed   = window.matchMedia('(display-mode:standalone)').matches || navigator.standalone === true;
+  const seen        = localStorage.getItem('hf_install_seen');
+  const onboarded   = localStorage.getItem('hf_onboarded');
+  const notifDone   = localStorage.getItem('hf_notif_granted') !== null;
+
+  if (!installed && !seen) {
+    // First ever visit — show install prompt
     showScreen('scr-install');
+  } else if (!notifDone && Notification && Notification.permission === 'default') {
+    // Installed but never asked about notifications
+    showScreen('scr-onb-notif');
   } else {
-    showScreen('scr-login');
+    // All set — go straight to sign-in
+    showScreen('scr-dob');
+    showDOBScreen();
   }
   checkSyncHash();
 });
@@ -2131,12 +2232,157 @@ function showNotificationsPanel(){
 }
 
 </script>
+
+<script>
+// ── Firebase config ───────────────────────────────────────────────────────────
+const FB_CONFIG = {
+  apiKey:            "AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",
+  authDomain:        "brandonhall-7bdef.firebaseapp.com",
+  projectId:         "brandonhall-7bdef",
+  storageBucket:     "brandonhall-7bdef.firebasestorage.app",
+  messagingSenderId: "391317900568",
+  appId:             "1:391317900568:web:643c9d6691f7f16d65226d"
+};
+const FB_VAPID   = "BEBKqO0IojcBixBGbEb8hH-aCuy9J6MwQct5dp08xs6J2CjpPEStpSNoJuDpqHcvWuYpRviNVzfDKy4gQUigQPI";
+// Cloud Function base URL — update after first deploy
+const FCM_BASE   = "https://europe-west1-brandonhall-7bdef.cloudfunctions.net";
+const ADMIN_IDS  = ["raj","ajay","alia","nicola","natalie","glenn"];
+
+let fbApp, fbMsg, fbDb;
+
+function fbInit() {
+  if (fbApp) return;
+  try {
+    fbApp = firebase.initializeApp(FB_CONFIG);
+    fbMsg = firebase.messaging(fbApp);
+    fbDb  = firebase.firestore(fbApp);
+  } catch(e) { console.warn("Firebase init error:", e); }
+}
+
+// Register this device's FCM token for the signed-in user
+async function fcmRegisterToken(userId) {
+  fbInit();
+  if (!fbMsg) return;
+  try {
+    const sw  = await navigator.serviceWorker.ready;
+    const tok = await fbMsg.getToken({ vapidKey: FB_VAPID, serviceWorkerRegistration: sw });
+    if (!tok) return;
+    localStorage.setItem("hf_fcm_token", tok);
+    // Save to Firestore via Cloud Function
+    await fetch(FCM_BASE + "/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, token: tok })
+    });
+    console.log("FCM token registered for", userId);
+  } catch(e) { console.warn("FCM token error:", e); }
+}
+
+// Send event to Cloud Function → triggers push to recipients
+async function fcmNotify(event, job, assignees = []) {
+  try {
+    await fetch(FCM_BASE + "/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event, job, assignees, adminIds: ADMIN_IDS })
+    });
+  } catch(e) { console.warn("FCM notify error:", e); }
+}
+
+// Foreground messages (app open) — show in-app toast + bell
+fbInit();
+if (fbMsg) {
+  fbMsg.onMessage(payload => {
+    const d = payload.data || payload.notification || {};
+    showToastNotification(d.title + (d.body ? ": " + d.body : ""));
+    updateNotifBadge && updateNotifBadge();
+  });
+}
+
+// ── ONBOARDING FLOW ───────────────────────────────────────────────────────────
+function onbInstallClick() {
+  localStorage.setItem("hf_install_seen","1");
+  if (window._deferredPrompt) {
+    window._deferredPrompt.prompt();
+    window._deferredPrompt.userChoice.then(() => onbGoStep2());
+  } else {
+    onbGoStep2();
+  }
+}
+
+function onbGoStep2() {
+  localStorage.setItem("hf_install_seen","1");
+  showScreen("scr-onb-notif");
+}
+
+async function onbRequestNotif() {
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm === "granted") {
+      localStorage.setItem("hf_notif_granted","1");
+      showToastNotification("✓ Notifications enabled — you'll buzz when jobs arrive");
+    } else {
+      localStorage.setItem("hf_notif_granted","0");
+    }
+  } catch(e) {}
+  onbGoStep3();
+}
+
+function onbGoStep3() {
+  // Check if already has selfie
+  const existing = localStorage.getItem("hf_selfie_" + (window.PRESET_USER?.id || ""));
+  if (existing) { onbGoSignIn(); return; }
+  showScreen("scr-onb-selfie");
+}
+
+function onbSelfieChosen(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById("onb-selfie-img");
+    const ph  = document.getElementById("onb-selfie-placeholder");
+    const btn = document.getElementById("onb-selfie-save");
+    img.src = e.target.result;
+    img.style.display = "block";
+    if (ph) ph.style.display = "none";
+    if (btn) btn.style.display = "";
+    window._pendingSelfie = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function onbSaveSelfie() {
+  if (window._pendingSelfie && window.PRESET_USER?.id) {
+    localStorage.setItem("hf_selfie_" + window.PRESET_USER.id, window._pendingSelfie);
+  }
+  onbGoSignIn();
+}
+
+function onbGoSignIn() {
+  localStorage.setItem("hf_onboarded","1");
+  showScreen("scr-dob");
+}
+
+// Show toast for FCM foreground messages
+function showToastNotification(msg) {
+  const existing = document.getElementById("hf-toast-fcm");
+  if (existing) existing.remove();
+  const t = document.createElement("div");
+  t.id = "hf-toast-fcm";
+  t.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1a2b3a;border:1px solid rgba(255,255,255,.2);color:#fff;padding:12px 20px;border-radius:24px;font:600 13px Lato,sans-serif;z-index:9999;max-width:320px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:fadeIn .2s ease";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 5000);
+}
+</script>
+
 </body>
 </html>// In-app notification: notify assignees and admins of new job
-  sendAdminNotification(job,'new');
+  sendAdminNotification(job,'new'); fcmNotify('job_new',job,(job.assignees||[]));
   // Also notify assignees who aren't admin
   (job.assignees||[]).forEach(aid=>{
-    if(!ADMIN_IDS.includes(aid)) sendPersonNotification(aid,job);
+    if(!ADMIN_IDS.includes(aid)) sendPersonNotification(aid,job); fcmNotify('job_assigned',job,[aid]);
   });
   VIEW='jobs';t{
   --navy:#1a2b3a;--gold:#c9a978;--amber:#c78a3b;--green:#2a6a4a;--red:#b3261e;
@@ -2361,18 +2607,96 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
 <body>
 
 <!-- ── INSTALL SCREEN ──────────────────────────────────────────────── -->
+<!-- ── ONBOARDING: STEP 1 — ADD TO HOME SCREEN ──────────────────────── -->
 <div id="scr-install" class="screen">
-
   <div class="ib-hosfix">Hos<span>FIX</span></div>
   <div class="ib-hotel">Brandon Hall Hotel and Spa</div>
   <div class="ib-sub">MAINTENANCE &amp; COMPLIANCE MANAGEMENT</div>
-  <div class="ib-steps" style="max-width:340px">
-    <div class="ib-step"><div class="ib-num">1</div><span>Tap the <strong style="color:var(--gold)">Share</strong> button at the bottom of Safari</span></div>
-    <div class="ib-step"><div class="ib-num">2</div><span>Tap <strong style="color:var(--gold)">"Add to Home Screen"</strong></span></div>
-    <div class="ib-step"><div class="ib-num">3</div><span>Tap <strong style="color:var(--gold)">"Add"</strong> — HosFIX installs as an app</span></div>
+
+  <!-- Step indicator -->
+  <div style="display:flex;gap:8px;margin:20px 0 28px">
+    <div style="width:32px;height:4px;border-radius:2px;background:var(--gold)"></div>
+    <div style="width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+    <div style="width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
   </div>
-  <button class="ib-btn ib-primary" id="btn-install">📲 Install HosFIX</button>
-  <button class="ib-btn ib-secondary" id="btn-skip-install">Continue in browser</button>
+
+  <div style="font-size:56px;margin-bottom:16px">📲</div>
+  <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:10px">Add to your home screen</div>
+  <div style="font-size:13px;color:rgba(255,255,255,.65);max-width:300px;text-align:center;line-height:1.6;margin-bottom:28px">
+    Install HosFIX as an app so you can open it instantly and receive job notifications.
+  </div>
+
+  <div class="ib-steps" style="max-width:320px;margin-bottom:28px">
+    <div class="ib-step"><div class="ib-num">1</div><span>Tap the <strong style="color:var(--gold)">Share</strong> button at the bottom of your browser</span></div>
+    <div class="ib-step"><div class="ib-num">2</div><span>Tap <strong style="color:var(--gold)">"Add to Home Screen"</strong></span></div>
+    <div class="ib-step"><div class="ib-num">3</div><span>Tap <strong style="color:var(--gold)">"Add"</strong> — HosFIX appears on your home screen</span></div>
+  </div>
+
+  <button class="ib-btn ib-primary" id="btn-install" onclick="onbInstallClick()">📲 Install HosFIX</button>
+  <button class="ib-btn ib-secondary" id="btn-skip-install" onclick="onbGoStep2()">Already installed — continue →</button>
+</div>
+
+<!-- ── ONBOARDING: STEP 2 — NOTIFICATIONS ───────────────────────────────── -->
+<div id="scr-onb-notif" class="screen" style="display:none">
+  <div class="ib-hosfix">Hos<span>FIX</span></div>
+  <div class="ib-hotel">Brandon Hall Hotel and Spa</div>
+
+  <!-- Step indicator -->
+  <div style="display:flex;gap:8px;margin:20px 0 28px">
+    <div style="width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+    <div style="width:32px;height:4px;border-radius:2px;background:var(--gold)"></div>
+    <div style="width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+  </div>
+
+  <div style="font-size:56px;margin-bottom:16px">🔔</div>
+  <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:10px">Enable notifications</div>
+  <div style="font-size:13px;color:rgba(255,255,255,.65);max-width:300px;text-align:center;line-height:1.6;margin-bottom:28px">
+    Get a real buzz on your phone when a job is assigned to you or completed — even when the app is closed.
+  </div>
+
+  <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:16px 20px;max-width:300px;width:100%;margin-bottom:28px;text-align:left">
+    <div style="font-size:12px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">You'll be notified when:</div>
+    <div style="font-size:13px;color:rgba(255,255,255,.8);line-height:2">
+      🔧 A job is assigned to you<br>
+      ✅ A job you're on is completed<br>
+      📋 You're added to a new job
+    </div>
+  </div>
+
+  <button class="ib-btn ib-primary" onclick="onbRequestNotif()">🔔 Allow notifications</button>
+  <button class="ib-btn ib-secondary" onclick="onbGoStep3()">Skip for now</button>
+  <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:12px;max-width:260px;text-align:center">
+    You can enable notifications later in your phone settings
+  </div>
+</div>
+
+<!-- ── ONBOARDING: STEP 3 — SELFIE / PROFILE PIC ───────────────────────── -->
+<div id="scr-onb-selfie" class="screen" style="display:none">
+  <div class="ib-hosfix">Hos<span>FIX</span></div>
+  <div class="ib-hotel">Brandon Hall Hotel and Spa</div>
+
+  <!-- Step indicator -->
+  <div style="display:flex;gap:8px;margin:20px 0 28px">
+    <div style="width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+    <div style="width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+    <div style="width:32px;height:4px;border-radius:2px;background:var(--gold)"></div>
+  </div>
+
+  <div id="onb-selfie-preview" style="width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.1);border:3px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:40px;margin-bottom:16px;overflow:hidden">
+    <span id="onb-selfie-placeholder">🤳</span>
+    <img id="onb-selfie-img" style="display:none;width:100%;height:100%;object-fit:cover">
+  </div>
+
+  <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:10px">Add your photo</div>
+  <div style="font-size:13px;color:rgba(255,255,255,.65);max-width:300px;text-align:center;line-height:1.6;margin-bottom:28px">
+    Take a quick selfie — it appears on your profile and in job assignments so the team knows who's who.
+  </div>
+
+  <input type="file" id="onb-selfie-input" accept="image/*" capture="user" style="display:none" onchange="onbSelfieChosen(this)">
+
+  <button class="ib-btn ib-primary" onclick="document.getElementById('onb-selfie-input').click()">📷 Take selfie</button>
+  <button class="ib-btn ib-secondary" id="onb-selfie-save" style="display:none" onclick="onbSaveSelfie()">✓ Save photo &amp; sign in</button>
+  <button class="ib-btn ib-secondary" onclick="onbGoSignIn()">Skip — sign in without photo</button>
 </div>
 
 <!-- ── LOGIN SCREEN ──────────────────────────────────────────────────── -->
@@ -2715,9 +3039,7 @@ const seenInstall = localStorage.getItem('hf_install_seen');
 
 function initInstall(){
   $('btn-install').onclick = ()=>{
-    localStorage.setItem('hf_install_seen','1');
-    if(window._deferredPrompt){ window._deferredPrompt.prompt(); }
-    showScreen('scr-login');
+    onbInstallClick();
   };
   $('btn-skip-install').onclick = ()=>{
     localStorage.setItem('hf_install_seen','1');
@@ -3643,7 +3965,7 @@ function doCompleteJob(jobId){
   sendNotif('✅ Job completed', j.title+' — completed by '+(MY_USER?.name||ME), 'complete-'+jobId);
   // In-app notification to admins on completion
   const admins=USERS.filter(u=>NOTIFY_ON_COMPLETE.includes(u.id));
-  sendAdminNotification(job,'complete');
+  sendAdminNotification(job,'complete'); fcmNotify('job_completed',job,[]);
   html+='<button type="button" class="btn btn-ghost" style="margin-top:6px" onclick="closeModal()">Done</button>';
   openModal(html);
   updateTimerBar(); render();
@@ -3865,8 +4187,19 @@ function showDOBScreen(){
   const av=$('dob-avatar');
   const nm=$('dob-name');
   const rl=$('dob-role');
-  if(av) av.textContent=u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  if(av) av.style.background=u.color;
+  // Show selfie if stored, otherwise initials
+  const selfie=localStorage.getItem('hf_selfie_'+u.id);
+  if(av){
+    if(selfie){
+      av.style.backgroundImage='url('+selfie+')';
+      av.style.backgroundSize='cover';
+      av.style.backgroundPosition='center';
+      av.textContent='';
+    } else {
+      av.textContent=u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      av.style.background=u.color||'var(--navy)';
+    }
+  }
   if(nm) nm.textContent=u.name;
   if(rl) rl.textContent=u.role;
 }
@@ -4144,17 +4477,27 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(PRESET_USER && USERS.find(u=>u.id===PRESET_USER)){
     showScreen('scr-dob');
     showDOBScreen();
+    if(localStorage.getItem('hf_notif_granted')==='1') fcmRegisterToken(ME);
     checkSyncHash();
     return;
   }
 
-  // First visit check
-  const installed=window.matchMedia('(display-mode:standalone)').matches||navigator.standalone===true;
-  const seen=localStorage.getItem('hf_install_seen');
-  if(!installed&&!seen){
+  // Onboarding / install check
+  const installed   = window.matchMedia('(display-mode:standalone)').matches || navigator.standalone === true;
+  const seen        = localStorage.getItem('hf_install_seen');
+  const onboarded   = localStorage.getItem('hf_onboarded');
+  const notifDone   = localStorage.getItem('hf_notif_granted') !== null;
+
+  if (!installed && !seen) {
+    // First ever visit — show install prompt
     showScreen('scr-install');
+  } else if (!notifDone && Notification && Notification.permission === 'default') {
+    // Installed but never asked about notifications
+    showScreen('scr-onb-notif');
   } else {
-    showScreen('scr-login');
+    // All set — go straight to sign-in
+    showScreen('scr-dob');
+    showDOBScreen();
   }
   checkSyncHash();
 });
