@@ -869,6 +869,8 @@ FLOW_MODULES = [
     tabs:["brandLogos","brandCollateral","brandPhotography","brandDocs"] },
   { id:"hospeople", name:"HosPEOPLE",  caption:"People. Shifts. HR. Leave.",           icon:"👥", colour:"#4a86c7", tint:"#e6eff8",
     tabs:["rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings","staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs"] },
+  { id:"hoshub",    name:"HosHUB",     caption:"Documents. Contracts. Finance. HR.",   icon:"📂", colour:"#4a9d7f", tint:"#e7f3ee",
+    tabs:["hubDocs","hubContracts","hubSuppliers","hubFinance","hubHR"] },
 ];
 
 /* Tab metadata (label + icon) for sidebar links and cards */

@@ -1082,6 +1082,50 @@ body.home-active nav.tabs{display:none;}
   text-align: center !important;
   margin-top: 6px !important;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   HOSPRO SHELL FIXES — v2.1 (must stay last)
+   ════════════════════════════════════════════════════════════════ */
+/* Header: single logo + single hotel name */
+.sf-header-full .sf-loc{display:none!important}
+/* Breadcrumb / module bar */
+.sf-breadcrumb{position:sticky;top:56px;z-index:35}
+.sf-bc-back{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;margin-right:6px;
+  background:#c78a3b;color:#fff!important;border:none;border-radius:8px;font:700 12px 'Lato',sans-serif;cursor:pointer;transition:background .15s}
+.sf-bc-back:hover{background:#e8b06b}
+button.sf-bc-label{background:none;border:none;padding:0;font:700 13px 'Lato',sans-serif;color:#c7d2e0}
+button.sf-bc-label:hover{color:#e8b06b}
+.sf-bc-tab:empty{display:none}
+
+/* One scroller for the whole app area (header + breadcrumb stay sticky) */
+#app .sf-main.sf-full{overflow-y:auto;overflow-x:hidden;height:100dvh}
+main#view{overflow:visible!important;flex:1 0 auto}
+
+/* View modes
+   .hp-canvas  = home + module landing (full-bleed navy, own padding)
+   .hp-surface = module sub-tabs: navy frame, light working panel so
+                 dark text and white cards always have contrast
+   .hp-dark    = tabs drawn natively for the navy background        */
+main#view.hp-canvas{max-width:none;margin:0;padding:0;background:#1a2b3a}
+main#view.hp-surface{max-width:1320px;width:calc(100% - 40px);margin:18px auto 24px;padding:26px 30px 48px;
+  background:#f3f5f8;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,.28);color:#1a2230;flex:1 0 auto}
+main#view.hp-dark{max-width:none;margin:0;padding:0;background:#1a2b3a;color:#e5ecf3}
+main#view.hp-surface .page-head h2{color:#1a2b3a;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700}
+main#view.hp-surface .page-head p{color:#4b5563}
+main#view.hp-surface > div[style*="padding:20px"]{padding-left:0!important;padding-right:0!important}
+/* Navy buttons drawn on the navy canvas get a visible edge */
+main#view.hp-dark button[style*="background:#1a2b3a"],main#view.hp-canvas button[style*="background:#1a2b3a"]{box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
+/* Small ghost buttons were styled for the dark header — make them readable on light panels */
+main#view.hp-surface .btn.ghost.sm,#modal-root .btn.ghost.sm{color:#1a2b3a;border-color:#cfd6df;background:#fff}
+main#view.hp-surface .btn.ghost.sm:hover,#modal-root .btn.ghost.sm:hover{border-color:#c78a3b;color:#1a2b3a}
+/* Dark table headers: undo the global "#view table th{color:inherit}" bleed */
+main#view .data-table th, main#view .pipe-table th, main#view .hp-table thead th{color:#fff!important}
+@media(max-width:760px){
+  main#view.hp-surface{width:calc(100% - 16px);margin:8px auto 16px;padding:18px 14px 40px;border-radius:12px}
+  .sf-header-full .sf-ql-link,.sf-header-full .sf-search,.sf-header-full .sf-uwrap,.sf-header-full #tb-mode{display:none}
+  .sf-header-full{padding:0 12px;gap:8px}
+  .sf-breadcrumb{padding:0 12px;overflow-x:auto;white-space:nowrap}
+}
 </style>
 </head>
 <body>
@@ -1121,7 +1165,6 @@ body.home-active nav.tabs{display:none;}
         <div style="width:1px;height:30px;background:rgba(255,255,255,.15)"></div>
         <span style="font-family:'Lato',sans-serif;font-size:13px;font-weight:700;color:#c7d2e0;letter-spacing:.3px;white-space:nowrap">Brandon Hall Hotel &amp; Spa</span>
       </div>
-      <div class="sf-loc" id="tb-loc">Brandon Hall Hotel and Spa · Coventry</div>
       <div class="sf-search"><input placeholder="🔍 Search…" id="sf-search"></div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         <a href="https://guestline.eu.auth0.com/login?state=hKFo2SA3YXhjWWszV2JfR2liT0ZtdExwSVFjSDVVZDI1SVVNVaFupWxvZ2luo3RpZNkgRGcya0JIWnBnLTdPV2pEQUI5ckU1M08xSEcyeDA1MkejY2lk2SBhM1RTRmg3OVpzWXBFcnZFSU5Pa2VvekhiSVBZUTNvYw&client=a3TSFh79ZsYpErvEINOkeozHbIPYQ3oc&protocol=oauth2&useRefreshTokensFallback=true&issuer=https%3A%2F%2Fguestline.eu.auth0.com%2F&scope=openid%20profile%20email%20offline_access&audience=https%3A%2F%2Fguestline.app&redirect_uri=https%3A%2F%2Fpms.eu.guestline.net%2Frezlynx%2FRLXWebForms%2Fsys%2Fwfrm_sys_LogOn.aspx%3Fsso_autoLogon%3Dtrue%26siteId%3DBRANDHALL&siteid=BRANDHALL&rezlynxlogin=true&response_type=code&response_mode=query"
@@ -1143,9 +1186,10 @@ body.home-active nav.tabs{display:none;}
     </header>
     <!-- Breadcrumb bar — shown when inside a module -->
     <div id="sf-breadcrumb" class="sf-breadcrumb" style="display:none">
-      <button onclick="switchTab('home')" class="sf-bc-home">🏠 Home</button>
+      <button id="sf-bc-back" class="sf-bc-back" type="button">← Back</button>
+      <button onclick="switchTab('home')" class="sf-bc-home" type="button">🏠 Home</button>
       <span class="sf-bc-sep">›</span>
-      <span id="sf-bc-module" class="sf-bc-label"></span>
+      <button id="sf-bc-module" class="sf-bc-label" type="button"></button>
       <span id="sf-bc-tab" class="sf-bc-tab"></span>
     </div>
     <main id="view"></main>

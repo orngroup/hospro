@@ -1,0 +1,9 @@
+// Add this block inside "match /databases/{database}/documents { ... }"
+// in Firebase console → Firestore → Rules (keep your existing rules).
+// HosFIX staff sign in without Firebase Auth, so this collection must allow
+// unauthenticated read/write. Tighten later if you add Firebase Auth.
+match /hosfix_jobs/{jobId} {
+  allow read, write: if true;
+}
+// fcm_tokens is written only by the Cloud Function (Admin SDK bypasses rules),
+// so no client rule is needed for it.

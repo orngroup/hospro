@@ -86,6 +86,7 @@ function enterApp(user){
   $("#login").classList.add("hidden");
   $("#app").classList.remove("hidden");
   $("#tb-who").textContent=user.name;
+  const rl=$("#tb-role"); if(rl && user.title) rl.textContent=user.title;
   const av=$("#sf-avatar"); if(av) av.textContent=(user.name||"").split(" ").map(w=>w[0]).join("").slice(0,2);
   const badge=$("#tb-mode"); if(badge) badge.textContent = FB.ready? "Live" : "Demo";
   boot();
@@ -165,10 +166,8 @@ function syncSidebar(){
   document.querySelectorAll("#sf-nav [data-go]").forEach(b=>
     b.classList.toggle("active", b.dataset.go===CURRENT_TAB));
 }
-function render(){
-  const v=$("#view"); v.innerHTML="";
-  // home-active class removed (no sidebar)
-    ({home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, precheckin:renderPreCheckin, quotes:renderQuotes, brochure:renderBrochure, menu:renderMenu, quote:renderQuote,
+/* ── Tab registry (single source of truth for the router) ── */
+const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, precheckin:renderPreCheckin, quotes:renderQuotes, brochure:renderBrochure, menu:renderMenu, quote:renderQuote,
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
     fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
@@ -176,7 +175,100 @@ function render(){
     staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs,
     brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography,
     hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR
-  }[CURRENT_TAB]||renderRooms)(v);
+  };
+
+/* Tabs whose render functions were designed for the dark navy canvas
+   (light text, translucent buttons). Every other tab renders on a light
+   surface panel so dark text designed for white pages stays readable. */
+const HP_DARK_TABS = new Set([
+  "brandLogos","brandCollateral","brandPhotography","brandDocs",
+  "rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings",
+  "staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs",
+  "hubDocs","hubContracts","hubSuppliers","hubFinance","hubHR"
+]);
+
+function hpModuleFor(tab){
+  const mods = typeof FLOW_MODULES!=="undefined" ? FLOW_MODULES : [];
+  return mods.find(m=>(m.tabs||[]).includes(tab)) || null;
+}
+function hpTabLabel(tab){
+  const meta = (typeof TAB_META!=="undefined" && TAB_META[tab]) || null;
+  if(meta) return meta.label;
+  for(const k in (typeof MODULE_SUBCARDS!=="undefined"?MODULE_SUBCARDS:{})){
+    const sc = MODULE_SUBCARDS[k].find(x=>x.tab===tab); if(sc) return sc.label;
+  }
+  return tab;
+}
+/* Breadcrumb / module bar: ← Back to module · Home › Module › Tab */
+function hpSetBreadcrumb(mod, tab){
+  const bc=document.getElementById("sf-breadcrumb"); if(!bc) return;
+  if(!mod){ bc.style.display="none"; return; }
+  bc.style.display="flex";
+  const back=document.getElementById("sf-bc-back");
+  const lab=document.getElementById("sf-bc-module");
+  const tb=document.getElementById("sf-bc-tab");
+  if(lab){ lab.textContent=mod.name; lab.onclick=()=>renderModuleLanding(mod.id); lab.style.cursor=tab?"pointer":"default"; }
+  if(tb) tb.textContent = tab ? hpTabLabel(tab) : "";
+  if(back){
+    if(tab){ back.style.display=""; back.innerHTML="← "+mod.name; back.title="Back to "+mod.name+" menu";
+      back.onclick=()=>renderModuleLanding(mod.id); }
+    else { back.style.display=""; back.innerHTML="← Home"; back.title="Back to home"; back.onclick=()=>switchTab("home"); }
+  }
+}
+function hpRenderError(v, tab, err){
+  console.error("[HosPRO] render failed for tab '"+tab+"':", err);
+  const box=document.createElement("div");
+  box.style.cssText="background:#fff;border-radius:14px;padding:28px;max-width:640px;margin:20px auto;box-shadow:0 2px 10px rgba(0,0,0,.08);border-left:4px solid #c45c00;font-family:Lato,sans-serif";
+  box.innerHTML=`<div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#1a2b3a;margin-bottom:6px">This screen couldn't load</div>
+    <div style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:14px">Something went wrong while opening <b>${hpTabLabel(tab)}</b>. The rest of HosPRO is unaffected — please go back and try again, or let the HosPRO team know.</div>
+    <pre style="font-size:11px;background:#f5f7f9;color:#991b1b;padding:10px 12px;border-radius:8px;white-space:pre-wrap;margin-bottom:14px">${String(err&&err.message||err).replace(/[<>&]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</pre>`;
+  const btn=document.createElement("button");
+  const mod=hpModuleFor(tab);
+  btn.textContent = mod ? "← Back to "+mod.name : "← Back to Home";
+  btn.style.cssText="padding:9px 18px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:700 13px Lato,sans-serif;cursor:pointer";
+  btn.onclick=()=> mod ? renderModuleLanding(mod.id) : switchTab("home");
+  box.appendChild(btn);
+  v.appendChild(box);
+}
+
+let HP_NAV_FROM_HISTORY=false;
+function hpPushHistory(){
+  if(HP_NAV_FROM_HISTORY) return;
+  try{ const h="#"+CURRENT_TAB; if(location.hash!==h) history.pushState({tab:CURRENT_TAB},"",h); }catch(e){}
+}
+window.addEventListener("popstate",e=>{
+  if(!SESSION) return;
+  const t=(e.state&&e.state.tab)||(location.hash||"#home").slice(1)||"home";
+  HP_NAV_FROM_HISTORY=true;
+  try{ if(t.indexOf("mod:")===0) renderModuleLanding(t.slice(4)); else { CURRENT_TAB=t; render(); } }
+  finally{ HP_NAV_FROM_HISTORY=false; }
+});
+
+function render(){
+  const v=$("#view");
+  v.innerHTML="";
+  v.removeAttribute("style");          // clear inline padding left behind by home/landing screens
+  v.classList.remove("hp-surface","hp-dark","hp-canvas");
+
+  // Module landing pages are routed as "mod:<id>"
+  if(String(CURRENT_TAB).indexOf("mod:")===0){ renderModuleLanding(CURRENT_TAB.slice(4)); return; }
+
+  const fn = RENDER_MAP[CURRENT_TAB];
+  if(!fn || CURRENT_TAB==="home"){
+    CURRENT_TAB="home";
+    v.classList.add("hp-canvas");
+    hpSetBreadcrumb(null);
+    hpPushHistory();
+    try{ renderHome(v); }catch(err){ hpRenderError(v,"home",err); }
+    return;
+  }
+  const mod=hpModuleFor(CURRENT_TAB);
+  hpSetBreadcrumb(mod||{id:null,name:"HosPRO"}, CURRENT_TAB);
+  if(!mod){ const b=document.getElementById("sf-bc-back"); if(b){ b.innerHTML="← Home"; b.onclick=()=>switchTab("home"); } }
+  v.classList.add(HP_DARK_TABS.has(CURRENT_TAB) ? "hp-dark" : "hp-surface");
+  const sc=document.querySelector("#app .sf-main"); if(sc) sc.scrollTop=0;
+  hpPushHistory();
+  try{ fn(v); }catch(err){ v.classList.remove("hp-dark"); v.classList.add("hp-surface"); hpRenderError(v,CURRENT_TAB,err); }
 }
 
 /* ============================================================ ROOMS */
@@ -1878,12 +1970,14 @@ function userSay(text){ const b=$("#chat-body"); if(!b)return;
   const bub=el("div","bubble user",text); b.appendChild(bub); b.scrollTop=b.scrollHeight; }
 function fillName(q){ return q.replace("{name}", BOT.answers.name? BOT.answers.name.split(" ")[0] : "there"); }
 function askNext(){
-  const opts=$("#chat-opts"); opts.innerHTML="";
+  const opts=$("#chat-opts"); if(!opts) return;   // user left the chat tab before the timer fired
+  opts.innerHTML="";
   if(BOT.idx>=BOT.steps.length){ finishBot(); return; }
   const step=BOT.steps[BOT.idx];
   botSay(fillName(step.q));
   const delay=700;
   setTimeout(()=>{
+    if(!$("#chat-opts")||!$("#chat-input")) return;
     if(step.type==="choice"){
       $("#chat-input").style.display="none";
       step.options.forEach(([val,label])=>{ const bt=el("button",null,label);
@@ -4019,11 +4113,12 @@ function renderHome(v){
   mods.filter(m=>!groupedIds.includes(m.id)).forEach(m=>orderedMods.push(m));
 
   // 2 rows: first 6 and second 6
-  const row1 = orderedMods.slice(0,6);
+  const row1 = orderedMods;
 
   [row1].forEach((row, rowIdx) => {
     const rowDiv = document.createElement('div');
-    rowDiv.style.cssText = 'display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:16px';
+    rowDiv.className = 'hp-modgrid';
+    rowDiv.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:16px';
     row.forEach(m => {
       const card = document.createElement('button');
       card.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;background:#fff;border:2px solid #e5e7eb;border-radius:14px;cursor:pointer;text-align:left;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.05);width:100%';
@@ -4081,12 +4176,12 @@ function renderHome(v){
   }
 
   // ── Panel 1: Maintenance jobs ─────────────────────────────────────────────
-  const jobs = JSON.parse(localStorage.getItem('hf_jobs')||'[]');
+  const jobs = JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');   // same store as the HosFIX app
   const jobsUrgent  = jobs.filter(j=>j.priority==='urgent'&&j.status!=='complete').length;
-  const jobsOpen    = jobs.filter(j=>j.status==='not_started').length;
-  const jobsWIP     = jobs.filter(j=>j.status==='in_progress').length;
+  const jobsOpen    = jobs.filter(j=>j.status==='not-started'||j.status==='not_started').length;
+  const jobsWIP     = jobs.filter(j=>j.status==='in-progress'||j.status==='in_progress').length;
   const jobsDone    = jobs.filter(j=>j.status==='complete').length;
-  const recentJobs  = jobs.filter(j=>j.status!=='complete').sort((a,b)=>b.createdAt-a.createdAt).slice(0,4);
+  const recentJobs  = jobs.filter(j=>j.status!=='complete').sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,4);
 
   const jobRows = recentJobs.map(j=>`
     <div onclick="switchTab('fixAllJobs')" style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f5f7f9;cursor:pointer">
@@ -4094,7 +4189,7 @@ function renderHome(v){
         <div style="font-size:12px;font-weight:600;color:#1a2b3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${j.title||'Untitled'}</div>
         <div style="font-size:10px;color:#374151">${j.location||''}</div>
       </div>
-      <span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;white-space:nowrap;background:${j.priority==='urgent'?'#fee2e2':j.status==='in_progress'?'#fef9c3':'#f5f7f9'};color:${j.priority==='urgent'?'#991b1b':j.status==='in_progress'?'#854d0e':'#374151'}">${j.priority==='urgent'?'⚡ Urgent':j.status==='in_progress'?'In progress':'Not started'}</span>
+      <span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;white-space:nowrap;background:${j.priority==='urgent'?'#fee2e2':(j.status==='in-progress'||j.status==='in_progress')?'#fef9c3':'#f5f7f9'};color:${j.priority==='urgent'?'#991b1b':(j.status==='in-progress'||j.status==='in_progress')?'#854d0e':'#374151'}">${j.priority==='urgent'?'⚡ Urgent':(j.status==='in-progress'||j.status==='in_progress')?'In progress':'Not started'}</span>
     </div>`).join('') || '<div style="font-size:12px;color:#374151;padding:8px 0">No open jobs</div>';
 
   const maintContent = `
@@ -4283,22 +4378,19 @@ function renderModuleLanding(moduleId){
   const v = document.getElementById("view");
   const mods = typeof FLOW_MODULES!=="undefined" ? FLOW_MODULES : [];
   const m = mods.find(x=>x.id===moduleId);
-  if(!m) return;
+  if(!m){ CURRENT_TAB="home"; render(); return; }
 
-  // HosBRAND goes straight to brandDocs
-  // hosbrand landing shows 4 sub-cards
-  if(moduleId==="hoshub"){ switchTab("hubDocs"); return; }
+  CURRENT_TAB = "mod:"+moduleId;
+  hpPushHistory();
 
   const subcards = (typeof MODULE_SUBCARDS!=="undefined" && MODULE_SUBCARDS[moduleId]) || [];
 
-  // Breadcrumb
-  const bc=document.getElementById("sf-breadcrumb");
-  const bcLabel=document.getElementById("sf-bc-module");
-  const bcTab=document.getElementById("sf-bc-tab");
-  if(bc) bc.style.display="flex";
-  if(bcLabel) bcLabel.textContent=m.name;
-  if(bcTab) bcTab.textContent="";
+  // Breadcrumb: ← Home · Home › Module
+  hpSetBreadcrumb(m, null);
 
+  v.removeAttribute("style");
+  v.classList.remove("hp-surface","hp-dark");
+  v.classList.add("hp-canvas");
   v.innerHTML="";
   v.style.padding="0";
 
@@ -4317,16 +4409,16 @@ function renderModuleLanding(moduleId){
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:28px">
       <div style="width:60px;height:60px;border-radius:16px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;box-shadow:0 4px 16px ${m.colour}66">${m.icon}</div>
       <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:700;color:#1a2b3a;line-height:1">${m.name}</div>
-        <div style="font-size:13px;color:#374151;margin-top:4px">${m.caption}</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:700;color:#ffffff;line-height:1">${m.name}</div>
+        <div style="font-size:13px;color:#c7d2e0;margin-top:4px">${m.caption}</div>
       </div>
       <button onclick="switchTab('home')" style="margin-left:auto;padding:10px 20px;background:#fff;border:2px solid #e5e7eb;border-radius:10px;font:600 13px Lato;color:#1a2b3a;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.06)">🏠 Home</button>
     </div>`;
 
   // Sub-cards grid — larger cards, 3-4 per row max for readability
-  const colCount = subcards.length <= 3 ? subcards.length : subcards.length <= 6 ? 3 : 4;
   const grid = document.createElement("div");
-  grid.style.cssText = `display:grid;grid-template-columns:repeat(${colCount},1fr);gap:16px`;
+  grid.className = "hp-subgrid";
+  grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px";
 
   subcards.forEach(sc => {
     const card = document.createElement("button");
@@ -6233,7 +6325,7 @@ function renderRotaDash(v){
   v.innerHTML=`<div style="padding:20px 28px;max-width:1300px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
       <div><div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#ffffff">HosSHIFT Dashboard</div>
-      <div style="font-size:13px;color:#374151">Today · ${today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div></div>
+      <div style="font-size:13px;color:#a9b8c9">Today · ${today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="switchTab('rotaWeek')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">📋 Weekly Rota</button>
         <button onclick="switchTab('rotaForecast')" style="padding:9px 16px;background:#c78a3b;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">📈 Update Forecast</button>
@@ -6241,7 +6333,7 @@ function renderRotaDash(v){
       </div>
     </div>
     <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
-      <div style="font-size:11px;font-weight:700;color:#c7d2e0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Rooms In House — This Week</div>
+      <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Rooms In House — This Week</div>
       <table style="width:100%"><tr>${weekStrip}</tr></table>
       <div style="margin-top:10px;display:flex;gap:16px;font-size:12px;flex-wrap:wrap">
         <span style="color:#374151">Today: <b style="color:#1a2b3a">${todayFC.rooms||'—'} rooms</b></span>
@@ -6453,7 +6545,7 @@ function renderRotaForecast(v){
   const fc=spGetFC(),rota=spGetRota(),days=spWeekDates(spFcWeekOffset);
   const cards=days.map(d=>{
     const k=spDK(d),f=fc[k]||{},isT=k===spDK(new Date());
-    const reqs=SP_DEPTS.map(dept=>{const req=spCalcRequired(f,dept.id),ros=spCountRostered(rota,k,dept.id),ok=ros>=req.needed;return`<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f5f7f9"><span style="color:#374151">${dept.name}</span><span style="font-weight:700;color:${ok?'#4ade80':'#f87171'}">${ros}/${req.needed} ${ok?'✓':'⚠'}</span></div>`;}).join('');
+    const reqs=SP_DEPTS.map(dept=>{const req=spCalcRequired(f,dept.id),ros=spCountRostered(rota,k,dept.id),ok=ros>=req.needed;return`<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f5f7f9"><span style="color:#374151">${dept.name}</span><span style="font-weight:700;color:${ok?'#166534':'#b91c1c'}">${ros}/${req.needed} ${ok?'✓':'⚠'}</span></div>`;}).join('');
     return`<div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);${isT?'border:2px solid #1a2b3a':''}">
       <div style="font-weight:700;font-size:13px;color:#1a2b3a;margin-bottom:10px">${d.toLocaleDateString('en-GB',{weekday:'long'})} <span style="font-size:11px;font-weight:400;color:#374151">${spShortFmt(d)}${isT?' · Today':''}</span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
@@ -6462,19 +6554,19 @@ function renderRotaForecast(v){
           <input type="number" value="${val||''}" min="0" placeholder="0" data-dk="${k}" data-field="${field}" oninput="spUpdateFC(this)" style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:700 14px Lato;color:#1a2b3a">
         </div>`).join('')}
       </div>
-      <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:8px"><div style="font-size:10px;font-weight:700;color:#c7d2e0;text-transform:uppercase;margin-bottom:5px">Required vs Rostered</div><div id="fc-req-${k}">${reqs}</div></div>
+      <div style="border-top:1px solid #eef1f4;padding-top:8px"><div style="font-size:10px;font-weight:700;color:#1a2b3a;text-transform:uppercase;margin-bottom:5px">Required vs Rostered</div><div id="fc-req-${k}">${reqs}</div></div>
     </div>`;
   }).join('');
   v.innerHTML=`<div style="padding:20px 28px;max-width:1300px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Occupancy Forecast</div>
-      <div style="font-size:12px;color:#374151">Enter rooms sold and covers — staffing requirements update live. Auto-saves as you type.</div></div>
+      <div style="font-size:12px;color:#a9b8c9">Enter rooms sold and covers — staffing requirements update live. Auto-saves as you type.</div></div>
       <div style="display:flex;gap:8px">
         <button onclick="spFcWeekOffset--;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">← Prev</button>
-        <button onclick="spFcWeekOffset=0;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid #1a2b3a;border-radius:8px;background:#1a2b3a;color:#fff;cursor:pointer;font:600 12px Lato">This week</button>
+        <button onclick="spFcWeekOffset=0;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.35);border-radius:8px;background:#2e4156;color:#fff;cursor:pointer;font:600 12px Lato">This week</button>
         <button onclick="spFcWeekOffset++;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">Next →</button>
         <button onclick="spCreateRotaFromForecast()" style="padding:7px 14px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:700 13px Lato;cursor:pointer">⚡ Create draft rota</button>
-        <button onclick="switchTab('rotaWeek')" style="padding:7px 12px;background:#1a2b3a;color:#fff;border:none;border-radius:8px;font:600 12px Lato;cursor:pointer">← Back to Rota</button>
+        <button onclick="switchTab('rotaWeek')" style="padding:7px 12px;background:#2e4156;color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:8px;font:600 12px Lato;cursor:pointer">← Back to Rota</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">${cards}</div>
@@ -6500,9 +6592,9 @@ function spUpdateFC(input){
     const rota=spGetRota(), f=fc[k]||{};
     const reqs = (typeof SP_DEPTS!=='undefined'?SP_DEPTS:[]).map(dept=>{
       const req=spCalcRequired(f,dept.id), ros=spCountRostered(rota,k,dept.id), ok=ros>=req.needed;
-      return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-        <span style="color:#8fa3b8">${dept.name}</span>
-        <span style="font-weight:700;color:${ok?'#4ade80':'#f87171'}">${ros}/${req.needed} ${ok?'✓':'⚠'}</span>
+      return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f5f7f9">
+        <span style="color:#374151">${dept.name}</span>
+        <span style="font-weight:700;color:${ok?'#166534':'#b91c1c'}">${ros}/${req.needed} ${ok?'✓':'⚠'}</span>
       </div>`;
     }).join('');
     reqDiv.innerHTML = reqs;
@@ -6526,10 +6618,10 @@ function renderRotaMonthly(v){
   v.innerHTML=`<div style="padding:20px;max-width:920px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
       <div><div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Monthly Forecast</div>
-      <div style="font-size:12px;color:#374151">Top = rooms · Bottom = dinner covers · Colour = occupancy</div></div>
+      <div style="font-size:12px;color:#a9b8c9">Top = rooms · Bottom = dinner covers · Colour = occupancy</div></div>
       <div style="display:flex;gap:7px;align-items:center">
         <button onclick="spMonthOff--;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">← Prev</button>
-        <b style="padding:0 6px;font-size:14px;color:#1a2b3a">${mn}</b>
+        <b style="padding:0 6px;font-size:14px;color:#ffffff">${mn}</b>
         <button onclick="spMonthOff++;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">Next →</button>
       </div>
     </div>
@@ -6561,7 +6653,7 @@ function renderRotaSettings(v){
       </td><td style="padding:8px 6px"><button onclick="spRemoveStaff('${s.id}')" style="padding:3px 8px;border:1px solid #fee2e2;border-radius:6px;background:#fff;color:#991b1b;font-size:11px;cursor:pointer">Remove</button></td></tr>`;}).join('');
   v.innerHTML=`<div style="padding:20px;max-width:1000px">
     <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff;margin-bottom:4px">HosSHIFT Settings</div>
-    <div style="font-size:13px;color:#374151;margin-bottom:18px">${staff.length} staff members · Click name in rota to edit shifts</div>
+    <div style="font-size:13px;color:#a9b8c9;margin-bottom:18px">${staff.length} staff members · Click name in rota to edit shifts</div>
     <div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <b style="font-size:12px;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px">Team</b>
@@ -6834,10 +6926,10 @@ function renderBrandDocs(v){
   // Header
   wrap.innerHTML = `
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px">
-      <div style="width:52px;height:52px;border-radius:14px;background:#1a2b3a;display:flex;align-items:center;justify-content:center;font-size:26px">📁</div>
+      <div style="width:52px;height:52px;border-radius:14px;background:#2e4156;display:flex;align-items:center;justify-content:center;font-size:26px">📁</div>
       <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#1a2b3a">HosBRAND</div>
-        <div style="font-size:13px;color:#374151">Brandon Hall Hotel &amp; Spa — Brochures, Menus &amp; Brand Downloads</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#ffffff">HosBRAND</div>
+        <div style="font-size:13px;color:#a9b8c9">Brandon Hall Hotel &amp; Spa — Brochures, Menus &amp; Brand Downloads</div>
       </div>
       <button onclick="switchTab('home')" style="margin-left:auto;padding:9px 18px;background:#fff;border:2px solid #e5e7eb;border-radius:10px;font:600 13px Lato;color:#1a2b3a;cursor:pointer">🏠 Home</button>
     </div>`;
@@ -6847,7 +6939,7 @@ function renderBrandDocs(v){
     section.style.cssText = "margin-bottom:28px";
     section.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid ${cat.colour}">
       <span style="width:10px;height:10px;border-radius:50%;background:${cat.colour};display:inline-block"></span>
-      <span style="font-size:13px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.8px">${cat.category}</span>
+      <span style="font-size:13px;font-weight:700;color:#c7d2e0;text-transform:uppercase;letter-spacing:.8px">${cat.category}</span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
       ${cat.docs.map(doc => `
@@ -6969,7 +7061,7 @@ function renderStaffDash(v){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
       <div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#ffffff">HosSTAFF Dashboard</div>
-        <div style="font-size:13px;color:#374151">${profiles.length} staff members · ${pending.length} leave requests pending</div>
+        <div style="font-size:13px;color:#a9b8c9">${profiles.length} staff members · ${pending.length} leave requests pending</div>
       </div>
       <div style="display:flex;gap:8px">
         <button onclick="switchTab('staffProfiles')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">👤 Staff Profiles</button>
@@ -7062,7 +7154,7 @@ function renderStaffProfiles(v){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Staff Profiles</div>
-        <div style="font-size:12px;color:#374151">${filtered.length} of ${profiles.length} staff members</div>
+        <div style="font-size:12px;color:#a9b8c9">${filtered.length} of ${profiles.length} staff members</div>
       </div>
       <button onclick="hsAddStaffModal()" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">+ Add staff member</button>
     </div>
@@ -7356,7 +7448,7 @@ function renderStaffLeaveAdmin(v){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Leave Management</div>
-        <div style="font-size:12px;color:#374151">${leave.filter(l=>l.status==='pending').length} pending · ${leave.filter(l=>l.status==='approved').length} approved</div>
+        <div style="font-size:12px;color:#a9b8c9">${leave.filter(l=>l.status==='pending').length} pending · ${leave.filter(l=>l.status==='approved').length} approved</div>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap">
         ${['pending','approved','declined','all'].map(f=>`<button onclick="window._hsLeaveFilter='${f}';renderStaffLeaveAdmin(document.getElementById('view'))"
@@ -7520,7 +7612,7 @@ function renderStaffLeave(v){ renderStaffLeaveAdmin(v); }
 function renderStaffDocs(v){
   v.innerHTML=`<div style="padding:20px;max-width:800px">
     <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff;margin-bottom:8px">Documents</div>
-    <div style="font-size:13px;color:#374151;margin-bottom:16px">Open a staff profile to upload and manage their documents</div>
+    <div style="font-size:13px;color:#a9b8c9;margin-bottom:16px">Open a staff profile to upload and manage their documents</div>
     <button onclick="switchTab('staffProfiles')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">← Staff Profiles</button>
   </div>`;
 }
@@ -7899,3 +7991,67 @@ function renderMenu(v){
     </div>`;
   v.appendChild(wrap);
 }
+
+/* ============================================================
+   SAFETY FALLBACKS — helpers referenced by render functions that
+   live in optional/legacy script files. Defined only if missing,
+   so a missing file can no longer black-screen a tab.
+   ============================================================ */
+if(typeof window.feedbackURL!=="function"){
+  window.feedbackURL=function(){
+    return location.href.split("#")[0].replace(/index\.html$/,"").replace(/\/$/,"")+"/feedback.html";
+  };
+}
+if(typeof window.restaurantSVG!=="function"){
+  window.restaurantSVG=function(area){
+    const t=(area&&area.tables)||[]; if(!t.length) return "";
+    const CW=120, RH=96, PAD=24;
+    const cols=Math.max(...t.map(x=>x.c))+1, rows=Math.max(...t.map(x=>x.r))+1;
+    const W=cols*CW+PAD*2+(cols>3?30:0), H=rows*RH+PAD*2;
+    const gx=c=>PAD+c*CW+(c>=3?30:0)+CW/2, gy=r=>PAD+r*RH+RH/2;
+    const shapes=t.map(x=>{
+      const cx=gx(x.c), cy=gy(x.r), fill=x.buffet?"#f3e7d7":"#ffffff", stroke="#1a2b3a";
+      let tbl;
+      if(x.shape==="round") tbl=`<circle cx="${cx}" cy="${cy}" r="24" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`;
+      else if(x.shape==="long") tbl=`<rect x="${cx-44}" y="${cy-20}" width="88" height="40" rx="5" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`;
+      else tbl=`<rect x="${cx-22}" y="${cy-22}" width="44" height="44" rx="5" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`;
+      return `${tbl}<text x="${cx}" y="${cy-2}" text-anchor="middle" font-family="Lato,sans-serif" font-size="12" font-weight="700" fill="#1a2b3a">${x.n}</text>
+        <text x="${cx}" y="${cy+12}" text-anchor="middle" font-family="Lato,sans-serif" font-size="9.5" fill="#6b7280">${x.seats} seats</text>`;
+    }).join("");
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;background:#f8f9fb;border:1px solid #e5e7eb;border-radius:10px" role="img" aria-label="${area.name} seating plan">${shapes}</svg>`;
+  };
+}
+
+/* ============================================================
+   HosFIX JOB SYNC (read-only) — the HosFIX staff app now stores jobs in
+   Firestore (hosfix_jobs). Mirror them into localStorage so the
+   HosOPS maintenance tabs and the home panel show every job,
+   not just jobs logged on this device. Uses a separate named
+   Firebase app so it never clashes with firebase-config.js.
+   ============================================================ */
+(function hosfixJobSync(){
+  try{
+    if(typeof firebase==="undefined" || !firebase.initializeApp || !firebase.firestore) return;
+    const cfg={ apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0", authDomain:"brandonhall-7bdef.firebaseapp.com",
+      projectId:"brandonhall-7bdef", storageBucket:"brandonhall-7bdef.firebasestorage.app",
+      messagingSenderId:"391317900568", appId:"1:391317900568:web:643c9d6691f7f16d65226d" };
+    const app=(firebase.apps||[]).find(a=>a.name==="hosfix") || firebase.initializeApp(cfg,"hosfix");
+    const stamp=j=>j.updatedAt||j.completedAt||j.createdAt||"";
+    firebase.firestore(app).collection("hosfix_jobs").onSnapshot(qs=>{
+      let local=[]; try{ local=JSON.parse(localStorage.getItem("hosfix_jobs")||"[]"); }catch(e){}
+      let changed=false;
+      qs.docs.forEach(d=>{
+        const r=d.data(); if(!r||!r.id) return;
+        const i=local.findIndex(j=>j.id===r.id);
+        if(i<0){ local.push(r); changed=true; }
+        else if(stamp(r)>stamp(local[i])){ local[i]=Object.assign({},local[i],r); changed=true; }
+      });
+      if(!changed) return;
+      local.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+      try{ localStorage.setItem("hosfix_jobs",JSON.stringify(local)); }catch(e){}
+      const typing=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+      const modalOpen=!!document.querySelector("#modal-root .modal-bg");
+      if(SESSION && !typing && !modalOpen && (CURRENT_TAB==="home"||/^fix/.test(CURRENT_TAB))) render();
+    }, err=>console.warn("[HosPRO] HosFIX job sync unavailable:", err&&err.message));
+  }catch(e){ console.warn("[HosPRO] HosFIX job sync init failed:", e); }
+})();
