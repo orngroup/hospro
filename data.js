@@ -847,29 +847,33 @@ const BROCHURE_TEMPLATES = {
    ============================================================ */
 const // Module groups for collapsible sidebar
 MODULE_GROUPS = [
-  { id:'ops',     label:'Operations',           icon:'🔧', colour:'#4DA69C', modules:['hosops'] },
-  { id:'sales',   label:'Sales & Events',       icon:'💼', colour:'#4DA69C', modules:['hossales'] },
-  { id:'venue',   label:'Venue & Corporate',    icon:'🏛', colour:'#4DA69C', modules:['hosvenue'] },
-  { id:'studio',  label:'Marketing & Creative', icon:'📣', colour:'#4DA69C', modules:['hosstudio'] },
-  { id:'brand',   label:'Brand & Downloads',    icon:'📁', colour:'#4DA69C', modules:['hosbrand'] },
-  { id:'people',  label:'People & Shifts',      icon:'👥', colour:'#4DA69C', modules:['hospeople'] },
-  { id:'hub',     label:'Document Hub',          icon:'📂', colour:'#4DA69C', modules:['hoshub'] },
+  { id:'fix',     label:'Maintenance',          icon:'🔧', colour:'#965638', modules:['hosfix'] },
+  { id:'com',     label:'Compliance',           icon:'🛡', colour:'#4B5288', modules:['hoscom'] },
+  { id:'sales',   label:'Sales & Events',       icon:'💼', colour:'#6E4E7A', modules:['hossales'] },
+  { id:'venue',   label:'Venue & Corporate',    icon:'🏛', colour:'#3B6585', modules:['hosvenue'] },
+  { id:'studio',  label:'Marketing & Creative', icon:'📣', colour:'#9C4F63', modules:['hosstudio'] },
+  { id:'brand',   label:'Brand & Downloads',    icon:'📁', colour:'#7A6538', modules:['hosbrand'] },
+  { id:'people',  label:'People & Shifts',      icon:'👥', colour:'#2B726A', modules:['hospeople'] },
+  { id:'hub',     label:'Document Hub',         icon:'📂', colour:'#55744F', modules:['hoshub'] },
 ];
 
+/* colour = deep module shade (sub-nav bar, white text) · tint = pastel (home card, active tab) */
 FLOW_MODULES = [
-  { id:"hosops",    name:"HosOPS",     caption:"Operations. Maintenance. Compliance.", icon:"🔧", colour:"#4DA69C", tint:"#E8F4F2",
-    tabs:["fixDash","fixAllJobs","fixProjects","fixInventory","fixTeam","compDash","compTasks","compActions","compReport","tasks","beverage","mne","suppliers"] },
-  { id:"hossales",  name:"HosSALES",   caption:"Sales. Events. Dining. Revenue.",      icon:"💼", colour:"#4DA69C", tint:"#E8F4F2",
-    tabs:["pipeline","quotes","quote","profit","contracts","payments","dining","chat"] },
-  { id:"hosvenue",  name:"HosVENUE",   caption:"Venue. Rooms. Corporate. Stays.",      icon:"🏛", colour:"#4DA69C", tint:"#E8F4F2",
+  { id:"hosfix",    name:"HosFIX",     caption:"Maintenance. Jobs. Assets. Suppliers.", icon:"🔧", colour:"#965638", tint:"#F5E8E0",
+    tabs:["fixDash","fixAllJobs","fixProjects","fixInventory","fixTeam","mne","suppliers"] },
+  { id:"hoscom",    name:"HosCOM",     caption:"Compliance. Tasks. Actions. Reports.",  icon:"🛡", colour:"#4B5288", tint:"#E8EAF4",
+    tabs:["compDash","compTasks","compActions","compReport","tasks"] },
+  { id:"hossales",  name:"HosSALES",   caption:"Sales. Events. Dining. Revenue.",      icon:"💼", colour:"#6E4E7A", tint:"#EFE7F2",
+    tabs:["pipeline","quotes","quote","profit","contracts","payments","dining","beverage","chat"] },
+  { id:"hosvenue",  name:"HosVENUE",   caption:"Venue. Rooms. Corporate. Stays.",      icon:"🏛", colour:"#3B6585", tint:"#E4EDF4",
     tabs:["rooms","groupconfig","packages","corpdb","corprates","precheckin","feedback"] },
-  { id:"hosstudio", name:"HosSTUDIO",  caption:"Marketing. Campaigns. Creative.",      icon:"📣", colour:"#4DA69C", tint:"#E8F4F2",
+  { id:"hosstudio", name:"HosSTUDIO",  caption:"Marketing. Campaigns. Creative.",      icon:"📣", colour:"#9C4F63", tint:"#F6E6EA",
     tabs:["marketing","social","brochure","menu"] },
-  { id:"hosbrand",  name:"HosBRAND",   caption:"Brand. Collateral. Downloads.",        icon:"📁", colour:"#4DA69C", tint:"#E8F4F2",
+  { id:"hosbrand",  name:"HosBRAND",   caption:"Brand. Collateral. Downloads.",        icon:"📁", colour:"#7A6538", tint:"#F4EEDF",
     tabs:["brandLogos","brandCollateral","brandPhotography","brandDocs"] },
-  { id:"hospeople", name:"HosPEOPLE",  caption:"People. Shifts. HR. Leave.",           icon:"👥", colour:"#4DA69C", tint:"#E8F4F2",
+  { id:"hospeople", name:"HosPEOPLE",  caption:"People. Shifts. HR. Leave.",           icon:"👥", colour:"#2B726A", tint:"#E2F1EE",
     tabs:["rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings","staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs"] },
-  { id:"hoshub",    name:"HosHUB",     caption:"Documents. Contracts. Finance. HR.",   icon:"📂", colour:"#4DA69C", tint:"#E8F4F2",
+  { id:"hoshub",    name:"HosHUB",     caption:"Documents. Contracts. Finance. HR.",   icon:"📂", colour:"#55744F", tint:"#E8F0E5",
     tabs:["hubDocs","hubContracts","hubSuppliers","hubFinance","hubHR"] },
 ];
 
@@ -952,20 +956,21 @@ const PRECHECKIN_FIELDS = [
 ];
 
 const MODULE_SUBCARDS = {
-  "hosops": [
-    {tab:"fixDash",      label:"Maintenance Dashboard", icon:"🔧", desc:"Live jobs overview & stats"},
-    {tab:"fixAllJobs",   label:"All Jobs",               icon:"📋", desc:"Full maintenance jobs list"},
-    {tab:"fixProjects",  label:"Projects",               icon:"🏗", desc:"Ongoing property projects"},
-    {tab:"fixInventory", label:"Stock & Inventory",      icon:"📦", desc:"Parts, materials & costs"},
-    {tab:"fixTeam",      label:"Maintenance Team",       icon:"👷", desc:"Team overview & assignments"},
-    {tab:"compDash",     label:"Compliance Dashboard",   icon:"🛡", desc:"Overview & compliance score"},
-    {tab:"compTasks",    label:"Compliance Tasks",       icon:"✅", desc:"All 33 compliance tasks"},
-    {tab:"compActions",  label:"Actions",                icon:"⚡", desc:"Outstanding compliance actions"},
-    {tab:"compReport",   label:"Compliance Reports",     icon:"📊", desc:"Reports & audit trail"},
-    {tab:"tasks",        label:"Task Board",             icon:"📌", desc:"All team tasks & to-dos"},
-    {tab:"beverage",     label:"Beverage Management",    icon:"🍷", desc:"Drinks, packages & bar setup"},
-    {tab:"mne",          label:"Assets & M&E",           icon:"🔩", desc:"Equipment & asset tracking"},
-    {tab:"suppliers",    label:"Suppliers",              icon:"🏭", desc:"Supplier database & contacts"},
+  "hosfix": [
+    {tab:"fixDash",      label:"Maintenance Dashboard", short:"Dashboard", icon:"🔧", desc:"Live jobs overview & stats"},
+    {tab:"fixAllJobs",   label:"All Jobs",               short:"All Jobs",  icon:"📋", desc:"Full maintenance jobs list"},
+    {tab:"fixProjects",  label:"Projects",               short:"Projects",  icon:"🏗", desc:"Ongoing property projects"},
+    {tab:"fixInventory", label:"Stock & Inventory",      short:"Stock",     icon:"📦", desc:"Parts, materials & costs"},
+    {tab:"fixTeam",      label:"Maintenance Team",       short:"Team",      icon:"👷", desc:"Team overview & assignments"},
+    {tab:"mne",          label:"Assets & M&E",           short:"Assets & M&E", icon:"🔩", desc:"Equipment & asset tracking"},
+    {tab:"suppliers",    label:"Suppliers",              short:"Suppliers", icon:"🏭", desc:"Supplier database & contacts"},
+  ],
+  "hoscom": [
+    {tab:"compDash",     label:"Compliance Dashboard",   short:"Dashboard", icon:"🛡", desc:"Overview & compliance score"},
+    {tab:"compTasks",    label:"Compliance Tasks",       short:"Tasks",     icon:"✅", desc:"All 33 compliance tasks"},
+    {tab:"compActions",  label:"Actions",                short:"Actions",   icon:"⚡", desc:"Outstanding compliance actions"},
+    {tab:"compReport",   label:"Compliance Reports",     short:"Reports",   icon:"📊", desc:"Reports & audit trail"},
+    {tab:"tasks",        label:"Task Board",             short:"Task Board",icon:"📌", desc:"All team tasks & to-dos"},
   ],
   "hossales": [
     {tab:"pipeline",  label:"Sales Pipeline",      icon:"📊", desc:"Active leads & deals"},
@@ -974,6 +979,7 @@ const MODULE_SUBCARDS = {
     {tab:"contracts", label:"Agreements",          icon:"📝", desc:"Signed contracts & agreements"},
     {tab:"payments",  label:"Payments",            icon:"💳", desc:"Payment schedules & tracking"},
     {tab:"dining",    label:"Dining & Banqueting", icon:"🍽", desc:"F&B event setup & menus"},
+    {tab:"beverage",  label:"Beverage Management", short:"Beverage", icon:"🍷", desc:"Drinks, packages & bar stock"},
     {tab:"chat",      label:"Events Planning",     icon:"💬", desc:"Event coordination & planning"},
   ],
   "hosvenue": [

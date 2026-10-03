@@ -200,8 +200,21 @@ function hpTabLabel(tab){
   return tab;
 }
 /* Breadcrumb / module bar: ← Back to module · Home › Module › Tab */
+function hpSetSubnav(mod, tab){
+  const sn=document.getElementById("sf-subnav"); if(!sn) return;
+  const items=(mod && mod.id && typeof MODULE_SUBCARDS!=="undefined" && MODULE_SUBCARDS[mod.id]) || [];
+  if(!items.length){ sn.style.display="none"; sn.innerHTML=""; return; }
+  sn.style.display="flex";
+  sn.style.setProperty("--mod", mod.colour||"#2B726A");
+  sn.style.setProperty("--tint", mod.tint||"#E2F1EE");
+  sn.innerHTML=items.map(sc=>`<button type="button" class="sf-sn${sc.tab===tab?' on':''}" data-tab="${sc.tab}" title="${sc.label}">
+      <span class="sf-sn-i">${sc.icon||""}</span><span class="sf-sn-t">${sc.short||sc.label}</span></button>`).join("");
+  sn.querySelectorAll(".sf-sn").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+  const on=sn.querySelector(".sf-sn.on"); if(on && on.scrollIntoView) try{ on.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){}
+}
 function hpSetBreadcrumb(mod, tab){
   const bc=document.getElementById("sf-breadcrumb"); if(!bc) return;
+  hpSetSubnav(mod, tab);
   if(!mod){ bc.style.display="none"; return; }
   bc.style.display="flex";
   const back=document.getElementById("sf-bc-back");
@@ -4137,7 +4150,7 @@ function renderHome(v){
     rowDiv.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:16px';
     row.forEach(m => {
       const card = document.createElement('button');
-      card.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;background:#fff;border:2px solid #e5e7eb;border-radius:14px;cursor:pointer;text-align:left;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.05);width:100%';
+      card.style.cssText = `display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;background:${m.tint||'#F3F5F7'};border:2px solid transparent;border-radius:14px;cursor:pointer;text-align:left;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.05);width:100%`;
       card.innerHTML = `
         <div style="width:40px;height:40px;border-radius:10px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${m.icon}</div>
         <div>
@@ -4145,7 +4158,7 @@ function renderHome(v){
           <div style="font-size:10px;color:#374151;margin-top:3px;line-height:1.4">${m.caption}</div>
         </div>`;
       card.onmouseover = () => { card.style.borderColor=m.colour; card.style.boxShadow='0 4px 14px rgba(0,0,0,.10)'; card.style.transform='translateY(-2px)'; };
-      card.onmouseout  = () => { card.style.borderColor='#e5e7eb'; card.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'; card.style.transform=''; };
+      card.onmouseout  = () => { card.style.borderColor='transparent'; card.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'; card.style.transform=''; };
       card.onclick = () => renderModuleLanding(m.id);
       rowDiv.appendChild(card);
     });
@@ -4456,7 +4469,7 @@ function renderModuleLanding(moduleId){
     grid.appendChild(card);
   });
 
-  content.appendChild(grid);
+  /* card grid replaced by the module sub-nav bar */
   try{ content.appendChild(hpLandingExtras(m)); }catch(e){ console.warn('[HosPRO] landing extras failed',e); }
   wrap.appendChild(content);
   v.appendChild(wrap);
@@ -8104,7 +8117,8 @@ if(typeof window.restaurantSVG!=="function"){
    MODULE LANDING EXTRAS — hero photo, "Today at a glance", "Related"
    ============================================================ */
 const HP_MOD_HERO = {
-  hosops:    "assets/hospro/hero-hosops.jpg",
+  hosfix:    "assets/hospro/hero-hosops.jpg",
+  hoscom:    "assets/hospro/hero-hoshub.jpg",   // placeholder until a HosCOM image is supplied
   hossales:  "assets/hospro/hero-hossales.jpg",
   hosvenue:  "assets/hospro/hero-hosvenue.jpg",
   hosstudio: "assets/hospro/hero-hosstudio.jpg",
@@ -8138,13 +8152,29 @@ function hpModuleStats(id){
   const T=new Date(), todayK=T.toISOString().slice(0,10), monthK=todayK.slice(0,7);
   const pipe=()=> (typeof pipelineData==="function") ? pipelineData() : [];
   switch(id){
-    case "hosops": {
+    case "hosfix": {
       const jobs=hpJobs(), open=jobs.filter(j=>j.status!=="complete");
+      const wk=Date.now()-7*864e5;
       return [
-        [open.length, "Open maintenance jobs", "fixAllJobs", "#c45c00"],
-        [open.filter(j=>j.priority==="urgent").length, "Urgent jobs", "fixAllJobs", "#b3261e", true],
-        [hpSafe(hpCompOverdue,0), "Compliance tasks overdue", "compTasks", "#b3261e", true],
-        [hpSafe(()=>hpMoney(bevGetStock().reduce((s,i)=>s+(+i.totalValue||((+i.qty||0)*(+i.unitPrice||0))),0)),"—"), "Bar stock value", "beverage", "#2a6a4a"],
+        [open.length, "Open maintenance jobs", "fixAllJobs", null],
+        [open.filter(j=>j.priority==="urgent").length, "Urgent jobs", "fixAllJobs", null, true],
+        [jobs.filter(j=>j.status==="pending_approval").length, "Awaiting cost approval", "fixDash", null, true],
+        [jobs.filter(j=>j.status==="complete" && new Date(j.completedAt||0).getTime()>wk).length, "Completed this week", "fixAllJobs", null],
+      ];
+    }
+    case "hoscom": {
+      const tasks=hpSafe(()=>JSON.parse(localStorage.getItem("hosfix_comp_tasks")||"[]"),[]);
+      const acts=hpSafe(()=>JSON.parse(localStorage.getItem("hosfix_comp_actions")||"[]"),[]);
+      const now=new Date(); now.setHours(0,0,0,0);
+      const due=t=>{ const p=String(t.due||"").split("/"); return p.length<3?null:new Date(+p[2],+p[1]-1,+p[0]); };
+      const open=tasks.filter(t=>t.status!=="complete");
+      const soon=open.filter(t=>{ const d=due(t); return d && d>=now && d<new Date(now.getTime()+7*864e5); }).length;
+      const pct=tasks.length? Math.round(tasks.filter(t=>t.status==="complete").length/tasks.length*100)+"%" : "—";
+      return [
+        [hpSafe(hpCompOverdue,0), "Tasks overdue", "compTasks", null, true],
+        [soon, "Due in the next 7 days", "compTasks", null],
+        [acts.filter(a=>a.status!=="complete"&&a.status!=="closed").length, "Open actions", "compActions", null, true],
+        [pct, "Tasks complete", "compDash", null],
       ];
     }
     case "hossales": {
@@ -8154,7 +8184,7 @@ function hpModuleStats(id){
         [hpMoney(open.reduce((s,e)=>s+(+e.value||0),0)), "Open pipeline value", "pipeline", "#8b5c8f"],
         [open.filter(e=>e.followUp && e.followUp<todayK).length, "Follow-ups overdue", "pipeline", "#b3261e", true],
         [p.filter(e=>e.status==="confirmed" && String(e.date||"").startsWith(monthK)).length, "Events confirmed this month", "pipeline", "#2a6a4a"],
-        [hpSafe(()=> (typeof QuoteStore!=="undefined") ? QuoteStore.all().filter(q=>!/accept|signed|declin|cancel/i.test(q.status||"")).length : "—","—"), "Quotes awaiting reply", "quotes", "#c78a3b"],
+        [hpSafe(()=>hpMoney(bevGetStock().reduce((s,i)=>s+(+i.totalValue||((+i.qty||0)*(+i.unitPrice||0))),0)),"—"), "Bar stock value", "beverage", null],
       ];
     }
     case "hosvenue": {
@@ -8205,7 +8235,8 @@ function hpModuleStats(id){
 
 /* Related shortcuts: [tab, label, why] — tabs in other modules */
 const HP_RELATED = {
-  hosops:    [["dining","Dining & Banqueting","See tonight's covers before bar and kitchen jobs"],["rotaDash","Staff on shift","Who is on today"],["hubSuppliers","Supplier agreements","Contracts and SLAs for your suppliers"],["precheckin","Pre check-in","Guest arrivals and room requests"]],
+  hosfix:    [["compDash","Compliance","Safety checks linked to the building"],["rotaDash","Staff on shift","Who is on today"],["hubSuppliers","Supplier agreements","Contracts and SLAs for contractors"],["precheckin","Pre check-in","Arrivals and room requests"]],
+  hoscom:    [["fixAllJobs","Maintenance jobs","Jobs raised from compliance actions"],["hubHR","HR documents","Policies, training and certificates"],["staffDocs","Staff documents","Right to work and certificates"],["suppliers","Suppliers","Contractor details and insurance"]],
   hossales:  [["rooms","Meeting rooms","Capacities and layouts to quote from"],["packages","Packages & pricing","Delegate rates and event packages"],["brochure","Brochure Builder","Send a branded brochure with the quote"],["corpdb","Corporate database","Account history and contacts"]],
   hosvenue:  [["rotaForecast","Occupancy forecast","Rooms sold drive staffing levels"],["pipeline","Sales pipeline","Upcoming events and enquiries"],["dining","Dining & Banqueting","Restaurant plan and covers"],["brandPhotography","Photography","Approved venue images"]],
   hosstudio: [["brandLogos","Logos & brand assets","Official marks and colour palette"],["brandPhotography","Photography","Approved hotel images"],["brandDocs","Menus & wine lists","Current Clarendon menus"],["quotes","Quotes & proposals","Quotes now live in HosSALES"]],
@@ -8228,7 +8259,7 @@ function hpLandingExtras(m){
       box.innerHTML+=`<div class="hp-sec-h">Today at a glance</div>
         <div class="hp-glance">${stats.map(([v,l,tab,col,alert])=>{
           const hot = alert && Number(v)>0;
-          return `<button class="hp-stat${hot?' hot':''}" onclick="switchTab('${tab}')" style="--acc:${alert?'#b3261e':'#4DA69C'}">
+          return `<button class="hp-stat${hot?' hot':''}" onclick="switchTab('${tab}')" style="--acc:${hot?'#b3261e':m.colour}">
             <span class="hp-stat-v">${v}</span><span class="hp-stat-l">${l}</span><span class="hp-stat-go">Open →</span></button>`; }).join("")}</div>`;
     }
   }
@@ -8238,7 +8269,7 @@ function hpLandingExtras(m){
     box.innerHTML+=`<div class="hp-sec-h">Related</div>
       <div class="hp-related">${rel.map(([tab,label,why])=>{
         const om=hpModuleFor(tab);
-        return `<button class="hp-rel" onclick="switchTab('${tab}')" style="--acc:#2F7A72">
+        return `<button class="hp-rel" onclick="switchTab('${tab}')" style="--acc:${om?om.colour:m.colour}">
           <span class="hp-rel-mod">${om?om.icon+" "+om.name:""}</span>
           <span class="hp-rel-t">${label}</span><span class="hp-rel-w">${why}</span></button>`; }).join("")}</div>`;
   }

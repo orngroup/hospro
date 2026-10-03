@@ -1156,6 +1156,28 @@ main#view.hp-surface .btn.ghost.sm:hover,#modal-root .btn.ghost.sm:hover{border-
 @media(max-width:760px){
   .hp-hero{min-height:150px}.hp-hero-in{padding:18px}.hp-hero-t{font-size:28px}.hp-hero-home{display:none}
 }
+
+/* ── Module sub-menu bar ── */
+.sf-subnav{position:sticky;top:96px;z-index:34;display:flex;flex-shrink:0;min-height:46px;align-items:stretch;background:var(--mod,#2B726A);padding:0 20px;
+  overflow-x:auto;scrollbar-width:none;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.sf-subnav::-webkit-scrollbar{display:none}
+.sf-sn{flex:1 1 0;min-width:118px;display:flex;align-items:center;justify-content:center;gap:7px;padding:12px 10px;border:none;background:transparent;
+  color:#fff;font:700 13px Lato,sans-serif;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;transition:background .15s}
+.sf-sn:hover{background:rgba(255,255,255,.12)}
+.sf-sn.on{background:var(--tint,#E2F1EE);color:var(--mod,#2B726A);border-bottom-color:var(--mod,#2B726A)}
+.sf-sn-t{overflow:hidden;text-overflow:ellipsis}
+.sf-sn-i{font-size:15px;line-height:1}
+.sf-breadcrumb{top:56px;flex-shrink:0}
+/* panels that stay pinned while scrolling sit below header + breadcrumb + sub-menu */
+.quote-summary,.profit-results{top:158px!important}
+/* off-white tiles on module pages */
+.hp-stat{background:#F3F5F7!important;color:#1A2B3A!important;border:1px solid #E3E7EC!important;border-left:5px solid var(--acc)!important}
+.hp-stat:hover{background:#fff!important}
+.hp-stat-l{color:#4B5563!important}.hp-stat-go{color:var(--acc)!important}
+.hp-stat-v{color:var(--acc)}
+.hp-stat.hot{background:#FBEDEC!important;border-left-color:#B3261E!important}.hp-stat.hot .hp-stat-v{color:#B3261E!important}
+.hp-rel{background:#F3F5F7!important}
+@media(max-width:760px){ .sf-subnav{padding:0 6px} .sf-sn{flex:0 0 auto;min-width:0;padding:11px 14px} }
 /* Dark table headers: undo the global "#view table th{color:inherit}" bleed */
 main#view .data-table th, main#view .pipe-table th, main#view .hp-table thead th{color:#fff!important}
 @media(max-width:760px){
@@ -1230,6 +1252,8 @@ main#view .data-table th, main#view .pipe-table th, main#view .hp-table thead th
       <button id="sf-bc-module" class="sf-bc-label" type="button"></button>
       <span id="sf-bc-tab" class="sf-bc-tab"></span>
     </div>
+    <!-- Module sub-menu — one full-width bar per module, items share the width -->
+    <nav id="sf-subnav" class="sf-subnav" style="display:none" aria-label="Module menu"></nav>
     <main id="view"></main>
   </div>
 </div>
