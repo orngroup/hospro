@@ -665,7 +665,9 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 // ── SCREENS ──────────────────────────────────────────────────────────────────
 function showScreen(id){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  // Clear inline display styles too — several screens ship with style="display:none",
+  // which otherwise beats the .active class and leaves a blank screen.
+  document.querySelectorAll('.screen').forEach(s=>{ s.classList.remove('active'); s.style.display=''; });
   const s=$(id); if(s) s.classList.add('active');
 }
 
@@ -679,7 +681,7 @@ function initInstall(){
   };
   $('btn-skip-install').onclick = ()=>{
     localStorage.setItem('hf_install_seen','1');
-    showScreen('scr-login');
+    onbGoStep2();
   };
   window.addEventListener('beforeinstallprompt',e=>{
     e.preventDefault(); window._deferredPrompt=e;
@@ -1453,7 +1455,15 @@ function confirmAndStart(){
 let _reassignees=[];
 function doReassign(){
   const j=JOBS.find(x=>x.id===_jid); if(!j) return;
+  const before=j.assignees||[];
   j.assignees=_reassignees;
+  // Notify anyone newly added to the job (in-app + push)
+  try{
+    _reassignees.filter(id=>!before.includes(id)&&id!==ME).forEach(aid=>{
+      if(!ADMIN_IDS.includes(aid)) sendPersonNotification(aid,j);
+      if(typeof fcmNotify==='function') fcmNotify('job_assigned',j,[aid]);
+    });
+  }catch(e){ console.warn('reassign notify failed',e); }
   j.notes=j.notes||[];
   j.notes.push({text:'Job reassigned to '+_reassignees.map(id=>USERS.find(u=>u.id===id)?.name||id).join(', '),by:MY_USER?.name||ME,at:todayStr()});
   saveJobs(); closeModal(); toast('Reassigned ✓'); openJobDetail(_jid);
@@ -1862,11 +1872,12 @@ function loginAs(uid){
   ME=uid;
   MY_USER=USERS.find(u=>u.id===uid);
   sessionStorage.setItem('hf_user',uid);
+  IS_SUPER=SUPERVISORS.includes(uid);
   IS_APPROVER=APPROVAL_USERS.includes(uid);
+  if(typeof fcmEnsureRegistered==='function') setTimeout(()=>fcmEnsureRegistered(true),1500);
   loadPhones();
-  $('scr-login').style.display='none';
-  $('scr-home').classList.add('active');
-  updateModuleHome();
+  $('tb-user') && ($('tb-user').textContent=MY_USER.name.split(' ')[0]+' ('+MY_USER.role.split(' ')[0]+')');
+  showModuleHome();          // was updateModuleHome() — undefined, so personal-link sign-in threw here
   checkSyncHash();
 }
 
@@ -2121,31 +2132,23 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
   }
 
-  // Personal URL — skip login, show over-18 confirmation
-  if(PRESET_USER && USERS.find(u=>u.id===PRESET_USER)){
-    showScreen('scr-dob');
-    showDOBScreen();
-    if(localStorage.getItem('hf_notif_granted')==='1') fcmRegisterToken(ME);
-    checkSyncHash();
-    return;
-  }
-
-  // Onboarding / install check
+  // Onboarding: 1 add to home screen → 2 notifications → 3 selfie → over-18 sign-in
   const installed   = window.matchMedia('(display-mode:standalone)').matches || navigator.standalone === true;
   const seen        = localStorage.getItem('hf_install_seen');
-  const onboarded   = localStorage.getItem('hf_onboarded');
   const notifDone   = localStorage.getItem('hf_notif_granted') !== null;
+  const canNotify   = typeof Notification !== 'undefined';
+  const hasPreset   = PRESET_USER && USERS.find(u=>u.id===PRESET_USER);
 
   if (!installed && !seen) {
-    // First ever visit — show install prompt
-    showScreen('scr-install');
-  } else if (!notifDone && Notification && Notification.permission === 'default') {
-    // Installed but never asked about notifications
-    showScreen('scr-onb-notif');
+    showScreen('scr-install');                       // first visit in the browser
+  } else if (!notifDone && canNotify && Notification.permission === 'default') {
+    showScreen('scr-onb-notif');                     // never asked about notifications
+  } else if (hasPreset && !localStorage.getItem('hf_selfie_'+PRESET_USER) && !localStorage.getItem('hf_selfie_skip_'+PRESET_USER)) {
+    showScreen('scr-onb-selfie');                    // personal link, no photo yet
+  } else if (hasPreset) {
+    showScreen('scr-dob'); showDOBScreen();          // over-18 confirmation → straight in
   } else {
-    // All set — go straight to sign-in
-    showScreen('scr-dob');
-    showDOBScreen();
+    showScreen('scr-login');                         // generic link → pick your name
   }
   checkSyncHash();
 });
@@ -2409,6 +2412,9 @@ function onbInstallClick() {
 
 function onbGoStep2() {
   localStorage.setItem("hf_install_seen","1");
+  // iPhone Safari only offers notifications once HosFIX is opened from the home-screen icon;
+  // if the browser can't ask (or already answered), move straight on to the selfie step.
+  if (typeof Notification === "undefined" || Notification.permission !== "default") { onbGoStep3(); return; }
   showScreen("scr-onb-notif");
 }
 
@@ -2428,8 +2434,8 @@ async function onbRequestNotif() {
 
 function onbGoStep3() {
   // Check if already has selfie
-  const existing = localStorage.getItem("hf_selfie_" + (window.PRESET_USER?.id || ""));
-  if (existing) { onbGoSignIn(); return; }
+  const uid = window.PRESET_USER || "";
+  if (!uid || localStorage.getItem("hf_selfie_" + uid)) { onbGoSignIn(); return; }
   showScreen("scr-onb-selfie");
 }
 
@@ -2451,15 +2457,20 @@ function onbSelfieChosen(input) {
 }
 
 function onbSaveSelfie() {
-  if (window._pendingSelfie && window.PRESET_USER?.id) {
-    localStorage.setItem("hf_selfie_" + window.PRESET_USER.id, window._pendingSelfie);
+  const uid = window.PRESET_USER;
+  if (window._pendingSelfie && uid) {
+    try { localStorage.setItem("hf_selfie_" + uid, window._pendingSelfie); }
+    catch(e) { showToastNotification("Photo too large to save — continuing without it"); }
   }
   onbGoSignIn();
 }
 
 function onbGoSignIn() {
   localStorage.setItem("hf_onboarded","1");
-  showScreen("scr-dob");
+  if (window.PRESET_USER && !window._pendingSelfie && !localStorage.getItem("hf_selfie_" + window.PRESET_USER))
+    localStorage.setItem("hf_selfie_skip_" + window.PRESET_USER, "1");   // remember "skip"
+  if (window.PRESET_USER) { showScreen("scr-dob"); showDOBScreen(); }
+  else showScreen("scr-login");
 }
 
 // Show toast for FCM foreground messages
