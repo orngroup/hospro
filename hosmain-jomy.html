@@ -1196,18 +1196,15 @@ function submitJob(){
 
   JOBS.unshift(job);
   saveJobs();
-  sendNotif('🔧 New job assigned', title, 'assign-'+job.id);
-
-  // In-app + push notifications: admins hear about every new job, assignees get "assigned to you"
+  // Notifications go to OTHER people only — admins hear about the new job,
+  // each assignee gets "Job assigned to you". Nothing buzzes on the logger's own phone.
   try{
-    sendAdminNotification(job,'new');
+    const others=assignees.filter(a=>a!==ME);
     if(typeof fcmNotify==='function'){
-      fcmNotify(job.priority==='urgent'?'job_urgent':'job_new', job, assignees.filter(a=>a!==ME));
-      assignees.filter(a=>a!==ME).forEach(aid=>{
-        if(!ADMIN_IDS.includes(aid)) sendPersonNotification(aid,job);
-        fcmNotify('job_assigned', job, [aid]);
-      });
+      fcmNotify(job.priority==='urgent'?'job_urgent':'job_new', job, []);
+      if(others.length) fcmNotify('job_assigned', job, others).then(r=>fcmReportDelivery(r, others));
     }
+    others.forEach(aid=>{ if(!ADMIN_IDS.includes(aid)) sendPersonNotification(aid,job); });
   }catch(e){ console.warn('notify failed',e); }
 
   // Build WhatsApp links for each assignee
@@ -1463,10 +1460,9 @@ function doReassign(){
   j.assignees=_reassignees;
   // Notify anyone newly added to the job (in-app + push)
   try{
-    _reassignees.filter(id=>!before.includes(id)&&id!==ME).forEach(aid=>{
-      if(!ADMIN_IDS.includes(aid)) sendPersonNotification(aid,j);
-      if(typeof fcmNotify==='function') fcmNotify('job_assigned',j,[aid]);
-    });
+    const added=_reassignees.filter(id=>!before.includes(id)&&id!==ME);
+    added.forEach(aid=>{ if(!ADMIN_IDS.includes(aid)) sendPersonNotification(aid,j); });
+    if(added.length && typeof fcmNotify==='function') fcmNotify('job_assigned',j,added).then(r=>fcmReportDelivery(r, added));
   }catch(e){ console.warn('reassign notify failed',e); }
   j.notes=j.notes||[];
   j.notes.push({text:'Job reassigned to '+_reassignees.map(id=>USERS.find(u=>u.id===id)?.name||id).join(', '),by:MY_USER?.name||ME,at:todayStr()});
@@ -1624,7 +1620,6 @@ function doCompleteJob(jobId){
   if(note) j.notes.push({text:note,by:MY_USER?.name||ME,at:todayStr()});
   saveJobs();
   // Notify managers via push
-  sendNotif('✅ Job completed', j.title+' — completed by '+(MY_USER?.name||ME), 'complete-'+jobId);
   // In-app notification to admins on completion
   const admins=USERS.filter(u=>NOTIFY_ON_COMPLETE.includes(u.id));
   sendAdminNotification(job,'complete'); fcmNotify('job_completed',job,[]);
@@ -2301,19 +2296,38 @@ async function fcmRegisterToken(userId) {
 // Send event to Cloud Function → triggers push to recipients
 async function fcmNotify(event, job, assignees = []) {
   try {
-    await fetch(FCM_BASE + "/notify", {
+    const r = await fetch(FCM_BASE + "/notify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event, job: fcmSlimJob(job), assignees, adminIds: FCM_ADMIN_IDS.filter(id=>id!==ME) })
+      body: JSON.stringify({ event, job: fcmSlimJob(job), assignees, senderId: ME || "", adminIds: FCM_ADMIN_IDS.filter(id=>id!==ME) })
     });
-  } catch(e) { console.warn("FCM notify error:", e); }
+    return await r.json().catch(()=>null);
+  } catch(e) { console.warn("FCM notify error:", e); return null; }
 }
 
+// Tell the person assigning who actually got the push, and who hasn't set up HosFIX yet
+function fcmReportDelivery(resp, ids){
+  try{
+    const name=id=>(USERS.find(u=>u.id===id)?.name||id).split(' ')[0];
+    if(!resp || !Array.isArray(resp.results)){ showToastNotification("Couldn't reach the notification service — use the WhatsApp buttons"); return; }
+    const ok=[], missing=[];
+    ids.forEach(id=>{ const r=resp.results.find(x=>x.userId===id); (r&&r.sent>0?ok:missing).push(name(id)); });
+    let msg='';
+    if(ok.length) msg+='📲 Notified '+ok.join(' & ');
+    if(missing.length) msg+=(msg?' · ':'')+'⚠ '+missing.join(' & ')+(missing.length>1?" haven't":" hasn't")+' switched on HosFIX notifications — send WhatsApp';
+    if(msg) showToastNotification(msg);
+  }catch(e){}
+}
+
+const HF_ALERTED = new Set();   // job alerts already shown on this device
 // Foreground messages (app open) — show in-app toast + bell
 fbInit();
 if (fbMsg) {
   fbMsg.onMessage(payload => {
     const d = payload.data || payload.notification || {};
+    const jid = String(d.url||"").split("#job=")[1] || "";
+    if (jid && HF_ALERTED.has("assign-"+jid) && /assigned/i.test(d.title||"")) return;
+    if (jid) HF_ALERTED.add("assign-"+jid);
     showToastNotification(d.title + (d.body ? ": " + d.body : ""));
     updateNotifBadge && updateNotifBadge();
   });
@@ -2372,8 +2386,24 @@ function jobSyncPush(){
 function jobSyncStart(){
   fbInit(); if(!fbDb || JOB_SYNC.on) return;
   JOB_SYNC.on = true;
+  JOB_SYNC.first = true;
   fbDb.collection("hosfix_jobs").onSnapshot(qs=>{
     let changed=false;
+    // Backup to push: if this phone's user is newly on a job someone else changed, alert here too
+    if(!JOB_SYNC.first && ME){
+      qs.docChanges().forEach(ch=>{
+        if(ch.type==="removed" || (ch.doc.metadata && ch.doc.metadata.hasPendingWrites)) return;
+        const r=ch.doc.data()||{}; const local=JOBS.find(j=>j.id===r.id);
+        const was=(local&&local.assignees)||[], now=r.assignees||[];
+        if(now.includes(ME) && !was.includes(ME) && r.createdBy!==ME && !HF_ALERTED.has("assign-"+r.id)){
+          HF_ALERTED.add("assign-"+r.id);
+          showToastNotification("📋 Job assigned to you: "+(r.title||""));
+          try{ if(typeof Notification!=="undefined" && Notification.permission==="granted" && document.visibilityState!=="visible")
+                 sendNotif("📋 Job assigned to you", (r.title||"")+(r.location?" — "+r.location:""), "assign-"+r.id); }catch(e){}
+        }
+      });
+    }
+    JOB_SYNC.first = false;
     qs.docChanges().forEach(ch=>{
       if(ch.type==="removed") return;
       const r = ch.doc.data(); if(!r || !r.id) return;
