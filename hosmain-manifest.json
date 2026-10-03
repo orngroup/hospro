@@ -1,11 +1,10 @@
 {
   "name": "Brandon Hall HosFIX",
   "short_name": "HosFIX",
-  "description": "Brandon Hall Hotel and Spa \u2014 Maintenance & Compliance Management",
-  "start_url": "/hosmain.html",
+  "description": "Brandon Hall Hotel and Spa — Maintenance & Compliance Management",
   "display": "standalone",
-  "background_color": "#1a2b3a",
-  "theme_color": "#1a2b3a",
+  "background_color": "#182A3E",
+  "theme_color": "#182A3E",
   "orientation": "portrait",
   "categories": [
     "productivity",
@@ -24,5 +23,6 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "scope": "/"
 }

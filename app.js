@@ -3542,7 +3542,7 @@ function renderGroupConfig(v){
         <div class="opt best" style="border:1px solid var(--gold);border-radius:12px;padding:16px;box-shadow:0 4px 16px rgba(201,169,120,.15)">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--navy);font-weight:600">Dinner B&B</div>
-            <span style="font-size:11px;font-weight:700;background:#e6f6f4;color:#159187;padding:2px 10px;border-radius:10px">Recommended</span>
+            <span style="font-size:11px;font-weight:700;background:#E8F4F2;color:#3A8A81;padding:2px 10px;border-radius:10px">Recommended</span>
           </div>
           <div style="font-size:12px;color:#374151;margin-bottom:8px">${money(dbbRate)} per person per night</div>
           <table style="width:100%;font-size:13px;border-collapse:collapse">
@@ -4098,6 +4098,22 @@ function renderHome(v){
   const wrap = document.createElement('div');
   wrap.style.cssText = 'min-height:100%;background:#1a2b3a';
 
+  // ── Home banner: greeting over the Brandon Hall grounds ────────────────────
+  const hr=new Date().getHours(), greet=hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
+  const first=(SESSION&&SESSION.name||'').split(' ')[0];
+  const homeHero=document.createElement('div');
+  homeHero.style.cssText='padding:24px 28px 0';
+  homeHero.innerHTML=`<div class="hp-hero hp-hero-home-banner" style="--hero:url('assets/hospro/hero-home.jpg')">
+      <div class="hp-hero-in">
+        <div>
+          <div class="hp-hero-s" style="margin:0 0 6px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:#c9a978">Brandon Hall Hotel &amp; Spa</div>
+          <div class="hp-hero-t">${greet}${first?', '+first:''}</div>
+          <div class="hp-hero-s">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+        </div>
+      </div>
+    </div>`;
+  wrap.appendChild(homeHero);
+
   // ── Module cards — 2 rows of 6 ────────────────────────────────────────────
   const cardsSection = document.createElement('div');
   cardsSection.style.cssText = 'padding:28px 28px 0';
@@ -4406,7 +4422,7 @@ function renderModuleLanding(moduleId){
   content.style.cssText = "padding:32px";
 
   // Module header — hero banner with a Brandon Hall photograph
-  const hero = HP_MOD_HERO[moduleId] || "assets/hotel/exterior-dusk.png";
+  const hero = HP_MOD_HERO[moduleId] || "assets/hospro/hero-home.jpg";
   content.innerHTML = `
     <div class="hp-hero" style="--hero:url('${hero}')">
       <div class="hp-hero-in">
@@ -4433,7 +4449,7 @@ function renderModuleLanding(moduleId){
         <div style="font-size:15px;font-weight:700;color:#1a2b3a;line-height:1.2">${sc.label}</div>
         <div style="font-size:12px;color:#374151;margin-top:5px;line-height:1.5">${sc.desc}</div>
       </div>
-      <div style="font-size:11px;font-weight:700;color:${m.colour};display:flex;align-items:center;gap:4px">Open <span>→</span></div>`;
+      <div style="font-size:11px;font-weight:700;color:#2F7A72;display:flex;align-items:center;gap:4px">Open <span>→</span></div>`;
     card.onmouseover = ()=>{ card.style.background="#fff"; card.style.borderColor=m.colour; card.style.transform="translateY(-4px)"; card.style.boxShadow=`0 12px 28px rgba(0,0,0,.12)`; };
     card.onmouseout  = ()=>{ card.style.background="rgba(255,255,255,.92)"; card.style.borderColor="rgba(255,255,255,.9)"; card.style.transform=""; card.style.boxShadow="0 2px 10px rgba(0,0,0,.08)"; };
     card.onclick = () => switchTab(sc.tab);
@@ -5720,7 +5736,7 @@ function renderFixDash(v){
         <p style="font-size:13px;color:#374151">Brandon Hall Hotel and Spa · Property & Maintenance Management</p>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open mobile app ↗</a>
+        <a href="hosfix.html" target="_blank" class="btn" style="background:#3A8A81;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open mobile app ↗</a>
       </div>
     </div>
 
@@ -5764,7 +5780,7 @@ function renderFixDash(v){
       </table>
     </div>`:`<div style="background:#fff;border-radius:12px;padding:40px;text-align:center;box-shadow:0 2px 8px rgba(26,43,58,.05)">
       <div style="font-size:14px;color:#374151">No maintenance jobs logged yet.</div>
-      <a href="hosfix.html" target="_blank" style="display:inline-block;margin-top:12px;padding:11px 20px;background:#c45c00;color:#fff;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none">Open HosFIX mobile app →</a>
+      <a href="hosfix.html" target="_blank" style="display:inline-block;margin-top:12px;padding:11px 20px;background:#3A8A81;color:#fff;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none">Open HosFIX mobile app →</a>
     </div>`}
   </div>`;
 }
@@ -5773,7 +5789,7 @@ function renderFixJobs(v){
   v.innerHTML=`<div style="padding:20px;text-align:center">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">All Maintenance Jobs</div>
     <p style="font-size:14px;color:#374151;margin-bottom:20px">Log and manage jobs on the mobile app — use the dashboard above for a full overview.</p>
-    <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;display:inline-block">Open HosFIX mobile app ↗</a>
+    <a href="hosfix.html" target="_blank" class="btn" style="background:#3A8A81;text-decoration:none;display:inline-block">Open HosFIX mobile app ↗</a>
   </div>`;
 }
 
@@ -5781,7 +5797,7 @@ function renderFixProjects(v){
   v.innerHTML=`<div style="padding:20px;text-align:center">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Maintenance Projects</div>
     <p style="font-size:14px;color:#374151;margin-bottom:20px">Spa Refurbishment, Woodland Maintenance, Bedroom Refurb and more — manage projects on the mobile app.</p>
-    <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;display:inline-block">Open HosFIX mobile app ↗</a>
+    <a href="hosfix.html" target="_blank" class="btn" style="background:#3A8A81;text-decoration:none;display:inline-block">Open HosFIX mobile app ↗</a>
   </div>`;
 }
 
@@ -5793,7 +5809,7 @@ function openPortalJobDetail(jobId){
     {id:"raj",name:"Raj Kumar",color:"#1a2b3a"},{id:"ajay",name:"Ajay Kawa",color:"#c78a3b"},
     {id:"alia",name:"Alia Taub",color:"#5a8fc7"},{id:"glenn",name:"Glenn Randell",color:"#b8860b"},
     {id:"ruth",name:"Ruth Addison",color:"#be185d"},{id:"patrik",name:"Patrik Vlach",color:"#6366f1"},
-    {id:"pete",name:"Pete",color:"#20b2a2"},{id:"jomy",name:"Jomy",color:"#0891b2"},
+    {id:"pete",name:"Pete",color:"#4DA69C"},{id:"jomy",name:"Jomy",color:"#0891b2"},
     {id:"herman",name:"Herman Charles",color:"#2a6a4a"}
   ];
   const assignees=(j.assignees||[]).map(id=>HFUSERS.find(u=>u.id===id)).filter(Boolean);
@@ -5832,7 +5848,7 @@ function renderFixTeam(v){
     {id:"glenn",  name:"Glenn Randell", role:"Maintenance Manager",          color:"#b8860b"},
     {id:"ruth",   name:"Ruth Addison",  role:"Housekeeping Manager",         color:"#be185d"},
     {id:"herman", name:"Herman",        role:"Multi-trader (non-electrical)", color:"#2a6a4a"},
-    {id:"pete",   name:"Pete",          role:"Multi-trader (electrical)",     color:"#20b2a2"},
+    {id:"pete",   name:"Pete",          role:"Multi-trader (electrical)",     color:"#4DA69C"},
     {id:"daniel", name:"Daniel",        role:"General Labour",               color:"#7c3aed"},
   ];
   const JOBS=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');
@@ -5848,7 +5864,7 @@ function renderFixTeam(v){
         <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Team &amp; Profiles</h2>
         <p style="font-size:13px;color:#374151">Staff profiles, contracted hours, rates and productivity. Edit profiles to update rates.</p>
       </div>
-      <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open HosFIX app ↗</a>
+      <a href="hosfix.html" target="_blank" class="btn" style="background:#3A8A81;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open HosFIX app ↗</a>
     </div>
 
     <!-- Summary strip -->
@@ -5975,7 +5991,7 @@ function renderFixInventory(v){
         <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Stock &amp; Inventory</h2>
         <p style="font-size:13px;color:#374151">Maintenance stock levels, trade prices and reorder alerts. Update stock on the mobile app.</p>
       </div>
-      <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;font-size:13px;padding:10px 18px">📱 Update stock on app ↗</a>
+      <a href="hosfix.html" target="_blank" class="btn" style="background:#3A8A81;text-decoration:none;font-size:13px;padding:10px 18px">📱 Update stock on app ↗</a>
     </div>
 
     <!-- Summary -->
@@ -6057,7 +6073,7 @@ function renderFixAllJobs(v){
     {id:"raj",name:"Raj Kumar",color:"#1a2b3a"},{id:"ajay",name:"Ajay Kawa",color:"#c78a3b"},
     {id:"alia",name:"Alia Taub",color:"#5a8fc7"},{id:"glenn",name:"Glenn Randell",color:"#b8860b"},
     {id:"ruth",name:"Ruth Addison",color:"#be185d"},{id:"jomy",name:"Jomy",color:"#0891b2"},{id:"patrik",name:"Patrik Vlach",color:"#6366f1"},
-    {id:"pete",name:"Pete",color:"#20b2a2"},{id:"herman",name:"Herman Charles",color:"#2a6a4a"},
+    {id:"pete",name:"Pete",color:"#4DA69C"},{id:"herman",name:"Herman Charles",color:"#2a6a4a"},
   ];
   const money=n=>'£'+Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
   const inits=n=>n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
@@ -6075,7 +6091,7 @@ function renderFixAllJobs(v){
         <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">All Maintenance Jobs</h2>
         <p style="font-size:13px;color:#374151">${JOBS.length} jobs total · ${open.length} open · ${done.length} complete</p>
       </div>
-      <a href="hosfix.html" target="_blank" class="btn" style="background:#c45c00;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open mobile app ↗</a>
+      <a href="hosfix.html" target="_blank" class="btn" style="background:#3A8A81;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open mobile app ↗</a>
     </div>
 
     <!-- Stats -->
@@ -8088,13 +8104,13 @@ if(typeof window.restaurantSVG!=="function"){
    MODULE LANDING EXTRAS — hero photo, "Today at a glance", "Related"
    ============================================================ */
 const HP_MOD_HERO = {
-  hosops:    "assets/hotel/exterior-front.png",
-  hossales:  "assets/hotel/restaurant.png",
-  hosvenue:  "assets/hotel/exterior-lawn.png",
-  hosstudio: "assets/hotel/terrace.png",
-  hosbrand:  "assets/hotel/exterior-dusk.png",
-  hospeople: "assets/hotel/reception.png",
-  hoshub:    "assets/hotel/bar-lounge.png",
+  hosops:    "assets/hospro/hero-hosops.jpg",
+  hossales:  "assets/hospro/hero-hossales.jpg",
+  hosvenue:  "assets/hospro/hero-hosvenue.jpg",
+  hosstudio: "assets/hospro/hero-hosstudio.jpg",
+  hosbrand:  "assets/hospro/hero-hosbrand.jpg",
+  hospeople: "assets/hospro/hero-hospeople.jpg",
+  hoshub:    "assets/hospro/hero-hoshub.jpg",
 };
 const HP_HOTEL_PHOTOS = [
   ["exterior-dusk.png","Exterior at dusk"],["exterior-front.png","Front entrance"],["exterior-lawn.png","Lawns"],
@@ -8212,7 +8228,7 @@ function hpLandingExtras(m){
       box.innerHTML+=`<div class="hp-sec-h">Today at a glance</div>
         <div class="hp-glance">${stats.map(([v,l,tab,col,alert])=>{
           const hot = alert && Number(v)>0;
-          return `<button class="hp-stat${hot?' hot':''}" onclick="switchTab('${tab}')" style="--acc:${col}">
+          return `<button class="hp-stat${hot?' hot':''}" onclick="switchTab('${tab}')" style="--acc:${alert?'#b3261e':'#4DA69C'}">
             <span class="hp-stat-v">${v}</span><span class="hp-stat-l">${l}</span><span class="hp-stat-go">Open →</span></button>`; }).join("")}</div>`;
     }
   }
@@ -8222,7 +8238,7 @@ function hpLandingExtras(m){
     box.innerHTML+=`<div class="hp-sec-h">Related</div>
       <div class="hp-related">${rel.map(([tab,label,why])=>{
         const om=hpModuleFor(tab);
-        return `<button class="hp-rel" onclick="switchTab('${tab}')" style="--acc:${om?om.colour:'#c78a3b'}">
+        return `<button class="hp-rel" onclick="switchTab('${tab}')" style="--acc:#2F7A72">
           <span class="hp-rel-mod">${om?om.icon+" "+om.name:""}</span>
           <span class="hp-rel-t">${label}</span><span class="hp-rel-w">${why}</span></button>`; }).join("")}</div>`;
   }

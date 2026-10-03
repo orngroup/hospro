@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#1a2b3a">
-<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/hospro/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/hospro/apple-touch-icon.png">
 <title>HOSPRO · Brandon Hall Hotel and Spa</title>
 <meta name="description" content="Complete your pre check-in for Brandon Hall Hotel and Spa. We look forward to welcoming you.">
 <!-- Link preview (WhatsApp / social / email) -->
@@ -25,7 +26,7 @@
 <style>
 :root{
   --navy:#1a2b47; --navy-dk:#101d33; --navy-lt:#2d4569;
-  --brand-navy:#1a2b3a; --brand-teal:#20b2a2; --brand-teal-dk:#159187; --brand-beige:#eef2f4;
+  --brand-navy:#1a2b3a; --brand-teal:#4DA69C; --brand-teal-dk:#3A8A81; --brand-beige:#eef2f4;
   --brand-sans:'Manrope',system-ui,sans-serif;
   --gold:#BB9979; --gold-dk:#9d7d5f; --gold-soft:#e8dccf;
   --rust:#9b320f; --rust-lt:#b8481f;
@@ -46,14 +47,14 @@ a{color:var(--gold-dk)}
 /* ---------- LOGIN ---------- */
 #login{min-height:100dvh;padding:40px;position:relative;display:flex;
   align-items:flex-end;justify-content:flex-end;
-  background:url('assets/hospro/login-bg.png') center/cover no-repeat;font-family:var(--brand-sans)}
+  background:url('assets/hospro/login-bg.jpg') center/cover no-repeat;font-family:var(--brand-sans)}
 #login::before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,rgba(16,28,40,.72) 0%,rgba(16,28,40,.35) 45%,rgba(16,28,40,.15) 100%);pointer-events:none}
 .hp-login-logo{position:absolute;top:36px;left:40px;z-index:3;width:190px;max-width:44vw}
 .hp-login-foot{position:absolute;bottom:20px;left:40px;z-index:3;color:rgba(255,255,255,.7);font-size:12px;letter-spacing:.5px}
 .login-card{background:rgba(255,255,255,.98);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.45);
   width:100%;max-width:400px;padding:38px 36px;text-align:left;position:relative;z-index:10}
 .hp-hotel-tag{display:inline-block;font-size:12px;font-weight:700;color:var(--brand-teal-dk);
-  background:#e6f6f4;padding:5px 12px;border-radius:20px;margin-bottom:16px;letter-spacing:.3px}
+  background:#E8F4F2;padding:5px 12px;border-radius:20px;margin-bottom:16px;letter-spacing:.3px}
 .hp-welcome{font-family:var(--brand-sans);font-size:28px;font-weight:800;color:var(--brand-navy);letter-spacing:-.5px}
 .login-card .sub{color:var(--muted);font-size:13.5px;margin-bottom:24px}
 .field{text-align:left;margin-bottom:16px}
@@ -1123,6 +1124,7 @@ main#view.hp-surface .btn.ghost.sm:hover,#modal-root .btn.ghost.sm:hover{border-
 .hp-hero{position:relative;border-radius:18px;overflow:hidden;margin-bottom:24px;min-height:190px;display:flex;align-items:flex-end;
   background:linear-gradient(90deg,rgba(16,28,40,.92) 0%,rgba(16,28,40,.55) 55%,rgba(16,28,40,.25) 100%),var(--hero) center/cover no-repeat,linear-gradient(135deg,#243447,#1a2b3a);
   box-shadow:0 8px 28px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08)}
+.hp-hero-home-banner{margin-bottom:0;min-height:170px}
 .hp-hero-in{display:flex;align-items:center;gap:16px;padding:26px 28px;width:100%}
 .hp-hero-ico{width:60px;height:60px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;border:2px solid rgba(255,255,255,.35)}
 .hp-hero-t{font-family:'Cormorant Garamond',Georgia,serif;font-size:36px;font-weight:700;color:#fff;line-height:1;text-shadow:0 2px 12px rgba(0,0,0,.4)}

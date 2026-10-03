@@ -847,29 +847,29 @@ const BROCHURE_TEMPLATES = {
    ============================================================ */
 const // Module groups for collapsible sidebar
 MODULE_GROUPS = [
-  { id:'ops',     label:'Operations',           icon:'🔧', colour:'#c45c00', modules:['hosops'] },
-  { id:'sales',   label:'Sales & Events',       icon:'💼', colour:'#8b5c8f', modules:['hossales'] },
-  { id:'venue',   label:'Venue & Corporate',    icon:'🏛', colour:'#2f6f9e', modules:['hosvenue'] },
-  { id:'studio',  label:'Marketing & Creative', icon:'📣', colour:'#c85c6b', modules:['hosstudio'] },
-  { id:'brand',   label:'Brand & Downloads',    icon:'📁', colour:'#1a2b3a', modules:['hosbrand'] },
-  { id:'people',  label:'People & Shifts',      icon:'👥', colour:'#4a86c7', modules:['hospeople'] },
-  { id:'hub',     label:'Document Hub',          icon:'📂', colour:'#4a9d7f', modules:['hoshub'] },
+  { id:'ops',     label:'Operations',           icon:'🔧', colour:'#4DA69C', modules:['hosops'] },
+  { id:'sales',   label:'Sales & Events',       icon:'💼', colour:'#4DA69C', modules:['hossales'] },
+  { id:'venue',   label:'Venue & Corporate',    icon:'🏛', colour:'#4DA69C', modules:['hosvenue'] },
+  { id:'studio',  label:'Marketing & Creative', icon:'📣', colour:'#4DA69C', modules:['hosstudio'] },
+  { id:'brand',   label:'Brand & Downloads',    icon:'📁', colour:'#4DA69C', modules:['hosbrand'] },
+  { id:'people',  label:'People & Shifts',      icon:'👥', colour:'#4DA69C', modules:['hospeople'] },
+  { id:'hub',     label:'Document Hub',          icon:'📂', colour:'#4DA69C', modules:['hoshub'] },
 ];
 
 FLOW_MODULES = [
-  { id:"hosops",    name:"HosOPS",     caption:"Operations. Maintenance. Compliance.", icon:"🔧", colour:"#c45c00", tint:"#fff3e8",
+  { id:"hosops",    name:"HosOPS",     caption:"Operations. Maintenance. Compliance.", icon:"🔧", colour:"#4DA69C", tint:"#E8F4F2",
     tabs:["fixDash","fixAllJobs","fixProjects","fixInventory","fixTeam","compDash","compTasks","compActions","compReport","tasks","beverage","mne","suppliers"] },
-  { id:"hossales",  name:"HosSALES",   caption:"Sales. Events. Dining. Revenue.",      icon:"💼", colour:"#8b5c8f", tint:"#f1e9f2",
+  { id:"hossales",  name:"HosSALES",   caption:"Sales. Events. Dining. Revenue.",      icon:"💼", colour:"#4DA69C", tint:"#E8F4F2",
     tabs:["pipeline","quotes","quote","profit","contracts","payments","dining","chat"] },
-  { id:"hosvenue",  name:"HosVENUE",   caption:"Venue. Rooms. Corporate. Stays.",      icon:"🏛", colour:"#2f6f9e", tint:"#e6eef5",
+  { id:"hosvenue",  name:"HosVENUE",   caption:"Venue. Rooms. Corporate. Stays.",      icon:"🏛", colour:"#4DA69C", tint:"#E8F4F2",
     tabs:["rooms","groupconfig","packages","corpdb","corprates","precheckin","feedback"] },
-  { id:"hosstudio", name:"HosSTUDIO",  caption:"Marketing. Campaigns. Creative.",      icon:"📣", colour:"#c85c6b", tint:"#f8e9eb",
+  { id:"hosstudio", name:"HosSTUDIO",  caption:"Marketing. Campaigns. Creative.",      icon:"📣", colour:"#4DA69C", tint:"#E8F4F2",
     tabs:["marketing","social","brochure","menu"] },
-  { id:"hosbrand",  name:"HosBRAND",   caption:"Brand. Collateral. Downloads.",        icon:"📁", colour:"#1a2b3a", tint:"#e8eaed",
+  { id:"hosbrand",  name:"HosBRAND",   caption:"Brand. Collateral. Downloads.",        icon:"📁", colour:"#4DA69C", tint:"#E8F4F2",
     tabs:["brandLogos","brandCollateral","brandPhotography","brandDocs"] },
-  { id:"hospeople", name:"HosPEOPLE",  caption:"People. Shifts. HR. Leave.",           icon:"👥", colour:"#4a86c7", tint:"#e6eff8",
+  { id:"hospeople", name:"HosPEOPLE",  caption:"People. Shifts. HR. Leave.",           icon:"👥", colour:"#4DA69C", tint:"#E8F4F2",
     tabs:["rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings","staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs"] },
-  { id:"hoshub",    name:"HosHUB",     caption:"Documents. Contracts. Finance. HR.",   icon:"📂", colour:"#4a9d7f", tint:"#e7f3ee",
+  { id:"hoshub",    name:"HosHUB",     caption:"Documents. Contracts. Finance. HR.",   icon:"📂", colour:"#4DA69C", tint:"#E8F4F2",
     tabs:["hubDocs","hubContracts","hubSuppliers","hubFinance","hubHR"] },
 ];
 
