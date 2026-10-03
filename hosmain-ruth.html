@@ -232,6 +232,11 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
 #toast{position:fixed;bottom:calc(80px + var(--safe-bot));left:50%;transform:translateX(-50%);
   background:rgba(26,43,58,.92);color:#fff;padding:10px 20px;border-radius:20px;
   font:700 14px 'Lato';z-index:999;display:none;white-space:nowrap}
+.hf-bell{position:relative;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);
+  font-size:18px;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;flex-shrink:0;touch-action:manipulation}
+.hf-bell-n{position:absolute;top:-4px;right:-4px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#d93025;color:#fff;
+  font:800 11px Lato,sans-serif;align-items:center;justify-content:center;border:2px solid #182A3E}
+#scr-home{position:fixed}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -455,6 +460,7 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
   <div class="lg-name" style="margin-bottom:4px">Hos<span>FIX</span></div>
   <div class="lg-hotel" style="margin-bottom:3px">Brandon Hall Hotel and Spa</div>
   <div class="lg-tagline" style="margin-bottom:24px">MAINTENANCE &amp; COMPLIANCE MANAGEMENT</div>
+  <button type="button" class="hf-bell" id="mh-bell" onclick="showNotificationsPanel()" aria-label="Notifications" style="position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:16px">🔔<span class="hf-bell-n" style="display:none"></span></button>
   <div class="mh-greeting" id="mh-greeting">Good morning</div>
   <div class="mh-tiles">
     <div class="mh-tile maint" id="tile-maint">
@@ -496,6 +502,7 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
       <div class="bs">BRANDON HALL</div>
     </div>
     <div class="tb-chip" id="tb-user"></div>
+    <button type="button" class="hf-bell" id="tb-bell" onclick="showNotificationsPanel()" aria-label="Notifications" style="">🔔<span class="hf-bell-n" style="display:none"></span></button>
     <button class="tb-out" id="btn-signout-app">Sign out</button>
   </div>
   <div id="timer-bar" style="display:none"></div>
@@ -767,7 +774,7 @@ function signOut(){
 // ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
 let swReg=null;
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/hosmain-sw.js?v=202610011935')
+  navigator.serviceWorker.register('/hosmain-sw.js?v=20261003b')
     .then(r=>{swReg=r;}).catch(()=>{});
 }
 
@@ -1201,7 +1208,7 @@ function submitJob(){
   try{
     const others=assignees.filter(a=>a!==ME);
     if(typeof fcmNotify==='function'){
-      fcmNotify(job.priority==='urgent'?'job_urgent':'job_new', job, []);
+      fcmNotify(job.priority==='urgent'?'job_urgent':'job_new', job, [], others);
       if(others.length) fcmNotify('job_assigned', job, others).then(r=>fcmReportDelivery(r, others));
     }
     others.forEach(aid=>{ if(!ADMIN_IDS.includes(aid)) sendPersonNotification(aid,job); });
@@ -1622,7 +1629,7 @@ function doCompleteJob(jobId){
   // Notify managers via push
   // In-app notification to admins on completion
   const admins=USERS.filter(u=>NOTIFY_ON_COMPLETE.includes(u.id));
-  sendAdminNotification(job,'complete'); fcmNotify('job_completed',job,[]);
+  fcmNotify('job_completed',job,[]);
   html+='<button type="button" class="btn btn-ghost" style="margin-top:6px" onclick="closeModal()">Done</button>';
   openModal(html);
   updateTimerBar(); render();
@@ -1878,6 +1885,7 @@ function loginAs(uid){
   $('tb-user') && ($('tb-user').textContent=MY_USER.name.split(' ')[0]+' ('+MY_USER.role.split(' ')[0]+')');
   showModuleHome();          // was updateModuleHome() — undefined, so personal-link sign-in threw here
   checkSyncHash();
+  try{ const pj=sessionStorage.getItem('hf_pending_job'); if(pj){ sessionStorage.removeItem('hf_pending_job'); setTimeout(()=>hfOpenJob(pj),400); } }catch(e){}
 }
 
 function loadPhones(){
@@ -1902,7 +1910,7 @@ function checkSyncHash(){
     history.replaceState(null,'',location.pathname);
     // Open maintenance module and show the job
     setTimeout(()=>{
-      if(!ME){ toast('Please sign in to view this job'); return; }
+      if(!ME){ try{ sessionStorage.setItem('hf_pending_job',jobId); }catch(e){} return; }
       ACTIVE_MODULE='maintenance'; VIEW='jobs';
       $('scr-home').classList.remove('active');
       $('app').style.display='flex';
@@ -2196,6 +2204,7 @@ function updateNotifBadge(){
   const unread=getMyNotifications().filter(n=>!n.readBy.includes(ME)).length;
   const badge=document.getElementById('notif-badge');
   if(badge){ badge.textContent=unread||''; badge.style.display=unread?'flex':'none'; }
+  document.querySelectorAll('.hf-bell-n').forEach(b=>{ b.textContent=unread>9?'9+':(unread||''); b.style.display=unread?'flex':'none'; });
 }
 
 function showToastNotification(msg){
@@ -2225,7 +2234,7 @@ function showNotificationsPanel(){
   const html=`<div style="padding:4px">
     <div style="font-size:16px;font-weight:700;color:#1a2b3a;margin-bottom:14px">🔔 Notifications</div>
     ${notifs.length?notifs.slice(0,20).map(n=>`
-      <div onclick="if('${n.jobId}'){VIEW='job-detail';SELECTED_JOB_ID='${n.jobId}';closeModal();renderApp();}"
+      <div onclick="if('${n.jobId}'){document.getElementById('modal-overlay')&&document.getElementById('modal-overlay').remove();hfOpenJob('${n.jobId}');}"
         style="padding:12px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px;cursor:pointer;background:${n.readBy.includes(ME)?'#fff':'#f0f9ff'}"
         onmouseover="this.style.background='#e6f4ff'" onmouseout="this.style.background='${n.readBy.includes(ME)?'#fff':'#f0f9ff'}'">
         <div style="font-size:13px;font-weight:600;color:#1a2b3a">${n.msg}</div>
@@ -2294,12 +2303,12 @@ async function fcmRegisterToken(userId) {
 }
 
 // Send event to Cloud Function → triggers push to recipients
-async function fcmNotify(event, job, assignees = []) {
+async function fcmNotify(event, job, assignees = [], skipAdmins = []) {
   try {
     const r = await fetch(FCM_BASE + "/notify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event, job: fcmSlimJob(job), assignees, senderId: ME || "", adminIds: FCM_ADMIN_IDS.filter(id=>id!==ME) })
+      body: JSON.stringify({ event, job: fcmSlimJob(job), assignees, senderId: ME || "", adminIds: FCM_ADMIN_IDS.filter(id=>id!==ME && !skipAdmins.includes(id)) })
     });
     return await r.json().catch(()=>null);
   } catch(e) { console.warn("FCM notify error:", e); return null; }
@@ -2319,17 +2328,15 @@ function fcmReportDelivery(resp, ids){
   }catch(e){}
 }
 
-const HF_ALERTED = new Set();   // job alerts already shown on this device
 // Foreground messages (app open) — show in-app toast + bell
 fbInit();
 if (fbMsg) {
   fbMsg.onMessage(payload => {
-    const d = payload.data || payload.notification || {};
-    const jid = String(d.url||"").split("#job=")[1] || "";
-    if (jid && HF_ALERTED.has("assign-"+jid) && /assigned/i.test(d.title||"")) return;
-    if (jid) HF_ALERTED.add("assign-"+jid);
-    showToastNotification(d.title + (d.body ? ": " + d.body : ""));
-    updateNotifBadge && updateNotifBadge();
+    const d = payload.data || {};
+    const jobId = d.jobId || String(d.url||"").split("#job=")[1] || "";
+    const job = JOBS.find(j=>j.id===jobId) || { id: jobId||("p"+Date.now()), title: (d.body||"").replace(/^"|"\s*—.*$/g,""), priority: d.urgent==="true"?"urgent":"" };
+    const kind = d.kind || (/assigned/i.test(d.title||"")?"assigned":/urgent/i.test(d.title||"")?"urgent":/complete/i.test(d.title||"")?"complete":"new");
+    hfNotify(kind, job, { fromPush:true });
   });
 }
 
@@ -2372,37 +2379,35 @@ function jobForCloud(j){
 }
 function jobSyncPush(){
   if(!JOB_SYNC.on || !fbDb) return;
-  const batch = fbDb.batch(); let n=0;
   JOBS.forEach(j=>{
     const sig = jobSig(j);
     if(JOB_SYNC.sent[j.id] === sig) return;
     j.updatedAt = new Date().toISOString();
-    JOB_SYNC.sent[j.id] = sig;
-    batch.set(fbDb.collection("hosfix_jobs").doc(String(j.id)), jobForCloud(j));
-    n++;
+    j.updatedBy = ME || j.updatedBy || "";
+    JOB_SYNC.sent[j.id] = jobSig(j);
+    fbDb.collection("hosfix_jobs").doc(String(j.id)).set(jobForCloud(j)).catch(e=>{
+      console.warn("Job sync write failed:", j.id, e && e.message);
+      delete JOB_SYNC.sent[j.id];
+      if(!JOB_SYNC.warned){ JOB_SYNC.warned=true; showToastNotification("⚠ Jobs not syncing to the team: "+((e&&e.message)||"connection problem")); }
+    });
   });
-  if(n) batch.commit().catch(e=>{ console.warn("Job sync write failed:", e && e.message); JOB_SYNC.sent={}; });
 }
+
 function jobSyncStart(){
   fbInit(); if(!fbDb || JOB_SYNC.on) return;
   JOB_SYNC.on = true;
   JOB_SYNC.first = true;
   fbDb.collection("hosfix_jobs").onSnapshot(qs=>{
     let changed=false;
-    // Backup to push: if this phone's user is newly on a job someone else changed, alert here too
-    if(!JOB_SYNC.first && ME){
-      qs.docChanges().forEach(ch=>{
-        if(ch.type==="removed" || (ch.doc.metadata && ch.doc.metadata.hasPendingWrites)) return;
-        const r=ch.doc.data()||{}; const local=JOBS.find(j=>j.id===r.id);
-        const was=(local&&local.assignees)||[], now=r.assignees||[];
-        if(now.includes(ME) && !was.includes(ME) && r.createdBy!==ME && !HF_ALERTED.has("assign-"+r.id)){
-          HF_ALERTED.add("assign-"+r.id);
-          showToastNotification("📋 Job assigned to you: "+(r.title||""));
-          try{ if(typeof Notification!=="undefined" && Notification.permission==="granted" && document.visibilityState!=="visible")
-                 sendNotif("📋 Job assigned to you", (r.title||"")+(r.location?" — "+r.location:""), "assign-"+r.id); }catch(e){}
-        }
-      });
-    }
+    // Alerts for the person on THIS phone (new job / assigned to me / completed)
+    const pending=[];
+    qs.docChanges().forEach(ch=>{
+      if(ch.type==="removed" || (ch.doc.metadata && ch.doc.metadata.hasPendingWrites)) return;
+      const r=ch.doc.data()||{}; const prev=JOBS.find(j=>j.id===r.id);
+      const kind=hfAlertForChange(prev, r, JOB_SYNC.first);
+      if(kind) pending.push([kind,r]);
+    });
+    const wasFirst = JOB_SYNC.first;
     JOB_SYNC.first = false;
     qs.docChanges().forEach(ch=>{
       if(ch.type==="removed") return;
@@ -2422,6 +2427,12 @@ function jobSyncStart(){
     JOBS.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
     try{ localStorage.setItem("hosfix_jobs", JSON.stringify(JOBS)); }catch(e){}
     jobSyncPush();
+    if(pending.length){
+      if(wasFirst){
+        const n=pending.filter(([k,r])=>hfNotify(k,r,{quiet:true})).length;
+        if(n && ME){ hfPopup("🔔 "+n+" new job update"+(n>1?"s":""), "Tap the bell to see them", n===1?pending[0][1].id:"", pending.some(([k])=>k==="assigned"||k==="urgent")); hfChime(true); try{ navigator.vibrate&&navigator.vibrate([600,200,600]); }catch(e){} }
+      } else pending.forEach(([k,r])=>hfNotify(k,r));
+    }
     if(changed){
       const typing = document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
       const appOpen = document.getElementById("app") && document.getElementById("app").style.display==="flex";
@@ -2432,6 +2443,134 @@ function jobSyncStart(){
 }
 jobSyncStart();
 setTimeout(()=>fcmEnsureRegistered(false), 4000);
+
+// ── RECEIVER-SIDE ALERTS ─────────────────────────────────────────────────────
+// Every alert is created on the phone of the person it is FOR: a bell entry,
+// a pop-up card with sound + long vibration, and a system banner if the app
+// is in the background. Pushes and the live job sync both feed in here and are
+// de-duplicated per job, so nobody gets the same alert twice.
+const HF_ALERT_KEY = () => "hf_alerted_" + (ME || window.PRESET_USER || "x");
+function hfAlerted(){ try{ return new Set(JSON.parse(localStorage.getItem(HF_ALERT_KEY())||"[]")); }catch(e){ return new Set(); } }
+function hfMarkAlerted(key){ try{ const s=[...hfAlerted(),key].slice(-400); localStorage.setItem(HF_ALERT_KEY(),JSON.stringify(s)); }catch(e){} }
+
+let HF_AUDIO=null;
+function hfUnlockAudio(){
+  try{
+    if(!HF_AUDIO){ const C=window.AudioContext||window.webkitAudioContext; if(C) HF_AUDIO=new C(); }
+    if(HF_AUDIO && HF_AUDIO.state==="suspended") HF_AUDIO.resume();
+  }catch(e){}
+}
+["touchstart","click","keydown"].forEach(ev=>document.addEventListener(ev,hfUnlockAudio,{passive:true}));
+function hfChime(loud){
+  try{
+    hfUnlockAudio(); if(!HF_AUDIO) return;
+    const notes = loud ? [880,1175,1568,1175,1568] : [880,1318];
+    notes.forEach((f,i)=>{
+      const o=HF_AUDIO.createOscillator(), g=HF_AUDIO.createGain(), t=HF_AUDIO.currentTime+i*0.18;
+      o.type="sine"; o.frequency.value=f;
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.35,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.17);
+      o.connect(g); g.connect(HF_AUDIO.destination); o.start(t); o.stop(t+0.18);
+    });
+  }catch(e){}
+}
+
+function hfPopup(title, body, jobId, loud){
+  try{
+    const old=document.getElementById("hf-popup"); if(old) old.remove();
+    const p=document.createElement("div");
+    p.id="hf-popup";
+    p.style.cssText="position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));z-index:10050;background:#182A3E;color:#fff;border-radius:16px;"+
+      "border:2px solid "+(loud?"#E0A43B":"#4DA69C")+";box-shadow:0 14px 40px rgba(0,0,0,.45);padding:16px 16px 14px;font-family:Lato,sans-serif;animation:hfPop .25s ease";
+    p.innerHTML=`<style>@keyframes hfPop{from{transform:translateY(-20px);opacity:0}to{transform:none;opacity:1}}</style>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="font-size:26px;line-height:1">${loud?"🔔":"🔧"}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800;font-size:15px;margin-bottom:3px">${title}</div>
+          <div style="font-size:13.5px;color:#C7D2E0;line-height:1.4">${body||""}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        ${jobId?`<button id="hf-pop-open" style="flex:1;padding:11px;border:none;border-radius:10px;background:#4DA69C;color:#fff;font:800 14px Lato">Open job</button>`:""}
+        <button id="hf-pop-close" style="flex:1;padding:11px;border:1px solid rgba(255,255,255,.25);border-radius:10px;background:transparent;color:#fff;font:700 14px Lato">Dismiss</button>
+      </div>`;
+    document.body.appendChild(p);
+    const close=()=>{ p.remove(); };
+    p.querySelector("#hf-pop-close").onclick=close;
+    const ob=p.querySelector("#hf-pop-open"); if(ob) ob.onclick=()=>{ close(); hfOpenJob(jobId); };
+    if(!loud) setTimeout(()=>{ if(document.body.contains(p)) close(); }, 12000);
+  }catch(e){ showToastNotification(title+(body?": "+body:"")); }
+}
+
+function hfOpenJob(jobId){
+  if(!jobId) return;
+  if(!ME){ try{ sessionStorage.setItem("hf_pending_job",jobId); }catch(e){} return; }
+  try{
+    ACTIVE_MODULE="maintenance"; VIEW="jobs";
+    document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+    $("app").style.display="flex";
+    buildMaintenanceNav(); render();
+    setTimeout(()=>openJobDetail(jobId), 250);
+  }catch(e){ console.warn("open job failed",e); }
+}
+
+// kind: assigned | urgent | new | complete
+function hfNotify(kind, job, opts){
+  opts=opts||{};
+  if(!job || !job.id) return false;
+  const key=kind+"-"+job.id;
+  if(hfAlerted().has(key)) return false;
+  hfMarkAlerted(key);
+  const where=(job.location||job.areaLabel||job.area||"");
+  const T={ assigned:"📋 Job assigned to you", urgent:"🚨 URGENT job", new:"🔧 New job logged", complete:"✅ Job completed" };
+  const title=T[kind]||"HosFIX";
+  const body=`${job.title||""}${where?" — "+where:""}${kind==="complete"&&job.completedBy?" · by "+((USERS.find(u=>u.id===job.completedBy)||{}).name||job.completedBy):""}`;
+  const loud = kind==="assigned" || kind==="urgent" || job.priority==="urgent";
+  // bell entry on THIS phone, for THIS person
+  try{
+    const all=JSON.parse(localStorage.getItem("bh_notifications")||"[]");
+    all.unshift({ id:"n"+Date.now()+"_"+kind, type:kind, jobId:job.id, msg:title+": "+body, for:"person", forUser:ME||window.PRESET_USER, readBy:[], at:new Date().toISOString() });
+    if(all.length>100) all.splice(100);
+    localStorage.setItem("bh_notifications",JSON.stringify(all));
+    if(typeof updateNotifBadge==="function") updateNotifBadge();
+  }catch(e){}
+  if(opts.quiet) return true;
+  if(document.visibilityState==="visible"){
+    hfPopup(title, body, job.id, loud);
+    hfChime(loud);
+    try{ if(navigator.vibrate) navigator.vibrate(loud?[600,200,600,200,900]:[300,150,300]); }catch(e){}
+  } else if(!opts.fromPush && !localStorage.getItem("hf_fcm_reg_"+(ME||""))){
+    try{
+      if(swReg && typeof Notification!=="undefined" && Notification.permission==="granted")
+        swReg.showNotification(title,{ body, icon:"/assets/icon-192.png", badge:"/assets/icon-192.png", tag:key, renotify:true,
+          requireInteraction:loud, vibrate:loud?[600,200,600,200,900]:[300,150,300], data:{ url:location.pathname+"#job="+job.id, jobId:job.id } });
+    }catch(e){}
+  }
+  return true;
+}
+
+// Decide which alert (if any) a job change means for the person on this phone
+function hfAlertForChange(prev, r, first){
+  if(!ME || !r || !r.id) return null;
+  const isAdmin = FCM_ADMIN_IDS.includes(ME);
+  const recent = d => d && (Date.now()-new Date(d).getTime()) < 3*864e5;
+  const nowAs=r.assignees||[], wasAs=(prev&&prev.assignees)||[];
+  const myName=(MY_USER&&MY_USER.name)||"";
+  if(r.updatedBy===ME) return null;                      // my own change, made on another device
+  if(nowAs.includes(ME) && !wasAs.includes(ME) && r.createdBy!==ME && r.status!=="complete" && (!first || recent(r.updatedAt||r.createdAt)))
+    return r.priority==="urgent" ? "urgent" : "assigned";
+  if(isAdmin && !prev && r.createdBy!==ME && r.status!=="complete" && recent(r.createdAt))
+    return r.priority==="urgent" ? "urgent" : "new";
+  if((isAdmin || r.createdBy===ME) && r.status==="complete" && (!prev || prev.status!=="complete") && r.completedBy!==ME && r.completedBy!==myName && recent(r.completedAt))
+    return "complete";
+  return null;
+}
+
+// Tapping a system notification while the app is open
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.addEventListener("message", e=>{
+    if(e.data && e.data.type==="hf-open-job") hfOpenJob(e.data.jobId);
+  });
+}
 
 // ── ONBOARDING FLOW ───────────────────────────────────────────────────────────
 function onbInstallClick() {

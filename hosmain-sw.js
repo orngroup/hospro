@@ -1,5 +1,5 @@
 // HosFIX Service Worker — Brandon Hall Hotel and Spa
-// Firebase Cloud Messaging background handler
+// Firebase Cloud Messaging background handler  (v2026-10-03b)
 
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
@@ -14,35 +14,43 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
-
-const CACHE = 'hosmain-v2';
 const ICON  = '/assets/icon-192.png';
 
-// Background FCM messages (app closed / backgrounded)
+// Pushes arrive as data-only messages so this worker controls how they look:
+// each job gets its own tag (so a second alert never silently replaces the first),
+// renotify forces sound/vibration, and assignments stay on screen until tapped.
 messaging.onBackgroundMessage(payload => {
-  const data    = payload.data || payload.notification || {};
-  const title   = data.title || 'HosFIX';
-  const options = {
-    body:              data.body  || '',
-    icon:              ICON,
-    badge:             ICON,
-    tag:               data.tag   || 'hosfix-' + Date.now(),
-    data:            { url: data.url || '/hosmain.html' },
-    requireInteraction: data.urgent === 'true',
-    vibrate:         [200, 100, 200, 100, 200],
-    sound:           'default'
-  };
-  return self.registration.showNotification(title, options);
+  const d       = payload.data || {};
+  const title   = d.title || 'HosFIX';
+  const kind    = d.kind  || 'info';
+  const jobId   = d.jobId || '';
+  const loud    = kind === 'assigned' || kind === 'urgent' || d.urgent === 'true';
+  return self.registration.showNotification(title, {
+    body:               d.body || '',
+    icon:               ICON,
+    badge:              ICON,
+    tag:                kind + '-' + (jobId || Date.now()),
+    renotify:           true,
+    requireInteraction: loud,
+    silent:             false,
+    vibrate:            loud ? [600, 200, 600, 200, 900] : [300, 150, 300],
+    timestamp:          Date.now(),
+    data:               { url: d.url || '/hosmain.html', jobId }
+  });
 });
 
-// Notification tap — open/focus the app
+// Tap on a notification — open the job in the person's own HosFIX
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = e.notification.data?.url || '/hosmain.html';
+  const url   = (e.notification.data && e.notification.data.url) || '/hosmain.html';
+  const jobId = (e.notification.data && e.notification.data.jobId) || '';
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       const existing = list.find(c => c.url.includes('hosmain'));
-      if (existing) { existing.focus(); return; }
+      if (existing) {
+        existing.postMessage({ type: 'hf-open-job', jobId });
+        return existing.focus();
+      }
       return clients.openWindow(url);
     })
   );
