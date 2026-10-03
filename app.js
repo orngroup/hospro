@@ -4247,12 +4247,13 @@ function renderHome(v){
   dash.appendChild(mkPanel('HosCOM — Compliance','🛡','#2a6a4a',compContent));
 
   // ── Panel 3: HosSHIFT + HosSTAFF snapshot ────────────────────────────────
-  const rota = JSON.parse(localStorage.getItem('sp_rota')||'{}');
-  const staffList = JSON.parse(localStorage.getItem('sp_staff')||'[]');
+  const rota = (typeof spGetRota==='function') ? spGetRota() : JSON.parse(localStorage.getItem('sp_rota')||'{}');
+  const staffList = (typeof spGetStaff==='function') ? spGetStaff() : JSON.parse(localStorage.getItem('sp_staff')||'[]');
   const todayK = new Date().toISOString().slice(0,10);
   const todayRota = rota[todayK]||{};
-  const onDuty  = Object.values(todayRota).filter(s=>s&&s.toLowerCase()!=='off'&&s!=='').length;
-  const onHoliday= Object.values(todayRota).filter(s=>s&&s.toLowerCase()==='holiday').length;
+  const shiftOf = v => String((v&&typeof v==='object')?(v.shift||''):(v||'')).toLowerCase().trim();
+  const onDuty  = Object.values(todayRota).filter(v=>{const t=shiftOf(v);return t&&!['off','holiday','sick','in lieu'].includes(t);}).length;
+  const onHoliday= Object.values(todayRota).filter(v=>shiftOf(v)==='holiday').length;
 
   // Leave pending
   const leave = JSON.parse(localStorage.getItem('hs_leave')||'[]');
@@ -4262,7 +4263,7 @@ function renderHome(v){
   const SP_DEPTS_SNAP = typeof SP_DEPTS!=="undefined" ? SP_DEPTS : [];
   const deptRows = SP_DEPTS_SNAP.slice(0,5).map(dept=>{
     const ds = staffList.filter(s=>s.dept===dept.id);
-    const rostered = ds.filter(s=>{const sh=(todayRota[s.id]||'').toLowerCase();return sh&&sh!=='off'&&sh!=='';}).length;
+    const rostered = ds.filter(s=>{const sh=shiftOf(todayRota[s.id]);return sh&&!['off','holiday','sick','in lieu'].includes(sh);}).length;
     const ok = rostered>=1;
     return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f5f7f9">
       <div style="display:flex;align-items:center;gap:6px">
@@ -4404,15 +4405,18 @@ function renderModuleLanding(moduleId){
   const content = document.createElement("div");
   content.style.cssText = "padding:32px";
 
-  // Module header
+  // Module header — hero banner with a Brandon Hall photograph
+  const hero = HP_MOD_HERO[moduleId] || "assets/hotel/exterior-dusk.png";
   content.innerHTML = `
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:28px">
-      <div style="width:60px;height:60px;border-radius:16px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;box-shadow:0 4px 16px ${m.colour}66">${m.icon}</div>
-      <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:700;color:#ffffff;line-height:1">${m.name}</div>
-        <div style="font-size:13px;color:#c7d2e0;margin-top:4px">${m.caption}</div>
+    <div class="hp-hero" style="--hero:url('${hero}')">
+      <div class="hp-hero-in">
+        <div class="hp-hero-ico" style="background:${m.colour};box-shadow:0 4px 16px ${m.colour}66">${m.icon}</div>
+        <div>
+          <div class="hp-hero-t">${m.name}</div>
+          <div class="hp-hero-s">${m.caption}</div>
+        </div>
+        <button onclick="switchTab('home')" class="hp-hero-home">🏠 Home</button>
       </div>
-      <button onclick="switchTab('home')" style="margin-left:auto;padding:10px 20px;background:#fff;border:2px solid #e5e7eb;border-radius:10px;font:600 13px Lato;color:#1a2b3a;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.06)">🏠 Home</button>
     </div>`;
 
   // Sub-cards grid — larger cards, 3-4 per row max for readability
@@ -4437,6 +4441,7 @@ function renderModuleLanding(moduleId){
   });
 
   content.appendChild(grid);
+  try{ content.appendChild(hpLandingExtras(m)); }catch(e){ console.warn('[HosPRO] landing extras failed',e); }
   wrap.appendChild(content);
   v.appendChild(wrap);
 }
@@ -6203,7 +6208,30 @@ const SP_DEPTS = [
 ];
 
 // ── Storage ───────────────────────────────────────────────────────────────────
-function spGetRota()    {const s=localStorage.getItem('sp_rota');   return s?JSON.parse(s):JSON.parse(JSON.stringify(SP_ROTA_SEED));}
+// The imported rota keys staff as "veronica_w_2" while the staff list uses "veronica_webb_2",
+// so no shift ever matched a person. Map rota keys onto real staff ids (once) on read.
+function spRotaKeyToStaffId(k, staff){
+  if(staff.some(x=>x.id===k)) return k;
+  const p=String(k).split('_'), first=p[0], ini=p.length===3?p[1]:'', num=p[p.length-1];
+  let c=staff.filter(x=>{ const q=x.id.split('_'); return (q[0]===first||q[0].startsWith(first)) && (!ini || (q.length>2 && q[1].startsWith(ini))); });
+  if(c.length>1){ const byNum=c.filter(x=>x.id.split('_').pop()===num); if(byNum.length) c=byNum; }
+  return c.length===1 ? c[0].id : k;
+}
+function spNormaliseRota(rota){
+  const staff=spGetStaff(); let changed=false; const out={};
+  Object.entries(rota||{}).forEach(([dk,day])=>{
+    out[dk]={};
+    Object.entries(day||{}).forEach(([k,v])=>{ const id=spRotaKeyToStaffId(k,staff); if(id!==k) changed=true; if(!(id in out[dk])||k===id) out[dk][id]=v; });
+  });
+  return {rota:out,changed};
+}
+function spGetRota(){
+  const s=localStorage.getItem('sp_rota');
+  const raw=s?JSON.parse(s):JSON.parse(JSON.stringify(SP_ROTA_SEED));
+  const n=spNormaliseRota(raw);
+  if(n.changed){ try{ localStorage.setItem('sp_rota',JSON.stringify(n.rota)); }catch(e){} }
+  return n.rota;
+}
 function spSaveRota(d)  {localStorage.setItem('sp_rota',   JSON.stringify(d));}
 function spGetFC()      {const s=localStorage.getItem('sp_fc');     return s?JSON.parse(s):JSON.parse(JSON.stringify(SP_FC_SEED));}
 function spSaveFC(d)    {localStorage.setItem('sp_fc',     JSON.stringify(d));}
@@ -6219,7 +6247,7 @@ function spFmt(d){return d.toLocaleDateString('en-GB',{weekday:'short',day:'nume
 function spParseHrs(shift){if(!shift)return 0;const s=shift.toLowerCase().trim();if(['off','holiday','sick','','on call','in lieu'].includes(s))return 0;const m=shift.match(/(\d{1,2})[:\.](\d{2})\s*[-]\s*(\d{1,2})[:\.](\d{2})/);if(!m)return 0;let st=+m[1]*60+ +m[2],en=+m[3]*60+ +m[4];if(en<=st)en+=1440;return Math.round((en-st)/60*10)/10;}
 function spShiftStyle(shift){if(!shift)return{bg:'#f5f7f9',col:'#374151',border:'#e0e0e0'};const s=shift.toLowerCase().trim();if(s===''||s==='off')return{bg:'#f5f7f9',col:'#374151',border:'#e0e0e0'};if(s==='holiday')return{bg:'#dbeafe',col:'#1d4ed8',border:'#93c5fd'};if(s==='on call')return{bg:'#fef9c3',col:'#854d0e',border:'#fde047'};if(s==='in lieu')return{bg:'#f3e8ff',col:'#7e22ce',border:'#c4b5fd'};if(s==='sick')return{bg:'#fee2e2',col:'#991b1b',border:'#fca5a5'};return{bg:'#dcfce7',col:'#166534',border:'#86efac'};}
 function spCalcRequired(fc,deptId){const rooms=fc&&fc.rooms||0,dep=fc&&fc.departures||0,stay=fc&&fc.stayovers||0,bk=fc&&fc.breakfastCovers||Math.round(rooms*1.8),din=fc&&fc.dinnerCovers||0;switch(deptId){case 'reception':return{needed:3,note:'07-15, 15-23, 23-07'};case 'nights':return{needed:1,note:'Night manager 23-07'};case 'kitchen':return{needed:Math.max(2,Math.ceil(bk/28)+(din>0?1:0)),note:bk+' bkfst ÷28'};case 'restaurant':return{needed:Math.max(1,Math.ceil(bk/28))+(din>0?Math.ceil(din/7):0),note:bk+' bkfst, '+din+' dinner'};case 'bar':return{needed:2,note:'Min 2 from 15:00'};case 'housekeeping':{const hrs=(dep*0.542)+(stay*0.333);return{needed:Math.max(1,Math.ceil(hrs/7.5)),note:dep+'dep+'+stay+'stay'};}case 'maintenance':return{needed:1,note:'On call'};case 'admin':return{needed:1,note:'Office hours'};default:return{needed:1,note:''};}}
-function spCountRostered(rota,dk,deptId){const staff=spGetStaff().filter(s=>s.dept===deptId),day=rota[dk]||{};return staff.filter(s=>{const sh=(day[s.id]||'').toLowerCase().trim();return sh&&sh!=='off'&&sh!=='';}).length;}
+function spCountRostered(rota,dk,deptId){const staff=spGetStaff().filter(s=>s.dept===deptId),day=rota[dk]||{};return staff.filter(s=>{const v=day[s.id];const sh=String((v&&typeof v==='object')?(v.shift||''):(v||'')).toLowerCase().trim();return sh&&!['off','holiday','sick','in lieu'].includes(sh);}).length;}
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 // ── openModal shim ─────────────────────────────────────────────────────────
@@ -8055,3 +8083,148 @@ if(typeof window.restaurantSVG!=="function"){
     }, err=>console.warn("[HosPRO] HosFIX job sync unavailable:", err&&err.message));
   }catch(e){ console.warn("[HosPRO] HosFIX job sync init failed:", e); }
 })();
+
+/* ============================================================
+   MODULE LANDING EXTRAS — hero photo, "Today at a glance", "Related"
+   ============================================================ */
+const HP_MOD_HERO = {
+  hosops:    "assets/hotel/exterior-front.png",
+  hossales:  "assets/hotel/restaurant.png",
+  hosvenue:  "assets/hotel/exterior-lawn.png",
+  hosstudio: "assets/hotel/terrace.png",
+  hosbrand:  "assets/hotel/exterior-dusk.png",
+  hospeople: "assets/hotel/reception.png",
+  hoshub:    "assets/hotel/bar-lounge.png",
+};
+const HP_HOTEL_PHOTOS = [
+  ["exterior-dusk.png","Exterior at dusk"],["exterior-front.png","Front entrance"],["exterior-lawn.png","Lawns"],
+  ["terrace.png","Terrace"],["restaurant.png","Restaurant"],["bar-lounge.png","Bar & lounge"],
+  ["reception.png","Reception"],["suite-bay.png","Bay suite"],["bedroom-teal.png","Bedroom"],
+  ["bedroom-yellow.png","Bedroom"],["pool.png","Pool"]
+];
+
+function hpSafe(fn, dflt){ try{ const v=fn(); return (v===undefined||v===null||Number.isNaN(v))?dflt:v; }catch(e){ return dflt; } }
+function hpMoney(n){ n=Number(n)||0; return n>=10000 ? "£"+(n/1000).toFixed(n>=100000?0:1).replace(/\.0$/,"")+"k" : "£"+Math.round(n).toLocaleString("en-GB"); }
+function hpJobs(){ try{ return JSON.parse(localStorage.getItem("hosfix_jobs")||"[]"); }catch(e){ return []; } }
+function hpCompOverdue(){
+  const tasks=JSON.parse(localStorage.getItem("hosfix_comp_tasks")||"[]");
+  const now=new Date(); now.setHours(0,0,0,0);
+  return tasks.filter(t=>{
+    if(t.status==="complete"||!t.due) return false;
+    const p=String(t.due).split("/"); if(p.length<3) return false;
+    return new Date(+p[2],+p[1]-1,+p[0]) < now;
+  }).length;
+}
+function hpDaysAhead(dateStr,days){ if(!dateStr) return false; const d=new Date(dateStr), n=new Date(); n.setHours(0,0,0,0); const e=new Date(n.getTime()+days*864e5); return d>=n && d<e; }
+
+/* Each stat: [value, label, tab to open, accent colour, alert?] */
+function hpModuleStats(id){
+  const T=new Date(), todayK=T.toISOString().slice(0,10), monthK=todayK.slice(0,7);
+  const pipe=()=> (typeof pipelineData==="function") ? pipelineData() : [];
+  switch(id){
+    case "hosops": {
+      const jobs=hpJobs(), open=jobs.filter(j=>j.status!=="complete");
+      return [
+        [open.length, "Open maintenance jobs", "fixAllJobs", "#c45c00"],
+        [open.filter(j=>j.priority==="urgent").length, "Urgent jobs", "fixAllJobs", "#b3261e", true],
+        [hpSafe(hpCompOverdue,0), "Compliance tasks overdue", "compTasks", "#b3261e", true],
+        [hpSafe(()=>hpMoney(bevGetStock().reduce((s,i)=>s+(+i.totalValue||((+i.qty||0)*(+i.unitPrice||0))),0)),"—"), "Bar stock value", "beverage", "#2a6a4a"],
+      ];
+    }
+    case "hossales": {
+      const p=hpSafe(pipe,[]);
+      const open=p.filter(e=>["enquiry","provisional"].includes(e.status));
+      return [
+        [hpMoney(open.reduce((s,e)=>s+(+e.value||0),0)), "Open pipeline value", "pipeline", "#8b5c8f"],
+        [open.filter(e=>e.followUp && e.followUp<todayK).length, "Follow-ups overdue", "pipeline", "#b3261e", true],
+        [p.filter(e=>e.status==="confirmed" && String(e.date||"").startsWith(monthK)).length, "Events confirmed this month", "pipeline", "#2a6a4a"],
+        [hpSafe(()=> (typeof QuoteStore!=="undefined") ? QuoteStore.all().filter(q=>!/accept|signed|declin|cancel/i.test(q.status||"")).length : "—","—"), "Quotes awaiting reply", "quotes", "#c78a3b"],
+      ];
+    }
+    case "hosvenue": {
+      const p=hpSafe(pipe,[]);
+      const fb=hpSafe(()=> (typeof FeedbackStore!=="undefined") ? FeedbackStore.all() : [], []);
+      const avg=fb.length ? (fb.reduce((s,f)=>s+(+f.rating||0),0)/fb.length).toFixed(1)+"★" : "—";
+      return [
+        [hpSafe(()=> (spGetFC()[todayK]||{}).rooms || "—","—"), "Rooms in house tonight", "rotaForecast", "#2f6f9e"],
+        [hpSafe(()=>corpGetAccounts().length,"—"), "Corporate accounts", "corpdb", "#2f6f9e"],
+        [p.filter(e=>e.status==="confirmed" && hpDaysAhead(e.date,7)).length, "Events in the next 7 days", "pipeline", "#8b5c8f"],
+        [avg, "Private feedback average", "feedback", "#c78a3b"],
+      ];
+    }
+    case "hosstudio": {
+      return [
+        [hpSafe(()=>BrochureStore.all().length,0), "Brochures saved", "brochure", "#c85c6b"],
+        [hpSafe(()=> (typeof QuoteStore!=="undefined") ? QuoteStore.all().length : "—","—"), "Quotes created", "quotes", "#8b5c8f"],
+        [hpSafe(()=>PACKAGES.length,"—"), "Packages to promote", "packages", "#2f6f9e"],
+        [hpSafe(()=> (typeof MktStore!=="undefined") ? MktStore.all().length : "—","—"), "Marketing assets", "marketing", "#c78a3b"],
+      ];
+    }
+    case "hospeople": {
+      const fc=hpSafe(()=>spGetFC()[todayK]||{},{}), rota=hpSafe(spGetRota,{});
+      const depts=(typeof SP_DEPTS!=="undefined")?SP_DEPTS:[];
+      const onShift=hpSafe(()=>depts.reduce((s,d)=>s+spCountRostered(rota,todayK,d.id),0),"—");
+      const short=hpSafe(()=>depts.filter(d=>spCountRostered(rota,todayK,d.id)<spCalcRequired(fc,d.id).needed).length,"—");
+      return [
+        [onShift, "On shift today", "rotaDash", "#4a86c7"],
+        [short, "Departments short today", "rotaDash", "#b3261e", true],
+        [hpSafe(()=>hsGetLeave().filter(l=>l.status==="pending").length,0), "Leave requests pending", "staffLeaveAdmin", "#c78a3b", true],
+        [hpSafe(()=>spGetStaff().length,"—"), "Staff on the team", "staffProfiles", "#4a86c7"],
+      ];
+    }
+    case "hoshub": {
+      const docs=hpSafe(()=>JSON.parse(localStorage.getItem("hoshub_docs")||"[]"),[]);
+      const wk=Date.now()-7*864e5;
+      const by=t=>docs.filter(d=>d.tab===t).length;
+      return [
+        [docs.length, "Documents filed", "hubDocs", "#4a9d7f"],
+        [docs.filter(d=>new Date(d.addedAt||d.created||d.date||0).getTime()>wk).length, "Added this week", "hubDocs", "#4a9d7f"],
+        [by("hubContracts"), "Contracts & agreements", "hubContracts", "#8b5c8f"],
+        [by("hubFinance"), "Finance documents", "hubFinance", "#c78a3b"],
+      ];
+    }
+  }
+  return null;
+}
+
+/* Related shortcuts: [tab, label, why] — tabs in other modules */
+const HP_RELATED = {
+  hosops:    [["dining","Dining & Banqueting","See tonight's covers before bar and kitchen jobs"],["rotaDash","Staff on shift","Who is on today"],["hubSuppliers","Supplier agreements","Contracts and SLAs for your suppliers"],["precheckin","Pre check-in","Guest arrivals and room requests"]],
+  hossales:  [["rooms","Meeting rooms","Capacities and layouts to quote from"],["packages","Packages & pricing","Delegate rates and event packages"],["brochure","Brochure Builder","Send a branded brochure with the quote"],["corpdb","Corporate database","Account history and contacts"]],
+  hosvenue:  [["rotaForecast","Occupancy forecast","Rooms sold drive staffing levels"],["pipeline","Sales pipeline","Upcoming events and enquiries"],["dining","Dining & Banqueting","Restaurant plan and covers"],["brandPhotography","Photography","Approved venue images"]],
+  hosstudio: [["brandLogos","Logos & brand assets","Official marks and colour palette"],["brandPhotography","Photography","Approved hotel images"],["brandDocs","Menus & wine lists","Current Clarendon menus"],["quotes","Quotes & proposals","Quotes now live in HosSALES"]],
+  hosbrand:  [["brochure","Brochure Builder","Build collateral from these assets"],["menu","Menu Builder","Menus in the house style"],["social","Social Media","Post with approved images"],["marketing","Campaigns","Marketing library and campaigns"]],
+  hospeople: [["rotaForecast","Occupancy forecast","Plan shifts from rooms and covers"],["hubHR","HR documents","Policies and handbooks"],["fixTeam","Maintenance team","Trades, hours and rates"],["staffDocs","Staff documents","Right to work, contracts, certificates"]],
+  hoshub:    [["contracts","Event agreements","E-signed client agreements in HosSALES"],["suppliers","Supplier database","162 suppliers and contacts"],["staffProfiles","Staff profiles","HR records for each team member"],["brandCollateral","Collateral & brochures","Downloadable sales material"]],
+};
+
+function hpLandingExtras(m){
+  const box=document.createElement("div");
+  box.className="hp-land-extras";
+  // ── At a glance ──
+  if(m.id==="hosbrand"){
+    box.innerHTML+=`<div class="hp-sec-h">Brandon Hall photography</div>
+      <div class="hp-photostrip">${HP_HOTEL_PHOTOS.map(([f,l])=>`<button class="hp-ph" onclick="switchTab('brandPhotography')" title="${l}">
+        <img src="assets/hotel/${f}" alt="${l}" loading="lazy" onerror="this.closest('.hp-ph').remove()"><span>${l}</span></button>`).join("")}</div>`;
+  } else {
+    const stats=hpModuleStats(m.id)||[];
+    if(stats.length){
+      box.innerHTML+=`<div class="hp-sec-h">Today at a glance</div>
+        <div class="hp-glance">${stats.map(([v,l,tab,col,alert])=>{
+          const hot = alert && Number(v)>0;
+          return `<button class="hp-stat${hot?' hot':''}" onclick="switchTab('${tab}')" style="--acc:${col}">
+            <span class="hp-stat-v">${v}</span><span class="hp-stat-l">${l}</span><span class="hp-stat-go">Open →</span></button>`; }).join("")}</div>`;
+    }
+  }
+  // ── Related ──
+  const rel=(HP_RELATED[m.id]||[]).filter(([t])=>RENDER_MAP[t]);
+  if(rel.length){
+    box.innerHTML+=`<div class="hp-sec-h">Related</div>
+      <div class="hp-related">${rel.map(([tab,label,why])=>{
+        const om=hpModuleFor(tab);
+        return `<button class="hp-rel" onclick="switchTab('${tab}')" style="--acc:${om?om.colour:'#c78a3b'}">
+          <span class="hp-rel-mod">${om?om.icon+" "+om.name:""}</span>
+          <span class="hp-rel-t">${label}</span><span class="hp-rel-w">${why}</span></button>`; }).join("")}</div>`;
+  }
+  return box;
+}
