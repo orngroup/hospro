@@ -1186,12 +1186,21 @@ main#view .data-table th, main#view .pipe-table th, main#view .hp-table thead th
   .sf-header-full{padding:0 12px;gap:8px}
   .sf-breadcrumb{padding:0 12px;overflow-x:auto;white-space:nowrap}
 }
+
+/* Sign-in background slideshow (cross-fades every 4s) */
+.hp-login-slides{position:absolute;inset:0;z-index:0;overflow:hidden;background:#182A3E}
+.hp-ls{position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;transition:opacity 1.2s ease-in-out;transform:scale(1.04);will-change:opacity}
+.hp-ls.on{opacity:1}
+#login::before{z-index:1}
+#login .hp-login-logo,#login .hp-login-foot{z-index:3}
+@media (prefers-reduced-motion:reduce){.hp-ls{transition:none}}
 </style>
 </head>
 <body>
 
 <!-- ================= LOGIN (HOSPRO) ================= -->
 <div id="login">
+  <div class="hp-login-slides" aria-hidden="true"><div class="hp-ls on" style="background-image:url('assets/hospro/login-1.jpg')"></div><div class="hp-ls" style="background-image:url('assets/hospro/login-2.jpg')"></div><div class="hp-ls" style="background-image:url('assets/hospro/login-3.jpg')"></div><div class="hp-ls" style="background-image:url('assets/hospro/login-4.jpg')"></div><div class="hp-ls" style="background-image:url('assets/hospro/login-5.jpg')"></div><div class="hp-ls" style="background-image:url('assets/hospro/login-6.jpg')"></div><div class="hp-ls" style="background-image:url('assets/hospro/login-7.jpg')"></div></div>
   <img class="hp-login-logo" src="assets/hospro/logo-white.svg" alt="HOSPRO">
   <div class="login-card">
     <div class="hp-hotel-tag" id="lg-hotel">Brandon Hall Hotel and Spa</div>
@@ -1275,5 +1284,17 @@ main#view .data-table th, main#view .pipe-table th, main#view .hp-table thead th
 <script src="firebase-store.js"></script>
 <script src="app.js"></script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>
+<script>
+/* Sign-in slideshow: next image every 4 seconds, paused once signed in or tab hidden */
+(function(){
+  var L=document.getElementById("login"); if(!L) return;
+  var S=L.querySelectorAll(".hp-ls"); if(S.length<2) return;
+  var i=0;
+  setInterval(function(){
+    if(document.hidden || L.classList.contains("hidden")) return;
+    S[i].classList.remove("on"); i=(i+1)%S.length; S[i].classList.add("on");
+  },4000);
+})();
+</script>
 </body>
 </html>
