@@ -87,6 +87,12 @@ exports.notify = onRequest({ cors: true, region: "europe-west1" }, async (req, r
     results = await sendPush([...adminIds, ...assignees], "🚨 URGENT job logged", `${job.title} — ${where}`, jobUrl, true, senderId, "urgent");
   }
 
+  // "Test my alerts" button: send a test alert to the person's own phone(s)
+  if (event === "test" && req.body.testUser) {
+    results = await sendPush([req.body.testUser], "🔔 HosFIX test alert",
+      "If you can see this, alerts are working on this phone.", "/hosmain.html#job=", true, "", "test");
+  }
+
   res.json({ ok: true, event, results });
 });
 

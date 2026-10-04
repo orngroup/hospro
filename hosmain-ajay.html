@@ -2240,17 +2240,19 @@ function showNotificationsPanel(){
         <div style="font-size:13px;font-weight:600;color:#1a2b3a">${n.msg}</div>
         <div style="font-size:11px;color:#374151;margin-top:3px">${new Date(n.at).toLocaleDateString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
       </div>`).join(''):'<div style="text-align:center;padding:24px;color:#374151;font-size:13px">No notifications yet</div>'}
-    <button onclick="closeModal()" style="width:100%;padding:10px;background:#f3f4f6;border:none;border-radius:8px;font:600 13px Lato;cursor:pointer;color:#374151;margin-top:8px">Close</button>
+    <button onclick="document.getElementById('modal-overlay')&&document.getElementById('modal-overlay').remove();hfRunAlertTest()" style="width:100%;padding:11px;background:#4DA69C;border:none;border-radius:8px;font:800 13px Lato;cursor:pointer;color:#fff;margin-top:8px">🔔 Test my alerts</button>
+    <button onclick="document.getElementById('modal-overlay')&&document.getElementById('modal-overlay').remove()" style="width:100%;padding:10px;background:#f3f4f6;border:none;border-radius:8px;font:600 13px Lato;cursor:pointer;color:#374151;margin-top:8px">Close</button>
   </div>`;
   // Show modal
   const bg=document.createElement('div');
   bg.id='modal-overlay';
   bg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:flex-start;justify-content:flex-end;padding:60px 16px 0';
   const box=document.createElement('div');
-  box.style.cssText='background:#fff;border-radius:14px;padding:20px;width:360px;max-height:70vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)';
+  box.style.cssText='background:#fff;border-radius:14px;padding:20px;width:100%;max-width:380px;max-height:70vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)';
   box.innerHTML=html;
   bg.appendChild(box);
   bg.onclick=e=>{ if(e.target===bg) bg.remove(); };
+  document.getElementById('modal-overlay')?.remove();
   document.body.appendChild(bg);
 }
 
@@ -2286,20 +2288,22 @@ function fbInit() {
 // Register this device's FCM token for the signed-in user
 async function fcmRegisterToken(userId) {
   fbInit();
-  if (!fbMsg) return;
+  if (!fbMsg) return false;
   try {
-    const sw  = await navigator.serviceWorker.ready;
-    const tok = await fbMsg.getToken({ vapidKey: FB_VAPID, serviceWorkerRegistration: sw });
-    if (!tok) return;
+    const sw  = await hfWithTimeout(navigator.serviceWorker.ready, 10000, "service worker not ready");
+    const tok = await hfWithTimeout(fbMsg.getToken({ vapidKey: FB_VAPID, serviceWorkerRegistration: sw }), 15000, "token timed out");
+    if (!tok) return false;
     localStorage.setItem("hf_fcm_token", tok);
     // Save to Firestore via Cloud Function
-    await fetch(FCM_BASE + "/register", {
+    const r = await fetch(FCM_BASE + "/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, token: tok })
     });
-    console.log("FCM token registered for", userId);
-  } catch(e) { console.warn("FCM token error:", e); }
+    const j = await r.json().catch(()=>({}));
+    console.log("FCM token registered for", userId, j);
+    return !!(r.ok && j.ok);
+  } catch(e) { console.warn("FCM token error:", e); return false; }
 }
 
 // Send event to Cloud Function → triggers push to recipients
@@ -2355,8 +2359,9 @@ async function fcmEnsureRegistered(force){
     const uid = ME || window.PRESET_USER; if(!uid) return;
     const key="hf_fcm_reg_"+uid, last=+localStorage.getItem(key)||0;
     if(!force && Date.now()-last < 12*3600*1000) return;   // at most twice a day
-    await fcmRegisterToken(uid);
-    localStorage.setItem(key, String(Date.now()));
+    const ok = await fcmRegisterToken(uid);
+    if(ok) localStorage.setItem(key, String(Date.now()));
+    else localStorage.removeItem(key);
   }catch(e){ console.warn("FCM ensure error:",e); }
 }
 
@@ -2398,6 +2403,7 @@ function jobSyncStart(){
   JOB_SYNC.on = true;
   JOB_SYNC.first = true;
   fbDb.collection("hosfix_jobs").onSnapshot(qs=>{
+    JOB_SYNC.lastSnap = Date.now();
     let changed=false;
     // Alerts for the person on THIS phone (new job / assigned to me / completed)
     const pending=[];
@@ -2521,10 +2527,11 @@ function hfNotify(kind, job, opts){
   if(hfAlerted().has(key)) return false;
   hfMarkAlerted(key);
   const where=(job.location||job.areaLabel||job.area||"");
-  const T={ assigned:"📋 Job assigned to you", urgent:"🚨 URGENT job", new:"🔧 New job logged", complete:"✅ Job completed" };
+  const T={ assigned:"📋 Job assigned to you", urgent:"🚨 URGENT job", new:"🔧 New job logged", complete:"✅ Job completed", test:"🔔 HosFIX test alert" };
   const title=T[kind]||"HosFIX";
   const body=`${job.title||""}${where?" — "+where:""}${kind==="complete"&&job.completedBy?" · by "+((USERS.find(u=>u.id===job.completedBy)||{}).name||job.completedBy):""}`;
-  const loud = kind==="assigned" || kind==="urgent" || job.priority==="urgent";
+  const loud = kind==="assigned" || kind==="urgent" || kind==="test" || job.priority==="urgent";
+  if(kind==="test"){ hfPopup(title,"Alerts are working on this phone.","",true); hfChime(true); try{ navigator.vibrate&&navigator.vibrate([600,200,600,200,900]); }catch(e){} return true; }
   // bell entry on THIS phone, for THIS person
   try{
     const all=JSON.parse(localStorage.getItem("bh_notifications")||"[]");
@@ -2570,6 +2577,110 @@ if("serviceWorker" in navigator){
   navigator.serviceWorker.addEventListener("message", e=>{
     if(e.data && e.data.type==="hf-open-job") hfOpenJob(e.data.jobId);
   });
+}
+
+// ── "TEST MY ALERTS" — checks every link in the alert chain on THIS phone ────
+const HF_SW_VERSION = "20261003b";
+function hfWithTimeout(p, ms, label){
+  return Promise.race([p, new Promise((_,rej)=>setTimeout(()=>rej(new Error(label||"timed out")), ms))]);
+}
+async function hfRunAlertTest(){
+  document.getElementById("modal-overlay")?.remove();
+  const bg=document.createElement("div");
+  bg.id="hf-test-overlay";
+  bg.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10060;display:flex;align-items:flex-start;justify-content:center;padding:calc(20px + env(safe-area-inset-top,0px)) 12px 12px;overflow:auto";
+  bg.innerHTML=`<div style="background:#fff;border-radius:16px;width:100%;max-width:440px;padding:18px;font-family:Lato,sans-serif;color:#1a2b3a">
+    <div style="font-size:17px;font-weight:800;margin-bottom:4px">🔔 Alert check</div>
+    <div style="font-size:12.5px;color:#4b5563;margin-bottom:12px">Checking this phone for <b>${(MY_USER&&MY_USER.name)||ME||"you"}</b>…</div>
+    <div id="hf-test-rows"></div>
+    <div id="hf-test-sum" style="margin-top:12px;font-size:13.5px;font-weight:700"></div>
+    <button id="hf-test-close" style="margin-top:14px;width:100%;padding:12px;border:none;border-radius:10px;background:#182A3E;color:#fff;font:800 14px Lato">Close</button>
+  </div>`;
+  document.body.appendChild(bg);
+  bg.querySelector("#hf-test-close").onclick=()=>bg.remove();
+  const box=bg.querySelector("#hf-test-rows");
+  let fails=0;
+  const row=(ok,label,fix)=>{
+    if(ok===false) fails++;
+    const d=document.createElement("div");
+    d.style.cssText="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #eef1f4;font-size:13.5px;line-height:1.4";
+    d.innerHTML=`<div style="font-size:16px">${ok===true?"✅":ok===false?"❌":"⚠️"}</div><div style="flex:1"><div style="font-weight:700">${label}</div>${fix?`<div style="color:#4b5563;font-size:12.5px;margin-top:2px">${fix}</div>`:""}</div>`;
+    box.appendChild(d); return d;
+  };
+  const done=msg=>{ bg.querySelector("#hf-test-sum").innerHTML=msg; };
+  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  const standalone=window.matchMedia("(display-mode: standalone)").matches || navigator.standalone===true;
+
+  // 1. Signed in
+  if(!ME){ row(false,"Not signed in","Sign in first, then run this check again."); return done("Fix the item above and try again."); }
+  row(true,"Signed in as "+((MY_USER&&MY_USER.name)||ME));
+
+  // 2. Opened from the home-screen icon (iPhone requires it)
+  if(isIOS && !standalone){ row(false,"Opened in Safari, not from the HosFIX icon","iPhone only allows alerts from the home-screen app: Share → Add to Home Screen, then open HosFIX from the jade H icon."); return done("Open HosFIX from the home-screen icon and run the check again."); }
+  row(standalone?true:null, standalone?"Opened as the HosFIX app":"Opened in the browser", standalone?"":"Works on Android, but installing HosFIX (Install button / Add to Home screen) is more reliable.");
+
+  // 3. Browser support
+  if(typeof Notification==="undefined" || !("serviceWorker" in navigator)){ row(false,"This browser can't receive alerts","iPhone: update to iOS 16.4 or later and open from the home-screen icon. Android: use Chrome."); return done("This phone can't receive alerts as it is."); }
+  row(true,"Phone supports alerts");
+
+  // 4. Permission
+  if(Notification.permission==="default"){
+    const r=row(null,"Alerts not allowed yet",`<button id="hf-test-allow" style="margin-top:6px;padding:8px 14px;border:none;border-radius:8px;background:#4DA69C;color:#fff;font:800 13px Lato">Allow alerts</button>`);
+    r.querySelector("#hf-test-allow").onclick=async()=>{ try{ const p=await Notification.requestPermission(); if(p==="granted") localStorage.setItem("hf_notif_granted","1"); }catch(e){} bg.remove(); hfRunAlertTest(); };
+    return done("Tap <b>Allow alerts</b>, then Allow.");
+  }
+  if(Notification.permission==="denied"){
+    row(false,"Alerts are blocked on this phone", isIOS?"Settings → Notifications → HosFIX → Allow Notifications on, with Sounds and Banners on.":"Chrome → ⋮ → Settings → Site settings → Notifications → brandon.hospro.co.uk → Allow. Or long-press the HosFIX icon → App info → Notifications on.");
+    return done("Switch alerts on in your phone settings, then run the check again.");
+  }
+  row(true,"Alerts allowed");
+
+  // 5. Alert service file (service worker), latest version
+  let reg=null;
+  try{
+    reg=await hfWithTimeout(navigator.serviceWorker.getRegistration("/"),5000,"no answer");
+    if(!reg) reg=await hfWithTimeout(navigator.serviceWorker.register("/hosmain-sw.js?v="+HF_SW_VERSION),8000,"could not install");
+    await hfWithTimeout(navigator.serviceWorker.ready,8000,"not ready");
+    const url=(reg.active&&reg.active.scriptURL)||"";
+    if(!url.includes(HF_SW_VERSION)){
+      try{ await reg.update(); }catch(e){}
+      row(null,"Alert file is an older version","Updating now — close HosFIX completely (swipe it away) and reopen it, then run the check again.");
+    } else row(true,"Alert file up to date");
+  }catch(e){ row(false,"Alert service didn't start ("+e.message+")","Close HosFIX completely and reopen it. If this keeps failing, delete the icon and add HosFIX again from your personal link."); return done("Fix the item above and try again."); }
+
+  // 6. Push address for this phone
+  fbInit();
+  if(!fbMsg){ row(false,"Alert system didn't load","Check this phone has internet (try mobile data instead of hotel Wi-Fi), then reopen HosFIX."); return done("Fix the item above and try again."); }
+  let tok="";
+  try{ tok=await hfWithTimeout(fbMsg.getToken({ vapidKey: FB_VAPID, serviceWorkerRegistration: reg }),15000,"timed out"); }catch(e){ tok=""; row(false,"Couldn't get a push address ("+e.message+")","Close HosFIX fully, reopen, and run again. On iPhone make sure it's opened from the home-screen icon."); return done("Fix the item above and try again."); }
+  if(!tok){ row(false,"No push address","Reopen HosFIX and run again."); return done("Fix the item above and try again."); }
+  row(true,"Push address created");
+
+  // 7. Registered with the Brandon Hall server
+  try{
+    const r=await hfWithTimeout(fetch(FCM_BASE+"/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:ME,token:tok})}),12000,"no answer");
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok || !j.ok) throw new Error(j.error||("HTTP "+r.status));
+    localStorage.setItem("hf_fcm_token",tok); localStorage.setItem("hf_fcm_reg_"+ME,String(Date.now()));
+    row(true,"Phone registered for "+((MY_USER&&MY_USER.name)||ME));
+  }catch(e){ row(false,"Couldn't register with the server ("+e.message+")","Check internet. If it persists, tell Ajay — the cloud function may need redeploying."); return done("Fix the item above and try again."); }
+
+  // 8. Live job sharing
+  const fresh = JOB_SYNC.on && JOB_SYNC.lastSnap && (Date.now()-JOB_SYNC.lastSnap) < 10*60*1000;
+  row(fresh?true:false, fresh?"Jobs are syncing with the team":"Jobs aren't syncing", fresh?"":"Check internet and reopen HosFIX. If it persists, the Firestore rule may be missing.");
+
+  // 9. Send a real test alert to this phone
+  try{
+    const r=await hfWithTimeout(fetch(FCM_BASE+"/notify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"test",testUser:ME})}),12000,"no answer");
+    const j=await r.json().catch(()=>({}));
+    const res=(j.results||[])[0];
+    if(j.event!=="test") row(false,"Server is running an older version","Ask Ajay to redeploy the cloud function, then run the check again.");
+    else if(res && res.sent>0){ row(true,"Test alert sent to this phone","It arrives in a few seconds. Lock your phone now to check the sound and banner."); }
+    else row(false,"Test alert couldn't be delivered ("+((res&&res.reason)||"unknown")+")","Close HosFIX fully, reopen it and run the check again.");
+  }catch(e){ row(false,"Couldn't reach the alert server ("+e.message+")","Check internet and try again."); }
+
+  done(fails ? "Fix the ❌ items, then run the check again." :
+    "✅ This phone is set up. If the test alert doesn't arrive: "+(isIOS?"turn off Silent mode and Focus, and check Settings → Notifications → HosFIX has Sounds and Banners on.":"check Settings → Apps → HosFIX (or Chrome) → Notifications is on, with sound."));
 }
 
 // ── ONBOARDING FLOW ───────────────────────────────────────────────────────────

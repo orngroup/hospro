@@ -24,7 +24,7 @@ messaging.onBackgroundMessage(payload => {
   const title   = d.title || 'HosFIX';
   const kind    = d.kind  || 'info';
   const jobId   = d.jobId || '';
-  const loud    = kind === 'assigned' || kind === 'urgent' || d.urgent === 'true';
+  const loud    = kind === 'assigned' || kind === 'urgent' || kind === 'test' || d.urgent === 'true';
   return self.registration.showNotification(title, {
     body:               d.body || '',
     icon:               ICON,

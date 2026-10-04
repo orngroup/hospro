@@ -166,6 +166,30 @@ function syncSidebar(){
   document.querySelectorAll("#sf-nav [data-go]").forEach(b=>
     b.classList.toggle("active", b.dataset.go===CURRENT_TAB));
 }
+/* ── FixRay mode ──────────────────────────────────────────────────────────
+   Maintenance and compliance now run in FixRay. While true, the old HosFIX
+   job / compliance data is hidden and these screens show a FixRay placeholder
+   until the weekly FixRay CSV import is built. Set to false to bring the old
+   HosFIX screens back — nothing has been deleted. */
+const HP_FIXRAY_MODE = true;
+const HP_FIXRAY_URL  = 'https://fixray.app';
+const HP_FIXRAY_HIDDEN_TABS = new Set(["fixDash","fixAllJobs","fixProjects","fixInventory","fixTeam","compDash","compTasks","compActions","compReport"]);
+function hpFixrayCard(title, text, compact){
+  return `<div style="background:#fff;border-radius:14px;padding:${compact?'16px':'28px'};${compact?'':'max-width:720px;margin:10px auto;'}box-shadow:0 2px 10px rgba(0,0,0,.08);border-left:5px solid #4DA69C;font-family:Lato,sans-serif">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:${compact?'20px':'26px'};font-weight:700;color:#1a2b3a;margin-bottom:6px">${title}</div>
+    <div style="font-size:13.5px;color:#374151;line-height:1.6;margin-bottom:14px">${text}</div>
+    <a href="${HP_FIXRAY_URL}" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;background:#3A8A81;color:#fff;border-radius:10px;font:800 13px Lato,sans-serif;text-decoration:none">🔧 Open FixRay ↗</a>
+  </div>`;
+}
+function hpRenderFixrayPlaceholder(v, tab){
+  const comp=/^comp/.test(tab);
+  v.innerHTML=hpFixrayCard(hpTabLabel(tab),
+    (comp
+      ? "Scheduled checks and compliance tasks are now managed in <b>FixRay</b>, including the Saeker schedule."
+      : "Maintenance jobs are now logged and managed in <b>FixRay</b>.")+
+    " This page will show the figures from FixRay's weekly export once the first import is set up.");
+}
+
 /* ── Tab registry (single source of truth for the router) ── */
 const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, precheckin:renderPreCheckin, quotes:renderQuotes, brochure:renderBrochure, menu:renderMenu, quote:renderQuote,
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
@@ -202,14 +226,17 @@ function hpTabLabel(tab){
 /* Breadcrumb / module bar: ← Back to module · Home › Module › Tab */
 function hpSetSubnav(mod, tab){
   const sn=document.getElementById("sf-subnav"); if(!sn) return;
-  const items=(mod && mod.id && typeof MODULE_SUBCARDS!=="undefined" && MODULE_SUBCARDS[mod.id]) || [];
-  if(!items.length){ sn.style.display="none"; sn.innerHTML=""; return; }
+  let items=(mod && mod.id && typeof MODULE_SUBCARDS!=="undefined" && MODULE_SUBCARDS[mod.id]) || [];
+  const fixray = HP_FIXRAY_MODE && mod && (mod.id==="hosfix"||mod.id==="hoscom");
+  if(fixray) items=items.filter(sc=>!HP_FIXRAY_HIDDEN_TABS.has(sc.tab));
+  if(!items.length && !fixray){ sn.style.display="none"; sn.innerHTML=""; return; }
   sn.style.display="flex";
   sn.style.setProperty("--mod", mod.colour||"#2B726A");
   sn.style.setProperty("--tint", mod.tint||"#E2F1EE");
   sn.innerHTML=items.map(sc=>`<button type="button" class="sf-sn${sc.tab===tab?' on':''}" data-tab="${sc.tab}" title="${sc.label}">
       <span class="sf-sn-i">${sc.icon||""}</span><span class="sf-sn-t">${sc.short||sc.label}</span></button>`).join("");
-  sn.querySelectorAll(".sf-sn").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+  if(fixray) sn.innerHTML+=`<a class="sf-sn" href="${HP_FIXRAY_URL}" target="_blank" rel="noopener" style="text-decoration:none"><span class="sf-sn-i">🔧</span><span class="sf-sn-t">Open FixRay ↗</span></a>`;
+  sn.querySelectorAll("button.sf-sn").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
   const on=sn.querySelector(".sf-sn.on"); if(on && on.scrollIntoView) try{ on.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){}
 }
 function hpSetBreadcrumb(mod, tab){
@@ -281,6 +308,7 @@ function render(){
   v.classList.add(HP_DARK_TABS.has(CURRENT_TAB) ? "hp-dark" : "hp-surface");
   const sc=document.querySelector("#app .sf-main"); if(sc) sc.scrollTop=0;
   hpPushHistory();
+  if(HP_FIXRAY_MODE && HP_FIXRAY_HIDDEN_TABS.has(CURRENT_TAB)){ hpRenderFixrayPlaceholder(v, CURRENT_TAB); return; }
   try{ fn(v); }catch(err){ v.classList.remove("hp-dark"); v.classList.add("hp-surface"); hpRenderError(v,CURRENT_TAB,err); }
 }
 
@@ -4233,7 +4261,7 @@ function renderHome(v){
     ${jobRows}
     <button onclick="switchTab('fixAllJobs')" style="margin-top:10px;width:100%;padding:8px;border:1.5px solid #1a2b3a;border-radius:8px;background:#fff;font:600 12px Lato;color:#1a2b3a;cursor:pointer">View all jobs →</button>`;
 
-  dash.appendChild(mkPanel('HosFIX — Maintenance','🔧','#b8860b',maintContent));
+  dash.appendChild(mkPanel('FixRay Maintenance','🔧','#965638', HP_FIXRAY_MODE ? '<div style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:12px">Maintenance jobs are now managed in FixRay. Figures will appear here after the first weekly import.</div><a href="'+HP_FIXRAY_URL+'" target="_blank" rel="noopener" style="display:block;text-align:center;padding:9px;border-radius:8px;background:#3A8A81;color:#fff;font:700 12px Lato;text-decoration:none">🔧 Open FixRay ↗</a>' : maintContent));
 
   // ── Panel 2: Compliance summary ───────────────────────────────────────────
   const compTasks = typeof ALL_COMP_TASKS!=="undefined" ? ALL_COMP_TASKS : [];
@@ -4273,7 +4301,7 @@ function renderHome(v){
     ${compRows}
     <button onclick="switchTab('compDash')" style="margin-top:10px;width:100%;padding:8px;border:1.5px solid #1a2b3a;border-radius:8px;background:#fff;font:600 12px Lato;color:#1a2b3a;cursor:pointer">View compliance →</button>`;
 
-  dash.appendChild(mkPanel('HosCOM — Compliance','🛡','#2a6a4a',compContent));
+  dash.appendChild(mkPanel('FixRay Compliance','🛡','#4B5288', HP_FIXRAY_MODE ? '<div style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:12px">Scheduled checks and compliance tasks are now managed in FixRay. Figures will appear here after the first weekly import.</div><a href="'+HP_FIXRAY_URL+'" target="_blank" rel="noopener" style="display:block;text-align:center;padding:9px;border-radius:8px;background:#3A8A81;color:#fff;font:700 12px Lato;text-decoration:none">🔧 Open FixRay ↗</a>' : compContent));
 
   // ── Panel 3: HosSHIFT + HosSTAFF snapshot ────────────────────────────────
   const rota = (typeof spGetRota==='function') ? spGetRota() : JSON.parse(localStorage.getItem('sp_rota')||'{}');
@@ -5702,7 +5730,7 @@ function renderCompDash(v){
       </div>`).join('')}
     ${tasks.length===0?`<div style="text-align:center;padding:40px;color:#6b7280">
       <div style="font-size:48px;margin-bottom:12px">🛡️</div>
-      <p>No compliance data found. Open the HosFIX mobile app first to load tasks.</p>
+      <p>No compliance data yet — it will appear here once the first FixRay export is imported.</p>
     </div>`:''}
   </div>`;
 }
@@ -5712,7 +5740,7 @@ function renderCompTasks(v){
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Scheduled Tasks</div>
     <p style="font-size:14px;color:#374151;margin-bottom:20px">View and manage all 33 scheduled compliance tasks — sortable by priority, category and due date.</p>
     <a href="compliance.html" target="_blank" class="btn" style="background:#2a6a4a;text-decoration:none;display:inline-block;margin-bottom:12px">Open full task list ↗</a>
-    <br><a href="tasks.html" target="_blank" style="font-size:13px;color:#2a6a4a;font-weight:600;text-decoration:none">📱 Open mobile app for staff →</a>
+    <br><a href="https://fixray.app" target="_blank" rel="noopener" style="font-size:13px;color:#2a6a4a;font-weight:600;text-decoration:none">🔧 Open FixRay →</a>
   </div>`;
 }
 
@@ -5745,11 +5773,11 @@ function renderFixDash(v){
   v.innerHTML=`<div style="padding:20px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
       <div>
-        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Maintenance</h2>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">FixRay Maintenance</h2>
         <p style="font-size:13px;color:#374151">Brandon Hall Hotel and Spa · Property & Maintenance Management</p>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <a href="hosfix.html" target="_blank" class="btn" style="background:#3A8A81;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open mobile app ↗</a>
+        <a href="https://fixray.app" target="_blank" rel="noopener" class="btn" style="background:#3A8A81;text-decoration:none;font-size:13px;padding:10px 18px">🔧 Open FixRay ↗</a>
       </div>
     </div>
 
@@ -5793,7 +5821,7 @@ function renderFixDash(v){
       </table>
     </div>`:`<div style="background:#fff;border-radius:12px;padding:40px;text-align:center;box-shadow:0 2px 8px rgba(26,43,58,.05)">
       <div style="font-size:14px;color:#374151">No maintenance jobs logged yet.</div>
-      <a href="hosfix.html" target="_blank" style="display:inline-block;margin-top:12px;padding:11px 20px;background:#3A8A81;color:#fff;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none">Open HosFIX mobile app →</a>
+      <a href="https://fixray.app" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;padding:11px 20px;background:#3A8A81;color:#fff;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none">Open FixRay →</a>
     </div>`}
   </div>`;
 }
@@ -5802,7 +5830,7 @@ function renderFixJobs(v){
   v.innerHTML=`<div style="padding:20px;text-align:center">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">All Maintenance Jobs</div>
     <p style="font-size:14px;color:#374151;margin-bottom:20px">Log and manage jobs on the mobile app — use the dashboard above for a full overview.</p>
-    <a href="hosfix.html" target="_blank" class="btn" style="background:#3A8A81;text-decoration:none;display:inline-block">Open HosFIX mobile app ↗</a>
+    <a href="https://fixray.app" target="_blank" rel="noopener" class="btn" style="background:#3A8A81;text-decoration:none;display:inline-block">Open FixRay ↗</a>
   </div>`;
 }
 
@@ -5810,7 +5838,7 @@ function renderFixProjects(v){
   v.innerHTML=`<div style="padding:20px;text-align:center">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Maintenance Projects</div>
     <p style="font-size:14px;color:#374151;margin-bottom:20px">Spa Refurbishment, Woodland Maintenance, Bedroom Refurb and more — manage projects on the mobile app.</p>
-    <a href="hosfix.html" target="_blank" class="btn" style="background:#3A8A81;text-decoration:none;display:inline-block">Open HosFIX mobile app ↗</a>
+    <a href="https://fixray.app" target="_blank" rel="noopener" class="btn" style="background:#3A8A81;text-decoration:none;display:inline-block">Open FixRay ↗</a>
   </div>`;
 }
 
@@ -5874,10 +5902,10 @@ function renderFixTeam(v){
   v.innerHTML=`<div style="padding:24px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:12px">
       <div>
-        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Team &amp; Profiles</h2>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">FixRay Maintenance — Team &amp; Profiles</h2>
         <p style="font-size:13px;color:#374151">Staff profiles, contracted hours, rates and productivity. Edit profiles to update rates.</p>
       </div>
-      <a href="hosfix.html" target="_blank" class="btn" style="background:#3A8A81;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open HosFIX app ↗</a>
+      <a href="https://fixray.app" target="_blank" rel="noopener" class="btn" style="background:#3A8A81;text-decoration:none;font-size:13px;padding:10px 18px">🔧 Open FixRay ↗</a>
     </div>
 
     <!-- Summary strip -->
@@ -6001,10 +6029,10 @@ function renderFixInventory(v){
   v.innerHTML=`<div style="padding:24px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:12px">
       <div>
-        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Stock &amp; Inventory</h2>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">FixRay Maintenance — Stock &amp; Inventory</h2>
         <p style="font-size:13px;color:#374151">Maintenance stock levels, trade prices and reorder alerts. Update stock on the mobile app.</p>
       </div>
-      <a href="hosfix.html" target="_blank" class="btn" style="background:#3A8A81;text-decoration:none;font-size:13px;padding:10px 18px">📱 Update stock on app ↗</a>
+      <a href="https://fixray.app" target="_blank" rel="noopener" class="btn" style="background:#3A8A81;text-decoration:none;font-size:13px;padding:10px 18px">📱 Update stock on app ↗</a>
     </div>
 
     <!-- Summary -->
@@ -6104,7 +6132,7 @@ function renderFixAllJobs(v){
         <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">All Maintenance Jobs</h2>
         <p style="font-size:13px;color:#374151">${JOBS.length} jobs total · ${open.length} open · ${done.length} complete</p>
       </div>
-      <a href="hosfix.html" target="_blank" class="btn" style="background:#3A8A81;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open mobile app ↗</a>
+      <a href="https://fixray.app" target="_blank" rel="noopener" class="btn" style="background:#3A8A81;text-decoration:none;font-size:13px;padding:10px 18px">🔧 Open FixRay ↗</a>
     </div>
 
     <!-- Stats -->
@@ -8087,6 +8115,7 @@ if(typeof window.restaurantSVG!=="function"){
    Firebase app so it never clashes with firebase-config.js.
    ============================================================ */
 (function hosfixJobSync(){
+  if(HP_FIXRAY_MODE) return;   // old HosFIX data hidden while FixRay is in use
   try{
     if(typeof firebase==="undefined" || !firebase.initializeApp || !firebase.firestore) return;
     const cfg={ apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0", authDomain:"brandonhall-7bdef.firebaseapp.com",
@@ -8248,6 +8277,18 @@ const HP_RELATED = {
 function hpLandingExtras(m){
   const box=document.createElement("div");
   box.className="hp-land-extras";
+  if(HP_FIXRAY_MODE && (m.id==="hosfix"||m.id==="hoscom")){
+    box.innerHTML=`<div class="hp-sec-h">Live in FixRay</div>`+hpFixrayCard(
+      m.id==="hosfix"?"Maintenance jobs are run in FixRay":"Scheduled checks are run in FixRay",
+      (m.id==="hosfix"?"Staff report and complete jobs in the FixRay app.":"The Saeker schedule is set up as FixRay scheduled jobs.")+
+      " Today-at-a-glance figures will return here once the weekly FixRay export is imported. "+(m.id==="hosfix"?"Assets & M&E and Suppliers":"The Task Board")+" in the menu above still work as normal.", true);
+    const rel=(HP_RELATED[m.id]||[]).filter(([t])=>RENDER_MAP[t] && !HP_FIXRAY_HIDDEN_TABS.has(t));
+    if(rel.length){
+      box.innerHTML+=`<div class="hp-sec-h">Related</div><div class="hp-related">${rel.map(([tab,label,why])=>{ const om=hpModuleFor(tab);
+        return `<button class="hp-rel" onclick="switchTab('${tab}')" style="--acc:${om?om.colour:m.colour}"><span class="hp-rel-mod">${om?om.icon+" "+om.name:""}</span><span class="hp-rel-t">${label}</span><span class="hp-rel-w">${why}</span></button>`; }).join("")}</div>`;
+    }
+    return box;
+  }
   // ── At a glance ──
   if(m.id==="hosbrand"){
     box.innerHTML+=`<div class="hp-sec-h">Brandon Hall photography</div>

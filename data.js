@@ -859,9 +859,9 @@ MODULE_GROUPS = [
 
 /* colour = deep module shade (sub-nav bar, white text) · tint = pastel (home card, active tab) */
 FLOW_MODULES = [
-  { id:"hosfix",    name:"HosFIX",     caption:"Maintenance. Jobs. Assets. Suppliers.", icon:"🔧", colour:"#965638", tint:"#F5E8E0",
+  { id:"hosfix",    name:"FixRay Maintenance", caption:"Maintenance jobs — powered by FixRay.", icon:"🔧", colour:"#965638", tint:"#F5E8E0",
     tabs:["fixDash","fixAllJobs","fixProjects","fixInventory","fixTeam","mne","suppliers"] },
-  { id:"hoscom",    name:"HosCOM",     caption:"Compliance. Tasks. Actions. Reports.",  icon:"🛡", colour:"#4B5288", tint:"#E8EAF4",
+  { id:"hoscom",    name:"FixRay Compliance",  caption:"Scheduled checks & compliance — powered by FixRay.",  icon:"🛡", colour:"#4B5288", tint:"#E8EAF4",
     tabs:["compDash","compTasks","compActions","compReport","tasks"] },
   { id:"hossales",  name:"HosSALES",   caption:"Sales. Events. Dining. Revenue.",      icon:"💼", colour:"#6E4E7A", tint:"#EFE7F2",
     tabs:["pipeline","quotes","quote","profit","contracts","payments","dining","beverage","chat"] },
