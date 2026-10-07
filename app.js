@@ -9184,7 +9184,7 @@ async function spPublishRota(silent){
   try{
     await db.collection('hospro_public').doc('rota').set({
       updated:new Date().toISOString(), by:(SESSION&&SESSION.name)||'',
-      staff:staff.map(s=>({id:s.id,name:s.name,role:s.role||'',dept:s.dept||''})),
+      staff:staff.map(s=>({id:s.id,staffCode:String(s.staffCode||''),name:s.name,role:s.role||'',dept:s.dept||''})),
       depts:SP_DEPTS.map(d=>({id:d.id,name:d.name})),
       rota:out
     });
@@ -9228,7 +9228,7 @@ function spShareRotaLink(){
       </div>
     </div>`);
 }
-function spRotaMsg(u){ return "Hi, here is your Brandon Hall rota link. It always shows your latest shifts for the next two weeks:\n"+u+"\nSave it to your home screen so it's easy to find."; }
+function spRotaMsg(u){ return "Hi, here is your Brandon Hall rota link. It always shows your latest shifts for the next two weeks:\n"+u+"\nOpen it and enter your staff ID (the payroll number on your payslip). Tick 'Remember me' and save it to your home screen so it's easy to find."; }
 function spLinkPick(id){
   const u=spRotaBaseUrl()+'?staff='+encodeURIComponent(id);
   document.getElementById('sp-link-one').value=u;

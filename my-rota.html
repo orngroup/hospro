@@ -28,6 +28,14 @@ body{font-family:'Lato',sans-serif;background:#1a2b3a;min-height:100vh;color:#ff
 .select-card{background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.12);border-radius:18px;padding:28px;margin-top:32px}
 .select-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:6px}
 .select-sub{font-size:13px;color:#8fa3b8;margin-bottom:24px}
+.id-badge{width:52px;height:52px;border-radius:14px;background:#4DA69C;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:14px;box-shadow:0 6px 18px rgba(77,166,156,.35)}
+.staff-id{width:100%;padding:16px 18px;font:700 24px 'Lato',sans-serif;letter-spacing:3px;text-align:center;color:#fff;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.18);border-radius:14px;outline:none;margin-bottom:12px}
+.staff-id:focus{border-color:#4DA69C;background:rgba(77,166,156,.12)}
+.staff-id::placeholder{color:rgba(255,255,255,.3);letter-spacing:1px;font-weight:400;font-size:18px}
+.remember{display:flex;align-items:center;gap:8px;font-size:13px;color:#c7d2e0;margin-bottom:16px;cursor:pointer}
+.remember input{width:18px;height:18px;accent-color:#4DA69C}
+.id-msg{min-height:20px;margin-top:12px;font-size:13px;font-weight:700;color:#fca5a5;text-align:center}
+.id-help{font-size:12px;color:#8fa3b8;text-align:center;margin-top:6px;line-height:1.5}
 .select-label{display:block;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#c7d2e0;margin-bottom:8px}
 select.staff-picker{
   width:100%;padding:12px 16px;
@@ -150,13 +158,16 @@ select.staff-picker option{background:#1a2b3a;color:#fff}
 <!-- Screen 1: Select name -->
 <div id="scr-select" class="screen active">
   <div class="select-card">
+    <div class="id-badge">🗓</div>
     <div class="select-title">My Rota</div>
-    <div class="select-sub">Select your name to see your upcoming shifts.</div>
-    <label class="select-label" for="staff-picker">Your name</label>
-    <select class="staff-picker" id="staff-picker">
-      <option value="">— Select your name —</option>
-    </select>
+    <div class="select-sub">Enter your staff ID to see your shifts for the next two weeks.</div>
+    <label class="select-label" for="staff-id">Staff ID / payroll number</label>
+    <input id="staff-id" class="staff-id" inputmode="numeric" autocomplete="off" autocapitalize="off" placeholder="e.g. 12684" onkeydown="if(event.key==='Enter')viewRota()">
+    <label class="remember"><input type="checkbox" id="remember-me" checked> Remember me on this phone</label>
     <button class="btn-view" onclick="viewRota()">View my shifts →</button>
+    <div id="id-msg" class="id-msg"></div>
+    <div class="id-help">Your staff ID is the payroll number on your payslip. Not sure what it is? Ask your manager.</div>
+    <select class="staff-picker" id="staff-picker" style="display:none"><option value=""></option></select>
   </div>
 </div>
 
@@ -168,7 +179,7 @@ select.staff-picker option{background:#1a2b3a;color:#fff}
       <div class="rota-role" id="rota-role"></div>
       <div class="rota-period" id="rota-period"></div>
     </div>
-    <button class="btn-back" onclick="goBack()">← Change name</button>
+    <button class="btn-back" onclick="signOutRota()">← Sign out</button>
   </div>
   <div id="next-shift-banner"></div>
   <div class="week-summary" id="week-summary"></div>
@@ -437,11 +448,12 @@ window.onload = async () => {
     if(u) u.textContent = 'Rota updated ' + new Date(PUB.updated).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
   }
   // Personal link: my-rota.html?staff=<id> opens straight to that person
-  const qp = new URLSearchParams(location.search).get('staff');
-  if(qp && getStaff().some(s => s.id === qp)) {
-    document.getElementById('staff-picker').value = qp;
-    setTimeout(() => window.viewRota(), 0);
-  }
+  // Personal link (my-rota.html?staff=<id> or ?id=<staff ID>) or a remembered staff ID opens straight away
+  const qs = new URLSearchParams(location.search), qp = qs.get('staff'), qid = qs.get('id');
+  const viaLink = qp && getStaff().find(s => s.id === qp);
+  let code = qid || (viaLink && viaLink.staffCode) || '';
+  if(!code){ try{ code = localStorage.getItem('myrota_code') || ''; }catch(e){} }
+  if(code){ const i=document.getElementById('staff-id'); if(i) i.value=code; setTimeout(() => window.viewRota(), 0); }
 
   // Auto-select if returning from portal (stored last person)
   const last = localStorage.getItem('myrota_last');
@@ -483,6 +495,35 @@ window.viewRota = function() {
   window.scrollTo(0,0);
   buildRotaView(person);
 };
+
+// ── Staff ID sign-in (replaces picking a name) ───────────────────────────────
+function findByStaffId(raw){
+  const id=String(raw||'').trim().replace(/\s/g,'').toUpperCase(); if(!id) return null;
+  const strip=x=>String(x||'').toUpperCase().replace(/^0+/,'');
+  return getStaff().find(s=>s.staffCode && (String(s.staffCode).toUpperCase()===id || strip(s.staffCode)===strip(id))) || null;
+}
+window.viewRota=function(){
+  const inp=document.getElementById('staff-id'), msg=document.getElementById('id-msg');
+  const raw=inp?inp.value:'';
+  if(!raw.trim()){ if(msg) msg.textContent='Please enter your staff ID.'; return; }
+  if(!PUB || !PUB.staff){ if(msg) msg.textContent="The rota hasn't been published yet — please try again later."; return; }
+  const person=findByStaffId(raw);
+  if(!person){ if(msg) msg.textContent="That staff ID wasn't found. Check your payslip or ask your manager."; return; }
+  if(msg) msg.textContent='';
+  try{ if(document.getElementById('remember-me').checked) localStorage.setItem('myrota_code', String(person.staffCode)); else localStorage.removeItem('myrota_code'); }catch(e){}
+  CURRENT_STAFF_ID=person.id;
+  document.getElementById('scr-select').classList.remove('active');
+  document.getElementById('scr-rota').classList.add('active');
+  window.scrollTo(0,0);
+  buildRotaView(person);
+};
+function signOutRota(){
+  try{ localStorage.removeItem('myrota_code'); localStorage.removeItem('myrota_last'); }catch(e){}
+  const i=document.getElementById('staff-id'); if(i) i.value='';
+  goBack();
+  if(i) i.focus();
+}
+
 </script>
 </body>
 </html>
