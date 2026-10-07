@@ -173,17 +173,23 @@ select.staff-picker option{background:#1a2b3a;color:#fff}
   <div id="next-shift-banner"></div>
   <div class="week-summary" id="week-summary"></div>
   <div id="day-cards"></div>
+  <div id="pub-updated" style="font-size:12px;opacity:.7;text-align:center;margin:12px 0 24px"></div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 // ── Shared localStorage with main portal ──────────────────────────────────────
+let PUB = null; // rota published from HosPRO (shared across all phones)
 function getRota() {
+  if(PUB && PUB.rota) return PUB.rota;
   const stored = localStorage.getItem('sp_rota');
   if(stored) return JSON.parse(stored);
   return {};
 }
 
 function getStaff() {
+  if(PUB && PUB.staff && PUB.staff.length) return PUB.staff;
   const stored = localStorage.getItem('sp_staff');
   if(stored) return JSON.parse(stored);
   // Fallback seed — core staff visible without portal loaded
@@ -232,7 +238,8 @@ function weekDates(offsetDays = 0) {
   });
 }
 
-function dk(d) { return d.toISOString().slice(0,10); }
+function dk(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function cellShift(v) { return (v && typeof v==='object') ? String(v.shift||'') : String(v||''); }
 
 function parseHours(shift) {
   if(!shift) return 0;
@@ -335,7 +342,7 @@ function buildRotaView(person) {
     'Shifts from ' + fmtShort(days[0]) + ' → ' + fmtShort(days[days.length-1]);
 
   // Calculate stats
-  const myShifts = days.map(d => ({d, shift:(rota[dk(d)]||{})[person.id]||''}));
+  const myShifts = days.map(d => ({d, shift:cellShift((rota[dk(d)]||{})[person.id])}));
   const workDays = myShifts.filter(x => shiftType(x.shift)==='working').length;
   const totalHrs = myShifts.reduce((t,x) => t+parseHours(x.shift), 0);
   const offDays  = myShifts.filter(x => shiftType(x.shift)==='off'||x.shift==='').length;
@@ -408,8 +415,33 @@ function buildRotaView(person) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-window.onload = () => {
+async function loadPublished() {
+  try {
+    if(!window.firebase || !firebase.firestore) return false;
+    const app = firebase.apps.length ? firebase.app() : firebase.initializeApp({
+      apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0", authDomain:"brandonhall-7bdef.firebaseapp.com",
+      projectId:"brandonhall-7bdef", storageBucket:"brandonhall-7bdef.firebasestorage.app",
+      messagingSenderId:"391317900568", appId:"1:391317900568:web:643c9d6691f7f16d65226d"});
+    const snap = await Promise.race([app.firestore().collection('hospro_public').doc('rota').get(),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))]);
+    if(snap.exists) { PUB = snap.data(); return true; }
+  } catch(e) { console.warn('Published rota not loaded', e); }
+  return false;
+}
+
+window.onload = async () => {
+  await loadPublished();
   populateDropdown();
+  if(PUB && PUB.updated) {
+    const u = document.getElementById('pub-updated');
+    if(u) u.textContent = 'Rota updated ' + new Date(PUB.updated).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  }
+  // Personal link: my-rota.html?staff=<id> opens straight to that person
+  const qp = new URLSearchParams(location.search).get('staff');
+  if(qp && getStaff().some(s => s.id === qp)) {
+    document.getElementById('staff-picker').value = qp;
+    setTimeout(() => window.viewRota(), 0);
+  }
 
   // Auto-select if returning from portal (stored last person)
   const last = localStorage.getItem('myrota_last');
@@ -419,7 +451,8 @@ window.onload = () => {
   }
 
   // Poll for rota updates every 60 seconds (rota manager may have updated)
-  setInterval(() => {
+  setInterval(async () => {
+    await loadPublished();
     if(CURRENT_STAFF_ID) {
       const staff = getStaff();
       const person = staff.find(s => s.id === CURRENT_STAFF_ID);
