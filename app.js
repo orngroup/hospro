@@ -93,7 +93,7 @@ function enterApp(user){
   boot();
 }
 $("#lg-pw").addEventListener("keydown",e=>{ if(e.key==="Enter")$("#lg-btn").click(); });
-$("#tb-logout").onclick=async ()=>{ await fbSignOut(); SESSION=null; $("#app").classList.add("hidden");
+$("#tb-logout").onclick=async ()=>{ if(typeof hrLock==='function') hrLock(true); await fbSignOut(); SESSION=null; $("#app").classList.add("hidden");
   $("#login").classList.remove("hidden"); $("#lg-pw").value=""; };
 
 /* ============================================================ ROUTING */
@@ -196,7 +196,7 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
     fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
-    rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings, rotaPayroll:renderRotaPayroll, localEvents:renderLocalEvents,
+    rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings, rotaPayroll:renderRotaPayroll, localEvents:renderLocalEvents, fbTracker:renderFBTracker,
     staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs,
     brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography,
     hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR
@@ -290,6 +290,8 @@ function render(){
   v.innerHTML="";
   v.removeAttribute("style");          // clear inline padding left behind by home/landing screens
   v.classList.remove("hp-surface","hp-dark","hp-canvas");
+  if(window.scrollY) window.scrollTo(0,0);     // keep the page itself pinned (only .sf-main scrolls)
+  { const ap=document.getElementById("app"); if(ap && ap.scrollTop) ap.scrollTop=0; }
 
   // Module landing pages are routed as "mod:<id>"
   // Restricted modules (e.g. HosPEOPLE: payroll and HR) — block both the landing page and every tab in it
@@ -1339,6 +1341,7 @@ function renderPipeline(v){
     <select id="fb-event"><option value="">All event types</option>${EVENT_TYPES.map(t=>`<option value="${t.id}" ${PIPE_FILTER.event===t.id?"selected":""}>${t.label}</option>`).join("")}</select>
     <select id="fb-owner"><option value="">All owners</option>${owners.map(o=>`<option ${PIPE_FILTER.owner===o?"selected":""}>${o}</option>`).join("")}</select>
     <select id="fb-source"><option value="">All sources</option>${sources.map(s=>`<option ${PIPE_FILTER.source===s?"selected":""}>${s}</option>`).join("")}</select>
+    <select id="fb-sort" title="Sort the list"><option value="value" ${PIPE_SORT==="value"?"selected":""}>Sort: highest value</option><option value="enq" ${PIPE_SORT==="enq"?"selected":""}>Sort: newest enquiry</option><option value="event" ${PIPE_SORT==="event"?"selected":""}>Sort: soonest event</option></select>
     ${pipeFilterActive()?`<button class="btn ghost sm" id="fb-clear">Clear</button>`:""}`;
   v.appendChild(bar);
   const setF=(k,val)=>{ PIPE_FILTER[k]=val; renderPipeRows(); updateFilterCount(); };
@@ -1348,6 +1351,7 @@ function renderPipeline(v){
   $("#fb-event").onchange=e=>setF("event",e.target.value);
   $("#fb-owner").onchange=e=>setF("owner",e.target.value);
   $("#fb-source").onchange=e=>setF("source",e.target.value);
+  $("#fb-sort").onchange=e=>{ PIPE_SORT=e.target.value; renderPipeRows(); };
   if($("#fb-clear")) $("#fb-clear").onclick=()=>{ PIPE_FILTER={room:"",event:"",status:"",owner:"",source:"",search:""}; render(); };
 
   // filtered count + table container
@@ -1358,6 +1362,7 @@ function renderPipeline(v){
   renderPipeRows(); updateFilterCount();
 }
 
+let PIPE_SORT="value";
 function filteredPipe(){
   const today=new Date().toISOString().slice(0,10);
   return (window._pipeAll||[]).filter(e=>{
@@ -1404,6 +1409,12 @@ function holdStatus(e){
   return "held";
 }
 
+/* Date the enquiry came in: set on the form, else when it was logged. BOB rows have no enquiry date. */
+function enqDate(e){
+  if(e.enquiryDate) return e.enquiryDate;
+  if(e._kind==="bob") return e.bookedDate||"";
+  return e.created ? String(e.created).slice(0,10) : "";
+}
 function ragStatus(e){
   if(e.rag) return e.rag; // manual override wins
   if(e.status==="confirmed") return "green";   // won
@@ -1415,12 +1426,14 @@ function ragStatus(e){
 }
 function renderPipeRows(){
   const box=$("#pipe-table"); if(!box)return;
-  const list=filteredPipe().sort((a,b)=>(b.value||0)-(a.value||0));
+  const evK=e=>/^\d{4}-\d{2}-\d{2}/.test(e.date||"")?e.date.slice(0,10):"9999";
+  const list=filteredPipe().sort(PIPE_SORT==="enq" ? (a,b)=>(enqDate(b)||"").localeCompare(enqDate(a)||"")
+    : PIPE_SORT==="event" ? (a,b)=>evK(a).localeCompare(evK(b)) : (a,b)=>(b.value||0)-(a.value||0));
   const today=new Date().toISOString().slice(0,10);
   const fmtDate=d=>d?(/^\d{4}-\d{2}-\d{2}/.test(d)?new Date(d).toLocaleDateString("en-GB"):d):"—";
   if(!list.length){ box.innerHTML=`<div class="empty"><div class="big">No matches</div>Try clearing a filter.</div>`; return; }
   box.innerHTML=`<table class="pipe-table">
-    <tr><th title="Status: Red overdue · Amber due soon · Green on track">RAG</th><th>Name</th><th>Status</th><th>Event / Rate</th><th>Room</th><th>Date</th><th>PAX</th><th>Owner</th><th>Last follow-up</th><th>Next follow-up</th><th style="text-align:right">Value</th></tr>`+
+    <tr><th title="Status: Red overdue · Amber due soon · Green on track">RAG</th><th>Name</th><th>Enquired</th><th>Status</th><th>Event / Rate</th><th>Room</th><th>Event date</th><th>PAX</th><th>Owner</th><th>Last follow-up</th><th>Next follow-up</th><th style="text-align:right">Value</th></tr>`+
     list.slice(0,200).map(e=>{
       const roomName=e.roomName||ROOMS.find(r=>r.id===e.room)?.name||"—";
       const et=EVENT_TYPES.find(t=>t.id===e.event);
@@ -1429,6 +1442,7 @@ function renderPipeRows(){
       return `<tr class="pipe-row" data-id="${e.id}">
         <td><span class="rag rag-${rag}" title="${rag}"></span></td>
         <td class="pr-name">${e.name}${overdueF?' <span class="pr-flag" title="Follow-up overdue">⚠</span>':''}</td>
+        <td style="white-space:nowrap">${enqDate(e)?fmtDate(enqDate(e)):"—"}</td>
         <td><span class="status-pill st-${e.status}">${STATUS_LABEL[e.status]||e.status}</span></td>
         <td>${et?et.icon+" "+et.label:(e.ratePlan||"—")}</td>
         <td>${roomName}</td><td>${fmtDate(e.date)}</td><td>${e.pax||"—"}</td>
@@ -1471,6 +1485,7 @@ function openEnquiryForm(pre){
     <div><label>Email</label><input id="e-email" type="email"></div>
     <div><label>Phone</label><input id="e-phone"></div>
     <div><label>Event type</label><select id="e-event">${EVENT_TYPES.map(t=>`<option value="${t.id}" ${pre.event===t.id?"selected":""}>${t.label}</option>`).join("")}</select></div>
+    <div><label>Enquiry date</label><input id="e-enqdate" type="date" value="${today}"></div>
     <div><label>Event date</label><input id="e-date" type="date"></div>
     <div><label>Room of interest</label><select id="e-room"><option value="">Any / unsure</option>${ROOMS.map(r=>`<option value="${r.id}" ${pre.room===r.id?"selected":""}>${r.name}</option>`).join("")}</select></div>
     <div><label>Guests</label><input id="e-pax" type="number" min="1"></div>
@@ -1489,7 +1504,7 @@ function openEnquiryForm(pre){
     const name=$("#e-name").value.trim();
     if(!name){ $("#e-name").focus(); return; }
     DB.add({ name, company:$("#e-co").value, email:$("#e-email").value, phone:$("#e-phone").value,
-      event:$("#e-event").value, date:$("#e-date").value, room:$("#e-room").value,
+      event:$("#e-event").value, enquiryDate:$("#e-enqdate").value||today, date:$("#e-date").value, room:$("#e-room").value,
       pax:parseInt($("#e-pax").value)||null, owner:$("#e-owner").value, status:$("#e-stage").value,
       value:parseFloat($("#e-value").value)||0, source:$("#e-source").value, followUp:$("#e-followup").value,
       allergens:$("#e-allergens").value, notes:$("#e-notes").value });
@@ -1514,6 +1529,7 @@ function openEnquiryDetail(e){
       <div><label>Owner</label><select id="m-owner">${ENQ_OWNERS.map(o=>`<option ${e.owner===o?"selected":""}>${o}</option>`).join("")}</select></div>
       <div><label>Stage</label><select id="m-stage">${ENQ_STAGES.map(([s,l])=>`<option value="${s}" ${e.status===s?"selected":""}>${l}</option>`).join("")}</select></div>
       <div><label>Value (£)</label><input id="m-value" type="number" min="0" value="${Math.round(e.value)||0}"></div>
+      <div><label>Enquiry date</label><input id="m-enqdate" type="date" value="${enqDate(e)}"></div>
       <div><label>Event date</label><input id="m-date" type="date" value="${/^\d{4}-\d{2}-\d{2}/.test(e.date||"")?e.date.slice(0,10):""}"></div>
       <div><label>Follow-up (next)</label><input id="m-followup" type="date" value="${e.followUp||""}"></div>
       <div><label>Source</label><select id="m-source">${ENQ_SOURCES.map(s=>`<option ${e.source===s?"selected":""}>${s}</option>`).join("")}</select></div>
@@ -1564,7 +1580,7 @@ function openEnquiryDetail(e){
       <button class="btn ghost sm" id="enq-cost">${e.costing?"Re-cost":"Cost event"}</button>
       <button class="btn ghost sm" id="enq-quote">Build quote</button>
     </div>
-    <div class="qs-sub" style="margin-top:14px">Ref ${e.ref||e.id} · ${e.owner?`owned by ${e.owner}`:""}</div>`;
+    <div class="qs-sub" style="margin-top:14px">Ref ${e.ref||e.id}${enqDate(e)?` · enquiry received ${fmtDate(enqDate(e))}`:""} · ${e.owner?`owned by ${e.owner}`:""}</div>`;
   showModal(e.name, `${et?et.label:(e.ratePlan||"Enquiry")} · ${isBob?"BOB / Rezlynx":(e.source||"manual")}`, body);
   renderDealTrack(e);
 
@@ -1710,7 +1726,7 @@ Brandon Hall Hotel and Spa
     // if the follow-up date changed, record the previous one as "last follow-up"
     const lastFollowUp = (e.followUp && newFollowUp!==e.followUp) ? e.followUp : (e.lastFollowUp||"");
     const patch={ owner:$("#m-owner").value, status:$("#m-stage").value,
-      value:parseFloat($("#m-value").value)||0, date:$("#m-date").value||e.date,
+      value:parseFloat($("#m-value").value)||0, date:$("#m-date").value||e.date, enquiryDate:$("#m-enqdate").value||enqDate(e),
       followUp:newFollowUp, lastFollowUp, rag:$("#m-rag").value, source:$("#m-source").value, checklist,
       spaceHeld:$("#m-held")?.checked||false, heldFrom:$("#m-heldfrom")?.value||"", holdExpiry:$("#m-holdexp")?.value||"", payments:paySched };
     if($("#m-stage").value==="cancelled") patch.lostReason=$("#m-lost").value;
@@ -4447,6 +4463,8 @@ const MOD_BG = {
 
 function renderModuleLanding(moduleId){
   if(!hpCanAccess(moduleId)){ toast('🔒 That area is restricted. Ask Raj or Ajay if you need access.'); if(CURRENT_TAB!=="home"){ CURRENT_TAB="home"; render(); } return; }
+  if(window.scrollY) window.scrollTo(0,0);
+  { const ap=document.getElementById("app"); if(ap && ap.scrollTop) ap.scrollTop=0; }
   const v = document.getElementById("view");
   const mods = typeof FLOW_MODULES!=="undefined" ? FLOW_MODULES : [];
   const m = mods.find(x=>x.id===moduleId);
@@ -6226,9 +6244,374 @@ function renderFixAllJobs(v){
 
 
 // ── HosSHIFT / HosSTAFF shared staff storage ──────────────────────────────
-const HS_REAL_STAFF = [{"id":"veronica_webb_2","staffCode":"BH001","name":"Veronica Webb","role":"Finance Assistant","dept":"admin","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":14.42,"weeklyWage":576.8,"workDays":[1,0,0,1,1,0,0],"standardShift":"08:00-16:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"nicola_3","staffCode":"BH002","name":"Nicola","role":"Sales Manager","dept":"admin","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":0,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief cover","docs":[]},{"id":"natalie_freeman_4","staffCode":"BH003","name":"Natalie Freeman","role":"Events Executive","dept":"admin","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":13.0,"weeklyWage":520.0,"workDays":[1,1,1,1,1,0,0],"standardShift":"09:00-17:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"patrik_vlach_5","staffCode":"BH004","name":"Patrik Vlach","role":"Reception Manager","dept":"reception","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":15.0,"weeklyWage":600.0,"workDays":[1,1,1,0,1,1,1],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Shift lead","docs":[]},{"id":"manjusha_ushadevi_6","staffCode":"BH005","name":"Manjusha Ushadevi","role":"Reception Supervisor","dept":"reception","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":12.98,"weeklyWage":519.2,"workDays":[0,1,1,1,1,1,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"alice_asumeng_7","staffCode":"BH006","name":"Alice Asumeng","role":"Receptionist","dept":"reception","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":12.71,"weeklyWage":508.4,"workDays":[1,1,1,1,0,0,1],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"aghil_joy_8","staffCode":"BH007","name":"Aghil Joy","role":"Receptionist","dept":"reception","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":12.71,"weeklyWage":508.4,"workDays":[1,0,0,1,1,1,1],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"alan_wilkins_9","staffCode":"BH008","name":"Alan Wilkins","role":"Nights Supervisor","dept":"nights","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":13.94,"weeklyWage":557.6,"workDays":[1,1,1,1,0,0,1],"standardShift":"23:00-07:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"amal_premkumar_10","staffCode":"BH009","name":"Amal Premkumar","role":"Night Porter","dept":"nights","type":"core","contract":"Zero hours","contractHrs":20,"hourlyRate":13.71,"weeklyWage":274.2,"workDays":[0,0,0,0,1,1,0],"standardShift":"23:00-07:00","leaveAllowance":15,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"glenn_randell_11","staffCode":"BH010","name":"Glenn Randell","role":"Maintenance Manager","dept":"maintenance","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":16.0,"weeklyWage":640.0,"workDays":[1,1,1,1,1,0,0],"standardShift":"08:00-16:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"pete_12","staffCode":"BH011","name":"Pete","role":"Multi-trader (Elec)","dept":"maintenance","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":0,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"As required","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Electrical","docs":[]},{"id":"herman_charles_13","staffCode":"BH012","name":"Herman Charles","role":"Multi-trader","dept":"maintenance","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":0,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"As required","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Non-electrical","docs":[]},{"id":"devendra_subedi_14","staffCode":"BH013","name":"Devendra Subedi","role":"Junior Sous Chef","dept":"kitchen","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":18.02,"weeklyWage":720.8,"workDays":[0,1,1,1,1,0,1],"standardShift":"05:30-14:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"sajeed_15","staffCode":"BH014","name":"Sajeed","role":"Breakfast Team","dept":"kitchen","type":"relief","contract":"Full-time","contractHrs":24,"hourlyRate":13.8,"weeklyWage":331.2,"workDays":[0,0,0,0,0,0,0],"standardShift":"05:30-14:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"david_marshall_16","staffCode":"BH015","name":"David Marshall","role":"Kitchen Porter","dept":"kitchen","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[1,1,1,1,1,0,0],"standardShift":"07:00-15:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"nathan_field_17","staffCode":"BH016","name":"Nathan Field","role":"Kitchen Porter","dept":"kitchen","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[1,1,1,1,0,1,1],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"jomy_mathai_joy_18","staffCode":"BH017","name":"Jomy Mathai Joy","role":"Bar Supervisor","dept":"bar","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":12.98,"weeklyWage":519.2,"workDays":[0,1,1,1,1,1,0],"standardShift":"15:00-23:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"rowan_wilkins_19","staffCode":"BH018","name":"Rowan Wilkins","role":"Bar Team Member","dept":"bar","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":12.71,"weeklyWage":508.4,"workDays":[1,1,1,0,1,1,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"catarina_li_20","staffCode":"BH019","name":"Catarina Li","role":"Assistant Manager","dept":"restaurant","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":14.0,"weeklyWage":560.0,"workDays":[0,1,1,1,1,1,0],"standardShift":"15:00-23:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"manjinder_shergill_21","staffCode":"BH020","name":"Manjinder Shergill","role":"F&B Supervisor","dept":"restaurant","type":"core","contract":"Full-time","contractHrs":30,"hourlyRate":12.98,"weeklyWage":389.4,"workDays":[1,1,1,1,1,0,0],"standardShift":"06:00-12:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"anael_nkunga_22","staffCode":"BH021","name":"Anael Nkunga","role":"F&B Team Member","dept":"restaurant","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"sheba_tychicus_23","staffCode":"BH022","name":"Sheba Tychicus","role":"F&B Team Member","dept":"restaurant","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.0,"weeklyWage":0,"workDays":[0,0,1,1,1,1,1],"standardShift":"06:00-12:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"dhruvilsinh_chauhan_24","staffCode":"BH023","name":"Dhruvilsinh Chauhan","role":"F&B Team Member","dept":"restaurant","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"reuven_25","staffCode":"BH024","name":"Reuven","role":"F&B Team Member","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"jayan_26","staffCode":"BH025","name":"Jayan","role":"F&B Team Member","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"arthur_27","staffCode":"BH026","name":"Arthur","role":"F&B Trainee","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Trainee","docs":[]},{"id":"darren_28","staffCode":"BH027","name":"Darren","role":"F&B Team Member","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"nevin_29","staffCode":"BH028","name":"Nevin","role":"F&B Team Member","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"ruth_addison_30","staffCode":"BH029","name":"Ruth Addison","role":"Head Housekeeper","dept":"housekeeping","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":14.42,"weeklyWage":576.8,"workDays":[0,1,1,1,1,0,1],"standardShift":"09:00-17:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"aryan_31","staffCode":"BH030","name":"Aryan","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"lara_jervis_32","staffCode":"BH031","name":"Lara Jervis","role":"Housekeeping Team","dept":"housekeeping","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,1,0,1,0,0,1],"standardShift":"09:00-15:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"rahul_reghunath_33","staffCode":"BH032","name":"Rahul Reghunath","role":"Housekeeping Team","dept":"housekeeping","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[1,0,1,0,1,1,1],"standardShift":"06:30-14:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"jitendra_34","staffCode":"BH033","name":"Jitendra","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"manoj_35","staffCode":"BH034","name":"Manoj","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"tushar_ambekar_36","staffCode":"BH035","name":"Tushar Ambekar","role":"Housekeeping Team","dept":"housekeeping","type":"core","contract":"Zero hours","contractHrs":40,"hourlyRate":13.71,"weeklyWage":548.4,"workDays":[1,1,1,1,0,1,0],"standardShift":"09:00-17:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[]},{"id":"allen_37","staffCode":"BH036","name":"Allen","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"hassen_38","staffCode":"BH037","name":"Hassen","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]},{"id":"dushyanth_39","staffCode":"BH038","name":"Dushyanth","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[1,1,1,1,1,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[]}];
+const HS_REAL_STAFF = [{"id":"natalie_freeman_4","staffCode":"12941","name":"Natalie Freeman","role":"Event Executive","dept":"admin","type":"core","contract":"Full-time","contractHrs":40.0,"hourlyRate":13.46,"weeklyWage":538.4,"workDays":[1,1,1,1,1,0,0],"standardShift":"09:00-17:30","leaveAllowance":28.0,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"2026-07-27","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Sales & Marketing","payBasis":"salary","nightWorker":false,"hrStatus":"hr","holAccruedHrs":44.56,"holTakenHrs":72.0,"holOutstandingHrs":-27.44,"holYearEndHrs":80.34,"holAsAt":"2026-10-07"},{"id":"nicola_3","staffCode":"BH002","name":"Nicola Cartwright","role":"Sales Manager","dept":"admin","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":0,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief cover","docs":[],"hrStatus":"not-on-hr"},{"id":"veronica_webb_2","staffCode":"12677","name":"Veronica Webb","role":"Finance Assistant","dept":"admin","type":"core","contract":"Full-time","contractHrs":40.0,"hourlyRate":14.42,"weeklyWage":576.8,"workDays":[1,0,0,1,1,0,0],"standardShift":"08:00-16:00","leaveAllowance":28.0,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"2026-01-06","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Finance","payBasis":"salary","nightWorker":false,"hrStatus":"hr","holAccruedHrs":116.22,"holTakenHrs":80.0,"holOutstandingHrs":36.22,"holYearEndHrs":144.0,"holAsAt":"2026-10-07"},{"id":"aghil_joy_8","staffCode":"12713","name":"Aghil Joy","role":"Receptionist","dept":"reception","type":"core","contract":"Full-time","contractHrs":40.0,"hourlyRate":12.71,"weeklyWage":508.4,"workDays":[1,0,0,1,1,1,1],"standardShift":"Variable","leaveAllowance":28.0,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"2026-02-03","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Reception","payBasis":"salary","nightWorker":false,"hrStatus":"hr","holAccruedHrs":120.34,"holTakenHrs":224.0,"holOutstandingHrs":-103.66,"holYearEndHrs":4.12,"holAsAt":"2026-10-07"},{"id":"alice_asumeng_7","staffCode":"12898","name":"Alice Asumeng","role":"Receptionist","dept":"reception","type":"core","contract":"Full-time","contractHrs":40.0,"hourlyRate":12.71,"weeklyWage":508.4,"workDays":[1,1,1,1,0,0,1],"standardShift":"Variable","leaveAllowance":28.0,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"2026-05-13","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Reception","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":90.32,"holTakenHrs":48.0,"holOutstandingHrs":42.32,"holYearEndHrs":150.1,"holAsAt":"2026-10-07"},{"id":"manjusha_ushadevi_6","staffCode":"12685","name":"Manjusha Ushadevi","role":"Reception Supervisor","dept":"reception","type":"core","contract":"Full-time","contractHrs":40.0,"hourlyRate":12.98,"weeklyWage":519.2,"workDays":[0,1,1,1,1,1,0],"standardShift":"Variable","leaveAllowance":28.0,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"2026-01-05","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Reception","payBasis":"salary","nightWorker":false,"hrStatus":"hr","holAccruedHrs":116.22,"holTakenHrs":56.0,"holOutstandingHrs":60.22,"holYearEndHrs":168.0,"holAsAt":"2026-10-07"},{"id":"patrik_vlach_5","staffCode":"13001","name":"Patrik Vlach","role":"Front Office Manager","dept":"reception","type":"core","contract":"Full-time","contractHrs":40.0,"hourlyRate":14.42,"weeklyWage":576.8,"workDays":[1,1,1,0,1,1,1],"standardShift":"Variable","leaveAllowance":28.0,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"2026-07-27","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Shift lead","docs":[],"hrDept":"Reception","payBasis":"salary","nightWorker":false,"hrStatus":"hr","holAccruedHrs":44.56,"holTakenHrs":0.0,"holOutstandingHrs":44.56,"holYearEndHrs":152.34,"holAsAt":"2026-10-07"},{"id":"alan_wilkins_9","staffCode":"12893","name":"Alan Wilkins","role":"Nights Supervisor","dept":"nights","type":"core","contract":"Full-time","contractHrs":40.0,"hourlyRate":13.94,"weeklyWage":557.6,"workDays":[1,1,1,1,0,0,1],"standardShift":"23:00-07:00","leaveAllowance":28.0,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"2026-06-01","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Nights","payBasis":"salary","nightWorker":true,"hrStatus":"hr","holAccruedHrs":78.88,"holTakenHrs":104.0,"holOutstandingHrs":-25.12,"holYearEndHrs":82.66,"holAsAt":"2026-10-07"},{"id":"amal_premkumar_10","staffCode":"12839","name":"Amal Premkumar","role":"Night Porter","dept":"nights","type":"core","contract":"Zero hours","contractHrs":0.0,"hourlyRate":13.71,"weeklyWage":0.0,"workDays":[0,0,0,0,1,1,0],"standardShift":"23:00-07:00","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-04-16","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Nights","payBasis":"hourly","nightWorker":true,"hrStatus":"hr","holAccruedHrs":103.71,"holTakenHrs":0.0,"holOutstandingHrs":103.71,"holYearEndHrs":105.64,"holAsAt":"2026-10-07"},{"id":"glenn_randell_11","staffCode":"BH010","name":"Glenn Randell","role":"Maintenance Manager","dept":"maintenance","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":16.0,"weeklyWage":640.0,"workDays":[1,1,1,1,1,0,0],"standardShift":"08:00-16:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrStatus":"not-on-hr"},{"id":"herman_charles_13","staffCode":"BH012","name":"Herman Charles","role":"Multi-trader","dept":"maintenance","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":0,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"As required","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Non-electrical","docs":[],"hrStatus":"not-on-hr"},{"id":"pete_12","staffCode":"BH011","name":"Pete","role":"Multi-trader (Elec)","dept":"maintenance","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":0,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"As required","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Electrical","docs":[],"hrStatus":"not-on-hr"},{"id":"david_marshall_16","staffCode":"12906","name":"David Marshall","role":"Kitchen Porter","dept":"kitchen","type":"core","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[1,1,1,1,1,0,0],"standardShift":"07:00-15:00","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-06-12","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Kitchen","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":61.84,"holTakenHrs":21.0,"holOutstandingHrs":40.84,"holYearEndHrs":43.19,"holAsAt":"2026-10-07"},{"id":"devendra_subedi_14","staffCode":"12803","name":"Devendra Subedi","role":"Junior Sous Chef","dept":"kitchen","type":"core","contract":"Full-time","contractHrs":40.0,"hourlyRate":18.02,"weeklyWage":720.8,"workDays":[0,1,1,1,1,0,1],"standardShift":"05:30-14:00","leaveAllowance":28.0,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"2026-03-09","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Kitchen","payBasis":"salary","nightWorker":false,"hrStatus":"hr","holAccruedHrs":93.68,"holTakenHrs":16.0,"holOutstandingHrs":77.68,"holYearEndHrs":185.46,"holAsAt":"2026-10-07"},{"id":"nathan_field_17","staffCode":"12949","name":"Nathan Field","role":"Kitchen Porter","dept":"kitchen","type":"core","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[1,1,1,1,0,1,1],"standardShift":"Variable","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-07-01","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Kitchen","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":58.49,"holTakenHrs":0.0,"holOutstandingHrs":58.49,"holYearEndHrs":60.66,"holAsAt":"2026-10-07"},{"id":"sajeed_15","staffCode":"BH014","name":"Sajeed","role":"Breakfast Team","dept":"kitchen","type":"relief","contract":"Full-time","contractHrs":24,"hourlyRate":13.8,"weeklyWage":331.2,"workDays":[0,0,0,0,0,0,0],"standardShift":"05:30-14:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[],"hrStatus":"not-on-hr"},{"id":"jomy_mathai_joy_18","staffCode":"12684","name":"Jomy Mathai Joy","role":"Bar Supervisor","dept":"bar","type":"core","contract":"Full-time","contractHrs":40.0,"hourlyRate":12.98,"weeklyWage":519.2,"workDays":[0,1,1,1,1,1,0],"standardShift":"15:00-23:00","leaveAllowance":28.0,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"2026-01-05","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Bar","payBasis":"salary","nightWorker":false,"hrStatus":"hr","holAccruedHrs":117.84,"holTakenHrs":0.0,"holOutstandingHrs":117.84,"holYearEndHrs":225.62,"holAsAt":"2026-10-07"},{"id":"rowan_wilkins_19","staffCode":"12943","name":"Rowan Wilkins","role":"Bar Team Member","dept":"bar","type":"core","contract":"Full-time","contractHrs":40.0,"hourlyRate":12.71,"weeklyWage":508.4,"workDays":[1,1,1,0,1,1,0],"standardShift":"Variable","leaveAllowance":28.0,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"2026-07-10","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Bar","payBasis":"salary","nightWorker":false,"hrStatus":"hr","holAccruedHrs":54.8,"holTakenHrs":48.0,"holOutstandingHrs":6.8,"holYearEndHrs":114.58,"holAsAt":"2026-10-07"},{"id":"anael_nkunga_22","staffCode":"12690","name":"Anael Nkunga","role":"F&B Team Member","dept":"restaurant","type":"core","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-01-05","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Restaurant","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":26.74,"holTakenHrs":13.75,"holOutstandingHrs":12.99,"holYearEndHrs":12.99,"holAsAt":"2026-10-07"},{"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveUsed":0,"leavePending":0,"probationPassed":false,"dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"id":"betel_elias_44","staffCode":"13078","name":"Betel Elias","role":"F&B Team Member","dept":"restaurant","hrDept":"Restaurant","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"payBasis":"hourly","startDate":"2026-08-21","leaveAllowance":0,"nightWorker":false,"hrStatus":"hr","holAccruedHrs":6.95,"holTakenHrs":0.0,"holOutstandingHrs":6.95,"holYearEndHrs":6.95,"holAsAt":"2026-10-07"},{"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveUsed":0,"leavePending":0,"probationPassed":false,"dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"id":"caitlin_playdon_40","staffCode":"12872","name":"Caitlin Playdon","role":"F&B Team Member","dept":"restaurant","hrDept":"Restaurant","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"payBasis":"hourly","startDate":"2026-05-04","leaveAllowance":0,"nightWorker":false,"hrStatus":"hr","holAccruedHrs":25.78,"holTakenHrs":0.0,"holOutstandingHrs":25.78,"holYearEndHrs":26.38,"holAsAt":"2026-10-07"},{"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveUsed":0,"leavePending":0,"probationPassed":false,"dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"id":"cameron_mcgregor_42","staffCode":"12948","name":"Cameron McGregor","role":"F&B Team Member","dept":"restaurant","hrDept":"Restaurant","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"payBasis":"hourly","startDate":"2026-07-01","leaveAllowance":0,"nightWorker":false,"hrStatus":"hr","holAccruedHrs":4.1,"holTakenHrs":0.0,"holOutstandingHrs":4.1,"holYearEndHrs":4.1,"holAsAt":"2026-10-07"},{"id":"catarina_li_20","staffCode":"BH019","name":"Catarina Li","role":"Assistant Manager","dept":"restaurant","type":"core","contract":"Full-time","contractHrs":40,"hourlyRate":14.0,"weeklyWage":560.0,"workDays":[0,1,1,1,1,1,0],"standardShift":"15:00-23:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrStatus":"not-on-hr"},{"id":"darren_28","staffCode":"13083","name":"Darren Younge","role":"F&B Team Member","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-08-21","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[],"hrDept":"Restaurant","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":11.96,"holTakenHrs":0.0,"holOutstandingHrs":11.96,"holYearEndHrs":11.96,"holAsAt":"2026-10-07"},{"id":"dhruvilsinh_chauhan_24","staffCode":"12874","name":"Dhruvilsinh Chauhan","role":"Breakfast Team Member","dept":"restaurant","type":"core","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-05-04","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Restaurant","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":74.8,"holTakenHrs":0.0,"holOutstandingHrs":74.8,"holYearEndHrs":75.52,"holAsAt":"2026-10-07"},{"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveUsed":0,"leavePending":0,"probationPassed":false,"dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"id":"jaimie_leigh_watts_41","staffCode":"12945","name":"Jaimie-Leigh Watts","role":"F&B Team Member","dept":"restaurant","hrDept":"Restaurant","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"payBasis":"hourly","startDate":"2026-07-01","leaveAllowance":0,"nightWorker":false,"hrStatus":"hr","holAccruedHrs":11.26,"holTakenHrs":0.0,"holOutstandingHrs":11.26,"holYearEndHrs":11.86,"holAsAt":"2026-10-07"},{"id":"jayan_26","staffCode":"13091","name":"Jayan Gerget","role":"F&B Team Member","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-08-24","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[],"hrDept":"Restaurant","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":6.94,"holTakenHrs":0.0,"holOutstandingHrs":6.94,"holYearEndHrs":7.6,"holAsAt":"2026-10-07"},{"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveUsed":0,"leavePending":0,"probationPassed":false,"dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"id":"lily_mae_mcdonald_43","staffCode":"13077","name":"Lily-Mae Mcdonald","role":"F&B Team Member","dept":"restaurant","hrDept":"Restaurant","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"payBasis":"hourly","startDate":"2026-08-21","leaveAllowance":0,"nightWorker":false,"hrStatus":"hr","holAccruedHrs":3.62,"holTakenHrs":0.0,"holOutstandingHrs":3.62,"holYearEndHrs":4.83,"holAsAt":"2026-10-07"},{"id":"manjinder_shergill_21","staffCode":"12687","name":"Manjinder Kaur Shergill","role":"F&B Supervisor","dept":"restaurant","type":"core","contract":"Part-time","contractHrs":30.0,"hourlyRate":12.98,"weeklyWage":389.4,"workDays":[1,1,1,1,1,0,0],"standardShift":"06:00-12:00","leaveAllowance":21.0,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"2026-01-05","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Restaurant","payBasis":"salary","nightWorker":false,"hrStatus":"hr","holAccruedHrs":87.16,"holTakenHrs":6.0,"holOutstandingHrs":81.16,"holYearEndHrs":162.0,"holAsAt":"2026-10-07"},{"id":"nevin_29","staffCode":"12942","name":"Nevin Babu","role":"F&B Team Member","dept":"restaurant","type":"core","contract":"Full-time","contractHrs":40.0,"hourlyRate":12.71,"weeklyWage":508.4,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":28.0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-07-06","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Restaurant","payBasis":"salary","nightWorker":false,"hrStatus":"hr","holAccruedHrs":57.2,"holTakenHrs":8.0,"holOutstandingHrs":49.2,"holYearEndHrs":156.98,"holAsAt":"2026-10-07"},{"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveUsed":0,"leavePending":0,"probationPassed":false,"dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"id":"olivia_hale_45","staffCode":"13079","name":"Olivia Hale","role":"F&B Team Member","dept":"restaurant","hrDept":"Restaurant","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"payBasis":"hourly","startDate":"2026-08-21","leaveAllowance":0,"nightWorker":false,"hrStatus":"hr","holAccruedHrs":4.09,"holTakenHrs":0.0,"holOutstandingHrs":4.09,"holYearEndHrs":4.69,"holAsAt":"2026-10-07"},{"id":"reuven_25","staffCode":"13084","name":"Reuven Shergill","role":"F&B Team Member","dept":"restaurant","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-09-01","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[],"hrDept":"Restaurant","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":8.96,"holTakenHrs":0.0,"holOutstandingHrs":8.96,"holYearEndHrs":11.8,"holAsAt":"2026-10-07"},{"id":"sheba_tychicus_23","staffCode":"BH022","name":"Sheba Tychicus","role":"F&B Team Member","dept":"restaurant","type":"core","contract":"Zero hours","contractHrs":0,"hourlyRate":12.0,"weeklyWage":0,"workDays":[0,0,1,1,1,1,1],"standardShift":"06:00-12:00","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrStatus":"not-on-hr"},{"id":"allen_37","staffCode":"13085","name":"Allen Thomas","role":"Housekeeping Team Member","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-08-19","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[],"hrDept":"Room Cleaning","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":12.41,"holTakenHrs":0.0,"holOutstandingHrs":12.41,"holYearEndHrs":14.22,"holAsAt":"2026-10-07"},{"id":"arthur_27","staffCode":"13089","name":"Arthur Bennett","role":"Housekeeping Team Member","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-08-01","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Trainee","docs":[],"hrDept":"Room Cleaning","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":4.48,"holTakenHrs":0.0,"holOutstandingHrs":4.48,"holYearEndHrs":4.48,"holAsAt":"2026-10-07"},{"id":"aryan_31","staffCode":"BH030","name":"Aryan","role":"Housekeeping","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0,"hourlyRate":12.71,"weeklyWage":0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":28,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[],"hrStatus":"not-on-hr"},{"workDays":[0,0,0,0,0,0,0],"standardShift":"Variable","leaveUsed":0,"leavePending":0,"probationPassed":false,"dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"id":"ayomidipupo_yoemi_46","staffCode":"13088","name":"Ayomidipupo Yoemi","role":"Housekeeping Team Member","dept":"housekeeping","hrDept":"Room Cleaning","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"payBasis":"hourly","startDate":"2026-08-30","leaveAllowance":0,"nightWorker":false,"hrStatus":"hr","holAccruedHrs":12.05,"holTakenHrs":0.0,"holOutstandingHrs":12.05,"holYearEndHrs":12.05,"holAsAt":"2026-10-07"},{"id":"dushyanth_39","staffCode":"13041","name":"Dushyanth Vuyyuru","role":"Housekeeping Team Member","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[1,1,1,1,1,0,0],"standardShift":"09:00-16:30","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-08-03","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[],"hrDept":"Room Cleaning","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":31.25,"holTakenHrs":0.0,"holOutstandingHrs":31.25,"holYearEndHrs":33.97,"holAsAt":"2026-10-07"},{"id":"hassen_38","staffCode":"12998","name":"Haseen Muskaan","role":"Housekeeping Team Member","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-07-19","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[],"hrDept":"Room Cleaning","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":44.73,"holTakenHrs":0.0,"holOutstandingHrs":44.73,"holYearEndHrs":46.54,"holAsAt":"2026-10-07"},{"id":"jitendra_34","staffCode":"13090","name":"Jitendra Dasnur","role":"Housekeeping Team Member","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-09-01","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[],"hrDept":"Room Cleaning","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":11.05,"holTakenHrs":0.0,"holOutstandingHrs":11.05,"holYearEndHrs":11.96,"holAsAt":"2026-10-07"},{"id":"lara_jervis_32","staffCode":"12902","name":"Lara Jervis","role":"Housekeeping Team Member","dept":"housekeeping","type":"core","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[0,1,0,1,0,0,1],"standardShift":"09:00-15:30","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-05-19","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Room Cleaning","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":37.84,"holTakenHrs":23.75,"holOutstandingHrs":14.09,"holYearEndHrs":14.09,"holAsAt":"2026-10-07"},{"id":"manoj_35","staffCode":"13042","name":"Mani Sonti","role":"Housekeeping Team Member","dept":"housekeeping","type":"relief","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[0,0,0,0,0,0,0],"standardShift":"09:00-16:30","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-08-03","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"Relief","docs":[],"hrDept":"Room Cleaning","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":23.66,"holTakenHrs":0.0,"holOutstandingHrs":23.66,"holYearEndHrs":26.38,"holAsAt":"2026-10-07"},{"id":"rahul_reghunath_33","staffCode":"12666","name":"Rahul Reghunath","role":"Housekeeping Team Member","dept":"housekeeping","type":"core","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[1,0,1,0,1,1,1],"standardShift":"06:30-14:30","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2025-11-06","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Room Cleaning","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":135.82,"holTakenHrs":0.0,"holOutstandingHrs":135.82,"holYearEndHrs":138.78,"holAsAt":"2026-10-07"},{"id":"ruth_addison_30","staffCode":"12688","name":"Ruth Addison","role":"Head Housekeeper","dept":"housekeeping","type":"core","contract":"Full-time","contractHrs":40.0,"hourlyRate":14.42,"weeklyWage":576.8,"workDays":[0,1,1,1,1,0,1],"standardShift":"09:00-17:00","leaveAllowance":28.0,"leaveUsed":0,"leavePending":0,"probationPassed":true,"startDate":"2026-01-05","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Room Cleaning","payBasis":"salary","nightWorker":false,"hrStatus":"hr","holAccruedHrs":116.22,"holTakenHrs":8.0,"holOutstandingHrs":108.22,"holYearEndHrs":216.0,"holAsAt":"2026-10-07"},{"id":"tushar_ambekar_36","staffCode":"12838","name":"Tushar Ambekar","role":"Housekeeping Team Member","dept":"housekeeping","type":"core","contract":"Zero hours","contractHrs":0.0,"hourlyRate":12.71,"weeklyWage":0.0,"workDays":[1,1,1,1,0,1,0],"standardShift":"09:00-17:00","leaveAllowance":0,"leaveUsed":0,"leavePending":0,"probationPassed":false,"startDate":"2026-04-01","dob":"","address":"","phone":"","email":"","niNumber":"","emergencyName":"","emergencyPhone":"","emergencyRel":"","notes":"","docs":[],"hrDept":"Room Cleaning","payBasis":"hourly","nightWorker":false,"hrStatus":"hr","holAccruedHrs":71.92,"holTakenHrs":0.0,"holOutstandingHrs":71.92,"holYearEndHrs":74.82,"holAsAt":"2026-10-07"}];
+
+
+/* ============================================================
+   HosPEOPLE — HR DATA (HR export import, Xero files, seed update)
+   Only work details are kept in this file (it's public). Personal
+   details from an HR import are saved on that computer only, and
+   bank details, ethnicity, nationality and right-to-work data are
+   never stored at all.
+   ============================================================ */
+const HS_SEED_VERSION='2026-10-07-hr';
+const HS_HR_FIELDS=['staffCode','type','name','role','dept','hrDept','contract','contractHrs','hourlyRate','weeklyWage','payBasis','startDate','leaveAllowance','nightWorker','hrStatus','holAccruedHrs','holTakenHrs','holOutstandingHrs','holYearEndHrs','holAsAt'];
+const HS_HR_DEPT={'01a':'reception','03a':'nights','05b':'housekeeping','06a':'restaurant','07a':'bar','08a':'kitchen','13a':'admin','14a':'admin'};
+const HS_HR_ROLE={'Housekeeping Team Mb':'Housekeeping Team Member','Breakfast Team Mbr':'Breakfast Team Member'};
+let hsSeedBusy=false;
+/* Bring computers that already have staff saved up to date with the latest HR seed (once per version) */
+function hsApplySeedUpdate(){
+  // One-off: the 7 Oct import briefly copied contact details into plain browser storage; they now live only in the locked payroll records
+  try{ if(!localStorage.getItem('hs_pii_clean_v1')){ const raw=localStorage.getItem('hs_profiles'); if(raw){ const l=JSON.parse(raw);
+    l.forEach(x=>{ if(x.hrStatus==='hr') ['dob','address','phone','email','emergencyName','emergencyPhone','emergencyRel','niNumber','annualSalary'].forEach(k=>{ if(k==='annualSalary') return; x[k]=''; }); });
+    localStorage.setItem('hs_profiles',JSON.stringify(l)); } localStorage.setItem('hs_pii_clean_v1','1'); } }catch(e){}
+  if(hsSeedBusy) return; let ver=''; try{ ver=localStorage.getItem('hs_seed_ver')||''; }catch(e){}
+  if(ver===HS_SEED_VERSION) return;
+  hsSeedBusy=true;
+  try{
+    ['sp_staff','hs_profiles'].forEach(key=>{
+      const raw=localStorage.getItem(key); if(!raw) return;
+      const list=JSON.parse(raw)||[];
+      HS_REAL_STAFF.forEach(seed=>{
+        const cur=list.find(x=>x.id===seed.id);
+        if(cur){ HS_HR_FIELDS.forEach(f=>{ if(seed[f]!==undefined) cur[f]=seed[f]; }); }
+        else list.push(JSON.parse(JSON.stringify(seed)));
+      });
+      list.forEach(x=>{ if(!HS_REAL_STAFF.some(s=>s.id===x.id) && !x.hrStatus) x.hrStatus='not-on-hr'; });
+      localStorage.setItem(key, JSON.stringify(list));
+    });
+    localStorage.setItem('hs_seed_ver', HS_SEED_VERSION);
+  }catch(e){ console.warn('Staff seed update failed', e); }
+  hsSeedBusy=false;
+}
+function hsIso(d){ const m=String(d||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:''; }
+function hsTitle(x){ x=String(x||'').trim(); return (x.length>2 && x===x.toUpperCase()) ? x.charAt(0)+x.slice(1).toLowerCase() : x; }
+function hsReadCSVFile(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result||'')); r.onerror=rej; r.readAsText(file); }); }
+function hsRowsToObjects(text){
+  const rows=spParseCSV(text).filter(r=>r.some(c=>String(c).trim()));
+  const head=(rows.shift()||[]).map(h=>String(h).trim());
+  return rows.map(r=>{ const o={}; head.forEach((h,i)=>o[h]=String(r[i]==null?'':r[i]).trim()); return o; });
+}
+function hsKind(objs){ const k=Object.keys(objs[0]||{}); if(k.includes('employee_id')&&k.includes('job_title_desc')) return 'hr'; if(k.includes('holiday_outstanding')) return 'holiday'; return ''; }
+
+/* Import the HR system export (ALL_*.csv) and/or the Holiday & Lieu report */
+function hsImportHRModal(){
+  showModal('Import from the HR system','Updates Staff Profiles, the rota and payroll',`
+    <div style="font-size:13px;color:#1a2b3a;line-height:1.55">
+      <p style="margin:0 0 10px">Choose the <b>staff export</b> (ALL_….csv) and, if you have it, the <b>Holiday and Lieu Report</b>. You can pick both at once.</p>
+      <ul style="margin:0 0 12px 18px;padding:0;font-size:12.5px;color:#374151">
+        <li>Updates job title, department, contract, hours, hourly rate, salary, start date and holiday balances.</li>
+        <li>Adds anyone new. Nobody is deleted — people not in the file are flagged so you can check them.</li>
+        <li>Personal details, NI numbers, bank details, right to work and emergency contacts go into the <b>locked payroll records</b>, encrypted with the payroll password before they leave this computer.</li>
+        <li>Ethnicity, marital status, nationality and gender identity are not kept.</li>
+      </ul>
+      ${hrUnlocked()?'<div style="font-size:12.5px;color:#166534;margin-bottom:10px">🔓 Payroll records are unlocked — they\'ll be updated with the same password.</div>':`<label style="display:block;font-size:12.5px;font-weight:700;margin-bottom:10px">Payroll password <span style="font-weight:400;color:#4b5563">(the first import sets it)</span><input id="hs-imp-pass" type="password" autocomplete="off" style="display:block;width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;margin-top:4px;font:14px Lato"></label>`}
+      <label style="display:inline-block;padding:10px 16px;border-radius:9px;background:#2B726A;color:#fff;font:700 13px Lato;cursor:pointer">📤 Choose CSV file(s)<input type="file" accept=".csv,text/csv" multiple style="display:none" onchange="hsImportHR(this.files)"></label>
+      <div id="hs-imp-out" style="margin-top:12px"></div>
+    </div>`);
+}
+async function hsImportHR(files){
+  const out=document.getElementById('hs-imp-out'); if(out) out.innerHTML='Reading…';
+  let hr=null, hol=null;
+  for(const f of files){ const objs=hsRowsToObjects(await hsReadCSVFile(f)); const k=hsKind(objs); if(k==='hr') hr=objs; else if(k==='holiday') hol=objs; }
+  if(!hr && !hol){ if(out) out.innerHTML='<div style="color:#b3261e">Those files don\'t look like the HR staff export or the Holiday report.</div>'; return; }
+  hsApplySeedUpdate();
+  const stores={sp_staff:spGetStaff(), hs_profiles:hsGetProfilesSeeded()};
+  const norm=s=>String(s||'').toLowerCase().replace(/[^a-z]/g,'');
+  const find=(list,code,first,last)=>list.find(x=>String(x.staffCode)===String(code))
+    || list.find(x=>norm(x.name)===norm(first+last))
+    || (list.filter(x=>norm(x.name.split(' ')[0])===norm(first)).length===1 ? list.find(x=>norm(x.name.split(' ')[0])===norm(first)) : null);
+  let updated=0, added=[], seen=new Set();
+  if(hr) hr.forEach(r=>{
+    if(r.leaver_ind==='Y' || r.termination_date) return;
+    const first=r.employee_first_name, last=hsTitle(r.employee_last_name), code=r.employee_id;
+    const hrs=+r.contract_hours_per_week||0, rate=+r.r1_hourly_rate||0, C=r.contract_type_code==='C';
+    const work={ staffCode:code, name:first+' '+last, role:HS_HR_ROLE[r.job_title_desc]||r.job_title_desc, dept:HS_HR_DEPT[r.department_id]||'admin', hrDept:r.department_desc,
+      contract:C?'Zero hours':(hrs>=35?'Full-time':'Part-time'), contractHrs:hrs, hourlyRate:rate, weeklyWage:Math.round(hrs*rate*100)/100,
+      payBasis:r.payroll_method_code==='S'?'salary':'hourly', annualSalary:+r.salary||0, startDate:hsIso(r.commencement_date),
+      leaveAllowance:(+r.holiday_entitlement||0)/8, nightWorker:r.night_worker_ind==='Y', hrStatus:'hr' };
+    let isNew=false;
+    Object.entries(stores).forEach(([key,list])=>{
+      let cur=find(list,code,first,last);
+      if(!cur){ isNew=true; cur={ id:(first+'_'+last).toLowerCase().replace(/[^a-z0-9]+/g,'_')+'_'+code, type:C?'relief':'core', workDays:[0,0,0,0,0,0,0], standardShift:'Variable',
+        leaveUsed:0, leavePending:0, probationPassed:false, notes:'', docs:[] }; list.push(cur); }
+      Object.assign(cur, work);
+      seen.add(cur.id);
+    });
+    if(isNew) added.push(work.name); else updated++;
+  });
+  let holN=0;
+  if(hol) hol.forEach(h=>{
+    Object.values(stores).forEach(list=>{ const cur=find(list,h.staff_id,h.first_name,hsTitle(h.family_name)); if(!cur) return;
+      Object.assign(cur,{holAccruedHrs:+h.holiday_accrued_to_date||0,holTakenHrs:+h.holiday_taken_to_date||0,holOutstandingHrs:+h.holiday_outstanding||0,holYearEndHrs:+h.year_end_balance||0,holAsAt:h.as_at_date||''});
+      if(list===stores.sp_staff) holN++; });
+  });
+  let notIn=[];
+  if(hr){ Object.values(stores).forEach(list=>list.forEach(x=>{ if(!seen.has(x.id)){ x.hrStatus='not-on-hr'; if(list===stores.sp_staff) notIn.push(x.name); } })); }
+  spSaveStaff(stores.sp_staff); hsSaveProfiles(stores.hs_profiles);
+  try{ localStorage.setItem('hs_hr_imported', new Date().toISOString()); }catch(e){}
+  let vaultMsg='';
+  if(hr){
+    try{ const pi=document.getElementById('hs-imp-pass'); const res=await hrStoreExport(hr, pi&&pi.value);
+      vaultMsg=`<div style="margin-top:6px;color:#166534">🔐 Payroll records saved for <b>${res.count}</b> people — ${res.where==='live'?'encrypted in Firebase':'encrypted on this computer only (sign in on the live site to share them)'}.</div>`; }
+    catch(e){ vaultMsg=`<div style="margin-top:6px;color:#b3261e">Payroll records NOT saved: ${spEsc(e.message||e)}</div>`; }
+  }
+  if(out) out.innerHTML=`<div style="background:#E2F1EE;border-radius:10px;padding:12px;font-size:13px">
+    ✅ ${hr?`<b>${updated}</b> updated, <b>${added.length}</b> added${added.length?` (${added.map(spEsc).join(', ')})`:''}.`:''} ${hol?`Holiday balances updated for <b>${holN}</b>.`:''}
+    ${notIn.length?`<div style="margin-top:6px;color:#9a3412">Not in the HR file (flagged, not deleted): ${notIn.map(spEsc).join(', ')}</div>`:''}${vaultMsg}</div>`;
+  if(CURRENT_TAB) setTimeout(()=>{ const v=document.getElementById('view'); if(v && /staffProfiles|rotaPayroll|rotaWeek/.test(CURRENT_TAB)) render(); }, 50);
+}
+
+/* ── Xero: employee file (built straight from the HR export, nothing stored) ── */
+const XERO_EMP_HEAD=['Title','First Name','Middle Name','Last Name','Date of Birth','Gender','Job Title','Email','Start Date','Address Line 1','Address Line 2','Town / City','County','Postcode','Phone Number','Employee Number','National Insurance Number','National Insurance Category','Taxable pay to date','Total tax to date','Opening NI Category','Gross for NICs','Gross at the LEL','Gross LEL to PT','Gross PT to UEL','NI paid by employee','NI paid by employer','Statutory maternity pay','Statutory paternity pay','Statutory adoption pay','Shared parental pay','Statutory sick pay','Student loan deductions','Pre-tax contributions to date','Post-tax contributions to date','Prior employee number','Postgraduate loan deductions'];
+function xeroEmployeeModal(){
+  showModal('Xero — employee upload file','Matches Xero\'s Employee Upload Template',`
+    <div style="font-size:13px;color:#1a2b3a;line-height:1.55">
+      <p style="margin:0 0 10px"><button onclick="closeModal();xeroEmployeeFromVault()" style="padding:9px 14px;border:none;border-radius:8px;background:#7A2E3B;color:#fff;font:700 12.5px Lato;cursor:pointer">🔐 Build from the saved payroll records</button></p>
+      <p style="margin:0 0 10px">Or choose an HR staff export (ALL_….csv) and the file is built from that.</p>
+      <ul style="margin:0 0 12px 18px;padding:0;font-size:12.5px;color:#374151">
+        <li>NI category is set to <b>M</b> for anyone under 21 and <b>A</b> for everyone else — check any apprentices (H) or other categories.</li>
+        <li>The year-to-date pay columns are left blank. If staff have already been paid this tax year on another system, fill those in from that system before uploading.</li>
+      </ul>
+      <label style="display:inline-block;padding:10px 16px;border-radius:9px;background:#13B5EA;color:#fff;font:700 13px Lato;cursor:pointer">📤 Choose HR export<input type="file" accept=".csv,text/csv" style="display:none" onchange="xeroEmployeeBuild(this.files[0])"></label>
+      <div id="xe-out" style="margin-top:12px"></div>
+    </div>`);
+}
+async function xeroEmployeeBuild(file){
+  const out=document.getElementById('xe-out'); if(!file) return;
+  const objs=hsRowsToObjects(await hsReadCSVFile(file));
+  if(hsKind(objs)!=='hr'){ if(out) out.innerHTML='<div style="color:#b3261e">That isn\'t the HR staff export (ALL_….csv).</div>'; return; }
+  const asAt=new Date(), age=d=>{ const m=String(d).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(!m) return 99; const b=new Date(+m[3],+m[2]-1,+m[1]); let a=asAt.getFullYear()-b.getFullYear(); if(asAt<new Date(asAt.getFullYear(),b.getMonth(),b.getDate())) a--; return a; };
+  const warn=[];
+  const rows=objs.filter(r=>r.leaver_ind!=='Y' && !r.termination_date).map(r=>{
+    const ni=(r.per_national_ins_no||'').toUpperCase().replace(/\s/g,'');
+    if(!/^[A-CEGHJ-PR-TW-Z]{2}\d{6}[A-D]$/.test(ni)) warn.push(`${r.employee_first_name} ${hsTitle(r.employee_last_name)}: NI number "${ni||'blank'}" doesn't look valid`);
+    const cat=age(r.per_birth_date)<21?'M':'A';
+    const v={'Title':r.per_title,'First Name':r.employee_first_name,'Middle Name':r.per_second_forename,'Last Name':hsTitle(r.employee_last_name),
+      'Date of Birth':r.per_birth_date,'Gender':r.per_sex_desc,'Job Title':HS_HR_ROLE[r.job_title_desc]||r.job_title_desc,'Email':r.email||r.work_email,
+      'Start Date':r.commencement_date,'Address Line 1':r.per_address_line_1,'Address Line 2':r.per_address_line_1A,'Town / City':r.per_town,'County':r.per_county,
+      'Postcode':r.per_postcode,'Phone Number':r.per_mobile_phone_nbr||r.per_home_phone_nbr,'Employee Number':r.employee_id,
+      'National Insurance Number':ni,'National Insurance Category':cat};
+    return XERO_EMP_HEAD.map(h=>v[h]==null?'':v[h]);
+  });
+  spDownload('xero-employee-upload-'+spDK(new Date())+'.csv', [XERO_EMP_HEAD,...rows].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
+  if(out) out.innerHTML=`<div style="background:#E8F7FD;border-radius:10px;padding:12px;font-size:13px">✅ <b>${rows.length}</b> employees written to the Xero file. In Xero: Payroll → Employees → Import.
+    ${warn.length?`<div style="margin-top:6px;color:#9a3412"><b>Check before uploading:</b><br>${warn.map(spEsc).join('<br>')}</div>`:''}</div>`;
+}
+
+/* ── Xero: pay run sheet for the period on screen ──
+   Xero UK payroll can't import pay runs from a file, so this lists exactly what to key in
+   for each employee (or what to send to the payroll bureau). */
+function xeroPaySheet(){
+  const P=spPayPeriod(), rows=spPayRows(P.days).filter(r=>r.hrs>0||r.basis==='salary');
+  const head=['Employee Number','First Name','Last Name','Department','Pay basis','Earnings rate (Xero)','Hours','Rate','Amount','Holiday days','Sick days','In lieu days','Notes'];
+  const data=rows.map(r=>{ const nm=String(r.s.name).split(' ');
+    return [r.s.staffCode||'', nm[0], nm.slice(1).join(' '), (SP_DEPTS.find(d=>d.id===r.s.dept)||{}).name||r.s.dept,
+      r.basis==='salary'?'Salary':'Hourly', r.basis==='salary'?'Salary':'Ordinary Hours', Math.round(r.hrs*100)/100,
+      r.basis==='salary'?'':Math.round(r.rate*100)/100, Math.round(r.gross*100)/100, r.hol, r.sick, r.lieu,
+      [r.s.hrStatus==='not-on-hr'?'Not on HR export — check':'', !r.rate&&r.basis!=='salary'?'No hourly rate':''].filter(Boolean).join('; ')]; });
+  const tot=rows.reduce((t,r)=>t+r.gross,0);
+  data.push(['','','TOTAL','','','',Math.round(rows.reduce((t,r)=>t+r.hrs,0)*100)/100,'',Math.round(tot*100)/100,'','','','']);
+  spDownload('xero-pay-run-'+P.file+'.csv', '﻿'+[['Brandon Hall Hotel & Spa — Xero pay run sheet — '+P.label],['Salaried staff: amount is the '+(spPayMode==='week'?'weekly (annual ÷ 52)':'monthly (annual ÷ 12)')+' salary. Hourly staff: paid hours from the approved rota × hourly rate.'],[],head,...data].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
+}
+
+
+/* ============================================================
+   HosPEOPLE — PAYROLL & HR RECORDS VAULT
+   Full HR details (address, NI number, bank details, right to work,
+   emergency contacts, salary) are encrypted in the browser with the
+   payroll password (AES-256-GCM, key from PBKDF2-SHA256) and stored in
+   Firestore at hr_private/vault. The password is never stored anywhere;
+   Firestore rules also limit the document to the HosPEOPLE users.
+   Ethnicity, marital status, nationality and gender identity are not kept.
+   ============================================================ */
+const HR_VAULT={ data:null, pass:null, timer:null, source:'' };
+const HR_LOCK_MINS=20;
+const hrB64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
+const hrUnb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function hrKey(pass,salt){
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function hrEncrypt(obj,pass){
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},await hrKey(pass,salt),new TextEncoder().encode(JSON.stringify(obj)));
+  return {v:1,salt:hrB64(salt),iv:hrB64(iv),ct:hrB64(ct),updated:new Date().toISOString(),by:(SESSION&&SESSION.name)||''};
+}
+async function hrDecrypt(blob,pass){
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:hrUnb64(blob.iv)},await hrKey(pass,hrUnb64(blob.salt)),hrUnb64(blob.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+function hrLive(){ return typeof FB!=='undefined' && FB.ready && FB.user && FB.db; }
+async function hrLoadBlob(){
+  if(hrLive()){
+    try{ const d=await FB.db.collection('hr_private').doc('vault').get(); HR_VAULT.source='live'; return d.exists?d.data():null; }
+    catch(e){ console.warn('HR vault read failed',e); throw new Error(e.code==='permission-denied'?'Your login is not allowed to read payroll records (check the Firestore rule for hr_private).':'Could not reach the live database.'); }
+  }
+  HR_VAULT.source='local';
+  try{ const s=localStorage.getItem('hr_vault_local'); return s?JSON.parse(s):null; }catch(e){ return null; }
+}
+async function hrSaveBlob(blob){
+  if(hrLive()){ await FB.db.collection('hr_private').doc('vault').set(blob); HR_VAULT.source='live'; return 'live'; }
+  localStorage.setItem('hr_vault_local', JSON.stringify(blob)); HR_VAULT.source='local'; return 'local';
+}
+function hrUnlocked(){ return !!HR_VAULT.data; }
+function hrTouch(){ clearTimeout(HR_VAULT.timer); HR_VAULT.timer=setTimeout(hrLock, HR_LOCK_MINS*60000); }
+function hrLock(silent){ HR_VAULT.data=null; HR_VAULT.pass=null; clearTimeout(HR_VAULT.timer); if(!silent) toast('🔒 Payroll records locked'); }
+function hrRecord(code){ return HR_VAULT.data && HR_VAULT.data.staff ? HR_VAULT.data.staff[String(code)] : null; }
+
+/* Ask for the payroll password; then run after() */
+function hrUnlockModal(after, reason){
+  if(hrUnlocked()){ hrTouch(); after&&after(); return; }
+  window._hrAfter=after||null;
+  showModal('🔐 Payroll records','Enter the payroll password',`
+    <div style="font-size:13px;color:#1a2b3a;line-height:1.55">
+      <p style="margin:0 0 10px">${reason||'Bank details, NI numbers and personal details are locked behind a second password.'}</p>
+      <input id="hr-pass" type="password" autocomplete="off" placeholder="Payroll password" onkeydown="if(event.key==='Enter')hrUnlock()" style="width:100%;padding:10px;border:1.5px solid #d1d5db;border-radius:9px;font:14px Lato">
+      <button onclick="hrUnlock()" style="margin-top:10px;width:100%;padding:11px;border:none;border-radius:9px;background:#2B726A;color:#fff;font:700 14px Lato;cursor:pointer">Unlock</button>
+      <div id="hr-unlock-msg" style="margin-top:10px;font-size:12.5px"></div>
+      <div style="font-size:11.5px;color:#4b5563;margin-top:8px">Locks again after ${HR_LOCK_MINS} minutes, when you sign out, or when you press Lock.</div>
+    </div>`);
+  setTimeout(()=>{ const i=document.getElementById('hr-pass'); if(i) i.focus(); },50);
+}
+async function hrUnlock(){
+  const pass=(document.getElementById('hr-pass')||{}).value||''; const msg=document.getElementById('hr-unlock-msg');
+  if(!pass){ if(msg) msg.innerHTML='<span style="color:#b3261e">Enter the password.</span>'; return; }
+  if(msg) msg.textContent='Checking…';
+  let blob=null;
+  try{ blob=await hrLoadBlob(); }catch(e){ if(msg) msg.innerHTML=`<span style="color:#b3261e">${spEsc(e.message)}</span>`; return; }
+  if(!blob){ if(msg) msg.innerHTML=`<span style="color:#9a3412">No payroll records saved yet. Use <b>📤 Import HR export</b> in Staff Profiles to add them — you'll set them up with this password.</span>`; return; }
+  try{ HR_VAULT.data=await hrDecrypt(blob,pass); HR_VAULT.pass=pass; hrTouch(); }
+  catch(e){ if(msg) msg.innerHTML='<span style="color:#b3261e">Wrong password.</span>'; return; }
+  closeModal(); toast('🔓 Payroll records unlocked');
+  const f=window._hrAfter; window._hrAfter=null; if(f) f(); else if(/staffProfiles|rotaPayroll/.test(CURRENT_TAB)) render();
+}
+
+/* Build vault records from the HR export (only the fields payroll/HR need) */
+function hrRecordsFromExport(objs){
+  const out={};
+  objs.forEach(r=>{
+    if(!r.employee_id) return;
+    out[r.employee_id]={
+      employeeNo:r.employee_id, title:r.per_title, first:r.employee_first_name, middle:r.per_second_forename, last:hsTitle(r.employee_last_name),
+      knownAs:r.per_known_as_name, sex:r.per_sex_desc, dob:r.per_birth_date,
+      jobTitle:HS_HR_ROLE[r.job_title_desc]||r.job_title_desc, department:r.department_desc, category:r.job_category_desc,
+      contract:r.contract_type_desc, hoursPerWeek:r.contract_hours_per_week, daysPerWeek:r.contract_days_per_week,
+      hourlyRate:r.r1_hourly_rate, rateFrom:r.r1_hourly_rate_effective_date, salary:r.salary, payMethod:r.payroll_method_desc,
+      startDate:r.commencement_date, noticeWeeks:r.notice_period_weeks, holidayEntitlementHrs:r.holiday_entitlement,
+      overtime:r.overtime_type_desc, nightWorker:r.night_worker_ind, leaver:r.leaver_ind==='Y'||!!r.termination_date, termination:r.termination_date,
+      address1:r.per_address_line_1, address2:r.per_address_line_1A, town:r.per_town, county:r.per_county, postcode:r.per_postcode,
+      mobile:r.per_mobile_phone_nbr, homePhone:r.per_home_phone_nbr, email:r.email||r.work_email,
+      niNumber:(r.per_national_ins_no||'').toUpperCase().replace(/\s/g,''),
+      rtwType:r.work_permit_desc, rtwRef:r.work_permit_no, rtwExpiry:r.work_permit_expiry_date,
+      ecName:[r.ec_forename,r.ec_surname].filter(Boolean).join(' ').trim(), ecRelationship:r.ec_relationship_desc, ecPhone:r.ec_mobile_nbr||r.ec_phone_nbr,
+      sortCode:r.sort_code, accountNo:r.bank_acct_no, accountName:r.account_name, bankName:r.bank_name, payBy:r.pay_method,
+      asAt:r.as_at_date
+    };
+  });
+  return out;
+}
+/* Save HR export into the vault (asks for the password if locked; first save sets it) */
+async function hrStoreExport(objs, passFromForm){
+  const pass=HR_VAULT.pass||passFromForm;
+  if(!pass) throw new Error('Enter the payroll password to save personal and bank details.');
+  let existing=HR_VAULT.data;
+  if(!existing){
+    const blob=await hrLoadBlob();
+    if(blob){ try{ existing=await hrDecrypt(blob,pass); }catch(e){ throw new Error('Wrong payroll password.'); } }
+  }
+  const staff=Object.assign({}, existing&&existing.staff||{}, hrRecordsFromExport(objs));
+  const data={staff, imported:new Date().toISOString(), by:(SESSION&&SESSION.name)||''};
+  const where=await hrSaveBlob(await hrEncrypt(data,pass));
+  HR_VAULT.data=data; HR_VAULT.pass=pass; hrTouch();
+  return {count:Object.keys(staff).length, where};
+}
+async function hrChangePassword(){
+  const a=document.getElementById('hr-new1').value, b=document.getElementById('hr-new2').value, m=document.getElementById('hr-pw-msg');
+  if(a.length<8){ m.innerHTML='<span style="color:#b3261e">Use at least 8 characters.</span>'; return; }
+  if(a!==b){ m.innerHTML='<span style="color:#b3261e">The two passwords don\'t match.</span>'; return; }
+  try{ await hrSaveBlob(await hrEncrypt(HR_VAULT.data,a)); HR_VAULT.pass=a; m.innerHTML='<span style="color:#166534">✓ Password changed. Give the new one to the people who need it.</span>'; }
+  catch(e){ m.innerHTML='<span style="color:#b3261e">Could not save: '+spEsc(e.message||e)+'</span>'; }
+}
+
+/* Full records table */
+function hrRecordsView(){
+  if(!hrUnlocked()){ hrUnlockModal(hrRecordsView); return; }
+  hrTouch();
+  const S=HR_VAULT.data.staff||{}, list=Object.values(S).filter(r=>!r.leaver).sort((a,b)=>(a.department||'').localeCompare(b.department||'')||(a.last||'').localeCompare(b.last||''));
+  const soon=new Date(); soon.setDate(soon.getDate()+90);
+  const ukDate=s=>{ const m=String(s||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m?new Date(+m[3],+m[2]-1,+m[1]):null; };
+  // Only time-limited permissions (visas) expire; for 'Applied & Waiting' the HR date is the check date, not an expiry
+  const limited=r=>r.rtwType && !/applied|passport|settled|unknown/i.test(r.rtwType);
+  const rtwAlerts=list.filter(r=>{ const d=ukDate(r.rtwExpiry); return limited(r) && d && d<=soon; });
+  const waiting=list.filter(r=>/applied/i.test(r.rtwType||''));
+  const students=list.filter(r=>/student/i.test(r.rtwType||''));
+  const th='padding:7px 8px;font-size:10.5px;text-transform:uppercase;text-align:left;background:#f5f7f9;position:sticky;top:0;white-space:nowrap';
+  const td='padding:6px 8px;font-size:12px;border-top:1px solid #eef1f4;white-space:nowrap';
+  const cols=[['Emp no','employeeNo'],['Name',r=>`${r.first} ${r.last}`],['Department','department'],['Job title','jobTitle'],['Contract','contract'],['Hrs/wk','hoursPerWeek'],['Rate','hourlyRate'],['Salary',r=>+r.salary?'£'+(+r.salary).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}):''],['Pay','payMethod'],['Start','startDate'],['DOB','dob'],['NI number','niNumber'],['Mobile','mobile'],['Email','email'],['Address',r=>[r.address1,r.address2,r.town,r.postcode].filter(Boolean).join(', ')],['Sort code','sortCode'],['Account no','accountNo'],['Account name','accountName'],['Bank','bankName'],['Right to work','rtwType'],['RTW expiry','rtwExpiry'],['Emergency contact',r=>[r.ecName,r.ecRelationship,r.ecPhone].filter(Boolean).join(' · ')]];
+  const val=(r,c)=>typeof c[1]==='function'?c[1](r):(r[c[1]]||'');
+  window._hrCols=cols; window._hrList=list;
+  showModal('🔐 Payroll & HR records',`${list.length} current staff · ${HR_VAULT.source==='live'?'stored encrypted in Firebase':'stored encrypted on this computer only'} · imported ${HR_VAULT.data.imported?new Date(HR_VAULT.data.imported).toLocaleDateString('en-GB'):''}`,`
+    <div style="font-size:13px;color:#1a2b3a">
+      ${rtwAlerts.length?`<div style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:9px;padding:9px 12px;margin-bottom:10px"><b>Right-to-work expiring within 90 days:</b> ${rtwAlerts.map(r=>`${spEsc(r.first)} ${spEsc(r.last)} (${spEsc(r.rtwExpiry)})`).join(', ')}</div>`:''}
+      ${waiting.length?`<div style="background:#f5f7f9;border:1px solid #e6e8ec;border-radius:9px;padding:9px 12px;margin-bottom:10px"><b>Right-to-work status "Applied &amp; Waiting" in the HR system:</b> ${waiting.length} staff — worth confirming the checks were completed.</div>`:''}
+      ${students.length?`<div style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:9px;padding:9px 12px;margin-bottom:10px"><b>Student visas (20 hours a week in term time):</b> ${students.map(r=>`${spEsc(r.first)} ${spEsc(r.last)}`).join(', ')} — the payroll grid flags them if rostered over 20 hours.</div>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button onclick="hrExportCSV()" style="padding:8px 14px;border:none;border-radius:8px;background:#2B726A;color:#fff;font:700 12px Lato;cursor:pointer">⬇ Download records (CSV)</button>
+        <button onclick="xeroEmployeeFromVault()" style="padding:8px 14px;border:none;border-radius:8px;background:#13B5EA;color:#fff;font:700 12px Lato;cursor:pointer">⬇ Xero employee file</button>
+        <button onclick="document.getElementById('hr-pw-box').style.display='block'" style="padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#1a2b3a;font:700 12px Lato;cursor:pointer">Change password</button>
+        <button onclick="hrLock();closeModal()" style="padding:8px 14px;border:1px solid #fca5a5;border-radius:8px;background:#fff;color:#991b1b;font:700 12px Lato;cursor:pointer">🔒 Lock</button>
+      </div>
+      <div id="hr-pw-box" style="display:none;background:#f5f7f9;border-radius:9px;padding:10px;margin-bottom:10px">
+        <input id="hr-new1" type="password" placeholder="New payroll password (8+ characters)" style="padding:8px;border:1px solid #d1d5db;border-radius:7px;width:240px">
+        <input id="hr-new2" type="password" placeholder="Repeat it" style="padding:8px;border:1px solid #d1d5db;border-radius:7px;width:180px">
+        <button onclick="hrChangePassword()" style="padding:8px 12px;border:none;border-radius:7px;background:#1a2b3a;color:#fff;font:700 12px Lato;cursor:pointer">Save</button>
+        <span id="hr-pw-msg" style="font-size:12px;margin-left:6px"></span>
+      </div>
+      <div style="overflow:auto;max-height:60vh;border:1px solid #e6e8ec;border-radius:10px">
+        <table style="border-collapse:collapse;min-width:2600px;color:#1a2b3a"><thead><tr>${cols.map(c=>`<th style="${th}">${c[0]}</th>`).join('')}</tr></thead>
+        <tbody>${list.map(r=>`<tr>${cols.map(c=>`<td style="${td}">${spEsc(val(r,c))}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      </div>
+      <div style="font-size:11.5px;color:#4b5563;margin-top:8px">Downloads contain bank and NI details — keep them off shared drives and delete them when you've finished.</div>
+    </div>`);
+  const box=document.querySelector('#modal-root .modal'); if(box) box.style.maxWidth='min(1400px,96vw)';
+}
+function hrExportCSV(){
+  const cols=window._hrCols, list=window._hrList; if(!cols) return;
+  const val=(r,c)=>typeof c[1]==='function'?c[1](r):(r[c[1]]||'');
+  const keep=new Set(['Sort code','Account no','Emp no','Mobile']);  // kept as text so Excel doesn't drop leading zeros
+  spDownload('brandon-hall-hr-records-'+spDK(new Date())+'.csv','\ufeff'+[cols.map(c=>c[0]),...list.map(r=>cols.map(c=>{ const x=val(r,c); return keep.has(c[0])&&x?'="'+x+'"':x; }))].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
+}
+function xeroEmployeeFromVault(){
+  if(!hrUnlocked()){ hrUnlockModal(xeroEmployeeFromVault); return; }
+  const list=Object.values(HR_VAULT.data.staff||{}).filter(r=>!r.leaver);
+  const asAt=new Date(), age=d=>{ const m=String(d).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(!m) return 99; const b=new Date(+m[3],+m[2]-1,+m[1]); let a=asAt.getFullYear()-b.getFullYear(); if(asAt<new Date(asAt.getFullYear(),b.getMonth(),b.getDate())) a--; return a; };
+  const rows=list.map(r=>{ const v={'Title':r.title,'First Name':r.first,'Middle Name':r.middle,'Last Name':r.last,'Date of Birth':r.dob,'Gender':r.sex,'Job Title':r.jobTitle,'Email':r.email,
+    'Start Date':r.startDate,'Address Line 1':r.address1,'Address Line 2':r.address2,'Town / City':r.town,'County':r.county,'Postcode':r.postcode,'Phone Number':r.mobile||r.homePhone,
+    'Employee Number':r.employeeNo,'National Insurance Number':r.niNumber,'National Insurance Category':age(r.dob)<21?'M':'A'};
+    return XERO_EMP_HEAD.map(h=>v[h]==null?'':v[h]); });
+  spDownload('xero-employee-upload-'+spDK(new Date())+'.csv',[XERO_EMP_HEAD,...rows].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
+  const bad=list.filter(r=>!/^[A-CEGHJ-PR-TW-Z]{2}\d{6}[A-D]$/.test(r.niNumber||''));
+  toast(`✓ Xero file for ${rows.length} employees${bad.length?` — check NI for ${bad.map(r=>r.first).join(', ')}`:''}`, 5000);
+}
+/* Profile tab: HR & bank details for one person */
+function hrProfileSection(p){
+  if(!hrUnlocked()) return `<div style="text-align:center;padding:26px 10px">
+      <div style="font-size:28px">🔐</div><div style="font-size:13px;color:#374151;margin:6px 0 12px">Personal, NI and bank details are locked.</div>
+      <button onclick="hrUnlockModal(()=>hsOpenProfile('${p.id}'))" style="padding:9px 16px;border:none;border-radius:9px;background:#2B726A;color:#fff;font:700 13px Lato;cursor:pointer">Unlock with payroll password</button></div>`;
+  hrTouch();
+  const r=hrRecord(p.staffCode);
+  if(!r) return `<div style="padding:16px;font-size:13px;color:#374151">No HR record for staff ID ${spEsc(p.staffCode)}. ${p.hrStatus==='not-on-hr'?'This person is not on the HR export.':''}</div>`;
+  const row=(k,v)=>`<div style="padding:7px 0;border-bottom:1px solid #eef1f4;display:flex;gap:10px;font-size:12.5px"><div style="width:150px;color:#4b5563;flex-shrink:0">${k}</div><div style="color:#1a2b3a;font-weight:600">${spEsc(v||'—')}</div></div>`;
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 24px">
+    <div>${row('Full name',[r.title,r.first,r.middle,r.last].filter(Boolean).join(' '))}${row('Date of birth',r.dob)}${row('NI number',r.niNumber)}${row('Mobile',r.mobile)}${row('Email',r.email)}${row('Address',[r.address1,r.address2,r.town,r.county,r.postcode].filter(Boolean).join(', '))}${row('Emergency contact',[r.ecName,r.ecRelationship,r.ecPhone].filter(Boolean).join(' · '))}</div>
+    <div>${row('Contract',r.contract+(+r.hoursPerWeek?` · ${r.hoursPerWeek}h/wk`:''))}${row('Pay',r.payMethod+(+r.salary?` · £${(+r.salary).toLocaleString('en-GB')} a year`:'')+(r.hourlyRate?` · £${r.hourlyRate}/h`:''))}${row('Start date',r.startDate)}${row('Notice',r.noticeWeeks&&r.noticeWeeks!=='0'?r.noticeWeeks+' weeks':'')}${row('Bank',[r.bankName,r.accountName].filter(Boolean).join(' · '))}${row('Sort code / account',[r.sortCode,r.accountNo].filter(Boolean).join(' · '))}${row('Right to work',[r.rtwType,r.rtwExpiry?(/applied/i.test(r.rtwType||'')?'checked ':'expires ')+r.rtwExpiry:''].filter(Boolean).join(' · '))}</div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:12px"><button onclick="hrLock();closeModal()" style="padding:7px 12px;border:1px solid #fca5a5;border-radius:8px;background:#fff;color:#991b1b;font:700 12px Lato;cursor:pointer">🔒 Lock</button></div>`;
+}
 
 function spGetStaff(){
+  hsApplySeedUpdate();
   const stored = localStorage.getItem('sp_staff');
   if(stored) return JSON.parse(stored);
   // First load - seed from real data
@@ -6237,6 +6620,7 @@ function spGetStaff(){
 }
 function spSaveStaff(d){ localStorage.setItem('sp_staff', JSON.stringify(d)); }
 function hsGetProfilesSeeded(){
+  hsApplySeedUpdate();
   const stored = localStorage.getItem('hs_profiles');
   if(stored) return JSON.parse(stored);
   // Build from real staff data
@@ -7230,8 +7614,8 @@ function renderStaffProfiles(v){
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:36px;height:36px;border-radius:50%;background:${dept.colour};display:flex;align-items:center;justify-content:center;font:700 12px Lato;color:#fff;flex-shrink:0">${p.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
           <div>
-            <div style="font-size:13px;font-weight:700;color:#1a2b3a">${p.name}</div>
-            <div style="font-size:11px;color:#374151">${p.staffCode}</div>
+            <div style="font-size:13px;font-weight:700;color:#1a2b3a">${p.name}${p.hrStatus==='not-on-hr'?' <span title="Not on the latest HR export — check if they still work here" style="font-size:10px;padding:1px 6px;border-radius:6px;background:#fff7ed;color:#9a3412;font-weight:700">not on HR export</span>':''}</div>
+            <div style="font-size:11px;color:#374151">${p.staffCode}${p.startDate?' · started '+new Date(p.startDate+'T12:00').toLocaleDateString('en-GB'):''}</div>
           </div>
         </div>
       </td>
@@ -7240,8 +7624,9 @@ function renderStaffProfiles(v){
       <td style="padding:10px 8px"><span style="padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;background:${p.contract==='Full-time'?'#dcfce7':p.contract==='Part-time'?'#dbeafe':'#fef9c3'};color:${p.contract==='Full-time'?'#166534':p.contract==='Part-time'?'#1d4ed8':'#854d0e'}">${p.contract||'—'}</span></td>
       <td style="padding:10px 8px;font-size:12px;color:#1a2b3a">${p.contractHrs>0?p.contractHrs+'h/wk':'—'}</td>
       <td style="padding:10px 8px;font-size:12px">
-        <div style="font-size:11px;color:#374151">Remaining: <b style="color:${leaveRemaining<5?'#b3261e':'#166534'}">${leaveRemaining}d</b></div>
-        <div style="font-size:10px;color:#374151">of ${p.leaveAllowance}d</div>
+        ${p.holOutstandingHrs!=null&&p.holOutstandingHrs!==''?`<div style="font-size:11px;color:#374151">Outstanding: <b style="color:${p.holOutstandingHrs<0?'#b3261e':'#166534'}">${spH(p.holOutstandingHrs)}h</b></div>
+        <div style="font-size:10px;color:#374151" title="From the HR Holiday report">taken ${spH(p.holTakenHrs||0)}h · as at ${p.holAsAt?new Date(p.holAsAt+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</div>`:`<div style="font-size:11px;color:#374151">Remaining: <b style="color:${leaveRemaining<5?'#b3261e':'#166534'}">${leaveRemaining}d</b></div>
+        <div style="font-size:10px;color:#374151">of ${p.leaveAllowance}d</div>`}
       </td>
       <td style="padding:10px 8px">
         ${p.probationPassed?'<span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#dcfce7;color:#166534">✓ Passed</span>':'<span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#fef9c3;color:#854d0e">Probation</span>'}
@@ -7261,7 +7646,12 @@ function renderStaffProfiles(v){
         <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#ffffff">Staff Profiles</div>
         <div style="font-size:12px;color:#a9b8c9">${filtered.length} of ${profiles.length} staff members</div>
       </div>
-      <button onclick="hsAddStaffModal()" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">+ Add staff member</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="hrRecordsView()" style="padding:9px 16px;background:#7A2E3B;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">${hrUnlocked()?'🔓':'🔐'} Payroll &amp; HR records</button>
+        <button onclick="hsImportHRModal()" style="padding:9px 16px;background:#2B726A;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">📤 Import HR export</button>
+        <button onclick="xeroEmployeeModal()" style="padding:9px 16px;background:#13B5EA;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">Xero employee file</button>
+        <button onclick="hsAddStaffModal()" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">+ Add staff member</button>
+      </div>
     </div>
 
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
@@ -7320,7 +7710,7 @@ function hsOpenProfile(staffId){
 
     <!-- Tabs -->
     <div style="display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:16px">
-      ${['Personal','Contract','Leave','Documents'].map((tab,i)=>`<button onclick="hsProfileTab(this,'${staffId}',${i})" class="hs-ptab" style="padding:8px 14px;border:none;border-bottom:${i===0?'2px solid #1a2b3a':'2px solid transparent'};background:none;font:${i===0?'700':'500'} 13px Lato;color:${i===0?'#1a2b3a':'#374151'};cursor:pointer;margin-bottom:-2px">${tab}</button>`).join('')}
+      ${['Personal','Contract','Leave','Documents','🔐 HR & Bank'].map((tab,i)=>`<button onclick="hsProfileTab(this,'${staffId}',${i})" class="hs-ptab" style="padding:8px 14px;border:none;border-bottom:${i===0?'2px solid #1a2b3a':'2px solid transparent'};background:none;font:${i===0?'700':'500'} 13px Lato;color:${i===0?'#1a2b3a':'#374151'};cursor:pointer;margin-bottom:-2px">${tab}</button>`).join('')}
     </div>
 
     <!-- Tab 0: Personal -->
@@ -7462,6 +7852,7 @@ function hsOpenProfile(staffId){
         </div>
       </div>
     </div>
+    <div id="hs-tab-4" style="display:none">${hrProfileSection(p)}</div>
   </div>`;
 
   openModal(html);
@@ -8447,7 +8838,14 @@ function spPayRows(days){
       if(k==='work'){ r.hrs+=h; r.shifts++; }
       else if(k==='holiday') r.hol++; else if(k==='sick') r.sick++; else if(k==='in lieu') r.lieu++; else if(k==='on call') r.oncall++;
     });
-    r.gross=r.hrs*r.rate;
+    /* Salaried staff are paid their salary for the period, whatever the rota hours.
+       Annual salary comes from the HR import; otherwise hourly rate × contract hours × 52. */
+    r.basis = s.payBasis==='salary' ? 'salary' : 'hourly';
+    if(r.basis==='salary'){
+      const annual = +s.annualSalary || (r.rate*(+s.contractHrs||0)*52);
+      r.annual = annual;
+      r.gross = spPayMode==='week' ? annual/52 : annual/12;
+    } else r.gross=r.hrs*r.rate;
     return r;
   });
 }
@@ -8470,18 +8868,18 @@ function renderRotaPayroll(v){
       return `<td title="${spEsc(c.shift)}" style="text-align:center;font-size:11px;padding:5px 2px;background:${bg};color:${c.k==='work'?'#166534':'#374151'};border-left:1px solid #f0f2f4">${lab}</td>`;
     }).join('');
     body+=`<tr style="border-top:1px solid #eef1f4">
-      <td style="position:sticky;left:0;background:#fff;padding:6px 10px;min-width:170px;box-shadow:2px 0 4px rgba(0,0,0,.04)"><div style="font-size:12px;font-weight:700;color:#1a2b3a">${spEsc(r.s.name)}</div><div style="font-size:10px;color:#4b5563">${spEsc(r.s.staffCode||'')} · ${spEsc(r.s.role||'')}</div></td>
+      <td style="position:sticky;left:0;background:#fff;padding:6px 10px;min-width:170px;box-shadow:2px 0 4px rgba(0,0,0,.04)"><div style="font-size:12px;font-weight:700;color:#1a2b3a">${spEsc(r.s.name)}${(()=>{ const h=hrUnlocked()&&hrRecord(r.s.staffCode); return h&&/student/i.test(h.rtwType||'')&&spPayMode==='week'&&r.hrs>20?` <span title="Student visa — 20 hours a week in term time" style="font-size:9.5px;padding:1px 5px;border-radius:6px;background:#fef2f2;color:#991b1b;font-weight:700">student: ${spH(r.hrs)}h &gt; 20</span>`:''; })()}${r.s.hrStatus==='not-on-hr'?' <span title="Not on the HR export — check before paying" style="font-size:9.5px;padding:1px 5px;border-radius:6px;background:#fff7ed;color:#9a3412;font-weight:700">not on HR</span>':''}</div><div style="font-size:10px;color:#4b5563">${spEsc(r.s.staffCode||'')} · ${spEsc(r.s.role||'')}</div></td>
       <td style="font-size:11px;padding:5px 8px;color:#374151;white-space:nowrap">${spEsc(r.s.contract||'')}</td>
       ${cells}
       <td style="text-align:center;font-size:11px;padding:5px 6px">${r.shifts}</td>
       <td style="text-align:right;font-size:12px;font-weight:700;padding:5px 8px">${spH(r.hrs)}</td>
-      <td style="text-align:right;font-size:11px;padding:5px 8px;color:${r.rate?'#374151':'#b3261e'}">${r.rate?spGBP(r.rate):'No rate'}</td>
+      <td style="text-align:right;font-size:11px;padding:5px 8px;color:${r.rate||r.basis==='salary'?'#374151':'#b3261e'}">${r.basis==='salary'?`<span title="${spGBP(r.annual)} a year">Salary</span>`:r.rate?spGBP(r.rate):'No rate'}</td>
       <td style="text-align:center;font-size:11px;padding:5px 6px;color:#374151">${[r.hol?r.hol+' hol':'',r.sick?r.sick+' sick':'',r.lieu?r.lieu+' lieu':''].filter(Boolean).join(' · ')||'—'}</td>
       <td style="text-align:right;font-size:12px;font-weight:800;padding:5px 10px;color:#1a2b3a">${spGBP(r.gross)}</td>
     </tr>`;
   });
   flushDept();
-  const noRate=rows.filter(r=>!r.rate&&r.hrs>0).length;
+  const noRate=rows.filter(r=>!r.rate&&r.hrs>0&&r.basis!=='salary').length;
   const btn='padding:7px 12px;border-radius:8px;font:700 12px Lato;cursor:pointer;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff';
   const on='padding:7px 14px;border-radius:8px;font:700 12px Lato;cursor:pointer;border:1px solid #4DA69C;background:#4DA69C;color:#fff';
 
@@ -8507,6 +8905,12 @@ function renderRotaPayroll(v){
       <b>Export for payroll:</b>
       <button onclick="spPayExport('xlsx')" style="padding:8px 14px;border:none;border-radius:8px;background:#2B726A;color:#fff;font:700 12px Lato;cursor:pointer">⬇ Excel</button>
       <button onclick="spPayExport('csv')" style="padding:8px 14px;border:1px solid #2B726A;border-radius:8px;background:#fff;color:#2B726A;font:700 12px Lato;cursor:pointer">⬇ CSV</button>
+      <span style="width:1px;height:22px;background:#e5e7eb"></span>
+      <b>Xero:</b>
+      <button onclick="xeroPaySheet()" style="padding:8px 14px;border:none;border-radius:8px;background:#13B5EA;color:#fff;font:700 12px Lato;cursor:pointer">⬇ Pay run sheet</button>
+      <button onclick="xeroEmployeeModal()" style="padding:8px 14px;border:1px solid #13B5EA;border-radius:8px;background:#fff;color:#0b7fa6;font:700 12px Lato;cursor:pointer">Employee upload file</button>
+      <button onclick="hsImportHRModal()" style="padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#1a2b3a;font:700 12px Lato;cursor:pointer">📤 Import HR export</button>
+      <button onclick="hrRecordsView()" style="padding:8px 14px;border:none;border-radius:8px;background:#7A2E3B;color:#fff;font:700 12px Lato;cursor:pointer">${hrUnlocked()?'🔓':'🔐'} Payroll records</button>
       <span style="flex:1"></span>
       <label style="display:flex;align-items:center;gap:6px">Unpaid break
         <input type="number" min="0" step="5" value="${ps.breakMins}" onchange="const p=spPaySettings();p.breakMins=Math.max(0,+this.value||0);spSavePaySettings(p);renderRotaPayroll(document.getElementById('view'))" style="width:60px;padding:5px;border:1px solid #d1d5db;border-radius:6px"> min on shifts over
@@ -8532,7 +8936,7 @@ function renderRotaPayroll(v){
         </tbody>
       </table>
     </div>
-    <div style="font-size:11px;color:#a9b8c9;margin-top:8px">Hours are paid hours from the approved rota (unsaved rota changes are not included). Gross pay = hours × hourly rate; it excludes employer NI, pension, holiday pay and tips. HOL = holiday, SICK = sick, LIEU = day in lieu, OC = on call.</div>
+    <div style="font-size:11px;color:#a9b8c9;margin-top:8px">Hours are paid hours from the approved rota (unsaved rota changes are not included). Gross pay = hours × hourly rate for hourly staff, and the ${spPayMode==='week'?'weekly (annual ÷ 52)':'monthly (annual ÷ 12)'} salary for salaried staff; it excludes employer NI, pension, overtime, holiday pay for hourly staff and tips. Xero UK can't import pay runs from a file, so the pay run sheet lists what to enter for each person. HOL = holiday, SICK = sick, LIEU = day in lieu, OC = on call.</div>
 
     <div id="sp-cmp-box" style="background:#fff;border-radius:12px;padding:16px;margin-top:18px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -8552,12 +8956,12 @@ function renderRotaPayroll(v){
 function spPayExport(fmt){
   const P=spPayPeriod(), rows=spPayRows(P.days), deptName=id=>(SP_DEPTS.find(d=>d.id===id)||{}).name||id;
   const dayHead=P.days.map(d=>d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'2-digit'}));
-  const head=['Staff code','Name','Role','Department','Contract',...dayHead,'Shifts','Paid hours','Hourly rate','Holiday days','Sick days','In lieu days','Gross pay'];
+  const head=['Staff code','Name','Role','Department','Contract',...dayHead,'Shifts','Paid hours','Pay basis','Hourly rate','Holiday days','Sick days','In lieu days','Gross pay'];
   const data=rows.map(r=>[r.s.staffCode||'',r.s.name,r.s.role||'',deptName(r.s.dept),r.s.contract||'',
     ...r.daily.map(c=>c.k==='work'?Math.round(c.h*100)/100:c.k==='off'?'':c.k.toUpperCase()),
-    r.shifts, Math.round(r.hrs*100)/100, Math.round(r.rate*100)/100, r.hol, r.sick, r.lieu, Math.round(r.gross*100)/100]);
+    r.shifts, Math.round(r.hrs*100)/100, r.basis==='salary'?'Salary':'Hourly', Math.round(r.rate*100)/100, r.hol, r.sick, r.lieu, Math.round(r.gross*100)/100]);
   const tH=rows.reduce((t,r)=>t+r.hrs,0), tG=rows.reduce((t,r)=>t+r.gross,0);
-  data.push(['','TOTAL','','','',...P.days.map(()=>''), rows.reduce((t,r)=>t+r.shifts,0), Math.round(tH*100)/100,'', rows.reduce((t,r)=>t+r.hol,0), rows.reduce((t,r)=>t+r.sick,0), rows.reduce((t,r)=>t+r.lieu,0), Math.round(tG*100)/100]);
+  data.push(['','TOTAL','','','',...P.days.map(()=>''), rows.reduce((t,r)=>t+r.shifts,0), Math.round(tH*100)/100,'','', rows.reduce((t,r)=>t+r.hol,0), rows.reduce((t,r)=>t+r.sick,0), rows.reduce((t,r)=>t+r.lieu,0), Math.round(tG*100)/100]);
   const fname='brandon-hall-payroll-'+P.file;
   if(fmt==='csv'){
     spDownload(fname+'.csv', '﻿'+[['Brandon Hall Hotel & Spa — Payroll '+P.label],[],head,...data].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
@@ -8840,7 +9244,8 @@ const HP_EVENT_VENUES=[{"name": "Ryton Pools Country Park", "town": "Ryton-on-Du
 const HP_EVENT_LISTINGS=[{"name": "Visit Coventry - Events", "url": "https://visitcoventry.co.uk/whats-on/events/", "note": "Official city tourism events hub (verified)"}, {"name": "Visit Coventry - Gigs & Concerts", "url": "https://visitcoventry.co.uk/whats-on/events/gigs-concerts/", "note": "Music listings for Coventry"}, {"name": "Shakespeare's England - What's On", "url": "https://www.shakespeares-england.co.uk/whats-on/", "note": "Official Warwickshire tourism listings; filter by town/date (verified)"}, {"name": "Shakespeare's England - Christmas", "url": "https://www.shakespeares-england.co.uk/whats-on/christmas/", "note": "Festive events across Warwickshire"}, {"name": "Coventry City Council - Events", "url": "https://www.coventry.gov.uk/events", "note": "Council events incl. Christmas market, Godiva Festival, Big Wheel"}, {"name": "Warwick District Council - Events", "url": "https://www.warwickdc.gov.uk/events", "note": "Leamington, Warwick and Kenilworth events incl. Peace Festival"}, {"name": "Ents24 - What's on near Coventry", "url": "https://www.ents24.com/whatson/coventry", "note": "Aggregated gig/show listings with date filter (verified)"}, {"name": "Ents24 - What's on near Warwick", "url": "https://www.ents24.com/whatson/warwick", "note": "Verified"}, {"name": "Ents24 - What's on near Leamington Spa", "url": "https://www.ents24.com/whatson/leamington-spa", "note": "Not fetched"}, {"name": "Skiddle - Coventry events", "url": "https://www.skiddle.com/whats-on/events/Coventry/", "note": "Club nights, gigs, festivals; site blocks automated fetch"}, {"name": "Songkick - Coventry Building Society Arena", "url": "https://www.songkick.com/venues/3849-coventry-building-society-arena", "note": "Concert tracker for the stadium (verified)"}, {"name": "Stereoboard - Coventry venues", "url": "https://www.stereoboard.com/venues/coventry", "note": "Gig listings by venue"}, {"name": "Coventry Telegraph - What's On", "url": "https://www.coventrytelegraph.net/whats-on/", "note": "Local news on shows/events (theatre-news subsection verified)"}, {"name": "What's On Live - Warwickshire", "url": "https://www.whatsonlive.co.uk/warwickshire/", "note": "Regional arts and entertainment magazine"}, {"name": "NEC Group - What's On (all NEC Group venues)", "url": "https://www.thenec.co.uk/whats-on/", "note": "Covers NEC, bp pulse LIVE and Utilita Arena Birmingham (verified)"}, {"name": "Visit Leicester - What's On", "url": "https://www.visitleicester.info/whats-on", "note": "For Hinckley, Lutterworth, Bosworth and Leicester"}];
 const HP_EVENT_DATES=[{"name": "Horse of the Year Show 2026", "venue": "NEC Birmingham / bp pulse LIVE", "start": "2026-10-07", "end": "2026-10-11", "url": "https://www.thenec.co.uk/whats-on/", "category": "Equestrian"}, {"name": "Coventry City v Newcastle United (Premier League)", "venue": "Coventry Building Society Arena", "start": "2026-10-12", "end": "2026-10-12", "url": "https://www.teamtalk.com/coventry-city/fixtures", "category": "Football", "note": "Date from one secondary source; confirm with the club"}, {"name": "The Motorhome and Caravan Show", "venue": "NEC Birmingham", "start": "2026-10-13", "end": "2026-10-18", "url": "https://www.thenec.co.uk/whats-on/", "category": "Exhibition"}, {"name": "Westlife (3 nights)", "venue": "bp pulse LIVE", "start": "2026-10-16", "end": "2026-10-18", "url": "https://www.bppulselive.co.uk/whats-on", "category": "Concert"}, {"name": "Coventry City v Fulham (Premier League)", "venue": "Coventry Building Society Arena", "start": "2026-10-24", "end": "2026-10-24", "url": "https://www.teamtalk.com/coventry-city/fixtures", "category": "Football"}, {"name": "The Haunted Castle (Halloween)", "venue": "Warwick Castle", "start": "2026-10-24", "end": "2026-11-01", "url": "https://www.warwick-castle.com/explore/events/", "category": "Seasonal"}, {"name": "Coventry City v Sunderland (Premier League)", "venue": "Coventry Building Society Arena", "start": "2026-10-31", "end": "2026-10-31", "url": "https://www.teamtalk.com/coventry-city/fixtures", "category": "Football"}, {"name": "Stan Mellor Chase Day", "venue": "Warwick Racecourse", "start": "2026-11-03", "end": "2026-11-03", "url": "https://www.thejockeyclub.co.uk/warwick/events-tickets/", "category": "Racing"}, {"name": "Cake International / Simply Christmas / Creative Craft Show", "venue": "NEC Birmingham", "start": "2026-11-05", "end": "2026-11-08", "url": "https://www.thenec.co.uk/whats-on/", "category": "Exhibition"}, {"name": "Round Table Fireworks Spectacular", "venue": "Kenilworth Castle", "start": "2026-11-07", "end": "2026-11-07", "url": "https://www.english-heritage.org.uk/visit/whats-on/kenilworth-castle-roundtable-fireworks-spectacular/", "category": "Seasonal"}, {"name": "Bill Bailey", "venue": "Coventry Building Society Arena", "start": "2026-11-13", "end": "2026-11-13", "url": "https://www.coventrybuildingsocietyarena.co.uk/whats-on", "category": "Comedy"}, {"name": "Lancaster Insurance Classic Motor Show", "venue": "NEC Birmingham", "start": "2026-11-13", "end": "2026-11-15", "url": "https://www.thenec.co.uk/whats-on/", "category": "Exhibition"}, {"name": "Christmas at the Castle", "venue": "Warwick Castle", "start": "2026-11-21", "end": "2027-01-03", "url": "https://www.warwick-castle.com/explore/events/", "category": "Seasonal"}, {"name": "Motorcycle Live", "venue": "NEC Birmingham", "start": "2026-11-21", "end": "2026-11-29", "url": "https://www.thenec.co.uk/whats-on/", "category": "Exhibition"}, {"name": "Festive Good Food Show", "venue": "NEC Birmingham", "start": "2026-11-26", "end": "2026-11-29", "url": "https://www.goodfoodshow.com/", "category": "Exhibition"}, {"name": "The Three Musketeers (RSC Christmas show)", "venue": "Royal Shakespeare Theatre, Stratford-upon-Avon", "start": "2026-11-28", "end": "2027-01-09", "url": "https://www.rsc.org.uk/whats-on", "category": "Theatre"}, {"name": "Sleeping Beauty (pantomime)", "venue": "Birmingham Hippodrome", "start": "2026-12-19", "end": "2027-01-31", "url": "https://www.birminghamhippodrome.com/", "category": "Theatre"}, {"name": "Carols at the Castle", "venue": "Warwick Castle", "start": "2026-12-19", "end": "2026-12-19", "url": "https://www.warwick-castle.com/explore/events/", "category": "Seasonal"}, {"name": "Coventry Rugby v Hartpury (Boxing Day)", "venue": "Nick Newbold Stadium", "start": "2026-12-26", "end": "2026-12-26", "url": "https://coventryrugby.co.uk/news/coventry-rugby-s-2026-27-elior-champ-rugby-fixtures-announced", "category": "Rugby"}, {"name": "Coventry Blaze v Cardiff Devils (Boxing Day)", "venue": "Skydome Arena", "start": "2026-12-26", "end": "2026-12-26", "url": "https://coventryblaze.co.uk/26-27-fixtures-released/", "category": "Ice hockey"}, {"name": "New Year's Eve Raceday", "venue": "Warwick Racecourse", "start": "2026-12-31", "end": "2026-12-31", "url": "https://www.thejockeyclub.co.uk/warwick/events-tickets/", "category": "Racing"}, {"name": "Coventry Blaze v Nottingham Panthers (New Year's Day derby)", "venue": "Skydome Arena", "start": "2027-01-01", "end": "2027-01-01", "url": "https://coventryblaze.co.uk/26-27-fixtures-released/", "category": "Ice hockey"}, {"name": "William Hill Classic Chase Day", "venue": "Warwick Racecourse", "start": "2027-01-16", "end": "2027-01-16", "url": "https://www.thejockeyclub.co.uk/warwick/events-tickets/", "category": "Racing"}, {"name": "Strictly Come Dancing Live Tour", "venue": "Utilita Arena Birmingham", "start": "2027-01-22", "end": "2027-01-24", "url": "https://www.thenec.co.uk/whats-on/", "category": "Live show"}, {"name": "Jack Whitehall - Bad Influence Tour", "venue": "Coventry Building Society Arena", "start": "2027-01-27", "end": "2027-01-27", "url": "https://www.coventrybuildingsocietyarena.co.uk/whats-on", "category": "Comedy"}, {"name": "Kingmaker Chase Day", "venue": "Warwick Racecourse", "start": "2027-02-13", "end": "2027-02-13", "url": "https://www.thejockeyclub.co.uk/warwick/events-tickets/", "category": "Racing"}, {"name": "Caravan, Camping and Motorhome Show", "venue": "NEC Birmingham", "start": "2027-02-16", "end": "2027-02-21", "url": "https://www.thenec.co.uk/whats-on/", "category": "Exhibition"}, {"name": "Crufts 2027", "venue": "NEC Birmingham", "start": "2027-03-04", "end": "2027-03-07", "url": "https://www.crufts.org.uk/", "category": "Exhibition"}, {"name": "YONEX All England Open Badminton Championships", "venue": "Utilita Arena Birmingham", "start": "2027-03-04", "end": "2027-03-14", "url": "https://www.thenec.co.uk/whats-on/", "category": "Sport"}, {"name": "Practical Classics Classic Car & Restoration Show", "venue": "NEC Birmingham", "start": "2027-03-19", "end": "2027-03-21", "url": "https://necrestorationshow.com", "category": "Exhibition"}, {"name": "The Enemy - 20th anniversary homecoming", "venue": "Coventry Building Society Arena", "start": "2027-03-20", "end": "2027-03-20", "url": "https://www.coventrybuildingsocietyarena.co.uk/whats-on", "category": "Concert"}, {"name": "Coventry Rugby v Ealing Trailfinders (Easter)", "venue": "Nick Newbold Stadium", "start": "2027-03-27", "end": "2027-03-27", "url": "https://coventryrugby.co.uk/news/coventry-rugby-s-2026-27-elior-champ-rugby-fixtures-announced", "category": "Rugby"}, {"name": "Coventry Half Marathon", "venue": "Coventry city centre", "start": "2027-04-11", "end": "2027-04-11", "url": "https://www.timeoutdoors.com/events/coventry-half-marathon/half-marathon", "category": "Sport"}, {"name": "BBC Gardeners' World Live (new venue)", "venue": "Packington Estate, Meriden", "start": "2027-06-17", "end": "2027-06-20", "url": "https://www.oswestry.life/article/new-home-for-bbc-gardeners-world-live-and-good-food-show-summer/", "category": "Exhibition"}, {"name": "Good Food Festival (replaces Good Food Show Summer)", "venue": "Packington Estate, Meriden", "start": "2027-06-17", "end": "2027-06-20", "url": "https://www.goodfoodshow.com/", "category": "Festival"}, {"name": "Men's Ashes 3rd Test - England v Australia", "venue": "Edgbaston Stadium", "start": "2027-07-08", "end": "2027-07-12", "url": "https://www.edgbaston.com/media-article/mens-and-womens-ashes-cricket-to-headline-2027-summer-at-edgbaston", "category": "Cricket"}, {"name": "Invictus Games Birmingham 2027", "venue": "NEC Birmingham", "start": "2027-07-10", "end": "2027-07-17", "url": "https://www.invictusgamesfoundation.org/news/invictus-games-birmingham-2027-dates-confirmed", "category": "Sport"}, {"name": "Women's Ashes 3rd ODI", "venue": "Edgbaston Stadium", "start": "2027-07-20", "end": "2027-07-20", "url": "https://www.edgbaston.com/media-article/mens-and-womens-ashes-cricket-to-headline-2027-summer-at-edgbaston", "category": "Cricket"}, {"name": "The Long Road festival", "venue": "Stanford Hall, Lutterworth", "start": "2027-08-26", "end": "2027-08-29", "url": "https://thefestivals.uk/?p=42926", "category": "Festival"}, {"name": "England v New Zealand 1st ODI", "venue": "Edgbaston Stadium", "start": "2027-09-14", "end": "2027-09-14", "url": "https://www.edgbaston.com/media-article/mens-and-womens-ashes-cricket-to-headline-2027-summer-at-edgbaston", "category": "Cricket"}];
 
-let hpEvFilter='All', hpEvRadius=20, hpEvShowPast=false;
+const HP_EVENT_VENUES_EXT=[{"name": "Villa Park (Aston Villa)", "town": "Birmingham", "approxMiles": 21.4, "category": "Stadium", "capacity": "42,600", "url": "https://www.avfc.co.uk", "note": "Premier League football — away fans and big concerts in summer", "extended": true}, {"name": "St Andrew's (Birmingham City)", "town": "Birmingham", "approxMiles": 20.0, "category": "Stadium", "capacity": "29,400", "url": "https://www.bcfc.com", "note": "Championship football", "extended": true}, {"name": "O2 Academy Birmingham", "town": "Birmingham", "approxMiles": 21.0, "category": "Comedy & music club", "capacity": "3,000", "url": "https://www.academymusicgroup.com/o2academybirmingham/", "note": "Touring bands most nights", "extended": true}, {"name": "Alexander Stadium", "town": "Birmingham", "approxMiles": 22.9, "category": "Stadium", "capacity": "18,000", "url": "https://www.birmingham.gov.uk/alexanderstadium", "note": "Athletics and stadium events", "extended": true}, {"name": "Cadbury World", "town": "Bournville", "approxMiles": 21.9, "category": "Heritage & castle", "capacity": "", "url": "https://www.cadburyworld.co.uk", "note": "Family attraction — groups and school holidays", "extended": true}, {"name": "Drayton Manor Resort", "town": "Tamworth", "approxMiles": 19.9, "category": "Festival & outdoor", "capacity": "", "url": "https://www.draytonmanor.co.uk", "note": "Theme park — family short breaks", "extended": true}, {"name": "King Power Stadium (Leicester City)", "town": "Leicester", "approxMiles": 19.8, "category": "Stadium", "capacity": "32,300", "url": "https://www.lcfc.com", "note": "Football — away fans", "extended": true}, {"name": "Mattioli Woods Welford Road (Leicester Tigers)", "town": "Leicester", "approxMiles": 20.2, "category": "Stadium", "capacity": "25,800", "url": "https://www.leicestertigers.com", "note": "Premiership rugby", "extended": true}, {"name": "Curve Theatre", "town": "Leicester", "approxMiles": 21.0, "category": "Theatre", "capacity": "1,500", "url": "https://www.curveonline.co.uk", "note": "Musicals and touring shows", "extended": true}, {"name": "cinch Stadium at Franklin's Gardens (Northampton Saints)", "town": "Northampton", "approxMiles": 23.4, "category": "Stadium", "capacity": "15,200", "url": "https://www.northamptonsaints.co.uk", "note": "Premiership rugby", "extended": true}, {"name": "Royal & Derngate", "town": "Northampton", "approxMiles": 24.5, "category": "Theatre", "capacity": "1,200", "url": "https://www.royalandderngate.co.uk", "note": "Touring theatre and comedy", "extended": true}, {"name": "Silverstone Circuit", "town": "Towcester", "approxMiles": 27.2, "category": "Festival & outdoor", "capacity": "150,000+", "url": "https://www.silverstone.co.uk", "note": "British Grand Prix (July) and MotoGP — huge room demand", "extended": true}, {"name": "Donington Park (Download Festival)", "town": "Castle Donington", "approxMiles": 30.7, "category": "Festival & outdoor", "capacity": "100,000+", "url": "https://www.donington-park.co.uk", "note": "Download Festival (June) and race meetings", "extended": true}, {"name": "Molineux Stadium (Wolves)", "town": "Wolverhampton", "approxMiles": 33.1, "category": "Stadium", "capacity": "31,700", "url": "https://www.wolves.co.uk", "note": "Football", "extended": true}, {"name": "The Halls Wolverhampton", "town": "Wolverhampton", "approxMiles": 33.0, "category": "Concert hall", "capacity": "3,000", "url": "https://www.thehallswolverhampton.co.uk", "note": "Concerts and comedy", "extended": true}, {"name": "Motorpoint Arena Nottingham", "town": "Nottingham", "approxMiles": 40.5, "category": "Arena", "capacity": "10,000", "url": "https://www.motorpointarenanottingham.com", "note": "Big-name concerts and ice hockey", "extended": true}, {"name": "Trent Bridge", "town": "Nottingham", "approxMiles": 39.8, "category": "Stadium", "capacity": "17,500", "url": "https://www.trentbridge.co.uk", "note": "Test and county cricket", "extended": true}, {"name": "Theatre Royal & Royal Concert Hall", "town": "Nottingham", "approxMiles": 40.8, "category": "Theatre", "capacity": "2,500", "url": "https://trch.co.uk", "note": "Touring musicals and concerts", "extended": true}, {"name": "Blenheim Palace", "town": "Woodstock", "approxMiles": 37.8, "category": "Heritage & castle", "capacity": "", "url": "https://www.blenheimpalace.com", "note": "Concerts, horse trials and Christmas lights", "extended": true}, {"name": "New Theatre Oxford", "town": "Oxford", "approxMiles": 44.3, "category": "Theatre", "capacity": "1,800", "url": "https://www.atgtickets.com/venues/new-theatre-oxford/", "note": "Touring shows", "extended": true}, {"name": "Cheltenham Racecourse", "town": "Cheltenham", "approxMiles": 42.2, "category": "Racecourse", "capacity": "", "url": "https://www.thejockeyclub.co.uk/cheltenham/", "note": "Cheltenham Festival (March) — very high demand", "extended": true}, {"name": "Milton Keynes Theatre", "town": "Milton Keynes", "approxMiles": 36.6, "category": "Theatre", "capacity": "1,400", "url": "https://www.atgtickets.com/venues/milton-keynes-theatre/", "note": "Touring musicals", "extended": true}, {"name": "Alton Towers Resort", "town": "Alton", "approxMiles": 45.9, "category": "Festival & outdoor", "capacity": "", "url": "https://www.altontowers.com", "note": "Theme park — family breaks", "extended": true}];
+let hpEvFilter='All', hpEvRadius=20, hpEvShowPast=false, hpEvFrom='', hpEvTo='', hpEvQuick='all';
 function hpEvGetCustom(){ try{ return JSON.parse(localStorage.getItem('hp_local_events')||'[]'); }catch(e){ return []; } }
 function hpEvSaveCustom(l){ try{ localStorage.setItem('hp_local_events', JSON.stringify(l)); }catch(e){} }
 function hpEvFmt(a,b){
@@ -8848,57 +9253,104 @@ function hpEvFmt(a,b){
   if(!b||a===b) return A.toLocaleDateString('en-GB',{weekday:'short',...o});
   return A.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+B.toLocaleDateString('en-GB',o);
 }
+function hpEvAllVenues(){ return HP_EVENT_VENUES.concat(HP_EVENT_VENUES_EXT).sort((a,b)=>a.approxMiles-b.approxMiles); }
+/* Distance for a dated event: from the venue list (first matching venue name), else unknown */
+function hpEvMiles(e){
+  if(e.miles!=null && e.miles!=='') return +e.miles;
+  const v=String(e.venue||'').toLowerCase(); if(!v) return null;
+  if(/coventry city centre/.test(v)) return 4.5;
+  let best=null;
+  hpEvAllVenues().forEach(x=>{ const key=x.name.toLowerCase().replace(/\s*\(.*\)/,'').split(/[,–-]/)[0].trim();
+    if(key && (v.includes(key) || key.includes(v.split(/[,/]/)[0].trim()))){ if(best==null||x.approxMiles<best) best=x.approxMiles; } });
+  return best;
+}
+function hpEvRedraw(){ renderLocalEvents(document.getElementById('view')); }
+function hpEvSetRadius(r){
+  const before=hpEvRadius; hpEvRadius=r; hpEvRedraw();
+  if(r>before){
+    const nV=hpEvAllVenues().filter(x=>x.approxMiles>before&&x.approxMiles<=r).length;
+    const nE=HP_EVENT_DATES.filter(e=>{const m=hpEvMiles(e);return m!=null&&m>before&&m<=r;}).length;
+    toast(`Range widened to ${r} miles — ${nV} more venue${nV===1?'':'s'}${nE?` and ${nE} more date${nE===1?'':'s'}`:''} added`, 4000);
+  }
+}
+function hpEvSetQuick(q){
+  hpEvQuick=q; const t=new Date(), k=d=>spDK(d);
+  if(q==='all'){ hpEvFrom=''; hpEvTo=''; }
+  else if(q==='30'){ const e=new Date(t); e.setDate(e.getDate()+30); hpEvFrom=k(t); hpEvTo=k(e); }
+  else if(q==='90'){ const e=new Date(t); e.setDate(e.getDate()+90); hpEvFrom=k(t); hpEvTo=k(e); }
+  else if(q==='month'){ hpEvFrom=k(new Date(t.getFullYear(),t.getMonth(),1,12)); hpEvTo=k(new Date(t.getFullYear(),t.getMonth()+1,0,12)); }
+  else if(q==='next'){ hpEvFrom=k(new Date(t.getFullYear(),t.getMonth()+1,1,12)); hpEvTo=k(new Date(t.getFullYear(),t.getMonth()+2,0,12)); }
+  hpEvRedraw();
+}
 function renderLocalEvents(v){
   const today=spDK(new Date()), esc=spEsc;
-  const cats=['All',...new Set(HP_EVENT_VENUES.map(x=>x.category))];
-  const venues=HP_EVENT_VENUES.filter(x=>x.approxMiles<=hpEvRadius && (hpEvFilter==='All'||x.category===hpEvFilter));
+  const allV=hpEvAllVenues();
+  const cats=['All',...new Set(allV.map(x=>x.category))];
+  const venues=allV.filter(x=>x.approxMiles<=hpEvRadius && (hpEvFilter==='All'||x.category===hpEvFilter));
   const custom=hpEvGetCustom().map(e=>Object.assign({custom:true},e));
-  const events=[...HP_EVENT_DATES,...custom].filter(e=>hpEvShowPast||(e.end||e.start)>=today).sort((a,b)=>a.start.localeCompare(b.start));
+  const inRadius=e=>{ const m=hpEvMiles(e); return m==null || m<=hpEvRadius; };
+  const inDates=e=>{ const st=e.start, en=e.end||e.start;
+    if(hpEvFrom && en<hpEvFrom) return false; if(hpEvTo && st>hpEvTo) return false; return true; };
+  const events=[...HP_EVENT_DATES,...custom].filter(e=>(hpEvShowPast||(e.end||e.start)>=today) && inRadius(e) && inDates(e)).sort((a,b)=>a.start.localeCompare(b.start));
   const soon=events.filter(e=>{const d=(new Date(e.start+'T12:00')-new Date())/864e5; return d<=60;}).length;
   const card='background:#fff;border:1px solid #e6e8ec;border-radius:12px';
   const chip=(t,on,js)=>`<button onclick="${js}" style="padding:6px 12px;border-radius:16px;border:1px solid ${on?'#6E4E7A':'#d6d9de'};background:${on?'#6E4E7A':'#fff'};color:${on?'#fff':'#1a2b3a'};font:700 12px Lato;cursor:pointer">${t}</button>`;
+  const beyond=allV.filter(x=>x.approxMiles>20&&x.approxMiles<=hpEvRadius).length;
+  const beyondE=HP_EVENT_DATES.filter(e=>{const m=hpEvMiles(e);return m!=null&&m>20&&m<=hpEvRadius;}).length;
+  const inp='padding:7px 9px;border:1px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a';
   v.innerHTML=`<div style="padding:22px 26px;max-width:1300px">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div><h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;margin:0;color:#1a2b3a">Local Events &amp; Shows</h2>
-        <div style="font-size:13px;color:#4b5563">Concerts, shows, sport and exhibitions within 20 miles of Brandon Hall. Use these to sell room + dinner packages to people going to them.</div></div>
+        <div style="font-size:13px;color:#4b5563">Concerts, shows, sport and exhibitions near Brandon Hall. Use these to sell room + dinner packages to people going to them.</div></div>
       <button onclick="hpEvAdd()" style="padding:9px 16px;border:none;border-radius:9px;background:#6E4E7A;color:#fff;font:700 13px Lato;cursor:pointer">+ Add an event</button>
     </div>
 
+    <div style="${card};padding:14px 16px;margin-bottom:14px;display:grid;gap:10px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:800;color:#1a2b3a;text-transform:uppercase;letter-spacing:.4px;min-width:62px">Range</span>
+        ${[20,30,40,50].map(r=>chip(r===20?'20 miles':`${r} miles`,hpEvRadius===r,`hpEvSetRadius(${r})`)).join('')}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:800;color:#1a2b3a;text-transform:uppercase;letter-spacing:.4px;min-width:62px">Dates</span>
+        ${[['all','All upcoming'],['30','Next 30 days'],['90','Next 3 months'],['month','This month'],['next','Next month']].map(([k,l])=>chip(l,hpEvQuick===k,`hpEvSetQuick('${k}')`)).join('')}
+        <label style="font-size:12.5px;color:#374151">From <input type="date" value="${hpEvFrom}" onchange="hpEvFrom=this.value;hpEvQuick='custom';hpEvRedraw()" style="${inp}"></label>
+        <label style="font-size:12.5px;color:#374151">To <input type="date" value="${hpEvTo}" onchange="hpEvTo=this.value;hpEvQuick='custom';hpEvRedraw()" style="${inp}"></label>
+        <label style="font-size:12.5px;color:#374151;display:flex;gap:6px;align-items:center"><input type="checkbox" ${hpEvShowPast?'checked':''} onchange="hpEvShowPast=this.checked;hpEvRedraw()"> Include past dates</label>
+      </div>
+    </div>
+
+    ${hpEvRadius>20?`<div style="background:#FFF7E6;border:1px solid #F5C77E;color:#7a4d00;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px">
+      <b>Range widened to ${hpEvRadius} miles.</b> This adds <b>${beyond}</b> venue${beyond===1?'':'s'} and <b>${beyondE}</b> dated event${beyondE===1?'':'s'} beyond 20 miles — they're marked <span style="display:inline-block;padding:0 6px;border-radius:8px;background:#F3E8D2;font-weight:700">beyond 20 mi</span>.
+      <a href="javascript:void(0)" onclick="hpEvSetRadius(20)" style="color:#6E4E7A;font-weight:700;margin-left:6px">Back to 20 miles</a></div>`:''}
+
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:16px">
-      ${[['Venues within 20 miles',HP_EVENT_VENUES.filter(x=>x.approxMiles<=20).length],['Upcoming key dates',events.length],['In the next 60 days',soon],['Listings sites',HP_EVENT_LISTINGS.length]].map(([l,n])=>`<div style="${card};padding:12px 14px"><div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.4px">${l}</div><div style="font-size:24px;font-weight:800;color:#6E4E7A">${n}</div></div>`).join('')}
+      ${[[`Venues within ${hpEvRadius} miles`,allV.filter(x=>x.approxMiles<=hpEvRadius).length],['Key dates shown',events.length],['In the next 60 days',soon],['Listings sites',HP_EVENT_LISTINGS.length]].map(([l,n])=>`<div style="${card};padding:12px 14px"><div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.4px">${l}</div><div style="font-size:24px;font-weight:800;color:#6E4E7A">${n}</div></div>`).join('')}
     </div>
 
     <div style="${card};padding:16px;margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-        <div style="font-size:16px;font-weight:800;color:#1a2b3a">Key dates coming up</div>
-        <label style="font-size:12.5px;color:#374151;display:flex;gap:6px;align-items:center"><input type="checkbox" ${hpEvShowPast?'checked':''} onchange="hpEvShowPast=this.checked;renderLocalEvents(document.getElementById('view'))"> Show past dates</label>
-      </div>
-      <div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;color:#1a2b3a;min-width:700px">
-        <thead><tr style="background:#f5f7f9;text-align:left">${['Date','Event','Venue','Type',''].map(h=>`<th style="padding:8px;font-size:11px;text-transform:uppercase">${h}</th>`).join('')}</tr></thead>
-        <tbody>${events.map((e,i)=>{const days=Math.round((new Date(e.start+'T12:00')-new Date())/864e5);return `<tr style="border-top:1px solid #eef1f4">
+      <div style="font-size:16px;font-weight:800;color:#1a2b3a;margin-bottom:10px">Key dates ${hpEvFrom||hpEvTo?`<span style="font-size:12.5px;font-weight:600;color:#4b5563">· ${hpEvFrom?new Date(hpEvFrom+'T12:00').toLocaleDateString('en-GB'):'…'} to ${hpEvTo?new Date(hpEvTo+'T12:00').toLocaleDateString('en-GB'):'…'}</span>`:''}</div>
+      <div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;color:#1a2b3a;min-width:760px">
+        <thead><tr style="background:#f5f7f9;text-align:left">${['Date','Event','Venue','Miles','Type',''].map(h=>`<th style="padding:8px;font-size:11px;text-transform:uppercase">${h}</th>`).join('')}</tr></thead>
+        <tbody>${events.map(e=>{const days=Math.round((new Date(e.start+'T12:00')-new Date())/864e5); const m=hpEvMiles(e); return `<tr style="border-top:1px solid #eef1f4${m>20?';background:#FFFBF2':''}">
           <td style="padding:8px;white-space:nowrap;font-weight:700">${hpEvFmt(e.start,e.end)}${days>=0&&days<=30?`<div style="font-size:11px;color:#b45309;font-weight:700">in ${days} day${days===1?'':'s'}</div>`:''}</td>
           <td style="padding:8px;font-weight:700">${esc(e.name)}${e.note?`<div style="font-size:11px;color:#b45309;font-weight:400">${esc(e.note)}</div>`:''}${e.custom?' <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#EFE7F2;color:#6E4E7A">added by team</span>':''}</td>
-          <td style="padding:8px">${esc(e.venue)}</td><td style="padding:8px">${esc(e.category||'')}</td>
-          <td style="padding:8px;white-space:nowrap">${e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener" style="color:#6E4E7A;font-weight:700">Details ↗</a>`:''}${e.custom?` <button onclick="hpEvDel('${esc(e.id)}')" style="border:none;background:none;color:#b3261e;cursor:pointer;font-size:12px">Remove</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="5" style="padding:14px;color:#4b5563">No upcoming dates.</td></tr>'}</tbody>
+          <td style="padding:8px">${esc(e.venue)}</td>
+          <td style="padding:8px;white-space:nowrap">${m==null?'—':m+' mi'}${m>20?' <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#F3E8D2;color:#7a4d00;font-weight:700">beyond 20 mi</span>':''}</td>
+          <td style="padding:8px">${esc(e.category||'')}</td>
+          <td style="padding:8px;white-space:nowrap">${e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener" style="color:#6E4E7A;font-weight:700">Details ↗</a>`:''}${e.custom?` <button onclick="hpEvDel('${esc(e.id)}')" style="border:none;background:none;color:#b3261e;cursor:pointer;font-size:12px">Remove</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="6" style="padding:14px;color:#4b5563">No dates in this range. Widen the dates or the mileage.</td></tr>'}</tbody>
       </table></div>
-      <div style="font-size:11.5px;color:#4b5563;margin-top:8px">Dates checked on 7 October 2026. Always confirm on the venue's site before promoting a package. Events added by the team are saved on this computer only.</div>
+      <div style="font-size:11.5px;color:#4b5563;margin-top:8px">Dates checked on 7 October 2026. Always confirm on the venue's site before promoting a package. Miles are straight-line from Brandon Hall (CV8 3FW). Events added by the team are saved on this computer only.</div>
     </div>
 
     <div style="${card};padding:16px;margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-        <div style="font-size:16px;font-weight:800;color:#1a2b3a">Venues — what's on pages</div>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          ${chip('Within 20 miles',hpEvRadius===20,"hpEvRadius=20;renderLocalEvents(document.getElementById('view'))")}
-          ${chip('Include Birmingham & Leicester (to 23 mi)',hpEvRadius===23,"hpEvRadius=23;renderLocalEvents(document.getElementById('view'))")}
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${cats.map(c=>chip(c,hpEvFilter===c,`hpEvFilter='${c.replace(/'/g,"\\'")}';renderLocalEvents(document.getElementById('view'))`)).join('')}</div>
+      <div style="font-size:16px;font-weight:800;color:#1a2b3a;margin-bottom:10px">Venues — what's on pages</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${cats.map(c=>chip(c,hpEvFilter===c,`hpEvFilter='${c.replace(/'/g,"\\'")}';hpEvRedraw()`)).join('')}</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px">
-        ${venues.map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:#1a2b3a;border:1px solid #e6e8ec;border-left:4px solid ${x.approxMiles>20?'#9ca3af':'#6E4E7A'};border-radius:10px;padding:11px 12px;background:#fff">
-          <div style="display:flex;justify-content:space-between;gap:8px"><div style="font-weight:800;font-size:13.5px">${esc(x.name)}</div><div style="font-size:12px;font-weight:800;color:#6E4E7A;white-space:nowrap">${x.approxMiles} mi</div></div>
+        ${venues.map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:#1a2b3a;border:1px solid #e6e8ec;border-left:4px solid ${x.approxMiles>20?'#D9A441':'#6E4E7A'};border-radius:10px;padding:11px 12px;background:${x.approxMiles>20?'#FFFBF2':'#fff'}">
+          <div style="display:flex;justify-content:space-between;gap:8px"><div style="font-weight:800;font-size:13.5px">${esc(x.name)}</div><div style="font-size:12px;font-weight:800;color:${x.approxMiles>20?'#7a4d00':'#6E4E7A'};white-space:nowrap">${x.approxMiles} mi</div></div>
           <div style="font-size:12px;color:#4b5563">${esc(x.town)} · ${esc(x.category)}${x.capacity?' · '+esc(x.capacity):''}</div>
           <div style="font-size:12px;color:#374151;margin-top:4px">${esc(x.note||'')}</div>
-          <div style="font-size:12px;color:#6E4E7A;font-weight:700;margin-top:6px">What's on ↗</div></a>`).join('')}
+          <div style="font-size:12px;color:#6E4E7A;font-weight:700;margin-top:6px">What's on ↗</div></a>`).join('')||'<div style="color:#4b5563;font-size:13px">No venues of this type in range.</div>'}
       </div>
     </div>
 
@@ -8930,3 +9382,416 @@ function hpEvSave(){
   hpEvSaveCustom(l); closeModal(); renderLocalEvents(document.getElementById('view')); toast('✓ Event added');
 }
 function hpEvDel(id){ hpEvSaveCustom(hpEvGetCustom().filter(e=>e.id!==id)); renderLocalEvents(document.getElementById('view')); }
+
+/* ============================================================
+   HosSALES — F&B DAILY TRACKER
+   Daily sales by outlet/service + purchase invoices → month-to-date
+   GP against target, spend headroom, run-rate projection.
+   Stored in Firestore fb_tracker/<YYYY-MM> (+ fb_tracker/settings),
+   falls back to this computer when not signed in live.
+   ============================================================ */
+const FB_DEFAULT_SETTINGS={ foodTarget:70, bevTarget:75, lines:[
+  {id:'breakfast',name:'Breakfast',outlet:'The Clarendon Restaurant'},
+  {id:'lunch',name:'Lunch',outlet:'The Clarendon Restaurant'},
+  {id:'aftertea',name:'Afternoon tea',outlet:'The Clarendon Restaurant'},
+  {id:'dinner',name:'Dinner',outlet:'The Clarendon Restaurant'},
+  {id:'bar',name:'Bar & lounge',outlet:'The Clarendon Bar'},
+  {id:'roomservice',name:'Room service',outlet:'Room service'},
+  {id:'banqueting',name:'Banqueting & events',outlet:'Events'},
+  {id:'spa',name:'Spa café',outlet:'Spa'} ] };
+const FB_CATS=['Food','Beverage','Non-F&B'];
+let FBT={ month:null, data:null, settings:null, src:'', view:'food', saving:null };
+function fbtMonthKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function fbtLive(){ return typeof FB!=='undefined' && FB.ready && FB.user && FB.db; }
+function fbtEmpty(){ return {sales:{}, invoices:{}, stock:{openFood:'',openBev:'',closeFood:'',closeBev:''}}; }
+async function fbtLoad(month){
+  FBT.month=month;
+  if(fbtLive()){
+    try{
+      const [m,s]=await Promise.all([FB.db.collection('fb_tracker').doc(month).get(), FB.db.collection('fb_tracker').doc('settings').get()]);
+      FBT.data=Object.assign(fbtEmpty(), m.exists?m.data():{}); FBT.settings=Object.assign({},FB_DEFAULT_SETTINGS, s.exists?s.data():{}); FBT.src='live'; return;
+    }catch(e){ console.warn('F&B tracker live load failed',e); }
+  }
+  try{ FBT.data=Object.assign(fbtEmpty(), JSON.parse(localStorage.getItem('fbt_'+month)||'{}')); }catch(e){ FBT.data=fbtEmpty(); }
+  try{ FBT.settings=Object.assign({},FB_DEFAULT_SETTINGS, JSON.parse(localStorage.getItem('fbt_settings')||'{}')); }catch(e){ FBT.settings=JSON.parse(JSON.stringify(FB_DEFAULT_SETTINGS)); }
+  FBT.src='local';
+}
+/* Field-level saves so two people entering at once don't overwrite each other */
+async function fbtSave(patch, delPaths){
+  if(FBT.src==='live' && fbtLive()){
+    const ref=FB.db.collection('fb_tracker').doc(FBT.month), upd=Object.assign({},patch);
+    (delPaths||[]).forEach(p=>upd[p]=firebase.firestore.FieldValue.delete());
+    upd.updated=new Date().toISOString(); upd.by=(SESSION&&SESSION.name)||'';
+    try{ await ref.update(upd); }catch(e){ if(e.code==='not-found'){ await ref.set(fbtEmpty()); await ref.update(upd); } else { toast('Could not save to the live database: '+(e.code||e.message)); throw e; } }
+  } else { try{ localStorage.setItem('fbt_'+FBT.month, JSON.stringify(FBT.data)); }catch(e){} }
+}
+async function fbtSaveSettings(){
+  if(FBT.src==='live' && fbtLive()){ try{ await FB.db.collection('fb_tracker').doc('settings').set(FBT.settings); }catch(e){ toast('Could not save settings'); } }
+  else try{ localStorage.setItem('fbt_settings', JSON.stringify(FBT.settings)); }catch(e){}
+}
+const fbtN=v=>{ const n=parseFloat(String(v==null?'':v).replace(/[£,\s]/g,'')); return isFinite(n)?n:0; };
+const fbtGBP=n=>'£'+(Math.round(n||0)).toLocaleString('en-GB');
+const fbtPct=n=>(isFinite(n)?(Math.round(n*10)/10).toFixed(1):'—')+'%';
+
+/* All the numbers for the month */
+function fbtCalc(){
+  const D=FBT.data, S=FBT.settings, [y,m]=FBT.month.split('-').map(Number), dim=new Date(y,m,0).getDate();
+  const days=Array.from({length:dim},(_,i)=>`${FBT.month}-${String(i+1).padStart(2,'0')}`);
+  const inv=Object.values(D.invoices||{});
+  const rows=days.map(d=>{
+    const s=D.sales[d]||{}; let food=0,bev=0,covers=0;
+    Object.values(s).forEach(l=>{ food+=fbtN(l.food); bev+=fbtN(l.bev); covers+=fbtN(l.covers); });
+    const di=inv.filter(x=>x.date===d), pf=di.filter(x=>x.cat==='Food').reduce((t,x)=>t+fbtN(x.net),0), pb=di.filter(x=>x.cat==='Beverage').reduce((t,x)=>t+fbtN(x.net),0);
+    return {d, food, bev, covers, pf, pb, hasSales:Object.keys(s).length>0};
+  });
+  let cf=0,cb=0,cpf=0,cpb=0; rows.forEach(r=>{ cf+=r.food; cb+=r.bev; cpf+=r.pf; cpb+=r.pb; Object.assign(r,{cf,cb,cpf,cpb}); });
+  const lastSales=rows.filter(r=>r.hasSales).map(r=>r.d).pop()||null;
+  const daysIn=lastSales?+lastSales.slice(8):0;
+  const st=D.stock||{}, hasClose=st.closeFood!==''&&st.closeFood!=null||st.closeBev!==''&&st.closeBev!=null;
+  const adj=(open,close)=>fbtN(open)-(close===''||close==null?0:fbtN(close));
+  const tF=S.foodTarget/100, tB=S.bevTarget/100;
+  const mk=(sales,purch,open,close,t)=>{
+    const cos=purch+(hasClose?adj(open,close):0);
+    const gp=sales?((sales-cos)/sales*100):NaN;
+    const allowed=sales*(1-t); const headroom=allowed-cos;
+    const projSales=daysIn?sales/daysIn*dim:0, projPurch=daysIn?purch/daysIn*dim:0;
+    const projGP=projSales?((projSales-projPurch)/projSales*100):NaN;
+    const remainBudget=projSales*(1-t)-cos, left=dim-daysIn;
+    return {sales,purch,cos,gp,allowed,headroom,projSales,projPurch,projGP,remainBudget,perDay:left>0?remainBudget/left:0,left,target:t*100};
+  };
+  const food=mk(cf,cpf,st.openFood,st.closeFood,tF), bev=mk(cb,cpb,st.openBev,st.closeBev,tB);
+  const nonfb=inv.filter(x=>x.cat==='Non-F&B').reduce((t,x)=>t+fbtN(x.net),0);
+  const covers=rows.reduce((t,r)=>t+r.covers,0);
+  return {rows,days,dim,daysIn,lastSales,food,bev,nonfb,covers,inv,hasClose};
+}
+
+function renderFBTracker(v){
+  const now=new Date(), def=fbtMonthKey(new Date(now.getFullYear(),now.getMonth(),now.getDate()-1));
+  v.innerHTML='<div style="padding:30px;color:#4b5563">Loading F&amp;B figures…</div>';
+  fbtLoad(FBT.month||def).then(()=>fbtDraw(v));
+}
+function fbtDraw(v){
+  v=v||document.getElementById('view'); if(!v || CURRENT_TAB!=='fbTracker') return;
+  const C=fbtCalc(), S=FBT.settings, F=C.food, B=C.bev;
+  const y=new Date(); y.setDate(y.getDate()-1); const yk=spDK(y);
+  const monthLabel=new Date(FBT.month+'-15').toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const card='background:#fff;border:1px solid #e6e8ec;border-radius:12px';
+  const btn='padding:8px 13px;border-radius:8px;font:700 12.5px Lato;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#1a2b3a';
+  const pri='padding:9px 15px;border-radius:9px;font:700 13px Lato;cursor:pointer;border:none;background:#6E4E7A;color:#fff';
+  const status=(o)=>{ if(!o.sales) return {t:'No sales yet',c:'#4b5563',bg:'#f5f7f9',i:'•'};
+    if(o.gp>=o.target) return {t:'On target',c:'#166534',bg:'#dcfce7',i:'✓'};
+    if(o.gp>=o.target-3) return {t:'Watch spend',c:'#92400e',bg:'#fef3c7',i:'!'};
+    return {t:'Over spend',c:'#991b1b',bg:'#fee2e2',i:'✕'}; };
+  const tile=(title,o)=>{ const s=status(o); return `<div style="${card};padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-size:15px;font-weight:800;color:#1a2b3a">${title}</div>
+        <span style="font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:10px;background:${s.bg};color:${s.c}">${s.i} ${s.t}</span></div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:10px">
+        <div><div style="font-size:11px;color:#4b5563;font-weight:700;text-transform:uppercase">Sales MTD</div><div style="font-size:22px;font-weight:800;color:#1a2b3a">${fbtGBP(o.sales)}</div></div>
+        <div><div style="font-size:11px;color:#4b5563;font-weight:700;text-transform:uppercase">${C.hasClose?'Cost of sales':'Purchases'} MTD</div><div style="font-size:22px;font-weight:800;color:#1a2b3a">${fbtGBP(o.cos)}</div></div>
+        <div><div style="font-size:11px;color:#4b5563;font-weight:700;text-transform:uppercase">GP</div><div style="font-size:22px;font-weight:800;color:${s.c}">${o.sales?fbtPct(o.gp):'—'}</div><div style="font-size:11px;color:#4b5563">target ${o.target}%</div></div>
+      </div>
+      <div style="margin-top:10px;font-size:12.5px;color:#374151;line-height:1.55">
+        ${o.sales?`Allowed spend so far at ${o.target}% GP: <b>${fbtGBP(o.allowed)}</b> — ${o.headroom>=0?`<b style="color:#166534">${fbtGBP(o.headroom)} under</b>`:`<b style="color:#991b1b">${fbtGBP(-o.headroom)} over</b>`}.<br>
+        ${C.daysIn&&o.left>0?`On current trading the month ends around <b>${fbtGBP(o.projSales)}</b> sales. To finish at ${o.target}% you can spend about <b>${fbtGBP(Math.max(0,o.remainBudget))}</b> more — <b>${fbtGBP(Math.max(0,o.perDay))} a day</b> for the last ${o.left} day${o.left===1?'':'s'}.`:''}`:'Enter sales to see GP.'}
+      </div></div>`; };
+  // yesterday
+  const yRow=C.rows.find(r=>r.d===yk);
+  const ySales=FBT.data.sales[yk]||{};
+  const months=[]; for(let i=-6;i<=1;i++){ const d=new Date(y.getFullYear(),y.getMonth()+i,1); months.push(fbtMonthKey(d)); }
+  v.innerHTML=`<div style="padding:22px 26px;max-width:1300px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div><h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;margin:0;color:#1a2b3a">F&amp;B Sales &amp; Costs</h2>
+        <div style="font-size:13px;color:#4b5563">Daily sales by outlet and service, purchase invoices, and month-to-date GP against target. All figures net of VAT.
+        <span style="margin-left:6px;font-size:11.5px;padding:2px 8px;border-radius:8px;background:${FBT.src==='live'?'#dcfce7':'#fef3c7'};color:${FBT.src==='live'?'#166534':'#92400e'};font-weight:700">${FBT.src==='live'?'Shared live':'Saved on this computer only'}</span></div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <select onchange="FBT.month=this.value;renderFBTracker(document.getElementById('view'))" style="padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font:700 13px Lato;color:#1a2b3a">${months.map(m=>`<option value="${m}" ${m===FBT.month?'selected':''}>${new Date(m+'-15').toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</option>`).join('')}</select>
+        <button style="${pri}" onclick="fbtSalesModal('${yk.slice(0,7)===FBT.month?yk:FBT.month+'-01'}')">+ Day's sales</button>
+        <button style="${pri};background:#C2410C" onclick="fbtInvoiceModal()">+ Invoice</button>
+        <button style="${btn}" onclick="fbtUploadModal()">📤 Upload template</button>
+        <button style="${btn}" onclick="fbtExport()">⬇ Export month</button>
+        <button style="${btn}" onclick="fbtSettingsModal()">⚙ Settings</button>
+      </div>
+    </div>
+
+    <div style="${card};padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-left:4px solid #6E4E7A">
+      <div><div style="font-size:12px;font-weight:800;color:#6E4E7A;text-transform:uppercase;letter-spacing:.4px">Yesterday · ${y.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
+        ${yRow&&yRow.hasSales?`<div style="font-size:14px;color:#1a2b3a;margin-top:3px">Food <b>${fbtGBP(yRow.food)}</b> · Drink <b>${fbtGBP(yRow.bev)}</b> · Total <b>${fbtGBP(yRow.food+yRow.bev)}</b> · ${yRow.covers} covers · Invoices <b>${fbtGBP(yRow.pf+yRow.pb)}</b></div>
+          <div style="font-size:12px;color:#4b5563;margin-top:2px">${S.lines.filter(l=>ySales[l.id]).map(l=>`${spEsc(l.name)} ${fbtGBP(fbtN(ySales[l.id].food)+fbtN(ySales[l.id].bev))}`).join(' · ')}</div>`
+        :`<div style="font-size:14px;color:#92400e;margin-top:3px">Yesterday's sales haven't been entered yet.</div>`}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${yRow&&yRow.hasSales?`<button style="${btn}" onclick="fbtShare('wa')">Send on WhatsApp</button><button style="${btn}" onclick="fbtShare('mail')">Email</button><button style="${btn}" onclick="fbtShare('copy')">Copy</button>`:`<button style="${pri}" onclick="fbtSalesModal('${yk}')">Enter yesterday's sales</button>`}
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-bottom:14px">${tile('🍽 Food',F)}${tile('🍷 Beverage',B)}</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px">
+      ${[['Total F&B sales',fbtGBP(F.sales+B.sales)],['Covers',C.covers.toLocaleString('en-GB')],['Average spend',C.covers?'£'+((F.sales+B.sales)/C.covers).toFixed(2):'—'],['Days entered',`${C.rows.filter(r=>r.hasSales).length} of ${C.dim}`],['Invoices',`${C.inv.length} · ${fbtGBP(F.purch+B.purch)}`],['Non-F&B purchases',fbtGBP(C.nonfb)]].map(([l,n])=>`<div style="${card};padding:11px 13px"><div style="font-size:10.5px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.4px">${l}</div><div style="font-size:19px;font-weight:800;color:#1a2b3a">${n}</div></div>`).join('')}
+    </div>
+
+    <div style="${card};padding:16px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <div><div style="font-size:16px;font-weight:800;color:#1a2b3a">Spend against allowance — ${monthLabel}</div>
+          <div style="font-size:12.5px;color:#4b5563">Cumulative purchases vs what you can spend to hit the GP target on the sales taken so far.</div></div>
+        <div style="display:flex;gap:6px">${['food','bev'].map(k=>`<button onclick="FBT.view='${k}';fbtDraw()" style="padding:6px 12px;border-radius:16px;border:1px solid ${FBT.view===k?'#6E4E7A':'#d6d9de'};background:${FBT.view===k?'#6E4E7A':'#fff'};color:${FBT.view===k?'#fff':'#1a2b3a'};font:700 12px Lato;cursor:pointer">${k==='food'?'Food':'Beverage'}</button>`).join('')}</div>
+      </div>
+      <div id="fbt-chart" style="position:relative"></div>
+    </div>
+
+    <div style="${card};padding:16px;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:800;color:#1a2b3a;margin-bottom:8px">Day by day</div>
+      <div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;color:#1a2b3a;min-width:900px">
+        <thead><tr style="background:#f5f7f9">${['Date','Food sales','Drink sales','Covers','Food invoices','Drink invoices','Food GP MTD','Drink GP MTD',''].map((h,i)=>`<th style="padding:7px 8px;font-size:10.5px;text-transform:uppercase;text-align:${i===0?'left':'right'}">${h}</th>`).join('')}</tr></thead>
+        <tbody>${C.rows.filter(r=>r.d<=spDK(new Date())||r.hasSales||r.pf||r.pb).map(r=>{
+          const gF=r.cf?((r.cf-r.cpf)/r.cf*100):NaN, gB=r.cb?((r.cb-r.cpb)/r.cb*100):NaN;
+          const col=(g,t)=>!isFinite(g)?'#9ca3af':g>=t?'#166534':g>=t-3?'#92400e':'#991b1b';
+          const dd=new Date(r.d+'T12:00');
+          return `<tr style="border-top:1px solid #eef1f4${r.hasSales?'':';color:#9ca3af'}">
+            <td style="padding:6px 8px;font-weight:700;white-space:nowrap">${dd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</td>
+            <td style="padding:6px 8px;text-align:right">${r.hasSales?fbtGBP(r.food):'—'}</td><td style="padding:6px 8px;text-align:right">${r.hasSales?fbtGBP(r.bev):'—'}</td>
+            <td style="padding:6px 8px;text-align:right">${r.hasSales?r.covers:'—'}</td>
+            <td style="padding:6px 8px;text-align:right">${r.pf?fbtGBP(r.pf):''}</td><td style="padding:6px 8px;text-align:right">${r.pb?fbtGBP(r.pb):''}</td>
+            <td style="padding:6px 8px;text-align:right;font-weight:700;color:${col(gF,S.foodTarget)}">${r.cf?fbtPct(gF):''}</td>
+            <td style="padding:6px 8px;text-align:right;font-weight:700;color:${col(gB,S.bevTarget)}">${r.cb?fbtPct(gB):''}</td>
+            <td style="padding:6px 8px;text-align:right;white-space:nowrap"><button onclick="fbtSalesModal('${r.d}')" style="border:none;background:none;color:#6E4E7A;font:700 12px Lato;cursor:pointer">${r.hasSales?'Edit':'Enter'}</button></td></tr>`; }).join('')}</tbody>
+      </table></div>
+      <div style="font-size:11.5px;color:#4b5563;margin-top:6px">GP MTD = (sales − ${C.hasClose?'cost of sales':'purchases'}) ÷ sales, month to date. Early in the month it swings a lot because deliveries arrive before the food is sold — the trend matters more than any single day.</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px">
+      <div style="${card};padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:16px;font-weight:800;color:#1a2b3a">Invoices this month</div><button style="${btn}" onclick="fbtInvoiceModal()">+ Invoice</button></div>
+        <div style="max-height:360px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;color:#1a2b3a">
+          <thead><tr style="background:#f5f7f9">${['Date','Supplier','Type','Inv no','Net',''].map((h,i)=>`<th style="padding:6px 8px;font-size:10.5px;text-transform:uppercase;text-align:${i===4?'right':'left'};position:sticky;top:0;background:#f5f7f9">${h}</th>`).join('')}</tr></thead>
+          <tbody>${C.inv.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr style="border-top:1px solid #eef1f4">
+            <td style="padding:5px 8px;white-space:nowrap">${new Date(x.date+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</td><td style="padding:5px 8px">${spEsc(x.supplier)}</td>
+            <td style="padding:5px 8px">${spEsc(x.cat)}</td><td style="padding:5px 8px">${spEsc(x.no||'')}</td><td style="padding:5px 8px;text-align:right;font-weight:700">${fbtGBP(fbtN(x.net))}</td>
+            <td style="padding:5px 8px;text-align:right;white-space:nowrap"><button onclick="fbtInvoiceModal('${x.id}')" style="border:none;background:none;color:#6E4E7A;font:700 12px Lato;cursor:pointer">Edit</button></td></tr>`).join('')||'<tr><td colspan="6" style="padding:12px;color:#4b5563">No invoices yet.</td></tr>'}</tbody></table></div>
+      </div>
+      <div style="${card};padding:16px">
+        <div style="font-size:16px;font-weight:800;color:#1a2b3a;margin-bottom:8px">Top suppliers this month</div>
+        ${(()=>{ const m={}; C.inv.filter(x=>x.cat!=='Non-F&B').forEach(x=>{ m[x.supplier]=(m[x.supplier]||0)+fbtN(x.net); });
+          const e=Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,8), mx=e.length?e[0][1]:1;
+          return e.map(([k,n])=>`<div style="display:grid;grid-template-columns:150px 1fr 70px;gap:8px;align-items:center;margin:6px 0;font-size:12.5px;color:#1a2b3a"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${spEsc(k)}">${spEsc(k)}</div><div style="height:10px;background:#f1f3f5;border-radius:4px"><div style="height:10px;width:${Math.max(2,n/mx*100)}%;background:#eb6834;border-radius:0 4px 4px 0"></div></div><div style="text-align:right;font-weight:700">${fbtGBP(n)}</div></div>`).join('')||'<div style="color:#4b5563;font-size:13px">No invoices yet.</div>'; })()}
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid #eef1f4">
+          <div style="font-size:13px;font-weight:800;color:#1a2b3a;margin-bottom:4px">Stock take (optional, makes GP exact)</div>
+          <div style="font-size:12px;color:#4b5563;margin-bottom:8px">Opening stock = last month's closing. Enter closing stock at month end.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[['openFood','Opening food stock'],['openBev','Opening drink stock'],['closeFood','Closing food stock'],['closeBev','Closing drink stock']].map(([k,l])=>`<label style="font-size:12px;color:#374151">${l}<input type="number" step="0.01" value="${spEsc((FBT.data.stock||{})[k]??'')}" onchange="fbtStock('${k}',this.value)" style="display:block;width:100%;padding:7px;border:1px solid #d1d5db;border-radius:7px;margin-top:3px"></label>`).join('')}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  fbtChart(C);
+}
+
+/* Cumulative purchases vs allowed spend — one axis (£), two series, crosshair tooltip */
+function fbtChart(C){
+  const box=document.getElementById('fbt-chart'); if(!box) return;
+  const k=FBT.view, t=(k==='food'?FBT.settings.foodTarget:FBT.settings.bevTarget)/100;
+  const today=spDK(new Date());
+  const rows=C.rows.filter(r=>r.d<=today || r.hasSales);
+  if(!rows.length || !rows.some(r=>(k==='food'?r.cf:r.cb)||(k==='food'?r.cpf:r.cpb))){ box.innerHTML='<div style="padding:30px;text-align:center;color:#4b5563;font-size:13px">No figures yet for this month.</div>'; return; }
+  const P=rows.map(r=>({d:r.d, spend:k==='food'?r.cpf:r.cpb, allow:(k==='food'?r.cf:r.cb)*(1-t)}));
+  const W=Math.max(320, box.clientWidth||900), H=260, m={l:56,r:96,t:14,b:28};
+  const max=Math.max(...P.map(p=>Math.max(p.spend,p.allow)))*1.1||1;
+  const x=i=>m.l+(C.dim<=1?0:i/(C.dim-1))*(W-m.l-m.r), yv=v=>m.t+(1-v/max)*(H-m.t-m.b);
+  const ticks=4, step=Math.pow(10,Math.floor(Math.log10(max/ticks))); const nice=Math.ceil(max/ticks/step)*step;
+  const grid=Array.from({length:ticks+1},(_,i)=>i*nice).filter(v=>v<=max).map(v=>`<line x1="${m.l}" x2="${W-m.r}" y1="${yv(v)}" y2="${yv(v)}" stroke="#eef1f4"/><text x="${m.l-8}" y="${yv(v)+4}" text-anchor="end" font-size="11" fill="#52514e">${v>=1000?'£'+(v/1000).toFixed(v%1000?1:0)+'k':'£'+v}</text>`).join('');
+  const idx=d=>+d.slice(8)-1;
+  const path=key=>P.map((p,i)=>`${i?'L':'M'}${x(idx(p.d)).toFixed(1)},${yv(p[key]).toFixed(1)}`).join('');
+  const last=P[P.length-1];
+  const xt=[1,8,15,22,C.dim].map(d=>`<text x="${x(d-1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="#52514e">${d}</text>`).join('');
+  box.innerHTML=`<div style="display:flex;gap:16px;font-size:12px;color:#374151;margin:4px 0 6px">
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:3px;background:#eb6834;border-radius:2px"></span>Purchases (cumulative)</span>
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:3px;background:#2a78d6;border-radius:2px"></span>Allowed spend at ${Math.round(t*100)}% GP</span></div>
+    <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible" role="img" aria-label="Cumulative purchases against allowed spend">
+      ${grid}<line x1="${m.l}" x2="${W-m.r}" y1="${yv(0)}" y2="${yv(0)}" stroke="#d1d5db"/>${xt}
+      <path d="${path('allow')}" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="${path('spend')}" fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${x(idx(last.d))}" cy="${yv(last.allow)}" r="4" fill="#2a78d6" stroke="#fff" stroke-width="2"/>
+      <circle cx="${x(idx(last.d))}" cy="${yv(last.spend)}" r="4" fill="#eb6834" stroke="#fff" stroke-width="2"/>
+      ${(()=>{ let ya=yv(last.allow)+4, ys=yv(last.spend)+4; if(Math.abs(ya-ys)<15){ const mid=(ya+ys)/2; if(last.allow>=last.spend){ ya=mid-8; ys=mid+8; } else { ya=mid+8; ys=mid-8; } }
+        return `<text x="${x(idx(last.d))+9}" y="${ya}" font-size="11.5" font-weight="700" fill="#1a2b3a">${fbtGBP(last.allow)} allowed</text><text x="${x(idx(last.d))+9}" y="${ys}" font-size="11.5" font-weight="700" fill="#1a2b3a">${fbtGBP(last.spend)} spent</text>`; })()}
+      <line id="fbt-x" x1="0" x2="0" y1="${m.t}" y2="${H-m.b}" stroke="#9ca3af" stroke-dasharray="3 3" style="display:none"/>
+      <rect x="${m.l}" y="${m.t}" width="${W-m.l-m.r}" height="${H-m.t-m.b}" fill="transparent" id="fbt-hit"/>
+    </svg>
+    <div id="fbt-tip" style="position:absolute;display:none;pointer-events:none;background:#1a2b3a;color:#fff;border-radius:8px;padding:7px 10px;font-size:12px;line-height:1.5;white-space:nowrap"></div>`;
+  const svg=box.querySelector('svg'), hit=box.querySelector('#fbt-hit'), xl=box.querySelector('#fbt-x'), tip=box.querySelector('#fbt-tip');
+  hit.addEventListener('mousemove',e=>{
+    const r=svg.getBoundingClientRect(), sx=(e.clientX-r.left)*W/r.width;
+    let best=P[0]; P.forEach(p=>{ if(Math.abs(x(idx(p.d))-sx)<Math.abs(x(idx(best.d))-sx)) best=p; });
+    const px=x(idx(best.d)); xl.setAttribute('x1',px); xl.setAttribute('x2',px); xl.style.display='';
+    const diff=best.allow-best.spend;
+    tip.innerHTML=`<b>${new Date(best.d+'T12:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</b><br>Purchases ${fbtGBP(best.spend)}<br>Allowed ${fbtGBP(best.allow)}<br>${diff>=0?'Under by '+fbtGBP(diff):'Over by '+fbtGBP(-diff)}`;
+    tip.style.display='block'; const left=px*r.width/W; tip.style.left=Math.min(left+12, r.width-150)+'px'; tip.style.top='34px';
+  });
+  hit.addEventListener('mouseleave',()=>{ xl.style.display='none'; tip.style.display='none'; });
+}
+
+/* ── Entry forms ── */
+function fbtSalesModal(date){
+  const S=FBT.settings, cur=(FBT.data.sales||{})[date]||{};
+  const inp='width:100%;padding:8px;border:1px solid #d1d5db;border-radius:7px;font:13px Lato;text-align:right';
+  showModal('Daily sales','Net of VAT, from the till / Guestline end-of-day report',`
+    <div style="font-size:13px;color:#1a2b3a">
+      <label style="font-weight:700">Trading date <input id="fbt-date" type="date" value="${date}" onchange="closeModal();fbtSalesModal(this.value)" style="padding:7px;border:1px solid #d1d5db;border-radius:7px;margin-left:6px"></label>
+      <table style="width:100%;border-collapse:collapse;margin-top:12px">
+        <thead><tr style="background:#f5f7f9"><th style="padding:6px;text-align:left;font-size:11px">Outlet / service</th><th style="padding:6px;font-size:11px;width:24%">Food £</th><th style="padding:6px;font-size:11px;width:24%">Drink £</th><th style="padding:6px;font-size:11px;width:16%">Covers</th></tr></thead>
+        <tbody>${S.lines.map(l=>{ const c=cur[l.id]||{}; return `<tr style="border-top:1px solid #eef1f4"><td style="padding:6px"><b>${spEsc(l.name)}</b><div style="font-size:11px;color:#4b5563">${spEsc(l.outlet||'')}</div></td>
+          <td style="padding:4px"><input data-l="${l.id}" data-k="food" type="number" step="0.01" min="0" value="${c.food??''}" style="${inp}" oninput="fbtSumForm()"></td>
+          <td style="padding:4px"><input data-l="${l.id}" data-k="bev" type="number" step="0.01" min="0" value="${c.bev??''}" style="${inp}" oninput="fbtSumForm()"></td>
+          <td style="padding:4px"><input data-l="${l.id}" data-k="covers" type="number" step="1" min="0" value="${c.covers??''}" style="${inp}"></td></tr>`; }).join('')}
+          <tr style="border-top:2px solid #1a2b3a;font-weight:800"><td style="padding:8px 6px">Total</td><td id="fbt-sf" style="padding:8px 6px;text-align:right"></td><td id="fbt-sb" style="padding:8px 6px;text-align:right"></td><td></td></tr></tbody>
+      </table>
+      <button onclick="fbtSaveSales()" style="margin-top:12px;width:100%;padding:11px;border:none;border-radius:9px;background:#6E4E7A;color:#fff;font:700 14px Lato;cursor:pointer">Save sales</button>
+    </div>`);
+  fbtSumForm();
+}
+function fbtSumForm(){ let f=0,b=0; document.querySelectorAll('#modal-root input[data-l]').forEach(i=>{ if(i.dataset.k==='food') f+=fbtN(i.value); if(i.dataset.k==='bev') b+=fbtN(i.value); });
+  const a=document.getElementById('fbt-sf'), c=document.getElementById('fbt-sb'); if(a) a.textContent=fbtGBP(f); if(c) c.textContent=fbtGBP(b); }
+async function fbtSaveSales(){
+  const date=document.getElementById('fbt-date').value; if(!date) return;
+  if(date.slice(0,7)!==FBT.month){ await fbtLoad(date.slice(0,7)); }
+  const day={}; document.querySelectorAll('#modal-root input[data-l]').forEach(i=>{ if(i.value==='') return; (day[i.dataset.l]=day[i.dataset.l]||{})[i.dataset.k]=fbtN(i.value); });
+  FBT.data.sales[date]=day;
+  try{ await fbtSave(Object.keys(day).length?{['sales.'+date]:day}:{}, Object.keys(day).length?[]:['sales.'+date]); }catch(e){ return; }
+  if(!Object.keys(day).length) delete FBT.data.sales[date];
+  closeModal(); toast('✓ Sales saved for '+new Date(date+'T12:00').toLocaleDateString('en-GB')); fbtDraw();
+}
+function fbtInvoiceModal(id){
+  const x=id?FBT.data.invoices[id]:{date:spDK(new Date()),cat:'Food'};
+  const sup=[...new Set(Object.values(FBT.data.invoices||{}).map(i=>i.supplier).concat(FBT.settings.suppliers||[]))].sort();
+  const inp='display:block;width:100%;padding:8px;border:1px solid #d1d5db;border-radius:7px;margin-top:3px;font:13px Lato';
+  showModal(id?'Edit invoice':'Add an invoice','Net of VAT. Use a minus figure for a credit note.',`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12.5px;color:#1a2b3a">
+      <label>Invoice date<input id="fi-date" type="date" value="${x.date}" style="${inp}"></label>
+      <label>Type<select id="fi-cat" style="${inp}">${FB_CATS.map(c=>`<option ${x.cat===c?'selected':''}>${c}</option>`).join('')}</select></label>
+      <label style="grid-column:1/-1">Supplier<input id="fi-sup" list="fi-sups" value="${spEsc(x.supplier||'')}" style="${inp}"><datalist id="fi-sups">${sup.map(s=>`<option value="${spEsc(s)}">`).join('')}</datalist></label>
+      <label>Invoice number<input id="fi-no" value="${spEsc(x.no||'')}" style="${inp}"></label>
+      <label>Net amount £<input id="fi-net" type="number" step="0.01" value="${x.net??''}" style="${inp}"></label>
+      <label style="grid-column:1/-1">Notes<input id="fi-notes" value="${spEsc(x.notes||'')}" style="${inp}"></label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button onclick="fbtSaveInvoice('${id||''}',true)" style="flex:1;padding:11px;border:none;border-radius:9px;background:#C2410C;color:#fff;font:700 14px Lato;cursor:pointer">Save</button>
+      ${id?'':`<button onclick="fbtSaveInvoice('',false)" style="flex:1;padding:11px;border:1px solid #C2410C;border-radius:9px;background:#fff;color:#C2410C;font:700 14px Lato;cursor:pointer">Save &amp; add another</button>`}
+      ${id?`<button onclick="fbtDelInvoice('${id}')" style="padding:11px 14px;border:1px solid #fca5a5;border-radius:9px;background:#fff;color:#991b1b;font:700 13px Lato;cursor:pointer">Delete</button>`:''}
+    </div>`);
+}
+async function fbtSaveInvoice(id, close){
+  const g=k=>document.getElementById(k).value.trim();
+  if(!g('fi-date')||!g('fi-sup')||g('fi-net')===''){ toast('Add the date, supplier and amount'); return; }
+  const date=g('fi-date'); if(date.slice(0,7)!==FBT.month){ toast('Saved to '+new Date(date+'T12:00').toLocaleDateString('en-GB',{month:'long'})); }
+  const key=date.slice(0,7);
+  const rec={id:id||'inv'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), date, cat:g('fi-cat'), supplier:g('fi-sup'), no:g('fi-no'), net:fbtN(g('fi-net')), notes:g('fi-notes'), by:(SESSION&&SESSION.name)||''};
+  const keepMonth=FBT.month;
+  if(key!==FBT.month){ await fbtLoad(key); }
+  if(id && FBT.data.invoices[id] && FBT.data.invoices[id].date.slice(0,7)!==key){ /* moved month: handled as new */ }
+  FBT.data.invoices[rec.id]=rec;
+  try{ await fbtSave({['invoices.'+rec.id]:rec}); }catch(e){ return; }
+  if(key!==keepMonth){ await fbtLoad(keepMonth); }
+  toast('✓ Invoice saved');
+  if(close){ closeModal(); fbtDraw(); } else { fbtDraw(); fbtInvoiceModal(); const d=document.getElementById('fi-date'); if(d) d.value=date; }
+}
+async function fbtDelInvoice(id){
+  if(!confirm('Delete this invoice?')) return;
+  delete FBT.data.invoices[id];
+  try{ await fbtSave({},['invoices.'+id]); }catch(e){ return; }
+  closeModal(); fbtDraw();
+}
+async function fbtStock(k,v){ FBT.data.stock=FBT.data.stock||{}; FBT.data.stock[k]=v===''?'':fbtN(v); try{ await fbtSave({['stock.'+k]:FBT.data.stock[k]}); }catch(e){} fbtDraw(); }
+
+/* ── Settings: GP targets and the sales lines ── */
+function fbtSettingsModal(){
+  const S=FBT.settings;
+  showModal('F&B tracker settings','Targets and the outlets / services you take sales for',`
+    <div style="font-size:13px;color:#1a2b3a">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <label>Food GP target %<input id="fs-ft" type="number" step="0.5" value="${S.foodTarget}" style="display:block;width:100%;padding:8px;border:1px solid #d1d5db;border-radius:7px;margin-top:3px"></label>
+        <label>Drink GP target %<input id="fs-bt" type="number" step="0.5" value="${S.bevTarget}" style="display:block;width:100%;padding:8px;border:1px solid #d1d5db;border-radius:7px;margin-top:3px"></label>
+      </div>
+      <div style="font-weight:800;margin-bottom:6px">Sales lines</div>
+      <div id="fs-lines">${S.lines.map(l=>fbtLineRow(l)).join('')}</div>
+      <button onclick="document.getElementById('fs-lines').insertAdjacentHTML('beforeend',fbtLineRow({id:'l'+Date.now().toString(36),name:'',outlet:''}))" style="margin-top:6px;padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:700 12px Lato;cursor:pointer">+ Add a line</button>
+      <div style="font-size:11.5px;color:#4b5563;margin-top:6px">Removing a line hides it from new entries; figures already entered stay in the totals.</div>
+      <button onclick="fbtSaveSettingsForm()" style="margin-top:12px;width:100%;padding:11px;border:none;border-radius:9px;background:#6E4E7A;color:#fff;font:700 14px Lato;cursor:pointer">Save settings</button>
+    </div>`);
+}
+function fbtLineRow(l){ return `<div class="fs-line" data-id="${spEsc(l.id)}" style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:6px">
+  <input class="fs-n" placeholder="Service, e.g. Dinner" value="${spEsc(l.name)}" style="padding:7px;border:1px solid #d1d5db;border-radius:7px">
+  <input class="fs-o" placeholder="Outlet, e.g. The Clarendon" value="${spEsc(l.outlet||'')}" style="padding:7px;border:1px solid #d1d5db;border-radius:7px">
+  <button onclick="this.parentElement.remove()" style="border:1px solid #fca5a5;background:#fff;color:#991b1b;border-radius:7px;padding:0 10px;cursor:pointer">✕</button></div>`; }
+async function fbtSaveSettingsForm(){
+  const S=FBT.settings; S.foodTarget=fbtN(document.getElementById('fs-ft').value)||70; S.bevTarget=fbtN(document.getElementById('fs-bt').value)||75;
+  S.lines=[...document.querySelectorAll('#fs-lines .fs-line')].map(r=>({id:r.dataset.id, name:r.querySelector('.fs-n').value.trim(), outlet:r.querySelector('.fs-o').value.trim()})).filter(l=>l.name);
+  await fbtSaveSettings(); closeModal(); fbtDraw(); toast('✓ Settings saved');
+}
+
+/* ── Templates: download, fill in Excel, upload ── */
+function fbtUploadModal(){
+  showModal('Upload a template','Fill it in Excel, save as CSV, upload it here',`
+    <div style="font-size:13px;color:#1a2b3a;line-height:1.55">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="border:1px solid #e6e8ec;border-radius:10px;padding:12px"><b>Daily sales</b><div style="font-size:12px;color:#4b5563;margin:4px 0 8px">One row per outlet/service per day: Date, Line, Food, Drink, Covers.</div><button onclick="fbtTemplate('sales')" style="padding:7px 12px;border:1px solid #6E4E7A;border-radius:8px;background:#fff;color:#6E4E7A;font:700 12px Lato;cursor:pointer">⬇ Sales template</button></div>
+        <div style="border:1px solid #e6e8ec;border-radius:10px;padding:12px"><b>Invoices</b><div style="font-size:12px;color:#4b5563;margin:4px 0 8px">One row per invoice: Date, Supplier, Type (Food / Beverage / Non-F&amp;B), Invoice no, Net.</div><button onclick="fbtTemplate('inv')" style="padding:7px 12px;border:1px solid #C2410C;border-radius:8px;background:#fff;color:#C2410C;font:700 12px Lato;cursor:pointer">⬇ Invoice template</button></div>
+      </div>
+      <label style="display:inline-block;padding:10px 16px;border-radius:9px;background:#1a2b3a;color:#fff;font:700 13px Lato;cursor:pointer">📤 Upload completed CSV<input type="file" accept=".csv,text/csv" multiple style="display:none" onchange="fbtUpload(this.files)"></label>
+      <div id="fbt-up" style="margin-top:10px"></div>
+    </div>`);
+}
+function fbtTemplate(kind){
+  const y=new Date(); y.setDate(y.getDate()-1); const ds=y.toLocaleDateString('en-GB');
+  if(kind==='sales') spDownload('fb-daily-sales-template.csv',[['Date','Line','Food','Drink','Covers'],...FBT.settings.lines.map(l=>[ds,l.name,'','',''])].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
+  else spDownload('fb-invoices-template.csv',[['Date','Supplier','Type','Invoice no','Net','Notes'],[ds,'e.g. Brakes','Food','INV-0001','0.00','']].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
+}
+async function fbtUpload(files){
+  const out=document.getElementById('fbt-up'); let nS=0,nI=0,bad=[];
+  const toIso=s=>{ const p=spParseDT(s); return p&&p.date; };
+  const startMonth=FBT.month;
+  for(const f of files){
+    const objs=hsRowsToObjects(await hsReadCSVFile(f)); if(!objs.length) continue;
+    const keys=Object.keys(objs[0]).map(k=>k.toLowerCase());
+    const get=(o,re)=>{ const k=Object.keys(o).find(k=>re.test(k.toLowerCase())); return k?o[k]:''; };
+    if(keys.some(k=>/supplier/.test(k))){
+      for(const o of objs){ const d=toIso(get(o,/^date/)), net=get(o,/net|amount|total/); if(!d||!get(o,/supplier/)||net===''){ continue; }
+        if(d.slice(0,7)!==FBT.month) await fbtLoad(d.slice(0,7));
+        let cat=get(o,/type|cat/)||'Food'; cat=/bev|drink|bar|wine|beer/i.test(cat)?'Beverage':/non/i.test(cat)?'Non-F&B':'Food';
+        const rec={id:'inv'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), date:d, cat, supplier:get(o,/supplier/), no:get(o,/inv.*no|number|ref/), net:fbtN(net), notes:get(o,/note/), by:(SESSION&&SESSION.name)||''};
+        FBT.data.invoices[rec.id]=rec; await fbtSave({['invoices.'+rec.id]:rec}); nI++; }
+    } else if(keys.some(k=>/line|outlet|service/.test(k))){
+      const byDay={};
+      objs.forEach(o=>{ const d=toIso(get(o,/^date/)), ln=get(o,/line|outlet|service/); if(!d||!ln) return;
+        const line=FBT.settings.lines.find(l=>l.name.toLowerCase()===ln.toLowerCase()||l.id===ln.toLowerCase());
+        if(!line){ bad.push(ln); return; }
+        const food=get(o,/food/), bev=get(o,/drink|bev/), cov=get(o,/cover/);
+        if(food===''&&bev===''&&cov==='') return;
+        (byDay[d]=byDay[d]||{})[line.id]={food:fbtN(food),bev:fbtN(bev),covers:fbtN(cov)}; });
+      for(const [d,day] of Object.entries(byDay)){ if(d.slice(0,7)!==FBT.month) await fbtLoad(d.slice(0,7)); FBT.data.sales[d]=Object.assign(FBT.data.sales[d]||{},day);
+        const patch={}; Object.entries(day).forEach(([l,v])=>patch[`sales.${d}.${l}`]=v); await fbtSave(patch); nS++; }
+    } else bad.push(f.name+' (not a sales or invoice template)');
+  }
+  if(FBT.month!==startMonth) await fbtLoad(startMonth);
+  if(out) out.innerHTML=`<div style="background:#E2F1EE;border-radius:10px;padding:10px;font-size:13px">✅ ${nS} day${nS===1?'':'s'} of sales and ${nI} invoice${nI===1?'':'s'} added.${bad.length?`<div style="color:#9a3412;margin-top:4px">Skipped: ${[...new Set(bad)].map(spEsc).join(', ')} — line names must match Settings.</div>`:''}</div>`;
+  fbtDraw();
+}
+function fbtExport(){
+  const C=fbtCalc(), S=FBT.settings;
+  const head=['Date',...S.lines.flatMap(l=>[l.name+' food',l.name+' drink',l.name+' covers']),'Food sales','Drink sales','Covers','Food invoices','Drink invoices','Food GP MTD %','Drink GP MTD %'];
+  const rows=C.rows.filter(r=>r.hasSales||r.pf||r.pb).map(r=>{ const s=FBT.data.sales[r.d]||{};
+    return [r.d,...S.lines.flatMap(l=>[(s[l.id]||{}).food??'',(s[l.id]||{}).bev??'',(s[l.id]||{}).covers??'']),r.food,r.bev,r.covers,Math.round(r.pf*100)/100,Math.round(r.pb*100)/100,
+      r.cf?Math.round((r.cf-r.cpf)/r.cf*1000)/10:'', r.cb?Math.round((r.cb-r.cpb)/r.cb*1000)/10:'']; });
+  const inv=[[],['Invoices'],['Date','Supplier','Type','Invoice no','Net','Notes','Entered by'],...C.inv.sort((a,b)=>a.date.localeCompare(b.date)).map(x=>[x.date,x.supplier,x.cat,x.no,x.net,x.notes,x.by])];
+  spDownload('fb-tracker-'+FBT.month+'.csv','﻿'+[['Brandon Hall Hotel & Spa — F&B tracker '+FBT.month],[],head,...rows,...inv].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
+}
+function fbtShare(how){
+  const y=new Date(); y.setDate(y.getDate()-1); const yk=spDK(y); const C=fbtCalc(); const r=C.rows.find(x=>x.d===yk); if(!r) return;
+  const s=FBT.data.sales[yk]||{};
+  const txt=`Brandon Hall F&B — ${y.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}\n`+
+    `Food ${fbtGBP(r.food)} · Drink ${fbtGBP(r.bev)} · Total ${fbtGBP(r.food+r.bev)} · ${r.covers} covers\n`+
+    FBT.settings.lines.filter(l=>s[l.id]).map(l=>`${l.name}: ${fbtGBP(fbtN(s[l.id].food)+fbtN(s[l.id].bev))}${s[l.id].covers?' ('+s[l.id].covers+' covers)':''}`).join('\n')+
+    `\n\nMonth to date: food ${fbtGBP(C.food.sales)} at ${fbtPct(C.food.gp)} GP (target ${C.food.target}%), drink ${fbtGBP(C.bev.sales)} at ${fbtPct(C.bev.gp)} GP (target ${C.bev.target}%).`+
+    (C.food.left>0?`\nFood spend left this month to hit target: about ${fbtGBP(Math.max(0,C.food.remainBudget))} (${fbtGBP(Math.max(0,C.food.perDay))}/day).`:'');
+  if(how==='wa') window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+  else if(how==='mail') location.href='mailto:?subject='+encodeURIComponent('F&B sales — '+y.toLocaleDateString('en-GB'))+'&body='+encodeURIComponent(txt);
+  else spCopy(txt);
+}

@@ -1194,6 +1194,14 @@ main#view .data-table th, main#view .pipe-table th, main#view .hp-table thead th
 #login::before{z-index:1}
 #login .hp-login-logo,#login .hp-login-foot{z-index:3}
 @media (prefers-reduced-motion:reduce){.hp-ls{transition:none}}
+
+/* Shell lock: once signed in, only the main area scrolls — the page itself never
+   moves, so the header, breadcrumb and module menu can't be pushed off the top */
+html:has(#app:not(.hidden)), body:has(#app:not(.hidden)){height:100%;overflow:hidden;overscroll-behavior:none}
+#app:not(.hidden){height:100dvh;overflow:hidden}
+/* Module menu: full labels, scroll sideways on narrower screens instead of cutting words */
+.sf-sn{flex:1 0 auto;min-width:0;padding:12px 16px}
+.sf-sn-t{overflow:visible;text-overflow:clip}
 </style>
 </head>
 <body>

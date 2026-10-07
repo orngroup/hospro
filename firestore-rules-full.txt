@@ -1,0 +1,126 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Staff = the HOSPRO staff logins (Email/Password accounts in Firebase Auth).
+    // Add a new staff email here when you add someone to USERS / FB_LOGINS.
+    function isStaff() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email in [
+          'ajay.kawa@brandonhall.portal',
+          'raj.kumar@brandonhall.portal',
+          'alia.taub@brandonhall.portal',
+          'nicola.cartwright@brandonhall.portal',
+          'natalie.freeman@brandonhall.portal',
+          'veronica.webb@brandonhall.portal'
+        ];
+    }
+
+    // Payroll = the people who can open HosPEOPLE (staff, rota, payroll).
+    function isPayroll() {
+      return isStaff() && request.auth.token.email in [
+          'ajay.kawa@brandonhall.portal',
+          'raj.kumar@brandonhall.portal',
+          'alia.taub@brandonhall.portal',
+          'veronica.webb@brandonhall.portal'
+        ];
+    }
+
+    // Enquiries: staff have full access. The website planner, contact form
+    // and Events Concierge chat (anonymous) may only CREATE new enquiries,
+    // and the planner may complete the lead it started.
+    match /enquiries/{doc} {
+      allow read, delete: if isStaff();
+      allow create: if isStaff()
+        || (request.auth != null && request.resource.data.status == 'new' && request.resource.data.size() <= 40);
+      allow update: if isStaff()
+        || (request.auth != null && resource.data.uid == request.auth.uid
+            && request.resource.data.uid == request.auth.uid
+            && resource.data.stage == 'Planner started');
+    }
+    match /meta/{doc}      { allow read, write: if isStaff(); }
+    match /marketing/{doc} { allow read, write: if isStaff(); }
+
+    // Device access log: a person who has just verified their email may add
+    // ONE record for their own email. Only staff can read it.
+    match /access_log/{doc} {
+      allow read: if isStaff();
+      allow create: if request.auth != null
+        && request.auth.token.email_verified == true
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.size() <= 20;
+      allow update, delete: if false;
+    }
+
+    // Guests (not logged in) can submit; only staff can read.
+    match /precheckin/{doc} {
+      allow read: if isStaff();
+      allow create: if true;
+    }
+    match /feedback/{doc} {
+      allow read: if isStaff();
+      allow create: if true;
+    }
+
+    // Quotes and contracts: opened by clients from a link; clients may only
+    // update the acceptance / signature fields.
+    match /quotes/{doc} {
+      allow read: if true;
+      allow create, delete: if isStaff();
+      allow update: if isStaff()
+        || (request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['acceptedBy','acceptedDate','acceptedAt','status','acceptedOption']));
+    }
+    match /contracts/{doc} {
+      allow read: if true;
+      allow create, delete: if isStaff();
+      allow update: if isStaff()
+        || (request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['clientSig','clientDate','clientSignedAt','status']));
+    }
+
+    // Beverage iPad app (PIN-protected in the app itself)
+    match /beverage/{doc} {
+      allow read: if true;
+      allow write: if true;
+      match /log/{entry} { allow read, write: if true; }
+    }
+
+    // HosFIX maintenance app: jobs shared between staff phones and the portal.
+    // The phones don't sign in to Firebase, so access is open for this collection
+    // only (same approach as the beverage iPad app). Delete is blocked so a job
+    // can never be wiped from a phone. Push tokens (fcm_tokens) are written only
+    // by the Cloud Function, which bypasses these rules, so no rule is needed.
+    match /hosfix_jobs/{jobId} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
+
+    // Staff rota links (my-rota.html). HosPRO publishes names, roles and shift
+    // times only (no pay rates) to one document, hospro_public/rota, so staff
+    // phones can read it without signing in.
+    match /hospro_public/{docId} {
+      allow read: if docId == 'rota';
+      allow create, update: if docId == 'rota';
+      allow delete: if false;
+    }
+
+    // Payroll & HR records: one encrypted document (hr_private/vault).
+    // Only the four HosPEOPLE users can read or write it, and even then it
+    // can only be opened in the portal with the payroll password.
+    match /hr_private/{docId} {
+      allow read, write: if isPayroll() && docId == 'vault';
+    }
+
+    // F&B tracker: daily outlet sales, purchase invoices and settings.
+    // One document per month (fb_tracker/2026-10) plus fb_tracker/settings.
+    match /fb_tracker/{docId} {
+      allow read, write: if isStaff();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
