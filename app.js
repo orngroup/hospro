@@ -12,6 +12,7 @@ const USERS = {
   "alia.taub":        { name:"Alia Taub",          code:"BHAT", role:"admin", tier:"admin",  title:"Director" },
   "nicola.cartwright":{ name:"Nicola Cartwright",  code:"BHNC", role:"admin", tier:"admin",  title:"Events Manager" },
   "natalie.freeman":  { name:"Natalie Freeman",    code:"BHNF", role:"admin", tier:"admin",  title:"Event Executive" },
+  "veronica.webb":    { name:"Veronica Webb",      code:"BHVW", role:"admin", tier:"admin",  title:"Finance Assistant" },
   "glenn.randell":    { name:"Glenn Randell",      code:"BHGR", role:"admin", tier:"admin",  title:"Maintenance Manager" },
   "patrik.vlach":     { name:"Patrik Vlach",       code:"BHPV", role:"person",tier:"person", title:"Front Office Manager" },
   "pete":             { name:"Pete",               code:"BHPE", role:"person",tier:"person", title:"Multi-trader (electrical)" },
@@ -19,7 +20,7 @@ const USERS = {
   "ruth.addison":     { name:"Ruth Addison",       code:"BHRA", role:"person",tier:"person", title:"Head of Housekeeping" },
   "jomy.joy":         { name:"Jomy Joy",           code:"BHJJ", role:"person",tier:"person", title:"Bar Manager" },
 };
-const ADMIN_IDS=["ajay.kawa","raj.kumar","alia.taub","nicola.cartwright","natalie.freeman","glenn.randell"];
+const ADMIN_IDS=["ajay.kawa","raj.kumar","alia.taub","nicola.cartwright","natalie.freeman","veronica.webb","glenn.randell"];
 const NOTIFY_ON_COMPLETE=["raj.kumar","ajay.kawa","alia.taub","glenn.randell"];
 
 const LAYOUT_LABELS = { boardroom:"Boardroom", ushape:"U-Shape",
@@ -195,7 +196,7 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
     fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
-    rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings,
+    rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings, rotaPayroll:renderRotaPayroll, localEvents:renderLocalEvents,
     staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs,
     brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography,
     hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR
@@ -206,7 +207,7 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
    surface panel so dark text designed for white pages stays readable. */
 const HP_DARK_TABS = new Set([
   "brandLogos","brandCollateral","brandPhotography","brandDocs",
-  "rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings",
+  "rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings","rotaPayroll",
   "staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs",
   "hubDocs","hubContracts","hubSuppliers","hubFinance","hubHR"
 ]);
@@ -291,6 +292,10 @@ function render(){
   v.classList.remove("hp-surface","hp-dark","hp-canvas");
 
   // Module landing pages are routed as "mod:<id>"
+  // Restricted modules (e.g. HosPEOPLE: payroll and HR) — block both the landing page and every tab in it
+  { const rid=String(CURRENT_TAB).indexOf("mod:")===0 ? CURRENT_TAB.slice(4) : (hpModuleFor(CURRENT_TAB)||{}).id;
+    if(rid && !hpCanAccess(rid)){ CURRENT_TAB="home"; toast('🔒 That area is restricted. Ask Raj or Ajay if you need access.'); }
+  }
   if(String(CURRENT_TAB).indexOf("mod:")===0){ renderModuleLanding(CURRENT_TAB.slice(4)); return; }
 
   const fn = RENDER_MAP[CURRENT_TAB];
@@ -4188,6 +4193,13 @@ function renderHome(v){
       card.onmouseover = () => { card.style.borderColor=m.colour; card.style.boxShadow='0 4px 14px rgba(0,0,0,.10)'; card.style.transform='translateY(-2px)'; };
       card.onmouseout  = () => { card.style.borderColor='transparent'; card.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'; card.style.transform=''; };
       card.onclick = () => renderModuleLanding(m.id);
+      if(!hpCanAccess(m.id)){
+        card.style.cssText += ';opacity:.45;filter:grayscale(1);cursor:not-allowed;box-shadow:none';
+        card.title = m.name+' is restricted';
+        card.insertAdjacentHTML('beforeend','<div style="font-size:10.5px;font-weight:700;color:#374151">🔒 Restricted access</div>');
+        card.onmouseover = card.onmouseout = null;
+        card.onclick = () => toast('🔒 '+m.name+' is restricted. Ask Raj or Ajay if you need access.');
+      }
       rowDiv.appendChild(card);
     });
     cardsSection.appendChild(rowDiv);
@@ -4306,7 +4318,7 @@ function renderHome(v){
   // ── Panel 3: HosSHIFT + HosSTAFF snapshot ────────────────────────────────
   const rota = (typeof spGetRota==='function') ? spGetRota() : JSON.parse(localStorage.getItem('sp_rota')||'{}');
   const staffList = (typeof spGetStaff==='function') ? spGetStaff() : JSON.parse(localStorage.getItem('sp_staff')||'[]');
-  const todayK = new Date().toISOString().slice(0,10);
+  const todayK = (typeof spDK==='function') ? spDK(new Date()) : new Date().toISOString().slice(0,10);
   const todayRota = rota[todayK]||{};
   const shiftOf = v => String((v&&typeof v==='object')?(v.shift||''):(v||'')).toLowerCase().trim();
   const onDuty  = Object.values(todayRota).filter(v=>{const t=shiftOf(v);return t&&!['off','holiday','sick','in lieu'].includes(t);}).length;
@@ -4345,7 +4357,8 @@ function renderHome(v){
       <button onclick="switchTab('staffLeaveAdmin')" style="flex:1;padding:8px;border:1.5px solid #c78a3b;border-radius:8px;background:#fff;font:600 12px Lato;color:#c78a3b;cursor:pointer">🌴 Leave${pendingLeave>0?' ('+pendingLeave+')':''}</button>
     </div>`;
 
-  dash.appendChild(mkPanel('People & Shifts','👥','#4a86c7',peopleContent));
+  dash.appendChild(mkPanel('People & Shifts','👥','#4a86c7', hpCanAccess('hospeople') ? peopleContent :
+    '<div style="opacity:.6;filter:grayscale(1);text-align:center;padding:26px 10px;font-size:13px;color:#374151">🔒 Staff, rota and payroll are restricted.<br>Ask Raj or Ajay if you need access.</div>'));
 
   wrap.appendChild(dash);
 
@@ -4433,6 +4446,7 @@ const MOD_BG = {
 };
 
 function renderModuleLanding(moduleId){
+  if(!hpCanAccess(moduleId)){ toast('🔒 That area is restricted. Ask Raj or Ajay if you need access.'); if(CURRENT_TAB!=="home"){ CURRENT_TAB="home"; render(); } return; }
   const v = document.getElementById("view");
   const mods = typeof FLOW_MODULES!=="undefined" ? FLOW_MODULES : [];
   const m = mods.find(x=>x.id===moduleId);
@@ -6289,7 +6303,7 @@ function spGetRota(){
   if(n.changed){ try{ localStorage.setItem('sp_rota',JSON.stringify(n.rota)); }catch(e){} }
   return n.rota;
 }
-function spSaveRota(d)  {localStorage.setItem('sp_rota',   JSON.stringify(d));}
+function spSaveRota(d)  {localStorage.setItem('sp_rota',   JSON.stringify(d)); if(typeof spQueuePublish==='function') spQueuePublish();}
 function spGetFC()      {const s=localStorage.getItem('sp_fc');     return s?JSON.parse(s):JSON.parse(JSON.stringify(SP_FC_SEED));}
 function spSaveFC(d)    {localStorage.setItem('sp_fc',     JSON.stringify(d));}
 function spGetMonthly() {return JSON.parse(localStorage.getItem('sp_monthly')||'{}');}
@@ -6298,10 +6312,10 @@ function spSaveMonthly(d){localStorage.setItem('sp_monthly',JSON.stringify(d));}
 // ── Helpers ───────────────────────────────────────────────────────────────────
 let spWeekOffset=0,spFcWeekOffset=0,spMonthOff=0;
 function spWeekDates(off){const t=new Date(),m=new Date(t);m.setDate(t.getDate()-((t.getDay()||7)-1)+(off||0)*7);return Array.from({length:7},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d;});}
-function spDK(d){return d.toISOString().slice(0,10);}
+function spDK(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function spShortFmt(d){return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
 function spFmt(d){return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}
-function spParseHrs(shift){if(!shift)return 0;const s=shift.toLowerCase().trim();if(['off','holiday','sick','','on call','in lieu'].includes(s))return 0;const m=shift.match(/(\d{1,2})[:\.](\d{2})\s*[-]\s*(\d{1,2})[:\.](\d{2})/);if(!m)return 0;let st=+m[1]*60+ +m[2],en=+m[3]*60+ +m[4];if(en<=st)en+=1440;return Math.round((en-st)/60*10)/10;}
+function spParseHrs(shift){if(shift&&typeof shift==='object')shift=shift.shift;if(!shift)return 0;shift=String(shift);const s=shift.toLowerCase().trim();if(['off','holiday','sick','','on call','in lieu'].includes(s))return 0;const m=shift.match(/(\d{1,2})[:\.](\d{2})\s*[-]\s*(\d{1,2})[:\.](\d{2})/);if(!m)return 0;let st=+m[1]*60+ +m[2],en=+m[3]*60+ +m[4];if(en<=st)en+=1440;return Math.round((en-st)/60*10)/10;}
 function spShiftStyle(shift){if(!shift)return{bg:'#f5f7f9',col:'#374151',border:'#e0e0e0'};const s=shift.toLowerCase().trim();if(s===''||s==='off')return{bg:'#f5f7f9',col:'#374151',border:'#e0e0e0'};if(s==='holiday')return{bg:'#dbeafe',col:'#1d4ed8',border:'#93c5fd'};if(s==='on call')return{bg:'#fef9c3',col:'#854d0e',border:'#fde047'};if(s==='in lieu')return{bg:'#f3e8ff',col:'#7e22ce',border:'#c4b5fd'};if(s==='sick')return{bg:'#fee2e2',col:'#991b1b',border:'#fca5a5'};return{bg:'#dcfce7',col:'#166534',border:'#86efac'};}
 function spCalcRequired(fc,deptId){const rooms=fc&&fc.rooms||0,dep=fc&&fc.departures||0,stay=fc&&fc.stayovers||0,bk=fc&&fc.breakfastCovers||Math.round(rooms*1.8),din=fc&&fc.dinnerCovers||0;switch(deptId){case 'reception':return{needed:3,note:'07-15, 15-23, 23-07'};case 'nights':return{needed:1,note:'Night manager 23-07'};case 'kitchen':return{needed:Math.max(2,Math.ceil(bk/28)+(din>0?1:0)),note:bk+' bkfst ÷28'};case 'restaurant':return{needed:Math.max(1,Math.ceil(bk/28))+(din>0?Math.ceil(din/7):0),note:bk+' bkfst, '+din+' dinner'};case 'bar':return{needed:2,note:'Min 2 from 15:00'};case 'housekeeping':{const hrs=(dep*0.542)+(stay*0.333);return{needed:Math.max(1,Math.ceil(hrs/7.5)),note:dep+'dep+'+stay+'stay'};}case 'maintenance':return{needed:1,note:'On call'};case 'admin':return{needed:1,note:'Office hours'};default:return{needed:1,note:''};}}
 function spCountRostered(rota,dk,deptId){const staff=spGetStaff().filter(s=>s.dept===deptId),day=rota[dk]||{};return staff.filter(s=>{const v=day[s.id];const sh=String((v&&typeof v==='object')?(v.shift||''):(v||'')).toLowerCase().trim();return sh&&!['off','holiday','sick','in lieu'].includes(sh);}).length;}
@@ -6415,6 +6429,8 @@ function renderRotaDash(v){
         <button onclick="switchTab('rotaWeek')" style="padding:9px 16px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">📋 Weekly Rota</button>
         <button onclick="switchTab('rotaForecast')" style="padding:9px 16px;background:#c78a3b;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">📈 Update Forecast</button>
         <button onclick="spApproveRota()" style="padding:9px 16px;background:#2a6a4a;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">🖨 Print Rota</button>
+        <button onclick="switchTab('rotaPayroll')" style="padding:9px 16px;background:#3b5167;color:#fff;border:none;border-radius:9px;font:600 13px Lato;cursor:pointer">💷 Payroll</button>
+        <button onclick="spShareRotaLink()" style="padding:9px 16px;background:#4DA69C;color:#fff;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer">🔗 Staff rota link</button>
       </div>
     </div>
     <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
@@ -6599,6 +6615,8 @@ function renderRotaWeek(v){
         <button onclick="spWeekOffset++;renderRotaWeek(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font:600 12px Lato">Next →</button>
         <button onclick="spAddStaffModal()" style="padding:7px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;cursor:pointer;color:#fff">+ Staff</button>
         <button onclick="spExportCSV()" style="padding:7px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;cursor:pointer;color:#fff">⬇ Export</button>
+        <button onclick="switchTab('rotaPayroll')" style="padding:7px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;cursor:pointer;color:#fff">💷 Payroll</button>
+        <button onclick="spShareRotaLink()" style="padding:7px 12px;background:#4DA69C;border:1px solid #4DA69C;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#fff">🔗 Staff rota link</button>
       </div>
     </div>
     <div style="font-size:11px;color:#8fa3b8;margin-bottom:10px">
@@ -6614,7 +6632,7 @@ function renderRotaWeek(v){
             <th style="padding:10px 8px;min-width:130px"></th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody>${rows}${spRotaTotalsRows(days,rota,staff,pending)}</tbody>
       </table>
     </div>
   </div>`;
@@ -6652,6 +6670,7 @@ function renderRotaForecast(v){
         <button onclick="spFcWeekOffset++;renderRotaForecast(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">Next →</button>
         <button onclick="spCreateRotaFromForecast()" style="padding:7px 14px;background:#2a6a4a;color:#fff;border:none;border-radius:8px;font:700 13px Lato;cursor:pointer">⚡ Create draft rota</button>
         <button onclick="switchTab('rotaWeek')" style="padding:7px 12px;background:#2e4156;color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:8px;font:600 12px Lato;cursor:pointer">← Back to Rota</button>
+        <button onclick="spShareRotaLink()" style="padding:7px 12px;background:#4DA69C;border:1px solid #4DA69C;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#fff">🔗 Staff rota link</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">${cards}</div>
@@ -6708,6 +6727,7 @@ function renderRotaMonthly(v){
         <button onclick="spMonthOff--;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">← Prev</button>
         <b style="padding:0 6px;font-size:14px;color:#ffffff">${mn}</b>
         <button onclick="spMonthOff++;renderRotaMonthly(document.getElementById('view'))" style="padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff">Next →</button>
+        <button onclick="spShareRotaLink()" style="padding:7px 12px;background:#4DA69C;border:1px solid #4DA69C;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#fff">🔗 Staff rota link</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
@@ -8316,3 +8336,597 @@ function hpLandingExtras(m){
   }
   return box;
 }
+
+
+/* ============================================================
+   HosPEOPLE — PAYROLL GRID, FINGERPRINT COMPARE, ROTA SHARING
+   ============================================================ */
+
+// ── Pay helpers ──────────────────────────────────────────────
+function spPaySettings(){
+  const d={breakMins:0,breakOverHrs:6,tolerance:0.25};
+  try{ return Object.assign(d, JSON.parse(localStorage.getItem('sp_pay_settings')||'{}')); }catch(e){ return d; }
+}
+function spSavePaySettings(p){ try{ localStorage.setItem('sp_pay_settings', JSON.stringify(p)); }catch(e){} }
+function spRate(s){
+  const r=+s.hourlyRate||0; if(r) return r;
+  if(+s.weeklyWage && +s.contractHrs) return (+s.weeklyWage)/(+s.contractHrs);
+  return 0;
+}
+function spCell(v){
+  if(v && typeof v==='object') return {shift:String(v.shift||'off'), dept:v.dept||null};
+  return {shift:String(v||'off'), dept:null};
+}
+/* Paid hours for one rota entry: shift length less the unpaid break (if set) */
+function spPaidHrs(v){
+  const h=spParseHrs(spCell(v).shift), p=spPaySettings();
+  return (p.breakMins>0 && h>p.breakOverHrs) ? Math.max(0, Math.round((h-p.breakMins/60)*100)/100) : h;
+}
+function spKind(v){
+  const s=spCell(v).shift.toLowerCase().trim();
+  if(!s||s==='off') return 'off';
+  if(['holiday','sick','in lieu','on call'].includes(s)) return s;
+  return spParseHrs(s)>0 ? 'work' : 'off';
+}
+const spH = n => (Math.round((n||0)*100)/100).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:2});
+const spGBP = n => '£'+(Number(n)||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+function spEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function spCsvCell(v){ const s=String(v==null?'':v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
+function spDownload(name, text, type){
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([text],{type:type||'text/csv;charset=utf-8'})),download:name});
+  document.body.appendChild(a); a.click(); setTimeout(()=>a.remove(),500);
+}
+
+/* Department totals for a set of days. Hours and cost are booked to the department
+   the person is working in that day (so cover shifts land in the covering department). */
+function spDeptDayTotals(days, rota, staff, pending){
+  const out={}; SP_DEPTS.forEach(d=>out[d.id]={});
+  days.forEach(d=>{
+    const k=spDK(d);
+    staff.forEach(s=>{
+      const v=(pending&&pending[k]&&pending[k][s.id]!==undefined)?pending[k][s.id]:(rota[k]||{})[s.id];
+      if(spKind(v)!=='work') return;
+      const c=spCell(v), dep=c.dept||s.dept, h=spPaidHrs(v);
+      if(!out[dep]) out[dep]={};
+      const t=out[dep][k]||(out[dep][k]={hrs:0,cost:0,people:0});
+      t.hrs+=h; t.cost+=h*spRate(s); t.people++;
+    });
+  });
+  return out;
+}
+
+/* Rows added to the bottom of the weekly rota: per-department hours & cost per day */
+function spRotaTotalsRows(days, rota, staff, pending){
+  const tot=spDeptDayTotals(days, rota, staff, pending);
+  const cell='padding:6px 6px;text-align:center;font-size:11px;border-top:1px solid #e5e7eb';
+  let html=`<tr><td colspan="${days.length+3}" style="padding:9px 12px;background:#1a2b3a;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Daily totals by department · paid hours and staff cost</td></tr>`;
+  const grand={}; let gH=0,gC=0;
+  SP_DEPTS.forEach(dep=>{
+    const row=tot[dep.id]||{}; let wh=0,wc=0;
+    const tds=days.map(d=>{
+      const t=row[spDK(d)]; const g=grand[spDK(d)]||(grand[spDK(d)]={hrs:0,cost:0});
+      if(!t) return `<td style="${cell};color:#9ca3af;background:#fff">—</td>`;
+      wh+=t.hrs; wc+=t.cost; g.hrs+=t.hrs; g.cost+=t.cost;
+      return `<td style="${cell};background:#fff"><div style="font-weight:700;color:#1a2b3a">${spH(t.hrs)}h</div><div style="color:#374151">${spGBP(t.cost)}</div></td>`;
+    }).join('');
+    if(!wh) return;
+    gH+=wh; gC+=wc;
+    html+=`<tr class="sp-tot-row"><td style="padding:6px 12px;position:sticky;left:0;z-index:1;background:#fff;border-top:1px solid #e5e7eb;font-size:12px;font-weight:700;color:#1a2b3a"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${dep.colour};margin-right:6px"></span>${dep.name}</td>${tds}
+      <td style="${cell};background:#f9fafb;white-space:nowrap"><div style="font-weight:800;color:#1a2b3a">${spH(wh)}h</div><div style="color:#374151">${spGBP(wc)}</div></td><td style="background:#f9fafb;border-top:1px solid #e5e7eb"></td></tr>`;
+  });
+  const gtds=days.map(d=>{const g=grand[spDK(d)]||{hrs:0,cost:0};return `<td style="${cell};background:#E2F1EE;border-top:2px solid #2B726A"><div style="font-weight:800;color:#1a2b3a">${spH(g.hrs)}h</div><div style="font-weight:700;color:#2B726A">${spGBP(g.cost)}</div></td>`;}).join('');
+  html+=`<tr class="sp-tot-grand"><td style="padding:8px 12px;position:sticky;left:0;z-index:1;background:#E2F1EE;border-top:2px solid #2B726A;font-size:12px;font-weight:800;color:#1a2b3a;text-transform:uppercase">All departments</td>${gtds}
+    <td style="${cell};background:#E2F1EE;border-top:2px solid #2B726A;white-space:nowrap"><div style="font-weight:800;color:#1a2b3a">${spH(gH)}h</div><div style="font-weight:800;color:#2B726A">${spGBP(gC)}</div></td><td style="background:#E2F1EE;border-top:2px solid #2B726A"></td></tr>`;
+  const p=spPaySettings();
+  html+=`<tr><td colspan="${days.length+3}" style="padding:6px 12px;font-size:10.5px;color:#4b5563;background:#fff">Cost = paid hours × hourly rate from Staff Profiles${p.breakMins?` · ${p.breakMins} min unpaid break taken off shifts over ${p.breakOverHrs}h`:''} · includes unsaved changes shown above · excludes employer NI, pension and holiday pay.</td></tr>`;
+  return html;
+}
+
+// ── Payroll grid (weekly / monthly) ─────────────────────────
+let spPayMode='week', spPayOff=0, spCmp=null;
+function spPayPeriod(){
+  const t=new Date();
+  if(spPayMode==='week'){
+    const days=spWeekDates(spPayOff);
+    return {days, label:'Week commencing '+days[0].toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}), file:'week-'+spDK(days[0])};
+  }
+  const first=new Date(t.getFullYear(), t.getMonth()+spPayOff, 1, 12);
+  const n=new Date(first.getFullYear(), first.getMonth()+1, 0).getDate();
+  const days=Array.from({length:n},(_,i)=>new Date(first.getFullYear(), first.getMonth(), i+1, 12));
+  return {days, label:first.toLocaleDateString('en-GB',{month:'long',year:'numeric'}), file:'month-'+spDK(first).slice(0,7)};
+}
+/* One record per staff member for the period */
+function spPayRows(days){
+  const rota=spGetRota(), staff=spGetStaff();
+  const order=SP_DEPTS.map(d=>d.id);
+  return staff.slice().sort((a,b)=>(order.indexOf(a.dept)-order.indexOf(b.dept))||a.name.localeCompare(b.name)).map(s=>{
+    const r={s, rate:spRate(s), daily:[], hrs:0, shifts:0, hol:0, sick:0, lieu:0, oncall:0};
+    days.forEach(d=>{
+      const v=(rota[spDK(d)]||{})[s.id], k=spKind(v), h=k==='work'?spPaidHrs(v):0;
+      r.daily.push({k, h, shift:spCell(v).shift});
+      if(k==='work'){ r.hrs+=h; r.shifts++; }
+      else if(k==='holiday') r.hol++; else if(k==='sick') r.sick++; else if(k==='in lieu') r.lieu++; else if(k==='on call') r.oncall++;
+    });
+    r.gross=r.hrs*r.rate;
+    return r;
+  });
+}
+
+function renderRotaPayroll(v){
+  const P=spPayPeriod(), rows=spPayRows(P.days), ps=spPaySettings();
+  const deptName=id=>(SP_DEPTS.find(d=>d.id===id)||{}).name||id;
+  const deptCol=id=>(SP_DEPTS.find(d=>d.id===id)||{}).colour||'#6b7280';
+  const todayK=spDK(new Date());
+  const heads=P.days.map(d=>{const k=spDK(d),we=d.getDay()===0||d.getDay()===6;return `<th style="padding:6px 3px;min-width:${spPayMode==='week'?84:44}px;text-align:center;font-size:10.5px;color:${k===todayK?'#fff':'#1a2b3a'};background:${k===todayK?'#2B726A':we?'#eef2f5':'#f5f7f9'}">${d.toLocaleDateString('en-GB',{weekday:'short'}).slice(0,spPayMode==='week'?3:2)}<div style="font-weight:400;opacity:.8">${d.getDate()}${spPayMode==='week'?' '+d.toLocaleDateString('en-GB',{month:'short'}):''}</div></th>`;}).join('');
+  let body='', curDept=null, tot={hrs:0,gross:0,shifts:0,hol:0,sick:0}, dt=null;
+  const flushDept=()=>{ if(!dt) return; body+=`<tr><td style="position:sticky;left:0;background:#f3f6f8;padding:6px 10px;font-size:11px;font-weight:800;color:#1a2b3a">${deptName(curDept)} subtotal</td><td colspan="${P.days.length+2}" style="background:#f3f6f8"></td><td style="background:#f3f6f8;text-align:right;padding:6px 8px;font-size:12px;font-weight:800">${spH(dt.hrs)}</td><td style="background:#f3f6f8" colspan="2"></td><td style="background:#f3f6f8;text-align:right;padding:6px 10px;font-size:12px;font-weight:800">${spGBP(dt.gross)}</td></tr>`; };
+  rows.forEach(r=>{
+    if(r.s.dept!==curDept){ flushDept(); curDept=r.s.dept; dt={hrs:0,gross:0};
+      body+=`<tr><td colspan="${P.days.length+7}" style="padding:6px 10px;background:${deptCol(curDept)};color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">${deptName(curDept)}</td></tr>`; }
+    dt.hrs+=r.hrs; dt.gross+=r.gross; tot.hrs+=r.hrs; tot.gross+=r.gross; tot.shifts+=r.shifts; tot.hol+=r.hol; tot.sick+=r.sick;
+    const cells=r.daily.map(c=>{
+      const lab=c.k==='work'?spH(c.h):c.k==='holiday'?'HOL':c.k==='sick'?'SICK':c.k==='in lieu'?'LIEU':c.k==='on call'?'OC':'';
+      const bg=c.k==='work'?'#f0fdf4':c.k==='holiday'?'#eff6ff':c.k==='sick'?'#fef2f2':c.k==='in lieu'?'#faf5ff':'#fff';
+      return `<td title="${spEsc(c.shift)}" style="text-align:center;font-size:11px;padding:5px 2px;background:${bg};color:${c.k==='work'?'#166534':'#374151'};border-left:1px solid #f0f2f4">${lab}</td>`;
+    }).join('');
+    body+=`<tr style="border-top:1px solid #eef1f4">
+      <td style="position:sticky;left:0;background:#fff;padding:6px 10px;min-width:170px;box-shadow:2px 0 4px rgba(0,0,0,.04)"><div style="font-size:12px;font-weight:700;color:#1a2b3a">${spEsc(r.s.name)}</div><div style="font-size:10px;color:#4b5563">${spEsc(r.s.staffCode||'')} · ${spEsc(r.s.role||'')}</div></td>
+      <td style="font-size:11px;padding:5px 8px;color:#374151;white-space:nowrap">${spEsc(r.s.contract||'')}</td>
+      ${cells}
+      <td style="text-align:center;font-size:11px;padding:5px 6px">${r.shifts}</td>
+      <td style="text-align:right;font-size:12px;font-weight:700;padding:5px 8px">${spH(r.hrs)}</td>
+      <td style="text-align:right;font-size:11px;padding:5px 8px;color:${r.rate?'#374151':'#b3261e'}">${r.rate?spGBP(r.rate):'No rate'}</td>
+      <td style="text-align:center;font-size:11px;padding:5px 6px;color:#374151">${[r.hol?r.hol+' hol':'',r.sick?r.sick+' sick':'',r.lieu?r.lieu+' lieu':''].filter(Boolean).join(' · ')||'—'}</td>
+      <td style="text-align:right;font-size:12px;font-weight:800;padding:5px 10px;color:#1a2b3a">${spGBP(r.gross)}</td>
+    </tr>`;
+  });
+  flushDept();
+  const noRate=rows.filter(r=>!r.rate&&r.hrs>0).length;
+  const btn='padding:7px 12px;border-radius:8px;font:700 12px Lato;cursor:pointer;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff';
+  const on='padding:7px 14px;border-radius:8px;font:700 12px Lato;cursor:pointer;border:1px solid #4DA69C;background:#4DA69C;color:#fff';
+
+  v.innerHTML=`<div style="padding:20px 28px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <div><div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#fff">Payroll Hours &amp; Costs</div>
+        <div style="font-size:13px;color:#a9b8c9">${P.label} · from the approved rota</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button style="${spPayMode==='week'?on:btn}" onclick="spPayMode='week';spPayOff=0;spCmp=null;renderRotaPayroll(document.getElementById('view'))">Weekly</button>
+        <button style="${spPayMode==='month'?on:btn}" onclick="spPayMode='month';spPayOff=0;spCmp=null;renderRotaPayroll(document.getElementById('view'))">Monthly</button>
+        <button style="${btn}" onclick="spPayOff--;renderRotaPayroll(document.getElementById('view'))">← Prev</button>
+        <button style="${btn}" onclick="spPayOff=0;renderRotaPayroll(document.getElementById('view'))">${spPayMode==='week'?'This week':'This month'}</button>
+        <button style="${btn}" onclick="spPayOff++;renderRotaPayroll(document.getElementById('view'))">Next →</button>
+        <button style="${btn}" onclick="spShareRotaLink()">🔗 Staff rota link</button>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px">
+      ${[['Staff with hours',rows.filter(r=>r.hrs>0).length],['Shifts',tot.shifts],['Paid hours',spH(tot.hrs)],['Gross pay',spGBP(tot.gross)],['Holiday / sick days',tot.hol+' / '+tot.sick]].map(([l,n])=>`<div style="background:#fff;border-radius:12px;padding:12px 14px"><div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.4px">${l}</div><div style="font-size:22px;font-weight:800;color:#1a2b3a;margin-top:2px">${n}</div></div>`).join('')}
+    </div>
+
+    <div style="background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:#1a2b3a">
+      <b>Export for payroll:</b>
+      <button onclick="spPayExport('xlsx')" style="padding:8px 14px;border:none;border-radius:8px;background:#2B726A;color:#fff;font:700 12px Lato;cursor:pointer">⬇ Excel</button>
+      <button onclick="spPayExport('csv')" style="padding:8px 14px;border:1px solid #2B726A;border-radius:8px;background:#fff;color:#2B726A;font:700 12px Lato;cursor:pointer">⬇ CSV</button>
+      <span style="flex:1"></span>
+      <label style="display:flex;align-items:center;gap:6px">Unpaid break
+        <input type="number" min="0" step="5" value="${ps.breakMins}" onchange="const p=spPaySettings();p.breakMins=Math.max(0,+this.value||0);spSavePaySettings(p);renderRotaPayroll(document.getElementById('view'))" style="width:60px;padding:5px;border:1px solid #d1d5db;border-radius:6px"> min on shifts over
+        <input type="number" min="0" step="0.5" value="${ps.breakOverHrs}" onchange="const p=spPaySettings();p.breakOverHrs=Math.max(0,+this.value||0);spSavePaySettings(p);renderRotaPayroll(document.getElementById('view'))" style="width:56px;padding:5px;border:1px solid #d1d5db;border-radius:6px"> h</label>
+    </div>
+    ${noRate?`<div style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:10px;padding:9px 12px;font-size:12.5px;margin-bottom:12px">⚠ ${noRate} staff member${noRate>1?'s have':' has'} hours but no hourly rate — add it in Staff Profiles so costs are complete.</div>`:''}
+
+    <div style="background:#fff;border-radius:12px;overflow:auto;max-height:70vh">
+      <table style="border-collapse:collapse;width:100%;min-width:${spPayMode==='week'?1100:1900}px">
+        <thead style="position:sticky;top:0;z-index:3"><tr style="background:#f5f7f9">
+          <th style="position:sticky;left:0;z-index:4;background:#f5f7f9;padding:8px 10px;text-align:left;font-size:11px;color:#1a2b3a;text-transform:uppercase">Staff</th>
+          <th style="padding:8px;text-align:left;font-size:11px;color:#1a2b3a;background:#f5f7f9">Contract</th>
+          ${heads}
+          <th style="padding:8px;font-size:11px;color:#1a2b3a;background:#f5f7f9">Shifts</th>
+          <th style="padding:8px;font-size:11px;color:#1a2b3a;text-align:right;background:#f5f7f9">Hours</th>
+          <th style="padding:8px;font-size:11px;color:#1a2b3a;text-align:right;background:#f5f7f9">Rate</th>
+          <th style="padding:8px;font-size:11px;color:#1a2b3a;background:#f5f7f9">Absence</th>
+          <th style="padding:8px 10px;font-size:11px;color:#1a2b3a;text-align:right;background:#f5f7f9">Gross pay</th>
+        </tr></thead>
+        <tbody>${body}
+          <tr style="background:#E2F1EE;border-top:2px solid #2B726A"><td style="position:sticky;left:0;background:#E2F1EE;padding:8px 10px;font-size:12px;font-weight:800;text-transform:uppercase">Total</td><td colspan="${P.days.length+1}"></td>
+          <td style="text-align:center;font-weight:800;font-size:12px">${tot.shifts}</td><td style="text-align:right;padding:8px;font-weight:800;font-size:12px">${spH(tot.hrs)}</td><td></td><td></td><td style="text-align:right;padding:8px 10px;font-weight:800;font-size:13px;color:#2B726A">${spGBP(tot.gross)}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:11px;color:#a9b8c9;margin-top:8px">Hours are paid hours from the approved rota (unsaved rota changes are not included). Gross pay = hours × hourly rate; it excludes employer NI, pension, holiday pay and tips. HOL = holiday, SICK = sick, LIEU = day in lieu, OC = on call.</div>
+
+    <div id="sp-cmp-box" style="background:#fff;border-radius:12px;padding:16px;margin-top:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div><div style="font-size:16px;font-weight:800;color:#1a2b3a">Compare with fingerprint clock-in</div>
+          <div style="font-size:12.5px;color:#4b5563">Upload the CSV export from the fingerprint system. We match each person and day against the rota and show every difference.</div></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <label style="padding:9px 14px;border-radius:8px;background:#1a2b3a;color:#fff;font:700 12px Lato;cursor:pointer">📤 Upload CSV<input type="file" accept=".csv,.txt,text/csv" style="display:none" onchange="spCmpLoad(this.files[0])"></label>
+          <button onclick="spCmpTemplate()" style="padding:9px 12px;border-radius:8px;border:1px solid #d1d5db;background:#fff;font:700 12px Lato;cursor:pointer;color:#1a2b3a">Sample CSV</button>
+        </div>
+      </div>
+      <div id="sp-cmp-out" style="margin-top:12px"></div>
+    </div>
+  </div>`;
+  if(spCmp) spCmpRender();
+}
+
+function spPayExport(fmt){
+  const P=spPayPeriod(), rows=spPayRows(P.days), deptName=id=>(SP_DEPTS.find(d=>d.id===id)||{}).name||id;
+  const dayHead=P.days.map(d=>d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'2-digit'}));
+  const head=['Staff code','Name','Role','Department','Contract',...dayHead,'Shifts','Paid hours','Hourly rate','Holiday days','Sick days','In lieu days','Gross pay'];
+  const data=rows.map(r=>[r.s.staffCode||'',r.s.name,r.s.role||'',deptName(r.s.dept),r.s.contract||'',
+    ...r.daily.map(c=>c.k==='work'?Math.round(c.h*100)/100:c.k==='off'?'':c.k.toUpperCase()),
+    r.shifts, Math.round(r.hrs*100)/100, Math.round(r.rate*100)/100, r.hol, r.sick, r.lieu, Math.round(r.gross*100)/100]);
+  const tH=rows.reduce((t,r)=>t+r.hrs,0), tG=rows.reduce((t,r)=>t+r.gross,0);
+  data.push(['','TOTAL','','','',...P.days.map(()=>''), rows.reduce((t,r)=>t+r.shifts,0), Math.round(tH*100)/100,'', rows.reduce((t,r)=>t+r.hol,0), rows.reduce((t,r)=>t+r.sick,0), rows.reduce((t,r)=>t+r.lieu,0), Math.round(tG*100)/100]);
+  const fname='brandon-hall-payroll-'+P.file;
+  if(fmt==='csv'){
+    spDownload(fname+'.csv', '﻿'+[['Brandon Hall Hotel & Spa — Payroll '+P.label],[],head,...data].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
+    return;
+  }
+  spLoadXLSX().then(XLSX=>{
+    const ws=XLSX.utils.aoa_to_sheet([['Brandon Hall Hotel & Spa — Payroll '+P.label],[],head,...data]);
+    ws['!cols']=head.map((h,i)=>({wch:i===1?24:i===2?22:i===3?16:i<5?12:(i>=5&&i<5+P.days.length)?(P.days.length>7?7:11):12}));
+    // Department summary sheet
+    const byDept={}; rows.forEach(r=>{const k=deptName(r.s.dept); const t=byDept[k]||(byDept[k]={hrs:0,gross:0,staff:0}); t.hrs+=r.hrs; t.gross+=r.gross; if(r.hrs>0)t.staff++;});
+    const ws2=XLSX.utils.aoa_to_sheet([['Department summary — '+P.label],[],['Department','Staff with hours','Paid hours','Gross pay'],...Object.entries(byDept).map(([k,t])=>[k,t.staff,Math.round(t.hrs*100)/100,Math.round(t.gross*100)/100]),['TOTAL','',Math.round(tH*100)/100,Math.round(tG*100)/100]]);
+    ws2['!cols']=[{wch:22},{wch:16},{wch:12},{wch:14}];
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Payroll'); XLSX.utils.book_append_sheet(wb,ws2,'By department');
+    XLSX.writeFile(wb, fname+'.xlsx');
+  }).catch(()=>{ toast('Excel export unavailable offline — downloading CSV instead'); spPayExport('csv'); });
+}
+function spLoadXLSX(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=()=>window.XLSX?res(window.XLSX):rej(); s.onerror=rej; document.head.appendChild(s); });
+}
+
+// ── Fingerprint CSV compare ─────────────────────────────────
+function spParseCSV(text){
+  text=text.replace(/^﻿/,'');
+  const first=text.split(/\r?\n/).find(l=>l.trim())||'';
+  const delim=[',',';','\t'].map(d=>[d,first.split(d).length]).sort((a,b)=>b[1]-a[1])[0][0];
+  const rows=[]; let row=[], cur='', q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=ch; }
+    else if(ch==='"') q=true;
+    else if(ch===delim){ row.push(cur); cur=''; }
+    else if(ch==='\n'||ch==='\r'){ if(ch==='\r'&&text[i+1]==='\n') i++; row.push(cur); cur=''; if(row.some(c=>c.trim()!=='')) rows.push(row); row=[]; }
+    else cur+=ch;
+  }
+  row.push(cur); if(row.some(c=>c.trim()!=='')) rows.push(row);
+  return rows.map(r=>r.map(c=>c.trim()));
+}
+const SP_CMP_FIELDS=[
+  ['name','Staff name',/^(employee|staff|user)?\s*(full\s*)?name$|^employee$|^person$/i],
+  ['first','First name',/first\s*name|forename/i],
+  ['last','Last name',/last\s*name|surname/i],
+  ['code','Staff code / ID',/(staff|emp|employee|user|badge|payroll|ac)\s*(no|number|code|id)|^id$|^code$|^ac-?no\.?$|enroll/i],
+  ['date','Date',/^date$|work\s*date|shift\s*date|^day$/i],
+  ['in','Clock in',/clock\s*-?in|time\s*in|^in$|check\s*-?in|start|on\s*duty/i],
+  ['out','Clock out',/clock\s*-?out|time\s*out|^out$|check\s*-?out|finish|end|off\s*duty/i],
+  ['punch','Punch time (single column)',/^(punch|time|date\s*\/?\s*time|datetime|timestamp|log\s*time|att\s*time)$/i],
+  ['hours','Total hours',/total|hours|worked|duration/i],
+];
+function spCmpLoad(file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    const rows=spParseCSV(String(r.result||''));
+    // header row = first row with at least 2 non-numeric cells
+    let hi=rows.findIndex(x=>x.filter(c=>c&&isNaN(+c)).length>=2); if(hi<0) hi=0;
+    const head=rows[hi]||[], data=rows.slice(hi+1);
+    const map={}; const used=new Set();
+    SP_CMP_FIELDS.forEach(([k,,re])=>{ const i=head.findIndex((h,ix)=>!used.has(ix)&&re.test(h)); if(i>-1){ map[k]=i; used.add(i);} });
+    spCmp={file:file.name, head, data, map, result:null};
+    spCmpRender();
+  };
+  r.readAsText(file);
+}
+function spCmpTemplate(){
+  const staff=spGetStaff().slice(0,3), d=spPayPeriod().days[0];
+  const ds=d.toLocaleDateString('en-GB');
+  spDownload('fingerprint-sample.csv', 'Staff Code,Name,Date,Clock In,Clock Out,Total Hours\r\n'+staff.map(s=>[s.staffCode||'',s.name,ds,'08:58','17:04','8.1'].map(spCsvCell).join(',')).join('\r\n'));
+}
+/* Dates: dd/mm/yyyy (UK), yyyy-mm-dd, dd-mm-yy, dd.mm.yyyy, optionally followed by a time */
+function spParseDT(s){
+  s=String(s||'').trim(); if(!s) return null;
+  let m, y, mo, d, hh=null, mi=null;
+  if((m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))){ y=+m[1]; mo=+m[2]; d=+m[3]; }
+  else if((m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/))){ d=+m[1]; mo=+m[2]; y=+m[3]; if(y<100) y+=2000; }
+  else if((m=s.match(/^(\d{1,2})\s+([A-Za-z]{3})[A-Za-z]*\s+(\d{2,4})/))){ d=+m[1]; mo=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m[2].toLowerCase())+1; y=+m[3]; if(y<100)y+=2000; }
+  const t=s.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]\.?m\.?)?/i);
+  if(t){ hh=+t[1]; mi=+t[2]; if(t[3]){ const pm=/p/i.test(t[3]); if(pm&&hh<12) hh+=12; if(!pm&&hh===12) hh=0; } }
+  return {date: y?`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`:null, mins: hh==null?null:hh*60+mi};
+}
+function spNorm(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); }
+function spMatchStaff(code,name,staff){
+  if(code){ const c=String(code).trim().toLowerCase(); const hit=staff.find(s=>String(s.staffCode||'').toLowerCase()===c || String(s.clockId||'').toLowerCase()===c); if(hit) return hit; }
+  const n=spNorm(name); if(!n) return null;
+  let hit=staff.find(s=>spNorm(s.name)===n); if(hit) return hit;
+  const p=n.split(' ');
+  // "Surname, First" or first + surname initial, or first name only when unique
+  hit=staff.filter(s=>{const q=spNorm(s.name).split(' '); return q[0]===p[0] && (p.length===1||q.length===1||q[q.length-1]===p[p.length-1]||q[q.length-1][0]===p[p.length-1][0]);});
+  if(hit.length===1) return hit[0];
+  hit=staff.filter(s=>{const q=spNorm(s.name).split(' '); return p.length>1 && q[0]===p[p.length-1] && q[q.length-1]===p[0];});
+  return hit.length===1?hit[0]:null;
+}
+function spCmpRun(){
+  const C=spCmp, M=C.map, staff=spGetStaff(), rota=spGetRota(), tol=spPaySettings().tolerance;
+  const get=(row,k)=>M[k]!=null?row[M[k]]:'';
+  const clock={}; const unknown={}; const punches={};
+  C.data.forEach(row=>{
+    const name=M.name!=null?get(row,'name'):[get(row,'first'),get(row,'last')].filter(Boolean).join(' ');
+    const code=get(row,'code');
+    if(!name&&!code) return;
+    const s=spMatchStaff(code,name,staff);
+    const label=(name||code);
+    let date=spParseDT(get(row,'date')).date;
+    const ins=spParseDT(get(row,'in')), outs=spParseDT(get(row,'out')), pun=spParseDT(get(row,'punch'));
+    if(!date) date=(ins&&ins.date)||(pun&&pun.date)||null;
+    if(!date) return;
+    if(!s){ const u=unknown[label]||(unknown[label]={label,code,days:new Set(),hrs:0}); u.days.add(date); }
+    const key=(s?s.id:'?'+label)+'|'+date;
+    if(M.punch!=null && M.in==null){ (punches[key]||(punches[key]={s,date,list:[]})).list.push(pun.mins); return; }
+    let h=0, first=null, last=null;
+    if(ins&&ins.mins!=null&&outs&&outs.mins!=null){ let a=ins.mins,b=outs.mins; if(b<=a) b+=1440; h=(b-a)/60; first=a; last=outs.mins; }
+    else if(M.hours!=null){ const raw=get(row,'hours'); const hm=String(raw).match(/^(\d+):(\d{2})$/); h=hm?(+hm[1]+hm[2]/60):(parseFloat(raw)||0); }
+    const c=clock[key]||(clock[key]={s,date,hrs:0,first:null,last:null,label});
+    c.hrs+=h; if(first!=null&&(c.first==null||first<c.first)) c.first=first; if(last!=null) c.last=last;
+    if(!s) unknown[label].hrs+=h;
+  });
+  Object.entries(punches).forEach(([key,p])=>{
+    const l=p.list.filter(x=>x!=null).sort((a,b)=>a-b); let h=0;
+    for(let i=0;i+1<l.length;i+=2) h+=(l[i+1]-l[i])/60;
+    clock[key]={s:p.s,date:p.date,hrs:h,first:l[0],last:l[l.length-1],odd:l.length%2===1,label:p.s?p.s.name:key.split('|')[0].slice(1)};
+    if(!p.s && unknown[clock[key].label]) unknown[clock[key].label].hrs+=h;
+  });
+  const dates=[...new Set(Object.values(clock).map(c=>c.date))].sort();
+  if(!dates.length){ C.result={error:'No dated rows found. Check the Date / Clock in columns are mapped correctly.'}; return; }
+  const from=dates[0], to=dates[dates.length-1];
+  const lines=[];
+  // every rostered shift in the range, plus every clocked day
+  const all=new Set(Object.keys(clock).filter(k=>!k.startsWith('?')));
+  Object.keys(rota).filter(dk=>dk>=from&&dk<=to).forEach(dk=>Object.keys(rota[dk]||{}).forEach(id=>{ if(spKind(rota[dk][id])==='work') all.add(id+'|'+dk); }));
+  all.forEach(key=>{
+    const [id,date]=key.split('|'); const s=staff.find(x=>x.id===id); if(!s) return;
+    const v=(rota[date]||{})[id], rh=spKind(v)==='work'?spPaidHrs(v):0, c=clock[key], ch=c?Math.round(c.hrs*100)/100:0;
+    const diff=Math.round((ch-rh)*100)/100;
+    let status='ok', note='';
+    if(!c && rh>0){ status='noclock'; note='Rostered but no clock-in'; }
+    else if(c && rh===0){ status='unrostered'; note=spKind(v)==='off'?'Clocked in on a day off':'Clocked in while marked '+spCell(v).shift; }
+    else if(c && c.odd){ status='diff'; note='Missing clock-out (odd number of punches)'; }
+    else if(Math.abs(diff)>tol){ status='diff'; note=diff>0?'Worked more than rota':'Worked less than rota'; }
+    const fmt=m=>m==null?'':String(Math.floor((m%1440)/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+    lines.push({s,date,shift:spCell(v).shift,rh,ch,diff,status,note,times:c&&c.first!=null?fmt(c.first)+'–'+fmt(c.last):'',cost:diff*spRate(s)});
+  });
+  lines.sort((a,b)=>a.s.name.localeCompare(b.s.name)||a.date.localeCompare(b.date));
+  C.result={from,to,lines,unknown:Object.values(unknown).map(u=>({label:u.label,code:u.code,days:u.days.size,hrs:u.hrs}))};
+}
+function spCmpRender(){
+  const out=document.getElementById('sp-cmp-out'); if(!out||!spCmp) return;
+  const C=spCmp, opts=i=>`<option value="">— not in file —</option>`+C.head.map((h,ix)=>`<option value="${ix}"${C.map[i]===ix?' selected':''}>${spEsc(h||('Column '+(ix+1)))}</option>`).join('');
+  const mapUI=`<div style="font-size:12.5px;color:#1a2b3a;margin-bottom:8px"><b>${spEsc(C.file)}</b> · ${C.data.length} rows. Check the columns below match your file, then press Compare.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:10px">
+      ${SP_CMP_FIELDS.map(([k,l])=>`<label style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.3px">${l}<select onchange="spCmp.map['${k}']=this.value===''?undefined:+this.value;spCmp.result=null" style="display:block;width:100%;margin-top:3px;padding:6px;border:1px solid #d1d5db;border-radius:6px;font:400 12.5px Lato;color:#1a2b3a;text-transform:none">${opts(k)}</select></label>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button onclick="spCmpRun();spCmpRender()" style="padding:9px 18px;border:none;border-radius:8px;background:#4DA69C;color:#fff;font:800 13px Lato;cursor:pointer">Compare with rota</button>
+      <label style="font-size:12px;color:#374151">Flag differences over <input type="number" step="5" min="0" value="${Math.round(spPaySettings().tolerance*60)}" onchange="const p=spPaySettings();p.tolerance=(+this.value||0)/60;spSavePaySettings(p);if(spCmp.result){spCmpRun();spCmpRender();}" style="width:56px;padding:4px;border:1px solid #d1d5db;border-radius:6px"> minutes</label>
+      <button onclick="spCmp=null;document.getElementById('sp-cmp-out').innerHTML=''" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:600 12px Lato;cursor:pointer;color:#374151">Clear</button>
+    </div>`;
+  let res='';
+  const R=C.result;
+  if(R&&R.error) res=`<div style="color:#b3261e;font-weight:700;font-size:13px">${R.error}</div>`;
+  else if(R){
+    const issues=R.lines.filter(l=>l.status!=='ok');
+    const byStaff={}; R.lines.forEach(l=>{const t=byStaff[l.s.id]||(byStaff[l.s.id]={s:l.s,rh:0,ch:0,issues:0,cost:0}); t.rh+=l.rh; t.ch+=l.ch; t.cost+=l.cost; if(l.status!=='ok')t.issues++;});
+    const pill={ok:['#dcfce7','#166534','Match'],diff:['#fef3c7','#92400e','Hours differ'],noclock:['#fee2e2','#991b1b','No clock-in'],unrostered:['#e0e7ff','#3730a3','Not on rota']};
+    const dfmt=d=>new Date(d+'T12:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    res=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px">
+      ${[['Period',dfmt(R.from)+' – '+dfmt(R.to)],['Shifts checked',R.lines.length],['Mismatches',issues.length],['Rota hours',spH(R.lines.reduce((t,l)=>t+l.rh,0))],['Clocked hours',spH(R.lines.reduce((t,l)=>t+l.ch,0))],['Cost difference',spGBP(R.lines.reduce((t,l)=>t+l.cost,0))]].map(([l,n],i)=>`<div style="background:${i===2&&issues.length?'#fef2f2':'#f5f7f9'};border-radius:10px;padding:10px 12px"><div style="font-size:10.5px;font-weight:700;color:#4b5563;text-transform:uppercase">${l}</div><div style="font-size:17px;font-weight:800;color:#1a2b3a">${n}</div></div>`).join('')}
+    </div>
+    ${R.unknown.length?`<div style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#9a3412;margin-bottom:10px"><b>Not matched to a staff profile:</b> ${R.unknown.map(u=>spEsc(u.label)+(u.code?' ('+spEsc(u.code)+')':'')+' — '+u.days+' day'+(u.days>1?'s':'')+', '+spH(u.hrs)+'h').join('; ')}. Add their fingerprint ID as the Staff Code in Staff Profiles, or check the name spelling.</div>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 8px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:14px;font-weight:800;color:#1a2b3a">${issues.length?issues.length+' mismatch'+(issues.length>1?'es':''):'✅ Everything matches the rota'}</div>
+      <div style="display:flex;gap:6px"><label style="font-size:12px;color:#374151;display:flex;gap:5px;align-items:center"><input type="checkbox" id="sp-cmp-all" onchange="document.querySelectorAll('.sp-cmp-ok').forEach(r=>r.style.display=this.checked?'':'none')"> Show matching shifts too</label>
+      <button onclick="spCmpExport()" style="padding:7px 12px;border:1px solid #2B726A;border-radius:8px;background:#fff;color:#2B726A;font:700 12px Lato;cursor:pointer">⬇ Export comparison</button></div>
+    </div>
+    <div style="overflow:auto;max-height:60vh;border:1px solid #eef1f4;border-radius:10px">
+    <table style="width:100%;border-collapse:collapse;min-width:820px;font-size:12.5px;color:#1a2b3a">
+      <thead style="position:sticky;top:0"><tr style="background:#f5f7f9;text-align:left">${['Staff','Date','Rota shift','Clocked','Rota h','Clocked h','Difference','Cost impact','Status'].map(h=>`<th style="padding:8px;font-size:11px;text-transform:uppercase;color:#1a2b3a">${h}</th>`).join('')}</tr></thead>
+      <tbody>${R.lines.map(l=>{const p=pill[l.status];return `<tr class="${l.status==='ok'?'sp-cmp-ok':''}" style="border-top:1px solid #eef1f4;${l.status==='ok'?'display:none':''}">
+        <td style="padding:7px 8px;font-weight:700">${spEsc(l.s.name)}</td><td style="padding:7px 8px;white-space:nowrap">${dfmt(l.date)}</td>
+        <td style="padding:7px 8px">${spEsc(l.shift)}</td><td style="padding:7px 8px">${l.times||(l.ch?'—':'')}</td>
+        <td style="padding:7px 8px;text-align:right">${spH(l.rh)}</td><td style="padding:7px 8px;text-align:right">${spH(l.ch)}</td>
+        <td style="padding:7px 8px;text-align:right;font-weight:800;color:${l.diff>0?'#b45309':l.diff<0?'#b3261e':'#166534'}">${l.diff>0?'+':''}${spH(l.diff)}h</td>
+        <td style="padding:7px 8px;text-align:right">${l.cost?(l.cost>0?'+':'−')+spGBP(Math.abs(l.cost)):'—'}</td>
+        <td style="padding:7px 8px"><span title="${spEsc(l.note)}" style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:${p[0]};color:${p[1]};white-space:nowrap">${p[2]}</span><div style="font-size:11px;color:#4b5563;margin-top:2px">${spEsc(l.note)}</div></td></tr>`;}).join('')}</tbody>
+    </table></div>
+    <div style="font-size:14px;font-weight:800;color:#1a2b3a;margin:16px 0 8px">By person</div>
+    <div style="overflow:auto;border:1px solid #eef1f4;border-radius:10px"><table style="width:100%;border-collapse:collapse;min-width:600px;font-size:12.5px;color:#1a2b3a">
+      <thead><tr style="background:#f5f7f9;text-align:left">${['Staff','Rota hours','Clocked hours','Difference','Cost impact','Mismatches'].map(h=>`<th style="padding:8px;font-size:11px;text-transform:uppercase">${h}</th>`).join('')}</tr></thead>
+      <tbody>${Object.values(byStaff).sort((a,b)=>b.issues-a.issues||a.s.name.localeCompare(b.s.name)).map(t=>{const d=t.ch-t.rh;return `<tr style="border-top:1px solid #eef1f4"><td style="padding:7px 8px;font-weight:700">${spEsc(t.s.name)}</td><td style="padding:7px 8px">${spH(t.rh)}</td><td style="padding:7px 8px">${spH(t.ch)}</td><td style="padding:7px 8px;font-weight:800;color:${Math.abs(d)<0.01?'#166534':d>0?'#b45309':'#b3261e'}">${d>0?'+':''}${spH(d)}h</td><td style="padding:7px 8px">${Math.abs(t.cost)<0.005?'—':(t.cost>0?'+':'−')+spGBP(Math.abs(t.cost))}</td><td style="padding:7px 8px">${t.issues||'—'}</td></tr>`;}).join('')}</tbody></table></div>`;
+  }
+  out.innerHTML=mapUI+res;
+}
+function spCmpExport(){
+  const R=spCmp&&spCmp.result; if(!R||!R.lines) return;
+  const head=['Staff code','Name','Date','Rota shift','Clocked times','Rota hours','Clocked hours','Difference (h)','Cost impact (£)','Status','Note'];
+  const st={ok:'Match',diff:'Hours differ',noclock:'No clock-in',unrostered:'Not on rota'};
+  const rows=R.lines.map(l=>[l.s.staffCode||'',l.s.name,l.date,l.shift,l.times,l.rh,Math.round(l.ch*100)/100,l.diff,Math.round(l.cost*100)/100,st[l.status],l.note]);
+  R.unknown.forEach(u=>rows.push([u.code||'',u.label,'','','','',Math.round(u.hrs*100)/100,'','','Not matched','No staff profile matched']));
+  spDownload('rota-vs-fingerprint-'+R.from+'-to-'+R.to+'.csv','﻿'+[head,...rows].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
+}
+
+// ── Staff rota link + publishing the rota for staff phones ───
+const HP_PUBLIC_FB={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:"brandonhall-7bdef.firebaseapp.com",projectId:"brandonhall-7bdef",storageBucket:"brandonhall-7bdef.firebasestorage.app",messagingSenderId:"391317900568",appId:"1:391317900568:web:643c9d6691f7f16d65226d"};
+function hpPublicDb(){
+  try{
+    if(!window.firebase||!firebase.initializeApp||!firebase.firestore) return null;
+    let app; try{ app=firebase.app('hppublic'); }catch(e){ app=firebase.initializeApp(HP_PUBLIC_FB,'hppublic'); }
+    return app.firestore();
+  }catch(e){ return null; }
+}
+let spPubTimer=null;
+function spQueuePublish(){ clearTimeout(spPubTimer); spPubTimer=setTimeout(()=>spPublishRota(true),2500); }
+/* Writes names, roles and shifts only (no pay rates) from 2 weeks back to 10 weeks ahead */
+async function spPublishRota(silent){
+  const db=hpPublicDb();
+  if(!db){ if(!silent) toast('Could not reach the live database — check internet'); return false; }
+  const rota=spGetRota(), staff=spGetStaff();
+  const from=new Date(); from.setDate(from.getDate()-14); const to=new Date(); to.setDate(to.getDate()+70);
+  const fk=spDK(from), tk=spDK(to), out={};
+  Object.keys(rota).filter(k=>k>=fk&&k<=tk).forEach(k=>{ out[k]={}; Object.entries(rota[k]||{}).forEach(([id,v])=>{ const c=spCell(v); out[k][id]=c.dept?{shift:c.shift,dept:c.dept}:c.shift; }); });
+  try{
+    await db.collection('hospro_public').doc('rota').set({
+      updated:new Date().toISOString(), by:(SESSION&&SESSION.name)||'',
+      staff:staff.map(s=>({id:s.id,name:s.name,role:s.role||'',dept:s.dept||''})),
+      depts:SP_DEPTS.map(d=>({id:d.id,name:d.name})),
+      rota:out
+    });
+    try{ localStorage.setItem('sp_rota_published',new Date().toISOString()); }catch(e){}
+    if(!silent) toast('✓ Rota published — staff links are up to date');
+    const st=document.getElementById('sp-pub-status'); if(st) st.textContent='Last published: just now';
+    return true;
+  }catch(e){
+    console.warn('Rota publish failed',e);
+    if(!silent) toast('Publish failed — the Firestore rule for hospro_public may be missing');
+    const st=document.getElementById('sp-pub-status'); if(st) st.textContent='Publish failed: '+(e.code||e.message||'error')+' — check the Firestore rule';
+    return false;
+  }
+}
+function spRotaBaseUrl(){ return location.origin+location.pathname.replace(/[^\/]*$/,'')+'my-rota.html'; }
+function spShareRotaLink(){
+  const base=spRotaBaseUrl(), staff=spGetStaff().slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const last=localStorage.getItem('sp_rota_published');
+  const lastTxt=last?'Last published: '+new Date(last).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Not published from this computer yet';
+  const msg=spRotaMsg;
+  showModal('Staff rota link','Share with staff by WhatsApp, text or email',`
+    <div style="font-size:13px;color:#1a2b3a;line-height:1.5">
+      <div style="font-weight:800;margin-bottom:4px">Link for all staff</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px"><input id="sp-link-all" readonly value="${base}" style="flex:1;padding:9px;border:1px solid #d1d5db;border-radius:8px;font:13px Lato">
+        <button onclick="spCopy(document.getElementById('sp-link-all').value)" style="padding:8px 12px;border:none;border-radius:8px;background:#1a2b3a;color:#fff;font:700 12px Lato;cursor:pointer">Copy</button>
+        <a href="https://wa.me/?text=${encodeURIComponent(msg(base))}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:8px;background:#25D366;color:#fff;font:700 12px Lato;text-decoration:none">WhatsApp</a></div>
+      <div style="font-size:12px;color:#4b5563;margin-bottom:14px">Staff pick their name, then see their shifts.</div>
+      <div style="font-weight:800;margin-bottom:4px">Personal link (opens straight to one person's shifts)</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <select id="sp-link-person" onchange="spLinkPick(this.value)" style="flex:1;min-width:180px;padding:9px;border:1px solid #d1d5db;border-radius:8px;font:13px Lato">
+          ${staff.map(s=>`<option value="${spEsc(s.id)}">${spEsc(s.name)}</option>`).join('')}
+        </select></div>
+      <div style="display:flex;gap:6px;margin-top:6px"><input id="sp-link-one" readonly value="${base}?staff=${encodeURIComponent(staff[0]?staff[0].id:'')}" style="flex:1;padding:9px;border:1px solid #d1d5db;border-radius:8px;font:13px Lato">
+        <button onclick="spCopy(document.getElementById('sp-link-one').value)" style="padding:8px 12px;border:none;border-radius:8px;background:#1a2b3a;color:#fff;font:700 12px Lato;cursor:pointer">Copy</button>
+        <a id="sp-link-wa" href="https://wa.me/?text=${encodeURIComponent(msg(base+'?staff='+encodeURIComponent(staff[0]?staff[0].id:'')))}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:8px;background:#25D366;color:#fff;font:700 12px Lato;text-decoration:none">WhatsApp</a></div>
+      <div style="margin-top:16px;padding:12px;border-radius:10px;background:#E2F1EE">
+        <div style="font-weight:800">Keep staff links up to date</div>
+        <div style="font-size:12.5px;color:#374151;margin:2px 0 8px">The rota is published automatically whenever you Save &amp; Approve. Use this if you want to push it now.</div>
+        <button onclick="spPublishRota(false)" style="padding:8px 14px;border:none;border-radius:8px;background:#2B726A;color:#fff;font:700 12px Lato;cursor:pointer">Publish rota now</button>
+        <span id="sp-pub-status" style="font-size:12px;color:#374151;margin-left:8px">${lastTxt}</span>
+      </div>
+    </div>`);
+}
+function spRotaMsg(u){ return "Hi, here is your Brandon Hall rota link. It always shows your latest shifts for the next two weeks:\n"+u+"\nSave it to your home screen so it's easy to find."; }
+function spLinkPick(id){
+  const u=spRotaBaseUrl()+'?staff='+encodeURIComponent(id);
+  document.getElementById('sp-link-one').value=u;
+  document.getElementById('sp-link-wa').href='https://wa.me/?text='+encodeURIComponent(spRotaMsg(u));
+}
+function spCopy(t){
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('✓ Link copied')).catch(()=>{ const i=document.createElement('textarea'); i.value=t; document.body.appendChild(i); i.select(); try{document.execCommand('copy'); toast('✓ Link copied');}catch(e){} i.remove(); });
+}
+
+/* ============================================================ HosSALES — Local events within 20 miles
+   Researched 7 Oct 2026. Distances are straight-line miles from Brandon Hall (CV8 3FW). */
+const HP_EVENT_VENUES=[{"name": "Ryton Pools Country Park", "town": "Ryton-on-Dunsmore", "approxMiles": 1.3, "category": "Festival & outdoor", "capacity": "", "url": "https://www.warwickshire.gov.uk/countryparks", "note": "Small outdoor events; country park next to hotel"}, {"name": "Coombe Abbey Park", "town": "Binley, Coventry", "approxMiles": 2.4, "category": "Festival & outdoor", "capacity": "", "url": "https://www.coventry.gov.uk/directory-record/57116/coombe-abbey-park", "note": "Council-run country park; seasonal outdoor events (plus Coombe Abbey Hotel banquets)"}, {"name": "Coventry Cathedral", "town": "Coventry", "approxMiles": 4.3, "category": "Heritage & castle", "capacity": "", "url": "https://www.coventrycathedral.org.uk/events/whats-on", "note": "Concerts, organ recitals, Christmas programme"}, {"name": "HMV Empire", "town": "Coventry", "approxMiles": 4.4, "category": "Comedy & music club", "capacity": "", "url": "https://www.hmvempire.co.uk/", "note": "Approx. 1,200-capacity live music venue; official site could not be fetched"}, {"name": "War Memorial Park (Godiva Festival site)", "town": "Coventry", "approxMiles": 4.4, "category": "Festival & outdoor", "capacity": "", "url": "https://www.godivafestival.com/", "note": "Godiva Festival, early July"}, {"name": "Coventry Transport Museum", "town": "Coventry", "approxMiles": 4.5, "category": "Heritage & castle", "capacity": "", "url": "https://www.transport-museum.com/", "note": "Events and exhibitions; official what's-on URL not fetched"}, {"name": "Belgrade Theatre", "town": "Coventry", "approxMiles": 4.7, "category": "Theatre", "capacity": "c. 850 (main house)", "url": "https://www.belgrade.co.uk/whats-on/", "note": "Main producing theatre; annual panto. Site could not be fetched"}, {"name": "Skydome Arena (Coventry Blaze)", "town": "Coventry", "approxMiles": 4.7, "category": "Arena", "capacity": "c. 3,000", "url": "https://coventryblaze.co.uk/", "note": "Elite League ice hockey; Boxing Day and New Year's Day derbies"}, {"name": "Albany Theatre", "town": "Coventry", "approxMiles": 4.9, "category": "Theatre", "capacity": "c. 650", "url": "https://www.albanytheatre.co.uk/", "note": "Touring shows, comedy, panto (domain confirmed via indexed pages)"}, {"name": "Nick Newbold Stadium (formerly Butts Park Arena)", "town": "Coventry", "approxMiles": 5.0, "category": "Stadium", "capacity": "c. 4,000", "url": "https://coventryrugby.co.uk/", "note": "Coventry Rugby (Champ Rugby) home ground; renamed from Butts Park Arena"}, {"name": "Stoneleigh Park (NAEC Stoneleigh)", "town": "Stoneleigh, Kenilworth", "approxMiles": 5.5, "category": "Exhibition centre", "capacity": "", "url": "https://www.stoneleighpark.co.uk/", "note": "Agricultural/exhibition showground; official site blocked automated fetch"}, {"name": "Coventry Building Society Arena", "town": "Coventry (Longford)", "approxMiles": 5.7, "category": "Stadium", "capacity": "32,609", "url": "https://www.coventrybuildingsocietyarena.co.uk/whats-on", "note": "Coventry City FC (Premier League 2026/27), stadium concerts, exhibitions and conferences"}, {"name": "Warwick Arts Centre", "town": "Coventry (University of Warwick)", "approxMiles": 6.3, "category": "Concert hall", "capacity": "Butterworth Hall c. 1,500", "url": "https://www.warwickartscentre.co.uk/whats-on/events/", "note": "Theatre, comedy, concerts, cinema"}, {"name": "Rugby Theatre", "town": "Rugby", "approxMiles": 6.9, "category": "Theatre", "capacity": "c. 300", "url": "https://www.rugbytheatre.co.uk/rugby-theatre-show-guide/", "note": "Volunteer-run producing theatre"}, {"name": "Talisman Theatre", "town": "Kenilworth", "approxMiles": 7.2, "category": "Theatre", "capacity": "c. 150", "url": "https://www.talismantheatre.co.uk/", "note": "Amateur theatre; not verified"}, {"name": "Kenilworth Castle and Elizabethan Garden", "town": "Kenilworth", "approxMiles": 7.9, "category": "Heritage & castle", "capacity": "", "url": "https://www.english-heritage.org.uk/visit/places/kenilworth-castle/events/", "note": "English Heritage; Knights' Tournament (August bank holiday), fireworks, Halloween, Christmas"}, {"name": "Royal Spa Centre", "town": "Leamington Spa", "approxMiles": 8.3, "category": "Theatre", "capacity": "667 (theatre) + 188 (cinema)", "url": "https://www.warwickdc.gov.uk/royalspacentre/", "note": "Council venue; council page notes intermittent website issues; check status"}, {"name": "The Assembly", "town": "Leamington Spa", "approxMiles": 8.4, "category": "Comedy & music club", "capacity": "c. 1,000", "url": "https://www.assemblyleamington.co.uk/", "note": "Live music venue; official site not verified"}, {"name": "Arbury Hall", "town": "Nuneaton", "approxMiles": 9.2, "category": "Heritage & castle", "capacity": "", "url": "https://www.arburyestate.co.uk/", "note": "Stately home with occasional events and fairs; not verified"}, {"name": "Abbey Theatre", "town": "Nuneaton", "approxMiles": 10.1, "category": "Theatre", "capacity": "c. 280", "url": "https://ents24.com/nuneaton-events/abbey-theatre", "note": "Listing via Ents24; official site not verified"}, {"name": "Warwick Castle", "town": "Warwick", "approxMiles": 10.2, "category": "Heritage & castle", "capacity": "", "url": "https://www.warwick-castle.com/explore/events/", "note": "Seasonal events, Christmas at the Castle, short breaks"}, {"name": "Warwick Racecourse", "town": "Warwick", "approxMiles": 10.3, "category": "Racecourse", "capacity": "", "url": "https://www.thejockeyclub.co.uk/warwick/events-tickets/", "note": "Jump racing; Classic Chase (Jan), Kingmaker (Feb)"}, {"name": "Concordia Theatre", "town": "Hinckley", "approxMiles": 11.1, "category": "Theatre", "capacity": "c. 200", "url": "https://www.hinckley-bosworth.gov.uk/events/full?offset=0", "note": "Community theatre; council events listing used"}, {"name": "Packington Estate", "town": "Meriden", "approxMiles": 11.2, "category": "Festival & outdoor", "capacity": "", "url": "https://www.goodfoodshow.com/", "note": "New home of BBC Gardeners' World Live and the Good Food Festival from 2027; Festival of Sport"}, {"name": "Stanford Hall", "town": "Lutterworth (Leics)", "approxMiles": 11.8, "category": "Festival & outdoor", "capacity": "", "url": "https://www.songkick.com/venues/14803-stanford-hall", "note": "The Long Road country festival (late Aug); car/club rallies"}, {"name": "British Motor Museum", "town": "Gaydon", "approxMiles": 13.7, "category": "Heritage & castle", "capacity": "", "url": "https://www.britishmotormuseum.co.uk/whats-on", "note": "Classic car shows most summer weekends; URL from press, not fetched"}, {"name": "NEC Birmingham", "town": "Birmingham (Marston Green)", "approxMiles": 13.8, "category": "Exhibition centre", "capacity": "20 halls", "url": "https://www.thenec.co.uk/whats-on/", "note": "Crufts, Motorcycle Live, Classic Motor Show, Horse of the Year Show, Invictus Games 2027"}, {"name": "bp pulse LIVE (formerly Resorts World Arena)", "town": "Birmingham (NEC)", "approxMiles": 13.8, "category": "Arena", "capacity": "c. 15,700", "url": "https://www.bppulselive.co.uk/whats-on", "note": "Renamed 2024; major arena tours"}, {"name": "Bosworth Battlefield Heritage Centre", "town": "Sutton Cheney (Leics)", "approxMiles": 14.4, "category": "Heritage & castle", "capacity": "", "url": "https://www.bosworthbattlefield.org.uk/whats-on/", "note": "Bosworth Medieval Festival (August)"}, {"name": "Mallory Park Circuit", "town": "Kirkby Mallory (Leics)", "approxMiles": 15.2, "category": "Festival & outdoor", "capacity": "", "url": "https://www.malloryparkcircuit.com/events/", "note": "Motor racing circuit (cars and bikes)"}, {"name": "Compton Verney", "town": "Compton Verney", "approxMiles": 15.7, "category": "Heritage & castle", "capacity": "", "url": "https://www.comptonverney.org.uk/whats-on/", "note": "Art gallery and park; exhibitions, concerts, outdoor events"}, {"name": "Royal Shakespeare Company (RST, Swan, The Other Place)", "town": "Stratford-upon-Avon", "approxMiles": 18.2, "category": "Theatre", "capacity": "RST c. 1,040", "url": "https://www.rsc.org.uk/whats-on", "note": "Inside 20 miles (approx. 18 mi straight line)"}, {"name": "De Montfort Hall", "town": "Leicester", "approxMiles": 20.8, "category": "Concert hall", "capacity": "c. 2,000", "url": "https://www.demontforthall.co.uk/", "note": "Just outside 20 miles; official site not verified"}, {"name": "Edgbaston Stadium", "town": "Birmingham", "approxMiles": 21.3, "category": "Stadium", "capacity": "c. 25,000", "url": "https://www.edgbaston.com/", "note": "Just outside 20 miles; Ashes Test July 2027"}, {"name": "Birmingham Hippodrome", "town": "Birmingham", "approxMiles": 21.4, "category": "Theatre", "capacity": "c. 1,850", "url": "https://www.birminghamhippodrome.com/", "note": "Just outside 20 miles"}, {"name": "Symphony Hall (B:Music)", "town": "Birmingham", "approxMiles": 22.0, "category": "Concert hall", "capacity": "c. 2,200", "url": "https://bmusic.co.uk/whats-on", "note": "Just outside 20 miles"}, {"name": "Utilita Arena Birmingham", "town": "Birmingham", "approxMiles": 22.2, "category": "Arena", "capacity": "up to 15,800", "url": "https://www.utilitaarenabham.co.uk/", "note": "Just outside 20 miles; official URL not verified (utilitaarena.co.uk is the Newcastle arena)"}];
+const HP_EVENT_LISTINGS=[{"name": "Visit Coventry - Events", "url": "https://visitcoventry.co.uk/whats-on/events/", "note": "Official city tourism events hub (verified)"}, {"name": "Visit Coventry - Gigs & Concerts", "url": "https://visitcoventry.co.uk/whats-on/events/gigs-concerts/", "note": "Music listings for Coventry"}, {"name": "Shakespeare's England - What's On", "url": "https://www.shakespeares-england.co.uk/whats-on/", "note": "Official Warwickshire tourism listings; filter by town/date (verified)"}, {"name": "Shakespeare's England - Christmas", "url": "https://www.shakespeares-england.co.uk/whats-on/christmas/", "note": "Festive events across Warwickshire"}, {"name": "Coventry City Council - Events", "url": "https://www.coventry.gov.uk/events", "note": "Council events incl. Christmas market, Godiva Festival, Big Wheel"}, {"name": "Warwick District Council - Events", "url": "https://www.warwickdc.gov.uk/events", "note": "Leamington, Warwick and Kenilworth events incl. Peace Festival"}, {"name": "Ents24 - What's on near Coventry", "url": "https://www.ents24.com/whatson/coventry", "note": "Aggregated gig/show listings with date filter (verified)"}, {"name": "Ents24 - What's on near Warwick", "url": "https://www.ents24.com/whatson/warwick", "note": "Verified"}, {"name": "Ents24 - What's on near Leamington Spa", "url": "https://www.ents24.com/whatson/leamington-spa", "note": "Not fetched"}, {"name": "Skiddle - Coventry events", "url": "https://www.skiddle.com/whats-on/events/Coventry/", "note": "Club nights, gigs, festivals; site blocks automated fetch"}, {"name": "Songkick - Coventry Building Society Arena", "url": "https://www.songkick.com/venues/3849-coventry-building-society-arena", "note": "Concert tracker for the stadium (verified)"}, {"name": "Stereoboard - Coventry venues", "url": "https://www.stereoboard.com/venues/coventry", "note": "Gig listings by venue"}, {"name": "Coventry Telegraph - What's On", "url": "https://www.coventrytelegraph.net/whats-on/", "note": "Local news on shows/events (theatre-news subsection verified)"}, {"name": "What's On Live - Warwickshire", "url": "https://www.whatsonlive.co.uk/warwickshire/", "note": "Regional arts and entertainment magazine"}, {"name": "NEC Group - What's On (all NEC Group venues)", "url": "https://www.thenec.co.uk/whats-on/", "note": "Covers NEC, bp pulse LIVE and Utilita Arena Birmingham (verified)"}, {"name": "Visit Leicester - What's On", "url": "https://www.visitleicester.info/whats-on", "note": "For Hinckley, Lutterworth, Bosworth and Leicester"}];
+const HP_EVENT_DATES=[{"name": "Horse of the Year Show 2026", "venue": "NEC Birmingham / bp pulse LIVE", "start": "2026-10-07", "end": "2026-10-11", "url": "https://www.thenec.co.uk/whats-on/", "category": "Equestrian"}, {"name": "Coventry City v Newcastle United (Premier League)", "venue": "Coventry Building Society Arena", "start": "2026-10-12", "end": "2026-10-12", "url": "https://www.teamtalk.com/coventry-city/fixtures", "category": "Football", "note": "Date from one secondary source; confirm with the club"}, {"name": "The Motorhome and Caravan Show", "venue": "NEC Birmingham", "start": "2026-10-13", "end": "2026-10-18", "url": "https://www.thenec.co.uk/whats-on/", "category": "Exhibition"}, {"name": "Westlife (3 nights)", "venue": "bp pulse LIVE", "start": "2026-10-16", "end": "2026-10-18", "url": "https://www.bppulselive.co.uk/whats-on", "category": "Concert"}, {"name": "Coventry City v Fulham (Premier League)", "venue": "Coventry Building Society Arena", "start": "2026-10-24", "end": "2026-10-24", "url": "https://www.teamtalk.com/coventry-city/fixtures", "category": "Football"}, {"name": "The Haunted Castle (Halloween)", "venue": "Warwick Castle", "start": "2026-10-24", "end": "2026-11-01", "url": "https://www.warwick-castle.com/explore/events/", "category": "Seasonal"}, {"name": "Coventry City v Sunderland (Premier League)", "venue": "Coventry Building Society Arena", "start": "2026-10-31", "end": "2026-10-31", "url": "https://www.teamtalk.com/coventry-city/fixtures", "category": "Football"}, {"name": "Stan Mellor Chase Day", "venue": "Warwick Racecourse", "start": "2026-11-03", "end": "2026-11-03", "url": "https://www.thejockeyclub.co.uk/warwick/events-tickets/", "category": "Racing"}, {"name": "Cake International / Simply Christmas / Creative Craft Show", "venue": "NEC Birmingham", "start": "2026-11-05", "end": "2026-11-08", "url": "https://www.thenec.co.uk/whats-on/", "category": "Exhibition"}, {"name": "Round Table Fireworks Spectacular", "venue": "Kenilworth Castle", "start": "2026-11-07", "end": "2026-11-07", "url": "https://www.english-heritage.org.uk/visit/whats-on/kenilworth-castle-roundtable-fireworks-spectacular/", "category": "Seasonal"}, {"name": "Bill Bailey", "venue": "Coventry Building Society Arena", "start": "2026-11-13", "end": "2026-11-13", "url": "https://www.coventrybuildingsocietyarena.co.uk/whats-on", "category": "Comedy"}, {"name": "Lancaster Insurance Classic Motor Show", "venue": "NEC Birmingham", "start": "2026-11-13", "end": "2026-11-15", "url": "https://www.thenec.co.uk/whats-on/", "category": "Exhibition"}, {"name": "Christmas at the Castle", "venue": "Warwick Castle", "start": "2026-11-21", "end": "2027-01-03", "url": "https://www.warwick-castle.com/explore/events/", "category": "Seasonal"}, {"name": "Motorcycle Live", "venue": "NEC Birmingham", "start": "2026-11-21", "end": "2026-11-29", "url": "https://www.thenec.co.uk/whats-on/", "category": "Exhibition"}, {"name": "Festive Good Food Show", "venue": "NEC Birmingham", "start": "2026-11-26", "end": "2026-11-29", "url": "https://www.goodfoodshow.com/", "category": "Exhibition"}, {"name": "The Three Musketeers (RSC Christmas show)", "venue": "Royal Shakespeare Theatre, Stratford-upon-Avon", "start": "2026-11-28", "end": "2027-01-09", "url": "https://www.rsc.org.uk/whats-on", "category": "Theatre"}, {"name": "Sleeping Beauty (pantomime)", "venue": "Birmingham Hippodrome", "start": "2026-12-19", "end": "2027-01-31", "url": "https://www.birminghamhippodrome.com/", "category": "Theatre"}, {"name": "Carols at the Castle", "venue": "Warwick Castle", "start": "2026-12-19", "end": "2026-12-19", "url": "https://www.warwick-castle.com/explore/events/", "category": "Seasonal"}, {"name": "Coventry Rugby v Hartpury (Boxing Day)", "venue": "Nick Newbold Stadium", "start": "2026-12-26", "end": "2026-12-26", "url": "https://coventryrugby.co.uk/news/coventry-rugby-s-2026-27-elior-champ-rugby-fixtures-announced", "category": "Rugby"}, {"name": "Coventry Blaze v Cardiff Devils (Boxing Day)", "venue": "Skydome Arena", "start": "2026-12-26", "end": "2026-12-26", "url": "https://coventryblaze.co.uk/26-27-fixtures-released/", "category": "Ice hockey"}, {"name": "New Year's Eve Raceday", "venue": "Warwick Racecourse", "start": "2026-12-31", "end": "2026-12-31", "url": "https://www.thejockeyclub.co.uk/warwick/events-tickets/", "category": "Racing"}, {"name": "Coventry Blaze v Nottingham Panthers (New Year's Day derby)", "venue": "Skydome Arena", "start": "2027-01-01", "end": "2027-01-01", "url": "https://coventryblaze.co.uk/26-27-fixtures-released/", "category": "Ice hockey"}, {"name": "William Hill Classic Chase Day", "venue": "Warwick Racecourse", "start": "2027-01-16", "end": "2027-01-16", "url": "https://www.thejockeyclub.co.uk/warwick/events-tickets/", "category": "Racing"}, {"name": "Strictly Come Dancing Live Tour", "venue": "Utilita Arena Birmingham", "start": "2027-01-22", "end": "2027-01-24", "url": "https://www.thenec.co.uk/whats-on/", "category": "Live show"}, {"name": "Jack Whitehall - Bad Influence Tour", "venue": "Coventry Building Society Arena", "start": "2027-01-27", "end": "2027-01-27", "url": "https://www.coventrybuildingsocietyarena.co.uk/whats-on", "category": "Comedy"}, {"name": "Kingmaker Chase Day", "venue": "Warwick Racecourse", "start": "2027-02-13", "end": "2027-02-13", "url": "https://www.thejockeyclub.co.uk/warwick/events-tickets/", "category": "Racing"}, {"name": "Caravan, Camping and Motorhome Show", "venue": "NEC Birmingham", "start": "2027-02-16", "end": "2027-02-21", "url": "https://www.thenec.co.uk/whats-on/", "category": "Exhibition"}, {"name": "Crufts 2027", "venue": "NEC Birmingham", "start": "2027-03-04", "end": "2027-03-07", "url": "https://www.crufts.org.uk/", "category": "Exhibition"}, {"name": "YONEX All England Open Badminton Championships", "venue": "Utilita Arena Birmingham", "start": "2027-03-04", "end": "2027-03-14", "url": "https://www.thenec.co.uk/whats-on/", "category": "Sport"}, {"name": "Practical Classics Classic Car & Restoration Show", "venue": "NEC Birmingham", "start": "2027-03-19", "end": "2027-03-21", "url": "https://necrestorationshow.com", "category": "Exhibition"}, {"name": "The Enemy - 20th anniversary homecoming", "venue": "Coventry Building Society Arena", "start": "2027-03-20", "end": "2027-03-20", "url": "https://www.coventrybuildingsocietyarena.co.uk/whats-on", "category": "Concert"}, {"name": "Coventry Rugby v Ealing Trailfinders (Easter)", "venue": "Nick Newbold Stadium", "start": "2027-03-27", "end": "2027-03-27", "url": "https://coventryrugby.co.uk/news/coventry-rugby-s-2026-27-elior-champ-rugby-fixtures-announced", "category": "Rugby"}, {"name": "Coventry Half Marathon", "venue": "Coventry city centre", "start": "2027-04-11", "end": "2027-04-11", "url": "https://www.timeoutdoors.com/events/coventry-half-marathon/half-marathon", "category": "Sport"}, {"name": "BBC Gardeners' World Live (new venue)", "venue": "Packington Estate, Meriden", "start": "2027-06-17", "end": "2027-06-20", "url": "https://www.oswestry.life/article/new-home-for-bbc-gardeners-world-live-and-good-food-show-summer/", "category": "Exhibition"}, {"name": "Good Food Festival (replaces Good Food Show Summer)", "venue": "Packington Estate, Meriden", "start": "2027-06-17", "end": "2027-06-20", "url": "https://www.goodfoodshow.com/", "category": "Festival"}, {"name": "Men's Ashes 3rd Test - England v Australia", "venue": "Edgbaston Stadium", "start": "2027-07-08", "end": "2027-07-12", "url": "https://www.edgbaston.com/media-article/mens-and-womens-ashes-cricket-to-headline-2027-summer-at-edgbaston", "category": "Cricket"}, {"name": "Invictus Games Birmingham 2027", "venue": "NEC Birmingham", "start": "2027-07-10", "end": "2027-07-17", "url": "https://www.invictusgamesfoundation.org/news/invictus-games-birmingham-2027-dates-confirmed", "category": "Sport"}, {"name": "Women's Ashes 3rd ODI", "venue": "Edgbaston Stadium", "start": "2027-07-20", "end": "2027-07-20", "url": "https://www.edgbaston.com/media-article/mens-and-womens-ashes-cricket-to-headline-2027-summer-at-edgbaston", "category": "Cricket"}, {"name": "The Long Road festival", "venue": "Stanford Hall, Lutterworth", "start": "2027-08-26", "end": "2027-08-29", "url": "https://thefestivals.uk/?p=42926", "category": "Festival"}, {"name": "England v New Zealand 1st ODI", "venue": "Edgbaston Stadium", "start": "2027-09-14", "end": "2027-09-14", "url": "https://www.edgbaston.com/media-article/mens-and-womens-ashes-cricket-to-headline-2027-summer-at-edgbaston", "category": "Cricket"}];
+
+let hpEvFilter='All', hpEvRadius=20, hpEvShowPast=false;
+function hpEvGetCustom(){ try{ return JSON.parse(localStorage.getItem('hp_local_events')||'[]'); }catch(e){ return []; } }
+function hpEvSaveCustom(l){ try{ localStorage.setItem('hp_local_events', JSON.stringify(l)); }catch(e){} }
+function hpEvFmt(a,b){
+  const o={day:'numeric',month:'short',year:'numeric'}, A=new Date(a+'T12:00'), B=new Date((b||a)+'T12:00');
+  if(!b||a===b) return A.toLocaleDateString('en-GB',{weekday:'short',...o});
+  return A.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+B.toLocaleDateString('en-GB',o);
+}
+function renderLocalEvents(v){
+  const today=spDK(new Date()), esc=spEsc;
+  const cats=['All',...new Set(HP_EVENT_VENUES.map(x=>x.category))];
+  const venues=HP_EVENT_VENUES.filter(x=>x.approxMiles<=hpEvRadius && (hpEvFilter==='All'||x.category===hpEvFilter));
+  const custom=hpEvGetCustom().map(e=>Object.assign({custom:true},e));
+  const events=[...HP_EVENT_DATES,...custom].filter(e=>hpEvShowPast||(e.end||e.start)>=today).sort((a,b)=>a.start.localeCompare(b.start));
+  const soon=events.filter(e=>{const d=(new Date(e.start+'T12:00')-new Date())/864e5; return d<=60;}).length;
+  const card='background:#fff;border:1px solid #e6e8ec;border-radius:12px';
+  const chip=(t,on,js)=>`<button onclick="${js}" style="padding:6px 12px;border-radius:16px;border:1px solid ${on?'#6E4E7A':'#d6d9de'};background:${on?'#6E4E7A':'#fff'};color:${on?'#fff':'#1a2b3a'};font:700 12px Lato;cursor:pointer">${t}</button>`;
+  v.innerHTML=`<div style="padding:22px 26px;max-width:1300px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div><h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;margin:0;color:#1a2b3a">Local Events &amp; Shows</h2>
+        <div style="font-size:13px;color:#4b5563">Concerts, shows, sport and exhibitions within 20 miles of Brandon Hall. Use these to sell room + dinner packages to people going to them.</div></div>
+      <button onclick="hpEvAdd()" style="padding:9px 16px;border:none;border-radius:9px;background:#6E4E7A;color:#fff;font:700 13px Lato;cursor:pointer">+ Add an event</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:16px">
+      ${[['Venues within 20 miles',HP_EVENT_VENUES.filter(x=>x.approxMiles<=20).length],['Upcoming key dates',events.length],['In the next 60 days',soon],['Listings sites',HP_EVENT_LISTINGS.length]].map(([l,n])=>`<div style="${card};padding:12px 14px"><div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.4px">${l}</div><div style="font-size:24px;font-weight:800;color:#6E4E7A">${n}</div></div>`).join('')}
+    </div>
+
+    <div style="${card};padding:16px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div style="font-size:16px;font-weight:800;color:#1a2b3a">Key dates coming up</div>
+        <label style="font-size:12.5px;color:#374151;display:flex;gap:6px;align-items:center"><input type="checkbox" ${hpEvShowPast?'checked':''} onchange="hpEvShowPast=this.checked;renderLocalEvents(document.getElementById('view'))"> Show past dates</label>
+      </div>
+      <div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;color:#1a2b3a;min-width:700px">
+        <thead><tr style="background:#f5f7f9;text-align:left">${['Date','Event','Venue','Type',''].map(h=>`<th style="padding:8px;font-size:11px;text-transform:uppercase">${h}</th>`).join('')}</tr></thead>
+        <tbody>${events.map((e,i)=>{const days=Math.round((new Date(e.start+'T12:00')-new Date())/864e5);return `<tr style="border-top:1px solid #eef1f4">
+          <td style="padding:8px;white-space:nowrap;font-weight:700">${hpEvFmt(e.start,e.end)}${days>=0&&days<=30?`<div style="font-size:11px;color:#b45309;font-weight:700">in ${days} day${days===1?'':'s'}</div>`:''}</td>
+          <td style="padding:8px;font-weight:700">${esc(e.name)}${e.note?`<div style="font-size:11px;color:#b45309;font-weight:400">${esc(e.note)}</div>`:''}${e.custom?' <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#EFE7F2;color:#6E4E7A">added by team</span>':''}</td>
+          <td style="padding:8px">${esc(e.venue)}</td><td style="padding:8px">${esc(e.category||'')}</td>
+          <td style="padding:8px;white-space:nowrap">${e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener" style="color:#6E4E7A;font-weight:700">Details ↗</a>`:''}${e.custom?` <button onclick="hpEvDel('${esc(e.id)}')" style="border:none;background:none;color:#b3261e;cursor:pointer;font-size:12px">Remove</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="5" style="padding:14px;color:#4b5563">No upcoming dates.</td></tr>'}</tbody>
+      </table></div>
+      <div style="font-size:11.5px;color:#4b5563;margin-top:8px">Dates checked on 7 October 2026. Always confirm on the venue's site before promoting a package. Events added by the team are saved on this computer only.</div>
+    </div>
+
+    <div style="${card};padding:16px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div style="font-size:16px;font-weight:800;color:#1a2b3a">Venues — what's on pages</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          ${chip('Within 20 miles',hpEvRadius===20,"hpEvRadius=20;renderLocalEvents(document.getElementById('view'))")}
+          ${chip('Include Birmingham & Leicester (to 23 mi)',hpEvRadius===23,"hpEvRadius=23;renderLocalEvents(document.getElementById('view'))")}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${cats.map(c=>chip(c,hpEvFilter===c,`hpEvFilter='${c.replace(/'/g,"\\'")}';renderLocalEvents(document.getElementById('view'))`)).join('')}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px">
+        ${venues.map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:#1a2b3a;border:1px solid #e6e8ec;border-left:4px solid ${x.approxMiles>20?'#9ca3af':'#6E4E7A'};border-radius:10px;padding:11px 12px;background:#fff">
+          <div style="display:flex;justify-content:space-between;gap:8px"><div style="font-weight:800;font-size:13.5px">${esc(x.name)}</div><div style="font-size:12px;font-weight:800;color:#6E4E7A;white-space:nowrap">${x.approxMiles} mi</div></div>
+          <div style="font-size:12px;color:#4b5563">${esc(x.town)} · ${esc(x.category)}${x.capacity?' · '+esc(x.capacity):''}</div>
+          <div style="font-size:12px;color:#374151;margin-top:4px">${esc(x.note||'')}</div>
+          <div style="font-size:12px;color:#6E4E7A;font-weight:700;margin-top:6px">What's on ↗</div></a>`).join('')}
+      </div>
+    </div>
+
+    <div style="${card};padding:16px">
+      <div style="font-size:16px;font-weight:800;color:#1a2b3a;margin-bottom:10px">Listings sites — check weekly</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px">
+        ${HP_EVENT_LISTINGS.map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:#1a2b3a;border:1px solid #e6e8ec;border-radius:10px;padding:10px 12px"><div style="font-weight:800;font-size:13px">${esc(x.name)} ↗</div><div style="font-size:12px;color:#4b5563">${esc(x.note||'')}</div></a>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+function hpEvAdd(){
+  showModal('Add an event','Saved on this computer for the sales team',`
+    <div style="display:grid;gap:10px;font-size:13px;color:#1a2b3a">
+      <label>Event name<input id="ev-n" style="display:block;width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px"></label>
+      <label>Venue<input id="ev-v" list="ev-vl" style="display:block;width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px"><datalist id="ev-vl">${HP_EVENT_VENUES.map(x=>`<option value="${spEsc(x.name)}">`).join('')}</datalist></label>
+      <div style="display:flex;gap:8px"><label style="flex:1">Start date<input id="ev-s" type="date" style="display:block;width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px"></label>
+      <label style="flex:1">End date<input id="ev-e" type="date" style="display:block;width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px"></label></div>
+      <label>Type<input id="ev-c" placeholder="Concert, Theatre, Sport…" style="display:block;width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px"></label>
+      <label>Link<input id="ev-u" placeholder="https://" style="display:block;width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px"></label>
+      <button onclick="hpEvSave()" style="padding:10px;border:none;border-radius:9px;background:#6E4E7A;color:#fff;font:700 13px Lato;cursor:pointer">Save event</button>
+    </div>`);
+}
+function hpEvSave(){
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('ev-n')||!g('ev-s')){ toast('Add a name and start date'); return; }
+  const u=g('ev-u'); const l=hpEvGetCustom();
+  l.push({id:'ev'+Date.now().toString(36),name:g('ev-n'),venue:g('ev-v'),start:g('ev-s'),end:g('ev-e')||g('ev-s'),category:g('ev-c'),url:/^https?:\/\//i.test(u)?u:''});
+  hpEvSaveCustom(l); closeModal(); renderLocalEvents(document.getElementById('view')); toast('✓ Event added');
+}
+function hpEvDel(id){ hpEvSaveCustom(hpEvGetCustom().filter(e=>e.id!==id)); renderLocalEvents(document.getElementById('view')); }

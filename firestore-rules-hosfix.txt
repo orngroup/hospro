@@ -7,3 +7,10 @@ match /hosfix_jobs/{jobId} {
 }
 // fcm_tokens is written only by the Cloud Function (Admin SDK bypasses rules),
 // so no client rule is needed for it.
+
+// Staff rota links (my-rota.html). HosPRO publishes names, roles and shift
+// times only (no pay rates) to hospro_public/rota so staff phones can read it.
+match /hospro_public/{docId} {
+  allow read: if docId == 'rota';
+  allow write: if docId == 'rota';
+}

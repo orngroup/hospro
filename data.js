@@ -864,7 +864,7 @@ FLOW_MODULES = [
   { id:"hoscom",    name:"FixRay Compliance",  caption:"Scheduled checks & compliance — powered by FixRay.",  icon:"🛡", colour:"#4B5288", tint:"#E8EAF4",
     tabs:["compDash","compTasks","compActions","compReport","tasks"] },
   { id:"hossales",  name:"HosSALES",   caption:"Sales. Events. Dining. Revenue.",      icon:"💼", colour:"#6E4E7A", tint:"#EFE7F2",
-    tabs:["pipeline","quotes","quote","profit","contracts","payments","dining","beverage","chat"] },
+    tabs:["pipeline","quotes","quote","profit","contracts","payments","dining","beverage","localEvents","chat"] },
   { id:"hosvenue",  name:"HosVENUE",   caption:"Venue. Rooms. Corporate. Stays.",      icon:"🏛", colour:"#3B6585", tint:"#E4EDF4",
     tabs:["rooms","groupconfig","packages","corpdb","corprates","precheckin","feedback"] },
   { id:"hosstudio", name:"HosSTUDIO",  caption:"Marketing. Campaigns. Creative.",      icon:"📣", colour:"#9C4F63", tint:"#F6E6EA",
@@ -872,7 +872,7 @@ FLOW_MODULES = [
   { id:"hosbrand",  name:"HosBRAND",   caption:"Brand. Collateral. Downloads.",        icon:"📁", colour:"#7A6538", tint:"#F4EEDF",
     tabs:["brandLogos","brandCollateral","brandPhotography","brandDocs"] },
   { id:"hospeople", name:"HosPEOPLE",  caption:"People. Shifts. HR. Leave.",           icon:"👥", colour:"#2B726A", tint:"#E2F1EE",
-    tabs:["rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings","staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs"] },
+    tabs:["rotaDash","rotaWeek","rotaPayroll","rotaForecast","rotaMonthly","rotaSettings","staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs"] },
   { id:"hoshub",    name:"HosHUB",     caption:"Documents. Contracts. Finance. HR.",   icon:"📂", colour:"#55744F", tint:"#E8F0E5",
     tabs:["hubDocs","hubContracts","hubSuppliers","hubFinance","hubHR"] },
 ];
@@ -902,6 +902,8 @@ const TAB_META = {
   fixTeam:{label:"Team & Profiles",icon:"👷"},
   rotaDash:{label:"Shift Dashboard",icon:"📊"},
   rotaWeek:{label:"Weekly Rota",icon:"📋"},
+  rotaPayroll:{label:"Payroll & Clock-in",icon:"💷"},
+  localEvents:{label:"Local Events",icon:"🎟"},
   rotaForecast:{label:"Occupancy Forecast",icon:"📈"},
   rotaMonthly:{label:"Monthly Plan",icon:"📅"},
   rotaSettings:{label:"Shift Settings",icon:"⚙️"},
@@ -926,8 +928,17 @@ function moduleForTab(tab){ return FLOW_MODULES.find(m=>m.tabs.includes(tab)); }
 
 /* Role-based access. "all" or an array of module ids. */
 const ROLE_ACCESS = {
-  "ajay.kawa":"all", "raj.kumar":"all", "alia.taub":"all", "nicola.cartwright":"all"
+  "ajay.kawa":"all", "raj.kumar":"all", "alia.taub":"all", "nicola.cartwright":"all", "natalie.freeman":"all", "veronica.webb":"all"
 };
+/* Modules only some people may open. Everyone else sees the card greyed out. */
+const MODULE_RESTRICT = {
+  hospeople: ["ajay.kawa","raj.kumar","alia.taub","veronica.webb"]   // staff, rota, payroll, HR
+};
+function hpCanAccess(modId, userKey){
+  const list=MODULE_RESTRICT[modId];
+  if(!list) return true;
+  return list.includes(userKey || (typeof SESSION!=="undefined" && SESSION && SESSION._key) || "");
+}
 function userModules(userKey){
   const acc=ROLE_ACCESS[userKey]||"all";
   if(acc==="all") return FLOW_MODULES;
@@ -980,6 +991,7 @@ const MODULE_SUBCARDS = {
     {tab:"payments",  label:"Payments",            icon:"💳", desc:"Payment schedules & tracking"},
     {tab:"dining",    label:"Dining & Banqueting", icon:"🍽", desc:"F&B event setup & menus"},
     {tab:"beverage",  label:"Beverage Management", short:"Beverage", icon:"🍷", desc:"Drinks, packages & bar stock"},
+    {tab:"localEvents",label:"Local Events & Shows", short:"Local Events", icon:"🎟", desc:"Concerts, shows & sport within 20 miles"},
     {tab:"chat",      label:"Events Planning",     icon:"💬", desc:"Event coordination & planning"},
   ],
   "hosvenue": [
@@ -1013,6 +1025,7 @@ const MODULE_SUBCARDS = {
   "hospeople": [
     {tab:"rotaDash",      label:"Shift Dashboard",   icon:"📊", desc:"Today's staffing overview"},
     {tab:"rotaWeek",      label:"Weekly Rota",       icon:"📋", desc:"View & edit weekly shifts"},
+    {tab:"rotaPayroll",   label:"Payroll & Clock-in", short:"Payroll", icon:"💷", desc:"Weekly & monthly costs, fingerprint compare"},
     {tab:"rotaForecast",  label:"Occupancy Forecast",icon:"📈", desc:"Forecast & staff planning"},
     {tab:"rotaMonthly",   label:"Monthly Plan",      icon:"📅", desc:"Monthly occupancy overview"},
     {tab:"staffProfiles", label:"Staff Profiles",    icon:"👤", desc:"All 38 staff profiles & HR records"},
