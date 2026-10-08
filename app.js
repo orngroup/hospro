@@ -77,6 +77,18 @@ $("#lg-btn").onclick = async ()=>{
   if(FB.ready){
     const r=await fbSignIn(u, pw);
     if(r.ok){ SESSION=user; SESSION._key=u; enterApp(user); btn.disabled=false; btn.textContent=label; return; }
+    // Users added to the portal after firebase-store.js was written (e.g. Veronica, Natalie) aren't in its
+    // FB_LOGINS list, so sign them in to Firebase directly: <username>@brandonhall.portal, password = initials + 2026
+    if(!r.demo && /unknown user/i.test(r.error||"") && window.firebase && firebase.auth){
+      const email=u+"@brandonhall.portal", tries=[String(user.code||"").replace(/^BH/i,"")+"2026", pw];
+      for(const p of tries){
+        try{ const cred=await firebase.auth().signInWithEmailAndPassword(email,p);
+          if(cred && cred.user){ try{ FB.user=cred.user; }catch(e){} SESSION=user; SESSION._key=u; enterApp(user); btn.disabled=false; btn.textContent=label; return; } }
+        catch(e){ if(e && e.code==="auth/user-not-found"){ break; } }
+      }
+      err.textContent="This login isn't set up in Firebase yet — ask Ajay to add "+email+" under Authentication → Users.";
+      btn.disabled=false; btn.textContent=label; return;
+    }
     if(!r.demo){ err.textContent=r.error||"Sign-in failed."; btn.disabled=false; btn.textContent=label; return; }
   }
   // demo fallback
