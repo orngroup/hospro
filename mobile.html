@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HosPRO Pocket — Brandon Hall</title>
+<meta name="theme-color" content="#182A3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HosPRO">
+<link rel="manifest" href="mobile-manifest.json">
+<link rel="apple-touch-icon" href="assets/hospro/apple-touch-icon.png">
+<link rel="icon" href="assets/hospro/favicon-32.png">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#182A3E;--navy2:#22374f;--jade:#4DA69C;--jade-d:#2F7A72;--ink:#1a2b3a;--muted:#5b6675;--line:#e7eaee;--bg:#f3f5f7;--good:#166534;--goodbg:#dcfce7;--warn:#92400e;--warnbg:#fef3c7;--bad:#991b1b;--badbg:#fee2e2}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:Lato,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100dvh;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.hdr{background:var(--navy);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 18px 18px;position:sticky;top:0;z-index:5}
+.hdr-row{display:flex;justify-content:space-between;align-items:center}
+.brand{font:700 13px Lato;letter-spacing:2px;text-transform:uppercase;color:var(--jade)}
+.hello{font:700 26px 'Cormorant Garamond',serif;margin-top:4px}
+.sub{font-size:12.5px;color:#a9b8c9;margin-top:2px}
+.who{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:18px;padding:6px 12px;font:700 12px Lato}
+main{padding:14px 14px 10px}
+.sec{font:900 11px Lato;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:18px 4px 8px}
+.card{background:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 1px 3px rgba(16,28,40,.06);margin-bottom:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:#fff;border-radius:16px;padding:13px 14px;box-shadow:0 1px 3px rgba(16,28,40,.06)}
+.tile .k{font:700 10.5px Lato;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.tile .v{font:900 24px Lato;color:var(--ink);margin-top:3px;line-height:1.1}
+.tile .s{font-size:12px;color:var(--muted);margin-top:3px}
+.pill{display:inline-block;font:900 11px Lato;padding:3px 9px;border-radius:10px}
+.ok{background:var(--goodbg);color:var(--good)}.wa{background:var(--warnbg);color:var(--warn)}.bd{background:var(--badbg);color:var(--bad)}.nu{background:#eef1f4;color:var(--muted)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.row:first-child{border-top:none}
+.row .l{min-width:0}.row .t{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row .m{font-size:12px;color:var(--muted);margin-top:1px}
+.row .r{font-weight:900;white-space:nowrap}
+.bar{display:grid;grid-template-columns:62px 1fr 74px;gap:8px;align-items:center;font-size:12.5px;margin:7px 0}
+.bar .tr{height:12px;background:#eef1f4;border-radius:4px;overflow:hidden}.bar .fl{height:12px;background:var(--jade-d);border-radius:0 4px 4px 0}
+.bar .vv{text-align:right;font-weight:900}
+.note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px}
+.empty{color:var(--muted);font-size:13.5px;padding:6px 0}
+nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:6}
+nav button{flex:1;border:none;background:none;font:700 11px Lato;color:var(--muted);padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+nav button .i{font-size:20px;line-height:1}
+nav button.on{color:var(--jade-d)}
+/* sign in */
+#pick{min-height:100dvh;background:var(--navy) url('assets/hospro/login-bg.jpg') center/cover;display:flex;align-items:flex-end;padding:20px;padding-bottom:calc(30px + env(safe-area-inset-bottom))}
+#pick::before{content:"";position:fixed;inset:0;background:linear-gradient(180deg,rgba(16,28,40,.35),rgba(16,28,40,.92));}
+.pick-card{position:relative;width:100%;background:#fff;border-radius:22px;padding:22px}
+.pick-card h1{font:700 30px 'Cormorant Garamond',serif;color:var(--navy)}
+.pick-card p{color:var(--muted);font-size:14px;margin:4px 0 16px}
+.pick-card select{width:100%;padding:14px;border:1.5px solid #d1d5db;border-radius:12px;font:700 16px Lato;color:var(--ink);background:#fff;appearance:none}
+.go{width:100%;margin-top:12px;padding:15px;border:none;border-radius:12px;background:var(--navy);color:#fff;font:900 16px Lato}
+.install{margin-top:14px;font-size:12.5px;color:var(--muted);line-height:1.5}
+.upd{font-size:11.5px;color:var(--muted);text-align:center;margin:14px 0 4px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="pick">
+  <div class="pick-card">
+    <div class="brand" style="color:var(--jade-d)">HosPRO Pocket · Brandon Hall</div>
+    <h1>Good to see you</h1>
+    <p>The hotel at a glance — sales, F&amp;B, team and maintenance.</p>
+    <select id="who">
+      <option value="">Choose your name…</option>
+      <option>Ajay</option><option>Raj</option><option>Alia</option>
+    </select>
+    <button class="go" onclick="pickGo()">Open</button>
+    <div class="install" id="install-tip"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="hdr">
+    <div class="hdr-row"><div class="brand">HosPRO · Brandon Hall</div><button class="who" onclick="switchUser()" id="who-btn"></button></div>
+    <div class="hello" id="hello"></div>
+    <div class="sub" id="today"></div>
+  </div>
+  <main id="main"></main>
+  <nav>
+    <button data-v="today" class="on" onclick="go('today')"><span class="i">🏠</span>Today</button>
+    <button data-v="sales" onclick="go('sales')"><span class="i">💼</span>Sales</button>
+    <button data-v="fb" onclick="go('fb')"><span class="i">🍽</span>F&amp;B</button>
+    <button data-v="team" onclick="go('team')"><span class="i">👥</span>Team</button>
+    <button data-v="fix" onclick="go('fix')"><span class="i">🔧</span>Fix</button>
+  </nav>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="bob-data.js"></script>
+<script>
+/* HosPRO Pocket — read-only, high-level view for directors. No sign-in by design:
+   it only reads public summary data (hospro_public), open HosFIX jobs and the bookings file. */
+const FBCFG={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:"brandonhall-7bdef.firebaseapp.com",projectId:"brandonhall-7bdef",storageBucket:"brandonhall-7bdef.firebasestorage.app",messagingSenderId:"391317900568",appId:"1:391317900568:web:643c9d6691f7f16d65226d"};
+const S={ who:null, view:'today', summary:null, rota:null, jobs:null, loaded:false };
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const gbp=n=>'£'+Math.round(+n||0).toLocaleString('en-GB');
+const gbpK=n=>{ n=+n||0; return n>=100000?'£'+Math.round(n/1000)+'k':n>=10000?'£'+(n/1000).toFixed(1)+'k':gbp(n); };
+const dk=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const fmtD=s=>s?new Date(s+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
+const store={ get(k){ try{return localStorage.getItem(k);}catch(e){return null;} }, set(k,v){ try{localStorage.setItem(k,v);}catch(e){} } };
+
+function pickGo(){ const v=$('#who').value; if(!v) return; store.set('pocket_who',v); start(v); }
+function switchUser(){ store.set('pocket_who',''); $('#app').classList.add('hidden'); $('#pick').classList.remove('hidden'); }
+function start(who){
+  S.who=who; $('#pick').classList.add('hidden'); $('#app').classList.remove('hidden');
+  const h=new Date().getHours(); $('#hello').textContent=(h<12?'Good morning':h<18?'Good afternoon':'Good evening')+', '+who;
+  $('#who-btn').textContent=who+' ▾';
+  $('#today').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  draw(); load();
+}
+function go(v){ S.view=v; document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)); window.scrollTo(0,0); draw(); }
+
+async function load(){
+  try{
+    const app=firebase.apps.length?firebase.app():firebase.initializeApp(FBCFG); const db=app.firestore();
+    const t=(p,ms)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),ms))]);
+    const [sum,rota,jobs]=await Promise.allSettled([
+      t(db.collection('hospro_public').doc('summary').get(),9000),
+      t(db.collection('hospro_public').doc('rota').get(),9000),
+      t(db.collection('hosfix_jobs').where('status','in',['not-started','in-progress','pending_approval']).get(),9000)]);
+    if(sum.status==='fulfilled'&&sum.value.exists) S.summary=sum.value.data();
+    if(rota.status==='fulfilled'&&rota.value.exists) S.rota=rota.value.data();
+    if(jobs.status==='fulfilled') S.jobs=jobs.value.docs.map(d=>d.data());
+  }catch(e){ console.warn(e); }
+  S.loaded=true; draw();
+}
+
+/* ── data helpers ── */
+function bobAll(){ return (typeof BOB!=='undefined')?(BOB.confirmed||[]).concat(BOB.prospect||[]):[]; }
+function onBooks(fromK,toK){ return bobAll().filter(r=>r.arrival>=fromK && r.arrival<=toK); }
+function shiftOf(v){ return String((v&&typeof v==='object')?(v.shift||''):(v||'')).trim(); }
+function working(v){ const s=shiftOf(v).toLowerCase(); return s && !['off','holiday','sick','in lieu','on call'].includes(s) && /\d/.test(s); }
+function rotaToday(){
+  if(!S.rota||!S.rota.rota) return null; const day=S.rota.rota[dk(new Date())]||{};
+  const staff=S.rota.staff||[], depts=S.rota.depts||[];
+  const on=Object.entries(day).filter(([id,v])=>working(v)).map(([id,v])=>{ const s=staff.find(x=>x.id===id)||{name:id}; return {name:s.name,role:s.role,dept:(v&&v.dept)||s.dept,shift:shiftOf(v)}; });
+  const hol=Object.values(day).filter(v=>shiftOf(v).toLowerCase()==='holiday').length;
+  const sick=Object.values(day).filter(v=>shiftOf(v).toLowerCase()==='sick').length;
+  return {on,hol,sick,depts};
+}
+function gpPill(o){ if(!o||!o.sales) return '<span class="pill nu">No sales yet</span>';
+  if(o.gp>=o.target) return '<span class="pill ok">✓ On target</span>';
+  if(o.gp>=o.target-3) return '<span class="pill wa">! Watch spend</span>';
+  return '<span class="pill bd">✕ Over spend</span>'; }
+function upd(){ const u=S.summary&&S.summary.updated; return `<div class="upd">${u?'Figures updated '+new Date(u).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):S.loaded?'Open the main portal once to publish the latest figures':'Loading…'} · bookings from Rezlynx ${typeof BOB!=='undefined'&&BOB.pulled?new Date(BOB.pulled).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</div>`; }
+
+/* ── views ── */
+function draw(){ const m=$('#main'); if(!m) return; m.innerHTML=({today:vToday,sales:vSales,fb:vFB,team:vTeam,fix:vFix}[S.view]||vToday)(); }
+
+function vToday(){
+  const t=dk(new Date()), w=new Date(); w.setDate(w.getDate()+6);
+  const arr=onBooks(t,t), wk=onBooks(t,dk(w));
+  const fb=S.summary&&S.summary.fb, y=fb&&fb.yesterday, R=rotaToday();
+  const urgent=(S.jobs||[]).filter(j=>j.priority==='urgent').length;
+  return `
+  <div class="sec">Today</div>
+  <div class="grid2">
+    <div class="tile"><div class="k">Arrivals today</div><div class="v">${arr.length}</div><div class="s">${gbp(arr.reduce((a,r)=>a+r.value,0))} on the books</div></div>
+    <div class="tile"><div class="k">Next 7 days</div><div class="v">${wk.length}</div><div class="s">${gbpK(wk.reduce((a,r)=>a+r.value,0))} bookings</div></div>
+    <div class="tile"><div class="k">On shift</div><div class="v">${R?R.on.length:'—'}</div><div class="s">${R?`${R.hol} holiday · ${R.sick} sick`:'Rota not published'}</div></div>
+    <div class="tile"><div class="k">Open jobs</div><div class="v">${S.jobs?S.jobs.length:'—'}</div><div class="s">${urgent?`<b style="color:var(--bad)">${urgent} urgent</b>`:'none urgent'}</div></div>
+  </div>
+  <div class="sec">F&amp;B yesterday</div>
+  <div class="card">${y?`<div class="row"><div class="l"><div class="t">${new Date(y.date+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})}</div><div class="m">Food ${gbp(y.food)} · Drink ${gbp(y.bev)} · ${y.covers} covers</div></div><div class="r">${gbp(y.food+y.bev)}</div></div>`:'<div class="empty">Yesterday\'s sales haven\'t been entered yet.</div>'}
+    ${fb?`<div class="row"><div class="l"><div class="t">Food GP this month</div><div class="m">${fb.food.gp!=null?fb.food.gp+'%':'—'} vs ${fb.food.target}% target</div></div><div>${gpPill(fb.food)}</div></div>
+    <div class="row"><div class="l"><div class="t">Drink GP this month</div><div class="m">${fb.bev.gp!=null?fb.bev.gp+'%':'—'} vs ${fb.bev.target}% target</div></div><div>${gpPill(fb.bev)}</div></div>`:''}
+  </div>
+  <div class="sec">Arriving today</div>
+  <div class="card">${arr.length?arr.slice().sort((a,b)=>b.value-a.value).slice(0,8).map(r=>`<div class="row"><div class="l"><div class="t">${esc(r.guest)}</div><div class="m">${[r.room,r.rooms?r.rooms+' room'+(r.rooms>1?'s':''):'',r.nights?r.nights+' night'+(r.nights>1?'s':''):'',r.ratePlan].filter(Boolean).map(esc).join(' · ')}</div></div><div class="r">${gbp(r.value)}</div></div>`).join(''):'<div class="empty">No direct bookings arriving today.</div>'}</div>
+  ${upd()}`;
+}
+
+function vSales(){
+  const t=dk(new Date()); const all=bobAll(); const fut=all.filter(r=>r.arrival>=t);
+  const wk=new Date(); wk.setDate(wk.getDate()-7); const wkK=dk(wk);
+  const newWk=all.filter(r=>r.booked>=wkK);
+  const P=S.summary&&S.summary.pipeline;
+  // months ahead
+  const by={}; fut.forEach(r=>{ const m=r.arrival.slice(0,7); by[m]=(by[m]||0)+r.value; });
+  const months=Object.keys(by).sort().slice(0,9); const mx=Math.max(1,...months.map(m=>by[m]));
+  const fn=fut.filter(r=>r.room); const fnVal=fn.reduce((a,r)=>a+r.value,0);
+  const canc=(typeof BOB!=='undefined'?BOB.cancelled||[]:[]).filter(r=>r.booked>=wkK);
+  return `
+  <div class="sec">Business on the books</div>
+  <div class="grid2">
+    <div class="tile"><div class="k">Future bookings</div><div class="v">${fut.length}</div><div class="s">${gbpK(fut.reduce((a,r)=>a+r.value,0))}</div></div>
+    <div class="tile"><div class="k">Events &amp; meetings</div><div class="v">${fn.length}</div><div class="s">${gbpK(fnVal)} with a function room</div></div>
+    <div class="tile"><div class="k">Booked last 7 days</div><div class="v">${newWk.length}</div><div class="s">${gbpK(newWk.reduce((a,r)=>a+r.value,0))}</div></div>
+    <div class="tile"><div class="k">Open enquiries</div><div class="v">${P?P.open:'—'}</div><div class="s">${P?`${gbpK(P.openValue)}${P.overdue?` · <b style="color:var(--bad)">${P.overdue} overdue</b>`:''}`:'from the portal'}</div></div>
+  </div>
+  <div class="sec">Revenue on the books by arrival month</div>
+  <div class="card">${months.map(m=>`<div class="bar"><div>${new Date(m+'-15').toLocaleDateString('en-GB',{month:'short',year:'2-digit'})}</div><div class="tr"><div class="fl" style="width:${Math.max(2,by[m]/mx*100)}%"></div></div><div class="vv">${gbpK(by[m])}</div></div>`).join('')||'<div class="empty">No future bookings.</div>'}
+    <div class="note">Direct bookings made at the hotel (Rezlynx). Online channel bookings are not included.</div></div>
+  <div class="sec">Biggest upcoming events</div>
+  <div class="card">${fn.slice().sort((a,b)=>b.value-a.value).slice(0,8).map(r=>`<div class="row"><div class="l"><div class="t">${esc(r.guest)}</div><div class="m">${fmtD(r.arrival)} · ${esc(r.room)} · ${esc(r.operator||'')}</div></div><div class="r">${gbp(r.value)}</div></div>`).join('')||'<div class="empty">None.</div>'}</div>
+  <div class="sec">Booked in the last 7 days</div>
+  <div class="card">${newWk.slice().sort((a,b)=>(b.bookedAt||b.booked).localeCompare(a.bookedAt||a.booked)).slice(0,10).map(r=>`<div class="row"><div class="l"><div class="t">${esc(r.guest)}</div><div class="m">Booked ${fmtD(r.booked)} by ${esc(r.operator||'')} · arrives ${fmtD(r.arrival)}</div></div><div class="r">${gbp(r.value)}</div></div>`).join('')||'<div class="empty">No new direct bookings this week.</div>'}
+  ${canc.length?`<div class="note">${canc.length} cancellation${canc.length>1?'s':''} logged this week.</div>`:''}</div>
+  ${upd()}`;
+}
+
+function vFB(){
+  const fb=S.summary&&S.summary.fb;
+  if(!fb) return `<div class="sec">F&amp;B</div><div class="card"><div class="empty">No F&amp;B figures yet. They appear once the team enters sales in the F&amp;B Tracker.</div></div>${upd()}`;
+  const blk=(t,o)=>`<div class="card"><div class="row"><div class="l"><div class="t" style="font-size:16px">${t}</div></div>${gpPill(o)}</div>
+    <div class="grid2" style="margin-top:6px"><div><div class="tile" style="box-shadow:none;padding:6px 0"><div class="k">Sales MTD</div><div class="v">${gbpK(o.sales)}</div></div></div>
+    <div><div class="tile" style="box-shadow:none;padding:6px 0"><div class="k">GP</div><div class="v">${o.gp!=null?o.gp+'%':'—'}</div><div class="s">target ${o.target}%</div></div></div></div>
+    <div class="note">${o.sales?`Spend so far ${gbp(o.cost)} — ${o.headroom>=0?`<b style="color:var(--good)">${gbp(o.headroom)} under</b>`:`<b style="color:var(--bad)">${gbp(-o.headroom)} over</b>`} the allowance at target GP.${o.left>0?` About <b>${gbp(Math.max(0,o.remain))}</b> left to spend this month (${gbp(Math.max(0,o.perDay))} a day).`:''}`:'No sales entered yet.'}</div></div>`;
+  return `<div class="sec">${new Date(fb.month+'-15').toLocaleDateString('en-GB',{month:'long',year:'numeric'})} to date</div>
+    <div class="grid2"><div class="tile"><div class="k">Total F&amp;B</div><div class="v">${gbpK(fb.food.sales+fb.bev.sales)}</div><div class="s">${fb.daysIn} day${fb.daysIn===1?'':'s'} entered</div></div>
+    <div class="tile"><div class="k">Covers</div><div class="v">${(fb.covers||0).toLocaleString('en-GB')}</div><div class="s">${fb.covers?'£'+((fb.food.sales+fb.bev.sales)/fb.covers).toFixed(2)+' average':''}</div></div></div>
+    <div class="sec">Food</div>${blk('🍽 Food',fb.food)}<div class="sec">Drink</div>${blk('🍷 Beverage',fb.bev)}${upd()}`;
+}
+
+function vTeam(){
+  const R=rotaToday();
+  if(!R) return `<div class="sec">Team today</div><div class="card"><div class="empty">The rota hasn't been published yet.</div></div>`;
+  const by={}; R.on.forEach(p=>{ (by[p.dept]=by[p.dept]||[]).push(p); });
+  const nm=id=>((R.depts||[]).find(d=>d.id===id)||{}).name||id||'Other';
+  return `<div class="sec">Team today</div>
+  <div class="grid2"><div class="tile"><div class="k">On shift</div><div class="v">${R.on.length}</div></div><div class="tile"><div class="k">Holiday / sick</div><div class="v">${R.hol} / ${R.sick}</div></div></div>
+  ${Object.keys(by).sort().map(d=>`<div class="sec">${esc(nm(d))} · ${by[d].length}</div><div class="card">${by[d].sort((a,b)=>a.shift.localeCompare(b.shift)).map(p=>`<div class="row"><div class="l"><div class="t">${esc(p.name)}</div><div class="m">${esc(p.role||'')}</div></div><div class="r" style="font-weight:700">${esc(p.shift)}</div></div>`).join('')}</div>`).join('')}
+  <div class="upd">Rota published ${S.rota.updated?new Date(S.rota.updated).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''}</div>`;
+}
+
+function vFix(){
+  const J=S.jobs; const C=S.summary&&S.summary.compliance;
+  if(!J) return `<div class="sec">Maintenance</div><div class="card"><div class="empty">${S.loaded?'Could not load maintenance jobs.':'Loading…'}</div></div>`;
+  const pr={urgent:0,high:1,medium:2,low:3};
+  const list=J.slice().sort((a,b)=>(pr[a.priority]??2)-(pr[b.priority]??2));
+  return `<div class="sec">Maintenance &amp; compliance</div>
+  <div class="grid2"><div class="tile"><div class="k">Open jobs</div><div class="v">${J.length}</div><div class="s">${J.filter(j=>j.priority==='urgent').length} urgent</div></div>
+  <div class="tile"><div class="k">Compliance</div><div class="v">${C?C.overdue:'—'}</div><div class="s">${C?`overdue · ${C.dueSoon} due this week`:'from the portal'}</div></div></div>
+  <div class="sec">Open jobs</div>
+  <div class="card">${list.slice(0,25).map(j=>`<div class="row"><div class="l"><div class="t">${esc(j.title||j.description||'Job')}</div><div class="m">${[j.location||j.area,j.assignedName||j.assignedTo,j.status==='pending_approval'?'awaiting approval':j.status==='in-progress'?'in progress':'not started'].filter(Boolean).map(esc).join(' · ')}</div></div>${j.priority==='urgent'?'<span class="pill bd">Urgent</span>':''}</div>`).join('')||'<div class="empty">No open jobs 🎉</div>'}</div>`;
+}
+
+/* install tip + service worker */
+(function(){
+  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent), standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  if(!standalone) $('#install-tip').innerHTML=ios?'Add to your home screen: tap <b>Share</b> then <b>Add to Home Screen</b>.':'Add to your home screen: open the browser menu ⋮ and tap <b>Install app</b> or <b>Add to Home screen</b>.';
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('mobile-sw.js',{scope:'./mobile'}).catch(()=>{});
+  const w=store.get('pocket_who'); if(w) start(w);
+  setInterval(()=>{ if(!document.hidden && S.who) load(); }, 5*60000);
+})();
+</script>
+</body>
+</html>

@@ -47,6 +47,10 @@ const Store = {
     l.forEach(e=>{ if(oldMap[e.status]){ e.status=oldMap[e.status]; changed=true; }
       if(!e.owner){ e.owner=ENQ_OWNERS[0]; changed=true; } });
     if(changed) this.save(l);
+    // one-off: clear the old demo enquiries that were seeded on this computer
+    if(localStorage.getItem("bh_seeded_v2") && !localStorage.getItem("bh_demo_cleared")){
+      this.save(this.all().filter(e=>!(e.notes||"").includes("[demo]") && !["Dairy Carbon Network","Andre Brissett","Dominic Hillyard","Rebekah Stretton","Samantha Courtnell"].includes(e.name) && !e._seed));
+      localStorage.setItem("bh_demo_cleared","1"); }
     if(localStorage.getItem("bh_seeded_v2"))return;
     const samples=(typeof SEED_SAMPLES!=="undefined")?SEED_SAMPLES:[];
     samples.forEach(s=>{ const item=Object.assign({},s); item.id="ENQ-"+Math.random().toString(36).slice(2,8).toUpperCase();
@@ -117,26 +121,8 @@ const DB = {
   async update(id,patch){ return this.live()? FBStore.update(id,patch) : Store.update(id,patch); }
 };
 
-const SEED_SAMPLES=[
-  { name:"Dairy Carbon Network", company:"via arrangeMY", email:"maria.hamblin@arrangemy.com", phone:"01905 610016",
-    event:"meeting", date:"2026-11-18", pax:7, room:"", source:"arrangeMY / agent", status:"enquiry",
-    owner:"Nicola Cartwright", value:1200, followUp:"2026-09-16", budget:"£40–45 DDR", accommodation:"yes",
-    notes:"2-day team meeting · Layout: Horseshoe · AV: TV/projector, laptop share, Teams call, flipchart, water · Dinner 7 delegates · DBB overnight · 12% commission" },
-  { name:"Andre Brissett", email:"brissett44@outlook.com", phone:"+447355574227",
-    event:"wedding", date:"2026-11-23", pax:75, room:"", source:"Hitched", status:"enquiry",
-    owner:"Natalie Freeman", value:0, followUp:"2026-09-16",
-    notes:"Country wedding, West Midlands · 60–90 guests · Requested packages info" },
-  { name:"Dominic Hillyard", email:"dominic_hillyard@outlook.com", phone:"07534325007",
-    event:"wedding", date:"2027-08-01", pax:55, room:"brandon-suite", source:"Website", status:"provisional",
-    owner:"Natalie Freeman", value:8500, followUp:"2026-09-20", accommodation:"yes",
-    notes:"All-in-one ceremony + reception + party · ~50 day & evening · ~10 rooms · Proposal sent, viewing offered" },
-  { name:"Rebekah Stretton", email:"rebekah.stretton@gmail.com", phone:"07505174898",
-    event:"wedding", date:"2026-03-29", pax:50, room:"", source:"Website", status:"enquiry",
-    owner:"Natalie Freeman", value:0, accommodation:"yes" },
-  { name:"Samantha Courtnell", email:"samcourtnell@outlook.com", phone:"07870672918",
-    event:"wedding", date:"2027-06-01", pax:90, room:"", source:"Website", status:"enquiry",
-    owner:"Nicola Cartwright", value:0, accommodation:"yes", notes:"Wants spaces, prices, sample menus" }
-];
+const SEED_SAMPLES=[];   // earlier sample enquiries removed 8 Oct 2026 — the pipeline now comes from the Rezlynx report (bob-data.js)
+
 
 async function boot(){
   if(DB.live()){
@@ -156,6 +142,47 @@ async function boot(){
   }
   buildSidebar();
   render();
+  if(DB.live()){
+    // one-off: remove the five earlier sample enquiries now the Rezlynx report is the master
+    setTimeout(async()=>{ try{
+      const old=["Dairy Carbon Network","Andre Brissett","Dominic Hillyard","Rebekah Stretton","Samantha Courtnell"];
+      for(const e of DB.all()){ if(old.includes(e.name) && !e.ref && e.id) await FB.db.collection("enquiries").doc(e.id).delete(); }
+    }catch(err){ console.warn("Sample cleanup skipped",err); } }, 4000);
+    setTimeout(()=>hpPublishSummary(false), 6000);
+  }
+}
+/* ── HosPRO Pocket (mobile.html): a high-level summary published to hospro_public/summary.
+   Totals only — no guest contact details, pay or staff personal data. Refreshed when the
+   portal opens and after F&B entries, at most every 10 minutes unless forced. ── */
+async function hpPublishSummary(force){
+  try{
+    if(!(typeof FB!=="undefined" && FB.ready && FB.user && FB.db)) return;
+    const last=+localStorage.getItem("hp_sum_pub")||0;
+    if(!force && Date.now()-last<10*60000) return;
+    const today=spDK(new Date()), wk=new Date(); wk.setDate(wk.getDate()-7); const wkK=spDK(wk);
+    const pipe=pipelineData();
+    const open=pipe.filter(e=>["enquiry","provisional"].includes(e.status));
+    const sum={ updated:new Date().toISOString(), by:(SESSION&&SESSION.name)||"",
+      pipeline:{ open:open.length, openValue:Math.round(open.reduce((t,e)=>t+(+e.value||0),0)),
+        confirmedFuture:pipe.filter(e=>e.status==="confirmed"&&(e.date||"")>=today).length,
+        confirmedFutureValue:Math.round(pipe.filter(e=>e.status==="confirmed"&&(e.date||"")>=today).reduce((t,e)=>t+(+e.value||0),0)),
+        newThisWeek:pipe.filter(e=>(typeof enqDate==="function"?enqDate(e):"")>=wkK).length,
+        overdue:pipe.filter(e=>e.followUp&&e.followUp<today&&["enquiry","provisional"].includes(e.status)).length } };
+    const comp=typeof ALL_COMP_TASKS!=="undefined"?ALL_COMP_TASKS:[], now=new Date();
+    sum.compliance={ overdue:comp.filter(t=>t.status!=="done"&&new Date(t.dueDate)<now).length,
+      dueSoon:comp.filter(t=>{const d=new Date(t.dueDate);return t.status!=="done"&&d>=now&&d<new Date(now.getTime()+7*864e5);}).length, total:comp.length };
+    // F&B month to date
+    if(typeof fbtLoad==="function"){
+      const y=new Date(); y.setDate(y.getDate()-1);
+      if(CURRENT_TAB!=="fbTracker" || !FBT.data) await fbtLoad(fbtMonthKey(y));
+      const C=fbtCalc(); const yr=C.rows.find(r=>r.d===spDK(y));
+      const pick=o=>({sales:Math.round(o.sales),cost:Math.round(o.cos),gp:isFinite(o.gp)?Math.round(o.gp*10)/10:null,target:o.target,headroom:Math.round(o.headroom),remain:Math.round(o.remainBudget),perDay:Math.round(o.perDay),left:o.left});
+      sum.fb={ month:FBT.month, food:pick(C.food), bev:pick(C.bev), covers:C.covers, daysIn:C.daysIn,
+        yesterday: yr&&yr.hasSales?{date:yr.d,food:Math.round(yr.food),bev:Math.round(yr.bev),covers:yr.covers}:null };
+    }
+    await FB.db.collection("hospro_public").doc("summary").set(sum);
+    localStorage.setItem("hp_sum_pub", String(Date.now()));
+  }catch(e){ console.warn("Pocket summary not published", e); }
 }
 function buildSidebar(){ /* sidebar removed */ }
 
@@ -691,11 +718,17 @@ function renderQuote(v){
   qRenderPay();
 }
 
+/* Quote spaces: the function rooms plus the restaurant (for lunches/dinners served there, no room hire) */
+const QUOTE_RESTAURANT={ id:"clarendon-restaurant", name:"The Clarendon Restaurant", m2:0, length:null, width:null, restaurant:true,
+  cap:{ boardroom:null, ushape:null, theatre:null, cabaret:null, reception:null } };
+function qSpace(id){ return id===QUOTE_RESTAURANT.id ? QUOTE_RESTAURANT : ROOMS.find(r=>r.id===id); }
+/* Packages that already include the meeting / private room hire (DDR, 24-hour, weddings, parties…) */
+function pkgIncludesHire(pkg){ return !!pkg && (pkg.id==="24hr" || (pkg.includes||[]).some(t=>/room hire/i.test(t))); }
 function renderRoomLines(){
   const box=$("#q-roomlines"); if(!box)return;
   box.innerHTML="";
   QUOTE_ROOMS.forEach((line,i)=>{
-    const room=ROOMS.find(r=>r.id===line.room);
+    const room=qSpace(line.room);
     const tech=room?roomTech(room):{};
     const ft=FUNCTION_TYPES.find(f=>f.id===line.fnType)||FUNCTION_TYPES[0];
     const card=el("div","room-line");
@@ -711,17 +744,19 @@ function renderRoomLines(){
       <div class="rl-body">
         <img class="rl-img" src="${room?roomImage(room):""}" alt="${room?room.name:""}" loading="lazy" onerror="this.style.display='none'">
         <div class="rl-grid">
-          <div><label>Room / space</label><select data-i="${i}" data-f="room">${ROOMS.map(r=>`<option value="${r.id}" ${r.id===line.room?"selected":""}>${r.name} (${r.m2}m²)</option>`).join("")}</select></div>
+          <div><label>Room / space</label><select data-i="${i}" data-f="room"><optgroup label="Function rooms">${ROOMS.map(r=>`<option value="${r.id}" ${r.id===line.room?"selected":""}>${r.name} (${r.m2}m²)</option>`).join("")}</optgroup>${["lunch","dinner","breakfast","refresh","reception","other"].includes(line.fnType)||line.room===QUOTE_RESTAURANT.id?`<optgroup label="Restaurant"><option value="${QUOTE_RESTAURANT.id}" ${line.room===QUOTE_RESTAURANT.id?"selected":""}>🍽️ ${QUOTE_RESTAURANT.name}</option></optgroup>`:""}</select></div>
           <div><label>Date / day</label><input type="date" data-i="${i}" data-f="date" value="${line.date}"></div>
           <div><label>Layout</label><select data-i="${i}" data-f="layout">${Object.entries(LAYOUT_LABELS).map(([k,l])=>`<option value="${k}" ${k===line.layout?"selected":""}>${l}</option>`).join("")}</select></div>
           <div><label>Guests</label><input type="number" min="1" data-i="${i}" data-f="pax" value="${line.pax}"></div>
-          <div><label>Hire basis</label><select data-i="${i}" data-f="hire"><option value="full" ${line.hire==="full"?"selected":""}>Full day</option><option value="half" ${line.hire==="half"?"selected":""}>Half day</option><option value="none" ${line.hire==="none"?"selected":""}>None (incl.)</option></select></div>
+          ${room&&room.restaurant?`<div><label>Hire basis</label><div class="qs-sub" style="padding:9px 0;font-weight:700;color:#2F7A72">No room hire — restaurant</div></div>`
+            : pkgIncludesHire(PACKAGES.find(p=>p.id===line.pkg))?`<div><label>Hire basis</label><div class="qs-sub" style="padding:9px 0;font-weight:700;color:#2F7A72">✓ Room hire included in package</div></div>`
+            : `<div><label>Hire basis</label><select data-i="${i}" data-f="hire"><option value="full" ${line.hire==="full"?"selected":""}>Full day</option><option value="half" ${line.hire==="half"?"selected":""}>Half day</option><option value="none" ${line.hire==="none"?"selected":""}>None (incl.)</option></select></div>`}
           <div><label>Package</label><select data-i="${i}" data-f="pkg"><option value="">Room hire only</option>${PACKAGES.map(p=>`<option value="${p.id}" ${p.id===line.pkg?"selected":""}>${p.name} (${money(p.from)}pp)</option>`).join("")}</select></div>
           ${line.pkg?`<div><label>Rate override £pp <span class="qs-sub">(optional)</span></label><input type="number" min="0" step="0.01" data-i="${i}" data-f="rateOverride" value="${line.rateOverride||""}" placeholder="${money(PACKAGES.find(p=>p.id===line.pkg)?.from||0).replace('£','')}"></div>
           <div><label>Rate note</label><input type="text" data-i="${i}" data-f="rateNote" value="${(line.rateNote||"").replace(/"/g,'&quot;')}" placeholder="e.g. reduced from £40"></div>`:""}
         </div>
       </div>
-      ${room?`<div class="rl-spec">${room.m2} m²${room.length?` · ${room.length}×${room.width}m`:""} · max ${maxCap(room)} · ${tech.screen||"Screen"}${tech.wirelessShare?" · ClickShare":""}${tech.videoCall?" · Video-call ready":""}</div>`:""}
+      ${room&&room.restaurant?`<div class="rl-spec">Served in The Clarendon Restaurant · no room hire or seating plan</div>`:room?`<div class="rl-spec">${room.m2} m²${room.length?` · ${room.length}×${room.width}m`:""} · max ${maxCap(room)} · ${tech.screen||"Screen"}${tech.wirelessShare?" · ClickShare":""}${tech.videoCall?" · Video-call ready":""}</div>`:""}
       <div class="rl-menu">
         <button class="menu-toggle" data-i="${i}" type="button">🍽️ Menu items${(line.menu&&line.menu.length)?` (${line.menu.length})`:""}</button>
         <div class="menu-panel hidden" id="menu-panel-${i}"></div>
@@ -801,7 +836,7 @@ function gatherQuote(){
   const lines=[];
   let totalPax=0;
   QUOTE_ROOMS.forEach(line=>{
-    const room=ROOMS.find(r=>r.id===line.room); if(!room)return;
+    const room=qSpace(line.room); if(!room)return;
     const pax=parseInt(line.pax)||0; totalPax+=pax;
     const dateStr=line.date? " ("+new Date(line.date).toLocaleDateString("en-GB")+")" : "";
     const fl=fnLabel(line);
@@ -809,7 +844,7 @@ function gatherQuote(){
     if(pkg){ const rate=(line.rateOverride&&+line.rateOverride>0)?+line.rateOverride:pkg.from;
       const noteTxt=line.rateNote?` (${line.rateNote})`:(rate!==pkg.from?" (special rate)":"");
       lines.push({label:`${fl} · ${pkg.name} — ${room.name}${dateStr} × ${pax}`, amt:rate*pax, sub:`${money(rate)}pp${noteTxt}`}); }
-    if(line.hire!=="none" && ROOM_HIRE[room.id]){
+    if(line.hire!=="none" && ROOM_HIRE[room.id] && !pkgIncludesHire(pkg)){
       lines.push({label:`${fl} · Room hire — ${room.name} (${line.hire} day)${dateStr}`, amt:ROOM_HIRE[room.id][line.hire]});
     }
   });
@@ -827,8 +862,8 @@ function gatherQuote(){
     if(c.label && amt>0) lines.push({label:`${c.label}${c.qty>1?` × ${c.qty}`:""}`, amt}); });
   const subtotal=lines.reduce((s,l)=>s+l.amt,0);
   let carbonTotal=0;
-  QUOTE_ROOMS.forEach(line=>{ const room=ROOMS.find(r=>r.id===line.room);
-    if(room) carbonTotal += carbonModel(room,evId,parseInt(line.pax)||0).total; });
+  QUOTE_ROOMS.forEach(line=>{ const room=qSpace(line.room);
+    if(room && !room.restaurant) carbonTotal += carbonModel(room,evId,parseInt(line.pax)||0).total; });
   const primaryRoom=ROOMS.find(r=>r.id===QUOTE_ROOMS[0]?.room)||ROOMS[0];
   QUOTE_TOTAL=subtotal;
   return { rooms:QUOTE_ROOMS, room:primaryRoom, evId, pax:totalPax, lines, subtotal,
@@ -921,11 +956,11 @@ function downloadBrochurePDF(){
 
   // per-room booking blocks with seating diagrams
   const roomBlocks=q.rooms.map((line,idx)=>{
-    const room=ROOMS.find(r=>r.id===line.room); if(!room)return"";
+    const room=qSpace(line.room); if(!room)return"";
     const pax=parseInt(line.pax)||0;
     const dateStr=line.date? new Date(line.date).toLocaleDateString("en-GB") : "Date TBC";
     const pkg=PACKAGES.find(p=>p.id===line.pkg);
-    const svg=seatingSVG(room,line.layout,pax).replace(/background:#fbfaf7/,'background:#fff');
+    const svg=room.restaurant?'':seatingSVG(room,line.layout,pax).replace(/background:#fbfaf7/,'background:#fff');
     return `<div class="room-block">
       <h3 class="rb-title">${room.name} <span>· ${dateStr} · ${LAYOUT_LABELS[line.layout]} · ${pax} guests</span></h3>
       ${pkg?`<div class="rb-pkg">${pkg.name}</div>`:""}
@@ -1082,7 +1117,7 @@ function downloadKitchenSheet(){
   document.querySelectorAll("#q-addons input").forEach(inp=>{ const n=parseInt(inp.value)||0;
     if(n>0) foodItems.push({name:inp.dataset.name, qty:n, unit:inp.dataset.unit}); });
   const fnRows=q.rooms.map((line,i)=>{
-    const room=ROOMS.find(r=>r.id===line.room);
+    const room=qSpace(line.room);
     const ft=FUNCTION_TYPES.find(f=>f.id===line.fnType);
     const pkg=PACKAGES.find(p=>p.id===line.pkg);
     const dateStr=line.date? new Date(line.date).toLocaleDateString("en-GB") : "TBC";
@@ -1144,32 +1179,30 @@ function pipeFilterActive(){ return Object.values(PIPE_FILTER).some(x=>x); }
 function pipelineData(){
   const out=[];
   const dbRecords=DB.all();
-  dbRecords.forEach(e=>out.push(Object.assign({_kind:"enquiry"}, e)));
-  // collect refs already covered by DB records so we don't show BOB duplicates
-  const dbRefs=new Set(dbRecords.map(e=>e.ref||e.bobRef||"").filter(Boolean));
-  const dbNames=new Set(dbRecords.map(e=>(e.name||e.client||"").toLowerCase()).filter(Boolean));
-  if(typeof BOB!=="undefined"){
-    const map={ prospect:"provisional", confirmed:"confirmed", cancelled:"cancelled" };
-    ["prospect","confirmed","cancelled"].forEach(bucket=>{
-      BOB[bucket].forEach(r=>{
-        // Skip BOB record if there's already a DB enquiry with same ref or same guest name + date
-        if(dbRefs.has(r.ref)) return;
-        const nm=(r.guest||"").toLowerCase();
-        if(dbNames.has(nm)) return; // name already in DB
-        const extra = r.quoteOptions?{quoteOptions:r.quoteOptions}:{};
-        if(r.quotePay) extra.quotePay=r.quotePay;
-        out.push(Object.assign({
-          _kind:"bob", id:"BOB-"+r.ref, name:r.guest, value:r.value, pax:r.pax,
-          room:roomIdFromName(r.room), roomName:r.room, date:r.arrival,
-          status:map[bucket], owner:r.operator, source:"BOB / Rezlynx",
-          ratePlan:r.ratePlan, ref:r.ref, created:r.arrival||BOB.pulled,
-          notes:`Rezlynx ${bucket} · ${r.ratePlan} · ref ${r.ref}`,
-          quoteIssued:r.quoteIssued, dealStage:r.dealStage,
-          quoteLink:r.quoteLink, client:r.client, company:r.company,
-          eventType:r.eventType }, extra));
-      });
-    });
-  }
+  // Latest Rezlynx business-on-the-books (bob-data.js) is the master: where a managed enquiry
+  // has the same booking ref, its value, dates, guests and status are overwritten from the file;
+  // owner, follow-ups, notes, checklists and payments stay as the team entered them.
+  const bobByRef={};
+  const map={ prospect:"provisional", confirmed:"confirmed", cancelled:"cancelled" };
+  if(typeof BOB!=="undefined") ["prospect","confirmed","cancelled"].forEach(b=>(BOB[b]||[]).forEach(r=>{ bobByRef[r.ref]=Object.assign({_bucket:b},r); }));
+  const used=new Set();
+  dbRecords.forEach(e=>{
+    const ref=e.ref||e.bobRef||""; const r=ref&&bobByRef[ref];
+    if(r){ used.add(ref); out.push(Object.assign({_kind:"enquiry"}, e, { value:r.value, date:r.arrival||e.date, pax:r.pax||e.pax,
+      status:r._bucket==="cancelled"?"cancelled":(e.status==="cancelled"?"confirmed":e.status), bookedDate:r.booked, departure:r.departure, rooms:r.rooms,
+      roomName:r.room||e.roomName, room:r.room?roomIdFromName(r.room):e.room, ratePlan:r.ratePlan||e.ratePlan })); }
+    else out.push(Object.assign({_kind:"enquiry"}, e));
+  });
+  Object.values(bobByRef).forEach(r=>{
+    if(used.has(r.ref)) return;
+    out.push({ _kind:"bob", id:"BOB-"+r.ref, name:r.guest, value:r.value, pax:r.pax,
+      room:roomIdFromName(r.room), roomName:r.room, date:r.arrival, departure:r.departure, nights:r.nights, rooms:r.rooms,
+      status:map[r._bucket], owner:r.operator, source:"BOB / Rezlynx",
+      ratePlan:r.ratePlan, ref:r.ref, created:r.bookedAt||r.booked||BOB.pulled, bookedDate:r.booked,
+      notes:`Rezlynx ${r._bucket} · ${r.ratePlans&&r.ratePlans.length?r.ratePlans.join(", "):r.ratePlan} · ${r.rooms?r.rooms+" bedroom"+(r.rooms>1?"s":"")+" · ":""}${r.functionRooms&&r.functionRooms.length?r.functionRooms.join(", ")+" · ":""}ref ${r.ref}${r.cancelledValue?` · £${Math.round(r.cancelledValue)} cancelled`:""}`,
+      quoteIssued:r.quoteIssued, dealStage:r.dealStage, quoteLink:r.quoteLink, client:r.client, company:r.company, eventType:r.eventType,
+      quoteOptions:r.quoteOptions, quotePay:r.quotePay });
+  });
   return out;
 }
 function roomIdFromName(name){ const r=ROOMS.find(x=>x.name===name); return r?r.id:""; }
@@ -5220,11 +5253,11 @@ function renderQuoteOptions(){
 function buildRichQuote(q, id){
   const et=EVENT_TYPES.find(x=>x.id===q.evId);
   const rooms=q.rooms.map(line=>{
-    const room=ROOMS.find(r=>r.id===line.room); if(!room) return null;
+    const room=qSpace(line.room); if(!room) return null;
     const pkg=PACKAGES.find(p=>p.id===line.pkg);
-    return { id:room.id, name:room.name, m2:room.m2, cap:room.cap||"",
+    return { id:room.id, name:room.name, m2:room.m2, cap:room.cap||"", restaurant:!!room.restaurant,
       img:roomImage(room), layout:line.layout||"", pax:parseInt(line.pax)||0,
-      date:line.date||"", pkg:pkg?{name:pkg.name,from:pkg.from,inc:pkg.inc||[]}:null,
+      date:line.date||"", pkg:pkg?{name:pkg.name,from:pkg.from,inc:pkg.includes||pkg.inc||[]}:null,
       hire:line.hire||"none", fn:fnLabel(line), menu:(line.menu||[]) };
   }).filter(Boolean);
   return {
@@ -9669,7 +9702,7 @@ async function fbtSaveSales(){
   FBT.data.sales[date]=day;
   try{ await fbtSave(Object.keys(day).length?{['sales.'+date]:day}:{}, Object.keys(day).length?[]:['sales.'+date]); }catch(e){ return; }
   if(!Object.keys(day).length) delete FBT.data.sales[date];
-  closeModal(); toast('✓ Sales saved for '+new Date(date+'T12:00').toLocaleDateString('en-GB')); fbtDraw();
+  closeModal(); toast('✓ Sales saved for '+new Date(date+'T12:00').toLocaleDateString('en-GB')); fbtDraw(); setTimeout(()=>{ if(typeof hpPublishSummary==='function') hpPublishSummary(true); },300);
 }
 function fbtInvoiceModal(id){
   const x=id?FBT.data.invoices[id]:{date:spDK(new Date()),cat:'Food'};
@@ -9702,7 +9735,7 @@ async function fbtSaveInvoice(id, close){
   FBT.data.invoices[rec.id]=rec;
   try{ await fbtSave({['invoices.'+rec.id]:rec}); }catch(e){ return; }
   if(key!==keepMonth){ await fbtLoad(keepMonth); }
-  toast('✓ Invoice saved');
+  toast('✓ Invoice saved'); setTimeout(()=>{ if(typeof hpPublishSummary==='function') hpPublishSummary(true); },300);
   if(close){ closeModal(); fbtDraw(); } else { fbtDraw(); fbtInvoiceModal(); const d=document.getElementById('fi-date'); if(d) d.value=date; }
 }
 async function fbtDelInvoice(id){

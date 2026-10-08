@@ -100,9 +100,10 @@ service cloud.firestore {
     // Staff rota links (my-rota.html). HosPRO publishes names, roles and shift
     // times only (no pay rates) to one document, hospro_public/rota, so staff
     // phones can read it without signing in.
+    // rota = staff rota links; summary = HosPRO Pocket mobile app (totals only)
     match /hospro_public/{docId} {
-      allow read: if docId == 'rota';
-      allow create, update: if docId == 'rota';
+      allow read: if docId in ['rota', 'summary'];
+      allow create, update: if docId == 'rota' || (docId == 'summary' && isStaff());
       allow delete: if false;
     }
 
