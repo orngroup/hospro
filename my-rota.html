@@ -453,7 +453,13 @@ window.onload = async () => {
   const viaLink = qp && getStaff().find(s => s.id === qp);
   let code = qid || (viaLink && viaLink.staffCode) || '';
   if(!code){ try{ code = localStorage.getItem('myrota_code') || ''; }catch(e){} }
-  if(code){ const i=document.getElementById('staff-id'); if(i) i.value=code; setTimeout(() => window.viewRota(), 0); }
+  if(viaLink && !viaLink.staffCode && !qid){
+    // New starters without an HR staff ID yet: open their personal link directly
+    CURRENT_STAFF_ID=viaLink.id;
+    document.getElementById('scr-select').classList.remove('active');
+    document.getElementById('scr-rota').classList.add('active');
+    buildRotaView(viaLink);
+  } else if(code){ const i=document.getElementById('staff-id'); if(i) i.value=code; setTimeout(() => window.viewRota(), 0); }
 
   // Auto-select if returning from portal (stored last person)
   const last = localStorage.getItem('myrota_last');
