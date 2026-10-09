@@ -152,7 +152,7 @@ async function boot(){
       const old=["Dairy Carbon Network","Andre Brissett","Dominic Hillyard","Rebekah Stretton","Samantha Courtnell"];
       for(const e of DB.all()){ if(old.includes(e.name) && !e.ref && e.id) await FB.db.collection("enquiries").doc(e.id).delete(); }
     }catch(err){ console.warn("Sample cleanup skipped",err); } }, 4000);
-    setTimeout(()=>hpPublishSummary(false), 6000);
+    setTimeout(async()=>{ try{ await fbtImportSubmissions(true); }catch(e){} hpPublishSummary(false); }, 6000);
   }
 }
 /* ── HosPRO Pocket (mobile.html): a high-level summary published to hospro_public/summary.
@@ -184,6 +184,7 @@ async function hpPublishSummary(force){
       sum.fb={ month:FBT.month, food:pick(C.food), bev:pick(C.bev), covers:C.covers, daysIn:C.daysIn,
         yesterday: yr&&yr.hasSales?{date:yr.d,food:Math.round(yr.food),bev:Math.round(yr.bev),covers:yr.covers}:null };
     }
+    if(typeof FBT!=="undefined" && FBT.settings && FBT.settings.lines) sum.fbLines=FBT.settings.lines.map(l=>({id:l.id,name:l.name,outlet:l.outlet||""}));
     await FB.db.collection("hospro_public").doc("summary").set(sum);
     localStorage.setItem("hp_sum_pub", String(Date.now()));
   }catch(e){ console.warn("Pocket summary not published", e); }
@@ -9517,7 +9518,38 @@ function fbtCalc(){
 function renderFBTracker(v){
   const now=new Date(), def=fbtMonthKey(new Date(now.getFullYear(),now.getMonth(),now.getDate()-1));
   v.innerHTML='<div style="padding:30px;color:#4b5563">Loading F&amp;B figures…</div>';
-  fbtLoad(FBT.month||def).then(()=>fbtDraw(v));
+  fbtImportSubmissions(true).then(()=>fbtLoad(FBT.month||def)).then(()=>fbtDraw(v));
+}
+/* ── Daily form (fb-entry.html): staff without a portal login submit figures to fb_submissions.
+   Each new submission is copied into the tracker (that day's sales lines and its invoices)
+   the next time anyone opens the portal, then marked imported. ── */
+async function fbtImportSubmissions(quiet){
+  if(!fbtLive()) return 0;
+  let n=0;
+  try{
+    const q=await FB.db.collection('fb_submissions').where('status','==','new').get();
+    if(q.empty) return 0;
+    const keep=FBT.month;
+    const docs=q.docs.slice().sort((a,b)=>String(a.data().submittedAt||'').localeCompare(String(b.data().submittedAt||'')));
+    for(const d of docs){
+      const x=d.data(); const date=String(x.date||''); if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) { await d.ref.update({status:'rejected'}); continue; }
+      await fbtLoad(date.slice(0,7));
+      const day={}; Object.entries(x.sales||{}).forEach(([id,v])=>{ const o={food:fbtN(v.food),bev:fbtN(v.bev),covers:fbtN(v.covers)}; if(o.food||o.bev||o.covers) day[id]=o; });
+      const patch={};
+      if(Object.keys(day).length){ FBT.data.sales[date]=day; patch['sales.'+date]=day; }
+      (Array.isArray(x.invoices)?x.invoices:[]).forEach((iv,i)=>{ if(!iv||!iv.supplier||iv.net==='' ) return;
+        const id='sub'+d.id.slice(0,10)+i; const cat=/bev|drink/i.test(iv.cat)?'Beverage':/non/i.test(iv.cat)?'Non-F&B':'Food';
+        const rec={id,date,cat,supplier:String(iv.supplier).slice(0,80),no:String(iv.no||'').slice(0,40),net:fbtN(iv.net),notes:String(iv.notes||'').slice(0,200),by:String(x.by||'Daily form').slice(0,60)};
+        FBT.data.invoices[id]=rec; patch['invoices.'+id]=rec; });
+      if(x.notes){ patch['notes.'+date]=String(x.notes).slice(0,500); }
+      if(Object.keys(patch).length) await fbtSave(patch);
+      await d.ref.update({status:'imported', importedAt:new Date().toISOString(), importedBy:(SESSION&&SESSION.name)||''});
+      n++;
+    }
+    if(keep && keep!==FBT.month) await fbtLoad(keep);
+    if(n){ toast(`✓ ${n} daily F&B form${n>1?'s':''} added to the tracker`,4000); if(typeof hpPublishSummary==='function') hpPublishSummary(true); }
+  }catch(e){ console.warn('F&B form import failed',e); }
+  return n;
 }
 function fbtDraw(v){
   v=v||document.getElementById('view'); if(!v || CURRENT_TAB!=='fbTracker') return;
@@ -9558,6 +9590,7 @@ function fbtDraw(v){
         <button style="${pri};background:#C2410C" onclick="fbtInvoiceModal()">+ Invoice</button>
         <button style="${btn}" onclick="fbtUploadModal()">📤 Upload template</button>
         <button style="${btn}" onclick="fbtExport()">⬇ Export month</button>
+        <button style="${btn}" onclick="fbtFormLink()">🔗 Daily form link</button>
         <button style="${btn}" onclick="fbtSettingsModal()">⚙ Settings</button>
       </div>
     </div>
@@ -9843,4 +9876,16 @@ function fbtShare(how){
   if(how==='wa') window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
   else if(how==='mail') location.href='mailto:?subject='+encodeURIComponent('F&B sales — '+y.toLocaleDateString('en-GB'))+'&body='+encodeURIComponent(txt);
   else spCopy(txt);
+}
+function fbtFormLink(){
+  const u=location.origin+location.pathname.replace(/[^\/]*$/,'')+'fb-entry.html';
+  const msg="Hi Patrik, here's the link for the daily bar and restaurant figures. Please enter yesterday's sales (and any invoices) each morning and press Submit — it goes straight into HosPRO:\n"+u;
+  showModal('Daily F&B form','For Patrik and the team — no login needed',`
+    <div style="font-size:13px;color:#1a2b3a;line-height:1.55">
+      <p style="margin:0 0 8px">Whoever does the figures opens this link each morning, picks the date, enters sales by outlet (and any supplier invoices), and presses <b>Submit</b>. The figures land in this tracker automatically the next time anyone opens it.</p>
+      <div style="display:flex;gap:6px;margin:10px 0"><input readonly value="${u}" style="flex:1;padding:9px;border:1px solid #d1d5db;border-radius:8px;font:13px Lato">
+        <button onclick="spCopy('${u}')" style="padding:8px 12px;border:none;border-radius:8px;background:#1a2b3a;color:#fff;font:700 12px Lato;cursor:pointer">Copy</button>
+        <a href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:8px;background:#25D366;color:#fff;font:700 12px Lato;text-decoration:none">WhatsApp</a></div>
+      <button onclick="closeModal();fbtImportSubmissions(false).then(n=>{ if(!n) toast('No new form submissions'); renderFBTracker(document.getElementById('view')); })" style="padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:700 12px Lato;cursor:pointer">↻ Check for new submissions now</button>
+    </div>`);
 }

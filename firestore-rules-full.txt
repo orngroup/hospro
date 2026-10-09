@@ -120,6 +120,15 @@ service cloud.firestore {
       allow read, write: if isStaff();
     }
 
+    // Daily F&B form (fb-entry.html): anyone with the link can SUBMIT figures, nobody can read
+    // them back except staff; the portal copies them into fb_tracker and marks them imported.
+    match /fb_submissions/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['date','by','sales','invoices','notes','submittedAt','status'])
+        && request.resource.data.status == 'new'
+        && request.resource.data.date is string && request.resource.data.date.size() == 10;
+      allow read, update, delete: if isStaff();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

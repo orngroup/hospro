@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Daily F&amp;B Figures — Brandon Hall</title>
+<meta name="theme-color" content="#182A3E">
+<link rel="icon" href="assets/hospro/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/hospro/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#182A3E;--jade:#4DA69C;--jade-d:#2F7A72;--plum:#6E4E7A;--ink:#1a2b3a;--muted:#5b6675;--line:#e5e8ec;--bg:#f3f5f7}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:Lato,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:40px}
+.hdr{background:var(--navy);color:#fff;padding:calc(16px + env(safe-area-inset-top)) 18px 20px}
+.brand{font:900 11.5px Lato;letter-spacing:2px;text-transform:uppercase;color:var(--jade)}
+h1{font:700 28px 'Cormorant Garamond',serif;margin-top:4px}
+.hdr p{font-size:13px;color:#a9b8c9;margin-top:3px}
+.wrap{max-width:720px;margin:0 auto;padding:14px}
+.card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(16,28,40,.06);margin-bottom:12px}
+.card h2{font:900 15px Lato;margin-bottom:4px}
+.card .hint{font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.45}
+label.f{display:block;font:700 12px Lato;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+input,select,textarea{width:100%;padding:12px;border:1.5px solid #d1d5db;border-radius:10px;font:16px Lato;color:var(--ink);background:#fff}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--jade)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+table{width:100%;border-collapse:collapse}
+th{font:900 10.5px Lato;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:right;padding:4px 4px 8px}
+th:first-child{text-align:left}
+td{padding:4px;border-top:1px solid var(--line);vertical-align:middle}
+td.n{font-weight:700;font-size:14px;padding-right:8px}
+td.n small{display:block;font-weight:400;font-size:11.5px;color:var(--muted)}
+td input{padding:10px 8px;text-align:right;font-size:16px}
+tr.tot td{border-top:2px solid var(--navy);font:900 15px Lato;padding:10px 4px;text-align:right}
+tr.tot td:first-child{text-align:left}
+.inv{border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px;position:relative}
+.inv .del{position:absolute;top:6px;right:8px;border:none;background:none;color:#b3261e;font-size:18px;cursor:pointer}
+.inv .two{margin-top:8px}
+.addbtn{width:100%;padding:12px;border:1.5px dashed #c9cfd6;border-radius:10px;background:#fff;font:700 14px Lato;color:var(--ink);cursor:pointer}
+.submit{width:100%;padding:16px;border:none;border-radius:12px;background:var(--plum);color:#fff;font:900 17px Lato;cursor:pointer}
+.submit:disabled{opacity:.6}
+.msg{margin-top:10px;font-size:14px;font-weight:700;text-align:center}
+.ok{background:#E2F1EE;border-radius:16px;padding:22px;text-align:center}
+.ok h2{font:700 26px 'Cormorant Garamond',serif;color:var(--jade-d)}
+.ok p{color:var(--ink);font-size:14px;margin-top:6px;line-height:1.5}
+.ok button{margin-top:14px;padding:12px 18px;border:none;border-radius:10px;background:var(--navy);color:#fff;font:700 14px Lato;cursor:pointer}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="brand">Brandon Hall · HosPRO</div>
+  <h1>Daily F&amp;B figures</h1>
+  <p>Enter yesterday's bar and restaurant sales (net of VAT) and any supplier invoices, then press Submit.</p>
+</div>
+
+<div class="wrap">
+  <form id="f" onsubmit="return send(event)">
+    <div class="card">
+      <div class="two">
+        <div><label class="f" for="date">Trading date *</label><input type="date" id="date" required></div>
+        <div><label class="f" for="by">Your name *</label><input id="by" required placeholder="e.g. Patrik" autocomplete="name"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Sales by outlet</h2>
+      <div class="hint">Figures net of VAT, from the till / end-of-day report. Leave blank anything that wasn't open.</div>
+      <table>
+        <thead><tr><th>Outlet / service</th><th style="width:26%">Food £</th><th style="width:26%">Drink £</th><th style="width:18%">Covers</th></tr></thead>
+        <tbody id="lines"></tbody>
+        <tbody><tr class="tot"><td>Total</td><td id="tf">£0</td><td id="tb">£0</td><td id="tc">0</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Supplier invoices (costs)</h2>
+      <div class="hint">Add each food or drink invoice that arrived. Use a minus amount for a credit note. Leave empty if none.</div>
+      <div id="invs"></div>
+      <button type="button" class="addbtn" onclick="addInv()">+ Add an invoice</button>
+    </div>
+
+    <div class="card">
+      <label class="f" for="notes">Notes (optional)</label>
+      <textarea id="notes" rows="2" placeholder="e.g. 60-cover wedding in the Woodlands, bar closed early"></textarea>
+    </div>
+
+    <button class="submit" id="go" type="submit">Submit figures</button>
+    <div class="msg" id="msg"></div>
+  </form>
+
+  <div class="ok hidden" id="done">
+    <h2>Thank you</h2>
+    <p id="done-txt"></p>
+    <button onclick="again()">Enter another day</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const FBCFG={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:"brandonhall-7bdef.firebaseapp.com",projectId:"brandonhall-7bdef",storageBucket:"brandonhall-7bdef.firebasestorage.app",messagingSenderId:"391317900568",appId:"1:391317900568:web:643c9d6691f7f16d65226d"};
+let LINES=[{id:'breakfast',name:'Breakfast',outlet:'The Clarendon Restaurant'},{id:'lunch',name:'Lunch',outlet:'The Clarendon Restaurant'},{id:'aftertea',name:'Afternoon tea',outlet:'The Clarendon Restaurant'},{id:'dinner',name:'Dinner',outlet:'The Clarendon Restaurant'},{id:'bar',name:'Bar & lounge',outlet:'The Clarendon Bar'},{id:'roomservice',name:'Room service',outlet:'Room service'},{id:'banqueting',name:'Banqueting & events',outlet:'Events'},{id:'spa',name:'Spa café',outlet:'Spa'}];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num=v=>{ const n=parseFloat(String(v||'').replace(/[£,\s]/g,'')); return isFinite(n)?n:0; };
+const gbp=n=>'£'+(Math.round(n*100)/100).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+const dk=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+let db=null;
+function fb(){ if(db) return db; const app=firebase.apps.length?firebase.app():firebase.initializeApp(FBCFG); db=app.firestore(); return db; }
+
+function drawLines(){
+  $('#lines').innerHTML=LINES.map(l=>`<tr><td class="n">${esc(l.name)}<small>${esc(l.outlet||'')}</small></td>
+    <td><input inputmode="decimal" data-l="${esc(l.id)}" data-k="food" oninput="sum()"></td>
+    <td><input inputmode="decimal" data-l="${esc(l.id)}" data-k="bev" oninput="sum()"></td>
+    <td><input inputmode="numeric" data-l="${esc(l.id)}" data-k="covers" oninput="sum()"></td></tr>`).join('');
+}
+function sum(){ let f=0,b=0,c=0; document.querySelectorAll('#lines input').forEach(i=>{ const v=num(i.value); if(i.dataset.k==='food') f+=v; else if(i.dataset.k==='bev') b+=v; else c+=v; });
+  $('#tf').textContent=gbp(f); $('#tb').textContent=gbp(b); $('#tc').textContent=c; }
+function addInv(){
+  const d=document.createElement('div'); d.className='inv';
+  d.innerHTML=`<button type="button" class="del" onclick="this.parentElement.remove()" title="Remove">×</button>
+    <label class="f">Supplier</label><input class="i-sup" placeholder="e.g. Brakes, Matthew Clark">
+    <div class="two"><div><label class="f">Type</label><select class="i-cat"><option>Food</option><option>Beverage</option><option>Non-F&amp;B</option></select></div>
+    <div><label class="f">Net amount £</label><input class="i-net" inputmode="decimal" placeholder="0.00"></div></div>
+    <div class="two"><div><label class="f">Invoice no.</label><input class="i-no"></div><div><label class="f">Note</label><input class="i-notes"></div></div>`;
+  $('#invs').appendChild(d);
+}
+async function send(e){
+  e.preventDefault();
+  const date=$('#date').value, by=$('#by').value.trim(), msg=$('#msg');
+  if(!date||!by){ msg.style.color='#b3261e'; msg.textContent='Please add the date and your name.'; return false; }
+  const sales={}; document.querySelectorAll('#lines input').forEach(i=>{ if(i.value==='') return; (sales[i.dataset.l]=sales[i.dataset.l]||{})[i.dataset.k]=num(i.value); });
+  const invoices=[...document.querySelectorAll('.inv')].map(x=>({supplier:x.querySelector('.i-sup').value.trim(),cat:x.querySelector('.i-cat').value,net:x.querySelector('.i-net').value.trim()===''?'':num(x.querySelector('.i-net').value),no:x.querySelector('.i-no').value.trim(),notes:x.querySelector('.i-notes').value.trim()})).filter(x=>x.supplier&&x.net!=='');
+  if(!Object.keys(sales).length && !invoices.length){ msg.style.color='#b3261e'; msg.textContent='Enter at least one sales figure or invoice.'; return false; }
+  const go=$('#go'); go.disabled=true; go.textContent='Sending…'; msg.textContent='';
+  try{
+    await Promise.race([fb().collection('fb_submissions').add({date,by:by.slice(0,60),sales,invoices,notes:$('#notes').value.trim().slice(0,500),submittedAt:new Date().toISOString(),status:'new'}),
+      new Promise((_,r)=>setTimeout(()=>r(new Error('No connection — check the internet and try again')),15000))]);
+    try{ localStorage.setItem('fbform_by',by); }catch(_){}
+    let f=0,b=0,c=0; Object.values(sales).forEach(v=>{ f+=v.food||0; b+=v.bev||0; c+=v.covers||0; });
+    $('#done-txt').innerHTML=`Figures for <b>${new Date(date+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</b> have been sent to HosPRO.<br>Food ${gbp(f)} · Drink ${gbp(b)} · ${c} covers${invoices.length?` · ${invoices.length} invoice${invoices.length>1?'s':''}`:''}.<br><span style="color:#5b6675;font-size:13px">If you spot a mistake, just submit that date again — the latest figures replace the earlier ones.</span>`;
+    $('#f').classList.add('hidden'); $('#done').classList.remove('hidden'); window.scrollTo(0,0);
+  }catch(err){ msg.style.color='#b3261e'; msg.textContent='Not sent: '+(err.message||err)+'. Your figures are still on the page — try again.'; }
+  go.disabled=false; go.textContent='Submit figures';
+  return false;
+}
+function again(){ $('#f').reset(); $('#invs').innerHTML=''; drawLines(); sum(); setDefaults(); $('#done').classList.add('hidden'); $('#f').classList.remove('hidden'); }
+function setDefaults(){ const y=new Date(); y.setDate(y.getDate()-1); $('#date').value=dk(y); $('#date').max=dk(new Date()); try{ const b=localStorage.getItem('fbform_by'); if(b) $('#by').value=b; }catch(_){} }
+(async function(){
+  drawLines(); setDefaults();
+  // use the outlet list set in the portal, if it has been published
+  try{ const s=await Promise.race([fb().collection('hospro_public').doc('summary').get(),new Promise((_,r)=>setTimeout(()=>r(),6000))]);
+    if(s&&s.exists&&Array.isArray(s.data().fbLines)&&s.data().fbLines.length){ const typed=[...document.querySelectorAll('#lines input')].some(i=>i.value); if(!typed){ LINES=s.data().fbLines; drawLines(); sum(); } } }catch(_){}
+})();
+</script>
+</body>
+</html>
