@@ -85,12 +85,16 @@ $("#lg-btn").onclick = async ()=>{
     // FB_LOGINS list, so sign them in to Firebase directly: <username>@brandonhall.portal, password = initials + 2026
     if(!r.demo && /unknown user|not set up|README/i.test(r.error||"") && window.firebase && firebase.auth){
       const email=u+"@brandonhall.portal", tries=[String(user.code||"").replace(/^BH/i,"")+"2026", pw];
+      let lastErr="";
       for(const p of tries){
-        try{ const cred=await firebase.auth().signInWithEmailAndPassword(email,p);
+        try{ const auth=(FB&&FB.auth)||(firebase.apps.length?firebase.app().auth():firebase.auth());
+          const cred=await auth.signInWithEmailAndPassword(email,p);
           if(cred && cred.user){ try{ FB.user=cred.user; }catch(e){} SESSION=user; SESSION._key=u; enterApp(user); btn.disabled=false; btn.textContent=label; return; } }
-        catch(e){ if(e && e.code==="auth/user-not-found"){ break; } }
+        catch(e){ lastErr=(e&&(e.code||e.message))||String(e); console.warn("Direct Firebase sign-in failed:",lastErr); if(e && e.code==="auth/user-not-found"){ break; } }
       }
-      err.textContent="This login isn't set up in Firebase yet — ask Ajay to add "+email+" under Authentication → Users.";
+      err.textContent = /invalid-credential|wrong-password/.test(lastErr) ? "Firebase password doesn't match for "+email+" — set it to "+tries[0]+" in Authentication → Users ("+lastErr+")."
+        : /user-not-found/.test(lastErr) ? "This login isn't set up in Firebase yet — add "+email+" under Authentication → Users."
+        : "Sign-in failed ("+(lastErr||r.error||"unknown")+").";
       btn.disabled=false; btn.textContent=label; return;
     }
     if(!r.demo){ err.textContent=r.error||"Sign-in failed."; btn.disabled=false; btn.textContent=label; return; }
