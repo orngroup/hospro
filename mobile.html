@@ -57,6 +57,37 @@ nav button.on{color:var(--jade-d)}
 .install{margin-top:14px;font-size:12.5px;color:var(--muted);line-height:1.5}
 .upd{font-size:11.5px;color:var(--muted);text-align:center;margin:14px 0 4px}
 .hidden{display:none!important}
+nav button{font-size:10.5px}
+.tap{cursor:pointer}.tap:active{background:#f6f8fa}
+.chev{color:#b8c0ca;font-size:18px;margin-left:4px}
+.seg{display:flex;background:#e6eaee;border-radius:12px;padding:3px;margin:4px 0 10px}
+.seg button{flex:1;border:none;background:none;padding:8px 4px;border-radius:9px;font:700 12.5px Lato;color:var(--muted)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid #d6dbe1;background:#fff;color:var(--ink);border-radius:16px;padding:6px 12px;font:700 12px Lato}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.wkbar{display:flex;align-items:center;justify-content:space-between;margin:2px 0 8px}
+.wkbar button{border:1px solid #d6dbe1;background:#fff;border-radius:10px;width:38px;height:34px;font:900 16px Lato;color:var(--ink)}
+.wkbar .lab{font:900 14px Lato}
+.dept{font:900 11px Lato;letter-spacing:.5px;text-transform:uppercase;margin:10px 0 2px;display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.sh{display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;border-top:1px dashed #eef0f3}.sh:first-of-type{border-top:none}
+.sh b{font-weight:900;white-space:nowrap}
+.mini{font-size:11.5px;color:var(--muted)}
+select.inp,input.inp{width:100%;padding:11px;border:1.5px solid #d1d5db;border-radius:12px;font:700 15px Lato;color:var(--ink);background:#fff}
+.occ{display:grid;grid-template-columns:70px 1fr 54px 60px;gap:8px;align-items:center;font-size:12.5px;padding:6px 0;border-top:1px solid var(--line)}
+.occ:first-child{border-top:none}.occ .tr{height:12px;background:#eef1f4;border-radius:4px;overflow:hidden}.occ .fl{height:12px;border-radius:0 4px 4px 0}
+.occ.today{font-weight:900}.occ .r{text-align:right;font-weight:900}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}.tbl th{font:900 10px Lato;text-transform:uppercase;color:var(--muted);text-align:right;padding:4px 3px}.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl td{padding:6px 3px;border-top:1px solid var(--line);text-align:right}
+.big{display:block;width:100%;text-align:left;border:none;background:#fff;border-radius:16px;padding:16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(16,28,40,.06);font:900 16px Lato;color:var(--ink)}
+.big span{display:block;font:400 12.5px Lato;color:var(--muted);margin-top:3px}
+#sheet{position:fixed;inset:0;z-index:20;background:rgba(16,28,40,.5);display:flex;align-items:flex-end}
+#sheet .in{background:#fff;width:100%;max-height:88dvh;overflow:auto;border-radius:22px 22px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom))}
+#sheet h2{font:700 24px 'Cormorant Garamond',serif;color:var(--navy);margin-bottom:2px}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}.kv span:first-child{color:var(--muted)}.kv span:last-child{font-weight:700;text-align:right}
+.btn{display:block;width:100%;margin-top:12px;padding:13px;border:none;border-radius:12px;background:var(--navy);color:#fff;font:900 15px Lato;text-align:center;text-decoration:none}
+.btn.ghost{background:#eef1f4;color:var(--ink)}
 </style>
 </head>
 <body>
@@ -65,7 +96,7 @@ nav button.on{color:var(--jade-d)}
   <div class="pick-card">
     <div class="brand" style="color:var(--jade-d)">HosPRO Pocket · Brandon Hall</div>
     <h1>Good to see you</h1>
-    <p>The hotel at a glance — sales, F&amp;B, team and maintenance.</p>
+    <p>The hotel at a glance — sales, rooms, F&amp;B, shifts and events.</p>
     <select id="who">
       <option value="">Choose your name…</option>
       <option>Ajay</option><option>Raj</option><option>Alia</option>
@@ -85,27 +116,39 @@ nav button.on{color:var(--jade-d)}
   <nav>
     <button data-v="today" class="on" onclick="go('today')"><span class="i">🏠</span>Today</button>
     <button data-v="sales" onclick="go('sales')"><span class="i">💼</span>Sales</button>
+    <button data-v="stats" onclick="go('stats')"><span class="i">📈</span>Occ &amp; ADR</button>
     <button data-v="fb" onclick="go('fb')"><span class="i">🍽</span>F&amp;B</button>
-    <button data-v="team" onclick="go('team')"><span class="i">👥</span>Team</button>
-    <button data-v="fix" onclick="go('fix')"><span class="i">🔧</span>Fix</button>
+    <button data-v="shifts" onclick="go('shifts')"><span class="i">🗓</span>Shifts</button>
+    <button data-v="more" onclick="go('more')"><span class="i">☰</span>More</button>
   </nav>
 </div>
+<div id="sheet" class="hidden" onclick="if(event.target===this)closeSheet()"><div class="in" id="sheet-in"></div></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="bob-data.js"></script>
+<script src="pocket-data.js"></script>
 <script>
 /* HosPRO Pocket — read-only, high-level view for directors. No sign-in by design:
-   it only reads public summary data (hospro_public), open HosFIX jobs and the bookings file. */
+   it only reads public summary data (hospro_public), open HosFIX jobs, the bookings file
+   and pocket-data.js (rota, rooms, local events — names, roles and shifts only, no pay). */
 const FBCFG={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:"brandonhall-7bdef.firebaseapp.com",projectId:"brandonhall-7bdef",storageBucket:"brandonhall-7bdef.firebasestorage.app",messagingSenderId:"391317900568",appId:"1:391317900568:web:643c9d6691f7f16d65226d"};
-const S={ who:null, view:'today', summary:null, rota:null, jobs:null, loaded:false };
+const P=(typeof POCKET!=='undefined')?POCKET:{staff:[],depts:[],rota:{},fc:{},events:[],venues:[],rooms:[],hire:{},bedrooms:120};
+const S={ who:null, view:'today', summary:null, rota:null, jobs:null, loaded:false,
+  salesSeg:'open', shSeg:'today', shDay:0, shWeek:null, shPerson:'', evRange:'90', evMiles:20, roomLayout:'theatre', roomPax:'', fbMonth:'cur' };
 const $=s=>document.querySelector(s);
-const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const gbp=n=>'£'+Math.round(+n||0).toLocaleString('en-GB');
 const gbpK=n=>{ n=+n||0; return n>=100000?'£'+Math.round(n/1000)+'k':n>=10000?'£'+(n/1000).toFixed(1)+'k':gbp(n); };
 const dk=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const addD=(k,n)=>{ const d=new Date(k+'T12:00'); d.setDate(d.getDate()+n); return dk(d); };
 const fmtD=s=>s?new Date(s+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
+const fmtDW=s=>s?new Date(s+'T12:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}):'';
+const fmtDL=s=>s?new Date(s+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}):'';
+const TODAY=()=>dk(new Date());
+const monday=k=>{ const d=new Date(k+'T12:00'); const w=(d.getDay()+6)%7; d.setDate(d.getDate()-w); return dk(d); };
 const store={ get(k){ try{return localStorage.getItem(k);}catch(e){return null;} }, set(k,v){ try{localStorage.setItem(k,v);}catch(e){} } };
+const PORTAL='https://brandon.hospro.co.uk/';
 
 function pickGo(){ const v=$('#who').value; if(!v) return; store.set('pocket_who',v); start(v); }
 function switchUser(){ store.set('pocket_who',''); $('#app').classList.add('hidden'); $('#pick').classList.remove('hidden'); }
@@ -116,7 +159,9 @@ function start(who){
   $('#today').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   draw(); load();
 }
-function go(v){ S.view=v; document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)); window.scrollTo(0,0); draw(); }
+function go(v){ S.view=v; const top=['today','sales','stats','fb','shifts'].includes(v)?v:'more';
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===top)); window.scrollTo(0,0); draw(); }
+function set(k,v){ S[k]=v; draw(); }
 
 async function load(){
   try{
@@ -128,119 +173,275 @@ async function load(){
       t(db.collection('hosfix_jobs').where('status','in',['not-started','in-progress','pending_approval']).get(),9000)]);
     if(sum.status==='fulfilled'&&sum.value.exists) S.summary=sum.value.data();
     if(rota.status==='fulfilled'&&rota.value.exists) S.rota=rota.value.data();
-    if(jobs.status==='fulfilled') S.jobs=jobs.value.docs.map(d=>d.data());
+    if(jobs.status==='fulfilled') S.jobs=jobs.value.docs.map(d=>Object.assign({_id:d.id},d.data()));
   }catch(e){ console.warn(e); }
   S.loaded=true; draw();
 }
 
 /* ── data helpers ── */
 function bobAll(){ return (typeof BOB!=='undefined')?(BOB.confirmed||[]).concat(BOB.prospect||[]):[]; }
-function onBooks(fromK,toK){ return bobAll().filter(r=>r.arrival>=fromK && r.arrival<=toK); }
-function shiftOf(v){ return String((v&&typeof v==='object')?(v.shift||''):(v||'')).trim(); }
-function working(v){ const s=shiftOf(v).toLowerCase(); return s && !['off','holiday','sick','in lieu','on call'].includes(s) && /\d/.test(s); }
-function rotaToday(){
-  if(!S.rota||!S.rota.rota) return null; const day=S.rota.rota[dk(new Date())]||{};
-  const staff=S.rota.staff||[], depts=S.rota.depts||[];
-  const on=Object.entries(day).filter(([id,v])=>working(v)).map(([id,v])=>{ const s=staff.find(x=>x.id===id)||{name:id}; return {name:s.name,role:s.role,dept:(v&&v.dept)||s.dept,shift:shiftOf(v)}; });
-  const hol=Object.values(day).filter(v=>shiftOf(v).toLowerCase()==='holiday').length;
-  const sick=Object.values(day).filter(v=>shiftOf(v).toLowerCase()==='sick').length;
-  return {on,hol,sick,depts};
+function bobByRef(ref){ return bobAll().concat((typeof BOB!=='undefined'&&BOB.cancelled)||[]).find(r=>r.ref===ref); }
+function enquiries(){ return (S.summary&&S.summary.enquiries)||[]; }
+function openEnq(){ return enquiries().filter(e=>['enquiry','provisional'].includes(e.status)); }
+// Rota: the live published rota wins for any date it has; pocket-data.js fills the rest
+function rotaData(){
+  const pub=(S.rota&&S.rota.rota)||{}; const rota=Object.assign({},P.rota||{},pub);
+  const staff={}; (P.staff||[]).forEach(s=>staff[s.id]=s); ((S.rota&&S.rota.staff)||[]).forEach(s=>staff[s.id]=Object.assign({},staff[s.id]||{},s));
+  const depts=((S.rota&&S.rota.depts&&S.rota.depts.length)?S.rota.depts:P.depts).map(d=>Object.assign({},(P.depts||[]).find(x=>x.id===d.id)||{},d));
+  return {rota,staff,depts};
 }
+function shiftOf(v){ return String((v&&typeof v==='object')?(v.shift||''):(v||'')).trim(); }
+function working(v){ return /\d/.test(shiftOf(v)); }
+function dayList(k){
+  const R=rotaData(), day=R.rota[k]||{};
+  const on=Object.entries(day).filter(([id,v])=>working(v)).map(([id,v])=>{ const s=R.staff[id]||{name:id}; return {id,name:s.name,role:s.role,dept:(v&&v.dept)||s.dept||'other',shift:shiftOf(v)}; });
+  const tag=t=>Object.values(day).filter(v=>shiftOf(v).toLowerCase()===t).length;
+  return {has:Object.keys(day).length>0,on,hol:tag('holiday'),sick:tag('sick'),call:tag('on call'),lieu:tag('in lieu')};
+}
+function deptMeta(id){ const d=rotaData().depts.find(x=>x.id===id); return d||{id,name:id||'Other',colour:'#94a3b8'}; }
+function fcAll(){ return Object.assign({},P.fc||{},(S.summary&&S.summary.fc)||{}); }
+function bedrooms(){ return (S.summary&&S.summary.bedrooms)||P.bedrooms||120; }
+function occOf(k){ const f=fcAll()[k]; if(!f||!f.rooms) return null; return {rooms:f.rooms,occ:f.rooms/bedrooms()*100,adr:f.revenue?f.revenue/f.rooms:null,rev:f.revenue||0,f}; }
+function eventsInHouse(k){ return bobAll().filter(r=>r.room && r.arrival<=k && (r.departure||r.arrival)>=k && (r.departure>k||r.arrival===k)); }
 function gpPill(o){ if(!o||!o.sales) return '<span class="pill nu">No sales yet</span>';
   if(o.gp>=o.target) return '<span class="pill ok">✓ On target</span>';
   if(o.gp>=o.target-3) return '<span class="pill wa">! Watch spend</span>';
   return '<span class="pill bd">✕ Over spend</span>'; }
-function upd(){ const u=S.summary&&S.summary.updated; return `<div class="upd">${u?'Figures updated '+new Date(u).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):S.loaded?'Open the main portal once to publish the latest figures':'Loading…'} · bookings from Rezlynx ${typeof BOB!=='undefined'&&BOB.pulled?new Date(BOB.pulled).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</div>`; }
+function stPill(s){ return {enquiry:'<span class="pill wa">Enquiry</span>',provisional:'<span class="pill nu">Provisional</span>',confirmed:'<span class="pill ok">Confirmed</span>',cancelled:'<span class="pill bd">Cancelled</span>',lost:'<span class="pill bd">Lost</span>'}[s]||`<span class="pill nu">${esc(s||'')}</span>`; }
+function upd(){ const u=S.summary&&S.summary.updated; return `<div class="upd">${u?'Portal figures updated '+new Date(u).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):S.loaded?'Open the main portal once to publish the latest figures':'Loading…'}${typeof BOB!=='undefined'&&BOB.pulled?' · bookings from Rezlynx '+new Date(BOB.pulled).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</div>`; }
+const seg=(key,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button class="${S[key]===v?'on':''}" onclick="set('${key}','${v}')">${l}</button>`).join('')}</div>`;
+const chips=(key,opts)=>`<div class="chips">${opts.map(([v,l])=>`<button class="chip ${String(S[key])===String(v)?'on':''}" onclick="set('${key}',${typeof v==='number'?v:`'${v}'`})">${l}</button>`).join('')}</div>`;
+
+/* ── detail sheet ── */
+function openSheet(html){ $('#sheet-in').innerHTML=html+`<button class="btn ghost" onclick="closeSheet()">Close</button>`; $('#sheet').classList.remove('hidden'); }
+function closeSheet(){ $('#sheet').classList.add('hidden'); }
+const kv=(k,v)=>v===''||v==null||v===0&&k!=='Value'?'':`<div class="kv"><span>${k}</span><span>${v}</span></div>`;
+function showEnq(i){
+  const e=enquiries().find(x=>x.id===i)||enquiries()[+i]; if(!e) return;
+  const od=e.followUp&&e.followUp<TODAY()&&['enquiry','provisional'].includes(e.status);
+  openSheet(`<div class="brand" style="color:var(--jade-d)">Enquiry</div><h2>${esc(e.company||e.name)}</h2>
+    <div style="margin:4px 0 8px">${stPill(e.status)} ${e.stage?`<span class="pill nu">${esc(e.stage)}</span>`:''}</div>
+    ${kv('Contact',e.company&&e.name?esc(e.name):'')}${kv('Event type',esc(e.eventType))}
+    ${kv('Date',e.date?fmtDL(e.date)+(e.departure&&e.departure!==e.date?' – '+fmtD(e.departure):''):'Not set')}
+    ${kv('Guests',e.pax||'')}${kv('Bedrooms',e.rooms?e.rooms+(e.nights?' × '+e.nights+' night'+(e.nights>1?'s':''):''):'')}
+    ${kv('Function room',esc(e.roomName))}${kv('Value',e.value?gbp(e.value):'—')}${kv('Owner',esc(e.owner))}
+    ${kv('Follow up',e.followUp?(od?`<span style="color:var(--bad)">${fmtD(e.followUp)} · overdue</span>`:fmtD(e.followUp)):'')}
+    ${kv('Received',e.created?fmtD(e.created.slice(0,10)):'')}${kv('Source',esc(e.source))}${kv('Ref',esc(e.ref))}
+    <a class="btn" href="${PORTAL}" target="_blank" rel="noopener">Open in HosPRO</a>`);
+}
+function showBob(ref){
+  const r=bobByRef(ref); if(!r) return;
+  const st=(BOB.cancelled||[]).includes(r)?'cancelled':(BOB.prospect||[]).includes(r)?'provisional':'confirmed';
+  openSheet(`<div class="brand" style="color:var(--jade-d)">${r.room?'Event / function':'Booking'}</div><h2>${esc(r.guest)}</h2>
+    <div style="margin:4px 0 8px">${stPill(st)}</div>
+    ${kv('Arrives',fmtDL(r.arrival))}${kv('Departs',r.departure&&r.departure!==r.arrival?fmtDL(r.departure):'')}
+    ${kv('Function room',esc((r.functionRooms&&r.functionRooms.length?r.functionRooms:[r.room]).filter(Boolean).join(', ')))}
+    ${kv('Bedrooms',r.rooms?r.rooms+(r.nights?' × '+r.nights+' night'+(r.nights>1?'s':''):''):'')}${kv('Guests',r.pax||'')}
+    ${kv('Rate plan',esc((r.ratePlans&&r.ratePlans.length?r.ratePlans:[r.ratePlan]).filter(Boolean).join(', ')))}
+    ${kv('Value',gbp(r.value))}${kv('Booked',r.booked?fmtD(r.booked)+(r.operator?' by '+esc(r.operator):''):'')}${kv('Ref',esc(r.ref))}
+    <a class="btn" href="${PORTAL}" target="_blank" rel="noopener">Open in HosPRO</a>`);
+}
+const enqRow=e=>{ const od=e.followUp&&e.followUp<TODAY()&&['enquiry','provisional'].includes(e.status);
+  return `<div class="row tap" onclick="showEnq('${esc(e.id)}')"><div class="l"><div class="t">${esc(e.company||e.name)}</div><div class="m">${[e.date?fmtD(e.date):'No date',e.eventType,e.pax?e.pax+' guests':'',e.owner].filter(Boolean).map(esc).join(' · ')}${od?' · <b style="color:var(--bad)">follow-up overdue</b>':''}</div></div><div class="r">${e.value?gbpK(e.value):''}<span class="chev">›</span></div></div>`; };
+const bobRow=(r,meta)=>`<div class="row tap" onclick="showBob('${esc(r.ref)}')"><div class="l"><div class="t">${esc(r.guest)}</div><div class="m">${meta}</div></div><div class="r">${gbpK(r.value)}<span class="chev">›</span></div></div>`;
 
 /* ── views ── */
-function draw(){ const m=$('#main'); if(!m) return; m.innerHTML=({today:vToday,sales:vSales,fb:vFB,team:vTeam,fix:vFix}[S.view]||vToday)(); }
+function draw(){ const m=$('#main'); if(!m) return;
+  m.innerHTML=({today:vToday,sales:vSales,stats:vStats,fb:vFB,shifts:vShifts,more:vMore,rooms:vRooms,events:vEvents,fix:vFix}[S.view]||vToday)(); }
 
 function vToday(){
-  const t=dk(new Date()), w=new Date(); w.setDate(w.getDate()+6);
-  const arr=onBooks(t,t), wk=onBooks(t,dk(w));
-  const fb=S.summary&&S.summary.fb, y=fb&&fb.yesterday, R=rotaToday();
+  const t=TODAY(), D=dayList(t), o=occOf(t), oe=openEnq();
+  const due=oe.filter(e=>e.followUp&&e.followUp<=t);
+  const fb=fbData(), last=fb&&fb.days&&fb.days.filter(d=>d.food||d.bev).slice(-1)[0];
   const urgent=(S.jobs||[]).filter(j=>j.priority==='urgent').length;
+  const ev=eventsInHouse(t);
+  const nxt=(P.events||[]).filter(e=>(e.end||e.start)>=t).sort((a,b)=>a.start.localeCompare(b.start)).slice(0,3);
   return `
   <div class="sec">Today</div>
   <div class="grid2">
-    <div class="tile"><div class="k">Arrivals today</div><div class="v">${arr.length}</div><div class="s">${gbp(arr.reduce((a,r)=>a+r.value,0))} on the books</div></div>
-    <div class="tile"><div class="k">Next 7 days</div><div class="v">${wk.length}</div><div class="s">${gbpK(wk.reduce((a,r)=>a+r.value,0))} bookings</div></div>
-    <div class="tile"><div class="k">On shift</div><div class="v">${R?R.on.length:'—'}</div><div class="s">${R?`${R.hol} holiday · ${R.sick} sick`:'Rota not published'}</div></div>
-    <div class="tile"><div class="k">Open jobs</div><div class="v">${S.jobs?S.jobs.length:'—'}</div><div class="s">${urgent?`<b style="color:var(--bad)">${urgent} urgent</b>`:'none urgent'}</div></div>
+    <div class="tile tap" onclick="go('stats')"><div class="k">Occupancy tonight</div><div class="v">${o?Math.round(o.occ)+'%':'—'}</div><div class="s">${o?o.rooms+' of '+bedrooms()+' rooms':'No forecast for today'}</div></div>
+    <div class="tile tap" onclick="go('shifts')"><div class="k">On shift today</div><div class="v">${D.has?D.on.length:'—'}</div><div class="s">${D.has?`${D.hol} holiday · ${D.sick} sick`:'Rota not loaded for today'}</div></div>
+    <div class="tile tap" onclick="S.salesSeg='open';go('sales')"><div class="k">Open enquiries</div><div class="v">${S.summary?oe.length:'—'}</div><div class="s">${S.summary?(due.length?`<b style="color:var(--bad)">${due.length} to follow up</b>`:gbpK(oe.reduce((a,e)=>a+e.value,0))):'from the portal'}</div></div>
+    <div class="tile tap" onclick="go('fix')"><div class="k">Open jobs</div><div class="v">${S.jobs?S.jobs.length:'—'}</div><div class="s">${urgent?`<b style="color:var(--bad)">${urgent} urgent</b>`:'none urgent'}</div></div>
   </div>
-  <div class="sec">F&amp;B yesterday</div>
-  <div class="card">${y?`<div class="row"><div class="l"><div class="t">${new Date(y.date+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})}</div><div class="m">Food ${gbp(y.food)} · Drink ${gbp(y.bev)} · ${y.covers} covers</div></div><div class="r">${gbp(y.food+y.bev)}</div></div>`:'<div class="empty">Yesterday\'s sales haven\'t been entered yet.</div>'}
-    ${fb?`<div class="row"><div class="l"><div class="t">Food GP this month</div><div class="m">${fb.food.gp!=null?fb.food.gp+'%':'—'} vs ${fb.food.target}% target</div></div><div>${gpPill(fb.food)}</div></div>
-    <div class="row"><div class="l"><div class="t">Drink GP this month</div><div class="m">${fb.bev.gp!=null?fb.bev.gp+'%':'—'} vs ${fb.bev.target}% target</div></div><div>${gpPill(fb.bev)}</div></div>`:''}
-  </div>
-  <div class="sec">Arriving today</div>
-  <div class="card">${arr.length?arr.slice().sort((a,b)=>b.value-a.value).slice(0,8).map(r=>`<div class="row"><div class="l"><div class="t">${esc(r.guest)}</div><div class="m">${[r.room,r.rooms?r.rooms+' room'+(r.rooms>1?'s':''):'',r.nights?r.nights+' night'+(r.nights>1?'s':''):'',r.ratePlan].filter(Boolean).map(esc).join(' · ')}</div></div><div class="r">${gbp(r.value)}</div></div>`).join(''):'<div class="empty">No direct bookings arriving today.</div>'}</div>
+  <div class="sec">Events in house today</div>
+  <div class="card">${ev.length?ev.slice(0,8).map(r=>bobRow(r,[r.room,r.pax?r.pax+' guests':'',r.ratePlan].filter(Boolean).map(esc).join(' · '))).join(''):'<div class="empty">No functions booked today.</div>'}</div>
+  ${due.length?`<div class="sec">Follow-ups due</div><div class="card">${due.slice(0,6).map(enqRow).join('')}</div>`:''}
+  <div class="sec">F&amp;B</div>
+  <div class="card tap" onclick="go('fb')">${last?`<div class="row"><div class="l"><div class="t">${fmtDL(last.d)}</div><div class="m">Food ${gbp(last.food)} · Drink ${gbp(last.bev)}${last.covers?' · '+last.covers+' covers':''}</div></div><div class="r">${gbp(last.food+last.bev)}</div></div>`:'<div class="empty">No sales entered yet.</div>'}
+    ${fb?`<div class="row"><div class="l"><div class="t">Food GP ${fb.label}</div><div class="m">${fb.food.gp!=null?fb.food.gp+'%':'—'} vs ${fb.food.target}% target</div></div><div>${gpPill(fb.food)}</div></div>
+    <div class="row"><div class="l"><div class="t">Drink GP ${fb.label}</div><div class="m">${fb.bev.gp!=null?fb.bev.gp+'%':'—'} vs ${fb.bev.target}% target</div></div><div>${gpPill(fb.bev)}</div></div>`:''}</div>
+  <div class="sec">Coming up locally</div>
+  <div class="card">${nxt.map(evRow).join('')||'<div class="empty">No dated events.</div>'}</div>
   ${upd()}`;
 }
 
 function vSales(){
-  const t=dk(new Date()); const all=bobAll(); const fut=all.filter(r=>r.arrival>=t);
-  const wk=new Date(); wk.setDate(wk.getDate()-7); const wkK=dk(wk);
-  const newWk=all.filter(r=>r.booked>=wkK);
-  const P=S.summary&&S.summary.pipeline;
-  // months ahead
+  const t=TODAY(); const all=bobAll(); const fut=all.filter(r=>r.arrival>=t);
+  const wkK=addD(t,-7); const newWk=all.filter(r=>r.booked>=wkK);
+  const E=enquiries(), oe=openEnq(), od=oe.filter(e=>e.followUp&&e.followUp<t);
+  const fn=fut.filter(r=>r.room);
   const by={}; fut.forEach(r=>{ const m=r.arrival.slice(0,7); by[m]=(by[m]||0)+r.value; });
   const months=Object.keys(by).sort().slice(0,9); const mx=Math.max(1,...months.map(m=>by[m]));
-  const fn=fut.filter(r=>r.room); const fnVal=fn.reduce((a,r)=>a+r.value,0);
-  const canc=(typeof BOB!=='undefined'?BOB.cancelled||[]:[]).filter(r=>r.booked>=wkK);
+  let list, empty;
+  if(S.salesSeg==='open'){ list=oe; empty='No open enquiries.'; }
+  else if(S.salesSeg==='overdue'){ list=od; empty='Nothing overdue.'; }
+  else { list=E.filter(e=>e.status==='confirmed'&&(e.date||'')>=t); empty='No confirmed enquiries coming up.'; }
   return `
-  <div class="sec">Business on the books</div>
+  <div class="sec">Pipeline</div>
   <div class="grid2">
-    <div class="tile"><div class="k">Future bookings</div><div class="v">${fut.length}</div><div class="s">${gbpK(fut.reduce((a,r)=>a+r.value,0))}</div></div>
-    <div class="tile"><div class="k">Events &amp; meetings</div><div class="v">${fn.length}</div><div class="s">${gbpK(fnVal)} with a function room</div></div>
+    <div class="tile tap" onclick="set('salesSeg','open')"><div class="k">Open enquiries</div><div class="v">${S.summary?oe.length:'—'}</div><div class="s">${S.summary?gbpK(oe.reduce((a,e)=>a+e.value,0)):'from the portal'}</div></div>
+    <div class="tile tap" onclick="set('salesSeg','overdue')"><div class="k">Follow-up overdue</div><div class="v" style="${od.length?'color:var(--bad)':''}">${S.summary?od.length:'—'}</div><div class="s">need a call</div></div>
+    <div class="tile"><div class="k">Future bookings</div><div class="v">${fut.length}</div><div class="s">${gbpK(fut.reduce((a,r)=>a+r.value,0))} on the books</div></div>
     <div class="tile"><div class="k">Booked last 7 days</div><div class="v">${newWk.length}</div><div class="s">${gbpK(newWk.reduce((a,r)=>a+r.value,0))}</div></div>
-    <div class="tile"><div class="k">Open enquiries</div><div class="v">${P?P.open:'—'}</div><div class="s">${P?`${gbpK(P.openValue)}${P.overdue?` · <b style="color:var(--bad)">${P.overdue} overdue</b>`:''}`:'from the portal'}</div></div>
   </div>
-  <div class="sec">Revenue on the books by arrival month</div>
-  <div class="card">${months.map(m=>`<div class="bar"><div>${new Date(m+'-15').toLocaleDateString('en-GB',{month:'short',year:'2-digit'})}</div><div class="tr"><div class="fl" style="width:${Math.max(2,by[m]/mx*100)}%"></div></div><div class="vv">${gbpK(by[m])}</div></div>`).join('')||'<div class="empty">No future bookings.</div>'}
-    <div class="note">Direct bookings made at the hotel (Rezlynx). Online channel bookings are not included.</div></div>
+  <div class="sec">Enquiries · tap for details</div>
+  ${seg('salesSeg',[['open','Open'],['overdue','Overdue'],['won','Confirmed']])}
+  <div class="card">${!S.summary?`<div class="empty">${S.loaded?'Open the main portal once to publish the enquiry list.':'Loading…'}</div>`:list.slice(0,60).map(enqRow).join('')||`<div class="empty">${empty}</div>`}</div>
   <div class="sec">Biggest upcoming events</div>
-  <div class="card">${fn.slice().sort((a,b)=>b.value-a.value).slice(0,8).map(r=>`<div class="row"><div class="l"><div class="t">${esc(r.guest)}</div><div class="m">${fmtD(r.arrival)} · ${esc(r.room)} · ${esc(r.operator||'')}</div></div><div class="r">${gbp(r.value)}</div></div>`).join('')||'<div class="empty">None.</div>'}</div>
+  <div class="card">${fn.slice().sort((a,b)=>b.value-a.value).slice(0,10).map(r=>bobRow(r,`${fmtD(r.arrival)} · ${esc(r.room)}${r.pax?' · '+r.pax+' guests':''}`)).join('')||'<div class="empty">None.</div>'}</div>
   <div class="sec">Booked in the last 7 days</div>
-  <div class="card">${newWk.slice().sort((a,b)=>(b.bookedAt||b.booked).localeCompare(a.bookedAt||a.booked)).slice(0,10).map(r=>`<div class="row"><div class="l"><div class="t">${esc(r.guest)}</div><div class="m">Booked ${fmtD(r.booked)} by ${esc(r.operator||'')} · arrives ${fmtD(r.arrival)}</div></div><div class="r">${gbp(r.value)}</div></div>`).join('')||'<div class="empty">No new direct bookings this week.</div>'}
-  ${canc.length?`<div class="note">${canc.length} cancellation${canc.length>1?'s':''} logged this week.</div>`:''}</div>
+  <div class="card">${newWk.slice().sort((a,b)=>(b.bookedAt||b.booked).localeCompare(a.bookedAt||a.booked)).slice(0,12).map(r=>bobRow(r,`Booked ${fmtD(r.booked)} by ${esc(r.operator||'')} · ${fmtD(r.arrival)}`)).join('')||'<div class="empty">No new bookings this week.</div>'}</div>
+  <div class="sec">Revenue on the books by month</div>
+  <div class="card">${months.map(m=>`<div class="bar"><div>${new Date(m+'-15').toLocaleDateString('en-GB',{month:'short',year:'2-digit'})}</div><div class="tr"><div class="fl" style="width:${Math.max(2,by[m]/mx*100)}%"></div></div><div class="vv">${gbpK(by[m])}</div></div>`).join('')||'<div class="empty">No future bookings.</div>'}
+    <div class="note">From the Rezlynx Booking Source Report (direct bookings).</div></div>
   ${upd()}`;
 }
 
+/* Occupancy & ADR */
+function periodStats(ks){ let rooms=0,days=0,rev=0,revDays=0,bf=0,dn=0;
+  ks.forEach(k=>{ const o=occOf(k); if(o){ rooms+=o.rooms; days++; bf+=o.f.breakfastCovers||0; dn+=o.f.dinnerCovers||0; if(o.rev){ rev+=o.rev; revDays+=o.rooms; } } });
+  return {days,rooms,occ:days?rooms/(days*bedrooms())*100:null,adr:revDays?rev/revDays:null,revpar:days&&rev?rev/(days*bedrooms()):null,bf,dn}; }
+function vStats(){
+  const t=TODAY(), past=[...Array(7)].map((_,i)=>addD(t,-7+i)), next=[...Array(7)].map((_,i)=>addD(t,i+1));
+  const T=periodStats([t]), A=periodStats(past), N=periodStats(next);
+  const pct=v=>v==null?'—':Math.round(v)+'%', adr=v=>v==null?'—':'£'+v.toFixed(0);
+  const col=v=>v>=80?'var(--good)':v>=55?'var(--jade-d)':v>=35?'#d97706':'var(--bad)';
+  const block=(lab,X,n)=>`<div class="tile"><div class="k">${lab}</div><div class="v">${pct(X.occ)}</div><div class="s">ADR ${adr(X.adr)}${X.days&&X.days<n?` · ${X.days} of ${n} days`:''}</div></div>`;
+  const rows=[...past,t,...next].map(k=>{ const o=occOf(k); return `<div class="occ ${k===t?'today':''}"><div>${k===t?'Today':fmtDW(k)}</div><div class="tr">${o?`<div class="fl" style="width:${Math.min(100,o.occ)}%;background:${col(o.occ)}"></div>`:''}</div><div class="r">${o?Math.round(o.occ)+'%':'—'}</div><div class="r" style="font-weight:700">${o&&o.adr?'£'+o.adr.toFixed(0):'—'}</div></div>`; }).join('');
+  return `<div class="sec">Occupancy &amp; ADR</div>
+  <div class="grid2">${block('Tonight',T,1)}${block('Next 7 days',N,7)}${block('Last 7 days',A,7)}
+    <div class="tile"><div class="k">Rooms sold next 7</div><div class="v">${N.rooms||'—'}</div><div class="s">${N.bf?N.bf+' breakfasts · '+N.dn+' dinners':''}</div></div></div>
+  <div class="sec">Day by day</div>
+  <div class="card"><div class="occ" style="font:900 10px Lato;text-transform:uppercase;color:var(--muted)"><div>Date</div><div>Occupancy</div><div class="r">Occ</div><div class="r">ADR</div></div>${rows}
+    <div class="note">Occupancy = rooms occupied ÷ ${bedrooms()} bedrooms, from the weekly rota forecast. Days show “—” where no forecast has been entered. ADR and RevPAR will fill in automatically once the Guestline (Rezlynx) data feed is connected.</div></div>
+  ${(()=>{ const f=fcAll(); const nx=next.filter(k=>f[k]); return nx.length?`<div class="sec">Next 7 days — arrivals &amp; covers</div><div class="card"><table class="tbl"><tr><th>Day</th><th>Rooms</th><th>Arr</th><th>Dep</th><th>Bkfst</th><th>Dinner</th></tr>${nx.map(k=>`<tr><td>${fmtDW(k)}</td><td>${f[k].rooms||0}</td><td>${f[k].arrivals||0}</td><td>${f[k].departures||0}</td><td>${f[k].breakfastCovers||0}</td><td>${f[k].dinnerCovers||0}</td></tr>`).join('')}</table></div>`:''; })()}
+  ${upd()}`;
+}
+
+/* F&B */
+function fbData(){ const s=S.summary; if(!s) return null;
+  const cur=s.fb, prev=s.fbPrev; let f=(S.fbMonth==='prev'&&prev)?prev:(cur&&cur.daysIn?cur:(prev||cur)); if(!f) return null;
+  return Object.assign({label:new Date(f.month+'-15').toLocaleDateString('en-GB',{month:'short'})+' to date'},f); }
 function vFB(){
-  const fb=S.summary&&S.summary.fb;
-  if(!fb) return `<div class="sec">F&amp;B</div><div class="card"><div class="empty">No F&amp;B figures yet. They appear once the team enters sales in the F&amp;B Tracker.</div></div>${upd()}`;
+  const fb=fbData();
+  if(!fb) return `<div class="sec">F&amp;B</div><div class="card"><div class="empty">${S.loaded?'No F&amp;B figures published yet. Open the main portal once (signed in) and they will appear here.':'Loading…'}</div></div>${upd()}`;
+  const s=S.summary, both=s.fb&&s.fb.daysIn&&s.fbPrev;
   const blk=(t,o)=>`<div class="card"><div class="row"><div class="l"><div class="t" style="font-size:16px">${t}</div></div>${gpPill(o)}</div>
-    <div class="grid2" style="margin-top:6px"><div><div class="tile" style="box-shadow:none;padding:6px 0"><div class="k">Sales MTD</div><div class="v">${gbpK(o.sales)}</div></div></div>
-    <div><div class="tile" style="box-shadow:none;padding:6px 0"><div class="k">GP</div><div class="v">${o.gp!=null?o.gp+'%':'—'}</div><div class="s">target ${o.target}%</div></div></div></div>
-    <div class="note">${o.sales?`Spend so far ${gbp(o.cost)} — ${o.headroom>=0?`<b style="color:var(--good)">${gbp(o.headroom)} under</b>`:`<b style="color:var(--bad)">${gbp(-o.headroom)} over</b>`} the allowance at target GP.${o.left>0?` About <b>${gbp(Math.max(0,o.remain))}</b> left to spend this month (${gbp(Math.max(0,o.perDay))} a day).`:''}`:'No sales entered yet.'}</div></div>`;
-  return `<div class="sec">${new Date(fb.month+'-15').toLocaleDateString('en-GB',{month:'long',year:'numeric'})} to date</div>
-    <div class="grid2"><div class="tile"><div class="k">Total F&amp;B</div><div class="v">${gbpK(fb.food.sales+fb.bev.sales)}</div><div class="s">${fb.daysIn} day${fb.daysIn===1?'':'s'} entered</div></div>
-    <div class="tile"><div class="k">Covers</div><div class="v">${(fb.covers||0).toLocaleString('en-GB')}</div><div class="s">${fb.covers?'£'+((fb.food.sales+fb.bev.sales)/fb.covers).toFixed(2)+' average':''}</div></div></div>
+    <div class="grid2" style="margin-top:6px"><div class="tile" style="box-shadow:none;padding:6px 0"><div class="k">Sales</div><div class="v">${gbpK(o.sales)}</div></div>
+    <div class="tile" style="box-shadow:none;padding:6px 0"><div class="k">GP</div><div class="v">${o.gp!=null?o.gp+'%':'—'}</div><div class="s">target ${o.target}%</div></div></div>
+    <div class="note">${o.sales?`Purchases ${gbp(o.cost)} — ${o.headroom>=0?`<b style="color:var(--good)">${gbp(o.headroom)} under</b>`:`<b style="color:var(--bad)">${gbp(-o.headroom)} over</b>`} the allowance at target GP.${o.left>0&&o.remain!=null?` About <b>${gbp(Math.max(0,o.remain))}</b> left to spend this month (${gbp(Math.max(0,o.perDay))} a day).`:''}`:'No sales entered yet.'}</div></div>`;
+  const days=(fb.days||[]).filter(d=>d.food||d.bev||d.pf||d.pb).slice().reverse();
+  const mx=Math.max(1,...days.map(d=>d.food+d.bev));
+  const tot=fb.food.sales+fb.bev.sales;
+  return `<div class="sec">${new Date(fb.month+'-15').toLocaleDateString('en-GB',{month:'long',year:'numeric'})}${fb.lastEntry?' · to '+fmtD(fb.lastEntry):''}</div>
+    ${both?seg('fbMonth',[['cur','This month'],['prev','Last month']]):''}
+    <div class="grid2"><div class="tile"><div class="k">Total F&amp;B</div><div class="v">${gbpK(tot)}</div><div class="s">${fb.daysIn} day${fb.daysIn===1?'':'s'} entered</div></div>
+    <div class="tile"><div class="k">Covers</div><div class="v">${(fb.covers||0).toLocaleString('en-GB')}</div><div class="s">${fb.covers?'£'+(tot/fb.covers).toFixed(2)+' a head':''}</div></div>
+    <div class="tile"><div class="k">Food</div><div class="v">${gbpK(fb.food.sales)}</div><div class="s">GP ${fb.food.gp!=null?fb.food.gp+'%':'—'}</div></div>
+    <div class="tile"><div class="k">Drink</div><div class="v">${gbpK(fb.bev.sales)}</div><div class="s">GP ${fb.bev.gp!=null?fb.bev.gp+'%':'—'}</div></div></div>
+    <div class="sec">Daily sales</div>
+    <div class="card">${days.map(d=>`<div class="bar" style="grid-template-columns:70px 1fr 70px"><div>${fmtDW(d.d)}</div><div class="tr"><div class="fl" style="width:${Math.max(2,(d.food+d.bev)/mx*100)}%"></div></div><div class="vv">${gbp(d.food+d.bev)}</div></div><div class="mini" style="margin:-4px 0 6px 78px">Food ${gbp(d.food)} · Drink ${gbp(d.bev)}${d.covers?' · '+d.covers+' covers':''}${d.pf||d.pb?' · purchases '+gbp(d.pf+d.pb):''}</div>`).join('')||'<div class="empty">No days entered.</div>'}</div>
+    ${fb.lines&&fb.lines.length?`<div class="sec">By outlet</div><div class="card"><table class="tbl"><tr><th>Outlet</th><th>Food</th><th>Drink</th><th>Covers</th></tr>${fb.lines.filter(l=>l.food||l.bev||l.covers).map(l=>`<tr><td>${esc(l.name)}</td><td>${gbp(l.food)}</td><td>${gbp(l.bev)}</td><td>${l.covers||''}</td></tr>`).join('')}</table></div>`:''}
     <div class="sec">Food</div>${blk('🍽 Food',fb.food)}<div class="sec">Drink</div>${blk('🍷 Beverage',fb.bev)}${upd()}`;
 }
 
-function vTeam(){
-  const R=rotaToday();
-  if(!R) return `<div class="sec">Team today</div><div class="card"><div class="empty">The rota hasn't been published yet.</div></div>`;
-  const by={}; R.on.forEach(p=>{ (by[p.dept]=by[p.dept]||[]).push(p); });
-  const nm=id=>((R.depts||[]).find(d=>d.id===id)||{}).name||id||'Other';
-  return `<div class="sec">Team today</div>
-  <div class="grid2"><div class="tile"><div class="k">On shift</div><div class="v">${R.on.length}</div></div><div class="tile"><div class="k">Holiday / sick</div><div class="v">${R.hol} / ${R.sick}</div></div></div>
-  ${Object.keys(by).sort().map(d=>`<div class="sec">${esc(nm(d))} · ${by[d].length}</div><div class="card">${by[d].sort((a,b)=>a.shift.localeCompare(b.shift)).map(p=>`<div class="row"><div class="l"><div class="t">${esc(p.name)}</div><div class="m">${esc(p.role||'')}</div></div><div class="r" style="font-weight:700">${esc(p.shift)}</div></div>`).join('')}</div>`).join('')}
-  <div class="upd">Rota published ${S.rota.updated?new Date(S.rota.updated).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''}</div>`;
+/* Shifts */
+function vShifts(){
+  const t=TODAY(); if(!S.shWeek) S.shWeek=monday(t);
+  let h=`<div class="sec">Shifts</div>${seg('shSeg',[['today','Day'],['week','Week'],['person','Person']])}`;
+  if(S.shSeg==='today'){
+    const k=addD(t,S.shDay), D=dayList(k);
+    h+=`<div class="wkbar"><button onclick="set('shDay',${S.shDay-1})">‹</button><div class="lab">${S.shDay===0?'Today · ':S.shDay===1?'Tomorrow · ':''}${fmtDW(k)}</div><button onclick="set('shDay',${S.shDay+1})">›</button></div>`;
+    if(!D.has) return h+`<div class="card"><div class="empty">No rota loaded for this day yet.</div></div>`;
+    h+=`<div class="grid2"><div class="tile"><div class="k">Working</div><div class="v">${D.on.length}</div></div><div class="tile"><div class="k">Holiday · sick · on call</div><div class="v">${D.hol} · ${D.sick} · ${D.call}</div></div></div>`;
+    h+=byDept(D.on,true);
+  } else if(S.shSeg==='week'){
+    const w=S.shWeek, days=[...Array(7)].map((_,i)=>addD(w,i));
+    h+=weekBar(w);
+    h+=days.map(k=>{ const D=dayList(k); return `<div class="sec">${k===t?'Today · ':''}${fmtDL(k)}${D.has?' · '+D.on.length+' working':''}</div><div class="card">${D.has?byDept(D.on,false):'<div class="empty">No rota loaded.</div>'}</div>`; }).join('');
+  } else {
+    const R=rotaData(), w=S.shWeek, days=[...Array(7)].map((_,i)=>addD(w,i));
+    const people=Object.values(R.staff).filter(s=>Object.values(R.rota).some(d=>d[s.id]!==undefined)).sort((a,b)=>a.name.localeCompare(b.name));
+    h+=`<select class="inp" onchange="set('shPerson',this.value)"><option value="">Choose a person…</option>${people.map(p=>`<option value="${esc(p.id)}" ${S.shPerson===p.id?'selected':''}>${esc(p.name)}${p.role?' — '+esc(p.role):''}</option>`).join('')}</select><div style="height:10px"></div>${weekBar(w)}`;
+    if(S.shPerson){ const p=R.staff[S.shPerson]||{}; let hrs=0;
+      const rows=days.map(k=>{ const v=(R.rota[k]||{})[S.shPerson]; const sh=shiftOf(v); const m=sh.match(/(\d\d):(\d\d)\s*-\s*(\d\d):(\d\d)/);
+        if(m){ let a=+m[1]*60+ +m[2], b=+m[3]*60+ +m[4]; if(b<=a) b+=1440; hrs+=(b-a)/60; }
+        const dept=v&&typeof v==='object'&&v.dept?deptMeta(v.dept).name:'';
+        return `<div class="row"><div class="l"><div class="t">${fmtDW(k)}${k===t?' · today':''}</div>${dept?`<div class="m">${esc(dept)}</div>`:''}</div><div class="r" style="${working(v)?'':'color:var(--muted);font-weight:700'}">${v===undefined?'—':esc(sh||'off').replace(/^off$/i,'Off')}</div></div>`; }).join('');
+      h+=`<div class="card"><div class="row"><div class="l"><div class="t" style="font-size:16px">${esc(p.name||'')}</div><div class="m">${esc(p.role||'')} · ${esc(deptMeta(p.dept).name)}</div></div><div class="r">${hrs?Math.round(hrs*10)/10+' hrs':''}</div></div>${rows}</div>
+      <div class="note">Hours are shift length before breaks.${p.staffCode?` Their own rota link: brandon.hospro.co.uk/my-rota.html (ID ${esc(p.staffCode)}).`:''}</div>`;
+    } else h+=`<div class="card"><div class="empty">Choose someone to see their week.</div></div>`;
+  }
+  const u=S.rota&&S.rota.updated; return h+`<div class="upd">${u?'Rota published '+new Date(u).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Rota from the latest import'}</div>`;
+}
+function weekBar(w){ const t=TODAY(), cur=monday(t); const lab=w===cur?'This week':w===addD(cur,7)?'Next week':w===addD(cur,-7)?'Last week':'Week of';
+  return `<div class="wkbar"><button onclick="S.shWeek=addD(S.shWeek,-7);draw()">‹</button><div class="lab">${lab} · ${fmtD(w)} – ${fmtD(addD(w,6))}</div><button onclick="S.shWeek=addD(S.shWeek,7);draw()">›</button></div>`; }
+function byDept(on,big){ const by={}; on.forEach(p=>{ (by[p.dept]=by[p.dept]||[]).push(p); });
+  const order=rotaData().depts.map(d=>d.id); const keys=Object.keys(by).sort((a,b)=>(order.indexOf(a)+99*(order.indexOf(a)<0))-(order.indexOf(b)+99*(order.indexOf(b)<0)));
+  if(!keys.length) return '<div class="empty">Nobody rostered.</div>';
+  const inner=keys.map(d=>{ const m=deptMeta(d); return `<div class="dept" style="color:${m.colour||'#475569'}"><span class="dot" style="background:${m.colour||'#94a3b8'}"></span>${esc(m.name)} · ${by[d].length}</div>${by[d].sort((a,b)=>a.shift.localeCompare(b.shift)).map(p=>`<div class="sh"><span>${esc(p.name)}${big&&p.role?` <span class="mini">${esc(p.role)}</span>`:''}</span><b>${esc(p.shift)}</b></div>`).join('')}`; }).join('');
+  return big?`<div class="card" style="margin-top:10px">${inner}</div>`:inner; }
+
+/* More */
+function vMore(){ return `<div class="sec">More</div>
+  <button class="big" onclick="go('rooms')">🏛 Meeting &amp; event rooms<span>Sizes, capacities by layout and room hire</span></button>
+  <button class="big" onclick="go('events')">🎟 Local events<span>Concerts, shows and sport near Brandon Hall</span></button>
+  <button class="big" onclick="go('fix')">🔧 Maintenance &amp; compliance<span>Open HosFIX jobs</span></button>
+  <a class="big" style="text-decoration:none" href="${PORTAL}" target="_blank" rel="noopener">🖥 Open the full HosPRO portal<span>brandon.hospro.co.uk</span></a>`; }
+const back=`<button class="chip" style="margin:6px 0 2px" onclick="go('more')">‹ More</button>`;
+
+function vRooms(){
+  const L=[['theatre','Theatre'],['cabaret','Cabaret'],['boardroom','Boardroom'],['ushape','U-shape'],['reception','Reception']];
+  const lay=S.roomLayout, pax=+S.roomPax||0;
+  const rooms=(P.rooms||[]).filter(r=>!pax||(r.cap&&r.cap[lay]>=pax)).sort((a,b)=>(b.cap[lay]||0)-(a.cap[lay]||0));
+  return `${back}<div class="sec">Meeting &amp; event rooms</div>
+  ${chips('roomLayout',L)}
+  <input class="inp" type="number" inputmode="numeric" placeholder="Guests — show rooms that fit" value="${S.roomPax}" oninput="S.roomPax=this.value;clearTimeout(window._rp);window._rp=setTimeout(()=>{draw();const i=document.querySelector('#main input');if(i){i.focus();i.setSelectionRange(99,99)}},350)">
+  <div style="height:10px"></div>
+  ${rooms.map(r=>{ const h=P.hire&&P.hire[r.id]; const c=r.cap||{};
+    return `<div class="card"><div class="row" style="padding-top:0"><div class="l"><div class="t" style="font-size:16px">${esc(r.name)}</div><div class="m">${r.m2?r.m2+' m²':''}${r.length&&r.width?' · '+r.length+' × '+r.width+' m':''}${r.combined?' · '+esc(r.combined):''}</div></div><div class="r" style="font-size:20px">${c[lay]||'—'}<div class="mini" style="text-align:right;font-weight:700">${L.find(x=>x[0]===lay)[1].toLowerCase()}</div></div></div>
+    <table class="tbl"><tr>${L.map(([k,l])=>`<th style="text-align:center">${l}</th>`).join('')}</tr><tr>${L.map(([k])=>`<td style="text-align:center;${k===lay?'font-weight:900':''}">${c[k]||'—'}</td>`).join('')}</tr></table>
+    ${h?`<div class="note">Room hire: half day ${gbp(h.half)} · full day ${gbp(h.full)} (inc VAT)</div>`:''}</div>`; }).join('')||'<div class="card"><div class="empty">No room fits that many in this layout. Try another layout.</div></div>'}`;
+}
+
+const evRow=e=>{ const d=Math.round((new Date(e.start+'T12:00')-new Date(TODAY()+'T12:00'))/864e5);
+  return `<a class="row tap" style="text-decoration:none;color:inherit" href="${esc(e.url||'#')}" target="_blank" rel="noopener"><div class="l"><div class="t">${esc(e.name)}</div><div class="m">${fmtD(e.start)}${e.end&&e.end!==e.start?' – '+fmtD(e.end):''} · ${esc(e.venue||'')}${evMiles(e)!=null?' · '+evMiles(e)+' mi':''}</div></div><div class="r" style="font-size:12px;${d<=14?'color:#b45309':'color:var(--muted)'}">${d<=0?'On now':d===1?'Tomorrow':'in '+d+' days'}<span class="chev">›</span></div></a>`; };
+function evMiles(e){ if(e.miles!=null&&e.miles!=='') return +e.miles; const v=String(e.venue||'').toLowerCase(); if(!v) return null; if(/coventry city centre/.test(v)) return 4.5;
+  let best=null; (P.venues||[]).forEach(x=>{ const key=x.name.toLowerCase().replace(/\s*\(.*\)/,'').split(/[,–-]/)[0].trim(); if(key&&(v.includes(key)||key.includes(v.split(/[,/]/)[0].trim()))){ if(best==null||x.miles<best) best=x.miles; } }); return best; }
+function vEvents(){
+  const t=TODAY(), to=S.evRange==='all'?'9999':addD(t,+S.evRange);
+  const list=(P.events||[]).filter(e=>(e.end||e.start)>=t && e.start<=to).filter(e=>{ const m=evMiles(e); return m==null||m<=S.evMiles; }).sort((a,b)=>a.start.localeCompare(b.start));
+  const ven=(P.venues||[]).filter(v=>v.miles<=S.evMiles);
+  return `${back}<div class="sec">Local events &amp; shows</div>
+  ${chips('evRange',[['30','Next 30 days'],['90','Next 3 months'],['all','All upcoming']])}
+  ${chips('evMiles',[[20,'20 miles'],[30,'30 miles'],[50,'50 miles']])}
+  <div class="card">${list.map(evRow).join('')||'<div class="empty">No dated events in this range.</div>'}</div>
+  <div class="note" style="margin:0 4px">Use these to sell room and dinner packages. Always check dates on the venue's site first. Miles are straight-line from Brandon Hall.</div>
+  <div class="sec">Venues within ${S.evMiles} miles · ${ven.length}</div>
+  <div class="card">${ven.map(v=>`<a class="row tap" style="text-decoration:none;color:inherit" href="${esc(v.url)}" target="_blank" rel="noopener"><div class="l"><div class="t">${esc(v.name)}</div><div class="m">${esc(v.town)} · ${esc(v.category)}${v.capacity?' · '+esc(v.capacity):''}</div></div><div class="r" style="font-size:12.5px">${v.miles} mi<span class="chev">›</span></div></a>`).join('')}</div>`;
 }
 
 function vFix(){
   const J=S.jobs; const C=S.summary&&S.summary.compliance;
-  if(!J) return `<div class="sec">Maintenance</div><div class="card"><div class="empty">${S.loaded?'Could not load maintenance jobs.':'Loading…'}</div></div>`;
+  if(!J) return `${back}<div class="sec">Maintenance</div><div class="card"><div class="empty">${S.loaded?'Could not load maintenance jobs.':'Loading…'}</div></div>`;
   const pr={urgent:0,high:1,medium:2,low:3};
   const list=J.slice().sort((a,b)=>(pr[a.priority]??2)-(pr[b.priority]??2));
-  return `<div class="sec">Maintenance &amp; compliance</div>
+  return `${back}<div class="sec">Maintenance &amp; compliance</div>
   <div class="grid2"><div class="tile"><div class="k">Open jobs</div><div class="v">${J.length}</div><div class="s">${J.filter(j=>j.priority==='urgent').length} urgent</div></div>
   <div class="tile"><div class="k">Compliance</div><div class="v">${C?C.overdue:'—'}</div><div class="s">${C?`overdue · ${C.dueSoon} due this week`:'from the portal'}</div></div></div>
   <div class="sec">Open jobs</div>
-  <div class="card">${list.slice(0,25).map(j=>`<div class="row"><div class="l"><div class="t">${esc(j.title||j.description||'Job')}</div><div class="m">${[j.location||j.area,j.assignedName||j.assignedTo,j.status==='pending_approval'?'awaiting approval':j.status==='in-progress'?'in progress':'not started'].filter(Boolean).map(esc).join(' · ')}</div></div>${j.priority==='urgent'?'<span class="pill bd">Urgent</span>':''}</div>`).join('')||'<div class="empty">No open jobs 🎉</div>'}</div>`;
+  <div class="card">${list.slice(0,30).map(j=>`<div class="row"><div class="l"><div class="t">${esc(j.title||j.description||'Job')}</div><div class="m">${[j.location||j.area,j.assignedName||j.assignedTo,j.status==='pending_approval'?'awaiting approval':j.status==='in-progress'?'in progress':'not started'].filter(Boolean).map(esc).join(' · ')}</div></div>${j.priority==='urgent'?'<span class="pill bd">Urgent</span>':''}</div>`).join('')||'<div class="empty">No open jobs 🎉</div>'}</div>`;
 }
 
 /* install tip + service worker */

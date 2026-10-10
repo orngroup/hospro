@@ -152,7 +152,7 @@ async function boot(){
       const old=["Dairy Carbon Network","Andre Brissett","Dominic Hillyard","Rebekah Stretton","Samantha Courtnell"];
       for(const e of DB.all()){ if(old.includes(e.name) && !e.ref && e.id) await FB.db.collection("enquiries").doc(e.id).delete(); }
     }catch(err){ console.warn("Sample cleanup skipped",err); } }, 4000);
-    setTimeout(async()=>{ try{ await fbtImportSubmissions(true); }catch(e){} hpPublishSummary(false); }, 6000);
+    setTimeout(async()=>{ try{ await fbtImportSubmissions(true); }catch(e){} hpPublishSummary(true); }, 6000);
   }
 }
 /* ── HosPRO Pocket (mobile.html): a high-level summary published to hospro_public/summary.
@@ -172,6 +172,19 @@ async function hpPublishSummary(force){
         confirmedFutureValue:Math.round(pipe.filter(e=>e.status==="confirmed"&&(e.date||"")>=today).reduce((t,e)=>t+(+e.value||0),0)),
         newThisWeek:pipe.filter(e=>(typeof enqDate==="function"?enqDate(e):"")>=wkK).length,
         overdue:pipe.filter(e=>e.followUp&&e.followUp<today&&["enquiry","provisional"].includes(e.status)).length } };
+    // Enquiry list for Pocket (tap for details). Business details only — no email addresses or phone numbers.
+    const enqList=pipe.filter(e=>e._kind==="enquiry" || ["enquiry","provisional"].includes(e.status))
+      .filter(e=>e.status!=="cancelled" && (["enquiry","provisional"].includes(e.status) || (e.date||"")>=today))
+      .map(e=>({ id:String(e.id||e.ref||""), name:e.name||"", company:e.company||e.co||"", eventType:e.eventType||e.event||e.fnType||"",
+        date:e.date||"", departure:e.departure||"", pax:+e.pax||0, value:Math.round(+e.value||0), status:e.status||"enquiry",
+        owner:e.owner||"", followUp:e.followUp||"", source:e.source||"", roomName:e.roomName||"", ref:e.ref||"",
+        created:(typeof enqDate==="function"?enqDate(e):"")||"", stage:e.stage||e.dealStage||"", rooms:+e.rooms||0, nights:+e.nights||0 }))
+      .sort((a,b)=>(a.date||"9").localeCompare(b.date||"9")).slice(0,150);
+    sum.enquiries=enqList;
+    // Rooms forecast (from the rota forecast) for occupancy: 3 weeks back to 5 weeks ahead
+    try{ const fc=typeof spGetFC==="function"?spGetFC():{}; const a=new Date(); a.setDate(a.getDate()-21); const b=new Date(); b.setDate(b.getDate()+35);
+      const out={}; Object.keys(fc).filter(k=>k>=spDK(a)&&k<=spDK(b)).forEach(k=>{ const f=fc[k]||{}; out[k]={rooms:+f.rooms||0,arrivals:+f.arrivals||0,departures:+f.departures||0,stayovers:+f.stayovers||0,breakfastCovers:+f.breakfastCovers||0,dinnerCovers:+f.dinnerCovers||0,revenue:+f.roomRevenue||+f.revenue||0}; });
+      sum.fc=out; sum.bedrooms=120; }catch(e){}
     const comp=typeof ALL_COMP_TASKS!=="undefined"?ALL_COMP_TASKS:[], now=new Date();
     sum.compliance={ overdue:comp.filter(t=>t.status!=="done"&&new Date(t.dueDate)<now).length,
       dueSoon:comp.filter(t=>{const d=new Date(t.dueDate);return t.status!=="done"&&d>=now&&d<new Date(now.getTime()+7*864e5);}).length, total:comp.length };
@@ -181,8 +194,19 @@ async function hpPublishSummary(force){
       if(CURRENT_TAB!=="fbTracker" || !FBT.data) await fbtLoad(fbtMonthKey(y));
       const C=fbtCalc(); const yr=C.rows.find(r=>r.d===spDK(y));
       const pick=o=>({sales:Math.round(o.sales),cost:Math.round(o.cos),gp:isFinite(o.gp)?Math.round(o.gp*10)/10:null,target:o.target,headroom:Math.round(o.headroom),remain:Math.round(o.remainBudget),perDay:Math.round(o.perDay),left:o.left});
-      sum.fb={ month:FBT.month, food:pick(C.food), bev:pick(C.bev), covers:C.covers, daysIn:C.daysIn,
+      // per-line month to date (breakfast, dinner, bar…)
+      const lineTot={}; Object.values((FBT.data&&FBT.data.sales)||{}).forEach(day=>Object.entries(day||{}).forEach(([lid,l])=>{ const t=lineTot[lid]=lineTot[lid]||{food:0,bev:0,covers:0}; t.food+=fbtN(l.food); t.bev+=fbtN(l.bev); t.covers+=fbtN(l.covers); }));
+      const nameOf=id=>((FBT.settings&&FBT.settings.lines||[]).find(l=>l.id===id)||{}).name||id;
+      sum.fb={ month:FBT.month, food:pick(C.food), bev:pick(C.bev), covers:C.covers, daysIn:C.daysIn, lastEntry:C.lastSales||null,
+        purchFood:Math.round(C.food.purch), purchBev:Math.round(C.bev.purch), invoices:(C.inv||[]).length,
+        days:C.rows.filter(r=>r.hasSales||r.pf||r.pb).map(r=>({d:r.d,food:Math.round(r.food),bev:Math.round(r.bev),covers:r.covers,pf:Math.round(r.pf),pb:Math.round(r.pb)})),
+        lines:Object.entries(lineTot).map(([id,t])=>({id,name:nameOf(id),food:Math.round(t.food),bev:Math.round(t.bev),covers:t.covers})).sort((a,b)=>(b.food+b.bev)-(a.food+a.bev)),
         yesterday: yr&&yr.hasSales?{date:yr.d,food:Math.round(yr.food),bev:Math.round(yr.bev),covers:yr.covers}:null };
+      // If nothing is entered yet this month, fall back to the last month that has figures
+      if(!C.daysIn && CURRENT_TAB!=="fbTracker"){ const pm=new Date(y.getFullYear(),y.getMonth()-1,15); await fbtLoad(fbtMonthKey(pm)); const P=fbtCalc();
+        if(P.daysIn){ sum.fbPrev={ month:FBT.month, food:pick(P.food), bev:pick(P.bev), covers:P.covers, daysIn:P.daysIn, lastEntry:P.lastSales,
+          days:P.rows.filter(r=>r.hasSales).map(r=>({d:r.d,food:Math.round(r.food),bev:Math.round(r.bev),covers:r.covers,pf:Math.round(r.pf),pb:Math.round(r.pb)})) }; }
+        await fbtLoad(fbtMonthKey(y)); }
     }
     if(typeof FBT!=="undefined" && FBT.settings && FBT.settings.lines) sum.fbLines=FBT.settings.lines.map(l=>({id:l.id,name:l.name,outlet:l.outlet||""}));
     await FB.db.collection("hospro_public").doc("summary").set(sum);
@@ -9253,6 +9277,7 @@ async function spPublishRota(silent){
     });
     try{ localStorage.setItem('sp_rota_published',new Date().toISOString()); }catch(e){}
     if(!silent) toast('✓ Rota published — staff links are up to date');
+    if(typeof hpPublishSummary==='function') setTimeout(()=>hpPublishSummary(true),500);
     const st=document.getElementById('sp-pub-status'); if(st) st.textContent='Last published: just now';
     return true;
   }catch(e){
