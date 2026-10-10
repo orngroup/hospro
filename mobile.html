@@ -163,7 +163,19 @@ function go(v){ S.view=v; const top=['today','sales','stats','fb','shifts'].incl
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===top)); window.scrollTo(0,0); draw(); }
 function set(k,v){ S[k]=v; draw(); }
 
+/* Fallback: read a public document over the Firestore REST API (used if the SDK can't connect, e.g. some Safari settings) */
+function fsVal(v){ if(!v) return null; if('stringValue' in v) return v.stringValue; if('integerValue' in v) return +v.integerValue; if('doubleValue' in v) return +v.doubleValue;
+  if('booleanValue' in v) return v.booleanValue; if('nullValue' in v) return null; if('timestampValue' in v) return v.timestampValue;
+  if('mapValue' in v){ const o={}; Object.entries(v.mapValue.fields||{}).forEach(([k,x])=>o[k]=fsVal(x)); return o; }
+  if('arrayValue' in v) return (v.arrayValue.values||[]).map(fsVal); return null; }
+async function restDoc(path){ const r=await fetch(`https://firestore.googleapis.com/v1/projects/${FBCFG.projectId}/databases/(default)/documents/${path}?key=${FBCFG.apiKey}`,{cache:'no-store'});
+  if(r.status===404) return null; if(!r.ok) throw new Error('HTTP '+r.status); const j=await r.json(); return fsVal({mapValue:{fields:j.fields||{}}}); }
 async function load(){
+  try{ const [a,b]=await Promise.allSettled([restDoc('hospro_public/summary'),restDoc('hospro_public/rota')]);
+    if(a.status==='fulfilled'&&a.value) S.summary=a.value; if(b.status==='fulfilled'&&b.value) S.rota=b.value;
+    if(a.status==='rejected') S.err='Summary: '+a.reason.message;
+    if(S.summary||S.rota){ S.loaded=true; draw(); }
+  }catch(e){}
   try{
     const app=firebase.apps.length?firebase.app():firebase.initializeApp(FBCFG); const db=app.firestore();
     const t=(p,ms)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),ms))]);
@@ -171,7 +183,7 @@ async function load(){
       t(db.collection('hospro_public').doc('summary').get(),9000),
       t(db.collection('hospro_public').doc('rota').get(),9000),
       t(db.collection('hosfix_jobs').where('status','in',['not-started','in-progress','pending_approval']).get(),9000)]);
-    if(sum.status==='fulfilled'&&sum.value.exists) S.summary=sum.value.data();
+    if(sum.status==='fulfilled'&&sum.value.exists) S.summary=sum.value.data(); else if(sum.status==='fulfilled'&&!S.summary) S.err='The portal has not published a summary yet';
     if(rota.status==='fulfilled'&&rota.value.exists) S.rota=rota.value.data();
     if(jobs.status==='fulfilled') S.jobs=jobs.value.docs.map(d=>Object.assign({_id:d.id},d.data()));
   }catch(e){ console.warn(e); }
@@ -208,7 +220,7 @@ function gpPill(o){ if(!o||!o.sales) return '<span class="pill nu">No sales yet<
   if(o.gp>=o.target-3) return '<span class="pill wa">! Watch spend</span>';
   return '<span class="pill bd">✕ Over spend</span>'; }
 function stPill(s){ return {enquiry:'<span class="pill wa">Enquiry</span>',provisional:'<span class="pill nu">Provisional</span>',confirmed:'<span class="pill ok">Confirmed</span>',cancelled:'<span class="pill bd">Cancelled</span>',lost:'<span class="pill bd">Lost</span>'}[s]||`<span class="pill nu">${esc(s||'')}</span>`; }
-function upd(){ const u=S.summary&&S.summary.updated; return `<div class="upd">${u?'Portal figures updated '+new Date(u).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):S.loaded?'Open the main portal once to publish the latest figures':'Loading…'}${typeof BOB!=='undefined'&&BOB.pulled?' · bookings from Rezlynx '+new Date(BOB.pulled).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</div>`; }
+function upd(){ const u=S.summary&&S.summary.updated; return `<div class="upd">${u?'Portal figures updated '+new Date(u).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):S.loaded?'Not published yet — in the portal open F&amp;B Tracker and press 📱 Update Pocket'+(S.err?' ('+esc(S.err)+')':''):'Loading…'}${typeof BOB!=='undefined'&&BOB.pulled?' · bookings from Rezlynx '+new Date(BOB.pulled).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</div>`; }
 const seg=(key,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button class="${S[key]===v?'on':''}" onclick="set('${key}','${v}')">${l}</button>`).join('')}</div>`;
 const chips=(key,opts)=>`<div class="chips">${opts.map(([v,l])=>`<button class="chip ${String(S[key])===String(v)?'on':''}" onclick="set('${key}',${typeof v==='number'?v:`'${v}'`})">${l}</button>`).join('')}</div>`;
 
@@ -335,7 +347,7 @@ function fbData(){ const s=S.summary; if(!s) return null;
   return Object.assign({label:new Date(f.month+'-15').toLocaleDateString('en-GB',{month:'short'})+' to date'},f); }
 function vFB(){
   const fb=fbData();
-  if(!fb) return `<div class="sec">F&amp;B</div><div class="card"><div class="empty">${S.loaded?'No F&amp;B figures published yet. Open the main portal once (signed in) and they will appear here.':'Loading…'}</div></div>${upd()}`;
+  if(!fb) return `<div class="sec">F&amp;B</div><div class="card"><div class="empty">${S.loaded?'No F&amp;B figures published yet. In the portal, open F&amp;B Tracker and press 📱 Update Pocket, then pull down to refresh here.':'Loading…'}</div></div>${upd()}`;
   const s=S.summary, both=s.fb&&s.fb.daysIn&&s.fbPrev;
   const blk=(t,o)=>`<div class="card"><div class="row"><div class="l"><div class="t" style="font-size:16px">${t}</div></div>${gpPill(o)}</div>
     <div class="grid2" style="margin-top:6px"><div class="tile" style="box-shadow:none;padding:6px 0"><div class="k">Sales</div><div class="v">${gbpK(o.sales)}</div></div>

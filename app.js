@@ -160,7 +160,7 @@ async function boot(){
    portal opens and after F&B entries, at most every 10 minutes unless forced. ── */
 async function hpPublishSummary(force){
   try{
-    if(!(typeof FB!=="undefined" && FB.ready && FB.user && FB.db)) return;
+    if(!(typeof FB!=="undefined" && FB.ready && FB.user && FB.db)){ if(force==="loud") toast("Sign in live first, then try again"); return false; }
     const last=+localStorage.getItem("hp_sum_pub")||0;
     if(!force && Date.now()-last<10*60000) return;
     const today=spDK(new Date()), wk=new Date(); wk.setDate(wk.getDate()-7); const wkK=spDK(wk);
@@ -209,9 +209,13 @@ async function hpPublishSummary(force){
         await fbtLoad(fbtMonthKey(y)); }
     }
     if(typeof FBT!=="undefined" && FBT.settings && FBT.settings.lines) sum.fbLines=FBT.settings.lines.map(l=>({id:l.id,name:l.name,outlet:l.outlet||""}));
-    await FB.db.collection("hospro_public").doc("summary").set(sum);
+    // Firestore refuses undefined values; JSON round-trip strips them (and turns NaN into null)
+    const clean=JSON.parse(JSON.stringify(sum));
+    await FB.db.collection("hospro_public").doc("summary").set(clean);
     localStorage.setItem("hp_sum_pub", String(Date.now()));
-  }catch(e){ console.warn("Pocket summary not published", e); }
+    if(force==="loud") toast("✓ HosPRO Pocket updated — refresh the app on your phone",4000);
+    return true;
+  }catch(e){ console.warn("Pocket summary not published", e); toast("HosPRO Pocket not updated: "+((e&&(e.code||e.message))||"error"),7000); return false; }
 }
 function buildSidebar(){ /* sidebar removed */ }
 
@@ -9556,7 +9560,7 @@ function fbtCalc(){
 function renderFBTracker(v){
   const now=new Date(), def=fbtMonthKey(new Date(now.getFullYear(),now.getMonth(),now.getDate()-1));
   v.innerHTML='<div style="padding:30px;color:#4b5563">Loading F&amp;B figures…</div>';
-  fbtApplyImports().catch(()=>{}).then(()=>fbtImportSubmissions(true)).then(()=>fbtLoad(FBT.month||def)).then(()=>fbtDraw(v));
+  fbtApplyImports().catch(()=>{}).then(()=>fbtImportSubmissions(true)).then(()=>fbtLoad(FBT.month||def)).then(()=>{ fbtDraw(v); setTimeout(()=>hpPublishSummary(true),1500); });
 }
 /* ── Daily form (fb-entry.html): staff without a portal login submit figures to fb_submissions.
    Each new submission is copied into the tracker (that day's sales lines and its invoices)
@@ -9674,6 +9678,7 @@ function fbtDraw(v){
         <button style="${btn}" onclick="fbtExport()">⬇ Export month</button>
         <button style="${btn}" onclick="fbtFormLink()">🔗 Daily form link</button>
         <button style="${btn}" onclick="fbtCheckSubs()">📥 Form submissions</button>
+        <button style="${btn}" onclick="hpPublishSummary('loud')">📱 Update Pocket</button>
         <button style="${btn}" onclick="fbtSettingsModal()">⚙ Settings</button>
       </div>
     </div>
