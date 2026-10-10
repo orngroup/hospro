@@ -152,7 +152,7 @@ async function boot(){
       const old=["Dairy Carbon Network","Andre Brissett","Dominic Hillyard","Rebekah Stretton","Samantha Courtnell"];
       for(const e of DB.all()){ if(old.includes(e.name) && !e.ref && e.id) await FB.db.collection("enquiries").doc(e.id).delete(); }
     }catch(err){ console.warn("Sample cleanup skipped",err); } }, 4000);
-    setTimeout(async()=>{ try{ await fbtImportSubmissions(true); }catch(e){} hpPublishSummary(true); }, 6000);
+    setTimeout(async()=>{ try{ await fbtApplyImports(); }catch(e){} try{ await fbtImportSubmissions(true); }catch(e){} hpPublishSummary(true); }, 6000);
   }
 }
 /* ── HosPRO Pocket (mobile.html): a high-level summary published to hospro_public/summary.
@@ -9556,7 +9556,7 @@ function fbtCalc(){
 function renderFBTracker(v){
   const now=new Date(), def=fbtMonthKey(new Date(now.getFullYear(),now.getMonth(),now.getDate()-1));
   v.innerHTML='<div style="padding:30px;color:#4b5563">Loading F&amp;B figures…</div>';
-  fbtImportSubmissions(true).then(()=>fbtLoad(FBT.month||def)).then(()=>fbtDraw(v));
+  fbtApplyImports().catch(()=>{}).then(()=>fbtImportSubmissions(true)).then(()=>fbtLoad(FBT.month||def)).then(()=>fbtDraw(v));
 }
 /* ── Daily form (fb-entry.html): staff without a portal login submit figures to fb_submissions.
    Each new submission is copied into the tracker (that day's sales lines and its invoices)
@@ -9586,8 +9586,52 @@ async function fbtImportSubmissions(quiet){
     }
     if(keep && keep!==FBT.month) await fbtLoad(keep);
     if(n){ toast(`✓ ${n} daily F&B form${n>1?'s':''} added to the tracker`,4000); if(typeof hpPublishSummary==='function') hpPublishSummary(true); }
-  }catch(e){ console.warn('F&B form import failed',e); }
+  }catch(e){ console.warn('F&B form import failed',e); FBT.importError=(e&&(e.code||e.message))||'error'; if(!quiet || CURRENT_TAB==='fbTracker') toast('Daily form import failed: '+FBT.importError,6000); }
   return n;
+}
+/* Figures sent by email, added once (never over the top of a day already entered in the tracker) */
+const FBT_IMPORTS=[
+  {date:'2026-10-08', note:'From Patrik Vlach, email 9 Oct. Bar = lunch bar (food £21.67, drinks £54.17) + evening bar (food £144.83, drinks £76.25). Restaurant lunch £0.',
+   sales:{ breakfast:{food:711.18}, bar:{food:166.50,bev:130.42}, dinner:{food:171.98,bev:80.58} }}
+];
+async function fbtApplyImports(){
+  if(!fbtLive()) return 0; const keep=FBT.month; let n=0;
+  for(const im of FBT_IMPORTS){
+    try{
+      await fbtLoad(im.date.slice(0,7)); if(FBT.src!=='live') continue;
+      const have=FBT.data.sales[im.date]; if(have && Object.keys(have).length) continue;
+      const day={}; Object.entries(im.sales).forEach(([id,v])=>{ const o={food:+v.food||0,bev:+v.bev||0,covers:+v.covers||0}; if(o.food||o.bev||o.covers) day[id]=o; });
+      FBT.data.sales[im.date]=day; await fbtSave({['sales.'+im.date]:day, ['notes.'+im.date]:im.note}); n++;
+    }catch(e){ console.warn('F&B import skipped',im.date,e); }
+  }
+  if(keep) await fbtLoad(keep);
+  if(n){ toast(`✓ ${n} day${n>1?'s':''} of emailed F&B figures added to the tracker`,4000); if(CURRENT_TAB==='fbTracker') fbtDraw(); }
+  return n;
+}
+/* See every daily-form submission (newest first) with its status, and import or re-import it */
+async function fbtCheckSubs(){
+  if(!fbtLive()){ toast('Sign in live to see form submissions'); return; }
+  showModal('Daily form submissions','Figures sent from the daily F&B form link','<div id="fbs-body" style="padding:10px;color:#4b5563">Loading…</div>');
+  const body=()=>document.getElementById('fbs-body');
+  try{
+    const q=await FB.db.collection('fb_submissions').get();
+    const rows=q.docs.map(d=>Object.assign({_id:d.id},d.data())).sort((a,b)=>String(b.submittedAt||'').localeCompare(String(a.submittedAt||''))).slice(0,40);
+    if(!rows.length){ body().innerHTML='<div style="padding:6px 2px;font-size:13.5px;color:#1a2b3a;line-height:1.6"><b>No submissions have reached HosPRO yet.</b><br>If Patrik used the form and saw an error (for example “Missing or insufficient permissions”), the Firestore rules weren’t published at the time. Publish the full rules, then ask him to send the figures again. If he sent them another way, enter them with <b>+ Day’s sales</b>.</div>'; return; }
+    const tot=x=>{ let f=0,b=0,c=0; Object.values(x.sales||{}).forEach(v=>{ f+=fbtN(v.food); b+=fbtN(v.bev); c+=fbtN(v.covers); }); return {f,b,c}; };
+    const pill=s=>`<span style="padding:2px 8px;border-radius:9px;font-size:11px;font-weight:800;background:${s==='imported'?'#dcfce7':s==='new'?'#fef3c7':'#fee2e2'};color:${s==='imported'?'#166534':s==='new'?'#92400e':'#991b1b'}">${s||'?'}</span>`;
+    body().innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:13px;color:#1a2b3a"><thead><tr style="text-align:left;background:#f5f7f9">${['For date','Sent by','Sent','Food','Drink','Covers','Invoices','Status',''].map(h=>`<th style="padding:7px;font-size:11px;text-transform:uppercase">${h}</th>`).join('')}</tr></thead><tbody>
+      ${rows.map(x=>{ const t=tot(x); return `<tr style="border-top:1px solid #eef1f4"><td style="padding:7px;font-weight:700">${spEsc(x.date||'')}</td><td style="padding:7px">${spEsc(x.by||'')}</td><td style="padding:7px;white-space:nowrap">${x.submittedAt?new Date(x.submittedAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''}</td>
+        <td style="padding:7px">${fbtGBP(t.f)}</td><td style="padding:7px">${fbtGBP(t.b)}</td><td style="padding:7px">${t.c}</td><td style="padding:7px">${(x.invoices||[]).length}</td><td style="padding:7px">${pill(x.status)}</td>
+        <td style="padding:7px"><button onclick="fbtReimport('${x._id}')" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:7px;background:#fff;font:700 12px Lato;cursor:pointer">${x.status==='new'?'Import':'Re-import'}</button></td></tr>`; }).join('')}</tbody></table>
+      ${FBT.importError?`<div style="margin-top:10px;color:#991b1b;font-size:12.5px">Last import error: ${spEsc(FBT.importError)}</div>`:''}
+      <div style="margin-top:10px;font-size:12px;color:#4b5563">Re-import copies that submission into the tracker again (replacing that day's sales lines). Use it if a day is missing.</div>`;
+  }catch(e){ body().innerHTML=`<div style="color:#991b1b;font-size:13px">Could not read submissions: ${spEsc(e.code||e.message||'error')}. Check the Firestore rules include <b>fb_submissions</b> and are published.</div>`; }
+}
+async function fbtReimport(id){
+  try{ await FB.db.collection('fb_submissions').doc(id).update({status:'new'}); FBT.importError=null;
+    const n=await fbtImportSubmissions(false);
+    if(n){ closeModal(); await fbtLoad(FBT.month); fbtDraw(); } else fbtCheckSubs();
+  }catch(e){ toast('Re-import failed: '+(e.code||e.message)); }
 }
 function fbtDraw(v){
   v=v||document.getElementById('view'); if(!v || CURRENT_TAB!=='fbTracker') return;
@@ -9629,6 +9673,7 @@ function fbtDraw(v){
         <button style="${btn}" onclick="fbtUploadModal()">📤 Upload template</button>
         <button style="${btn}" onclick="fbtExport()">⬇ Export month</button>
         <button style="${btn}" onclick="fbtFormLink()">🔗 Daily form link</button>
+        <button style="${btn}" onclick="fbtCheckSubs()">📥 Form submissions</button>
         <button style="${btn}" onclick="fbtSettingsModal()">⚙ Settings</button>
       </div>
     </div>
