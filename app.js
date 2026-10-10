@@ -113,7 +113,7 @@ function enterApp(user){
   boot();
 }
 $("#lg-pw").addEventListener("keydown",e=>{ if(e.key==="Enter")$("#lg-btn").click(); });
-$("#tb-logout").onclick=async ()=>{ if(typeof hrLock==='function') hrLock(true); await fbSignOut(); SESSION=null; $("#app").classList.add("hidden");
+$("#tb-logout").onclick=async ()=>{ if(typeof hrLock==='function') hrLock(true); try{ sessionStorage.removeItem("hosrev_ok"); }catch(e){} await fbSignOut(); SESSION=null; $("#app").classList.add("hidden");
   $("#login").classList.remove("hidden"); $("#lg-pw").value=""; };
 
 /* ============================================================ ROUTING */
@@ -361,6 +361,38 @@ window.addEventListener("popstate",e=>{
   finally{ HP_NAV_FROM_HISTORY=false; }
 });
 
+/* ── HosREV lock (temporary, while HosREV is checked) ─────────────────────────
+   Only Ajay can open it, and only after entering the HosREV password. The password
+   is stored as a SHA-256 fingerprint, not in plain text; unlock lasts until the
+   browser tab is closed or he signs out. */
+const HP_REV_OWNER="ajay.kawa";
+const HP_REV_PW_HASH="ce199ebf05c03dc514278cfb9346b80d2559cf5afd8205a6fe85bd58adf23b79";
+try{ if(typeof hpCanAccess==="function"){ const _hpCanAccessBase=hpCanAccess;
+  hpCanAccess=function(id,userKey){ if(id==="hosrev") return (userKey||(SESSION&&SESSION._key))===HP_REV_OWNER; return _hpCanAccessBase.apply(this,arguments); }; } }catch(e){ console.warn("HosREV lock: access hook not installed",e); }
+function hpRevUnlocked(){ try{ return !!(SESSION && SESSION._key===HP_REV_OWNER) && sessionStorage.getItem("hosrev_ok")===HP_REV_PW_HASH; }catch(e){ return false; } }
+async function hpRevSha(t){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+function hpRenderRevLock(v){
+  hpSetBreadcrumb({id:"hosrev",name:"HosREV"}, null);
+  if(!(SESSION && SESSION._key===HP_REV_OWNER)){ CURRENT_TAB="home"; toast("🔒 HosREV is restricted."); render(); return; }
+  v.classList.add("hp-canvas");
+  v.innerHTML=`<div style="max-width:420px;margin:60px auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.25);font-family:Lato,sans-serif">
+    <div style="font-size:30px">💹🔒</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a;margin:6px 0 4px">HosREV is locked</div>
+    <div style="font-size:13.5px;color:#4b5563;margin-bottom:16px">Enter the HosREV password to continue.</div>
+    <input id="rev-pw" type="password" autocomplete="off" placeholder="Password" style="width:100%;padding:12px;border:1.5px solid #d1d5db;border-radius:10px;font:15px Lato;box-sizing:border-box">
+    <div id="rev-msg" style="color:#b91c1c;font-size:12.5px;min-height:18px;margin-top:6px"></div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button onclick="hpRevTry()" style="flex:1;padding:12px;border:none;border-radius:10px;background:#1F7A8C;color:#fff;font:800 14px Lato;cursor:pointer">Unlock</button>
+      <button onclick="switchTab('home')" style="padding:12px 16px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font:700 14px Lato;cursor:pointer">Back</button></div></div>`;
+  const i=document.getElementById("rev-pw"); if(i){ i.focus(); i.addEventListener("keydown",e=>{ if(e.key==="Enter") hpRevTry(); }); }
+}
+async function hpRevTry(){
+  const i=document.getElementById("rev-pw"), m=document.getElementById("rev-msg"); if(!i) return;
+  const h=await hpRevSha(i.value.trim().toUpperCase());
+  if(h===HP_REV_PW_HASH){ try{ sessionStorage.setItem("hosrev_ok",h); }catch(e){} toast("✓ HosREV unlocked"); render(); }
+  else { m.textContent="Incorrect password."; i.value=""; i.focus(); }
+}
+
 function render(){
   const v=$("#view");
   v.innerHTML="";
@@ -374,6 +406,9 @@ function render(){
   { const rid=String(CURRENT_TAB).indexOf("mod:")===0 ? CURRENT_TAB.slice(4) : (hpModuleFor(CURRENT_TAB)||{}).id;
     if((rid && !hpCanAccess(rid)) || (String(CURRENT_TAB).indexOf("mod:")!==0 && !hpCanTab(CURRENT_TAB))){ CURRENT_TAB="home"; toast('🔒 That area is restricted. Ask Raj or Ajay if you need access.'); }
   }
+  // HosREV: Ajay only, plus its own password while it is being checked
+  { const isRev = CURRENT_TAB==="mod:hosrev" || /^rev[A-Z]/.test(String(CURRENT_TAB)) || (hpModuleFor(CURRENT_TAB)||{}).id==="hosrev";
+    if(isRev && !hpRevUnlocked()){ hpRenderRevLock(v); return; } }
   if(String(CURRENT_TAB).indexOf("mod:")===0){ renderModuleLanding(CURRENT_TAB.slice(4)); return; }
 
   const fn = RENDER_MAP[CURRENT_TAB];
