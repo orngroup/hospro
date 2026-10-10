@@ -185,7 +185,7 @@ async function load(){
       t(db.collection('hosfix_jobs').where('status','in',['not-started','in-progress','pending_approval']).get(),9000)]);
     if(sum.status==='fulfilled'&&sum.value.exists) S.summary=sum.value.data(); else if(sum.status==='fulfilled'&&!S.summary) S.err='The portal has not published a summary yet';
     if(rota.status==='fulfilled'&&rota.value.exists) S.rota=rota.value.data();
-    if(jobs.status==='fulfilled') S.jobs=jobs.value.docs.map(d=>Object.assign({_id:d.id},d.data()));
+    if(jobs.status==='fulfilled') S.jobs=jobs.value.docs.map(d=>Object.assign({_id:d.id},d.data())).filter(j=>String(j.createdAt||'')>='2026-10-10T10:00:00.000Z');
   }catch(e){ console.warn(e); }
   S.loaded=true; draw();
 }

@@ -1,5 +1,5 @@
 // HosFIX Service Worker — Brandon Hall Hotel and Spa
-const CACHE = 'hosfix-v1';
+const CACHE = 'hosfix-v2';
 
 self.addEventListener('install', e => {
   self.skipWaiting();

@@ -8616,6 +8616,10 @@ if(typeof window.restaurantSVG!=="function"){
    not just jobs logged on this device. Uses a separate named
    Firebase app so it never clashes with firebase-config.js.
    ============================================================ */
+/* Clean start for HosFIX: jobs logged before 11:00 UK on 10 Oct 2026 are ignored and cleared from this computer */
+const HP_FIX_CLEAN_FROM='2026-10-10T10:00:00.000Z';
+function hpOldJob(j){ return !j || !(String(j.createdAt||'')>=HP_FIX_CLEAN_FROM); }
+try{ const l=JSON.parse(localStorage.getItem("hosfix_jobs")||"[]"); const k=l.filter(j=>!hpOldJob(j)); if(k.length!==l.length) localStorage.setItem("hosfix_jobs",JSON.stringify(k)); }catch(e){}
 (function hosfixJobSync(){
   if(HP_FIXRAY_MODE) return;   // old HosFIX data hidden while FixRay is in use
   try{
@@ -8627,9 +8631,9 @@ if(typeof window.restaurantSVG!=="function"){
     const stamp=j=>j.updatedAt||j.completedAt||j.createdAt||"";
     firebase.firestore(app).collection("hosfix_jobs").onSnapshot(qs=>{
       let local=[]; try{ local=JSON.parse(localStorage.getItem("hosfix_jobs")||"[]"); }catch(e){}
-      let changed=false;
+      const n0=local.length; local=local.filter(j=>!hpOldJob(j)); let changed=local.length!==n0;
       qs.docs.forEach(d=>{
-        const r=d.data(); if(!r||!r.id) return;
+        const r=d.data(); if(!r||!r.id||hpOldJob(r)) return;
         const i=local.findIndex(j=>j.id===r.id);
         if(i<0){ local.push(r); changed=true; }
         else if(stamp(r)>stamp(local[i])){ local[i]=Object.assign({},local[i],r); changed=true; }
