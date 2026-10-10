@@ -4280,7 +4280,13 @@ function renderHome(v){
   [row1].forEach((row, rowIdx) => {
     const rowDiv = document.createElement('div');
     rowDiv.className = 'hp-modgrid';
-    rowDiv.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:16px';
+    // All module cards in one even row on a desktop (no card left on its own), two even rows on a laptop, 2 across on a phone
+    const nCards=row.length, half=Math.ceil(nCards/2);
+    rowDiv.style.cssText = `display:grid;grid-template-columns:repeat(${nCards},minmax(0,1fr));gap:14px;margin-bottom:16px`;
+    if(!document.getElementById('hp-modgrid-css')){ const st=document.createElement('style'); st.id='hp-modgrid-css'; document.head.appendChild(st); }
+    document.getElementById('hp-modgrid-css').textContent=`.hp-modgrid{grid-template-columns:repeat(${nCards},minmax(0,1fr))!important}
+      @media(max-width:1350px){.hp-modgrid{grid-template-columns:repeat(${half},minmax(0,1fr))!important}}
+      @media(max-width:760px){.hp-modgrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}`;
     row.forEach(m => {
       const card = document.createElement('button');
       card.style.cssText = `display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;background:${m.tint||'#F3F5F7'};border:2px solid transparent;border-radius:14px;cursor:pointer;text-align:left;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.05);width:100%`;
