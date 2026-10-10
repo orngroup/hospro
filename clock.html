@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a2b3a">
+<title>Clock in · Brandon Hall Hotel and Spa</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root{ --navy:#1a2b3a; --teal:#2B726A; --teal-dk:#215a54; --paper:#f4f7f8; --line:#e3e7ee; --ink:#1a2230; --muted:#64707f; }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Manrope',system-ui,-apple-system,sans-serif}
+  body{background:linear-gradient(160deg,#1a2b3a,#22384d);min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:18px;color:var(--ink)}
+  .card{background:#fff;border-radius:20px;width:100%;max-width:420px;box-shadow:0 24px 60px rgba(0,0,0,.4);overflow:hidden}
+  .top{background:var(--navy);color:#fff;padding:20px 22px;text-align:center}
+  .top .tag{font-size:11px;letter-spacing:2px;color:#8fb7b1;font-weight:700;text-transform:uppercase}
+  .top h1{font-size:20px;font-weight:800;margin-top:4px}
+  .top .clock{font-size:34px;font-weight:800;letter-spacing:1px;margin-top:8px;font-variant-numeric:tabular-nums}
+  .top .date{font-size:12.5px;color:#aebccd;margin-top:2px}
+  .body{padding:20px 22px 26px}
+  .lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+  select,input{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;font-size:16px;background:#fff;color:var(--ink)}
+  select:focus,input:focus{outline:none;border-color:var(--teal)}
+  .pin{display:flex;gap:10px;justify-content:center;margin-top:4px}
+  .pin input{width:56px;height:62px;text-align:center;font-size:26px;font-weight:800;padding:0}
+  .row{margin-bottom:18px}
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+  .big{padding:20px;border:none;border-radius:14px;font-size:18px;font-weight:800;color:#fff;cursor:pointer;transition:.15s;line-height:1.2}
+  .big:active{transform:scale(.98)}
+  .in{background:#2B726A}.in:active{background:var(--teal-dk)}
+  .out{background:#9a4b2e}.out:active{background:#7d3b22}
+  .big small{display:block;font-size:11px;font-weight:600;opacity:.85;margin-top:3px}
+  .msg{margin-top:18px;padding:14px 16px;border-radius:12px;font-size:14.5px;font-weight:600;text-align:center;display:none}
+  .msg.ok{display:block;background:#e6f4ee;color:#1d6b4f;border:1px solid #b9e0cd}
+  .msg.err{display:block;background:#fdecec;color:#a3272a;border:1px solid #f1c7c7}
+  .msg.info{display:block;background:#eef2f8;color:#2f4a6b;border:1px solid #d3deee}
+  .foot{text-align:center;font-size:11.5px;color:var(--muted);margin-top:16px;line-height:1.5}
+  .hidden{display:none!important}
+  .spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="top">
+    <div class="tag">Brandon Hall Hotel &amp; Spa</div>
+    <h1>Staff Clock-in</h1>
+    <div class="clock" id="clock">--:--</div>
+    <div class="date" id="date"></div>
+  </div>
+  <div class="body">
+    <div id="load" class="msg info">Loading staff list…</div>
+
+    <div id="form" class="hidden">
+      <div class="row">
+        <div class="lbl">Who are you?</div>
+        <select id="staff"><option value="">Select your name…</option></select>
+      </div>
+      <div class="row">
+        <div class="lbl">Your 4-digit PIN</div>
+        <div class="pin">
+          <input id="p0" inputmode="numeric" maxlength="1" autocomplete="off">
+          <input id="p1" inputmode="numeric" maxlength="1" autocomplete="off">
+          <input id="p2" inputmode="numeric" maxlength="1" autocomplete="off">
+          <input id="p3" inputmode="numeric" maxlength="1" autocomplete="off">
+        </div>
+      </div>
+      <div class="btns">
+        <button class="big in"  onclick="punch('in')">Clock IN<small>starting my shift</small></button>
+        <button class="big out" onclick="punch('out')">Clock OUT<small>ending my shift</small></button>
+      </div>
+      <div id="msg" class="msg"></div>
+    </div>
+
+    <div class="foot" id="foot">Scan the poster at reception to clock in or out.<br>Having trouble? Ask a manager.</div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const CFG={ apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0", authDomain:"brandonhall-7bdef.firebaseapp.com",
+  projectId:"brandonhall-7bdef", storageBucket:"brandonhall-7bdef.firebasestorage.app",
+  messagingSenderId:"391317900568", appId:"1:391317900568:web:643c9d6691f7f16d65226d" };
+let db=null, ROSTER=null;
+try{ firebase.initializeApp(CFG); db=firebase.firestore(); firebase.auth().signInAnonymously().catch(()=>{}); }catch(e){}
+
+/* identical to clockHash() in app.js — keep in sync */
+function clockHash(pin, code){ const s=String(code).toLowerCase()+':'+String(pin)+':bhclock'; let h=5381;
+  for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))>>>0; } return h.toString(16); }
+
+function tick(){ const d=new Date();
+  document.getElementById('clock').textContent=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('date').textContent=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+}
+tick(); setInterval(tick,10000);
+
+/* PIN box auto-advance */
+['p0','p1','p2','p3'].forEach((id,i,arr)=>{ const el=document.getElementById(id);
+  el.addEventListener('input',()=>{ el.value=el.value.replace(/\D/g,''); if(el.value&&i<3)document.getElementById(arr[i+1]).focus(); });
+  el.addEventListener('keydown',e=>{ if(e.key==='Backspace'&&!el.value&&i>0)document.getElementById(arr[i-1]).focus(); });
+});
+function pin(){ return ['p0','p1','p2','p3'].map(id=>document.getElementById(id).value).join(''); }
+function clearPin(){ ['p0','p1','p2','p3'].forEach(id=>document.getElementById(id).value=''); document.getElementById('p0').focus(); }
+
+async function load(){
+  const loadMsg=document.getElementById('load');
+  if(!db){ loadMsg.className='msg err'; loadMsg.textContent='No connection. Please check Wi-Fi and reload.'; return; }
+  try{
+    const d=await db.collection('clock_roster').doc('current').get();
+    if(!d.exists){ loadMsg.className='msg err'; loadMsg.textContent='Clock-in not set up yet. Ask a manager to publish the roster.'; return; }
+    ROSTER=d.data();
+    const sel=document.getElementById('staff');
+    (ROSTER.staff||[]).sort((a,b)=>a.name.localeCompare(b.name)).forEach(s=>{
+      const o=document.createElement('option'); o.value=s.code; o.textContent=s.name; sel.appendChild(o); });
+    // pre-select from ?s=CODE (personal QR)
+    const q=new URLSearchParams(location.search).get('s');
+    if(q){ sel.value=q; document.getElementById('p0').focus(); }
+    loadMsg.classList.add('hidden');
+    document.getElementById('form').classList.remove('hidden');
+  }catch(e){ loadMsg.className='msg err'; loadMsg.textContent='Could not load the staff list. Reload and try again.'; }
+}
+load();
+
+function dist(aLat,aLng,bLat,bLng){ const R=6371000, toR=x=>x*Math.PI/180;
+  const dLa=toR(bLat-aLat), dLo=toR(bLng-aLng);
+  const s=Math.sin(dLa/2)**2+Math.cos(toR(aLat))*Math.cos(toR(bLat))*Math.sin(dLo/2)**2;
+  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s)); }
+
+function getPos(){ return new Promise(res=>{ if(!navigator.geolocation) return res(null);
+  navigator.geolocation.getCurrentPosition(p=>res(p.coords), ()=>res(null), {enableHighAccuracy:true,timeout:8000,maximumAge:60000}); }); }
+
+function show(cls,txt){ const m=document.getElementById('msg'); m.className='msg '+cls; m.innerHTML=txt; }
+
+let busy=false;
+async function punch(type){
+  if(busy) return;
+  const code=document.getElementById('staff').value;
+  if(!code){ show('err','Please select your name first.'); return; }
+  const person=(ROSTER.staff||[]).find(s=>s.code===code);
+  if(!person){ show('err','Name not found — ask a manager.'); return; }
+  const p=pin();
+  if(p.length<4){ show('err','Enter your 4-digit PIN.'); return; }
+  if(clockHash(p,code)!==person.pinHash){ show('err','Incorrect PIN. Try again.'); clearPin(); return; }
+
+  busy=true; show('info','<span class="spin"></span>Recording…');
+  // location check
+  let lat=null,lng=null;
+  const geo=ROSTER.geo||{};
+  if(geo.enabled){
+    const pos=await getPos();
+    if(!pos){ show('err','Location needed to clock in. Allow location access and try again.'); busy=false; return; }
+    lat=pos.latitude; lng=pos.longitude;
+    const d=dist(lat,lng,geo.lat,geo.lng);
+    if(d>(geo.radius||250)){ show('err','You appear to be '+Math.round(d)+'m from the hotel. Clock in on site.'); busy=false; return; }
+  }
+  const now=new Date();
+  const rec={ staffCode:code, name:person.name, type,
+    date: now.toISOString().slice(0,10),
+    time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
+    ts: now.toISOString(), mins: now.getHours()*60+now.getMinutes(),
+    lat, lng, source:'qr' };
+  try{
+    await db.collection('clock_punches').add(rec);
+    show('ok','✓ Clocked '+(type==='in'?'IN':'OUT')+' at '+rec.time+'<br><b>'+person.name+'</b>');
+    clearPin(); document.getElementById('staff').value='';
+    setTimeout(()=>{ const m=document.getElementById('msg'); m.className='msg'; m.textContent=''; }, 6000);
+  }catch(e){ show('err','Could not record — try again, or tell a manager.'); }
+  busy=false;
+}
+</script>
+</body>
+</html>

@@ -271,7 +271,8 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
     rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings, rotaPayroll:renderRotaPayroll, localEvents:renderLocalEvents, fbTracker:renderFBTracker,
     staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs,
     brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography,
-    hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR
+    hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR,
+    revDash:renderRevDash, revCalendar:renderRevCalendar, revCompset:renderRevCompset, revEvents:renderRevEvents, revForecast:renderRevForecast, revImport:renderRevImport, revSettings:renderRevSettings
   };
 
 /* Tabs whose render functions were designed for the dark navy canvas
@@ -6909,6 +6910,13 @@ function renderRotaDash(v){
       </div>
     </div>
     <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px">🟢 On site now</div>
+        <button onclick="hpFillOnSiteNow()" style="font-size:11px;background:#eef2f5;border:none;border-radius:7px;padding:4px 10px;cursor:pointer;color:#374151;font-weight:600">↻ Refresh</button>
+      </div>
+      <div id="hp-onsite-body" style="font-size:13px;color:#64707f">Loading live clock-ins…</div>
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
       <div style="font-size:11px;font-weight:700;color:#1a2b3a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Rooms In House — This Week</div>
       <table style="width:100%"><tr>${weekStrip}</tr></table>
       <div style="margin-top:10px;display:flex;gap:16px;font-size:12px;flex-wrap:wrap">
@@ -6922,6 +6930,29 @@ function renderRotaDash(v){
     <div style="font-size:11px;font-weight:700;color:#c7d2e0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Today · Department Staffing</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">${deptCards}</div>
   </div>`;
+  hpFillOnSiteNow();
+}
+/* Live "on site now" from today's QR clock-ins (manager view) */
+async function hpFillOnSiteNow(){
+  const el=document.getElementById('hp-onsite-body'); if(!el) return;
+  if(typeof FB==="undefined" || !FB.ready || !FB.user){ el.innerHTML='<span style="color:#9aa7b5">Live clock-ins appear here once the QR clock-in is published and you are signed in.</span>'; return; }
+  const today=new Date().toISOString().slice(0,10);
+  try{
+    const snap=await FB.db.collection('clock_punches').where('date','==',today).get();
+    const by={};
+    snap.forEach(d=>{ const r=d.data(); (by[r.staffCode]||(by[r.staffCode]={name:r.name,punches:[]})).punches.push(r); });
+    const onSite=[]; let outCount=0;
+    Object.values(by).forEach(p=>{ p.punches.sort((a,b)=>String(a.ts||'').localeCompare(String(b.ts||''))); const last=p.punches[p.punches.length-1];
+      if(last.type==='in') onSite.push({name:p.name, since:last.time}); else outCount++; });
+    onSite.sort((a,b)=>a.name.localeCompare(b.name));
+    const esc=s=>typeof spEsc==='function'?spEsc(s):s;
+    if(!Object.keys(by).length){ el.innerHTML='<span style="color:#9aa7b5">No clock-ins yet today.</span>'; return; }
+    el.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:${onSite.length?'12':'0'}px">
+        <div><span style="font-size:22px;font-weight:800;color:#166534">${onSite.length}</span> <span style="font-size:12px;color:#64707f">on site</span></div>
+        <div><span style="font-size:22px;font-weight:800;color:#64707f">${outCount}</span> <span style="font-size:12px;color:#64707f">clocked out</span></div>
+      </div>
+      ${onSite.length?'<div style="display:flex;flex-wrap:wrap;gap:8px">'+onSite.map(p=>`<span style="background:#e6f4ee;color:#1d6b4f;border-radius:16px;padding:5px 12px;font-size:12.5px;font-weight:600">🟢 ${esc(p.name)} <span style="color:#4b5563;font-weight:400">since ${esc(p.since)}</span></span>`).join('')+'</div>':'<span style="color:#9aa7b5">Everyone who clocked in has clocked out.</span>'}`;
+  }catch(e){ el.innerHTML='<span style="color:#b3261e">Could not load clock-ins: '+e.message+'</span>'; }
 }
 
 // ── WEEKLY ROTA ───────────────────────────────────────────────────────────────
@@ -9035,9 +9066,11 @@ function renderRotaPayroll(v){
 
     <div id="sp-cmp-box" style="background:#fff;border-radius:12px;padding:16px;margin-top:18px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <div><div style="font-size:16px;font-weight:800;color:#1a2b3a">Compare with fingerprint clock-in</div>
-          <div style="font-size:12.5px;color:#4b5563">Upload the CSV export from the fingerprint system. We match each person and day against the rota and show every difference.</div></div>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div><div style="font-size:16px;font-weight:800;color:#1a2b3a">Clock-in vs rota</div>
+          <div style="font-size:12.5px;color:#4b5563">Load live QR clock-ins, or upload a CSV from the fingerprint system. We match each person and day against the rota and show every difference.</div></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button onclick="spLoadQRClockins()" style="padding:9px 14px;border-radius:8px;background:#2B726A;color:#fff;font:700 12px Lato;cursor:pointer;border:none">📲 Load QR clock-ins</button>
+          <button onclick="spClockRosterModal()" style="padding:9px 14px;border-radius:8px;background:#1F7A8C;color:#fff;font:700 12px Lato;cursor:pointer;border:none">🖨 Clock-in QR &amp; PINs</button>
           <label style="padding:9px 14px;border-radius:8px;background:#1a2b3a;color:#fff;font:700 12px Lato;cursor:pointer">📤 Upload CSV<input type="file" accept=".csv,.txt,text/csv" style="display:none" onchange="spCmpLoad(this.files[0])"></label>
           <button onclick="spCmpTemplate()" style="padding:9px 12px;border-radius:8px;border:1px solid #d1d5db;background:#fff;font:700 12px Lato;cursor:pointer;color:#1a2b3a">Sample CSV</button>
         </div>
@@ -9255,6 +9288,162 @@ function spCmpExport(){
   const rows=R.lines.map(l=>[l.s.staffCode||'',l.s.name,l.date,l.shift,l.times,l.rh,Math.round(l.ch*100)/100,l.diff,Math.round(l.cost*100)/100,st[l.status],l.note]);
   R.unknown.forEach(u=>rows.push([u.code||'',u.label,'','','','',Math.round(u.hrs*100)/100,'','','Not matched','No staff profile matched']));
   spDownload('rota-vs-fingerprint-'+R.from+'-to-'+R.to+'.csv','﻿'+[head,...rows].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   QR CLOCK-IN  —  wall poster + staff PINs, live punches into the
+   same rota-vs-clock reconciliation above.
+   Public clock page: clock.html  (writes clock_punches)
+   Roster published to clock_roster/current (names, codes, PIN hashes)
+   ══════════════════════════════════════════════════════════════ */
+/* identical to clockHash() in clock.html — keep in sync */
+function clockHash(pin, code){ const s=String(code).toLowerCase()+':'+String(pin)+':bhclock'; let h=5381;
+  for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))>>>0; } return h.toString(16); }
+function clockUrl(){ try{ return new URL('clock.html', location.href).href; }catch(e){ return 'clock.html'; } }
+function clockPins(){ try{ return JSON.parse(localStorage.getItem('bh_clock_pins')||'{}'); }catch{ return {}; } }
+function clockSavePins(p){ try{ localStorage.setItem('bh_clock_pins', JSON.stringify(p)); }catch{} }
+function clockGeo(){ try{ return JSON.parse(localStorage.getItem('bh_clock_geo')) || {enabled:true,lat:52.3736,lng:-1.3869,radius:250}; }catch{ return {enabled:true,lat:52.3736,lng:-1.3869,radius:250}; } }
+function clockSaveGeo(g){ try{ localStorage.setItem('bh_clock_geo', JSON.stringify(g)); }catch{} }
+function clockMakePin(existing){ let p; do{ p=String(Math.floor(1000+Math.random()*9000)); }while(existing.has(p)); existing.add(p); return p; }
+function clockStaffCode(s){ return (s.staffCode||s.clockId||('BH'+s.id)).toString(); }
+
+/* Build the roster rows with a stable PIN per person */
+function clockRoster(){
+  const staff=(typeof spGetStaff==='function'?spGetStaff():[]).filter(s=>s&&s.name);
+  const pins=clockPins(); const used=new Set(Object.values(pins));
+  const rows=staff.map(s=>{
+    if(!pins[s.id]){ pins[s.id]=clockMakePin(used); }
+    return { id:s.id, name:s.name, code:clockStaffCode(s), pin:pins[s.id] };
+  });
+  clockSavePins(pins);
+  return rows;
+}
+
+async function spPublishClockRoster(){
+  const rows=clockRoster(), geo=clockGeo();
+  const payload={ geo, updated:new Date().toISOString(),
+    staff: rows.map(r=>({ name:r.name, code:r.code, pinHash:clockHash(r.pin, r.code) })) };
+  if(typeof FB!=="undefined" && FB.ready && FB.user){
+    try{ await FB.db.collection('clock_roster').doc('current').set(payload);
+      if(typeof toast==='function') toast('✓ Clock-in roster published — the wall QR is now live'); return true; }
+    catch(e){ if(typeof toast==='function') toast('Could not publish: '+e.message); return false; }
+  }
+  if(typeof toast==='function') toast('Sign in required to publish the roster'); return false;
+}
+
+function spClockRosterModal(){
+  const rows=clockRoster(), geo=clockGeo(), url=clockUrl();
+  const old=document.getElementById('clock-modal'); if(old) old.remove();
+  const m=document.createElement('div'); m.id='clock-modal';
+  m.style.cssText='position:fixed;inset:0;z-index:300;background:rgba(16,28,40,.55);display:grid;place-items:center;padding:18px';
+  m.innerHTML=`<div style="background:#fff;border-radius:16px;max-width:620px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.4)">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid #eef1f4">
+      <div style="font-size:18px;font-weight:800;color:#1a2b3a">Clock-in QR &amp; staff PINs</div>
+      <button onclick="document.getElementById('clock-modal').remove()" style="border:none;background:none;font-size:20px;color:#64707f;cursor:pointer">×</button></div>
+    <div style="padding:20px 22px">
+      <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+        <div style="text-align:center">
+          <div id="clock-qr" style="padding:12px;background:#fff;border:1px solid #e3e7ee;border-radius:12px;display:inline-block"></div>
+          <div style="font-size:11px;color:#64707f;margin-top:6px;max-width:200px">Wall poster — staff scan this to clock in on their phone.</div>
+          <button onclick="spClockPoster()" style="margin-top:8px;padding:8px 14px;border:none;border-radius:8px;background:#1a2b3a;color:#fff;font:700 12px Lato;cursor:pointer">🖨 Print poster</button>
+        </div>
+        <div style="flex:1;min-width:230px">
+          <div style="font-size:12px;font-weight:700;color:#64707f;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">On-site location check</div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;margin-bottom:10px"><input type="checkbox" id="cg-on" ${geo.enabled?'checked':''}> Only accept clock-ins near the hotel</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <label style="font-size:11px;font-weight:700;color:#64707f">Radius (m)<input id="cg-rad" value="${geo.radius}" style="display:block;width:80px;padding:7px;border:1px solid #d1d5db;border-radius:7px;margin-top:3px"></label>
+            <button onclick="spClockUseHere()" style="padding:8px 12px;border:1px solid #2B726A;border-radius:8px;background:#fff;color:#2B726A;font:700 12px Lato;cursor:pointer">📍 Set to here</button>
+          </div>
+          <div id="cg-coords" style="font-size:11px;color:#64707f;margin-top:6px">${geo.lat.toFixed(4)}, ${geo.lng.toFixed(4)}</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px">
+        <div style="font-size:14px;font-weight:800;color:#1a2b3a">Staff PINs (${rows.length})</div>
+        <button onclick="spClockPrintCards()" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:700 12px Lato;cursor:pointer;color:#1a2b3a">🖨 Print PIN slips</button>
+      </div>
+      <div style="max-height:260px;overflow:auto;border:1px solid #eef1f4;border-radius:10px">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead style="position:sticky;top:0"><tr style="background:#f5f7f9;text-align:left">
+            <th style="padding:7px 10px;font-size:11px;text-transform:uppercase;color:#64707f">Name</th>
+            <th style="padding:7px 10px;font-size:11px;text-transform:uppercase;color:#64707f">Code</th>
+            <th style="padding:7px 10px;font-size:11px;text-transform:uppercase;color:#64707f">PIN</th></tr></thead>
+          <tbody>${rows.map(r=>`<tr style="border-top:1px solid #eef1f4">
+            <td style="padding:6px 10px;font-weight:600">${(typeof spEsc==='function'?spEsc(r.name):r.name)}</td>
+            <td style="padding:6px 10px;color:#4b5563">${r.code}</td>
+            <td style="padding:6px 10px;font-weight:800;letter-spacing:2px;font-variant-numeric:tabular-nums">${r.pin}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+        <button onclick="document.getElementById('clock-modal').remove()" style="padding:10px 16px;border:1px solid #d1d5db;border-radius:9px;background:#fff;font:700 13px Lato;cursor:pointer;color:#374151">Close</button>
+        <button onclick="spSaveClockGeoThenPublish()" style="padding:10px 18px;border:none;border-radius:9px;background:#2B726A;color:#fff;font:800 13px Lato;cursor:pointer">Save &amp; publish</button>
+      </div>
+      <div style="font-size:11px;color:#9aa7b5;margin-top:10px">PINs are issued to staff once; the roster stores only a hashed PIN, never the digits. Re-open here any time to see them.</div>
+    </div></div>`;
+  document.body.appendChild(m);
+  try{ new QRCode(document.getElementById('clock-qr'), { text:url, width:180, height:180, correctLevel:QRCode.CorrectLevel.M }); }catch(e){ document.getElementById('clock-qr').textContent='QR unavailable'; }
+}
+function spClockUseHere(){
+  if(!navigator.geolocation){ if(typeof toast==='function') toast('Location not available on this device'); return; }
+  navigator.geolocation.getCurrentPosition(p=>{ const g=clockGeo(); g.lat=p.coords.latitude; g.lng=p.coords.longitude; clockSaveGeo(g);
+    const el=document.getElementById('cg-coords'); if(el) el.textContent=g.lat.toFixed(4)+', '+g.lng.toFixed(4);
+    if(typeof toast==='function') toast('Hotel location set'); }, ()=>{ if(typeof toast==='function') toast('Could not get location'); }, {enableHighAccuracy:true,timeout:8000});
+}
+function spSaveClockGeoThenPublish(){
+  const g=clockGeo(); const on=document.getElementById('cg-on'), rad=document.getElementById('cg-rad');
+  if(on) g.enabled=on.checked; if(rad) g.radius=Math.max(30,+rad.value||250); clockSaveGeo(g);
+  spPublishClockRoster().then(ok=>{ if(ok){ const m=document.getElementById('clock-modal'); if(m) m.remove(); } });
+}
+function spClockPoster(){
+  const url=clockUrl(); const w=window.open('','_blank'); if(!w) return;
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Clock-in poster</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>
+    <style>body{font-family:system-ui,sans-serif;text-align:center;padding:50px 30px;color:#1a2b3a}
+    h1{font-size:40px;margin:0}.t{font-size:15px;letter-spacing:3px;color:#2B726A;font-weight:700;text-transform:uppercase}
+    #q{margin:30px auto;display:inline-block;padding:20px;border:3px solid #1a2b3a;border-radius:18px}
+    p{font-size:20px;color:#374151;margin:8px 0}.big{font-size:26px;font-weight:800;margin-top:20px}
+    small{color:#64707f}</style></head><body>
+    <div class="t">Brandon Hall Hotel &amp; Spa</div><h1>Staff Clock-in</h1>
+    <div id="q"></div>
+    <p class="big">📱 Scan with your phone camera</p>
+    <p>Then pick your name and enter your PIN to clock <b>IN</b> or <b>OUT</b>.</p>
+    <p><small>${url}</small></p>
+    <script>new QRCode(document.getElementById('q'),{text:${JSON.stringify(url)},width:300,height:300});setTimeout(()=>window.print(),600);<\/script>
+    </body></html>`);
+  w.document.close();
+}
+function spClockPrintCards(){
+  const rows=clockRoster(), url=clockUrl(); const w=window.open('','_blank'); if(!w) return;
+  const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Staff PIN slips</title>
+    <style>body{font-family:system-ui,sans-serif;padding:16px;color:#1a2b3a}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .c{border:1px dashed #9aa7b5;border-radius:10px;padding:12px 14px;page-break-inside:avoid}
+    .n{font-size:16px;font-weight:800}.k{font-size:12px;color:#64707f;margin-top:2px}
+    .pin{font-size:30px;font-weight:800;letter-spacing:4px;margin-top:6px}
+    .u{font-size:10px;color:#64707f;margin-top:6px}</style></head><body>
+    <h2>Brandon Hall — Staff clock-in PINs (confidential)</h2>
+    <div class="grid">${rows.map(r=>`<div class="c"><div class="n">${esc(r.name)}</div>
+      <div class="k">Code ${esc(r.code)}</div><div class="pin">${r.pin}</div>
+      <div class="u">Scan the wall poster, pick your name, enter this PIN.</div></div>`).join('')}</div>
+    <script>setTimeout(()=>window.print(),300);<\/script></body></html>`);
+  w.document.close();
+}
+
+/* Pull live QR punches for the current pay period into the reconciliation */
+async function spLoadQRClockins(){
+  if(typeof FB==="undefined" || !FB.ready || !FB.user){ if(typeof toast==='function') toast('Sign in to load live clock-ins'); return; }
+  const out=document.getElementById('sp-cmp-out'); if(out) out.innerHTML='<div style="padding:10px;color:#64707f;font-size:13px">Loading live clock-ins…</div>';
+  const P=spPayPeriod(); const from=spDK(P.days[0]), to=spDK(P.days[P.days.length-1]);
+  try{
+    const snap=await FB.db.collection('clock_punches').where('date','>=',from).where('date','<=',to).get();
+    const data=[];
+    snap.forEach(d=>{ const r=d.data(); data.push([r.staffCode||'', r.name||'', r.date||'', r.time||'']); });
+    if(!data.length){ if(out) out.innerHTML='<div style="background:#eef2f8;border:1px solid #d3deee;border-radius:10px;padding:12px;font-size:13px;color:#2f4a6b">No QR clock-ins recorded for '+from+' to '+to+' yet. Once staff start tapping the poster, they appear here.</div>'; return; }
+    data.sort((a,b)=>a[1].localeCompare(b[1])||a[2].localeCompare(b[2])||a[3].localeCompare(b[3]));
+    spCmp={ file:'Live QR clock-ins ('+from+' → '+to+')', head:['Staff Code','Name','Date','Punch'],
+      data, map:{code:0,name:1,date:2,punch:3}, result:null };
+    spCmpRun(); spCmpRender();
+  }catch(e){ if(out) out.innerHTML='<div style="color:#b3261e;font-size:13px">Could not load clock-ins: '+e.message+'</div>'; }
 }
 
 // ── Staff rota link + publishing the rota for staff phones ───

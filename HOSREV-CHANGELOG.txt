@@ -1,0 +1,69 @@
+HosREV — build changelog (Phase 1 shell), 2026-10-10
+
+NEW FILE
+  hosrev.js            HosREV store + pricing engine + 7 screen renderers
+
+CHANGED
+  index.html           + <script src=hosrev.js> before app.js; home grid 8->9 cols
+  app.js               RENDER_MAP += 7 revX tabs (one line)
+  data.js              MODULE_GROUPS + FLOW_MODULES + TAB_META + MODULE_SUBCARDS: hosrev
+  hospro.css           appended HosREV styles (teal #1F7A8C)
+
+SCREENS (tabs)
+  revDash     Dashboard + AI morning brief + decisions/quiet-night lists
+  revCalendar 30-night rate grid: recommend / approve / override / lock
+  revCompset  our rate vs comp set, 14-night matrix + median
+  revEvents   local events + own diary, impact 1-5, add manual events
+  revForecast occupancy forecast + net room profit per night
+  revImport   Guestline CSV upload + daily snapshot (API later)
+  revSettings room types, rate rules, costs, commission, guardrails
+
+ENGINE  Profit(p) = (p(1-c) - v + a) * min(D(p), C), searched floor..ceiling,
+        capped by max daily change and locked dates; 3 reasons per rec.
+
+STATUS  Runs on clearly-flagged DEMO data (seeded books/comp/events) until:
+        - a rate shopper is connected (Lighthouse or Makcorps) for live comp rates
+        - the daily Rezlynx export is wired into revImport
+        No rates are pushed to Guestline in Phase 1 (recommend + approve only).
+
+DEPLOY  Commit these 5 files to orngroup/brandonme (main) -> GitHub Pages
+        serves brandon.hospro.co.uk. Firebase (brandonhall-7bdef): add
+        collections hosrev_settings, hosrev_books, hosrev_comp, hosrev_events,
+        hosrev_decisions to firestore.rules (same auth-only pattern).
+
+============================================================
+QR CLOCK-IN (added same build)
+============================================================
+NEW FILE
+  clock.html           Public staff clock-in/out page (phone, no app).
+                       Scan wall QR -> pick name -> 4-digit PIN -> IN/OUT.
+                       Optional on-site location (geofence) check.
+
+CHANGED
+  app.js               HosPEOPLE > Payroll & Clock-in panel now has:
+                         "Load QR clock-ins"  -> pulls live punches into the
+                                                 existing rota-vs-clock compare
+                         "Clock-in QR & PINs" -> publish roster, print wall
+                                                 poster, view/print staff PINs,
+                                                 set geofence ("set to here")
+  firestore.rules      + clock_roster (public read, staff write)
+                       + clock_punches (public create of core fields; staff read)
+                       + hosrev_* collections (staff only)
+
+DATA MODEL
+  clock_roster/current { geo:{enabled,lat,lng,radius},
+                         staff:[{name, code, pinHash}] }   (PINs hashed, never stored plain)
+  clock_punches/<auto> { staffCode, name, date, time, ts, mins, type, lat, lng, source }
+
+RECONCILIATION  No new logic — live punches feed the SAME engine that already
+  compares rostered vs actual hours and flags Match / Hours differ / No clock-in /
+  Not on rota / missing clock-out, costed at each person's hourly rate, weekly & monthly.
+
+HARDWARE  None. Printed poster + staff phones. Hotel coords default to Brandon
+  (CV8 3FW ~52.3736,-1.3869); use "Set to here" on site to pin it exactly.
+
+SETUP  Deploy the files, publish Firestore rules, then open
+  HosPEOPLE > Payroll & Clock-in > "Clock-in QR & PINs" > Save & publish.
+  Print the poster for the wall and the PIN slips for staff.
+  Firebase Auth: enable Anonymous sign-in (Build > Authentication > Sign-in method)
+  so the public clock page can write punches.

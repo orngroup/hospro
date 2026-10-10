@@ -855,6 +855,7 @@ MODULE_GROUPS = [
   { id:'brand',   label:'Brand & Downloads',    icon:'📁', colour:'#7A6538', modules:['hosbrand'] },
   { id:'people',  label:'People & Shifts',      icon:'👥', colour:'#2B726A', modules:['hospeople'] },
   { id:'hub',     label:'Document Hub',         icon:'📂', colour:'#55744F', modules:['hoshub'] },
+  { id:'rev',     label:'Revenue',              icon:'💹', colour:'#1F7A8C', modules:['hosrev'] },
 ];
 
 /* colour = deep module shade (sub-nav bar, white text) · tint = pastel (home card, active tab) */
@@ -875,6 +876,8 @@ FLOW_MODULES = [
     tabs:["rotaDash","rotaWeek","rotaPayroll","rotaForecast","rotaMonthly","rotaSettings","staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs"] },
   { id:"hoshub",    name:"HosHUB",     caption:"Documents. Contracts. Finance. HR.",   icon:"📂", colour:"#55744F", tint:"#E8F0E5",
     tabs:["hubDocs","hubContracts","hubSuppliers","hubFinance","hubHR"] },
+  { id:"hosrev",    name:"HosREV",     caption:"Revenue. Rates. Competitors. Margin.", icon:"💹", colour:"#1F7A8C", tint:"#E2F0F3",
+    tabs:["revDash","revCalendar","revCompset","revEvents","revForecast","revImport","revSettings"] },
 ];
 
 /* Tab metadata (label + icon) for sidebar links and cards */
@@ -921,7 +924,11 @@ const TAB_META = {
   staffProfiles:{label:"Staff Profiles",icon:"👤"},
   staffLeave:{label:"Leave Requests",icon:"🌴"},
   staffLeaveAdmin:{label:"Approve Leave",icon:"✅"},
-  staffDocs:{label:"Documents",icon:"📁"}
+  staffDocs:{label:"Documents",icon:"📁"},
+  revDash:{label:"HosREV Dashboard",icon:"💹"}, revCalendar:{label:"Rate Calendar",icon:"📅"},
+  revCompset:{label:"Competitors",icon:"🏨"}, revEvents:{label:"Events & Demand",icon:"🎟"},
+  revForecast:{label:"Forecast & Margin",icon:"📈"}, revImport:{label:"Guestline Import",icon:"🔄"},
+  revSettings:{label:"HosREV Settings",icon:"⚙️"}
 };
 
 /* Which module a tab belongs to (for sidebar grouping / highlighting) */
@@ -1041,5 +1048,14 @@ const MODULE_SUBCARDS = {
     {tab:"staffProfiles", label:"Staff Profiles",    icon:"👤", desc:"All 38 staff profiles & HR records"},
     {tab:"staffLeaveAdmin",label:"Leave Management", icon:"🌴", desc:"Approve & manage leave requests"},
     {tab:"rotaSettings",  label:"Shift Settings",    icon:"⚙️", desc:"Staff & department configuration"},
+  ],
+  "hosrev": [
+    {tab:"revDash",     label:"HosREV Dashboard",  short:"Dashboard", icon:"💹", desc:"Morning brief & decisions needed"},
+    {tab:"revCalendar", label:"Rate Calendar",     short:"Calendar",  icon:"📅", desc:"Recommend, approve or override rates"},
+    {tab:"revCompset",  label:"Competitors",       short:"Compset",   icon:"🏨", desc:"Our rate vs the comp set"},
+    {tab:"revEvents",   label:"Events & Demand",   short:"Events",    icon:"🎟", desc:"Local events & our diary, scored"},
+    {tab:"revForecast", label:"Forecast & Margin", short:"Forecast",  icon:"📈", desc:"Occupancy & net room profit"},
+    {tab:"revImport",   label:"Guestline Import",  short:"Import",    icon:"🔄", desc:"Daily Rezlynx export & snapshots"},
+    {tab:"revSettings", label:"HosREV Settings",   short:"Settings",  icon:"⚙️", desc:"Room types, rules, costs, comp set"},
   ],
 };

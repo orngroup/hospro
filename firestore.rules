@@ -77,6 +77,29 @@ service cloud.firestore {
       match /log/{entry} { allow read, write: if true; }
     }
 
+    // ── HosREV (revenue management) — staff only ──
+    match /hosrev_settings/{doc}  { allow read, write: if isStaff(); }
+    match /hosrev_books/{doc}     { allow read, write: if isStaff(); }
+    match /hosrev_comp/{doc}      { allow read, write: if isStaff(); }
+    match /hosrev_events/{doc}    { allow read, write: if isStaff(); }
+    match /hosrev_decisions/{doc} { allow read, write: if isStaff(); }
+
+    // ── QR clock-in ──
+    // Roster (names, codes, HASHED pins, geofence) is published by staff and
+    // read by the public clock page so it can show names and check PINs.
+    match /clock_roster/{doc} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+    // Punches are created from the public clock page (must carry the core
+    // fields and stay small); only staff can read, edit or delete them.
+    match /clock_punches/{doc} {
+      allow read: if isStaff();
+      allow create: if request.resource.data.size() <= 20
+        && request.resource.data.keys().hasAll(['staffCode','date','ts','type']);
+      allow update, delete: if isStaff();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
