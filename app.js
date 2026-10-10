@@ -273,6 +273,10 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
     brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography,
     hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR
   };
+/* HosREV (hosrev.js, loaded before app.js) — register its screens when present */
+[["revDash","renderRevDash"],["revCalendar","renderRevCalendar"],["revCompset","renderRevCompset"],["revEvents","renderRevEvents"],
+ ["revForecast","renderRevForecast"],["revImport","renderRevImport"],["revSettings","renderRevSettings"]]
+  .forEach(([t,fn])=>{ if(typeof window[fn]==="function") RENDER_MAP[t]=window[fn]; });
 
 /* Tabs whose render functions were designed for the dark navy canvas
    (light text, translucent buttons). Every other tab renders on a light
@@ -4223,14 +4227,16 @@ function renderHome(v){
   if(bc) bc.style.display = 'none';
 
   // ── Stats ─────────────────────────────────────────────────────────────────
-  const pipe   = (typeof ENQUIRIES!=="undefined"?ENQUIRIES:[]).filter(e=>['new','proposal','negotiation'].includes(e.stage));
-  const conf   = (typeof ENQUIRIES!=="undefined"?ENQUIRIES:[]).filter(e=>e.stage==='confirmed');
-  const confVal= conf.reduce((t,e)=>t+(e.totalValue||0),0);
-  const thisWk = new Date(); thisWk.setDate(thisWk.getDate()-7);
-  const newWk  = (typeof ENQUIRIES!=="undefined"?ENQUIRIES:[]).filter(e=>new Date(e.created)>thisWk).length;
-  const overdue= (typeof ALL_ACTIONS!=="undefined"?ALL_ACTIONS:[]).filter(a=>a.status!=="done"&&new Date(a.due)<new Date()).length;
+  // Live pipeline (Rezlynx bookings + enquiries) — the old ENQUIRIES list is no longer used, so these always showed 0
+  const PD=(typeof pipelineData==="function")?pipelineData():[], tdy=new Date().toISOString().slice(0,10);
+  const pipe   = PD.filter(e=>['enquiry','provisional'].includes(e.status));
+  const conf   = PD.filter(e=>e.status==='confirmed' && (e.date||'')>=tdy);
+  const confVal= conf.reduce((t,e)=>t+(+e.value||0),0);
+  const thisWk = new Date(); thisWk.setDate(thisWk.getDate()-7); const wkK=thisWk.toISOString().slice(0,10);
+  const newWk  = PD.filter(e=>String((typeof enqDate==="function"?enqDate(e):e.created)||'').slice(0,10)>=wkK).length;
+  const overdue= PD.filter(e=>e.followUp && e.followUp<tdy && ['enquiry','provisional'].includes(e.status)).length;
   const tasks  = JSON.parse(localStorage.getItem('sf_tasks')||'[]').filter(t=>t.status!=='done').length;
-  const events = (typeof ENQUIRIES!=="undefined"?ENQUIRIES:[]).filter(e=>e.stage==='confirmed').length;
+  const events = conf.filter(e=>e.room||e.roomName).length;
 
   v.innerHTML = '';
   v.style.padding = '0';
@@ -4286,7 +4292,8 @@ function renderHome(v){
         </div>`;
       card.onmouseover = () => { card.style.borderColor=m.colour; card.style.boxShadow='0 4px 14px rgba(0,0,0,.10)'; card.style.transform='translateY(-2px)'; };
       card.onmouseout  = () => { card.style.borderColor='transparent'; card.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'; card.style.transform=''; };
-      card.onclick = () => renderModuleLanding(m.id);
+      // HosREV opens straight on its dashboard (the sub-nav still shows its other screens)
+      card.onclick = () => (m.id==='hosrev' && RENDER_MAP.revDash) ? switchTab('revDash') : renderModuleLanding(m.id);
       if(!hpCanAccess(m.id)){
         card.style.cssText += ';opacity:.45;filter:grayscale(1);cursor:not-allowed;box-shadow:none';
         card.title = m.name+' is restricted';
