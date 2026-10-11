@@ -152,7 +152,7 @@ async function boot(){
       const old=["Dairy Carbon Network","Andre Brissett","Dominic Hillyard","Rebekah Stretton","Samantha Courtnell"];
       for(const e of DB.all()){ if(old.includes(e.name) && !e.ref && e.id) await FB.db.collection("enquiries").doc(e.id).delete(); }
     }catch(err){ console.warn("Sample cleanup skipped",err); } }, 4000);
-    setTimeout(async()=>{ try{ await fbtApplyImports(); }catch(e){} try{ await fbtImportSubmissions(true); }catch(e){} hpPublishSummary(true); }, 6000);
+    setTimeout(async()=>{ hpRevPushSetup(); try{ await fbtApplyImports(); }catch(e){} try{ await fbtImportSubmissions(true); }catch(e){} hpPublishSummary(true); }, 6000);
   }
 }
 /* ── HosPRO Pocket (mobile.html): a high-level summary published to hospro_public/summary.
@@ -360,6 +360,25 @@ window.addEventListener("popstate",e=>{
   try{ if(t.indexOf("mod:")===0) renderModuleLanding(t.slice(4)); else { CURRENT_TAB=t; render(); } }
   finally{ HP_NAV_FROM_HISTORY=false; }
 });
+
+/* ── HosREV setup data (from "HosREV Data.xlsx", 10 Oct 2026) ─────────────────
+   hosrev.js reads its settings from localStorage "hosrev_settings" (and saves a copy to
+   Firestore hosrev_settings/config). This loads the completed workbook once per computer;
+   anything changed later in HosREV Settings is kept. */
+const HP_REV_SETUP={"_source":"HosREV setup workbook, 10 Oct 2026","_version":"setup-2026-10-10","roomTypes":[{"name":"Classic double","rooms":25,"floor":69,"ceiling":180,"bar":157,"barWeekend":110,"maxAdults":2,"maxOcc":2,"code":"CLA_DBL","ratePlan":"BAR_RO","minGap":0,"maxChange":30,"maxChangePct":0.3,"notes":"ground floor, first floor"},{"name":"Classic twin","rooms":21,"floor":69,"ceiling":180,"bar":157,"barWeekend":110,"maxAdults":2,"maxOcc":2,"code":"CLA_TWN","ratePlan":"BAR_RO","minGap":0,"maxChange":30,"maxChangePct":0.3,"notes":"ground floor, first floor"},{"name":"Executive double","rooms":48,"floor":69,"ceiling":180,"bar":172,"barWeekend":125,"maxAdults":3,"maxOcc":3,"code":"EXE_DBL","ratePlan":"BAR_RO","minGap":0,"maxChange":30,"maxChangePct":0.3,"notes":"ground floor, first floor"},{"name":"Executive double accessible","rooms":3,"floor":69,"ceiling":180,"bar":172,"barWeekend":125,"maxAdults":3,"maxOcc":3,"code":"EXE_DBL_ACC","ratePlan":"BAR_RO","minGap":0,"maxChange":30,"maxChangePct":0.3,"notes":"ground floor"},{"name":"Executive triple","rooms":5,"floor":69,"ceiling":180,"bar":172,"barWeekend":125,"maxAdults":4,"maxOcc":4,"code":"EXE_TRP","ratePlan":"BAR_RO","minGap":0,"maxChange":30,"maxChangePct":0.3,"notes":"ground floor, first floor"},{"name":"Executive twin","rooms":5,"floor":69,"ceiling":180,"bar":172,"barWeekend":125,"maxAdults":3,"maxOcc":3,"code":"EXE_TWN","ratePlan":"BAR_RO","minGap":0,"maxChange":30,"maxChangePct":0.3,"notes":"ground floor, first floor"},{"name":"Executive twin accessible","rooms":1,"floor":69,"ceiling":180,"bar":172,"barWeekend":125,"maxAdults":3,"maxOcc":3,"code":"EXE_TWN_ACC","ratePlan":"BAR_RO","minGap":0,"maxChange":30,"maxChangePct":0.3,"notes":"ground floor"},{"name":"Junior Suite","rooms":4,"floor":69,"ceiling":220,"bar":257,"barWeekend":210,"maxAdults":3,"maxOcc":3,"code":"JSUI","ratePlan":"BAR_RO","minGap":0,"maxChange":30,"maxChangePct":0.3,"notes":"main house"},{"name":"Privilege double","rooms":8,"floor":69,"ceiling":180,"bar":192,"barWeekend":145,"maxAdults":3,"maxOcc":3,"code":"PRE_DBL","ratePlan":"BAR_RO","minGap":0,"maxChange":30,"maxChangePct":0.3,"notes":"main house"}],"costPerRoom":28.0,"costPerRoomNote":"Not supplied in the setup workbook - default \u00a328 kept","commission":[{"channel":"Direct website","pct":0.045,"share":0.0773},{"channel":"Phone / email direct","pct":0,"share":0.1476},{"channel":"Booking.com","pct":0.18,"share":0.4254},{"channel":"Expedia group","pct":0.21,"share":0.17},{"channel":"GDS / corporate booking tools","pct":0.1,"share":0.161},{"channel":"Travel agents / tour operators","pct":0.13,"share":0.0189},{"channel":"Weighted average commission %","pct":0.13428064387122576,"share":0}],"extraProfitPerRoom":4.63,"extraSpend":[{"type":"Leisure weekend","dinner":6,"bar":15,"spa":0,"other":0,"margin":0.6,"profit":12.6},{"type":"Leisure midweek","dinner":3,"bar":6,"spa":0,"other":0,"margin":0.6,"profit":5.4},{"type":"Corporate / business","dinner":5,"bar":7,"spa":0,"other":0,"margin":0.6,"profit":7.2},{"type":"Wedding guest","dinner":0,"bar":0,"spa":0,"other":0,"margin":0.6,"profit":0.0},{"type":"Conference / meeting delegate","dinner":3,"bar":3,"spa":0,"other":0,"margin":0.6,"profit":3.6},{"type":"Group / coach tour","dinner":1,"bar":1,"spa":0,"other":0,"margin":0.6,"profit":1.2},{"type":"OTA short notice","dinner":2,"bar":2,"spa":0,"other":0,"margin":0.6,"profit":2.4}],"general":{"window":30,"maxWindow":365,"quietThreshold":0.55,"compressionPct":0.12,"currency":"GBP","maxDailyChangePct":0.3,"maxDailyChange":30},"lockedDates":[],"budget":[{"month":"Nov 2026","roomsAvailable":3300,"occ":0.62,"adr":71,"revpar":44.02,"revenue":145266,"notes":"110 rooms available for sale"},{"month":"Dec 2026","roomsAvailable":3410,"occ":0.62,"adr":73,"revpar":45.26,"revenue":154336.6,"notes":"110 rooms available for sale"},{"month":"Jan 2027","roomsAvailable":3410,"occ":0.62,"adr":71,"revpar":44.02,"revenue":150108.2,"notes":"110 rooms available for sale"},{"month":"Feb 2027","roomsAvailable":3080,"occ":0.62,"adr":71,"revpar":44.02,"revenue":135581.6,"notes":"110 rooms available for sale"},{"month":"Mar 2027","roomsAvailable":3410,"occ":0.62,"adr":71,"revpar":44.02,"revenue":150108.2,"notes":"110 rooms available for sale"},{"month":"Apr 2027","roomsAvailable":3300,"occ":0.62,"adr":71,"revpar":44.02,"revenue":145266,"notes":"110 rooms available for sale"},{"month":"May 2027","roomsAvailable":3410,"occ":0.62,"adr":75,"revpar":46.5,"revenue":158565,"notes":"110 rooms available for sale"},{"month":"Jun 2027","roomsAvailable":3300,"occ":0.62,"adr":75,"revpar":46.5,"revenue":153450,"notes":"110 rooms available for sale"},{"month":"Jul 2027","roomsAvailable":3410,"occ":0.62,"adr":76,"revpar":47.12,"revenue":160679.2,"notes":"110 rooms available for sale"},{"month":"Aug 2027","roomsAvailable":3410,"occ":0.62,"adr":76,"revpar":47.12,"revenue":160679.2,"notes":"110 rooms available for sale"},{"month":"Sep 2027","roomsAvailable":3300,"occ":0.62,"adr":72,"revpar":44.64,"revenue":147312,"notes":"110 rooms available for sale"},{"month":"Oct 2027","roomsAvailable":3410,"occ":0.62,"adr":71,"revpar":44.02,"revenue":150108.2,"notes":"110 rooms available for sale"}],"compset":[{"hotel":"Novotel Coventry","tier":"Primary","postcode":"CV6 6HL","rooms":99,"weight":5,"url":"","notes":"midscale business and family hotel"},{"hotel":"Ramada Hotel & Suites by Wyndham Coventry","tier":"Primary","postcode":"CV1 3GG","rooms":166,"weight":5,"url":"","notes":"city-centre hotel"},{"hotel":"Windmill Village Hotel, Golf Club & Spa","tier":"Primary","postcode":"CV5 9AL","rooms":105,"weight":4,"url":"","notes":"countryside leisure, golf, and spa resort"},{"hotel":"Coombe Abbey Hotel","tier":"Aspirational","postcode":"CV3 2AB","rooms":121,"weight":3,"url":"","notes":"historic country house hotel"},{"hotel":"DoubleTree by Hilton Coventry","tier":"Aspirational","postcode":"CV2 2ST","rooms":172,"weight":4,"url":"","notes":"business and leisure hub hotel"},{"hotel":"Chesford Grange","tier":"Aspirational","postcode":"CV8 2LD","rooms":205,"weight":1,"url":"","notes":"historic manor-style countryside spa and conference hotel"},{"hotel":"Nailcote Hall","tier":"Aspirational","postcode":"CV7 7DE","rooms":49,"weight":1,"url":"","notes":"historic country house golf, wedding, and entertainment resort"},{"hotel":"Mallory Court","tier":"Aspirational","postcode":"CV33 9QB","rooms":42,"weight":1,"url":"","notes":"luxury boutique country house hotel, spa destination, and fine dining retreat"}]};
+function hpRevApplySetup(){
+  try{
+    const cur=JSON.parse(localStorage.getItem("hosrev_settings")||"null");
+    if(cur && cur._version===HP_REV_SETUP._version) return false;
+    const next=Object.assign({}, cur||{}, JSON.parse(JSON.stringify(HP_REV_SETUP)));
+    localStorage.setItem("hosrev_settings", JSON.stringify(next));
+    try{ if(typeof HosrevStore!=="undefined" && HosrevStore){ ["_settings","_s","settingsCache"].forEach(k=>{ if(k in HosrevStore) HosrevStore[k]=null; }); } }catch(e){}
+    return true;
+  }catch(e){ console.warn("HosREV setup not applied",e); return false; }
+}
+hpRevApplySetup();
+async function hpRevPushSetup(){ try{ if(FB && FB.ready && FB.user && FB.db && SESSION && SESSION._key===HP_REV_OWNER){
+  const cur=JSON.parse(localStorage.getItem("hosrev_settings")||"null"); if(cur) await FB.db.collection("hosrev_settings").doc("config").set(cur); } }catch(e){ console.warn("HosREV settings not saved to Firestore",e&&e.code); } }
 
 /* ── HosREV lock (temporary, while HosREV is checked) ─────────────────────────
    Only Ajay can open it, and only after entering the HosREV password. The password
@@ -9646,11 +9665,29 @@ async function fbtImportSubmissions(quiet){
   return n;
 }
 /* Figures sent by email, added once (never over the top of a day already entered in the tracker) */
-const FBT_IMPORTS=[
-  {date:'2026-10-08', note:'From Patrik Vlach, email 9 Oct. Bar = lunch bar (food £21.67, drinks £54.17) + evening bar (food £144.83, drinks £76.25). Restaurant lunch £0.',
-   sales:{ breakfast:{food:711.18}, bar:{food:166.50,bev:130.42}, dinner:{food:171.98,bev:80.58} }}
-];
+const FBT_IMPORTS=[];   // (8 Oct email figures superseded by the 1–10 Oct sheet below)
+/* Patrik's sheet, 1–10 Oct 2026 (net). Replaces those days once — later edits in the tracker are kept.
+   Lines: breakfast; lunch = lunch food/drinks; bar = bar evening; dinner = restaurant dinner; room service. No covers supplied. */
+const FBT_BULK_IMPORTS=[{key:'sheet_2026-10-01_10', month:'2026-10', note:'Patrik Vlach sheet 1–10 Oct', days:[{"date":"2026-10-01","sales":{"breakfast":{"food":623.44},"lunch":{"food":8.33,"bev":70.21},"bar":{"food":59.08,"bev":155.87},"dinner":{"food":81.46,"bev":14.67}}},{"date":"2026-10-02","sales":{"breakfast":{"food":291.95},"lunch":{"food":34.32,"bev":210.63},"bar":{"food":23.33,"bev":359.11},"dinner":{"food":203.07,"bev":77.04}}},{"date":"2026-10-03","sales":{"breakfast":{"food":544.19},"lunch":{"food":141.42,"bev":324.93},"bar":{"food":157.83,"bev":429.05},"dinner":{"food":351.63,"bev":215.37}}},{"date":"2026-10-04","sales":{"breakfast":{"food":1046.57},"lunch":{"bev":6.67},"bar":{"food":114.88,"bev":91.0},"dinner":{"food":41.67,"bev":36.0}}},{"date":"2026-10-05","sales":{"breakfast":{"food":246.18},"lunch":{"food":1.67,"bev":81.29},"bar":{"food":216.42,"bev":242.46},"dinner":{"food":84.37,"bev":36.83}}},{"date":"2026-10-06","sales":{"breakfast":{"food":522.85},"lunch":{"food":1.67,"bev":46.54},"bar":{"food":456.62,"bev":509.05},"dinner":{"food":371.95,"bev":60.79},"roomservice":{"food":68.67}}},{"date":"2026-10-07","sales":{"breakfast":{"food":831.07},"lunch":{"food":22.0,"bev":65.21},"bar":{"food":165.79,"bev":273.43},"dinner":{"food":400.12,"bev":47.38},"roomservice":{"food":30.2}}},{"date":"2026-10-08","sales":{"breakfast":{"food":711.18},"lunch":{"food":21.67,"bev":54.17},"bar":{"food":76.58,"bev":64.25},"dinner":{"food":171.98,"bev":80.58},"roomservice":{"food":80.25}}},{"date":"2026-10-09","sales":{"breakfast":{"food":371.55},"lunch":{"bev":79.13},"bar":{"food":77.38,"bev":150.97},"dinner":{"food":317.92,"bev":98.67},"roomservice":{"food":34.92}}},{"date":"2026-10-10","sales":{"breakfast":{"food":661.54},"lunch":{"food":114.08,"bev":614.3},"bar":{"food":69.5,"bev":368.44},"dinner":{"food":306.66,"bev":67.08}}}]}];
+async function fbtApplyBulkImports(){
+  if(!fbtLive()) return 0; const keep=FBT.month; let n=0;
+  for(const im of FBT_BULK_IMPORTS){
+    try{
+      await fbtLoad(im.month); if(FBT.src!=='live') continue;
+      if(FBT.data.imports && FBT.data.imports[im.key]) continue;
+      const patch={['imports.'+im.key]:new Date().toISOString()};
+      im.days.forEach(d=>{ const day={}; Object.entries(d.sales).forEach(([id,v])=>{ day[id]={food:+v.food||0,bev:+v.bev||0,covers:+(v.covers||0)}; });
+        FBT.data.sales[d.date]=day; patch['sales.'+d.date]=day; });
+      FBT.data.imports=Object.assign({},FBT.data.imports,{[im.key]:true});
+      await fbtSave(patch); n+=im.days.length;
+    }catch(e){ console.warn('F&B bulk import skipped',im.key,e); toast('F&B import failed: '+(e.code||e.message)); }
+  }
+  if(keep) await fbtLoad(keep);
+  if(n){ toast(`✓ ${n} days of F&B figures (1–10 Oct) loaded into the tracker`,5000); if(CURRENT_TAB==='fbTracker') fbtDraw(); if(typeof hpPublishSummary==='function') setTimeout(()=>hpPublishSummary(true),800); }
+  return n;
+}
 async function fbtApplyImports(){
+  try{ await fbtApplyBulkImports(); }catch(e){}
   if(!fbtLive()) return 0; const keep=FBT.month; let n=0;
   for(const im of FBT_IMPORTS){
     try{
