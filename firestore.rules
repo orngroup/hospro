@@ -13,7 +13,18 @@ service cloud.firestore {
           'alia.taub@brandonhall.portal',
           'nicola.cartwright@brandonhall.portal',
           'natalie.freeman@brandonhall.portal',
-          'patrik.vlach@brandonhall.portal'
+          'patrik.vlach@brandonhall.portal',
+          'veronica.webb@brandonhall.portal'
+        ];
+    }
+
+    // Payroll = the people who can open HosPEOPLE (staff, rota, payroll).
+    function isPayroll() {
+      return isStaff() && request.auth.token.email in [
+          'ajay.kawa@brandonhall.portal',
+          'raj.kumar@brandonhall.portal',
+          'alia.taub@brandonhall.portal',
+          'veronica.webb@brandonhall.portal'
         ];
     }
 
@@ -75,6 +86,43 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
       match /log/{entry} { allow read, write: if true; }
+    }
+
+    // HosFIX maintenance app: jobs shared between staff phones and the portal.
+    // The phones don't sign in to Firebase, so access is open for this collection
+    // only (same approach as the beverage iPad app). Delete is blocked so a job
+    // can never be wiped from a phone.
+    match /hosfix_jobs/{jobId} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
+
+    // Staff rota links (my-rota.html) + HosPRO Pocket summary.
+    // rota = staff rota links; summary = HosPRO Pocket mobile app (totals only)
+    match /hospro_public/{docId} {
+      allow read: if docId in ['rota', 'summary'];
+      allow create, update: if docId == 'rota' || (docId == 'summary' && isStaff());
+      allow delete: if false;
+    }
+
+    // Payroll & HR records: one encrypted document (hr_private/vault).
+    match /hr_private/{docId} {
+      allow read, write: if isPayroll() && docId == 'vault';
+    }
+
+    // F&B tracker: daily outlet sales, purchase invoices and settings.
+    // One document per month (fb_tracker/2026-10) plus fb_tracker/settings.
+    match /fb_tracker/{docId} {
+      allow read, write: if isStaff();
+    }
+
+    // Daily F&B form (fb-entry.html): anyone with the link can SUBMIT figures;
+    // only staff can read them back.
+    match /fb_submissions/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['date','by','sales','invoices','notes','submittedAt','status'])
+        && request.resource.data.status == 'new'
+        && request.resource.data.date is string && request.resource.data.date.size() == 10;
+      allow read, update, delete: if isStaff();
     }
 
     // ── HosREV (revenue management) — staff only ──
