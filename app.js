@@ -8413,43 +8413,110 @@ function renderBrandCollateral(v){
 
 /* ============================================================ HosHUB — Document Hub */
 
-const HUB_CATEGORIES = {
-  hubContracts: { label:'Contracts & Agreements', icon:'📝', colour:'#8b5c8f',
+let HUB_CATEGORIES = {
+  hubContracts: { label:'Contracts & Agreements', icon:'📝', colour:'#8b5c8f', def:true,
     types:['Venue contracts','Event agreements','Service level agreements','Supplier contracts','NDAs','Partnership agreements'] },
-  hubSuppliers:  { label:'Supplier Agreements', icon:'🏭', colour:'#c45c00',
+  hubSuppliers:  { label:'Supplier Agreements', icon:'🏭', colour:'#c45c00', def:true,
     types:['Food & beverage suppliers','Linen & laundry','Maintenance contractors','IT & systems','Cleaning services','Utilities'] },
-  hubFinance:    { label:'Finance Documents', icon:'💰', colour:'#2f6f9e',
+  hubFinance:    { label:'Finance Documents', icon:'💰', colour:'#2f6f9e', def:true,
     types:['Invoices','Purchase orders','Monthly P&L reports','Budget plans','Bank statements','Tax documents'] },
-  hubHR:         { label:'HR Documents', icon:'👤', colour:'#4a86c7',
+  hubHR:         { label:'HR Documents', icon:'👤', colour:'#4a86c7', def:true,
     types:['Staff handbook','HR policies','Disciplinary records','Training certificates','Right to work checks','Appraisal records'] },
+  compliance:    { label:'Compliance', icon:'🛡️', colour:'#b23b3b', def:true,
+    types:['Fire','Gas','Electricity','Water','Health & Safety','General'] },
 };
 
+/* ---- HosHUB config (custom categories + extra folders), shared via Firestore (hoshub/config) ---- */
+let HUB_CFG = null;
+function hubCfgCache(){
+  if(!HUB_CFG){ try{ HUB_CFG = JSON.parse(localStorage.getItem('hoshub_cfg')||'null'); }catch(e){ HUB_CFG=null; } }
+  if(!HUB_CFG || typeof HUB_CFG!=='object') HUB_CFG = { cats:{}, folders:{} };
+  HUB_CFG.cats = HUB_CFG.cats||{}; HUB_CFG.folders = HUB_CFG.folders||{};
+  return HUB_CFG;
+}
+function hubCfgMirror(cfg){ cfg.cats=cfg.cats||{}; cfg.folders=cfg.folders||{}; HUB_CFG=cfg; try{ localStorage.setItem('hoshub_cfg', JSON.stringify(cfg)); }catch(e){} }
+async function hubCfgSave(){
+  const cfg=hubCfgCache(); hubCfgMirror(cfg);
+  if(typeof FB!=='undefined' && FB.ready && FB.user){
+    try{ await FB.db.collection('hoshub').doc('config').set(cfg); }
+    catch(e){ console.warn('HosHUB config save', e&&e.code); toast('Saved on this device (sign in to share with the team)'); }
+  }
+}
+/* Merge built-in defaults + custom categories + extra folders into one map */
+function getHubCats(){
+  const cfg=hubCfgCache(); const out={};
+  Object.entries(HUB_CATEGORIES).forEach(([id,c])=>{ out[id]={...c, types:[...c.types]}; });
+  Object.entries(cfg.cats||{}).forEach(([id,c])=>{
+    if(!out[id]) out[id]={ label:c.label, icon:c.icon||'📁', colour:c.colour||'#4a9d7f', def:false, types:[] };
+  });
+  Object.entries(cfg.folders||{}).forEach(([id,extra])=>{
+    if(out[id]) (extra||[]).forEach(t=>{ if(t && !out[id].types.includes(t)) out[id].types.push(t); });
+  });
+  return out;
+}
+
+/* ---- HosHUB documents (shared via Firestore hoshub_docs, local mirror for counts) ---- */
+let HUB_DOCS = null;
+function hubDocsCache(){
+  if(Array.isArray(HUB_DOCS)) return HUB_DOCS;
+  try{ return JSON.parse(localStorage.getItem('hoshub_docs')||'[]'); }catch(e){ return []; }
+}
+function hubDocsMirror(arr){ HUB_DOCS=arr; try{ localStorage.setItem('hoshub_docs', JSON.stringify(arr)); }catch(e){} }
+async function hubDocsSync(){
+  if(typeof FB==='undefined' || !FB.ready || !FB.user) return;
+  try{
+    const snap=await FB.db.collection('hoshub_docs').get();
+    const arr=snap.docs.map(d=>({ id:d.id, ...d.data() })).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    hubDocsMirror(arr);
+  }catch(e){ console.warn('HosHUB docs sync', e&&e.code); }
+}
+/* Pull latest config + docs from Firestore, then re-render (rate-limited to once / 4s) */
+function hubMaybeSync(reRender){
+  if(typeof FB==='undefined' || !FB.ready || !FB.user) return;
+  const now=Date.now();
+  if(hubMaybeSync._at && now-hubMaybeSync._at<4000) return;
+  hubMaybeSync._at=now;
+  Promise.all([
+    FB.db.collection('hoshub').doc('config').get().then(d=>{ if(d.exists) hubCfgMirror(Object.assign({cats:{},folders:{}}, d.data())); }).catch(()=>{}),
+    hubDocsSync()
+  ]).then(()=>{ const v=document.getElementById('view'); if(v && typeof reRender==='function') reRender(v); });
+}
+function hubOpen(id){
+  if(typeof RENDER_MAP!=='undefined' && RENDER_MAP[id]){ switchTab(id); return; }
+  renderHubSection(document.getElementById('view'), id);
+}
+
 function renderHubDocs(v){
-  v.innerHTML=''; v.style.padding='0';
-  const saved = JSON.parse(localStorage.getItem('hoshub_docs')||'[]').filter(d=>hpCanTab(d.tab));
+  v.innerHTML=''; v.style.padding='0'; window._hubCat=null;
+  hubMaybeSync(renderHubDocs);
+  const cats=getHubCats();
+  const saved = hubDocsCache().filter(d=>hpCanTab(d.tab));
   const search = window._hubSearch||'';
-  const filtered = search ? saved.filter(d=>d.name.toLowerCase().includes(search.toLowerCase())||d.category.toLowerCase().includes(search.toLowerCase())) : saved;
+  const filtered = search ? saved.filter(d=>(d.name||'').toLowerCase().includes(search.toLowerCase())||((cats[d.tab]&&cats[d.tab].label)||d.category||d.tab||'').toLowerCase().includes(search.toLowerCase())) : saved;
 
   const html=`<div style="padding:28px;min-height:100%">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
       <div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff">HosHUB</div>
-        <div style="font-size:13px;color:#8fa3b8">Document management · ${saved.length} documents filed</div>
+        <div style="font-size:13px;color:#8fa3b8">Document management · ${saved.length} document${saved.length!==1?'s':''} filed</div>
       </div>
-      <button onclick="hubUploadModal()" style="padding:9px 18px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer">+ File document</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="hubAddCategory()" style="padding:9px 16px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:9px;font:700 13px Lato;cursor:pointer">+ New category</button>
+        <button onclick="hubUploadModal()" style="padding:9px 18px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer">+ File document</button>
+      </div>
     </div>
     <input type="text" placeholder="🔍 Search documents..." value="${search}"
       oninput="window._hubSearch=this.value;renderHubDocs(document.getElementById('view'))"
       style="width:100%;padding:11px 14px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);border-radius:10px;font:13px Lato;color:#fff;outline:none;margin-bottom:20px">
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:24px">
-      ${Object.entries(HUB_CATEGORIES).filter(([tab])=>hpCanTab(tab)).map(([tab,cat])=>{
+      ${Object.entries(cats).filter(([tab])=>hpCanTab(tab)).map(([tab,cat])=>{
         const count=saved.filter(d=>d.tab===tab).length;
-        return `<button onclick="switchTab('${tab}')"
+        return `<button onclick="hubOpen('${tab}')"
           style="display:flex;align-items:center;gap:12px;padding:16px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;cursor:pointer;text-align:left;transition:all .15s;width:100%"
           onmouseover="this.style.background='rgba(255,255,255,.12)';this.style.borderColor='${cat.colour}'"
           onmouseout="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='rgba(255,255,255,.1)'">
           <span style="font-size:28px">${cat.icon}</span>
-          <div>
+          <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:700;color:#fff">${cat.label}</div>
             <div style="font-size:11px;color:#8fa3b8;margin-top:2px">${count} document${count!==1?'s':''}</div>
           </div>
@@ -8460,12 +8527,12 @@ function renderHubDocs(v){
     <div style="font-size:11px;font-weight:700;color:#8fa3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Recent documents</div>
     <div style="display:flex;flex-direction:column;gap:8px">
       ${filtered.slice(0,20).map(d=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px">
-        <span style="font-size:22px">${HUB_CATEGORIES[d.tab]?.icon||'📄'}</span>
+        <span style="font-size:22px">${(cats[d.tab]&&cats[d.tab].icon)||'📄'}</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
-          <div style="font-size:11px;color:#8fa3b8;margin-top:2px">${HUB_CATEGORIES[d.tab]?.label||d.category} · ${d.type||''} · ${d.date||''}</div>
+          <div style="font-size:11px;color:#8fa3b8;margin-top:2px">${(cats[d.tab]&&cats[d.tab].label)||d.category||d.tab} · ${d.type||''} · ${d.date||''}</div>
         </div>
-        <span style="font-size:11px;color:#4a9d7f;font-weight:700;white-space:nowrap">Filed</span>
+        ${d.fileUrl?`<a href="${d.fileUrl}" target="_blank" style="font-size:11px;color:#6cc0a0;font-weight:700;white-space:nowrap;text-decoration:none">⬇ Open</a>`:`<span style="font-size:11px;color:#4a9d7f;font-weight:700;white-space:nowrap">Filed</span>`}
       </div>`).join('')}
     </div>`:'<div style="text-align:center;padding:40px 20px"><div style="font-size:48px;margin-bottom:12px">📂</div><div style="font-size:15px;color:#8fa3b8">No documents filed yet</div><div style="font-size:13px;color:#5a7082;margin-top:6px">Click + File document to add your first document</div></div>'}
   </div>`;
@@ -8473,29 +8540,37 @@ function renderHubDocs(v){
 }
 
 function renderHubSection(v, tabId){
-  v.innerHTML=''; v.style.padding='0';
-  const cat = HUB_CATEGORIES[tabId];
+  v.innerHTML=''; v.style.padding='0'; window._hubCat=tabId;
+  hubMaybeSync(function(x){ renderHubSection(x,tabId); });
+  const cats=getHubCats();
+  const cat = cats[tabId];
   if(!cat){ v.innerHTML='<div style="padding:28px;color:#fff">Section not found</div>'; return; }
-  const saved = JSON.parse(localStorage.getItem('hoshub_docs')||'[]').filter(d=>d.tab===tabId);
+  const saved = hubDocsCache().filter(d=>d.tab===tabId);
+  const customFolders=(hubCfgCache().folders[tabId])||[];
 
   v.innerHTML=`<div style="padding:28px;min-height:100%">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
       <div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff">${cat.icon} ${cat.label}</div>
-        <div style="font-size:13px;color:#8fa3b8">${saved.length} document${saved.length!==1?'s':''} filed</div>
+        <div style="font-size:13px;color:#8fa3b8">${saved.length} document${saved.length!==1?'s':''} filed · ${cat.types.length} folder${cat.types.length!==1?'s':''}</div>
       </div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="switchTab('hubDocs')" style="padding:8px 14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;color:#fff;cursor:pointer">← All documents</button>
+        <button onclick="hubAddFolder('${tabId}')" style="padding:8px 14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:600 12px Lato;color:#fff;cursor:pointer">+ Add folder</button>
         <button onclick="hubUploadModal('${tabId}')" style="padding:8px 16px;background:#4a9d7f;color:#fff;border:none;border-radius:8px;font:700 12px Lato;cursor:pointer">+ Add document</button>
+        ${cat.def?'':`<button onclick="hubRemoveCategory('${tabId}')" style="padding:8px 12px;background:transparent;border:1px solid rgba(239,68,68,.4);border-radius:8px;font:600 12px Lato;color:#f87171;cursor:pointer">Delete category</button>`}
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:20px">
       ${cat.types.map(type=>{
         const count=saved.filter(d=>d.type===type).length;
-        return `<div style="padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px;cursor:pointer"
-          onclick="hubUploadModal('${tabId}','${type}')">
-          <div style="font-size:12px;font-weight:700;color:#fff">${type}</div>
+        const esc=type.replace(/'/g,"\\'");
+        const custom=customFolders.includes(type);
+        return `<div style="padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px;cursor:pointer;position:relative"
+          onclick="hubUploadModal('${tabId}','${esc}')">
+          <div style="font-size:12px;font-weight:700;color:#fff">📁 ${type}</div>
           <div style="font-size:11px;color:#8fa3b8;margin-top:3px">${count} filed · + Add</div>
+          ${custom?`<span onclick="event.stopPropagation();hubRemoveFolder('${tabId}','${esc}')" title="Remove folder" style="position:absolute;top:7px;right:9px;font-size:12px;color:#f87171;cursor:pointer">✕</span>`:''}
         </div>`;
       }).join('')}
     </div>
@@ -8506,7 +8581,9 @@ function renderHubSection(v, tabId){
           <div style="font-size:13px;font-weight:600;color:#fff">${d.name}</div>
           <div style="font-size:11px;color:#8fa3b8;margin-top:2px">${d.type||''} · Filed ${d.date||''} ${d.notes?'· '+d.notes:''}</div>
         </div>
-        <button onclick="hubDeleteDoc('${d.id}')" style="padding:4px 10px;border:1px solid rgba(239,68,68,.4);border-radius:6px;background:transparent;font:600 11px Lato;color:#f87171;cursor:pointer">Remove</button>
+        ${d.fileUrl?`<a href="${d.fileUrl}" target="_blank" style="padding:5px 11px;border:1px solid rgba(255,255,255,.2);border-radius:6px;font:600 11px Lato;color:#fff;text-decoration:none">👁 Open</a>
+        <a href="${d.fileUrl}" download style="padding:5px 11px;border:none;border-radius:6px;background:#c78a3b;font:600 11px Lato;color:#fff;text-decoration:none">⬇</a>`:''}
+        <button onclick="hubDeleteDoc('${d.id}')" style="padding:5px 11px;border:1px solid rgba(239,68,68,.4);border-radius:6px;background:transparent;font:600 11px Lato;color:#f87171;cursor:pointer">Remove</button>
       </div>`).join('')}
     </div>`:'<div style="text-align:center;padding:30px;color:#8fa3b8;font-size:13px">No documents in this section yet</div>'}
   </div>`;
@@ -8518,66 +8595,196 @@ function renderHubFinance(v)   { renderHubSection(v,'hubFinance');    }
 function renderHubHR(v)        { renderHubSection(v,'hubHR');         }
 
 function hubUploadModal(tabId, preType){
-  const cat = tabId ? HUB_CATEGORIES[tabId] : null;
-  const tabOpts = Object.entries(HUB_CATEGORIES).map(([k,c])=>`<option value="${k}"${tabId===k?' selected':''}>${c.label}</option>`).join('');
+  const cats=getHubCats();
+  const cat = tabId ? cats[tabId] : null;
+  const tabOpts = Object.entries(cats).map(([k,c])=>`<option value="${k}"${tabId===k?' selected':''}>${c.label}</option>`).join('');
   const typeOpts = cat ? cat.types.map(t=>`<option value="${t}"${preType===t?' selected':''}>${t}</option>`).join('') : '';
+  const signed = (typeof FB!=='undefined' && FB.ready && FB.user);
 
   openModal(`<div style="padding:4px">
     <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:14px">📂 File a document</div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Document name</label>
-        <input type="text" id="hub-name" placeholder="e.g. Sodexo Supply Agreement 2026" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
+        <input type="text" id="hub-name" placeholder="e.g. Fire Risk Assessment 2026" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
       <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Category</label>
         <select id="hub-tab" onchange="hubUpdateTypes(this.value)" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
           <option value="">— Select category —</option>${tabOpts}
         </select></div>
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Document type</label>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Folder</label>
         <select id="hub-type" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
-          <option value="">— Select type —</option>${typeOpts}
+          <option value="">— Select folder —</option>${typeOpts}
         </select></div>
       <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Notes (optional)</label>
-        <input type="text" id="hub-notes" placeholder="e.g. Expires Dec 2027 · Review Q3" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
-      <div style="padding:10px;background:#f9fafb;border-radius:8px;border:1.5px dashed #d1d5db;text-align:center;cursor:pointer" onclick="toast('File upload: connect Google Drive or SharePoint to enable cloud storage')">
-        <div style="font-size:22px;margin-bottom:4px">📤</div>
-        <div style="font-size:12px;font-weight:600;color:#374151">Click to attach file</div>
-        <div style="font-size:11px;color:#6b7280;margin-top:2px">PDF, Word, Excel · Connect cloud storage to enable</div>
+        <input type="text" id="hub-notes" placeholder="e.g. Expires Feb 2027 · Review Q3" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Attach file</label>
+        <input type="file" id="hub-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.csv,.txt"
+          style="width:100%;padding:9px;border:1.5px dashed #d1d5db;border-radius:8px;font:12px Lato;color:#374151;background:#f9fafb">
+        <div style="font-size:11px;color:${signed?'#6b7280':'#b45309'};margin-top:4px">${signed?'PDF, Word, Excel, images — stored securely in Firebase.':'⚠ Sign in first to upload the file. Without signing in, only the record is saved.'}</div>
       </div>
+      <div id="hub-progress" style="display:none;font-size:12px;color:#4a9d7f;font-weight:700"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
-      <button onclick="hubSaveDoc()" style="flex:1;padding:11px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ File document</button>
+      <button id="hub-savebtn" onclick="hubSaveDoc()" style="flex:1;padding:11px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ File document</button>
       <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
     </div>
   </div>`);
 }
 
 function hubUpdateTypes(tabId){
-  const cat = HUB_CATEGORIES[tabId];
+  const cat = getHubCats()[tabId];
   const sel = document.getElementById('hub-type');
   if(!sel) return;
-  sel.innerHTML = '<option value="">— Select type —</option>' + (cat?cat.types.map(t=>`<option value="${t}">${t}</option>`).join(''):'');
+  sel.innerHTML = '<option value="">— Select folder —</option>' + (cat?cat.types.map(t=>`<option value="${t}">${t}</option>`).join(''):'');
 }
 
-function hubSaveDoc(){
+async function hubSaveDoc(){
   const name  = document.getElementById('hub-name')?.value.trim();
   const tab   = document.getElementById('hub-tab')?.value;
   const type  = document.getElementById('hub-type')?.value;
   const notes = document.getElementById('hub-notes')?.value.trim();
+  const fileEl= document.getElementById('hub-file');
+  const file  = fileEl && fileEl.files && fileEl.files[0];
   if(!name||!tab){ toast('Please enter a name and category'); return; }
-  const docs = JSON.parse(localStorage.getItem('hoshub_docs')||'[]');
-  docs.push({ id:'hub'+Date.now(), name, tab, type, notes, date:new Date().toLocaleDateString('en-GB') });
-  localStorage.setItem('hoshub_docs', JSON.stringify(docs));
+
+  const rec = { name, tab, type, notes, date:new Date().toLocaleDateString('en-GB'),
+                createdAt:Date.now(), by:(typeof FB!=='undefined'&&FB.user&&FB.user.name)||'' };
+  const signed = (typeof FB!=='undefined' && FB.ready && FB.user);
+  const btn=document.getElementById('hub-savebtn'); const prog=document.getElementById('hub-progress');
+
+  // 1) upload the file to Firebase Storage (if a file was chosen and we're signed in)
+  if(file){
+    if(!signed){ toast('Sign in to upload files — saving the record only'); }
+    else if(!FB.storage){ toast('File storage unavailable — saving the record only'); }
+    else{
+      try{
+        if(btn){ btn.disabled=true; btn.textContent='Uploading…'; }
+        if(prog){ prog.style.display='block'; prog.textContent='Uploading 0%'; }
+        const safe=file.name.replace(/[^\w.\-]+/g,'_');
+        const path='hoshub/'+tab+'/'+rec.createdAt+'_'+safe;
+        const ref=FB.storage.ref().child(path);
+        await new Promise((resolve,reject)=>{
+          const task=ref.put(file);
+          task.on('state_changed',
+            s=>{ if(prog) prog.textContent='Uploading '+Math.round((s.bytesTransferred/s.totalBytes)*100)+'%'; },
+            err=>reject(err), ()=>resolve());
+        });
+        rec.fileUrl = await ref.getDownloadURL();
+        rec.filePath = path; rec.fileName = file.name; rec.size = file.size;
+      }catch(e){
+        console.warn('HosHUB upload', e&&e.code);
+        toast('Upload failed ('+((e&&e.code)||'error')+') — saving record only');
+      }
+    }
+  }
+
+  // 2) save the record (Firestore when signed in, local mirror otherwise)
+  try{
+    if(signed){
+      const ref=await FB.db.collection('hoshub_docs').add(rec);
+      rec.id=ref.id;
+      const arr=hubDocsCache().filter(d=>d.id!==rec.id); arr.unshift(rec); hubDocsMirror(arr);
+    }else{
+      rec.id='hub'+rec.createdAt;
+      const arr=hubDocsCache(); arr.unshift(rec); hubDocsMirror(arr);
+    }
+  }catch(e){
+    console.warn('HosHUB save', e&&e.code);
+    rec.id='hub'+rec.createdAt; const arr=hubDocsCache(); arr.unshift(rec); hubDocsMirror(arr);
+    toast('Saved on this device only');
+  }
+
   closeModal(); toast('✓ Document filed in HosHUB');
-  const current = document.getElementById('view');
-  if(current) renderHubDocs(current);
+  const v=document.getElementById('view');
+  if(v){ if(window._hubCat===tab) renderHubSection(v,tab); else renderHubDocs(v); }
 }
 
-function hubDeleteDoc(docId){
-  if(!confirm('Remove this document record?')) return;
-  const docs = JSON.parse(localStorage.getItem('hoshub_docs')||'[]').filter(d=>d.id!==docId);
-  localStorage.setItem('hoshub_docs', JSON.stringify(docs));
-  const current = document.getElementById('view');
-  if(current) renderHubDocs(current);
+async function hubDeleteDoc(docId){
+  if(!confirm('Remove this document? This also deletes the uploaded file.')) return;
+  const all=hubDocsCache(); const doc=all.find(d=>d.id===docId);
+  const signed=(typeof FB!=='undefined'&&FB.ready&&FB.user);
+  try{
+    if(signed && doc && !String(docId).startsWith('hub')){
+      await FB.db.collection('hoshub_docs').doc(docId).delete();
+      if(doc.filePath && FB.storage){ try{ await FB.storage.ref().child(doc.filePath).delete(); }catch(e){} }
+    }
+  }catch(e){ console.warn('HosHUB delete', e&&e.code); }
+  hubDocsMirror(all.filter(d=>d.id!==docId));
+  const v=document.getElementById('view');
+  if(v){ if(window._hubCat) renderHubSection(v,window._hubCat); else renderHubDocs(v); }
   toast('Document removed');
+}
+
+/* ---- HosHUB: add / remove categories and folders ---- */
+function hubAddCategory(){
+  openModal(`<div style="padding:4px">
+    <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:14px">📁 New category</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Category name</label>
+        <input type="text" id="hubcat-name" placeholder="e.g. Compliance" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Folders — comma separated (optional)</label>
+        <input type="text" id="hubcat-folders" placeholder="e.g. Fire, Gas, Electricity" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Icon (optional)</label>
+        <input type="text" id="hubcat-icon" maxlength="2" placeholder="📁" style="width:80px;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:15px Lato;color:#1a2b3a"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="hubCreateCategory()" style="flex:1;padding:11px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ Create category</button>
+      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
+    </div>
+  </div>`);
+}
+async function hubCreateCategory(){
+  const name=document.getElementById('hubcat-name')?.value.trim();
+  if(!name){ toast('Enter a category name'); return; }
+  const folders=(document.getElementById('hubcat-folders')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const icon=(document.getElementById('hubcat-icon')?.value||'').trim()||'📁';
+  const cfg=hubCfgCache();
+  let id=name.toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,24)||('cat'+Date.now());
+  if(getHubCats()[id]) id=id+String(Date.now()).slice(-4);
+  cfg.cats[id]={ label:name, icon, colour:'#4a9d7f' };
+  if(folders.length) cfg.folders[id]=folders;
+  await hubCfgSave();
+  closeModal(); toast('✓ Category created');
+  const v=document.getElementById('view'); if(v) renderHubSection(v,id);
+}
+function hubAddFolder(tabId){
+  openModal(`<div style="padding:4px">
+    <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:14px">📁 Add folder</div>
+    <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Folder name(s) — comma separated</label>
+      <input type="text" id="hubfolder-name" placeholder="e.g. Fire, Gas, Electricity" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="hubCreateFolder('${tabId}')" style="flex:1;padding:11px;background:#4a9d7f;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">✓ Add</button>
+      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
+    </div>
+  </div>`);
+}
+async function hubCreateFolder(tabId){
+  const names=(document.getElementById('hubfolder-name')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!names.length){ toast('Enter a folder name'); return; }
+  const cfg=hubCfgCache();
+  cfg.folders[tabId]=cfg.folders[tabId]||[];
+  const have=(getHubCats()[tabId]||{types:[]}).types;
+  names.forEach(n=>{ if(!have.includes(n) && !cfg.folders[tabId].includes(n)) cfg.folders[tabId].push(n); });
+  await hubCfgSave();
+  closeModal(); toast('✓ Folder added');
+  const v=document.getElementById('view'); if(v) renderHubSection(v,tabId);
+}
+async function hubRemoveFolder(tabId, type){
+  if(!confirm('Remove the "'+type+'" folder? Documents already filed stay listed.')) return;
+  const cfg=hubCfgCache();
+  if(cfg.folders[tabId]) cfg.folders[tabId]=cfg.folders[tabId].filter(t=>t!==type);
+  await hubCfgSave();
+  const v=document.getElementById('view'); if(v) renderHubSection(v,tabId);
+  toast('Folder removed');
+}
+async function hubRemoveCategory(tabId){
+  if((getHubCats()[tabId]||{}).def){ toast('Built-in categories cannot be deleted'); return; }
+  if(!confirm('Delete this category? Documents filed under it will no longer be shown.')) return;
+  const cfg=hubCfgCache();
+  delete cfg.cats[tabId]; delete cfg.folders[tabId];
+  await hubCfgSave();
+  const v=document.getElementById('view'); if(v) renderHubDocs(v);
+  toast('Category deleted');
 }
 
 

@@ -125,6 +125,12 @@ service cloud.firestore {
       allow read, update, delete: if isStaff();
     }
 
+    // ── HosHUB (document hub) — staff only ──
+    // Config = custom categories + extra folders (hoshub/config).
+    match /hoshub/{doc}       { allow read, write: if isStaff(); }
+    // Document records (metadata + Firebase Storage download URL).
+    match /hoshub_docs/{doc}  { allow read, write: if isStaff(); }
+
     // ── HosREV (revenue management) — staff only ──
     match /hosrev_settings/{doc}  { allow read, write: if isStaff(); }
     match /hosrev_books/{doc}     { allow read, write: if isStaff(); }

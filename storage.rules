@@ -5,6 +5,10 @@ service firebase.storage {
     match /marketing/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
+    // HosHUB document files — any signed-in staff member can read/write.
+    match /hoshub/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
     // Deny everything else.
     match /{allPaths=**} {
       allow read, write: if false;

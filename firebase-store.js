@@ -3,7 +3,7 @@
    Falls back to localStorage (demo mode) if Firebase is
    unavailable or not configured.
    ============================================================ */
-let FB = { ready:false, auth:null, db:null, user:null };
+let FB = { ready:false, auth:null, db:null, storage:null, user:null };
 
 (function initFirebase(){
   try{
@@ -14,6 +14,7 @@ let FB = { ready:false, auth:null, db:null, user:null };
     firebase.initializeApp(firebaseConfig);
     FB.auth = firebase.auth();
     FB.db = firebase.firestore();
+    try{ FB.storage = firebase.storage(); }catch(e){ FB.storage = null; }
     FB.ready = true;
     console.info("Firebase connected:", firebaseConfig.projectId);
   }catch(e){ console.warn("Firebase init failed, demo mode:", e.message); FB.ready=false; }
