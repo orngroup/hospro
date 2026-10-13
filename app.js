@@ -4368,6 +4368,16 @@ function renderHome(v){
 
   wrap.appendChild(cardsSection);
 
+  // ── Quick links — handy tools (open in a new tab, no login needed) ─────────
+  const quick = document.createElement('div');
+  quick.style.cssText = 'padding:4px 28px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center';
+  const qLinks = [
+    { label:'Create invoice', icon:'🧾', url:'createinvoice.html', colour:'#b89056' },
+  ];
+  quick.innerHTML = `<span style="font-size:11px;font-weight:700;color:#8fa3b8;text-transform:uppercase;letter-spacing:.6px;margin-right:4px">Quick links</span>` +
+    qLinks.map(q=>`<a href="${q.url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#fff;border:1px solid #e4e9ef;border-left:3px solid ${q.colour};border-radius:9px;font:700 12px Lato;color:#1a2b3a;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,.05)">${q.icon} ${q.label}</a>`).join('');
+  wrap.appendChild(quick);
+
   // ── Stats bar — full width ─────────────────────────────────────────────────
   const statsBar = document.createElement('div');
   statsBar.style.cssText = 'display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:16px 28px;margin-top:4px';
@@ -8600,11 +8610,12 @@ function hubUploadModal(tabId, preType){
   const tabOpts = Object.entries(cats).map(([k,c])=>`<option value="${k}"${tabId===k?' selected':''}>${c.label}</option>`).join('');
   const typeOpts = cat ? cat.types.map(t=>`<option value="${t}"${preType===t?' selected':''}>${t}</option>`).join('') : '';
   const signed = (typeof FB!=='undefined' && FB.ready && FB.user);
+  hubResetFiles();
 
   openModal(`<div style="padding:4px">
     <div style="font-size:18px;font-weight:700;color:#1a2b3a;margin-bottom:14px">📂 File a document</div>
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Document name</label>
+      <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Document name <span style="font-weight:400;text-transform:none;color:#6b7280">— leave blank to use each file's own name</span></label>
         <input type="text" id="hub-name" placeholder="e.g. Fire Risk Assessment 2026" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
       <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Category</label>
         <select id="hub-tab" onchange="hubUpdateTypes(this.value)" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a">
@@ -8617,10 +8628,21 @@ function hubUploadModal(tabId, preType){
       <div><label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Notes (optional)</label>
         <input type="text" id="hub-notes" placeholder="e.g. Expires Feb 2027 · Review Q3" style="width:100%;padding:9px;border:1.5px solid #d1d5db;border-radius:8px;font:13px Lato;color:#1a2b3a"></div>
       <div>
-        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Attach file</label>
-        <input type="file" id="hub-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.csv,.txt"
-          style="width:100%;padding:9px;border:1.5px dashed #d1d5db;border-radius:8px;font:12px Lato;color:#374151;background:#f9fafb">
-        <div style="font-size:11px;color:${signed?'#6b7280':'#b45309'};margin-top:4px">${signed?'PDF, Word, Excel, images — stored securely in Firebase.':'⚠ Sign in first to upload the file. Without signing in, only the record is saved.'}</div>
+        <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Attach files</label>
+        <div id="hub-drop"
+          ondragover="event.preventDefault();this.style.borderColor='#4a9d7f';this.style.background='#eef7f2'"
+          ondragleave="this.style.borderColor='#d1d5db';this.style.background='#f9fafb'"
+          ondrop="hubDrop(event)"
+          onclick="document.getElementById('hub-file').click()"
+          style="padding:16px;background:#f9fafb;border:1.5px dashed #d1d5db;border-radius:8px;text-align:center;cursor:pointer">
+          <div style="font-size:22px;margin-bottom:2px">📤</div>
+          <div style="font-size:12px;font-weight:600;color:#374151">Drag files here, or click to choose</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:2px">Add several at once · PDF, Word, Excel, images</div>
+        </div>
+        <input type="file" id="hub-file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.csv,.txt"
+          style="display:none" onchange="hubAddFiles(this.files)">
+        <div id="hub-filelist" style="margin-top:8px;display:flex;flex-direction:column;gap:4px"></div>
+        <div style="font-size:11px;color:${signed?'#6b7280':'#b45309'};margin-top:4px">${signed?'Stored securely in Firebase.':'⚠ Sign in first to upload files. Without signing in, only the records are saved.'}</div>
       </div>
       <div id="hub-progress" style="display:none;font-size:12px;color:#4a9d7f;font-weight:700"></div>
     </div>
@@ -8631,6 +8653,30 @@ function hubUploadModal(tabId, preType){
   </div>`);
 }
 
+/* ---- HosHUB: file selection (drag-drop + multi-file) ---- */
+function hubResetFiles(){ window._hubFiles=[]; }
+function hubAddFiles(list){
+  window._hubFiles = window._hubFiles||[];
+  Array.from(list||[]).forEach(f=>{ if(!window._hubFiles.some(x=>x.name===f.name && x.size===f.size)) window._hubFiles.push(f); });
+  hubRenderFileList();
+}
+function hubDrop(e){
+  e.preventDefault();
+  const dz=document.getElementById('hub-drop'); if(dz){ dz.style.borderColor='#d1d5db'; dz.style.background='#f9fafb'; }
+  if(e.dataTransfer && e.dataTransfer.files) hubAddFiles(e.dataTransfer.files);
+}
+function hubRemoveFile(i){ if(window._hubFiles) window._hubFiles.splice(i,1); hubRenderFileList(); }
+function hubRenderFileList(){
+  const el=document.getElementById('hub-filelist'); if(!el) return;
+  const fs=window._hubFiles||[];
+  el.innerHTML = fs.map((f,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:7px">
+    <span style="font-size:14px">📄</span>
+    <span style="flex:1;min-width:0;font-size:12px;color:#1a2b3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</span>
+    <span style="font-size:11px;color:#6b7280;white-space:nowrap">${(f.size/1024).toFixed(0)} KB</span>
+    <span onclick="hubRemoveFile(${i})" title="Remove" style="cursor:pointer;color:#f87171;font-weight:700">✕</span>
+  </div>`).join('');
+}
+
 function hubUpdateTypes(tabId){
   const cat = getHubCats()[tabId];
   const sel = document.getElementById('hub-type');
@@ -8639,62 +8685,68 @@ function hubUpdateTypes(tabId){
 }
 
 async function hubSaveDoc(){
-  const name  = document.getElementById('hub-name')?.value.trim();
+  const nameInput = document.getElementById('hub-name')?.value.trim();
   const tab   = document.getElementById('hub-tab')?.value;
   const type  = document.getElementById('hub-type')?.value;
   const notes = document.getElementById('hub-notes')?.value.trim();
-  const fileEl= document.getElementById('hub-file');
-  const file  = fileEl && fileEl.files && fileEl.files[0];
-  if(!name||!tab){ toast('Please enter a name and category'); return; }
+  const files = (window._hubFiles||[]).slice();
+  if(!tab){ toast('Please choose a category'); return; }
+  if(!nameInput && files.length===0){ toast('Enter a document name or attach a file'); return; }
 
-  const rec = { name, tab, type, notes, date:new Date().toLocaleDateString('en-GB'),
-                createdAt:Date.now(), by:(typeof FB!=='undefined'&&FB.user&&FB.user.name)||'' };
   const signed = (typeof FB!=='undefined' && FB.ready && FB.user);
   const btn=document.getElementById('hub-savebtn'); const prog=document.getElementById('hub-progress');
+  const stripExt = n => n.replace(/\.[^.]+$/,'');
+  if(files.length && !signed) toast('Sign in to upload files — saving records only');
 
-  // 1) upload the file to Firebase Storage (if a file was chosen and we're signed in)
-  if(file){
-    if(!signed){ toast('Sign in to upload files — saving the record only'); }
-    else if(!FB.storage){ toast('File storage unavailable — saving the record only'); }
-    else{
+  // Build one record per file (or a single record when no file is attached).
+  // When the name box is blank, each file keeps its own original name.
+  const records = [];
+  if(files.length===0){
+    records.push({ name:nameInput, file:null });
+  }else{
+    files.forEach(f=>{
+      const nm = files.length===1 ? (nameInput || stripExt(f.name))
+               : (nameInput ? nameInput+' — '+stripExt(f.name) : stripExt(f.name));
+      records.push({ name:nm, file:f });
+    });
+  }
+
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  let saved=0;
+  for(let i=0;i<records.length;i++){
+    const r=records[i];
+    const rec={ name:r.name, tab, type, notes, date:new Date().toLocaleDateString('en-GB'),
+                createdAt:Date.now()+i, by:(signed&&FB.user.name)||'' };
+    // upload file to Firebase Storage
+    if(r.file && signed && FB.storage){
       try{
-        if(btn){ btn.disabled=true; btn.textContent='Uploading…'; }
-        if(prog){ prog.style.display='block'; prog.textContent='Uploading 0%'; }
-        const safe=file.name.replace(/[^\w.\-]+/g,'_');
+        if(prog){ prog.style.display='block'; prog.textContent='Uploading '+(i+1)+'/'+records.length+'…'; }
+        const safe=r.file.name.replace(/[^\w.\-]+/g,'_');
         const path='hoshub/'+tab+'/'+rec.createdAt+'_'+safe;
         const ref=FB.storage.ref().child(path);
         await new Promise((resolve,reject)=>{
-          const task=ref.put(file);
+          const task=ref.put(r.file);
           task.on('state_changed',
-            s=>{ if(prog) prog.textContent='Uploading '+Math.round((s.bytesTransferred/s.totalBytes)*100)+'%'; },
+            s=>{ if(prog) prog.textContent='Uploading '+(i+1)+'/'+records.length+' · '+Math.round((s.bytesTransferred/s.totalBytes)*100)+'%'; },
             err=>reject(err), ()=>resolve());
         });
         rec.fileUrl = await ref.getDownloadURL();
-        rec.filePath = path; rec.fileName = file.name; rec.size = file.size;
-      }catch(e){
-        console.warn('HosHUB upload', e&&e.code);
-        toast('Upload failed ('+((e&&e.code)||'error')+') — saving record only');
-      }
+        rec.filePath = path; rec.fileName = r.file.name; rec.size = r.file.size;
+      }catch(e){ console.warn('HosHUB upload', e&&e.code); toast('Upload failed for '+r.file.name); }
+    }
+    // save the record (Firestore when signed in, local mirror otherwise)
+    try{
+      if(signed){ const ref=await FB.db.collection('hoshub_docs').add(rec); rec.id=ref.id; }
+      else rec.id='hub'+rec.createdAt;
+      const arr=hubDocsCache().filter(d=>d.id!==rec.id); arr.unshift(rec); hubDocsMirror(arr); saved++;
+    }catch(e){
+      console.warn('HosHUB save', e&&e.code);
+      rec.id='hub'+rec.createdAt; const arr=hubDocsCache(); arr.unshift(rec); hubDocsMirror(arr); saved++;
     }
   }
 
-  // 2) save the record (Firestore when signed in, local mirror otherwise)
-  try{
-    if(signed){
-      const ref=await FB.db.collection('hoshub_docs').add(rec);
-      rec.id=ref.id;
-      const arr=hubDocsCache().filter(d=>d.id!==rec.id); arr.unshift(rec); hubDocsMirror(arr);
-    }else{
-      rec.id='hub'+rec.createdAt;
-      const arr=hubDocsCache(); arr.unshift(rec); hubDocsMirror(arr);
-    }
-  }catch(e){
-    console.warn('HosHUB save', e&&e.code);
-    rec.id='hub'+rec.createdAt; const arr=hubDocsCache(); arr.unshift(rec); hubDocsMirror(arr);
-    toast('Saved on this device only');
-  }
-
-  closeModal(); toast('✓ Document filed in HosHUB');
+  hubResetFiles();
+  closeModal(); toast('✓ '+saved+' document'+(saved!==1?'s':'')+' filed in HosHUB');
   const v=document.getElementById('view');
   if(v){ if(window._hubCat===tab) renderHubSection(v,tab); else renderHubDocs(v); }
 }

@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brandon Hall — Invoice Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#243447; --navy2:#1a2b3a; --gold:#b89056; --ink:#1f2a37;
+    --line:#d9dee5; --muted:#6b7280; --bg:#eef1f5; --head:#5a6675;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Lato,system-ui,Arial,sans-serif}
+  .wrap{max-width:1400px;margin:0 auto;padding:18px;display:grid;grid-template-columns:minmax(360px,440px) 1fr;gap:22px;align-items:start}
+  @media(max-width:960px){.wrap{grid-template-columns:1fr}}
+
+  /* ---- toolbar ---- */
+  .bar{grid-column:1 / -1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+       background:var(--navy);color:#fff;padding:12px 18px;border-radius:12px}
+  .bar h1{margin:0;font:600 18px Cormorant Garamond,serif;letter-spacing:.3px}
+  .bar .sub{font-size:12px;color:#aebdce}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{border:none;border-radius:9px;font:700 13px Lato;cursor:pointer;padding:10px 16px}
+  .btn-gold{background:var(--gold);color:#fff}
+  .btn-ghost{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25)}
+
+  /* ---- editor ---- */
+  .panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .panel h2{margin:0 0 10px;font:700 12px Lato;text-transform:uppercase;letter-spacing:.6px;color:var(--head)}
+  .fld{margin-bottom:10px}
+  .fld label{display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:3px}
+  .fld input,.fld textarea,.fld select{width:100%;padding:8px 9px;border:1.5px solid var(--line);border-radius:7px;font:13px Lato;color:var(--ink);background:#fff}
+  .fld textarea{resize:vertical;min-height:52px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  details{margin-top:4px;border-top:1px dashed var(--line);padding-top:10px}
+  details summary{cursor:pointer;font:700 12px Lato;color:var(--head);text-transform:uppercase;letter-spacing:.5px}
+
+  /* line item editor */
+  .li{border:1px solid var(--line);border-radius:9px;padding:10px;margin-bottom:8px;background:#fafbfc}
+  .li .top{display:grid;grid-template-columns:1.1fr 2.4fr auto;gap:8px;margin-bottom:8px}
+  .li .bot{display:grid;grid-template-columns:.7fr 1fr .8fr 1.1fr auto;gap:8px;align-items:end}
+  .li .mini{font-size:10px;font-weight:700;color:var(--muted);margin-bottom:2px;display:block;text-transform:uppercase;letter-spacing:.3px}
+  .li input,.li select{width:100%;padding:7px 8px;border:1.5px solid var(--line);border-radius:6px;font:12px Lato;color:var(--ink)}
+  .del{background:#fff;border:1px solid #f3c6c6;color:#d14343;border-radius:7px;font:700 12px Lato;cursor:pointer;padding:0 10px;height:34px;align-self:center}
+  .addbtn{width:100%;padding:9px;border:1.5px dashed #b9c6d6;border-radius:8px;background:#f3f7fb;color:var(--navy2);font:700 13px Lato;cursor:pointer}
+
+  /* ---- invoice sheet (preview + print) ---- */
+  .sheet-scroll{overflow:auto}
+  .sheet{background:#fff;width:210mm;min-height:297mm;margin:0 auto;padding:16mm 15mm;
+         box-shadow:0 2px 14px rgba(0,0,0,.12);color:#222;font:12px/1.4 Lato,Arial,sans-serif;position:relative}
+  .logo{width:190px;height:96px;margin:0 auto;background:var(--navy);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--gold)}
+  .logo .bh{font:700 34px Cormorant Garamond,serif;letter-spacing:4px;line-height:1}
+  .logo .nm{font:600 11px Cormorant Garamond,serif;letter-spacing:5px;margin-top:4px}
+  .logo .rule{width:66%;height:1px;background:var(--gold);opacity:.6;margin:4px 0}
+  .logo .sp{font:600 7.5px Lato;letter-spacing:4px;color:#cdb58a}
+  .inv-title{text-align:right;font:700 30px Cormorant Garamond,serif;color:#1c1c1c;margin:6px 0 18px}
+
+  .meta{display:flex;justify-content:space-between;gap:24px;margin-bottom:14px}
+  .bill{font-size:12px;max-width:48%}
+  .bill .big{font-weight:700;margin-bottom:2px}
+  .bill .ln{color:#555}
+  .refs{min-width:270px}
+  .refs table{border-collapse:collapse;width:100%}
+  .refs td{padding:2px 0;font-size:12px}
+  .refs td.k{font-weight:700;color:#1c1c1c}
+  .refs td.v{text-align:right}
+  .guest{font-size:12px;margin:6px 0 12px}
+  .guest b{margin-right:10px}
+
+  table.items{width:100%;border-collapse:collapse;margin-top:4px}
+  table.items th{background:var(--head);color:#fff;font:700 11px Lato;text-align:left;padding:6px 8px}
+  table.items th.r,table.items td.r{text-align:right}
+  table.items td{padding:7px 8px;border-bottom:1px solid #e7e9ee;font-size:11.5px;vertical-align:top}
+  .totals{display:flex;justify-content:flex-end;margin-top:14px}
+  .totals table td{padding:3px 8px;font-size:12px}
+  .totals .lbl{font-weight:700}
+  .totals .due td{border-top:1.5px solid #111;font-weight:700;font-size:13px;padding-top:6px}
+
+  .tax h3{font:700 16px Cormorant Garamond,serif;margin:22px 0 6px}
+  table.tax{border-collapse:collapse;min-width:420px}
+  table.tax th{background:var(--head);color:#fff;font:700 11px Lato;text-align:left;padding:5px 10px}
+  table.tax th.r,table.tax td.r{text-align:right}
+  table.tax td{padding:5px 10px;border-bottom:1px solid #e7e9ee;font-size:11.5px}
+  .vatno{font-size:12px;margin:8px 0}
+  .pay{font-size:11.5px;color:#333;line-height:1.7;margin-top:12px}
+  .pay .r{font-weight:700}
+  .foot{position:absolute;left:0;right:0;bottom:10mm;text-align:center;font-size:10px;color:#777}
+
+  .hint{font-size:11px;color:var(--muted);margin-top:6px}
+
+  @media print{
+    @page{size:A4;margin:0}
+    body{background:#fff}
+    .wrap{display:block;max-width:none;padding:0}
+    .bar,.editor,.hint,.sheet-scroll::-webkit-scrollbar{display:none!important}
+    .editor{display:none!important}
+    .sheet-scroll{overflow:visible}
+    .sheet{width:auto;min-height:auto;margin:0;padding:14mm 14mm;box-shadow:none}
+    .foot{position:fixed}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bar">
+    <div>
+      <h1>Brandon Hall — Invoice Generator</h1>
+      <div class="sub">Fill in the details, then Create PDF to print or save. Nothing is stored.</div>
+    </div>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="resetAll()">Reset</button>
+      <button class="btn btn-gold" onclick="window.print()">🖨 Create PDF</button>
+    </div>
+  </div>
+
+  <!-- ================= EDITOR ================= -->
+  <div class="editor">
+    <div class="panel">
+      <h2>Invoice details</h2>
+      <div class="row2">
+        <div class="fld"><label>Invoice number</label><input id="invNo" value="INV0005875" oninput="draw()"></div>
+        <div class="fld"><label>Invoice date</label><input id="invDate" type="date" oninput="draw()"></div>
+      </div>
+      <div class="row2">
+        <div class="fld"><label>Booking reference</label><input id="bookRef" placeholder="BK003848" oninput="draw()"></div>
+        <div class="fld"><label>Room ID</label><input id="roomId" placeholder="120" oninput="draw()"></div>
+      </div>
+      <div class="row2">
+        <div class="fld"><label>Arrival date</label><input id="arrive" type="date" oninput="draw()"></div>
+        <div class="fld"><label>Departure date</label><input id="depart" type="date" oninput="draw()"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>Bill to</h2>
+      <div class="fld"><label>Customer name</label><input id="custName" placeholder="Darren Brown" oninput="draw()"></div>
+      <div class="fld"><label>Address</label><textarea id="custAddr" placeholder="Street&#10;Town&#10;Postcode" oninput="draw()"></textarea></div>
+      <div class="row2">
+        <div class="fld"><label>Country</label><input id="custCountry" value="United Kingdom" oninput="draw()"></div>
+        <div class="fld"><label>Guest name</label><input id="guest" placeholder="Darren Brown" oninput="draw()"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>Line items</h2>
+      <div id="items"></div>
+      <button class="addbtn" onclick="addItem()">+ Add line</button>
+      <div class="hint">Charges use Net + VAT% (Gross &amp; Total are worked out for you). Choose <b>Payment</b> for money received — it’s excluded from the VAT analysis and reduces the balance due.</div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <details>
+        <summary>Business &amp; bank details</summary>
+        <div style="margin-top:10px">
+          <div class="fld"><label>Account name</label><input id="bAcc" value="BRANDON HOTEL MANAGEMENT LIMITED" oninput="draw()"></div>
+          <div class="row2">
+            <div class="fld"><label>VAT number</label><input id="bVat" value="49955806" oninput="draw()"></div>
+            <div class="fld"><label>Sort code</label><input id="bSort" value="30-98-97" oninput="draw()"></div>
+          </div>
+          <div class="row2">
+            <div class="fld"><label>Account number</label><input id="bNum" value="38757762" oninput="draw()"></div>
+            <div class="fld"><label>BIC</label><input id="bBic" value="LOYDGB21031" oninput="draw()"></div>
+          </div>
+          <div class="fld"><label>IBAN</label><input id="bIban" value="GB17LOYD30989738757762" oninput="draw()"></div>
+          <div class="row2">
+            <div class="fld"><label>Phone</label><input id="bPhone" value="+44 (0)2477102555" oninput="draw()"></div>
+            <div class="fld"><label>Ref suffix</label><input id="bRefSuffix" value="/1/1" oninput="draw()"></div>
+          </div>
+          <div class="fld"><label>Footer address</label><input id="bFooter" value="Brandon Hall Hotel and Spa, Wolston, Coventry CV8 3FW" oninput="draw()"></div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ================= PREVIEW / SHEET ================= -->
+  <div class="sheet-scroll">
+    <div class="sheet" id="sheet"></div>
+    <div class="hint" style="text-align:center">This is exactly how the printed / PDF invoice will look. Use <b>Create PDF</b> and choose “Save as PDF” in the print dialog to save to your desktop.</div>
+  </div>
+
+</div>
+
+<script>
+/* ---------- state ---------- */
+let items = [];
+function addItem(data){
+  items.push(Object.assign({type:'charge', date:'', desc:'', qty:'1', net:'', vat:'20'}, data||{}));
+  renderItems(); draw();
+}
+function delItem(i){ items.splice(i,1); renderItems(); draw(); }
+function upd(i,k,v){ items[i][k]=v; draw(); if(k==='type') renderItems(); }
+
+function renderItems(){
+  const el=document.getElementById('items');
+  el.innerHTML = items.map((it,i)=>{
+    const pay = it.type==='payment';
+    return `<div class="li">
+      <div class="top">
+        <div><span class="mini">Date</span><input value="${esc(it.date)}" placeholder="03/Oct/2026" oninput="upd(${i},'date',this.value)"></div>
+        <div><span class="mini">Description</span><input value="${esc(it.desc)}" placeholder="${pay?'Visa (Auth / Card)':'Bed & Breakfast Direct'}" oninput="upd(${i},'desc',this.value)"></div>
+        <button class="del" onclick="delItem(${i})" title="Remove line">✕</button>
+      </div>
+      <div class="bot">
+        <div><span class="mini">Type</span>
+          <select onchange="upd(${i},'type',this.value)">
+            <option value="charge"${pay?'':' selected'}>Charge</option>
+            <option value="payment"${pay?' selected':''}>Payment</option>
+          </select></div>
+        <div><span class="mini">${pay?'Amount £':'Net £'}</span><input type="number" step="0.01" value="${esc(it.net)}" oninput="upd(${i},'net',this.value)"></div>
+        <div><span class="mini">Qty</span><input type="number" step="1" value="${esc(it.qty)}" oninput="upd(${i},'qty',this.value)" ${pay?'disabled style="opacity:.4"':''}></div>
+        <div><span class="mini">VAT %</span><input type="number" step="0.1" value="${esc(it.vat)}" oninput="upd(${i},'vat',this.value)" ${pay?'disabled style="opacity:.4"':''}></div>
+        <div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- helpers ---------- */
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function num(v){const n=parseFloat(v);return isNaN(n)?0:n;}
+function money(n){const s=Math.abs(n).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});return (n<0?'-£':'£')+s;}
+function val(id){const e=document.getElementById(id);return e?e.value:'';}
+function fmtDate(iso){ if(!iso) return ''; const d=new Date(iso+'T00:00:00'); if(isNaN(d)) return esc(iso);
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).replace(/ /g,'/'); }
+
+/* ---------- render invoice ---------- */
+function draw(){
+  const rows=[]; let balance=0; const taxMap={};
+  items.forEach(it=>{
+    const qty = it.type==='payment' ? 1 : (num(it.qty)||1);
+    if(it.type==='payment'){
+      const amt = num(it.net);
+      const total = -Math.abs(amt);
+      balance += total;
+      rows.push({date:it.date, desc:it.desc||'Payment', qty:'1', net:'', gross:'', total});
+    }else{
+      const net = num(it.net);
+      const vat = num(it.vat);
+      const gross = net*(1+vat/100);
+      const total = gross*qty;
+      balance += total;
+      rows.push({date:it.date, desc:it.desc, qty:String(qty), net:net*qty, gross:gross*qty, total});
+      const key = vat.toFixed(vat%1?1:0);
+      taxMap[key] = taxMap[key] || {nett:0,tax:0,gross:0};
+      taxMap[key].nett  += net*qty;
+      taxMap[key].tax   += (gross-net)*qty;
+      taxMap[key].gross += gross*qty;
+    }
+  });
+
+  const itemRows = rows.length ? rows.map(r=>`<tr>
+      <td>${esc(r.date)}</td>
+      <td>${esc(r.desc).replace(/\n/g,'<br>')}</td>
+      <td>${esc(r.qty)}</td>
+      <td class="r">${r.net===''?'':money(r.net)}</td>
+      <td class="r">${r.gross===''?'':money(r.gross)}</td>
+      <td class="r">${money(r.total)}</td>
+    </tr>`).join('') : `<tr><td colspan="6" style="color:#999;padding:16px 8px">No line items yet — add charges and payments on the left.</td></tr>`;
+
+  const taxRows = Object.keys(taxMap).sort().map(k=>{
+    const t=taxMap[k];
+    return `<tr><td>UK VAT ${k}%</td><td class="r">${money(t.nett)}</td><td class="r">${money(t.tax)}</td><td class="r">${money(t.gross)}</td></tr>`;
+  }).join('') || `<tr><td>UK VAT 20%</td><td class="r">£0.00</td><td class="r">£0.00</td><td class="r">£0.00</td></tr>`;
+
+  const ref = (val('bookRef')||'') + val('bRefSuffix');
+
+  document.getElementById('sheet').innerHTML = `
+    <div class="logo">
+      <div class="bh">BH</div>
+      <div class="nm">BRANDON&nbsp;HALL</div>
+      <div class="rule"></div>
+      <div class="sp">HOTEL &amp; SPA</div>
+    </div>
+    <div class="inv-title">Invoice</div>
+
+    <div class="meta">
+      <div class="bill">
+        <div class="big">${esc(val('custName'))||'&nbsp;'}</div>
+        ${esc(val('custAddr')).split('\n').map(l=>`<div class="ln">${l||'&nbsp;'}</div>`).join('')}
+        <div class="ln">${esc(val('custCountry'))}</div>
+      </div>
+      <div class="refs">
+        <table>
+          <tr><td class="k">Booking Reference:</td><td class="v">${esc(val('bookRef'))}</td></tr>
+          <tr><td class="k">Room ID:</td><td class="v">${esc(val('roomId'))}</td></tr>
+          <tr><td class="k">Arrival Date:</td><td class="v">${fmtDate(val('arrive'))}</td></tr>
+          <tr><td class="k">Departure Date:</td><td class="v">${fmtDate(val('depart'))}</td></tr>
+          <tr><td class="k">Invoice number:</td><td class="v">${esc(val('invNo'))}</td></tr>
+          <tr><td class="k">Invoice date:</td><td class="v">${fmtDate(val('invDate'))}</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="guest"><b>Guest:</b>${esc(val('guest'))||esc(val('custName'))}</div>
+
+    <table class="items">
+      <thead><tr>
+        <th>Date</th><th>Description</th><th>Quantity</th>
+        <th class="r">Value Net</th><th class="r">Value Gross</th><th class="r">Value Total</th>
+      </tr></thead>
+      <tbody>${itemRows}</tbody>
+    </table>
+
+    <div class="totals"><table>
+      <tr class="due"><td class="lbl">Balance Due:</td><td class="r">${money(balance)}</td></tr>
+    </table></div>
+
+    <div class="tax">
+      <h3>Tax Analysis</h3>
+      <table class="tax">
+        <thead><tr><th>Tax Code</th><th class="r">Nett</th><th class="r">Tax</th><th class="r">Gross</th></tr></thead>
+        <tbody>${taxRows}</tbody>
+      </table>
+      <div class="vatno"><b>VAT Number:</b>&nbsp;&nbsp;${esc(val('bVat'))}</div>
+    </div>
+
+    <div class="pay">
+      Ref: ${esc(ref)}<br>
+      ACCOUNT NAME: ${esc(val('bAcc'))}<br>
+      SORT CODE: ${esc(val('bSort'))}<br>
+      ACCOUNT NUMBER: ${esc(val('bNum'))}<br>
+      IBAN: ${esc(val('bIban'))}<br>
+      BIC: ${esc(val('bBic'))}<br><br>
+      Phone Number: ${esc(val('bPhone'))}
+    </div>
+
+    <div class="foot">${esc(val('bFooter'))}</div>
+  `;
+}
+
+/* ---------- reset ---------- */
+function resetAll(){
+  if(!confirm('Clear the form and start a new invoice?')) return;
+  ['custName','custAddr','bookRef','roomId','guest'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('invDate').valueAsDate=new Date();
+  items=[]; addItem({type:'charge'});
+}
+
+/* ---------- init ---------- */
+document.getElementById('invDate').valueAsDate=new Date();
+addItem({type:'charge', desc:'Bed & Breakfast Direct', net:'79.57', vat:'20'});
+draw();
+</script>
+</body>
+</html>
