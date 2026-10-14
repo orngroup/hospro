@@ -67,9 +67,9 @@ tr.tot td:first-child{text-align:left}
       <h2>Sales by outlet</h2>
       <div class="hint">Figures net of VAT, from the till / end-of-day report. Leave blank anything that wasn't open.</div>
       <table>
-        <thead><tr><th>Outlet / service</th><th style="width:26%">Food £</th><th style="width:26%">Drink £</th><th style="width:18%">Covers</th></tr></thead>
+        <thead><tr><th>Outlet / service</th><th style="width:23%">Food £</th><th style="width:23%">Drink £</th><th style="width:15%">Food covers</th><th style="width:15%">Drink covers</th></tr></thead>
         <tbody id="lines"></tbody>
-        <tbody><tr class="tot"><td>Total</td><td id="tf">£0</td><td id="tb">£0</td><td id="tc">0</td></tr></tbody>
+        <tbody><tr class="tot"><td>Total</td><td id="tf">£0</td><td id="tb">£0</td><td id="tfc">0</td><td id="tdc">0</td></tr></tbody>
       </table>
     </div>
 
@@ -113,10 +113,11 @@ function drawLines(){
   $('#lines').innerHTML=LINES.map(l=>`<tr><td class="n">${esc(l.name)}<small>${esc(l.outlet||'')}</small></td>
     <td><input inputmode="decimal" data-l="${esc(l.id)}" data-k="food" oninput="sum()"></td>
     <td><input inputmode="decimal" data-l="${esc(l.id)}" data-k="bev" oninput="sum()"></td>
-    <td><input inputmode="numeric" data-l="${esc(l.id)}" data-k="covers" oninput="sum()"></td></tr>`).join('');
+    <td><input inputmode="numeric" data-l="${esc(l.id)}" data-k="foodCov" oninput="sum()"></td>
+    <td><input inputmode="numeric" data-l="${esc(l.id)}" data-k="drinkCov" oninput="sum()"></td></tr>`).join('');
 }
-function sum(){ let f=0,b=0,c=0; document.querySelectorAll('#lines input').forEach(i=>{ const v=num(i.value); if(i.dataset.k==='food') f+=v; else if(i.dataset.k==='bev') b+=v; else c+=v; });
-  $('#tf').textContent=gbp(f); $('#tb').textContent=gbp(b); $('#tc').textContent=c; }
+function sum(){ let f=0,b=0,fc=0,dc=0; document.querySelectorAll('#lines input').forEach(i=>{ const v=num(i.value); if(i.dataset.k==='food') f+=v; else if(i.dataset.k==='bev') b+=v; else if(i.dataset.k==='foodCov') fc+=v; else if(i.dataset.k==='drinkCov') dc+=v; });
+  $('#tf').textContent=gbp(f); $('#tb').textContent=gbp(b); $('#tfc').textContent=fc; $('#tdc').textContent=dc; }
 function addInv(){
   const d=document.createElement('div'); d.className='inv';
   d.innerHTML=`<button type="button" class="del" onclick="this.parentElement.remove()" title="Remove">×</button>
@@ -138,8 +139,8 @@ async function send(e){
     await Promise.race([fb().collection('fb_submissions').add({date,by:by.slice(0,60),sales,invoices,notes:$('#notes').value.trim().slice(0,500),submittedAt:new Date().toISOString(),status:'new'}),
       new Promise((_,r)=>setTimeout(()=>r(new Error('No connection — check the internet and try again')),15000))]);
     try{ localStorage.setItem('fbform_by',by); }catch(_){}
-    let f=0,b=0,c=0; Object.values(sales).forEach(v=>{ f+=v.food||0; b+=v.bev||0; c+=v.covers||0; });
-    $('#done-txt').innerHTML=`Figures for <b>${new Date(date+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</b> have been sent to HosPRO.<br>Food ${gbp(f)} · Drink ${gbp(b)} · ${c} covers${invoices.length?` · ${invoices.length} invoice${invoices.length>1?'s':''}`:''}.<br><span style="color:#5b6675;font-size:13px">If you spot a mistake, just submit that date again — the latest figures replace the earlier ones.</span>`;
+    let f=0,b=0,fc=0,dc=0; Object.values(sales).forEach(v=>{ f+=v.food||0; b+=v.bev||0; fc+=v.foodCov||0; dc+=v.drinkCov||0; });
+    $('#done-txt').innerHTML=`Figures for <b>${new Date(date+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</b> have been sent to HosPRO.<br>Food ${gbp(f)} · Drink ${gbp(b)} · ${fc} food / ${dc} drink covers${invoices.length?` · ${invoices.length} invoice${invoices.length>1?'s':''}`:''}.<br><span style="color:#5b6675;font-size:13px">If you spot a mistake, just submit that date again — the latest figures replace the earlier ones.</span>`;
     $('#f').classList.add('hidden'); $('#done').classList.remove('hidden'); window.scrollTo(0,0);
   }catch(err){ msg.style.color='#b3261e'; msg.textContent='Not sent: '+(err.message||err)+'. Your figures are still on the page — try again.'; }
   go.disabled=false; go.textContent='Submit figures';

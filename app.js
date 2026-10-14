@@ -195,13 +195,13 @@ async function hpPublishSummary(force){
       const C=fbtCalc(); const yr=C.rows.find(r=>r.d===spDK(y));
       const pick=o=>({sales:Math.round(o.sales),cost:Math.round(o.cos),gp:isFinite(o.gp)?Math.round(o.gp*10)/10:null,target:o.target,headroom:Math.round(o.headroom),remain:Math.round(o.remainBudget),perDay:Math.round(o.perDay),left:o.left});
       // per-line month to date (breakfast, dinner, bar…)
-      const lineTot={}; Object.values((FBT.data&&FBT.data.sales)||{}).forEach(day=>Object.entries(day||{}).forEach(([lid,l])=>{ const t=lineTot[lid]=lineTot[lid]||{food:0,bev:0,covers:0}; t.food+=fbtN(l.food); t.bev+=fbtN(l.bev); t.covers+=fbtN(l.covers); }));
+      const lineTot={}; Object.values((FBT.data&&FBT.data.sales)||{}).forEach(day=>Object.entries(day||{}).forEach(([lid,l])=>{ const t=lineTot[lid]=lineTot[lid]||{food:0,bev:0,foodCov:0,drinkCov:0,covers:0}; const fc=fbtFCov(l),dc=fbtDCov(l); t.food+=fbtN(l.food); t.bev+=fbtN(l.bev); t.foodCov+=fc; t.drinkCov+=dc; t.covers+=fc+dc; }));
       const nameOf=id=>((FBT.settings&&FBT.settings.lines||[]).find(l=>l.id===id)||{}).name||id;
-      sum.fb={ month:FBT.month, food:pick(C.food), bev:pick(C.bev), covers:C.covers, daysIn:C.daysIn, lastEntry:C.lastSales||null,
+      sum.fb={ month:FBT.month, food:pick(C.food), bev:pick(C.bev), covers:C.covers, foodCovers:C.foodCov, drinkCovers:C.drinkCov, daysIn:C.daysIn, lastEntry:C.lastSales||null,
         purchFood:Math.round(C.food.purch), purchBev:Math.round(C.bev.purch), invoices:(C.inv||[]).length,
-        days:C.rows.filter(r=>r.hasSales||r.pf||r.pb).map(r=>({d:r.d,food:Math.round(r.food),bev:Math.round(r.bev),covers:r.covers,pf:Math.round(r.pf),pb:Math.round(r.pb)})),
-        lines:Object.entries(lineTot).map(([id,t])=>({id,name:nameOf(id),food:Math.round(t.food),bev:Math.round(t.bev),covers:t.covers})).sort((a,b)=>(b.food+b.bev)-(a.food+a.bev)),
-        yesterday: yr&&yr.hasSales?{date:yr.d,food:Math.round(yr.food),bev:Math.round(yr.bev),covers:yr.covers}:null };
+        days:C.rows.filter(r=>r.hasSales||r.pf||r.pb).map(r=>({d:r.d,food:Math.round(r.food),bev:Math.round(r.bev),covers:r.covers,foodCov:r.foodCov,drinkCov:r.drinkCov,pf:Math.round(r.pf),pb:Math.round(r.pb)})),
+        lines:Object.entries(lineTot).map(([id,t])=>({id,name:nameOf(id),food:Math.round(t.food),bev:Math.round(t.bev),covers:t.covers,foodCov:t.foodCov,drinkCov:t.drinkCov})).sort((a,b)=>(b.food+b.bev)-(a.food+a.bev)),
+        yesterday: yr&&yr.hasSales?{date:yr.d,food:Math.round(yr.food),bev:Math.round(yr.bev),covers:yr.covers,foodCov:yr.foodCov,drinkCov:yr.drinkCov}:null };
       // If nothing is entered yet this month, fall back to the last month that has figures
       if(!C.daysIn && CURRENT_TAB!=="fbTracker"){ const pm=new Date(y.getFullYear(),y.getMonth()-1,15); await fbtLoad(fbtMonthKey(pm)); const P=fbtCalc();
         if(P.daysIn){ sum.fbPrev={ month:FBT.month, food:pick(P.food), bev:pick(P.bev), covers:P.covers, daysIn:P.daysIn, lastEntry:P.lastSales,
@@ -10046,15 +10046,20 @@ const fbtGBP=n=>'£'+(Math.round(n||0)).toLocaleString('en-GB');
 const fbtPct=n=>(isFinite(n)?(Math.round(n*10)/10).toFixed(1):'—')+'%';
 
 /* All the numbers for the month */
+/* Covers are now captured as food covers + drink covers.
+   Legacy records that only have a single `covers` value are counted as food covers. */
+function fbtFCov(l){ return l.foodCov!=null ? fbtN(l.foodCov) : (l.drinkCov==null && l.covers!=null ? fbtN(l.covers) : 0); }
+function fbtDCov(l){ return fbtN(l.drinkCov); }
+
 function fbtCalc(){
   const D=FBT.data, S=FBT.settings, [y,m]=FBT.month.split('-').map(Number), dim=new Date(y,m,0).getDate();
   const days=Array.from({length:dim},(_,i)=>`${FBT.month}-${String(i+1).padStart(2,'0')}`);
   const inv=Object.values(D.invoices||{});
   const rows=days.map(d=>{
-    const s=D.sales[d]||{}; let food=0,bev=0,covers=0;
-    Object.values(s).forEach(l=>{ food+=fbtN(l.food); bev+=fbtN(l.bev); covers+=fbtN(l.covers); });
+    const s=D.sales[d]||{}; let food=0,bev=0,foodCov=0,drinkCov=0;
+    Object.values(s).forEach(l=>{ food+=fbtN(l.food); bev+=fbtN(l.bev); foodCov+=fbtFCov(l); drinkCov+=fbtDCov(l); });
     const di=inv.filter(x=>x.date===d), pf=di.filter(x=>x.cat==='Food').reduce((t,x)=>t+fbtN(x.net),0), pb=di.filter(x=>x.cat==='Beverage').reduce((t,x)=>t+fbtN(x.net),0);
-    return {d, food, bev, covers, pf, pb, hasSales:Object.keys(s).length>0};
+    return {d, food, bev, foodCov, drinkCov, covers:foodCov+drinkCov, pf, pb, hasSales:Object.keys(s).length>0};
   });
   let cf=0,cb=0,cpf=0,cpb=0; rows.forEach(r=>{ cf+=r.food; cb+=r.bev; cpf+=r.pf; cpb+=r.pb; Object.assign(r,{cf,cb,cpf,cpb}); });
   const lastSales=rows.filter(r=>r.hasSales).map(r=>r.d).pop()||null;
@@ -10073,8 +10078,8 @@ function fbtCalc(){
   };
   const food=mk(cf,cpf,st.openFood,st.closeFood,tF), bev=mk(cb,cpb,st.openBev,st.closeBev,tB);
   const nonfb=inv.filter(x=>x.cat==='Non-F&B').reduce((t,x)=>t+fbtN(x.net),0);
-  const covers=rows.reduce((t,r)=>t+r.covers,0);
-  return {rows,days,dim,daysIn,lastSales,food,bev,nonfb,covers,inv,hasClose};
+  const foodCov=rows.reduce((t,r)=>t+r.foodCov,0), drinkCov=rows.reduce((t,r)=>t+r.drinkCov,0), covers=foodCov+drinkCov;
+  return {rows,days,dim,daysIn,lastSales,food,bev,nonfb,foodCov,drinkCov,covers,inv,hasClose};
 }
 
 function renderFBTracker(v){
@@ -10096,7 +10101,7 @@ async function fbtImportSubmissions(quiet){
     for(const d of docs){
       const x=d.data(); const date=String(x.date||''); if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) { await d.ref.update({status:'rejected'}); continue; }
       await fbtLoad(date.slice(0,7));
-      const day={}; Object.entries(x.sales||{}).forEach(([id,v])=>{ const o={food:fbtN(v.food),bev:fbtN(v.bev),covers:fbtN(v.covers)}; if(o.food||o.bev||o.covers) day[id]=o; });
+      const day={}; Object.entries(x.sales||{}).forEach(([id,v])=>{ const o={food:fbtN(v.food),bev:fbtN(v.bev),foodCov:fbtN(v.foodCov!=null?v.foodCov:v.covers),drinkCov:fbtN(v.drinkCov)}; if(o.food||o.bev||o.foodCov||o.drinkCov) day[id]=o; });
       const patch={};
       if(Object.keys(day).length){ FBT.data.sales[date]=day; patch['sales.'+date]=day; }
       (Array.isArray(x.invoices)?x.invoices:[]).forEach((iv,i)=>{ if(!iv||!iv.supplier||iv.net==='' ) return;
@@ -10223,7 +10228,7 @@ function fbtDraw(v){
 
     <div style="${card};padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-left:4px solid #6E4E7A">
       <div><div style="font-size:12px;font-weight:800;color:#6E4E7A;text-transform:uppercase;letter-spacing:.4px">Yesterday · ${y.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
-        ${yRow&&yRow.hasSales?`<div style="font-size:14px;color:#1a2b3a;margin-top:3px">Food <b>${fbtGBP(yRow.food)}</b> · Drink <b>${fbtGBP(yRow.bev)}</b> · Total <b>${fbtGBP(yRow.food+yRow.bev)}</b> · ${yRow.covers} covers · Invoices <b>${fbtGBP(yRow.pf+yRow.pb)}</b></div>
+        ${yRow&&yRow.hasSales?`<div style="font-size:14px;color:#1a2b3a;margin-top:3px">Food <b>${fbtGBP(yRow.food)}</b> · Drink <b>${fbtGBP(yRow.bev)}</b> · Total <b>${fbtGBP(yRow.food+yRow.bev)}</b> · <b>${yRow.foodCov}</b> food / <b>${yRow.drinkCov}</b> drink covers · Invoices <b>${fbtGBP(yRow.pf+yRow.pb)}</b></div>
           <div style="font-size:12px;color:#4b5563;margin-top:2px">${S.lines.filter(l=>ySales[l.id]).map(l=>`${spEsc(l.name)} ${fbtGBP(fbtN(ySales[l.id].food)+fbtN(ySales[l.id].bev))}`).join(' · ')}</div>`
         :`<div style="font-size:14px;color:#92400e;margin-top:3px">Yesterday's sales haven't been entered yet.</div>`}
       </div>
@@ -10235,7 +10240,7 @@ function fbtDraw(v){
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-bottom:14px">${tile('🍽 Food',F)}${tile('🍷 Beverage',B)}</div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px">
-      ${[['Total F&B sales',fbtGBP(F.sales+B.sales)],['Covers',C.covers.toLocaleString('en-GB')],['Average spend',C.covers?'£'+((F.sales+B.sales)/C.covers).toFixed(2):'—'],['Days entered',`${C.rows.filter(r=>r.hasSales).length} of ${C.dim}`],['Invoices',`${C.inv.length} · ${fbtGBP(F.purch+B.purch)}`],['Non-F&B purchases',fbtGBP(C.nonfb)]].map(([l,n])=>`<div style="${card};padding:11px 13px"><div style="font-size:10.5px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.4px">${l}</div><div style="font-size:19px;font-weight:800;color:#1a2b3a">${n}</div></div>`).join('')}
+      ${[['Total F&B sales',fbtGBP(F.sales+B.sales)],['Food covers',C.foodCov.toLocaleString('en-GB')],['Drink covers',C.drinkCov.toLocaleString('en-GB')],['Average spend',C.covers?'£'+((F.sales+B.sales)/C.covers).toFixed(2):'—'],['Days entered',`${C.rows.filter(r=>r.hasSales).length} of ${C.dim}`],['Invoices',`${C.inv.length} · ${fbtGBP(F.purch+B.purch)}`],['Non-F&B purchases',fbtGBP(C.nonfb)]].map(([l,n])=>`<div style="${card};padding:11px 13px"><div style="font-size:10.5px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.4px">${l}</div><div style="font-size:19px;font-weight:800;color:#1a2b3a">${n}</div></div>`).join('')}
     </div>
 
     <div style="${card};padding:16px;margin-bottom:14px">
@@ -10250,7 +10255,7 @@ function fbtDraw(v){
     <div style="${card};padding:16px;margin-bottom:14px">
       <div style="font-size:16px;font-weight:800;color:#1a2b3a;margin-bottom:8px">Day by day</div>
       <div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;color:#1a2b3a;min-width:900px">
-        <thead><tr style="background:#f5f7f9">${['Date','Food sales','Drink sales','Covers','Food invoices','Drink invoices','Food GP MTD','Drink GP MTD',''].map((h,i)=>`<th style="padding:7px 8px;font-size:10.5px;text-transform:uppercase;text-align:${i===0?'left':'right'}">${h}</th>`).join('')}</tr></thead>
+        <thead><tr style="background:#f5f7f9">${['Date','Food sales','Drink sales','Food cov','Drink cov','Food invoices','Drink invoices','Food GP MTD','Drink GP MTD',''].map((h,i)=>`<th style="padding:7px 8px;font-size:10.5px;text-transform:uppercase;text-align:${i===0?'left':'right'}">${h}</th>`).join('')}</tr></thead>
         <tbody>${C.rows.filter(r=>r.d<=spDK(new Date())||r.hasSales||r.pf||r.pb).map(r=>{
           const gF=r.cf?((r.cf-r.cpf)/r.cf*100):NaN, gB=r.cb?((r.cb-r.cpb)/r.cb*100):NaN;
           const col=(g,t)=>!isFinite(g)?'#9ca3af':g>=t?'#166534':g>=t-3?'#92400e':'#991b1b';
@@ -10258,7 +10263,7 @@ function fbtDraw(v){
           return `<tr style="border-top:1px solid #eef1f4${r.hasSales?'':';color:#9ca3af'}">
             <td style="padding:6px 8px;font-weight:700;white-space:nowrap">${dd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</td>
             <td style="padding:6px 8px;text-align:right">${r.hasSales?fbtGBP(r.food):'—'}</td><td style="padding:6px 8px;text-align:right">${r.hasSales?fbtGBP(r.bev):'—'}</td>
-            <td style="padding:6px 8px;text-align:right">${r.hasSales?r.covers:'—'}</td>
+            <td style="padding:6px 8px;text-align:right">${r.hasSales?r.foodCov:'—'}</td><td style="padding:6px 8px;text-align:right">${r.hasSales?r.drinkCov:'—'}</td>
             <td style="padding:6px 8px;text-align:right">${r.pf?fbtGBP(r.pf):''}</td><td style="padding:6px 8px;text-align:right">${r.pb?fbtGBP(r.pb):''}</td>
             <td style="padding:6px 8px;text-align:right;font-weight:700;color:${col(gF,S.foodTarget)}">${r.cf?fbtPct(gF):''}</td>
             <td style="padding:6px 8px;text-align:right;font-weight:700;color:${col(gB,S.bevTarget)}">${r.cb?fbtPct(gB):''}</td>
@@ -10345,19 +10350,21 @@ function fbtSalesModal(date){
     <div style="font-size:13px;color:#1a2b3a">
       <label style="font-weight:700">Trading date <input id="fbt-date" type="date" value="${date}" onchange="closeModal();fbtSalesModal(this.value)" style="padding:7px;border:1px solid #d1d5db;border-radius:7px;margin-left:6px"></label>
       <table style="width:100%;border-collapse:collapse;margin-top:12px">
-        <thead><tr style="background:#f5f7f9"><th style="padding:6px;text-align:left;font-size:11px">Outlet / service</th><th style="padding:6px;font-size:11px;width:24%">Food £</th><th style="padding:6px;font-size:11px;width:24%">Drink £</th><th style="padding:6px;font-size:11px;width:16%">Covers</th></tr></thead>
-        <tbody>${S.lines.map(l=>{ const c=cur[l.id]||{}; return `<tr style="border-top:1px solid #eef1f4"><td style="padding:6px"><b>${spEsc(l.name)}</b><div style="font-size:11px;color:#4b5563">${spEsc(l.outlet||'')}</div></td>
+        <thead><tr style="background:#f5f7f9"><th style="padding:6px;text-align:left;font-size:11px">Outlet / service</th><th style="padding:6px;font-size:11px;width:22%">Food £</th><th style="padding:6px;font-size:11px;width:22%">Drink £</th><th style="padding:6px;font-size:11px;width:14%">Food cov</th><th style="padding:6px;font-size:11px;width:14%">Drink cov</th></tr></thead>
+        <tbody>${S.lines.map(l=>{ const c=cur[l.id]||{}; const fcov=c.foodCov ?? ((c.covers!=null&&c.drinkCov==null)?c.covers:''); return `<tr style="border-top:1px solid #eef1f4"><td style="padding:6px"><b>${spEsc(l.name)}</b><div style="font-size:11px;color:#4b5563">${spEsc(l.outlet||'')}</div></td>
           <td style="padding:4px"><input data-l="${l.id}" data-k="food" type="number" step="0.01" min="0" value="${c.food??''}" style="${inp}" oninput="fbtSumForm()"></td>
           <td style="padding:4px"><input data-l="${l.id}" data-k="bev" type="number" step="0.01" min="0" value="${c.bev??''}" style="${inp}" oninput="fbtSumForm()"></td>
-          <td style="padding:4px"><input data-l="${l.id}" data-k="covers" type="number" step="1" min="0" value="${c.covers??''}" style="${inp}"></td></tr>`; }).join('')}
-          <tr style="border-top:2px solid #1a2b3a;font-weight:800"><td style="padding:8px 6px">Total</td><td id="fbt-sf" style="padding:8px 6px;text-align:right"></td><td id="fbt-sb" style="padding:8px 6px;text-align:right"></td><td></td></tr></tbody>
+          <td style="padding:4px"><input data-l="${l.id}" data-k="foodCov" type="number" step="1" min="0" value="${fcov}" style="${inp}" oninput="fbtSumForm()"></td>
+          <td style="padding:4px"><input data-l="${l.id}" data-k="drinkCov" type="number" step="1" min="0" value="${c.drinkCov??''}" style="${inp}" oninput="fbtSumForm()"></td></tr>`; }).join('')}
+          <tr style="border-top:2px solid #1a2b3a;font-weight:800"><td style="padding:8px 6px">Total</td><td id="fbt-sf" style="padding:8px 6px;text-align:right"></td><td id="fbt-sb" style="padding:8px 6px;text-align:right"></td><td id="fbt-sfc" style="padding:8px 6px;text-align:right"></td><td id="fbt-sdc" style="padding:8px 6px;text-align:right"></td></tr></tbody>
       </table>
       <button onclick="fbtSaveSales()" style="margin-top:12px;width:100%;padding:11px;border:none;border-radius:9px;background:#6E4E7A;color:#fff;font:700 14px Lato;cursor:pointer">Save sales</button>
     </div>`);
   fbtSumForm();
 }
-function fbtSumForm(){ let f=0,b=0; document.querySelectorAll('#modal-root input[data-l]').forEach(i=>{ if(i.dataset.k==='food') f+=fbtN(i.value); if(i.dataset.k==='bev') b+=fbtN(i.value); });
-  const a=document.getElementById('fbt-sf'), c=document.getElementById('fbt-sb'); if(a) a.textContent=fbtGBP(f); if(c) c.textContent=fbtGBP(b); }
+function fbtSumForm(){ let f=0,b=0,fc=0,dc=0; document.querySelectorAll('#modal-root input[data-l]').forEach(i=>{ if(i.dataset.k==='food') f+=fbtN(i.value); if(i.dataset.k==='bev') b+=fbtN(i.value); if(i.dataset.k==='foodCov') fc+=fbtN(i.value); if(i.dataset.k==='drinkCov') dc+=fbtN(i.value); });
+  const a=document.getElementById('fbt-sf'), c=document.getElementById('fbt-sb'), e=document.getElementById('fbt-sfc'), g=document.getElementById('fbt-sdc');
+  if(a) a.textContent=fbtGBP(f); if(c) c.textContent=fbtGBP(b); if(e) e.textContent=fc||''; if(g) g.textContent=dc||''; }
 async function fbtSaveSales(){
   const date=document.getElementById('fbt-date').value; if(!date) return;
   if(date.slice(0,7)!==FBT.month){ await fbtLoad(date.slice(0,7)); }
@@ -10484,9 +10491,9 @@ async function fbtUpload(files){
 }
 function fbtExport(){
   const C=fbtCalc(), S=FBT.settings;
-  const head=['Date',...S.lines.flatMap(l=>[l.name+' food',l.name+' drink',l.name+' covers']),'Food sales','Drink sales','Covers','Food invoices','Drink invoices','Food GP MTD %','Drink GP MTD %'];
+  const head=['Date',...S.lines.flatMap(l=>[l.name+' food',l.name+' drink',l.name+' food cov',l.name+' drink cov']),'Food sales','Drink sales','Food covers','Drink covers','Food invoices','Drink invoices','Food GP MTD %','Drink GP MTD %'];
   const rows=C.rows.filter(r=>r.hasSales||r.pf||r.pb).map(r=>{ const s=FBT.data.sales[r.d]||{};
-    return [r.d,...S.lines.flatMap(l=>[(s[l.id]||{}).food??'',(s[l.id]||{}).bev??'',(s[l.id]||{}).covers??'']),r.food,r.bev,r.covers,Math.round(r.pf*100)/100,Math.round(r.pb*100)/100,
+    return [r.d,...S.lines.flatMap(l=>{const o=s[l.id]||{};return [o.food??'',o.bev??'',fbtFCov(o)||'',fbtDCov(o)||''];}),r.food,r.bev,r.foodCov,r.drinkCov,Math.round(r.pf*100)/100,Math.round(r.pb*100)/100,
       r.cf?Math.round((r.cf-r.cpf)/r.cf*1000)/10:'', r.cb?Math.round((r.cb-r.cpb)/r.cb*1000)/10:'']; });
   const inv=[[],['Invoices'],['Date','Supplier','Type','Invoice no','Net','Notes','Entered by'],...C.inv.sort((a,b)=>a.date.localeCompare(b.date)).map(x=>[x.date,x.supplier,x.cat,x.no,x.net,x.notes,x.by])];
   spDownload('fb-tracker-'+FBT.month+'.csv','﻿'+[['Brandon Hall Hotel & Spa — F&B tracker '+FBT.month],[],head,...rows,...inv].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
@@ -10495,8 +10502,8 @@ function fbtShare(how){
   const y=new Date(); y.setDate(y.getDate()-1); const yk=spDK(y); const C=fbtCalc(); const r=C.rows.find(x=>x.d===yk); if(!r) return;
   const s=FBT.data.sales[yk]||{};
   const txt=`Brandon Hall F&B — ${y.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}\n`+
-    `Food ${fbtGBP(r.food)} · Drink ${fbtGBP(r.bev)} · Total ${fbtGBP(r.food+r.bev)} · ${r.covers} covers\n`+
-    FBT.settings.lines.filter(l=>s[l.id]).map(l=>`${l.name}: ${fbtGBP(fbtN(s[l.id].food)+fbtN(s[l.id].bev))}${s[l.id].covers?' ('+s[l.id].covers+' covers)':''}`).join('\n')+
+    `Food ${fbtGBP(r.food)} · Drink ${fbtGBP(r.bev)} · Total ${fbtGBP(r.food+r.bev)} · ${r.foodCov} food / ${r.drinkCov} drink covers\n`+
+    FBT.settings.lines.filter(l=>s[l.id]).map(l=>{const cv=fbtFCov(s[l.id])+fbtDCov(s[l.id]);return `${l.name}: ${fbtGBP(fbtN(s[l.id].food)+fbtN(s[l.id].bev))}${cv?' ('+cv+' covers)':''}`;}).join('\n')+
     `\n\nMonth to date: food ${fbtGBP(C.food.sales)} at ${fbtPct(C.food.gp)} GP (target ${C.food.target}%), drink ${fbtGBP(C.bev.sales)} at ${fbtPct(C.bev.gp)} GP (target ${C.bev.target}%).`+
     (C.food.left>0?`\nFood spend left this month to hit target: about ${fbtGBP(Math.max(0,C.food.remainBudget))} (${fbtGBP(Math.max(0,C.food.perDay))}/day).`:'');
   if(how==='wa') window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
