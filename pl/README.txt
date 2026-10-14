@@ -1,12 +1,12 @@
-BRANDON HALL — P&L DASHBOARD
+BRANDON HALL — P&L DASHBOARD (Mar 2026 – Sep 2026)
 Upload the CONTENTS of this folder into /pl in the GitHub repo that
-publishes brandon.hospro.co.uk, so you get:
+publishes brandon.hospro.co.uk:
   /pl/index.html
-  /pl/data/index.json
-  /pl/data/2026-09.json
-  /pl/data/investor.json
+  /pl/data/*.json   (7 months + index.json + trends.json + investor.json)
 Then visit  brandon.hospro.co.uk/pl
 LOGINS:  Ajay / BHAK    Raj / BHRK    Alia / BHAT
-NEXT MONTH: sign in, click the up-arrow (top right), drop in the new
-Management Accounts Excel, then "Download files to publish" and commit
-the two files into /pl/data/.
+- Month dropdown (top right) switches between March and September.
+- "Monthly Trends" tab shows the whole period month-by-month.
+- YTD toggle = cumulative from March 2026.
+NEXT MONTH: sign in, click the up-arrow, drop in the new Excel,
+"Download files to publish", commit the 3 files into /pl/data/.
