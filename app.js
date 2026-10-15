@@ -132,7 +132,7 @@ async function boot(){
   if(DB.live()){
     FBStore.start();                       // begin live Firestore sync
     await FBStore.seedOnce(SEED_SAMPLES);   // seed only if empty
-    FBStore.onChange(()=>{ if(CURRENT_TAB==="pipeline") render(); });
+    FBStore.onChange(()=>{ if(CURRENT_TAB==="pipeline"||CURRENT_TAB==="home") render(); });
     if(typeof MktStore!=="undefined"){ MktStore.start();
       MktStore.onChange(()=>{ if(CURRENT_TAB==="marketing") render(); }); }
     if(typeof CorpGuestStore!=="undefined"){ CorpGuestStore.start();
@@ -1282,7 +1282,9 @@ function pipelineData(){
     if(r){ used.add(ref); out.push(Object.assign({_kind:"enquiry"}, e, { value:r.value, date:r.arrival||e.date, pax:r.pax||e.pax,
       status:r._bucket==="cancelled"?"cancelled":(e.status==="cancelled"?"confirmed":e.status), bookedDate:r.booked, departure:r.departure, rooms:r.rooms,
       roomName:r.room||e.roomName, room:r.room?roomIdFromName(r.room):e.room, ratePlan:r.ratePlan||e.ratePlan })); }
-    else out.push(Object.assign({_kind:"enquiry"}, e));
+    else out.push(Object.assign({_kind:"enquiry"}, e,
+      // Website planner and contact-form leads arrive with status "new": show them as Enquiry
+      e.status==="new" ? { status:"enquiry", _webNew:true } : {}));
   });
   Object.values(bobByRef).forEach(r=>{
     if(used.has(r.ref)) return;
@@ -1659,6 +1661,9 @@ function openEnquiryDetail(e){
       ${roomName?`<div class="stat"><div class="k">Room</div><div class="v" style="font-size:15px">${roomName}</div></div>`:""}
     </div>
     ${isBob?`<div class="bob-note">📊 From Rezlynx business-on-books (ref ${e.ref}). Editing below promotes it to a managed enquiry.</div>`:""}
+    ${e.webQuoteLink&&/^https:\/\/www\.brandonhallhotelandspa\.com\//.test(e.webQuoteLink)?`<div class="sec-title">🌐 Website quote ${e.webQuoteRef?`<span class="qs-sub">${e.webQuoteRef}</span>`:""}</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:8px">The specification and room plan this client built on the website${e.stage?` · ${e.stage}`:""}. The client has the same link.</p>
+    <div class="dual-btn"><a class="btn sm" href="${e.webQuoteLink}" target="_blank" rel="noopener">Open quote</a><a class="btn ghost sm" href="${e.webQuoteLink}&download=1" target="_blank" rel="noopener">Download PDF</a><button class="btn ghost sm" id="m-webq-copy">Copy link</button></div>`:""}
 
     <div class="sec-title">Manage</div>
     <div class="manage-grid">
@@ -1857,6 +1862,7 @@ Brandon Hall Hotel and Spa
   if($("#pay-default")) $("#pay-default").onclick=()=>{ paySched=stdSchedule(); renderPaySched(); };
   renderPaySched();
 
+  const wqc=$("#m-webq-copy"); if(wqc) wqc.onclick=()=>{ navigator.clipboard?.writeText(e.webQuoteLink).then(()=>{ wqc.textContent="Copied"; }); };
   $("#m-save").onclick=()=>{
     const newFollowUp=$("#m-followup").value;
     // if the follow-up date changed, record the previous one as "last follow-up"
@@ -4338,6 +4344,34 @@ function renderHome(v){
       </div>
     </div>`;
   wrap.appendChild(homeHero);
+
+  // ── New enquiries to follow up: website planner, contact form and events chat leads
+  //    that nobody has opened and saved yet (they arrive with status "new"). ──────────
+  const fresh=PD.filter(e=>e._webNew).sort((a,b)=>String(b.created||"").localeCompare(String(a.created||"")));
+  const esc=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+  const ago=d=>{ const m=Math.round((Date.now()-new Date(d))/60000); if(!(m>=0)) return ""; return m<60?m+" min ago":m<1440?Math.round(m/60)+" hr ago":Math.round(m/1440)+" days ago"; };
+  const etLabel=e=>e.eventLabel||(EVENT_TYPES.find(t=>t.id===e.event)||{}).label||"Event";
+  const fu=document.createElement('div'); fu.style.cssText='padding:20px 28px 0';
+  fu.innerHTML=`<div style="background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:5px solid ${fresh.length?'#c9a978':'#4a9d7f'};padding:16px 18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div style="font-size:15px;font-weight:700;color:#1a2b3a">🆕 New enquiries to follow up <span style="background:${fresh.length?'#c9a978':'#4a9d7f'};color:#fff;border-radius:20px;padding:2px 10px;font-size:12px;margin-left:6px">${fresh.length}</span></div>
+      <div style="font-size:11.5px;color:#5f6b78">From the website and events chat. Open one, choose a stage and save to clear it from this list.</div>
+    </div>
+    ${fresh.length?`<div style="margin-top:10px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <tr style="text-align:left;color:#5f6b78;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 8px">Received</th><th style="padding:6px 8px">Client</th><th style="padding:6px 8px">Event</th><th style="padding:6px 8px">Guests</th><th style="padding:6px 8px">Event date</th><th style="padding:6px 8px">Status</th><th style="padding:6px 8px"></th></tr>
+      ${fresh.map((e,i)=>`<tr style="border-top:1px solid #eef1f4">
+        <td style="padding:8px;white-space:nowrap;color:#5f6b78">${ago(e.created)}</td>
+        <td style="padding:8px"><b style="color:#1a2b3a">${esc(e.name||"—")}</b>${e.company?`<div style="color:#5f6b78;font-size:11.5px">${esc(e.company)}</div>`:""}</td>
+        <td style="padding:8px">${esc(etLabel(e))}${e.webQuoteRef?`<div style="color:#5f6b78;font-size:11.5px">${esc(e.webQuoteRef)}</div>`:""}</td>
+        <td style="padding:8px">${e.pax||"—"}</td>
+        <td style="padding:8px;white-space:nowrap">${e.date?new Date(String(e.date).slice(0,10)+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"TBC"}</td>
+        <td style="padding:8px">${e.stage==="Planner started"?'<span style="background:#fdf1e3;color:#9a5b12;border-radius:6px;padding:2px 7px;font-weight:700;font-size:11px">Started planner, not sent</span>':'<span style="background:#e7f3ec;color:#2a6a4a;border-radius:6px;padding:2px 7px;font-weight:700;font-size:11px">'+esc(e.stage||"New enquiry")+'</span>'}</td>
+        <td style="padding:8px;white-space:nowrap;text-align:right">${e.webQuoteLink?`<a href="${esc(e.webQuoteLink)}" target="_blank" rel="noopener" style="font-weight:700;color:#1a2b3a;margin-right:10px">Quote</a>`:""}<button class="btn sm hp-fu-open" data-i="${i}">Open</button></td>
+      </tr>`).join("")}
+    </table></div>`:`<div style="margin-top:8px;font-size:13px;color:#2a6a4a">All caught up. New website enquiries will appear here as soon as they arrive.</div>`}
+  </div>`;
+  fu.querySelectorAll(".hp-fu-open").forEach(b=>b.onclick=()=>openEnquiryDetail(fresh[+b.dataset.i]));
+  wrap.appendChild(fu);
 
   // ── Module cards — 2 rows of 6 ────────────────────────────────────────────
   const cardsSection = document.createElement('div');
