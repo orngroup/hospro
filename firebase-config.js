@@ -20,5 +20,6 @@ const FB_LOGINS = {
   "alia.taub":         { email:"alia.taub@brandonhall.portal",         pw:"BHAT01", code:"BHAT", name:"Alia Taub" },
   "nicola.cartwright": { email:"nicola.cartwright@brandonhall.portal", pw:"BHNC01", code:"BHNC", name:"Nicola Cartwright" },
   "natalie.freeman":    { email:"natalie.freeman@brandonhall.portal",    pw:"zqPdm3tcsTWFJecj", code:"BHNF", name:"Natalie Freeman" },
-  "patrik.vlach":       { email:"patrik.vlach@brandonhall.portal",       pw:"3vjCLX5sAAIAKvI8", code:"BHPV", name:"Patrik Vlach" }
+  "patrik.vlach":       { email:"patrik.vlach@brandonhall.portal",       pw:"3vjCLX5sAAIAKvI8", code:"BHPV", name:"Patrik Vlach" },
+  "veronica.webb":      { email:"veronica.webb@brandonhall.portal",      pw:"ukParWZdj9Udkuaw", code:"BHVW", name:"Veronica Webb" }
 };
