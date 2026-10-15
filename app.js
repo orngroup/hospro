@@ -4448,6 +4448,11 @@ function renderHome(v){
     { label:'Financial Overview', icon:'📊', url:'pl/',               colour:'#2a6a4a', fin:true },
     { label:'Daily F&B entry',    icon:'🍽', url:'fb-entry.html',      colour:'#8b5c8f' },
     { label:'Staff clock-in',     icon:'⏱', url:'clock.html',         colour:'#4a86c7' },
+    { label:'PMS',                icon:'🏨', url:'https://guestline.eu.auth0.com/login?state=hKFo2SA3YXhjWWszV2JfR2liT0ZtdExwSVFjSDVVZDI1SVVNVaFupWxvZ2luo3RpZNkgRGcya0JIWnBnLTdPV2pEQUI5ckU1M08xSEcyeDA1MkejY2lk2SBhM1RTRmg3OVpzWXBFcnZFSU5Pa2VvekhiSVBZUTNvYw&client=a3TSFh79ZsYpErvEINOkeozHbIPYQ3oc&protocol=oauth2&useRefreshTokensFallback=true&issuer=https%3A%2F%2Fguestline.eu.auth0.com%2F&scope=openid%20profile%20email%20offline_access&audience=https%3A%2F%2Fguestline.app&redirect_uri=https%3A%2F%2Fpms.eu.guestline.net%2Frezlynx%2FRLXWebForms%2Fsys%2Fwfrm_sys_LogOn.aspx%3Fsso_autoLogon%3Dtrue%26siteId%3DBRANDHALL&siteid=BRANDHALL&rezlynxlogin=true&response_type=code&response_mode=query', colour:'#1a2b3a' },
+    { label:'Saeker',             icon:'🛡', url:'https://7hospitalitymanagement.saeker.com/login', colour:'#b3261e' },
+    { label:'Website',            icon:'🌐', url:'https://www.brandonhallhotelandspa.com', colour:'#c9a978' },
+    { label:'Staff',              icon:'👤', url:'/staff',             colour:'#5f6b78' },
+    { label:'Coventry',           icon:'📍', url:'https://visitcoventry.co.uk/', colour:'#c62828' },
   ];
   const qStyle = c => `display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#fff;border:1px solid #e4e9ef;border-left:3px solid ${c};border-radius:9px;font:700 12px Lato;color:#1a2b3a;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,.05);cursor:pointer`;
   quick.innerHTML = `<span style="font-size:11px;font-weight:700;color:#8fa3b8;text-transform:uppercase;letter-spacing:.6px;margin-right:4px">Quick links</span>` +
