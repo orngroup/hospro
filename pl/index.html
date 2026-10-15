@@ -349,7 +349,12 @@ document.getElementById('loginForm').addEventListener('submit',e=>{
   if(acc){ try{sessionStorage.setItem(SKEY,acc.display);}catch(_){} showApp(acc); }
   else{ err.textContent='Incorrect username or password.'; document.getElementById('p').value=''; }
 });
-(function(){ try{const s=sessionStorage.getItem(SKEY); if(s){const a=ACCOUNTS.find(x=>x.display===s); if(a) showApp(a);}}catch(_){} })();
+(function(){ try{
+  // Opened from HOSPRO by Ajay, Raj or Alia: skip the login (one-time pass, 60 seconds).
+  const t=JSON.parse(localStorage.getItem('bhpl_sso')||'null'); localStorage.removeItem('bhpl_sso');
+  if(t && t.exp>Date.now()){ const a=ACCOUNTS.find(x=>x.display===t.user); if(a){ sessionStorage.setItem(SKEY,a.display); showApp(a); return; } }
+}catch(_){}
+try{const s=sessionStorage.getItem(SKEY); if(s){const a=ACCOUNTS.find(x=>x.display===s); if(a) showApp(a);}}catch(_){} })();
 document.getElementById('logoutBtn').addEventListener('click',()=>{ try{sessionStorage.removeItem(SKEY);}catch(_){} location.reload(); });
 
 /* ============ THEME ============ */

@@ -4324,6 +4324,13 @@ function renderSocialPreview(){
    quick link; for everyone else it shows greyed out. The P&L page also has its
    own logins (Ajay/Raj/Alia) as a second layer. */
 const HP_FIN_KEYS = ['ajay.kawa','raj.kumar','alia.taub'];
+// Signed in to HOSPRO as Ajay, Raj or Alia: hand the sign-in to the Financial Overview so its
+// login page is skipped. A one-time pass, valid for 60 seconds, read (and removed) by pl/index.html.
+function hpFinSSO(){ try{
+  const names={'ajay.kawa':'Ajay Kawa','raj.kumar':'Raj Kumar','alia.taub':'Alia Taub'};
+  const k=SESSION && SESSION._key; if(!names[k]) return;
+  localStorage.setItem('bhpl_sso', JSON.stringify({ user:names[k], exp:Date.now()+60000 }));
+}catch(e){} }
 
 function renderHome(v){
   const mods = userModules(SESSION?._key||"ajay.kawa");
@@ -4446,7 +4453,7 @@ function renderHome(v){
   quick.innerHTML = `<span style="font-size:11px;font-weight:700;color:#8fa3b8;text-transform:uppercase;letter-spacing:.6px;margin-right:4px">Quick links</span>` +
     qLinks.map(q=> (q.fin && !finOK)
       ? `<span title="Finance team only — Ajay, Raj or Alia" style="${qStyle(q.colour)};opacity:.45;filter:grayscale(1);cursor:not-allowed">${q.icon} ${q.label} 🔒</span>`
-      : `<a href="${q.url}" target="_blank" rel="noopener" style="${qStyle(q.colour)}">${q.icon} ${q.label}</a>`).join('');
+      : `<a href="${q.url}" target="_blank" rel="noopener"${q.fin?' onclick="hpFinSSO()"':''} style="${qStyle(q.colour)}">${q.icon} ${q.label}</a>`).join('');
   wrap.appendChild(quick);
 
   // ── Stats bar — full width ─────────────────────────────────────────────────
