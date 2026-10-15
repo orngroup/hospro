@@ -147,6 +147,18 @@ async function boot(){
   buildSidebar();
   render();
   if(DB.live()){
+    // one-off (15 Oct 2026): delete the old test enquiries still marked "new" from before today,
+    // keeping today's website enquiries. Runs once for the whole team (flag in meta).
+    setTimeout(async()=>{ try{
+      const flag=FB.db.collection("meta").doc("cleanup_new_20261015");
+      if((await flag.get()).exists) return;
+      for(let i=0;i<20 && !DB.all().length;i++) await new Promise(r=>setTimeout(r,1500)); // wait for the live list
+      if(!DB.all().length) return;
+      const old=DB.all().filter(e=>e.id && e.status==="new" && e.created && String(e.created).slice(0,10)<"2026-10-15");
+      for(const e of old) await FB.db.collection("enquiries").doc(e.id).delete();
+      await flag.set({ done:new Date().toISOString(), by:(SESSION&&SESSION.name)||"", removed:old.map(e=>(e.name||"")+" "+String(e.created).slice(0,10)) });
+      if(old.length) render();
+    }catch(err){ console.warn("Old enquiry cleanup skipped",err); } }, 5000);
     // one-off: remove the five earlier sample enquiries now the Rezlynx report is the master
     setTimeout(async()=>{ try{
       const old=["Dairy Carbon Network","Andre Brissett","Dominic Hillyard","Rebekah Stretton","Samantha Courtnell"];
@@ -1329,12 +1341,13 @@ function renderPipeline(v){
     if(PIPE_FILTER.owner && e.owner!==PIPE_FILTER.owner) return false;
     if(PIPE_FILTER.event && e.event!==PIPE_FILTER.event) return false;
     if(PIPE_FILTER.source && e.source!==PIPE_FILTER.source) return false;
+    if(PIPE_FILTER.fresh && !e._webNew) return false;
     return true;
   });
-  const scopeActive = PIPE_FILTER.room||PIPE_FILTER.owner||PIPE_FILTER.event||PIPE_FILTER.source;
+  const scopeActive = PIPE_FILTER.room||PIPE_FILTER.owner||PIPE_FILTER.event||PIPE_FILTER.source||PIPE_FILTER.fresh;
   if(scopeActive){
     const chip=el("div","scope-chip");
-    chip.innerHTML=`<span>Filtered: <b>${[PIPE_FILTER.owner,PIPE_FILTER.room,PIPE_FILTER.event?EVENT_TYPES.find(t=>t.id===PIPE_FILTER.event)?.label:"",PIPE_FILTER.source].filter(Boolean).join(" · ")}</b></span><button id="scope-clear">✕ Clear</button>`;
+    chip.innerHTML=`<span>Filtered: <b>${[PIPE_FILTER.fresh?"New enquiries to follow up":"",PIPE_FILTER.owner,PIPE_FILTER.room,PIPE_FILTER.event?EVENT_TYPES.find(t=>t.id===PIPE_FILTER.event)?.label:"",PIPE_FILTER.source].filter(Boolean).join(" · ")}</b></span><button id="scope-clear">✕ Clear</button>`;
     v.appendChild(chip);
     $("#scope-clear").onclick=()=>{ PIPE_FILTER={room:"",event:"",status:"",owner:"",source:"",search:""}; render(); };
   }
@@ -1511,6 +1524,7 @@ function filteredPipe(){
     if(PIPE_FILTER.owner && e.owner!==PIPE_FILTER.owner) return false;
     if(PIPE_FILTER.source && e.source!==PIPE_FILTER.source) return false;
     if(PIPE_FILTER.search && !(e.name||"").toLowerCase().includes(PIPE_FILTER.search.toLowerCase())) return false;
+    if(PIPE_FILTER.fresh && !e._webNew) return false;
     return true;
   });
 }
@@ -4345,33 +4359,15 @@ function renderHome(v){
     </div>`;
   wrap.appendChild(homeHero);
 
-  // ── New enquiries to follow up: website planner, contact form and events chat leads
-  //    that nobody has opened and saved yet (they arrive with status "new"). ──────────
-  const fresh=PD.filter(e=>e._webNew).sort((a,b)=>String(b.created||"").localeCompare(String(a.created||"")));
-  const esc=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
-  const ago=d=>{ const m=Math.round((Date.now()-new Date(d))/60000); if(!(m>=0)) return ""; return m<60?m+" min ago":m<1440?Math.round(m/60)+" hr ago":Math.round(m/1440)+" days ago"; };
-  const etLabel=e=>e.eventLabel||(EVENT_TYPES.find(t=>t.id===e.event)||{}).label||"Event";
-  const fu=document.createElement('div'); fu.style.cssText='padding:20px 28px 0';
-  fu.innerHTML=`<div style="background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:5px solid ${fresh.length?'#c9a978':'#4a9d7f'};padding:16px 18px">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-      <div style="font-size:15px;font-weight:700;color:#1a2b3a">🆕 New enquiries to follow up <span style="background:${fresh.length?'#c9a978':'#4a9d7f'};color:#fff;border-radius:20px;padding:2px 10px;font-size:12px;margin-left:6px">${fresh.length}</span></div>
-      <div style="font-size:11.5px;color:#5f6b78">From the website and events chat. Open one, choose a stage and save to clear it from this list.</div>
-    </div>
-    ${fresh.length?`<div style="margin-top:10px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
-      <tr style="text-align:left;color:#5f6b78;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 8px">Received</th><th style="padding:6px 8px">Client</th><th style="padding:6px 8px">Event</th><th style="padding:6px 8px">Guests</th><th style="padding:6px 8px">Event date</th><th style="padding:6px 8px">Status</th><th style="padding:6px 8px"></th></tr>
-      ${fresh.map((e,i)=>`<tr style="border-top:1px solid #eef1f4">
-        <td style="padding:8px;white-space:nowrap;color:#5f6b78">${ago(e.created)}</td>
-        <td style="padding:8px"><b style="color:#1a2b3a">${esc(e.name||"—")}</b>${e.company?`<div style="color:#5f6b78;font-size:11.5px">${esc(e.company)}</div>`:""}</td>
-        <td style="padding:8px">${esc(etLabel(e))}${e.webQuoteRef?`<div style="color:#5f6b78;font-size:11.5px">${esc(e.webQuoteRef)}</div>`:""}</td>
-        <td style="padding:8px">${e.pax||"—"}</td>
-        <td style="padding:8px;white-space:nowrap">${e.date?new Date(String(e.date).slice(0,10)+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"TBC"}</td>
-        <td style="padding:8px">${e.stage==="Planner started"?'<span style="background:#fdf1e3;color:#9a5b12;border-radius:6px;padding:2px 7px;font-weight:700;font-size:11px">Started planner, not sent</span>':'<span style="background:#e7f3ec;color:#2a6a4a;border-radius:6px;padding:2px 7px;font-weight:700;font-size:11px">'+esc(e.stage||"New enquiry")+'</span>'}</td>
-        <td style="padding:8px;white-space:nowrap;text-align:right">${e.webQuoteLink?`<a href="${esc(e.webQuoteLink)}" target="_blank" rel="noopener" style="font-weight:700;color:#1a2b3a;margin-right:10px">Quote</a>`:""}<button class="btn sm hp-fu-open" data-i="${i}">Open</button></td>
-      </tr>`).join("")}
-    </table></div>`:`<div style="margin-top:8px;font-size:13px;color:#2a6a4a">All caught up. New website enquiries will appear here as soon as they arrive.</div>`}
-  </div>`;
-  fu.querySelectorAll(".hp-fu-open").forEach(b=>b.onclick=()=>openEnquiryDetail(fresh[+b.dataset.i]));
-  wrap.appendChild(fu);
+  // ── New enquiries button: website planner and events chat leads nobody has opened and saved yet
+  //    (they arrive with status "new"). Opens Sales showing just those. ─────────────────────────
+  const freshN=PD.filter(e=>e._webNew).length;
+  const nb=document.createElement('button');
+  nb.className='hp-new-enq';
+  nb.style.cssText=`position:absolute;top:22px;right:24px;z-index:2;display:inline-flex;align-items:center;gap:9px;padding:11px 18px;border:0;border-radius:30px;cursor:pointer;font:700 14px Lato,system-ui,sans-serif;color:#fff;background:${freshN?'#c62828':'rgba(255,255,255,.18)'};box-shadow:${freshN?'0 4px 14px rgba(198,40,40,.45)':'none'}`;
+  nb.innerHTML=freshN?`🔔 <span style="background:#fff;color:#c62828;border-radius:20px;padding:1px 9px;font-size:13px">${freshN}</span> New ${freshN===1?'enquiry':'enquiries'} to follow up →`:`✓ No new enquiries`;
+  nb.onclick=()=>{ PIPE_FILTER={room:"",event:"",status:"",owner:"",source:"",search:"",fresh:!!freshN}; switchTab("pipeline"); };
+  homeHero.style.position='relative'; homeHero.querySelector('.hp-hero').style.position='relative'; homeHero.querySelector('.hp-hero').appendChild(nb);
 
   // ── Module cards — 2 rows of 6 ────────────────────────────────────────────
   const cardsSection = document.createElement('div');
