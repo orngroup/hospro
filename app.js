@@ -4272,6 +4272,31 @@ function renderSocialPreview(){
 }
 
 /* ============================================================ HOME / WELCOME */
+/* Financial Overview (P&L dashboard at /pl) — secondary finance password gate.
+   This is a light front-door lock on the quick link; the P&L page also has its
+   own logins (Ajay/Raj/Alia). */
+const HP_FIN_PW = 'BHFIN';
+function hpFinGate(){
+  openModal(`<div style="padding:6px">
+    <div style="font-size:17px;font-weight:700;color:#1a2b3a;margin-bottom:4px">📊 Financial Overview</div>
+    <div style="font-size:12.5px;color:#4b5563;margin-bottom:12px">This area is restricted. Enter the finance password to continue.</div>
+    <input id="fin-pw" type="password" autocomplete="off" placeholder="Finance password"
+      onkeydown="if(event.key==='Enter')hpFinOpen()"
+      style="width:100%;padding:10px;border:1.5px solid #d1d5db;border-radius:9px;font:14px Lato">
+    <div id="fin-msg" style="font-size:12px;color:#b3261e;margin-top:8px"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="hpFinOpen()" style="flex:1;padding:11px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Open Financial Overview</button>
+      <button onclick="closeModal()" style="padding:11px 16px;border:1.5px solid #d1d5db;border-radius:9px;background:#fff;font:14px Lato;color:#1a2b3a;cursor:pointer">Cancel</button>
+    </div>
+  </div>`);
+  setTimeout(()=>{ const el=document.getElementById('fin-pw'); if(el) el.focus(); }, 60);
+}
+function hpFinOpen(){
+  const v=((document.getElementById('fin-pw')||{}).value||'').trim();
+  if(v.toUpperCase()===HP_FIN_PW){ closeModal(); window.open('pl/','_blank','noopener'); }
+  else { const m=document.getElementById('fin-msg'); if(m) m.textContent='Incorrect password — try again.'; }
+}
+
 function renderHome(v){
   const mods = userModules(SESSION?._key||"ajay.kawa");
   const groups = typeof MODULE_GROUPS!=="undefined" ? MODULE_GROUPS : [];
@@ -4368,14 +4393,21 @@ function renderHome(v){
 
   wrap.appendChild(cardsSection);
 
-  // ── Quick links — handy tools (open in a new tab, no login needed) ─────────
+  // ── Quick links — handy tools (open in a new tab). Financial Overview is
+  //    protected by a secondary finance password (BHFIN) before it opens. ─────
   const quick = document.createElement('div');
   quick.style.cssText = 'padding:4px 28px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center';
   const qLinks = [
-    { label:'Create invoice', icon:'🧾', url:'createinvoice.html', colour:'#b89056' },
+    { label:'Create invoice',     icon:'🧾', url:'createinvoice.html', colour:'#b89056' },
+    { label:'Financial Overview', icon:'📊', action:'hpFinGate()',     colour:'#2a6a4a', lock:true },
+    { label:'Daily F&B entry',    icon:'🍽', url:'fb-entry.html',      colour:'#8b5c8f' },
+    { label:'Staff clock-in',     icon:'⏱', url:'clock.html',         colour:'#4a86c7' },
   ];
+  const qStyle = c => `display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#fff;border:1px solid #e4e9ef;border-left:3px solid ${c};border-radius:9px;font:700 12px Lato;color:#1a2b3a;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,.05);cursor:pointer`;
   quick.innerHTML = `<span style="font-size:11px;font-weight:700;color:#8fa3b8;text-transform:uppercase;letter-spacing:.6px;margin-right:4px">Quick links</span>` +
-    qLinks.map(q=>`<a href="${q.url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#fff;border:1px solid #e4e9ef;border-left:3px solid ${q.colour};border-radius:9px;font:700 12px Lato;color:#1a2b3a;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,.05)">${q.icon} ${q.label}</a>`).join('');
+    qLinks.map(q=> q.action
+      ? `<button onclick="${q.action}" style="${qStyle(q.colour)}">${q.icon} ${q.label}${q.lock?' 🔒':''}</button>`
+      : `<a href="${q.url}" target="_blank" rel="noopener" style="${qStyle(q.colour)}">${q.icon} ${q.label}</a>`).join('');
   wrap.appendChild(quick);
 
   // ── Stats bar — full width ─────────────────────────────────────────────────
