@@ -1310,6 +1310,8 @@ function pipelineData(){
   });
   return out;
 }
+// Open the Sales Pipeline at the "New enquiries to follow up" section
+function hpGoNewEnq(){ PIPE_FILTER={room:"",event:"",status:"",owner:"",source:"",search:""}; window._pipeGoNew=true; switchTab("pipeline"); }
 function roomIdFromName(name){ const r=ROOMS.find(x=>x.name===name); return r?r.id:""; }
 
 function renderPipeline(v){
@@ -1328,6 +1330,32 @@ function renderPipeline(v){
       <button class="btn ghost" id="enq-link">Copy chat link</button>
     </div>`;
   v.appendChild(tb);
+  // ── New enquiries to follow up (website planner, events chat): newest first ──
+  { const esc=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+    const fresh=pipelineData().filter(e=>e._webNew).sort((a,b)=>String(b.created||"").localeCompare(String(a.created||"")));
+    const dt=d=>{ if(!d) return "TBC"; const x=new Date(String(d).length<=10?d+"T12:00:00":d); return isNaN(x)?"TBC":x.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}); };
+    const rcv=d=>{ const x=new Date(d); return isNaN(x)?"—":x.toLocaleDateString("en-GB",{day:"numeric",month:"short"})+" "+x.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}); };
+    const etl=e=>e.eventLabel||(EVENT_TYPES.find(t=>t.id===e.event)||{}).label||"Event";
+    const sec=el("div"); sec.id="new-enquiries";
+    sec.style.cssText=`background:#fff;border:1px solid #e4e9ef;border-left:5px solid ${fresh.length?'#c62828':'#4a9d7f'};border-radius:12px;padding:14px 16px;margin:0 0 16px;scroll-margin-top:160px`;
+    sec.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="font-size:15px;font-weight:700;color:#1a2b3a">🔔 New enquiries to follow up <span style="background:${fresh.length?'#c62828':'#4a9d7f'};color:#fff;border-radius:20px;padding:1px 9px;font-size:12px;margin-left:4px">${fresh.length}</span></div>
+        <div style="font-size:11.5px;color:#5f6b78">${fresh.length?'Newest first. Open one, choose a stage and save to move it into the pipeline below.':'All caught up. New website enquiries appear here as soon as they arrive.'}</div></div>
+      ${fresh.length?`<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:13px">
+        <tr style="text-align:left;color:#5f6b78;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 8px">Received</th><th style="padding:6px 8px">Client</th><th style="padding:6px 8px">Event</th><th style="padding:6px 8px">Guests</th><th style="padding:6px 8px">Event date</th><th style="padding:6px 8px">Status</th><th></th></tr>
+        ${fresh.map((e,i)=>`<tr style="border-top:1px solid #eef1f4">
+          <td style="padding:8px;white-space:nowrap;color:#5f6b78">${rcv(e.created)}</td>
+          <td style="padding:8px"><b>${esc(e.name||"—")}</b>${e.company?`<div style="color:#5f6b78;font-size:11.5px">${esc(e.company)}</div>`:""}</td>
+          <td style="padding:8px">${esc(etl(e))}${e.webQuoteRef?`<div style="color:#5f6b78;font-size:11.5px">${esc(e.webQuoteRef)}</div>`:""}</td>
+          <td style="padding:8px">${e.pax||"—"}</td>
+          <td style="padding:8px;white-space:nowrap">${dt(e.date)}</td>
+          <td style="padding:8px">${e.stage==="Planner started"?'<span style="background:#fdf1e3;color:#9a5b12;border-radius:6px;padding:2px 7px;font-weight:700;font-size:11px">Started planner, not sent</span>':'<span style="background:#fdecea;color:#c62828;border-radius:6px;padding:2px 7px;font-weight:700;font-size:11px">'+esc(e.stage||"New enquiry")+'</span>'}</td>
+          <td style="padding:8px;white-space:nowrap;text-align:right">${e.webQuoteLink?`<a href="${esc(e.webQuoteLink)}" target="_blank" rel="noopener" style="font-weight:700;color:#1a2b3a;margin-right:10px">Quote</a>`:""}<button class="btn sm ne-open" data-i="${i}">Open</button></td></tr>`).join("")}
+      </table></div>`:""}`;
+    v.appendChild(sec);
+    sec.querySelectorAll(".ne-open").forEach(b=>b.onclick=()=>openEnquiryDetail(fresh[+b.dataset.i]));
+    if(window._pipeGoNew){ window._pipeGoNew=false; setTimeout(()=>sec.scrollIntoView({behavior:"smooth",block:"start"}),60); }
+  }
   $("#enq-new").onclick=()=>openEnquiryForm({});
   $("#enq-chat").onclick=()=>switchTab("chat");
   $("#enq-link").onclick=()=>{ const url=location.href.split("#")[0]+"#events-chat";
@@ -4366,7 +4394,7 @@ function renderHome(v){
   nb.className='hp-new-enq';
   nb.style.cssText=`position:absolute;top:22px;right:24px;z-index:2;display:inline-flex;align-items:center;gap:9px;padding:11px 18px;border:0;border-radius:30px;cursor:pointer;font:700 14px Lato,system-ui,sans-serif;color:#fff;background:${freshN?'#c62828':'rgba(255,255,255,.18)'};box-shadow:${freshN?'0 4px 14px rgba(198,40,40,.45)':'none'}`;
   nb.innerHTML=freshN?`🔔 <span style="background:#fff;color:#c62828;border-radius:20px;padding:1px 9px;font-size:13px">${freshN}</span> New ${freshN===1?'enquiry':'enquiries'} to follow up →`:`✓ No new enquiries`;
-  nb.onclick=()=>{ PIPE_FILTER={room:"",event:"",status:"",owner:"",source:"",search:"",fresh:!!freshN}; switchTab("pipeline"); };
+  nb.onclick=()=>hpGoNewEnq();
   homeHero.style.position='relative'; homeHero.querySelector('.hp-hero').style.position='relative'; homeHero.querySelector('.hp-hero').appendChild(nb);
 
   // ── Module cards — 2 rows of 6 ────────────────────────────────────────────
@@ -9136,6 +9164,7 @@ function hpModuleStats(id){
       const p=hpSafe(pipe,[]);
       const open=p.filter(e=>["enquiry","provisional"].includes(e.status));
       return [
+        [p.filter(e=>e._webNew).length, "New enquiries to follow up", "pipelineNew", "#c62828", true],
         [hpMoney(open.reduce((s,e)=>s+(+e.value||0),0)), "Open pipeline value", "pipeline", "#8b5c8f"],
         [open.filter(e=>e.followUp && e.followUp<todayK).length, "Follow-ups overdue", "pipeline", "#b3261e", true],
         [p.filter(e=>e.status==="confirmed" && String(e.date||"").startsWith(monthK)).length, "Events confirmed this month", "pipeline", "#2a6a4a"],
@@ -9226,7 +9255,7 @@ function hpLandingExtras(m){
       box.innerHTML+=`<div class="hp-sec-h">Today at a glance</div>
         <div class="hp-glance">${stats.map(([v,l,tab,col,alert])=>{
           const hot = alert && Number(v)>0;
-          return `<button class="hp-stat${hot?' hot':''}" onclick="switchTab('${tab}')" style="--acc:${hot?'#b3261e':m.colour}">
+          return `<button class="hp-stat${hot?' hot':''}" onclick="${tab==='pipelineNew'?'hpGoNewEnq()':`switchTab('${tab}')`}" style="--acc:${hot?'#b3261e':m.colour}">
             <span class="hp-stat-v">${v}</span><span class="hp-stat-l">${l}</span><span class="hp-stat-go">Open →</span></button>`; }).join("")}</div>`;
     }
   }
