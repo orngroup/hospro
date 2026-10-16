@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1a2b3a">
+<title>HosHouse — Management</title>
+<style>
+  :root{--navy:#1a2b3a;--gold:#b89056;--ink:#1f2a37;--line:#dfe4ea;--bg:#eef1f5;--muted:#6b7280;
+    --ok:#2a6a4a;--amber:#9c5a00;--red:#b3261e;--dep:#1f7a8c;--stay:#4a86c7;--arr:#2a6a4a;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+  header{background:var(--navy);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  header .t{font-weight:700;font-size:17px} header .s{font-size:12px;color:#aebdce}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px 18px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .tabs button{padding:9px 15px;border:1px solid var(--line);border-radius:9px;background:#fff;font:700 13px inherit;cursor:pointer}
+  .tabs button.on{background:var(--navy);color:#fff;border-color:transparent}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px}
+  .tile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .tile .v{font:800 24px inherit;color:var(--navy)} .tile .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+  .tile.red .v{color:var(--red)} .tile.amber .v{color:var(--amber)} .tile.ok .v{color:var(--ok)}
+  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th{background:#f5f7f9;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:8px 10px;color:#4b5563}
+  td{padding:8px 10px;border-top:1px solid #eef1f4;font-size:13px}
+  .pill{font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;color:#fff}
+  .pill.dep{background:var(--dep)} .pill.stay{background:var(--stay)} .pill.arr{background:var(--arr)}
+  .st{font-weight:800;font-size:12px}
+  .st.pending{color:var(--muted)} .st.in_progress{color:var(--amber)} .st.done{color:var(--ok)} .st.over{color:var(--red)}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  .panel h3{margin:0 0 10px;font-size:15px;color:var(--navy)}
+  input,select,textarea{padding:9px;border:1.5px solid var(--line);border-radius:9px;font:14px inherit}
+  textarea{width:100%;min-height:140px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+  .btn{padding:10px 16px;border:none;border-radius:9px;background:var(--navy);color:#fff;font:800 13px inherit;cursor:pointer}
+  .btn.alt{background:var(--ok)} .btn.ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .lg{max-width:360px;margin:12vh auto;text-align:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px}
+  .muted{color:var(--muted);font-size:12px}
+  .hide{display:none}
+  .lbl{font-size:12px;font-weight:700;color:#374151;display:block;margin:10px 0 4px}
+</style>
+</head>
+<body>
+
+<!-- gate -->
+<div id="gate" class="lg">
+  <div style="font-size:38px">🧹</div>
+  <h2 style="color:var(--navy);margin:6px 0">HosHouse — Management</h2>
+  <p class="muted">Enter the manager passcode.</p>
+  <input id="pc" type="password" placeholder="Passcode" style="width:100%" onkeydown="if(event.key==='Enter')tryGate()">
+  <div style="margin-top:12px"><button class="btn" style="width:100%" onclick="tryGate()">Open</button></div>
+  <div id="gmsg" style="color:var(--red);font-size:12px;min-height:16px;margin-top:8px"></div>
+</div>
+
+<div id="app" class="hide">
+  <header>
+    <div><div class="t">🧹 HosHouse — Management</div><div class="s">Live housekeeping board, productivity & alerts</div></div>
+    <div class="row">
+      <input type="date" id="date" onchange="reload()">
+      <button class="btn ghost" onclick="exportCsv()">⬇ Export CSV</button>
+    </div>
+  </header>
+  <div class="wrap">
+    <div class="tabs">
+      <button class="on" data-tab="today" onclick="tab('today')">Today</button>
+      <button data-tab="prod" onclick="tab('prod')">Productivity</button>
+      <button data-tab="alerts" onclick="tab('alerts')">Alerts</button>
+      <button data-tab="rooms" onclick="tab('rooms')">Room list</button>
+      <button data-tab="settings" onclick="tab('settings')">Settings</button>
+    </div>
+    <div id="pane"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="hoshouse-config.js"></script>
+<script>
+  const $=id=>document.getElementById(id);
+  const DEFT={Departure:'dep',Stayover:'stay','Arrival-ready':'arr'};
+  let rooms=[], unwatch=null, curTab='today';
+
+  function tryGate(){
+    const pc=HH.cfg().managerPin || '4040';
+    if(($('pc').value||'')===String(pc)){ $('gate').classList.add('hide'); $('app').classList.remove('hide'); init(); }
+    else $('gmsg').textContent='Incorrect passcode.';
+  }
+  function tab(t){ curTab=t; document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t)); draw(); }
+
+  async function init(){
+    await HH.loadCfg();
+    $('date').value=HH.todayISO();
+    reload();
+  }
+  function reload(){
+    if(unwatch) unwatch();
+    unwatch=HH.watchDay($('date').value, list=>{ rooms=list; draw(); });
+  }
+
+  function over(r){ return r.status==='in_progress' && r.startAt && (Date.now()-r.startAt)/1000 > HH.cfg().windowMin*60; }
+  function elapsed(r){ return r.startAt? Math.floor(((r.finishAt||Date.now())-r.startAt)/1000):0; }
+  function mmss(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+  function hk(r){ return r.housekeeperName|| (HH.staffById(r.housekeeper)||{}).name || r.housekeeper || '—'; }
+
+  function draw(){
+    if(curTab==='today') return drawToday();
+    if(curTab==='prod') return drawProd();
+    if(curTab==='alerts') return drawAlerts();
+    if(curTab==='rooms') return drawRooms();
+    if(curTab==='settings') return drawSettings();
+  }
+
+  function drawToday(){
+    const pend=rooms.filter(r=>r.status==='pending'), prog=rooms.filter(r=>r.status==='in_progress'), done=rooms.filter(r=>r.status==='done');
+    const overs=rooms.filter(over);
+    const tiles=[
+      ['Rooms today',rooms.length,''],['To do',pend.length,''],['In progress',prog.length,'amber'],
+      ['Done',done.length,'ok'],['Over 30 min',overs.length, overs.length?'red':''],
+      ['On now', new Set(prog.map(r=>r.housekeeper)).size, '']
+    ];
+    let html='<div class="tiles">'+tiles.map(([k,v,c])=>`<div class="tile ${c}"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('')+'</div>';
+    html+='<table><thead><tr><th>Room</th><th>Type</th><th>Status</th><th>Housekeeper</th><th>Time</th><th>Geo</th></tr></thead><tbody>';
+    html+= rooms.length? rooms.map(r=>{
+      const ov=over(r); const st=ov?'over':r.status;
+      const stTxt=ov?'OVER '+mmss(elapsed(r)): r.status==='in_progress'?'In progress '+mmss(elapsed(r)): r.status==='done'?'Done '+Math.round((r.durationSec||0)/60)+'m':'To do';
+      const geo = r.status==='done'? (r.geoFinishOk===false?'⚠ off-site':'✓') : (r.status==='in_progress'? (r.geoStartOk===false?'⚠ off-site':'✓'):'—');
+      return `<tr><td><b>${r.room}</b></td><td><span class="pill ${DEFT[r.type]||'dep'}">${r.type}</span></td><td class="st ${st}">${stTxt}</td><td>${r.status==='pending'?'—':hk(r)}</td><td>${r.status==='done'?mmss(r.durationSec||0):(r.status==='in_progress'?mmss(elapsed(r)):'')}</td><td>${geo}</td></tr>`;
+    }).join('') : '<tr><td colspan="6" style="color:#9ca3af;padding:16px">No rooms set for this date yet — reception submits them on the daily form.</td></tr>';
+    html+='</tbody></table>';
+    $('pane').innerHTML=html;
+  }
+
+  function drawProd(){
+    const byHk={};
+    rooms.filter(r=>r.status==='done'||r.status==='in_progress').forEach(r=>{
+      const k=r.housekeeper||'?'; byHk[k]=byHk[k]||{name:hk(r),done:0,mins:0,over:0,prog:0};
+      if(r.status==='done'){ byHk[k].done++; byHk[k].mins+=(r.durationSec||0)/60; if((r.durationSec||0)>HH.cfg().windowMin*60) byHk[k].over++; }
+      if(r.status==='in_progress'){ byHk[k].prog++; if(over(r)) byHk[k].over++; }
+    });
+    const rows=Object.values(byHk).sort((a,b)=>b.done-a.done);
+    let html='<div class="panel"><h3>Productivity — '+fmt($('date').value)+'</h3><table><thead><tr><th>Housekeeper</th><th>Rooms done</th><th>In progress</th><th>Avg min/room</th><th>Overruns</th></tr></thead><tbody>';
+    html+= rows.length? rows.map(r=>`<tr><td><b>${r.name}</b></td><td>${r.done}</td><td>${r.prog}</td><td>${r.done?Math.round(r.mins/r.done):'—'}</td><td class="${r.over?'st over':''}">${r.over||0}</td></tr>`).join('') : '<tr><td colspan="5" style="color:#9ca3af;padding:14px">No activity yet.</td></tr>';
+    html+='</tbody></table></div>';
+    const allDone=rooms.filter(r=>r.status==='done'); const avg=allDone.length?Math.round(allDone.reduce((a,r)=>a+(r.durationSec||0)/60,0)/allDone.length):0;
+    html+='<div class="tiles"><div class="tile"><div class="v">'+allDone.length+'</div><div class="k">Rooms done</div></div><div class="tile"><div class="v">'+avg+'</div><div class="k">Avg min / room</div></div><div class="tile '+(allDone.filter(r=>(r.durationSec||0)>HH.cfg().windowMin*60).length?'red':'')+'"><div class="v">'+allDone.filter(r=>(r.durationSec||0)>HH.cfg().windowMin*60).length+'</div><div class="k">Overruns</div></div></div>';
+    $('pane').innerHTML=html;
+  }
+
+  function drawAlerts(){
+    const al=[];
+    rooms.filter(over).forEach(r=>al.push(['🔴','Over 30 min','Room '+r.room+' · '+hk(r)+' · '+mmss(elapsed(r))]));
+    rooms.filter(r=>r.status==='in_progress'&&r.geoStartOk===false).forEach(r=>al.push(['📍','Off-site at start','Room '+r.room+' · '+hk(r)+(r.geoStartDist?' · '+r.geoStartDist+'m':'')]));
+    rooms.filter(r=>r.status==='done'&&r.geoFinishOk===false).forEach(r=>al.push(['📍','Off-site at finish','Room '+r.room+' · '+hk(r)]));
+    const cutoff=HH.cfg().cutoff||'11:00'; const [ch,cm]=cutoff.split(':').map(Number);
+    const now=new Date(); const past = $('date').value<HH.todayISO() || (now.getHours()>ch || (now.getHours()===ch&&now.getMinutes()>=cm));
+    if(past) rooms.filter(r=>r.status==='pending').forEach(r=>al.push(['⏰','Not started after '+cutoff,'Room '+r.room+' · '+r.type]));
+    let html='<div class="panel"><h3>Alerts</h3>';
+    html+= al.length? '<table><tbody>'+al.map(a=>`<tr><td style="width:30px">${a[0]}</td><td style="width:170px"><b>${a[1]}</b></td><td>${a[2]}</td></tr>`).join('')+'</tbody></table>' : '<div class="muted">No alerts — all good.</div>';
+    html+='</div>'; $('pane').innerHTML=html;
+  }
+
+  function drawRooms(){
+    const cfg=HH.cfg();
+    const txt=cfg.rooms.map(r=>r.cat? r.room+','+r.cat : r.room).join('\n');
+    $('pane').innerHTML=`<div class="panel"><h3>Room list</h3>
+      <p class="muted">One room per line, as <code>number,CATEGORY</code> — e.g. <code>128,EXE_DBL</code>. Categories: CLA_DBL, CLA_TWN, EXE_DBL, EXE_DBL_ACC, EXE_TRP, EXE_TWN, EXE_TWN_ACC, JSUI, PRE_DBL. Paste the Guestline room list here.</p>
+      <textarea id="roomsTa">${txt}</textarea>
+      <div class="row" style="margin-top:10px"><button class="btn alt" onclick="saveRooms()">Save room list</button>
+      <span class="muted">${cfg.rooms.length} rooms currently</span></div></div>`;
+  }
+  async function saveRooms(){
+    const lines=($('roomsTa').value||'').split(/\n+/).map(s=>s.trim()).filter(Boolean);
+    const rooms=lines.map(l=>{ const [room,cat]=l.split(','); return {room:String(room).trim(), cat:(cat||'').trim()}; }).filter(r=>r.room);
+    const cfg=HH.cfg(); cfg.rooms=rooms; await HH.saveCfg(cfg); alert('Saved '+rooms.length+' rooms.'); draw();
+  }
+
+  function drawSettings(){
+    const g=HH.cfg().geo, c=HH.cfg();
+    $('pane').innerHTML=`<div class="panel"><h3>Timing</h3>
+      <label class="lbl">Minutes allowed per room</label><input id="winMin" type="number" value="${c.windowMin}">
+      <label class="lbl">Amber warning at (minutes)</label><input id="amberMin" type="number" value="${c.amberMin}">
+      <label class="lbl">"Not started" alert cutoff (HH:MM)</label><input id="cutoff" value="${c.cutoff||'11:00'}">
+      <label class="lbl">Manager passcode</label><input id="mgrPin" value="${c.managerPin||'4040'}">
+      <div style="margin-top:12px"><button class="btn alt" onclick="saveTiming()">Save</button></div></div>
+      <div class="panel"><h3>Geo-fence</h3>
+      <label class="lbl">Check location at start/finish?</label>
+      <select id="geoEn"><option value="1"${g.enabled?' selected':''}>On</option><option value="0"${!g.enabled?' selected':''}>Off</option></select>
+      <label class="lbl">When off-site</label>
+      <select id="geoHard"><option value="0"${!g.hardBlock?' selected':''}>Log &amp; flag only (recommended)</option><option value="1"${g.hardBlock?' selected':''}>Block the action</option></select>
+      <label class="lbl">Radius (metres)</label><input id="geoR" type="number" value="${g.radiusM}">
+      <div class="muted" style="margin:8px 0">Hotel pin: ${g.lat.toFixed(5)}, ${g.lng.toFixed(5)}</div>
+      <div class="row"><button class="btn" onclick="useHerePin()">📍 Set the hotel pin from my current location</button>
+      <button class="btn alt" onclick="saveGeo()">Save geo-fence</button></div>
+      <div id="pinMsg" class="muted" style="margin-top:8px"></div></div>`;
+  }
+  async function saveTiming(){ const c=HH.cfg(); c.windowMin=+$('winMin').value||30; c.amberMin=+$('amberMin').value||25; c.cutoff=$('cutoff').value||'11:00'; c.managerPin=$('mgrPin').value||'4040'; await HH.saveCfg(c); alert('Saved.'); }
+  async function saveGeo(){ const c=HH.cfg(); c.geo.enabled=$('geoEn').value==='1'; c.geo.hardBlock=$('geoHard').value==='1'; c.geo.radiusM=+$('geoR').value||200; await HH.saveCfg(c); alert('Geo-fence saved.'); }
+  function useHerePin(){
+    if(!navigator.geolocation){ $('pinMsg').textContent='No location available on this device.'; return; }
+    $('pinMsg').textContent='Getting location…';
+    navigator.geolocation.getCurrentPosition(async pos=>{ const c=HH.cfg(); c.geo.lat=pos.coords.latitude; c.geo.lng=pos.coords.longitude; await HH.saveCfg(c); $('pinMsg').textContent='✓ Hotel pin set to your current location. Save geo-fence to keep.'; drawSettings(); },
+      ()=>{ $('pinMsg').textContent='Location permission denied.'; });
+  }
+
+  function fmt(iso){ try{ return new Date(iso+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); }catch(e){ return iso; } }
+  function exportCsv(){
+    const head=['Date','Room','Type','Status','Housekeeper','Start','Finish','Minutes','GeoStart','GeoFinish'];
+    const rowsCsv=rooms.map(r=>[r.date,r.room,r.type,r.status,hk(r),
+      r.startAt?new Date(r.startAt).toLocaleTimeString('en-GB'):'', r.finishAt?new Date(r.finishAt).toLocaleTimeString('en-GB'):'',
+      r.durationSec?Math.round(r.durationSec/60):'', r.geoStartOk===false?'off-site':(r.geoStartOk?'ok':''), r.geoFinishOk===false?'off-site':(r.geoFinishOk?'ok':'')]);
+    const csv=[head,...rowsCsv].map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv); a.download='hoshouse-'+$('date').value+'.csv'; a.click();
+  }
+</script>
+</body>
+</html>

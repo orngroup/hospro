@@ -578,7 +578,12 @@ function initLogin(){
     const o=document.createElement('option');
     o.value=u.id; o.textContent=u.name+' ('+u.role+')'; sel.appendChild(o);
   });
-  sel.addEventListener('change',()=>{ $('lg-btn').disabled=!sel.value; });
+  sel.addEventListener('change',()=>{ $('lg-btn').disabled=!sel.value; try{ if(sel.value) localStorage.setItem('hf_pref_user',sel.value); }catch(e){} });
+  // Personal deep link: hosfix.html?u=<id> pre-selects this person (no password — same as the name picker).
+  try{
+    const uid=new URLSearchParams(location.search).get('u') || localStorage.getItem('hf_pref_user');
+    if(uid && USERS.some(u=>u.id===uid)){ sel.value=uid; $('lg-btn').disabled=false; localStorage.setItem('hf_pref_user',uid); }
+  }catch(e){}
   $('lg-btn').addEventListener('click',()=>{
     const uid=sel.value; if(!uid) return;
     ME=uid; MY_USER=USERS.find(u=>u.id===uid);

@@ -5,16 +5,23 @@
    per night that maximises NET room profit, with guardrails
    and human approval.
 
-   Phase 1: recommend + approve. No automatic rate push yet.
+   Revised Oct 2026 from Patrik Vlach's feedback:
+     • prices the next 365 nights (was 30)
+     • four inputs are now WEIGHTED, competitor rates lead
+     • Executive Double is held just under the Classic Twin so
+       the double sells (the £15 exec supplement is dropped when
+       the market needs it); "Executive" is eased further on
+       quiet nights
+     • the 15% max-daily-change cap is OFF by default
+     • cost per occupied room is capped at £35 (worst case)
+     • ancillary F&B/spa is modelled as spend-by-day (£6–£15,
+       Saturday highest) × margin, not a flat £22 profit
+     • floors/ceilings per room type follow the Coventry comp set
+     • competitive set + weights loaded from Patrik's table
+     • competitor feed must be the real displayed consumer rate
+       (Genius / Getaway / 10% non-refundable advance purchase)
 
-   Data model (Firestore collections, local fallback):
-     hosrev_settings/config   — room types, rate rules, costs,
-                                 commission, budget, comp set,
-                                 locked dates, general settings
-     hosrev_books/<date>      — on-the-books snapshot per night
-     hosrev_comp/<date>       — competitor rates per night
-     hosrev_events/<id>       — local + own events
-     hosrev_decisions/<id>    — approve / override log
+   Phase 1: recommend + approve. No automatic rate push yet.
 
    Loads BEFORE app.js so these render functions exist when
    app.js builds RENDER_MAP.
@@ -23,21 +30,20 @@
 /* ---------- Store: Firestore with localStorage fallback ---------- */
 const HosrevStore = {
   _settings: null,
-  _books: {},     // date -> {rooms, sold, byType, revenue, ooo, held}
-  _comp: {},      // date -> [{hotel, rate}]
+  _books: {},
+  _comp: {},
   _events: [],
   _decisions: [],
 
   _lsGet(k, d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch{ return d; } },
   _lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} },
 
-  /* --- settings --- */
   async loadSettings(){
     if(typeof FB!=="undefined" && FB.ready && FB.user){
       try{ const d=await FB.db.collection("hosrev_settings").doc("config").get();
-        if(d.exists){ this._settings=d.data(); return this._settings; } }catch(e){ console.warn("hosrev settings:",e.message); }
+        if(d.exists){ this._settings=hosrevMigrate(d.data()); return this._settings; } }catch(e){ console.warn("hosrev settings:",e.message); }
     }
-    this._settings = this._lsGet("hosrev_settings", null) || HOSREV_DEFAULTS();
+    this._settings = hosrevMigrate(this._lsGet("hosrev_settings", null) || HOSREV_DEFAULTS());
     return this._settings;
   },
   async saveSettings(s){
@@ -46,25 +52,43 @@ const HosrevStore = {
       try{ await FB.db.collection("hosrev_settings").doc("config").set(s); }catch(e){ console.warn("hosrev save:",e.message); }
     }
   },
-  settings(){ return this._settings || (this._settings = this._lsGet("hosrev_settings", null) || HOSREV_DEFAULTS()); },
+  settings(){ return this._settings || (this._settings = hosrevMigrate(this._lsGet("hosrev_settings", null) || HOSREV_DEFAULTS())); },
 
-  /* --- on-the-books (per-night snapshot) --- */
   books(date){ return this._books[date] || null; },
   setBooks(map){ this._books = map; this._lsSet("hosrev_books", map); },
   loadBooksLocal(){ this._books = this._lsGet("hosrev_books", {}); if(!Object.keys(this._books).length){ this._books = HOSREV_SEED_BOOKS(); this._lsSet("hosrev_books", this._books); } },
 
-  /* --- competitor rates --- */
   comp(date){ return this._comp[date] || []; },
   setComp(map){ this._comp = map; this._lsSet("hosrev_comp", map); },
   loadCompLocal(){ this._comp = this._lsGet("hosrev_comp", {}); if(!Object.keys(this._comp).length){ this._comp = HOSREV_SEED_COMP(); this._lsSet("hosrev_comp", this._comp); } },
 
-  /* --- events --- */
+  /* Live competitor feed published by the rate-shopper GitHub Action
+     (tools/hosrev-rateshop.mjs -> hosrev-comp.json). When present and recent it
+     replaces the demo rates; falls back silently if the file isn't there yet. */
+  _feed:null, _feedTried:false,
+  loadCompFeed(cb){
+    if(this._feedTried){ if(cb) cb(); return; }
+    this._feedTried=true;
+    try{
+      fetch("hosrev-comp.json",{cache:"no-store"})
+        .then(r=> r.ok? r.json():null)
+        .then(j=>{
+          if(j && j.byDate && Object.keys(j.byDate).length){
+            this._comp = j.byDate;
+            this._feed = { pulled:j.pulled||null, source:j.source||"rate feed", nights:Object.keys(j.byDate).length, mock:!!j.mock };
+            this._lsSet("hosrev_comp", this._comp);
+            if(cb) cb(true);
+          } else if(cb) cb(false);
+        })
+        .catch(()=>{ if(cb) cb(false); });
+    }catch(e){ if(cb) cb(false); }
+  },
+
   events(){ return this._events; },
   loadEventsLocal(){ this._events = this._lsGet("hosrev_events", null) || HOSREV_SEED_EVENTS(); this._lsSet("hosrev_events", this._events); },
   addEvent(ev){ this._events.unshift(ev); this._lsSet("hosrev_events", this._events);
     if(typeof FB!=="undefined" && FB.ready && FB.user){ try{ FB.db.collection("hosrev_events").add(ev); }catch{} } },
 
-  /* --- decisions (approve / override) --- */
   decisions(){ return this._decisions; },
   loadDecisionsLocal(){ this._decisions = this._lsGet("hosrev_decisions", []); },
   logDecision(d){ d.when=new Date().toISOString(); d.by=(typeof SESSION!=="undefined"&&SESSION&&SESSION.name)||"—";
@@ -72,21 +96,32 @@ const HosrevStore = {
     if(typeof FB!=="undefined" && FB.ready && FB.user){ try{ FB.db.collection("hosrev_decisions").add(d); }catch{} } },
   decisionFor(date, type){ return this._decisions.find(d=>d.date===date && d.roomType===type) || null; },
 
-  init(){ this.settings(); this.loadBooksLocal(); this.loadCompLocal(); this.loadEventsLocal(); this.loadDecisionsLocal(); }
+  init(){ this.settings(); this.loadBooksLocal(); this.loadCompLocal(); this.loadEventsLocal(); this.loadDecisionsLocal();
+    this.loadCompFeed(updated=>{ if(updated){ try{ if(typeof CURRENT_TAB!=="undefined" && String(CURRENT_TAB).startsWith("rev")) render(); }catch(e){} } }); }
 };
 
 /* ---------- Default settings (editable on the Settings screen) ---------- */
 function HOSREV_DEFAULTS(){
   return {
+    // Real Brandon Hall room ladder. cat drives the double/twin logic; exec rooms
+    // carry a £15 supplement that can be dropped when the market needs the sale.
+    // rooms + BAR are placeholders — tune on the Settings screen.
     roomTypes:[
-      { name:"Classic Double", rooms:40, floor:79,  ceiling:249, bar:119 },
-      { name:"Superior Double",rooms:34, floor:89,  ceiling:279, bar:139 },
-      { name:"Feature / Four-Poster", rooms:16, floor:109, ceiling:329, bar:169 },
-      { name:"Twin", rooms:26, floor:79, ceiling:239, bar:119 },
-      { name:"Accessible", rooms:4, floor:79, ceiling:239, bar:119 }
+      { name:"Classic Double",   cat:"double",     exec:false, supplement:0,  rooms:34, floor:65,  ceiling:250, bar:99  },
+      { name:"Classic Twin",     cat:"twin",       exec:false, supplement:0,  rooms:20, floor:65,  ceiling:240, bar:99  },
+      { name:"Executive Double", cat:"double",     exec:true,  supplement:15, rooms:28, floor:70,  ceiling:270, bar:114 },
+      { name:"Executive Twin",   cat:"twin",       exec:true,  supplement:15, rooms:12, floor:70,  ceiling:260, bar:114 },
+      { name:"Premier Double",   cat:"double",     exec:true,  supplement:30, rooms:10, floor:85,  ceiling:290, bar:139 },
+      { name:"Junior Suite",     cat:"suite",      exec:true,  supplement:0,  rooms:8,  floor:95,  ceiling:300, bar:159 },
+      { name:"Accessible",       cat:"accessible", exec:false, supplement:0,  rooms:4,  floor:65,  ceiling:240, bar:99  }
     ],
-    costPerRoom:28.0,           // housekeeping + laundry + amenities + energy
-    commission:[                // % of rate, by channel, with share of nights
+
+    // Cost per occupied room varies £26–£35 with Veronica depending on how energy
+    // and maintenance are allocated. Worst case is capped at £35.
+    costPerRoom:28.0,
+    costPerRoomMax:35.0,
+
+    commission:[
       { channel:"Direct website", pct:0.00, share:0.28 },
       { channel:"Phone / email direct", pct:0.00, share:0.10 },
       { channel:"Booking.com", pct:0.15, share:0.34 },
@@ -94,10 +129,64 @@ function HOSREV_DEFAULTS(){
       { channel:"GDS / corporate", pct:0.10, share:0.12 },
       { channel:"Agents / tour operators", pct:0.12, share:0.06 }
     ],
-    extraProfitPerRoom:22.0,    // avg food+drink+spa PROFIT per occupied room (Total Venue Value)
-    general:{ window:30, maxWindow:365, quietThreshold:0.55, compressionPct:0.12, maxDailyChangePct:0.15, currency:"GBP" },
+
+    // Ancillary F&B/spa: SPEND per occupied room by day (Sun..Sat), £6–£15,
+    // highest on Saturday (leisure), lowest midweek (corporate). Converted to a
+    // profit contribution by marginPct.
+    ancillary:{ byDow:[9,7,6,6,8,12,15], marginPct:0.60 },
+
+    // Input weights (1 low .. 5 high). Competitor rates lead; local events are
+    // already reflected in competitor rates, so they carry little independent weight.
+    weights:{ competitors:5, onBooks:3, ownNumbers:2, events:1 },
+
+    // Executive-room logic
+    execRules:{ underTwin:true, underTwinBy:0.10, lowOccNudgePct:0.08, allowDropSupplement:true },
+
+    general:{ window:365, maxWindow:365, quietThreshold:0.55, compressionPct:0.12,
+              capDailyChange:false, maxDailyChangePct:0.15, updatesPerDay:2, currency:"GBP" },
+
+    // Who signs off rates day to day (pending Ajay's approval)
+    approver:"Patrik Vlach",
+    approverPending:true,
+
+    // Competitive set (Patrik's table). weight 1 low .. 5 high.
+    compSet:[
+      { hotel:"Novotel Coventry",                          tier:"Primary",      postcode:"CV6 6HL",  rooms:99,  weight:5, url:"", notes:"midscale business and family hotel" },
+      { hotel:"Ramada Hotel & Suites by Wyndham Coventry",  tier:"Primary",      postcode:"CV1 3GG",  rooms:166, weight:5, url:"", notes:"city-centre hotel" },
+      { hotel:"Windmill Village Hotel, Golf Club & Spa",    tier:"Primary",      postcode:"CV5 9AL",  rooms:105, weight:4, url:"", notes:"countryside leisure, golf and spa resort" },
+      { hotel:"Coombe Abbey Hotel",                         tier:"Aspirational", postcode:"CV3 2AB",  rooms:121, weight:3, url:"", notes:"historic country house hotel" },
+      { hotel:"DoubleTree by Hilton Coventry",              tier:"Aspirational", postcode:"CV2 2ST",  rooms:172, weight:4, url:"", notes:"business and leisure hub hotel" },
+      { hotel:"Chesford Grange",                            tier:"Aspirational", postcode:"CV8 2LD",  rooms:205, weight:1, url:"", notes:"manor-style countryside spa and conference hotel" },
+      { hotel:"Nailcote Hall",                              tier:"Aspirational", postcode:"CV7 7DE",  rooms:49,  weight:1, url:"", notes:"country house golf, wedding and entertainment resort" },
+      { hotel:"Mallory Court",                              tier:"Aspirational", postcode:"CV33 9QB", rooms:42,  weight:1, url:"", notes:"luxury boutique country house, spa and fine dining" }
+    ],
+
     lockedDates:[ { from:"2026-12-24", to:"2026-12-26", rate:189, reason:"Christmas package (3 nights)" } ]
   };
+}
+
+/* Bring older saved settings up to the new shape without losing edits. */
+function hosrevMigrate(s){
+  if(!s || typeof s!=="object") return HOSREV_DEFAULTS();
+  const d=HOSREV_DEFAULTS();
+  if(s.costPerRoomMax==null) s.costPerRoomMax=d.costPerRoomMax;
+  if(!s.ancillary){ s.ancillary={ byDow:[...d.ancillary.byDow], marginPct:d.ancillary.marginPct }; }
+  if(!s.weights) s.weights={...d.weights};
+  if(!s.execRules) s.execRules={...d.execRules};
+  if(!s.compSet) s.compSet=d.compSet.map(x=>({...x}));
+  if(!s.approver) s.approver=d.approver;
+  s.general = Object.assign({}, d.general, s.general||{});
+  if(s.general.window<60) s.general.window=d.general.window;   // was 30 — bump to a year
+  if(s.general.capDailyChange==null) s.general.capDailyChange=false;
+  // tag room types with cat/exec/supplement if an older set is missing them
+  (s.roomTypes||[]).forEach(rt=>{
+    if(rt.cat==null){ const n=rt.name.toLowerCase();
+      rt.cat = n.includes("twin")?"twin": n.includes("suite")?"suite": n.includes("access")?"accessible":"double";
+      rt.exec = /exec|premier|suite/.test(n);
+      rt.supplement = rt.exec? (n.includes("premier")?30:15):0;
+    }
+  });
+  return s;
 }
 
 /* ---------- Seed data (clearly flagged demo until Guestline + rate feed connect) ---------- */
@@ -107,11 +196,10 @@ function HOSREV_dow(iso){ return new Date(iso+"T00:00:00").getDay(); } // 0 Sun 
 
 function HOSREV_SEED_BOOKS(){
   const map={}; const total=120; const start=HOSREV_todayISO();
-  for(let i=0;i<40;i++){
+  for(let i=0;i<365;i++){
     const d=HOSREV_addDays(start,i); const dow=HOSREV_dow(d);
-    // weekends and lead-time build a plausible curve
     const base = (dow===5||dow===6) ? 0.70 : (dow===0?0.40:0.52);
-    const lead = Math.max(0.25, 1 - i*0.018);
+    const lead = Math.max(0.12, 1 - i*0.012);
     const sold = Math.round(total * base * lead * (0.9+Math.random()*0.2));
     map[d] = { rooms:total, sold:Math.min(sold,total), revenue:Math.round(sold*(120+(dow>=5?35:0))), ooo:(i%11===0?2:0), held:(dow===6?14:0), demo:true };
   }
@@ -119,11 +207,13 @@ function HOSREV_SEED_BOOKS(){
 }
 function HOSREV_SEED_COMP(){
   const map={}; const start=HOSREV_todayISO();
-  const hotels=["Coombe Abbey","Macdonald Ansty Hall","Chesford Grange","Nailcote Hall","DoubleTree Coventry","Mallory Court"];
-  for(let i=0;i<40;i++){
+  const hotels=["Novotel Coventry","Ramada Hotel & Suites by Wyndham Coventry","Windmill Village Hotel, Golf Club & Spa",
+    "Coombe Abbey Hotel","DoubleTree by Hilton Coventry","Chesford Grange","Nailcote Hall","Mallory Court"];
+  const bases=[95,92,105,165,110,120,135,175];
+  for(let i=0;i<365;i++){
     const d=HOSREV_addDays(start,i); const dow=HOSREV_dow(d);
     const wk=(dow===5||dow===6)?1.22:1.0;
-    map[d]=hotels.map((h,idx)=>({ hotel:h, rate:Math.round((115+idx*14)*wk*(0.95+Math.random()*0.12)) }));
+    map[d]=hotels.map((h,idx)=>({ hotel:h, rate:Math.round(bases[idx]*wk*(0.95+Math.random()*0.12)) }));
   }
   return map;
 }
@@ -145,6 +235,19 @@ function hosrevCommissionBlend(s){
   const c=s.commission||[]; const tot=c.reduce((a,x)=>a+(x.share||0),0)||1;
   return c.reduce((a,x)=>a+(x.pct||0)*(x.share||0),0)/tot;
 }
+/* Normalised input weights (competitors lead). */
+function hosrevWeights(s){
+  const w=s.weights||{competitors:5,onBooks:3,ownNumbers:2,events:1};
+  const tot=(+w.competitors||0)+(+w.onBooks||0)+(+w.ownNumbers||0)+(+w.events||0)||1;
+  return { comp:(+w.competitors||0)/tot, books:(+w.onBooks||0)/tot, own:(+w.ownNumbers||0)/tot, events:(+w.events||0)/tot };
+}
+/* Worst-case-capped cost per occupied room. */
+function hosrevCostPerRoom(s){ return Math.min(+s.costPerRoom||0, +s.costPerRoomMax||35); }
+/* Ancillary profit per occupied room for a night = spend(day) × margin. */
+function hosrevAncillaryProfit(date, s){
+  const a=s.ancillary; if(!a||!Array.isArray(a.byDow)) return 0;
+  const spend=+a.byDow[HOSREV_dow(date)]||0; return spend*(+a.marginPct||0);
+}
 function hosrevEventScore(date, events){
   const e=(events||[]).filter(x=>x.date===date);
   if(!e.length) return 0;
@@ -153,77 +256,121 @@ function hosrevEventScore(date, events){
 function hosrevLockedFor(date, s){
   return (s.lockedDates||[]).find(l=>date>=l.from && date<=l.to) || null;
 }
-/* Forecast final occupancy for a night: booked + expected remaining pickup,
-   lifted by event score and competitor compression. 0..1 */
-function hosrevForecastOcc(date, idx, book, compMedian, ourRate, s, events){
+/* Weighted competitor reference: real competitors (comp set weight) count more
+   than aspirational ones. Falls back to the plain median. */
+function hosrevCompRef(s, compArr){
+  const rates=(compArr||[]).map(x=>x.rate).filter(Boolean);
+  if(!rates.length) return null;
+  const wByHotel={}; (s.compSet||[]).forEach(c=>{ wByHotel[c.hotel]=(c.weight!=null?c.weight:2); });
+  let num=0, den=0;
+  (compArr||[]).forEach(x=>{ if(!x.rate) return; const w=(wByHotel[x.hotel]!=null?wByHotel[x.hotel]:2); num+=x.rate*w; den+=w; });
+  if(den) return Math.round(num/den);
+  const srt=rates.slice().sort((a,b)=>a-b); return srt[Math.floor(srt.length/2)];
+}
+/* Forecast final occupancy for a night. 0..1, weighted by the input weights. */
+function hosrevForecastOcc(date, idx, book, compRef, ourRate, s, events){
   if(!book || !book.rooms) return 0;
+  const W=hosrevWeights(s);
   const cap = book.rooms - (book.ooo||0);
   const bookedOcc = book.sold / cap;
-  const lead = idx;                                   // nights out
   const dow = HOSREV_dow(date);
-  // typical share of final bookings still to come, by lead time
-  const toCome = Math.min(0.55, 0.02*lead + (dow>=5?0.05:0.10));
+  // on-the-books pickup still to come, scaled by the on-books weight
+  const toComeBase = Math.min(0.55, 0.02*idx + (dow>=5?0.05:0.10));
+  const toCome = toComeBase * (0.6 + 0.9*W.books);
   let fc = bookedOcc + toCome*(1-bookedOcc);
+  // local events — small independent lift because events are mostly already in comp rates
   const ev = hosrevEventScore(date, events);
-  fc += ev*0.03;                                      // event lift
-  // competitor signal: if we are well below median, more pickup; above, less
-  if(compMedian){ const rel=(ourRate-compMedian)/compMedian; fc -= rel*0.25; }
+  fc += ev*0.03*(0.4 + 2.2*W.events);
+  // competitor signal — the dominant lever: below the comp ref lifts pickup, above softens it
+  if(compRef){ const rel=(ourRate-compRef)/compRef; fc -= rel*0.25*(0.5 + 1.4*W.comp); }
   return Math.max(0, Math.min(1, fc));
 }
-/* Core recommendation for one room type on one night */
+/* Base recommendation for one room type on one night (before cross-type rules). */
 function hosrevRecommend(date, idx, rt, s, book, comp, events){
-  const cap = (book? (book.rooms-(book.ooo||0)) : rt.rooms) ;
+  const cap = (book? (book.rooms-(book.ooo||0)) : rt.rooms);
   const held = book? (book.held||0) : 0;
   const sellable = Math.max(0, cap - held);
   const c = hosrevCommissionBlend(s);
-  const v = s.costPerRoom||0;
-  const a = s.extraProfitPerRoom||0;
-  const rates = (comp||[]).map(x=>x.rate).filter(Boolean).sort((x,y)=>x-y);
-  const compMedian = rates.length ? rates[Math.floor(rates.length/2)] : rt.bar;
+  const v = hosrevCostPerRoom(s);
+  const a = hosrevAncillaryProfit(date, s);
+  const W = hosrevWeights(s);
+  const compRef = hosrevCompRef(s, comp) || rt.bar;
   const current = rt.bar;
   const ev = hosrevEventScore(date, events);
   const locked = hosrevLockedFor(date, s);
 
-  // search floor..ceiling for the price with highest expected net profit
   let best={p:current, profit:-1, occ:0};
   for(let p=rt.floor; p<=rt.ceiling; p++){
-    // demand response: relative to comp median, with event-sensitised elasticity
-    const rel = compMedian? (p-compMedian)/compMedian : 0;
-    const elasticity = (HOSREV_dow(date)>=5? 0.9 : 1.3) - ev*0.12; // event nights less elastic
-    let occ = hosrevForecastOcc(date, idx, book, compMedian, p, s, events);
+    const rel = compRef? (p-compRef)/compRef : 0;
+    const elasticity = ((HOSREV_dow(date)>=5? 0.9 : 1.3) - ev*0.12) * (0.6 + 1.0*W.comp);
+    let occ = hosrevForecastOcc(date, idx, book, compRef, p, s, events);
     occ = Math.max(0, Math.min(1, occ * (1 - elasticity*rel)));
     const demandRooms = occ * sellable;
     const perRoom = p*(1-c) - v + a;
     const profit = perRoom * Math.min(demandRooms, sellable);
     if(profit>best.profit) best={p, profit, occ};
   }
-  // guardrails
+
   let rec = best.p;
-  const maxChange = Math.round(current * (s.general?.maxDailyChangePct||0.15));
-  if(rec > current+maxChange) rec = current+maxChange;
-  if(rec < current-maxChange) rec = current-maxChange;
+  // max-daily-change cap is OFF by default (Patrik); apply only when switched on
+  if(s.general && s.general.capDailyChange){
+    const maxChange = Math.round(current * (s.general.maxDailyChangePct||0.15));
+    if(rec > current+maxChange) rec = current+maxChange;
+    if(rec < current-maxChange) rec = current-maxChange;
+  }
   rec = Math.max(rt.floor, Math.min(rt.ceiling, rec));
   if(locked && locked.rate) rec = locked.rate;
 
-  // reasons
   const reasons=[];
   if(locked) reasons.push(`Locked: ${locked.reason}`);
   if(ev>=4) reasons.push(`Major event (${events.find(e=>e.date===date)?.name||"event"} nearby)`);
   else if(ev>0) reasons.push(`Local event, impact ${ev}/5`);
-  if(compMedian){ const d=Math.round(rec-compMedian);
-    reasons.push(`Comp median £${compMedian}${d>=0?` (we are £${d} above)`:` (we are £${-d} below)`}`); }
+  if(compRef){ const d=Math.round(rec-compRef);
+    reasons.push(`Comp ref £${compRef}${d>=0?` (we are £${d} above)`:` (we are £${-d} below)`}`); }
   if(best.occ>=0.9) reasons.push(`High forecast occupancy (${Math.round(best.occ*100)}%)`);
   else if(best.occ<=0.5) reasons.push(`Soft night (${Math.round(best.occ*100)}% forecast)`);
   if(!reasons.length) reasons.push("Matched to demand and comp set");
 
   const perRoomNet = rec*(1-c) - v + a;
   return {
-    date, roomType:rt.name, current, rec, compMedian,
+    date, roomType:rt.name, current, rec, compMedian:compRef,
     change: rec-current, changePct: current? (rec-current)/current : 0,
     forecastOcc: best.occ, netPerRoom: perRoomNet, eventScore:ev,
-    confidence: ev>=4?"High": (Math.abs(rec-current)>maxChange*0.8?"Medium":"High"),
+    confidence: ev>=4?"High": "Medium",
     reasons: reasons.slice(0,3), locked:!!locked
   };
+}
+/* All room types for one night, then apply the cross-type rules:
+   - "Executive" eased on quiet nights (the magic word)
+   - Executive Double held just under the Classic Twin so the double sells */
+function hosrevNightRecs(date, idx, s, book, comp, events){
+  const out={};
+  (s.roomTypes||[]).forEach(rt=>{ out[rt.name]=hosrevRecommend(date, idx, rt, s, book, comp, events); });
+  const er=s.execRules||{};
+  const twinRt=(s.roomTypes||[]).find(r=>r.cat==="twin" && !r.exec) || (s.roomTypes||[]).find(r=>r.cat==="twin");
+  const twinRec=twinRt? out[twinRt.name]:null;
+  const c=hosrevCommissionBlend(s), v=hosrevCostPerRoom(s), a=hosrevAncillaryProfit(date,s);
+
+  (s.roomTypes||[]).forEach(rt=>{
+    const r=out[rt.name]; if(!r) return;
+    let touched=false;
+    // low-occupancy executive nudge
+    if(rt.exec && rt.cat==="double" && er.lowOccNudgePct && r.forecastOcc<=(s.general.quietThreshold||0.55)){
+      const nudged=Math.max(rt.floor, Math.round(r.rec*(1-er.lowOccNudgePct)));
+      if(nudged<r.rec){ r.rec=nudged; r.reasons.unshift('Quiet night — eased the Executive rate (the word sells)'); touched=true; }
+    }
+    // executive double just under the classic twin so the double is the one that sells
+    if(er.underTwin && rt.exec && rt.cat==="double" && twinRec){
+      const capRate=Math.max(rt.floor, +(twinRec.rec-(er.underTwinBy||0.10)).toFixed(2));
+      if(r.rec>capRate){ r.rec=capRate; r.reasons.unshift(`Set £${(+er.underTwinBy||0.1).toFixed(2)} under Classic Twin so the Executive Double sells`); touched=true; }
+    }
+    if(touched){
+      r.change=r.rec-r.current; r.changePct=r.current? r.change/r.current:0;
+      r.netPerRoom=r.rec*(1-c)-v+a;
+      r.reasons=r.reasons.slice(0,3);
+    }
+  });
+  return out;
 }
 
 /* ---------- small helpers that mirror app.js style ---------- */
@@ -231,17 +378,18 @@ function hrEl(tag, cls, html){ const e=document.createElement(tag); if(cls)e.cla
 function hrMoney(n){ return "£"+Math.round(n).toLocaleString("en-GB"); }
 function hrDowName(iso){ return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][HOSREV_dow(iso)]; }
 function hrFmtDate(iso){ const d=new Date(iso+"T00:00:00"); return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short"}); }
+function hrWindow(s){ return Math.min(s.general.window||365, s.general.maxWindow||365); }
 
 /* ============================================================ RENDER: Dashboard + AI brief */
 function renderRevDash(v){
   HosrevStore.init();
   const s=HosrevStore.settings(); const start=HOSREV_todayISO();
   const rt=s.roomTypes[0];
-  // build 30-night recommendations for the lead room type to drive the brief
+  const win=hrWindow(s);
   const recs=[];
-  for(let i=0;i<(s.general.window||30);i++){
+  for(let i=0;i<win;i++){
     const d=HOSREV_addDays(start,i);
-    recs.push(hosrevRecommend(d, i, rt, s, HosrevStore.books(d), HosrevStore.comp(d), HosrevStore.events()));
+    recs.push(hosrevNightRecs(d, i, s, HosrevStore.books(d), HosrevStore.comp(d), HosrevStore.events())[rt.name]);
   }
   const movers = recs.filter(r=>Math.abs(r.changePct)>=0.05).sort((a,b)=>Math.abs(b.change)-Math.abs(a.change)).slice(0,5);
   const quiet = recs.filter(r=>r.forecastOcc<=(s.general.quietThreshold||0.55)).slice(0,5);
@@ -249,17 +397,17 @@ function renderRevDash(v){
 
   v.innerHTML = `
     <div class="page-head"><h2>HosREV — Today at a glance</h2>
-      <p>Maximising net room margin across the next ${s.general.window} nights. ${demo?'<b style="color:#c07a3e">Demo data</b> — connect Guestline and a rate feed to go live.':''}</p></div>
+      <p>Maximising net room margin across the next ${win} nights. ${demo?'<b style="color:#c07a3e">Demo data</b> — connect Guestline and a live rate feed to go live.':''}</p></div>
     <div class="hr-brief">
       <div class="hr-brief-h">🧠 Morning brief — ${new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}</div>
       <p>${hosrevBriefText(recs, movers, quiet, s)}</p>
     </div>
     <div class="sf-stats6" style="margin-top:16px">
-      ${hrStat("📅","Nights priced", s.general.window)}
+      ${hrStat("📅","Nights priced", win)}
       ${hrStat("⬆️","Rate moves suggested", movers.length)}
       ${hrStat("🌙","Quiet nights flagged", quiet.length)}
       ${hrStat("💷","Avg suggested rate", hrMoney(recs.reduce((a,r)=>a+r.rec,0)/recs.length))}
-      ${hrStat("📊","Comp median (avg)", hrMoney(recs.reduce((a,r)=>a+(r.compMedian||0),0)/recs.length))}
+      ${hrStat("📊","Comp ref (avg)", hrMoney(recs.reduce((a,r)=>a+(r.compMedian||0),0)/recs.length))}
       ${hrStat("🎟","Event nights", HosrevStore.events().filter(e=>e.date>=start).length)}
     </div>
     <div class="hr-cols">
@@ -279,11 +427,12 @@ function renderRevDash(v){
             <div class="hr-muted">${Math.round(r.forecastOcc*100)}% forecast · try an offer</div>
           </div>`).join("") : '<p class="hr-muted">No soft nights in the window — healthy pickup.</p>'}
       </div>
-    </div>`;
+    </div>
+    <p class="hr-muted" style="margin-top:12px">Rates reviewed ${s.general.updatesPerDay||2}× a day over the next ${win} nights · sign-off: <b>${s.approver||'TBC'}</b>${s.approverPending?" (pending Ajay's approval)":""}. Opportunity: an EV charging point would help secure more bookings.</p>`;
 }
 function hosrevBriefText(recs, movers, quiet, s){
   const avg = recs.reduce((a,r)=>a+r.rec,0)/recs.length;
-  let txt = `Across the next ${s.general.window} nights the engine suggests an average rate of <b>${hrMoney(avg)}</b>. `;
+  let txt = `Across the next ${hrWindow(s)} nights the engine suggests an average rate of <b>${hrMoney(avg)}</b>, led by the competitor set. `;
   if(movers.length){ const m=movers[0];
     txt += `The biggest call is <b>${hrDowName(m.date)} ${hrFmtDate(m.date)}</b>: ${m.reasons[0]}, move ${m.roomType} from ${hrMoney(m.current)} to <b>${hrMoney(m.rec)}</b> (${m.change>=0?'+':''}${Math.round(m.changePct*100)}%). `; }
   else txt += `No material rate changes are needed today. `;
@@ -294,30 +443,31 @@ function hrStat(ic,k,val){ return `<div class="sf-stat"><div class="sf-stat-ic" 
 
 /* ============================================================ RENDER: Rate calendar */
 let HR_CAL_RT = 0;
+let HR_CAL_DAYS = 120;
 function renderRevCalendar(v){
   HosrevStore.init();
   const s=HosrevStore.settings(); const start=HOSREV_todayISO();
   const rt=s.roomTypes[HR_CAL_RT]||s.roomTypes[0];
+  const win=hrWindow(s); const show=Math.min(HR_CAL_DAYS, win);
   const rows=[];
-  for(let i=0;i<(s.general.window||30);i++){
+  for(let i=0;i<show;i++){
     const d=HOSREV_addDays(start,i);
-    rows.push(hosrevRecommend(d, i, rt, s, HosrevStore.books(d), HosrevStore.comp(d), HosrevStore.events()));
+    rows.push(hosrevNightRecs(d, i, s, HosrevStore.books(d), HosrevStore.comp(d), HosrevStore.events())[rt.name]);
   }
   v.innerHTML = `
     <div class="page-head"><h2>Rate calendar</h2>
-      <p>Recommended rate per night. Approve in one tap, override with a reason, or lock a date.</p></div>
+      <p>Recommended rate per night across the next ${win} nights. Approve in one tap, override with a reason, or lock a date.</p></div>
     <div class="hr-rtbar">
       ${s.roomTypes.map((r,i)=>`<button class="hr-pill ${i===HR_CAL_RT?'on':''}" onclick="HR_CAL_RT=${i};render()">${r.name}</button>`).join("")}
     </div>
     <table class="pipe-table hr-cal">
       <thead><tr>
-        <th>Night</th><th>On books</th><th>Fcast occ</th><th>Comp median</th>
+        <th>Night</th><th>On books</th><th>Fcast occ</th><th>Comp ref</th>
         <th>Current</th><th>Recommended</th><th>Net / room</th><th>Why</th><th>Decision</th>
       </tr></thead>
       <tbody>
       ${rows.map(r=>{
         const book=HosrevStore.books(r.date); const dec=HosrevStore.decisionFor(r.date, r.roomType);
-        const occ=book? Math.round(book.sold/(book.rooms-(book.ooo||0))*100):0;
         const wknd=HOSREV_dow(r.date)>=5;
         return `<tr class="${wknd?'hr-wknd':''}">
           <td><b>${hrDowName(r.date)}</b> ${hrFmtDate(r.date)} ${r.eventScore>=3?'🎟':''}${r.locked?'🔒':''}</td>
@@ -334,7 +484,8 @@ function renderRevCalendar(v){
         </tr>`;}).join("")}
       </tbody>
     </table>
-    <p class="hr-muted" style="margin-top:12px">Decisions are logged with who and when (see Performance scorecard later). No rates are pushed to Guestline in Phase 1.</p>`;
+    ${show<win?`<div style="text-align:center;margin-top:12px"><button class="btn sm hr-ghost" onclick="HR_CAL_DAYS=${Math.min(win,show+120)};render()">Show more nights (${show} of ${win})</button></div>`:''}
+    <p class="hr-muted" style="margin-top:12px">Decisions are logged with who and when. No rates are pushed to Guestline in Phase 1.</p>`;
 }
 function hosrevApprove(date, roomType, rate){
   HosrevStore.logDecision({ date, roomType, action:"approve", rate });
@@ -358,26 +509,30 @@ function renderRevCompset(v){
   const rt=s.roomTypes[0];
   const hotels=[...new Set(Object.values(HosrevStore._comp).flat().map(x=>x.hotel))];
   const days=[]; for(let i=0;i<14;i++) days.push(HOSREV_addDays(start,i));
+  const wByHotel={}; (s.compSet||[]).forEach(c=>{ wByHotel[c.hotel]=c; });
   v.innerHTML = `
     <div class="page-head"><h2>Competitors</h2>
-      <p>Our ${rt.name} rate against the comp set for the next 14 nights. Compression alerts fire when a competitor jumps more than ${Math.round((s.general.compressionPct||0.12)*100)}% overnight.</p></div>
+      <p>Our ${rt.name} rate against the comp set for the next 14 nights. The comp reference is <b>weighted</b> — primary rivals count more than aspirational ones.</p></div>
     <div class="hr-scroll">
     <table class="pipe-table hr-matrix">
       <thead><tr><th>Hotel</th>${days.map(d=>`<th>${hrDowName(d)}<br>${hrFmtDate(d)}</th>`).join("")}</tr></thead>
       <tbody>
-        <tr class="hr-ourrow"><td><b>Brandon Hall (us)</b></td>${days.map(d=>{
-          const r=hosrevRecommend(d, days.indexOf(d), rt, s, HosrevStore.books(d), HosrevStore.comp(d), HosrevStore.events());
+        <tr class="hr-ourrow"><td><b>Brandon Hall (us)</b></td>${days.map((d,ix)=>{
+          const r=hosrevNightRecs(d, ix, s, HosrevStore.books(d), HosrevStore.comp(d), HosrevStore.events())[rt.name];
           return `<td><b>${hrMoney(r.rec)}</b></td>`;}).join("")}</tr>
-        ${hotels.map(h=>`<tr><td>${h}</td>${days.map(d=>{
-          const rec=HosrevStore.comp(d).find(x=>x.hotel===h); return `<td>${rec?hrMoney(rec.rate):'—'}</td>`;}).join("")}</tr>`).join("")}
-        <tr class="hr-medrow"><td><i>Comp median</i></td>${days.map(d=>{
-          const rates=HosrevStore.comp(d).map(x=>x.rate).sort((a,b)=>a-b); const m=rates[Math.floor(rates.length/2)];
+        ${hotels.map(h=>{ const cs=wByHotel[h]; const tag=cs?` <span class="hr-muted">${cs.tier==='Primary'?'●':'○'}×${cs.weight}</span>`:'';
+          return `<tr><td>${h}${tag}</td>${days.map(d=>{
+          const rec=HosrevStore.comp(d).find(x=>x.hotel===h); return `<td>${rec?hrMoney(rec.rate):'—'}</td>`;}).join("")}</tr>`;}).join("")}
+        <tr class="hr-medrow"><td><i>Comp ref (weighted)</i></td>${days.map(d=>{
+          const m=hosrevCompRef(s, HosrevStore.comp(d));
           return `<td><i>${m?hrMoney(m):'—'}</i></td>`;}).join("")}</tr>
       </tbody>
     </table></div>
     <div class="sf-panel" style="margin-top:16px">
       <div class="sf-panel-head"><h3>Comp set</h3><a class="sf-link" onclick="switchTab('revSettings')">Edit in Settings →</a></div>
-      <p class="hr-muted">Rate feed not yet connected — showing demo rates. Phase 1 connects a licensed rate shopper (Lighthouse or Makcorps) so these are live. We never scrape OTAs directly.</p>
+      ${HosrevStore._feed
+        ? `<p class="hr-muted">${HosrevStore._feed.mock?'🧪 <b>Mock feed</b> (structure test).':'🟢 <b>Live rate feed connected.</b>'} Pulled <b>${HosrevStore._feed.pulled?new Date(HosrevStore._feed.pulled).toLocaleString("en-GB"):'—'}</b> · ${HosrevStore._feed.nights} nights · source ${HosrevStore._feed.source}. These are real displayed OTA rates (incl. non-refundable advance-purchase and public deals). Booking.com <b>logged-in Genius</b> rates need a pro shopper (Lighthouse) — a later upgrade.</p>`
+        : `<p class="hr-muted"><b>The feed must be the real displayed consumer rate.</b> To be correct it has to capture promotions as a guest sees them on Booking.com — Genius discount, Getaway deal — and the 10% non-refundable advance-purchase rate. Anything less and the automation is pricing against the wrong number. The SerpApi rate-shopper (tools/hosrev-rateshop.mjs) publishes this to hosrev-comp.json twice a day; we never scrape OTAs directly. Currently showing demo rates.</p>`}
     </div>`;
 }
 
@@ -388,7 +543,7 @@ function renderRevEvents(v){
   const evs=HosrevStore.events().filter(e=>e.date>=start).sort((a,b)=>a.date<b.date?-1:1);
   v.innerHTML = `
     <div class="page-head"><h2>Events &amp; demand drivers</h2>
-      <p>Local events within ~20 miles and our own diary, scored 1–5 for pricing impact. Add anything the feed misses.</p></div>
+      <p>Local events within ~20 miles and our own diary, scored 1–5. Note: local events are largely <b>already reflected in competitor rates</b>, so they carry a low independent weight — see Settings.</p></div>
     <button class="btn sm" style="margin-bottom:14px;background:#1F7A8C" onclick="hosrevAddEvent()">+ Add event</button>
     <table class="pipe-table">
       <thead><tr><th>Date</th><th>Event</th><th>Venue</th><th>Type</th><th>Impact</th><th>Attendance</th></tr></thead>
@@ -417,17 +572,19 @@ function renderRevForecast(v){
   HosrevStore.init();
   const s=HosrevStore.settings(); const start=HOSREV_todayISO();
   const rt=s.roomTypes[0]; const c=hosrevCommissionBlend(s);
+  const win=hrWindow(s); const show=Math.min(120, win);
   const rows=[];
-  for(let i=0;i<(s.general.window||30);i++){
+  for(let i=0;i<show;i++){
     const d=HOSREV_addDays(start,i); const book=HosrevStore.books(d);
-    const r=hosrevRecommend(d, i, rt, s, book, HosrevStore.comp(d), HosrevStore.events());
+    const r=hosrevNightRecs(d, i, s, book, HosrevStore.comp(d), HosrevStore.events())[rt.name];
     rows.push({ d, book, r });
   }
   const avgOcc = rows.reduce((a,x)=>a+x.r.forecastOcc,0)/rows.length;
   const avgNet = rows.reduce((a,x)=>a+x.r.netPerRoom,0)/rows.length;
+  const ancNote = (s.ancillary?`£${Math.min(...s.ancillary.byDow)}–£${Math.max(...s.ancillary.byDow)} spend × ${Math.round((s.ancillary.marginPct||0)*100)}% margin`:'');
   v.innerHTML = `
     <div class="page-head"><h2>Forecast &amp; margin</h2>
-      <p>Net room profit = rate − commission − cost per room + extra spend profit. Blended commission ${Math.round(c*100)}%, cost ${hrMoney(s.costPerRoom)}/room, extra ${hrMoney(s.extraProfitPerRoom)}/room.</p></div>
+      <p>Net room profit = rate − commission − cost per room + ancillary profit. Blended commission ${Math.round(c*100)}%, cost ${hrMoney(hosrevCostPerRoom(s))}/room (capped at ${hrMoney(s.costPerRoomMax||35)}), ancillary ${ancNote}.</p></div>
     <div class="sf-stats6" style="margin-bottom:16px">
       ${hrStat("📈","Avg forecast occ", Math.round(avgOcc*100)+"%")}
       ${hrStat("💷","Avg net / room", hrMoney(avgNet))}
@@ -449,7 +606,8 @@ function renderRevForecast(v){
           <td>${hrMoney(x.r.netPerRoom)}</td>
           <td><b>${hrMoney(fnet)}</b></td></tr>`;}).join("")}
       </tbody>
-    </table>`;
+    </table>
+    ${show<win?`<p class="hr-muted" style="margin-top:10px">Showing the next ${show} of ${win} priced nights.</p>`:''}`;
 }
 
 /* ============================================================ RENDER: Guestline import */
@@ -505,37 +663,94 @@ function hosrevClearDemo(){ localStorage.removeItem("hosrev_books"); localStorag
 function renderRevSettings(v){
   HosrevStore.init();
   const s=HosrevStore.settings();
+  const W=s.weights||{}; const anc=s.ancillary||{byDow:[0,0,0,0,0,0,0],marginPct:0}; const er=s.execRules||{};
+  const dows=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   v.innerHTML = `
     <div class="page-head"><h2>HosREV settings</h2>
-      <p>The one-off setup data. Edit here or import the setup spreadsheet. Changes feed the pricing engine immediately.</p></div>
+      <p>The one-off setup data. Changes feed the pricing engine immediately. Rates are reviewed ${s.general.updatesPerDay||2}× a day over the next ${hrWindow(s)} nights.</p></div>
 
     <div class="sf-panel"><div class="sf-panel-head"><h3>Room types &amp; rate rules</h3></div>
-      <table class="pipe-table"><thead><tr><th>Room type</th><th>Rooms</th><th>Floor £</th><th>Ceiling £</th><th>Current BAR £</th></tr></thead>
+      <table class="pipe-table"><thead><tr><th>Room type</th><th>Cat</th><th>Exec</th><th>Suppl. £</th><th>Rooms</th><th>Floor £</th><th>Ceiling £</th><th>Current BAR £</th></tr></thead>
       <tbody>${s.roomTypes.map((r,i)=>`<tr>
         <td>${r.name}</td>
+        <td><span class="hr-muted">${r.cat||'—'}</span></td>
+        <td>${r.exec?'✓':'—'}</td>
+        <td><input class="mne-edit hr-in" value="${r.supplement||0}" onchange="hosrevSet(${i},'supplement',this.value)"></td>
         <td><input class="mne-edit hr-in" value="${r.rooms}" onchange="hosrevSet(${i},'rooms',this.value)"></td>
         <td><input class="mne-edit hr-in" value="${r.floor}" onchange="hosrevSet(${i},'floor',this.value)"></td>
         <td><input class="mne-edit hr-in" value="${r.ceiling}" onchange="hosrevSet(${i},'ceiling',this.value)"></td>
         <td><input class="mne-edit hr-in" value="${r.bar}" onchange="hosrevSet(${i},'bar',this.value)"></td>
       </tr>`).join("")}</tbody></table>
+      <p class="hr-muted" style="margin-top:8px">Floors are Room-Only. Patrik suggests a £65 RO floor; Raj £72 — to agree. Executive Double is held just under the Classic Twin so the double sells, and the £15 supplement is dropped when the market needs the room.</p>
     </div>
 
     <div class="hr-cols" style="margin-top:16px">
+      <div class="sf-panel"><div class="sf-panel-head"><h3>Input weights (1–5)</h3></div>
+        <p class="hr-muted" style="margin-bottom:8px">Competitor rates lead. Local events are already reflected in competitor rates, so keep their weight low.</p>
+        <label class="hr-lbl">Competitor rates <input class="mne-edit hr-in" value="${W.competitors??5}" onchange="hosrevSetW('competitors',this.value)"></label>
+        <label class="hr-lbl">On the books <input class="mne-edit hr-in" value="${W.onBooks??3}" onchange="hosrevSetW('onBooks',this.value)"></label>
+        <label class="hr-lbl">Our own numbers <input class="mne-edit hr-in" value="${W.ownNumbers??2}" onchange="hosrevSetW('ownNumbers',this.value)"></label>
+        <label class="hr-lbl">Local events <input class="mne-edit hr-in" value="${W.events??1}" onchange="hosrevSetW('events',this.value)"></label>
+      </div>
       <div class="sf-panel"><div class="sf-panel-head"><h3>Costs &amp; value</h3></div>
         <label class="hr-lbl">Cost per occupied room £
           <input class="mne-edit hr-in" value="${s.costPerRoom}" onchange="hosrevSetG('costPerRoom',this.value)"></label>
-        <label class="hr-lbl">Extra profit per room (food, drink, spa) £
-          <input class="mne-edit hr-in" value="${s.extraProfitPerRoom}" onchange="hosrevSetG('extraProfitPerRoom',this.value)"></label>
+        <label class="hr-lbl">Worst-case cap £ (never exceed)
+          <input class="mne-edit hr-in" value="${s.costPerRoomMax}" onchange="hosrevSetG('costPerRoomMax',this.value)"></label>
+        <label class="hr-lbl">Ancillary margin on F&amp;B/spa spend (%)
+          <input class="mne-edit hr-in" value="${Math.round((anc.marginPct||0)*100)}" onchange="hosrevSetAncMargin(this.value)"></label>
         <p class="hr-muted" style="margin-top:8px">Blended commission from the channel mix: <b>${Math.round(hosrevCommissionBlend(s)*100)}%</b></p>
       </div>
+    </div>
+
+    <div class="sf-panel" style="margin-top:16px"><div class="sf-panel-head"><h3>Ancillary spend per occupied room (£, by day)</h3></div>
+      <p class="hr-muted" style="margin-bottom:8px">F&amp;B/spa <b>spend</b> (not profit) per room — Saturday highest (leisure), midweek lowest (corporate). Profit = spend × margin above.</p>
+      <table class="pipe-table"><thead><tr>${dows.map(d=>`<th>${d}</th>`).join("")}</tr></thead>
+      <tbody><tr>${anc.byDow.map((n,i)=>`<td><input class="mne-edit hr-in" value="${n}" onchange="hosrevSetAnc(${i},this.value)"></td>`).join("")}</tr></tbody></table>
+    </div>
+
+    <div class="hr-cols" style="margin-top:16px">
       <div class="sf-panel"><div class="sf-panel-head"><h3>Guardrails</h3></div>
-        <label class="hr-lbl">Pricing window (nights)
+        <label class="hr-lbl">Pricing window (nights, up to 365)
           <input class="mne-edit hr-in" value="${s.general.window}" onchange="hosrevSetGen('window',this.value)"></label>
         <label class="hr-lbl">Quiet-night threshold (occ %)
           <input class="mne-edit hr-in" value="${Math.round(s.general.quietThreshold*100)}" onchange="hosrevSetGen('quietThreshold',this.value/100)"></label>
-        <label class="hr-lbl">Max change per day (%)
+        <label class="hr-lbl">Cap the daily rate change?
+          <select class="mne-edit hr-in" onchange="hosrevSetGenBool('capDailyChange',this.value)">
+            <option value="no"${!s.general.capDailyChange?' selected':''}>No — no limit (Patrik)</option>
+            <option value="yes"${s.general.capDailyChange?' selected':''}>Yes — limit the daily move</option>
+          </select></label>
+        <label class="hr-lbl">Max change per day (%) — only if capped
           <input class="mne-edit hr-in" value="${Math.round(s.general.maxDailyChangePct*100)}" onchange="hosrevSetGen('maxDailyChangePct',this.value/100)"></label>
       </div>
+      <div class="sf-panel"><div class="sf-panel-head"><h3>Executive logic &amp; sign-off</h3></div>
+        <label class="hr-lbl">Hold Executive Double under Classic Twin?
+          <select class="mne-edit hr-in" onchange="hosrevSetExec('underTwin',this.value)">
+            <option value="yes"${er.underTwin?' selected':''}>Yes — sell the double</option>
+            <option value="no"${!er.underTwin?' selected':''}>No</option>
+          </select></label>
+        <label class="hr-lbl">Keep it £ under the twin
+          <input class="mne-edit hr-in" value="${er.underTwinBy??0.10}" onchange="hosrevSetExecN('underTwinBy',this.value)"></label>
+        <label class="hr-lbl">Quiet-night Executive easing (%)
+          <input class="mne-edit hr-in" value="${Math.round((er.lowOccNudgePct||0)*100)}" onchange="hosrevSetExecN('lowOccNudgePct',this.value/100)"></label>
+        <label class="hr-lbl">Rate approver
+          <input class="mne-edit hr-in" value="${s.approver||''}" onchange="hosrevSetApprover(this.value)"></label>
+      </div>
+    </div>
+
+    <div class="sf-panel" style="margin-top:16px"><div class="sf-panel-head"><h3>Competitive set</h3><button class="btn sm hr-ghost" onclick="hosrevCompAdd()">+ Add hotel</button></div>
+      <p class="hr-muted" style="margin-bottom:8px">Weight 1 (low) to 5 (high). We are well out of Coventry city centre, so primary rivals today are Ramada, Novotel and Windmill; Coombe Abbey is aspirational.</p>
+      <div class="hr-scroll"><table class="pipe-table"><thead><tr><th>Hotel</th><th>Tier</th><th>Postcode</th><th>Rooms</th><th>Weight</th><th>Booking.com URL</th><th>Notes</th><th></th></tr></thead>
+      <tbody>${(s.compSet||[]).map((c,i)=>`<tr>
+        <td><input class="mne-edit hr-in" style="min-width:180px" value="${(c.hotel||'').replace(/"/g,'&quot;')}" onchange="hosrevSetComp(${i},'hotel',this.value)"></td>
+        <td><select class="mne-edit hr-in" onchange="hosrevSetComp(${i},'tier',this.value)"><option${c.tier==='Primary'?' selected':''}>Primary</option><option${c.tier==='Aspirational'?' selected':''}>Aspirational</option></select></td>
+        <td><input class="mne-edit hr-in" style="width:90px" value="${c.postcode||''}" onchange="hosrevSetComp(${i},'postcode',this.value)"></td>
+        <td><input class="mne-edit hr-in" style="width:64px" value="${c.rooms||''}" onchange="hosrevSetComp(${i},'rooms',this.value)"></td>
+        <td><input class="mne-edit hr-in" style="width:52px" value="${c.weight||''}" onchange="hosrevSetComp(${i},'weight',this.value)"></td>
+        <td><input class="mne-edit hr-in" style="min-width:160px" value="${(c.url||'').replace(/"/g,'&quot;')}" onchange="hosrevSetComp(${i},'url',this.value)"></td>
+        <td><input class="mne-edit hr-in" style="min-width:160px" value="${(c.notes||'').replace(/"/g,'&quot;')}" onchange="hosrevSetComp(${i},'notes',this.value)"></td>
+        <td><button class="mini-btn hr-ghost" onclick="hosrevCompDel(${i})">✕</button></td>
+      </tr>`).join("")}</tbody></table></div>
     </div>
 
     <div class="sf-panel" style="margin-top:16px"><div class="sf-panel-head"><h3>Channel mix &amp; commission</h3></div>
@@ -548,5 +763,15 @@ function renderRevSettings(v){
 }
 function hosrevSet(i,k,val){ const s=HosrevStore.settings(); s.roomTypes[i][k]=+val||0; HosrevStore.saveSettings(s); }
 function hosrevSetG(k,val){ const s=HosrevStore.settings(); s[k]=+val||0; HosrevStore.saveSettings(s); }
-function hosrevSetGen(k,val){ const s=HosrevStore.settings(); s.general[k]=+val||0; HosrevStore.saveSettings(s); }
+function hosrevSetGen(k,val){ const s=HosrevStore.settings(); s.general[k]=+val||0; HosrevStore.saveSettings(s); if(k==='window')render(); }
+function hosrevSetGenBool(k,val){ const s=HosrevStore.settings(); s.general[k]=(val==='yes'); HosrevStore.saveSettings(s); render(); }
 function hosrevSetCom(i,k,val){ const s=HosrevStore.settings(); s.commission[i][k]=+val||0; HosrevStore.saveSettings(s); if(k==='pct')render(); }
+function hosrevSetW(k,val){ const s=HosrevStore.settings(); s.weights=s.weights||{}; s.weights[k]=+val||0; HosrevStore.saveSettings(s); }
+function hosrevSetAnc(i,val){ const s=HosrevStore.settings(); s.ancillary.byDow[i]=+val||0; HosrevStore.saveSettings(s); }
+function hosrevSetAncMargin(val){ const s=HosrevStore.settings(); s.ancillary.marginPct=(+val||0)/100; HosrevStore.saveSettings(s); render(); }
+function hosrevSetExec(k,val){ const s=HosrevStore.settings(); s.execRules=s.execRules||{}; s.execRules[k]=(val==='yes'); HosrevStore.saveSettings(s); }
+function hosrevSetExecN(k,val){ const s=HosrevStore.settings(); s.execRules=s.execRules||{}; s.execRules[k]=+val||0; HosrevStore.saveSettings(s); }
+function hosrevSetApprover(val){ const s=HosrevStore.settings(); s.approver=val||''; HosrevStore.saveSettings(s); }
+function hosrevSetComp(i,k,val){ const s=HosrevStore.settings(); if(!s.compSet[i])return; s.compSet[i][k]=(k==='rooms'||k==='weight')?(+val||0):val; HosrevStore.saveSettings(s); }
+function hosrevCompAdd(){ const s=HosrevStore.settings(); s.compSet=s.compSet||[]; s.compSet.push({hotel:"New hotel",tier:"Primary",postcode:"",rooms:0,weight:3,url:"",notes:""}); HosrevStore.saveSettings(s); render(); }
+function hosrevCompDel(i){ const s=HosrevStore.settings(); s.compSet.splice(i,1); HosrevStore.saveSettings(s); render(); }

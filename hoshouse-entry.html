@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1a2b3a">
+<title>HosHouse — Today's rooms</title>
+<style>
+  :root{--navy:#1a2b3a;--navy2:#243447;--gold:#b89056;--ink:#1f2a37;--line:#dfe4ea;--bg:#eef1f5;--muted:#6b7280;
+    --dep:#1f7a8c;--stay:#4a86c7;--arr:#2a6a4a;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding-bottom:88px}
+  header{background:var(--navy);color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}
+  header .t{font-weight:700;font-size:17px}
+  header .s{font-size:12px;color:#aebdce;margin-top:2px}
+  .wrap{max-width:820px;margin:0 auto;padding:14px 16px}
+  .bar{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  label{font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:4px}
+  input[type=date],input[type=search]{width:100%;padding:10px;border:1.5px solid var(--line);border-radius:9px;font:15px inherit}
+  .seg{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .seg button{flex:1;min-width:92px;padding:9px;border:1.5px solid var(--line);border-radius:9px;background:#fff;font:700 13px inherit;cursor:pointer}
+  .seg button.on{color:#fff;border-color:transparent}
+  .seg .b-dep.on{background:var(--dep)} .seg .b-stay.on{background:var(--stay)} .seg .b-arr.on{background:var(--arr)}
+  .legend{font-size:12px;color:var(--muted);margin:6px 2px 0;display:flex;gap:12px;flex-wrap:wrap}
+  .legend i{width:12px;height:12px;border-radius:3px;display:inline-block;vertical-align:-1px;margin-right:4px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:8px}
+  .rm{position:relative;border:1.5px solid var(--line);border-radius:10px;background:#fff;padding:10px 4px 6px;text-align:center;cursor:pointer;user-select:none}
+  .rm .n{font-weight:800;font-size:16px;color:var(--ink)}
+  .rm .c{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;min-height:11px}
+  .rm.sel{color:#fff;border-color:transparent}
+  .rm.dep{background:var(--dep)} .rm.stay{background:var(--stay)} .rm.arr{background:var(--arr)}
+  .rm.sel .n,.rm.sel .c{color:#fff}
+  .rm .tag{position:absolute;top:4px;right:6px;font-size:10px;font-weight:800}
+  .rm.lock{opacity:.6;cursor:not-allowed;background:#f1f3f5;border-style:dashed}
+  .rm.lock .n{color:#6b7280}
+  .foot{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;max-width:820px;margin:0 auto}
+  .count{font-weight:800;font-size:15px;color:var(--navy);white-space:nowrap}
+  .btn{flex:1;padding:13px;border:none;border-radius:11px;font:800 15px inherit;cursor:pointer}
+  .btn-go{background:#2a6a4a;color:#fff} .btn-wa{background:#25D366;color:#fff;flex:0 0 auto;padding:13px 16px}
+  .msg{font-size:13px;margin-top:8px}
+  .hint{font-size:12px;color:var(--muted)}
+  .done-note{background:#ecf6f0;border:1px solid #bfe0cd;color:#1e6b2f;border-radius:9px;padding:9px 12px;font-size:13px;margin-bottom:10px;display:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="t">🧹 Housekeeping — today's rooms</div>
+  <div class="s">Reception: pick the rooms that need cleaning, then Submit. It updates the housekeepers' app instantly.</div>
+</header>
+
+<div class="wrap">
+  <div class="done-note" id="doneNote"></div>
+
+  <div class="bar">
+    <label for="date">Date</label>
+    <input type="date" id="date">
+    <div style="margin-top:10px">
+      <label>Tap a room to add it. Tap again to change type, once more to remove.</label>
+      <div class="seg">
+        <button class="b-dep on" data-t="Departure" onclick="setDefault('Departure')">Departure</button>
+        <button class="b-stay" data-t="Stayover" onclick="setDefault('Stayover')">Stayover</button>
+        <button class="b-arr" data-t="Arrival-ready" onclick="setDefault('Arrival-ready')">Arrival-ready</button>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--dep)"></i>Departure (D)</span>
+        <span><i style="background:var(--stay)"></i>Stayover (S)</span>
+        <span><i style="background:var(--arr)"></i>Arrival-ready (A)</span>
+        <span><i style="background:#f1f3f5;border:1px dashed #cbd3dc"></i>Started/done — locked</span>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <input type="search" id="find" placeholder="🔍 Filter room numbers…" oninput="render()">
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="grid" id="grid"></div>
+    <div class="msg hint" id="emptyHint" style="display:none">No rooms configured yet — add them in the HosHouse admin page.</div>
+  </div>
+</div>
+
+<div class="foot">
+  <span class="count" id="count">0 rooms</span>
+  <button class="btn btn-go" id="go" onclick="submitDay()">Submit</button>
+  <button class="btn btn-wa" onclick="shareWA()">WhatsApp</button>
+</div>
+
+<!-- Firebase + HosHouse config -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="hoshouse-config.js"></script>
+<script>
+  const DEFT = {Departure:'dep',Stayover:'stay','Arrival-ready':'arr'};
+  const LET  = {Departure:'D',Stayover:'S','Arrival-ready':'A'};
+  let picks = {};     // room -> type (for pending selections)
+  let locked = {};    // room -> status (in_progress/done) can't be changed
+  let defType = 'Departure';
+  const $ = id => document.getElementById(id);
+
+  function setDefault(t){ defType=t; document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on', b.dataset.t===t)); }
+
+  async function loadDay(){
+    const date=$('date').value; picks={}; locked={};
+    const rooms = await HH.getDayRooms(date);
+    rooms.forEach(r=>{ if(r.status && r.status!=='pending'){ locked[r.room]=r.status; } else { picks[r.room]=r.type||'Departure'; } });
+    render();
+  }
+
+  function render(){
+    const cfg = HH.cfg();
+    const q = ($('find').value||'').trim().toLowerCase();
+    const list = cfg.rooms.filter(r=>!q || String(r.room).toLowerCase().includes(q));
+    $('emptyHint').style.display = cfg.rooms.length? 'none':'block';
+    $('grid').innerHTML = list.map(r=>{
+      const room=String(r.room);
+      if(locked[room]) return `<div class="rm lock" title="${locked[room]}"><div class="n">${room}</div><div class="c">${locked[room]==='done'?'done':'in progress'}</div></div>`;
+      const t=picks[room];
+      const cls = t? 'sel '+DEFT[t] : '';
+      return `<div class="rm ${cls}" onclick="tap('${room}')"><div class="n">${room}</div><div class="c">${r.cat||''}</div>${t?`<span class="tag">${LET[t]}</span>`:''}</div>`;
+    }).join('');
+    const n=Object.keys(picks).length;
+    $('count').textContent = n+' room'+(n!==1?'s':'');
+  }
+
+  // cycle: none -> defType -> Stayover -> Arrival-ready -> none
+  function tap(room){
+    const order=['Departure','Stayover','Arrival-ready'];
+    if(!picks[room]){ picks[room]=defType; }
+    else { const i=order.indexOf(picks[room]); if(i>=order.length-1) delete picks[room]; else picks[room]=order[i+1]; }
+    render();
+  }
+
+  async function submitDay(){
+    const date=$('date').value; const arr=Object.entries(picks).map(([room,type])=>({room,type}));
+    if(!arr.length && !Object.keys(locked).length){ alert('Pick at least one room.'); return; }
+    $('go').disabled=true; $('go').textContent='Saving…';
+    try{ await HH.setDayRooms(date, arr);
+      const note=$('doneNote'); note.style.display='block';
+      note.textContent=`✓ ${arr.length} room${arr.length!==1?'s':''} sent to the housekeepers for ${fmt(date)}. You can re-submit to update the list.`;
+      window.scrollTo(0,0);
+    }catch(e){ alert('Could not save: '+(e&&e.message||e)); }
+    $('go').disabled=false; $('go').textContent='Submit';
+  }
+
+  function fmt(iso){ try{ return new Date(iso+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); }catch(e){ return iso; } }
+
+  function shareWA(){
+    const date=$('date').value;
+    const byType={Departure:[],Stayover:[],'Arrival-ready':[]};
+    Object.entries(picks).forEach(([r,t])=>byType[t].push(r));
+    let txt=`🧹 Housekeeping ${fmt(date)}\n`;
+    ['Departure','Stayover','Arrival-ready'].forEach(t=>{ if(byType[t].length) txt+=`${t} (${byType[t].length}): ${byType[t].sort((a,b)=>a-b).join(', ')}\n`; });
+    txt+=`Total: ${Object.keys(picks).length} rooms`;
+    window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+  }
+
+  // init
+  (async function(){
+    $('date').value = HH.todayISO();
+    $('date').addEventListener('change', loadDay);
+    await HH.loadCfg();
+    await loadDay();
+  })();
+</script>
+</body>
+</html>

@@ -388,7 +388,8 @@ const HP_REV_OWNER="ajay.kawa";
 const HP_REV_PW_HASH="c8023b72ed8dcdecda725434debc42b2011ae19d4994db722b53436e21a9ef6f"; // BHREV
 try{ if(typeof hpCanAccess==="function"){ const _hpCanAccessBase=hpCanAccess;
   hpCanAccess=function(id,userKey){ if(id==="hosrev") return (userKey||(SESSION&&SESSION._key))===HP_REV_OWNER; return _hpCanAccessBase.apply(this,arguments); }; } }catch(e){ console.warn("HosREV lock: access hook not installed",e); }
-function hpRevUnlocked(){ try{ return !!(SESSION && SESSION._key===HP_REV_OWNER) && sessionStorage.getItem("hosrev_ok")===HP_REV_PW_HASH; }catch(e){ return false; } }
+/* Secondary password removed during access setup — HosREV is owner-only (Ajay). */
+function hpRevUnlocked(){ try{ return !!(SESSION && SESSION._key===HP_REV_OWNER); }catch(e){ return false; } }
 async function hpRevSha(t){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
 function hpRenderRevLock(v){
   hpSetBreadcrumb({id:"hosrev",name:"HosREV"}, null);
@@ -412,6 +413,24 @@ async function hpRevTry(){
   else { m.textContent="Incorrect password."; i.value=""; i.focus(); }
 }
 
+/* ── TEMPORARY LOCKDOWN during access setup ──────────────────────────────────
+   Only Ajay can use the HosPRO portal for now; everyone else sees a notice when
+   they log in. The standalone staff apps (HosHouse, HosFIX, clock-in, F&B form,
+   invoice) are separate pages and are unaffected. Set HP_LOCKDOWN=false to lift. */
+const HP_LOCKDOWN = true;
+const HP_LOCKDOWN_USER = "ajay.kawa";
+function hpRenderLockdown(v){
+  try{ hpSetBreadcrumb(null); }catch(e){}
+  v.className=""; v.classList.add("hp-canvas");
+  v.innerHTML = `<div style="max-width:520px;margin:12vh auto;text-align:center;padding:28px;background:#fff;border:1px solid #e4e9ef;border-radius:16px;box-shadow:0 2px 14px rgba(0,0,0,.08)">
+    <div style="font-size:40px">🔒</div>
+    <div style="font:800 20px Lato;color:#1a2b3a;margin:8px 0 6px">Portal updating</div>
+    <div style="font-size:14px;color:#4b5563;line-height:1.6">The HosPRO portal is being updated and access is temporarily limited while each person's permissions are set up. Your login still works — full access returns shortly.</div>
+    <div style="font-size:12.5px;color:#8fa3b8;margin-top:14px">The housekeeping, maintenance, clock-in and F&amp;B apps are unaffected.</div>
+    <button onclick="(async()=>{ try{ if(typeof fbSignOut==='function') await fbSignOut(); }catch(e){} try{sessionStorage.clear();}catch(e){} location.reload(); })()" style="margin-top:18px;padding:10px 18px;border:1px solid #d1d5db;border-radius:9px;background:#fff;font:700 13px Lato;color:#1a2b3a;cursor:pointer">Sign out</button>
+  </div>`;
+}
+
 function render(){
   const v=$("#view");
   v.innerHTML="";
@@ -419,6 +438,9 @@ function render(){
   v.classList.remove("hp-surface","hp-dark","hp-canvas");
   if(window.scrollY) window.scrollTo(0,0);     // keep the page itself pinned (only .sf-main scrolls)
   { const ap=document.getElementById("app"); if(ap && ap.scrollTop) ap.scrollTop=0; }
+
+  // Lockdown: anyone other than Ajay sees the "portal updating" notice.
+  if(HP_LOCKDOWN && SESSION && SESSION._key && SESSION._key!==HP_LOCKDOWN_USER){ hpRenderLockdown(v); return; }
 
   // Module landing pages are routed as "mod:<id>"
   // Restricted modules (e.g. HosPEOPLE: payroll and HR) — block both the landing page and every tab in it
