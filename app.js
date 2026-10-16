@@ -132,7 +132,7 @@ async function boot(){
   if(DB.live()){
     FBStore.start();                       // begin live Firestore sync
     await FBStore.seedOnce(SEED_SAMPLES);   // seed only if empty
-    FBStore.onChange(()=>{ if(CURRENT_TAB==="pipeline"||CURRENT_TAB==="home") render(); });
+    FBStore.onChange(()=>{ if(CURRENT_TAB==="pipeline") render(); });
     if(typeof MktStore!=="undefined"){ MktStore.start();
       MktStore.onChange(()=>{ if(CURRENT_TAB==="marketing") render(); }); }
     if(typeof CorpGuestStore!=="undefined"){ CorpGuestStore.start();
@@ -147,18 +147,6 @@ async function boot(){
   buildSidebar();
   render();
   if(DB.live()){
-    // one-off (15 Oct 2026): delete the old test enquiries still marked "new" from before today,
-    // keeping today's website enquiries. Runs once for the whole team (flag in meta).
-    setTimeout(async()=>{ try{
-      const flag=FB.db.collection("meta").doc("cleanup_new_20261015");
-      if((await flag.get()).exists) return;
-      for(let i=0;i<20 && !DB.all().length;i++) await new Promise(r=>setTimeout(r,1500)); // wait for the live list
-      if(!DB.all().length) return;
-      const old=DB.all().filter(e=>e.id && e.status==="new" && e.created && String(e.created).slice(0,10)<"2026-10-15");
-      for(const e of old) await FB.db.collection("enquiries").doc(e.id).delete();
-      await flag.set({ done:new Date().toISOString(), by:(SESSION&&SESSION.name)||"", removed:old.map(e=>(e.name||"")+" "+String(e.created).slice(0,10)) });
-      if(old.length) render();
-    }catch(err){ console.warn("Old enquiry cleanup skipped",err); } }, 5000);
     // one-off: remove the five earlier sample enquiries now the Rezlynx report is the master
     setTimeout(async()=>{ try{
       const old=["Dairy Carbon Network","Andre Brissett","Dominic Hillyard","Rebekah Stretton","Samantha Courtnell"];
@@ -397,7 +385,7 @@ async function hpRevPushSetup(){ try{ if(FB && FB.ready && FB.user && FB.db && S
    is stored as a SHA-256 fingerprint, not in plain text; unlock lasts until the
    browser tab is closed or he signs out. */
 const HP_REV_OWNER="ajay.kawa";
-const HP_REV_PW_HASH="ce199ebf05c03dc514278cfb9346b80d2559cf5afd8205a6fe85bd58adf23b79";
+const HP_REV_PW_HASH="c8023b72ed8dcdecda725434debc42b2011ae19d4994db722b53436e21a9ef6f"; // BHREV
 try{ if(typeof hpCanAccess==="function"){ const _hpCanAccessBase=hpCanAccess;
   hpCanAccess=function(id,userKey){ if(id==="hosrev") return (userKey||(SESSION&&SESSION._key))===HP_REV_OWNER; return _hpCanAccessBase.apply(this,arguments); }; } }catch(e){ console.warn("HosREV lock: access hook not installed",e); }
 function hpRevUnlocked(){ try{ return !!(SESSION && SESSION._key===HP_REV_OWNER) && sessionStorage.getItem("hosrev_ok")===HP_REV_PW_HASH; }catch(e){ return false; } }
@@ -1294,9 +1282,7 @@ function pipelineData(){
     if(r){ used.add(ref); out.push(Object.assign({_kind:"enquiry"}, e, { value:r.value, date:r.arrival||e.date, pax:r.pax||e.pax,
       status:r._bucket==="cancelled"?"cancelled":(e.status==="cancelled"?"confirmed":e.status), bookedDate:r.booked, departure:r.departure, rooms:r.rooms,
       roomName:r.room||e.roomName, room:r.room?roomIdFromName(r.room):e.room, ratePlan:r.ratePlan||e.ratePlan })); }
-    else out.push(Object.assign({_kind:"enquiry"}, e,
-      // Website planner and contact-form leads arrive with status "new": show them as Enquiry
-      e.status==="new" ? { status:"enquiry", _webNew:true } : {}));
+    else out.push(Object.assign({_kind:"enquiry"}, e));
   });
   Object.values(bobByRef).forEach(r=>{
     if(used.has(r.ref)) return;
@@ -1310,8 +1296,6 @@ function pipelineData(){
   });
   return out;
 }
-// Open the Sales Pipeline at the "New enquiries to follow up" section
-function hpGoNewEnq(){ PIPE_FILTER={room:"",event:"",status:"",owner:"",source:"",search:""}; window._pipeGoNew=true; switchTab("pipeline"); }
 function roomIdFromName(name){ const r=ROOMS.find(x=>x.name===name); return r?r.id:""; }
 
 function renderPipeline(v){
@@ -1330,32 +1314,6 @@ function renderPipeline(v){
       <button class="btn ghost" id="enq-link">Copy chat link</button>
     </div>`;
   v.appendChild(tb);
-  // ── New enquiries to follow up (website planner, events chat): newest first ──
-  { const esc=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
-    const fresh=pipelineData().filter(e=>e._webNew).sort((a,b)=>String(b.created||"").localeCompare(String(a.created||"")));
-    const dt=d=>{ if(!d) return "TBC"; const x=new Date(String(d).length<=10?d+"T12:00:00":d); return isNaN(x)?"TBC":x.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}); };
-    const rcv=d=>{ const x=new Date(d); return isNaN(x)?"—":x.toLocaleDateString("en-GB",{day:"numeric",month:"short"})+" "+x.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}); };
-    const etl=e=>e.eventLabel||(EVENT_TYPES.find(t=>t.id===e.event)||{}).label||"Event";
-    const sec=el("div"); sec.id="new-enquiries";
-    sec.style.cssText=`background:#fff;border:1px solid #e4e9ef;border-left:5px solid ${fresh.length?'#c62828':'#4a9d7f'};border-radius:12px;padding:14px 16px;margin:0 0 16px;scroll-margin-top:160px`;
-    sec.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="font-size:15px;font-weight:700;color:#1a2b3a">🔔 New enquiries to follow up <span style="background:${fresh.length?'#c62828':'#4a9d7f'};color:#fff;border-radius:20px;padding:1px 9px;font-size:12px;margin-left:4px">${fresh.length}</span></div>
-        <div style="font-size:11.5px;color:#5f6b78">${fresh.length?'Newest first. Open one, choose a stage and save to move it into the pipeline below.':'All caught up. New website enquiries appear here as soon as they arrive.'}</div></div>
-      ${fresh.length?`<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:13px">
-        <tr style="text-align:left;color:#5f6b78;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 8px">Received</th><th style="padding:6px 8px">Client</th><th style="padding:6px 8px">Event</th><th style="padding:6px 8px">Guests</th><th style="padding:6px 8px">Event date</th><th style="padding:6px 8px">Status</th><th></th></tr>
-        ${fresh.map((e,i)=>`<tr style="border-top:1px solid #eef1f4">
-          <td style="padding:8px;white-space:nowrap;color:#5f6b78">${rcv(e.created)}</td>
-          <td style="padding:8px"><b>${esc(e.name||"—")}</b>${e.company?`<div style="color:#5f6b78;font-size:11.5px">${esc(e.company)}</div>`:""}</td>
-          <td style="padding:8px">${esc(etl(e))}${e.webQuoteRef?`<div style="color:#5f6b78;font-size:11.5px">${esc(e.webQuoteRef)}</div>`:""}</td>
-          <td style="padding:8px">${e.pax||"—"}</td>
-          <td style="padding:8px;white-space:nowrap">${dt(e.date)}</td>
-          <td style="padding:8px">${e.stage==="Planner started"?'<span style="background:#fdf1e3;color:#9a5b12;border-radius:6px;padding:2px 7px;font-weight:700;font-size:11px">Started planner, not sent</span>':'<span style="background:#fdecea;color:#c62828;border-radius:6px;padding:2px 7px;font-weight:700;font-size:11px">'+esc(e.stage||"New enquiry")+'</span>'}</td>
-          <td style="padding:8px;white-space:nowrap;text-align:right">${e.webQuoteLink?`<a href="${esc(e.webQuoteLink)}" target="_blank" rel="noopener" style="font-weight:700;color:#1a2b3a;margin-right:10px">Quote</a>`:""}<button class="btn sm ne-open" data-i="${i}">Open</button></td></tr>`).join("")}
-      </table></div>`:""}`;
-    v.appendChild(sec);
-    sec.querySelectorAll(".ne-open").forEach(b=>b.onclick=()=>openEnquiryDetail(fresh[+b.dataset.i]));
-    if(window._pipeGoNew){ window._pipeGoNew=false; setTimeout(()=>sec.scrollIntoView({behavior:"smooth",block:"start"}),60); }
-  }
   $("#enq-new").onclick=()=>openEnquiryForm({});
   $("#enq-chat").onclick=()=>switchTab("chat");
   $("#enq-link").onclick=()=>{ const url=location.href.split("#")[0]+"#events-chat";
@@ -1369,13 +1327,12 @@ function renderPipeline(v){
     if(PIPE_FILTER.owner && e.owner!==PIPE_FILTER.owner) return false;
     if(PIPE_FILTER.event && e.event!==PIPE_FILTER.event) return false;
     if(PIPE_FILTER.source && e.source!==PIPE_FILTER.source) return false;
-    if(PIPE_FILTER.fresh && !e._webNew) return false;
     return true;
   });
-  const scopeActive = PIPE_FILTER.room||PIPE_FILTER.owner||PIPE_FILTER.event||PIPE_FILTER.source||PIPE_FILTER.fresh;
+  const scopeActive = PIPE_FILTER.room||PIPE_FILTER.owner||PIPE_FILTER.event||PIPE_FILTER.source;
   if(scopeActive){
     const chip=el("div","scope-chip");
-    chip.innerHTML=`<span>Filtered: <b>${[PIPE_FILTER.fresh?"New enquiries to follow up":"",PIPE_FILTER.owner,PIPE_FILTER.room,PIPE_FILTER.event?EVENT_TYPES.find(t=>t.id===PIPE_FILTER.event)?.label:"",PIPE_FILTER.source].filter(Boolean).join(" · ")}</b></span><button id="scope-clear">✕ Clear</button>`;
+    chip.innerHTML=`<span>Filtered: <b>${[PIPE_FILTER.owner,PIPE_FILTER.room,PIPE_FILTER.event?EVENT_TYPES.find(t=>t.id===PIPE_FILTER.event)?.label:"",PIPE_FILTER.source].filter(Boolean).join(" · ")}</b></span><button id="scope-clear">✕ Clear</button>`;
     v.appendChild(chip);
     $("#scope-clear").onclick=()=>{ PIPE_FILTER={room:"",event:"",status:"",owner:"",source:"",search:""}; render(); };
   }
@@ -1552,7 +1509,6 @@ function filteredPipe(){
     if(PIPE_FILTER.owner && e.owner!==PIPE_FILTER.owner) return false;
     if(PIPE_FILTER.source && e.source!==PIPE_FILTER.source) return false;
     if(PIPE_FILTER.search && !(e.name||"").toLowerCase().includes(PIPE_FILTER.search.toLowerCase())) return false;
-    if(PIPE_FILTER.fresh && !e._webNew) return false;
     return true;
   });
 }
@@ -1703,9 +1659,6 @@ function openEnquiryDetail(e){
       ${roomName?`<div class="stat"><div class="k">Room</div><div class="v" style="font-size:15px">${roomName}</div></div>`:""}
     </div>
     ${isBob?`<div class="bob-note">📊 From Rezlynx business-on-books (ref ${e.ref}). Editing below promotes it to a managed enquiry.</div>`:""}
-    ${e.webQuoteLink&&/^https:\/\/www\.brandonhallhotelandspa\.com\//.test(e.webQuoteLink)?`<div class="sec-title">🌐 Website quote ${e.webQuoteRef?`<span class="qs-sub">${e.webQuoteRef}</span>`:""}</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:8px">The specification and room plan this client built on the website${e.stage?` · ${e.stage}`:""}. The client has the same link.</p>
-    <div class="dual-btn"><a class="btn sm" href="${e.webQuoteLink}" target="_blank" rel="noopener">Open quote</a><a class="btn ghost sm" href="${e.webQuoteLink}&download=1" target="_blank" rel="noopener">Download PDF</a><button class="btn ghost sm" id="m-webq-copy">Copy link</button></div>`:""}
 
     <div class="sec-title">Manage</div>
     <div class="manage-grid">
@@ -1904,7 +1857,6 @@ Brandon Hall Hotel and Spa
   if($("#pay-default")) $("#pay-default").onclick=()=>{ paySched=stdSchedule(); renderPaySched(); };
   renderPaySched();
 
-  const wqc=$("#m-webq-copy"); if(wqc) wqc.onclick=()=>{ navigator.clipboard?.writeText(e.webQuoteLink).then(()=>{ wqc.textContent="Copied"; }); };
   $("#m-save").onclick=()=>{
     const newFollowUp=$("#m-followup").value;
     // if the follow-up date changed, record the previous one as "last follow-up"
@@ -4324,13 +4276,6 @@ function renderSocialPreview(){
    quick link; for everyone else it shows greyed out. The P&L page also has its
    own logins (Ajay/Raj/Alia) as a second layer. */
 const HP_FIN_KEYS = ['ajay.kawa','raj.kumar','alia.taub'];
-// Signed in to HOSPRO as Ajay, Raj or Alia: hand the sign-in to the Financial Overview so its
-// login page is skipped. A one-time pass, valid for 60 seconds, read (and removed) by pl/index.html.
-function hpFinSSO(){ try{
-  const names={'ajay.kawa':'Ajay Kawa','raj.kumar':'Raj Kumar','alia.taub':'Alia Taub'};
-  const k=SESSION && SESSION._key; if(!names[k]) return;
-  localStorage.setItem('bhpl_sso', JSON.stringify({ user:names[k], exp:Date.now()+60000 }));
-}catch(e){} }
 
 function renderHome(v){
   const mods = userModules(SESSION?._key||"ajay.kawa");
@@ -4373,16 +4318,6 @@ function renderHome(v){
       </div>
     </div>`;
   wrap.appendChild(homeHero);
-
-  // ── New enquiries button: website planner and events chat leads nobody has opened and saved yet
-  //    (they arrive with status "new"). Opens Sales showing just those. ─────────────────────────
-  const freshN=PD.filter(e=>e._webNew).length;
-  const nb=document.createElement('button');
-  nb.className='hp-new-enq';
-  nb.style.cssText=`position:absolute;top:22px;right:24px;z-index:2;display:inline-flex;align-items:center;gap:9px;padding:11px 18px;border:0;border-radius:30px;cursor:pointer;font:700 14px Lato,system-ui,sans-serif;color:#fff;background:${freshN?'#c62828':'rgba(255,255,255,.18)'};box-shadow:${freshN?'0 4px 14px rgba(198,40,40,.45)':'none'}`;
-  nb.innerHTML=freshN?`🔔 <span style="background:#fff;color:#c62828;border-radius:20px;padding:1px 9px;font-size:13px">${freshN}</span> New ${freshN===1?'enquiry':'enquiries'} to follow up →`:`✓ No new enquiries`;
-  nb.onclick=()=>hpGoNewEnq();
-  homeHero.style.position='relative'; homeHero.querySelector('.hp-hero').style.position='relative'; homeHero.querySelector('.hp-hero').appendChild(nb);
 
   // ── Module cards — 2 rows of 6 ────────────────────────────────────────────
   const cardsSection = document.createElement('div');
@@ -4448,17 +4383,12 @@ function renderHome(v){
     { label:'Financial Overview', icon:'📊', url:'pl/',               colour:'#2a6a4a', fin:true },
     { label:'Daily F&B entry',    icon:'🍽', url:'fb-entry.html',      colour:'#8b5c8f' },
     { label:'Staff clock-in',     icon:'⏱', url:'clock.html',         colour:'#4a86c7' },
-    { label:'PMS',                icon:'🏨', url:'https://guestline.eu.auth0.com/login?state=hKFo2SA3YXhjWWszV2JfR2liT0ZtdExwSVFjSDVVZDI1SVVNVaFupWxvZ2luo3RpZNkgRGcya0JIWnBnLTdPV2pEQUI5ckU1M08xSEcyeDA1MkejY2lk2SBhM1RTRmg3OVpzWXBFcnZFSU5Pa2VvekhiSVBZUTNvYw&client=a3TSFh79ZsYpErvEINOkeozHbIPYQ3oc&protocol=oauth2&useRefreshTokensFallback=true&issuer=https%3A%2F%2Fguestline.eu.auth0.com%2F&scope=openid%20profile%20email%20offline_access&audience=https%3A%2F%2Fguestline.app&redirect_uri=https%3A%2F%2Fpms.eu.guestline.net%2Frezlynx%2FRLXWebForms%2Fsys%2Fwfrm_sys_LogOn.aspx%3Fsso_autoLogon%3Dtrue%26siteId%3DBRANDHALL&siteid=BRANDHALL&rezlynxlogin=true&response_type=code&response_mode=query', colour:'#1a2b3a' },
-    { label:'Saeker',             icon:'🛡', url:'https://7hospitalitymanagement.saeker.com/login', colour:'#b3261e' },
-    { label:'Website',            icon:'🌐', url:'https://www.brandonhallhotelandspa.com', colour:'#c9a978' },
-    { label:'Staff',              icon:'👤', url:'/staff',             colour:'#5f6b78' },
-    { label:'Coventry',           icon:'📍', url:'https://visitcoventry.co.uk/', colour:'#c62828' },
   ];
   const qStyle = c => `display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#fff;border:1px solid #e4e9ef;border-left:3px solid ${c};border-radius:9px;font:700 12px Lato;color:#1a2b3a;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,.05);cursor:pointer`;
   quick.innerHTML = `<span style="font-size:11px;font-weight:700;color:#8fa3b8;text-transform:uppercase;letter-spacing:.6px;margin-right:4px">Quick links</span>` +
     qLinks.map(q=> (q.fin && !finOK)
       ? `<span title="Finance team only — Ajay, Raj or Alia" style="${qStyle(q.colour)};opacity:.45;filter:grayscale(1);cursor:not-allowed">${q.icon} ${q.label} 🔒</span>`
-      : `<a href="${q.url}" target="_blank" rel="noopener"${q.fin?' onclick="hpFinSSO()"':''} style="${qStyle(q.colour)}">${q.icon} ${q.label}</a>`).join('');
+      : `<a href="${q.url}" target="_blank" rel="noopener" style="${qStyle(q.colour)}">${q.icon} ${q.label}</a>`).join('');
   wrap.appendChild(quick);
 
   // ── Stats bar — full width ─────────────────────────────────────────────────
@@ -9157,7 +9087,6 @@ function hpModuleStats(id){
       const p=hpSafe(pipe,[]);
       const open=p.filter(e=>["enquiry","provisional"].includes(e.status));
       return [
-        [p.filter(e=>e._webNew).length, "New enquiries to follow up", "pipelineNew", "#c62828", true],
         [hpMoney(open.reduce((s,e)=>s+(+e.value||0),0)), "Open pipeline value", "pipeline", "#8b5c8f"],
         [open.filter(e=>e.followUp && e.followUp<todayK).length, "Follow-ups overdue", "pipeline", "#b3261e", true],
         [p.filter(e=>e.status==="confirmed" && String(e.date||"").startsWith(monthK)).length, "Events confirmed this month", "pipeline", "#2a6a4a"],
@@ -9248,7 +9177,7 @@ function hpLandingExtras(m){
       box.innerHTML+=`<div class="hp-sec-h">Today at a glance</div>
         <div class="hp-glance">${stats.map(([v,l,tab,col,alert])=>{
           const hot = alert && Number(v)>0;
-          return `<button class="hp-stat${hot?' hot':''}" onclick="${tab==='pipelineNew'?'hpGoNewEnq()':`switchTab('${tab}')`}" style="--acc:${hot?'#b3261e':m.colour}">
+          return `<button class="hp-stat${hot?' hot':''}" onclick="switchTab('${tab}')" style="--acc:${hot?'#b3261e':m.colour}">
             <span class="hp-stat-v">${v}</span><span class="hp-stat-l">${l}</span><span class="hp-stat-go">Open →</span></button>`; }).join("")}</div>`;
     }
   }
