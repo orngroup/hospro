@@ -905,7 +905,7 @@ FLOW_MODULES = [
   { id:"hosvenue",  name:"HosVENUE",   caption:"Venue. Rooms. Corporate. Stays.",      icon:"🏛", colour:"#3B6585", tint:"#E4EDF4",
     tabs:["rooms","groupconfig","packages","corpdb","corprates","precheckin","feedback"] },
   { id:"hosstudio", name:"HosSTUDIO",  caption:"Marketing. Campaigns. Creative.",      icon:"📣", colour:"#9C4F63", tint:"#F6E6EA",
-    tabs:["marketing","social","brochure","menu"] },
+    tabs:["marketing","competition","social","brochure","menu"] },
   { id:"hosbrand",  name:"HosBRAND",   caption:"Brand. Collateral. Downloads.",        icon:"📁", colour:"#7A6538", tint:"#F4EEDF",
     tabs:["brandLogos","brandCollateral","brandPhotography","brandDocs"] },
   { id:"hospeople", name:"HosPEOPLE",  caption:"People. Shifts. HR. Leave.",           icon:"👥", colour:"#2B726A", tint:"#E2F1EE",
@@ -1061,6 +1061,7 @@ const MODULE_SUBCARDS = {
   ],
   "hosstudio": [
     {tab:"marketing", label:"Campaigns",        icon:"📣", desc:"Marketing campaigns & email"},
+    {tab:"competition", label:"Competition",    icon:"🎄", desc:"Christmas competition entries, mailing list & winner"},
     {tab:"social",    label:"Social Media",     icon:"📱", desc:"Posts & content scheduling"},
     {tab:"brochure",  label:"Brochure Builder", icon:"📄", desc:"Sales brochures & collateral"},
     {tab:"menu",      label:"Menu Builder",     icon:"🍽", desc:"Menus & F&B collateral builder"},

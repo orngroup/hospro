@@ -3,7 +3,7 @@
    fall back to the saved copy when offline. Only this site's own files are
    cached (never Firebase, the IP lookup or other services).
    Bump CACHE when you want every device to drop its old saved copies. */
-const CACHE="hospro-brandon-v8";
+const CACHE="hospro-brandon-v9";
 const ASSETS=["./","./index.html","./app.js","./data.js","./manifest.json","./assets/bh-logo.svg"];
 self.addEventListener("install",e=>{ e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).catch(()=>{})); self.skipWaiting(); });
 self.addEventListener("activate",e=>{ e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim())); });
