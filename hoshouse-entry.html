@@ -31,8 +31,23 @@
   .rm.dep{background:var(--dep)} .rm.stay{background:var(--stay)} .rm.arr{background:var(--arr)}
   .rm.sel .n,.rm.sel .c{color:#fff}
   .rm .tag{position:absolute;top:4px;right:6px;font-size:10px;font-weight:800}
+  .rm .noteb{position:absolute;bottom:3px;right:3px;width:20px;height:20px;line-height:18px;border-radius:6px;border:1px solid var(--line);background:#fff;color:var(--navy);font-size:12px;font-weight:800;padding:0;cursor:pointer;z-index:2}
+  .rm.sel .noteb{background:rgba(255,255,255,.9);border-color:transparent}
+  .rm .noteb.has{background:var(--gold);color:#fff;border-color:transparent}
+  .rm .ndot{position:absolute;top:4px;left:5px;font-size:10px}
   .rm.lock{opacity:.6;cursor:not-allowed;background:#f1f3f5;border-style:dashed}
   .rm.lock .n{color:#6b7280}
+  .ovl{position:fixed;inset:0;background:rgba(15,22,30,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .ovl.open{display:flex}
+  .modal{background:#fff;border-radius:16px;max-width:420px;width:100%;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+  .modal h3{margin:0 0 4px;font-size:17px;color:var(--navy)}
+  .modal .sub{font-size:12px;color:var(--muted);margin-bottom:12px}
+  .modal textarea{width:100%;min-height:84px;padding:10px;border:1.5px solid var(--line);border-radius:10px;font:15px inherit;resize:vertical}
+  .modal .chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+  .modal .chip{padding:6px 11px;border:1.5px solid var(--line);border-radius:20px;background:#f6f8fa;font:600 12px inherit;cursor:pointer}
+  .modal .row{display:flex;gap:8px;margin-top:14px}
+  .modal .row button{flex:1;padding:11px;border:none;border-radius:10px;font:800 14px inherit;cursor:pointer}
+  .m-save{background:#2a6a4a;color:#fff} .m-clear{background:#f1f3f5;color:#b4231f} .m-x{background:#eef1f5;color:#374151}
   .foot{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;max-width:820px;margin:0 auto}
   .count{font-weight:800;font-size:15px;color:var(--navy);white-space:nowrap}
   .btn{flex:1;padding:13px;border:none;border-radius:11px;font:800 15px inherit;cursor:pointer}
@@ -85,6 +100,21 @@
   <button class="btn btn-wa" onclick="shareWA()">WhatsApp</button>
 </div>
 
+<!-- Room note modal -->
+<div class="ovl" id="noteOvl">
+  <div class="modal">
+    <h3 id="noteTitle">Note for room</h3>
+    <div class="sub">Anything the housekeeper should know — a cot, extra bed, late checkout, VIP, maintenance to flag.</div>
+    <textarea id="noteText" placeholder="e.g. Cot required · 2 extra towels · VIP arrival"></textarea>
+    <div class="chips" id="noteChips"></div>
+    <div class="row">
+      <button class="m-clear" onclick="noteClear()">Clear</button>
+      <button class="m-x" onclick="noteCancel()">Cancel</button>
+      <button class="m-save" onclick="noteSave()">Save note</button>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase + HosHouse config -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -94,16 +124,19 @@
   const DEFT = {Departure:'dep',Stayover:'stay','Arrival-ready':'arr'};
   const LET  = {Departure:'D',Stayover:'S','Arrival-ready':'A'};
   let picks = {};     // room -> type (for pending selections)
+  let notes = {};     // room -> note text
   let locked = {};    // room -> status (in_progress/done) can't be changed
   let defType = 'Departure';
+  let noteRoom = null;
+  const QUICK_NOTES = ['Cot required','Extra bed','Extra towels','Late checkout','Early arrival','VIP','Allergy/clean','Do not disturb','Maintenance issue'];
   const $ = id => document.getElementById(id);
 
   function setDefault(t){ defType=t; document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on', b.dataset.t===t)); }
 
   async function loadDay(){
-    const date=$('date').value; picks={}; locked={};
+    const date=$('date').value; picks={}; locked={}; notes={};
     const rooms = await HH.getDayRooms(date);
-    rooms.forEach(r=>{ if(r.status && r.status!=='pending'){ locked[r.room]=r.status; } else { picks[r.room]=r.type||'Departure'; } });
+    rooms.forEach(r=>{ if(r.status && r.status!=='pending'){ locked[r.room]=r.status; } else { picks[r.room]=r.type||'Departure'; } if(r.notes) notes[r.room]=r.notes; });
     render();
   }
 
@@ -117,7 +150,9 @@
       if(locked[room]) return `<div class="rm lock" title="${locked[room]}"><div class="n">${room}</div><div class="c">${locked[room]==='done'?'done':'in progress'}</div></div>`;
       const t=picks[room];
       const cls = t? 'sel '+DEFT[t] : '';
-      return `<div class="rm ${cls}" onclick="tap('${room}')"><div class="n">${room}</div><div class="c">${r.cat||''}</div>${t?`<span class="tag">${LET[t]}</span>`:''}</div>`;
+      const hasNote = !!(notes[room] && notes[room].trim());
+      const noteBtn = t ? `<button class="noteb ${hasNote?'has':''}" title="${hasNote?('Note: '+notes[room].replace(/"/g,'&quot;')):'Add a note'}" onclick="event.stopPropagation();noteEdit('${room}')">${hasNote?'📝':'＋'}</button>` : '';
+      return `<div class="rm ${cls}" onclick="tap('${room}')"><div class="n">${room}</div><div class="c">${r.cat||''}</div>${t?`<span class="tag">${LET[t]}</span>`:''}${noteBtn}</div>`;
     }).join('');
     const n=Object.keys(picks).length;
     $('count').textContent = n+' room'+(n!==1?'s':'');
@@ -127,12 +162,33 @@
   function tap(room){
     const order=['Departure','Stayover','Arrival-ready'];
     if(!picks[room]){ picks[room]=defType; }
-    else { const i=order.indexOf(picks[room]); if(i>=order.length-1) delete picks[room]; else picks[room]=order[i+1]; }
+    else { const i=order.indexOf(picks[room]); if(i>=order.length-1){ delete picks[room]; delete notes[room]; } else picks[room]=order[i+1]; }
     render();
   }
 
+  // ---- per-room note modal ----
+  function noteEdit(room){
+    noteRoom=room;
+    $('noteTitle').textContent='Note for room '+room;
+    $('noteText').value=notes[room]||'';
+    $('noteChips').innerHTML=QUICK_NOTES.map(q=>`<span class="chip" onclick="noteChip('${q.replace(/'/g,"\\'")}')">+ ${q}</span>`).join('');
+    $('noteOvl').classList.add('open');
+    setTimeout(()=>$('noteText').focus(),50);
+  }
+  function noteChip(txt){
+    const ta=$('noteText'); const cur=ta.value.trim();
+    ta.value = cur ? (cur.replace(/\s*$/,'')+' · '+txt) : txt;
+    ta.focus();
+  }
+  function noteSave(){
+    if(noteRoom!=null){ const v=$('noteText').value.trim(); if(v) notes[noteRoom]=v; else delete notes[noteRoom]; }
+    noteCancel(); render();
+  }
+  function noteClear(){ if(noteRoom!=null) delete notes[noteRoom]; noteCancel(); render(); }
+  function noteCancel(){ $('noteOvl').classList.remove('open'); noteRoom=null; }
+
   async function submitDay(){
-    const date=$('date').value; const arr=Object.entries(picks).map(([room,type])=>({room,type}));
+    const date=$('date').value; const arr=Object.entries(picks).map(([room,type])=>({room,type,note:notes[room]||''}));
     if(!arr.length && !Object.keys(locked).length){ alert('Pick at least one room.'); return; }
     $('go').disabled=true; $('go').textContent='Saving…';
     try{ await HH.setDayRooms(date, arr);
@@ -152,6 +208,8 @@
     let txt=`🧹 Housekeeping ${fmt(date)}\n`;
     ['Departure','Stayover','Arrival-ready'].forEach(t=>{ if(byType[t].length) txt+=`${t} (${byType[t].length}): ${byType[t].sort((a,b)=>a-b).join(', ')}\n`; });
     txt+=`Total: ${Object.keys(picks).length} rooms`;
+    const noteLines=Object.entries(notes).filter(([r,n])=>picks[r]&&n&&n.trim());
+    if(noteLines.length){ txt+='\n\nNotes:\n'+noteLines.sort((a,b)=>a[0]-b[0]).map(([r,n])=>`• ${r}: ${n}`).join('\n'); }
     window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
   }
 

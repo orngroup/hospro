@@ -36,6 +36,7 @@
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .lg{max-width:360px;margin:12vh auto;text-align:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px}
   .muted{color:var(--muted);font-size:12px}
+  .rn{margin-top:3px;font-size:11.5px;color:#7a5a1e;background:#fff7e8;border:1px solid #f0d9ad;border-radius:7px;padding:3px 7px;display:inline-block;max-width:220px}
   .hide{display:none}
   .lbl{font-size:12px;font-weight:700;color:#374151;display:block;margin:10px 0 4px}
 </style>
@@ -138,7 +139,9 @@
       const ov=over(r); const st=ov?'over':r.status;
       const stTxt=ov?'OVER '+mmss(elapsed(r)): r.status==='in_progress'?'In progress '+mmss(elapsed(r)): r.status==='done'?'Done '+Math.round((r.durationSec||0)/60)+'m':'To do';
       const geo = r.status==='done'? (r.geoFinishOk===false?'⚠ off-site':'✓') : (r.status==='in_progress'? (r.geoStartOk===false?'⚠ off-site':'✓'):'—');
-      return `<tr><td><b>${r.room}</b></td><td><span class="pill ${DEFT[r.type]||'dep'}">${r.type}</span></td><td class="st ${st}">${stTxt}</td><td>${r.status==='pending'?'—':hk(r)}</td><td>${r.status==='done'?mmss(r.durationSec||0):(r.status==='in_progress'?mmss(elapsed(r)):'')}</td><td>${geo}</td></tr>`;
+      const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      const rn=r.notes&&r.notes.trim()?`<div class="rn">📝 ${esc(r.notes)}</div>`:'';
+      return `<tr><td><b>${r.room}</b>${rn}</td><td><span class="pill ${DEFT[r.type]||'dep'}">${r.type}</span></td><td class="st ${st}">${stTxt}</td><td>${r.status==='pending'?'—':hk(r)}</td><td>${r.status==='done'?mmss(r.durationSec||0):(r.status==='in_progress'?mmss(elapsed(r)):'')}</td><td>${geo}</td></tr>`;
     }).join('') : '<tr><td colspan="6" style="color:#9ca3af;padding:16px">No rooms set for this date yet — reception submits them on the daily form.</td></tr>';
     html+='</tbody></table>';
     $('pane').innerHTML=html;
@@ -218,8 +221,8 @@
 
   function fmt(iso){ try{ return new Date(iso+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); }catch(e){ return iso; } }
   function exportCsv(){
-    const head=['Date','Room','Type','Status','Housekeeper','Start','Finish','Minutes','GeoStart','GeoFinish'];
-    const rowsCsv=rooms.map(r=>[r.date,r.room,r.type,r.status,hk(r),
+    const head=['Date','Room','Type','Note','Status','Housekeeper','Start','Finish','Minutes','GeoStart','GeoFinish'];
+    const rowsCsv=rooms.map(r=>[r.date,r.room,r.type,r.notes||'',r.status,hk(r),
       r.startAt?new Date(r.startAt).toLocaleTimeString('en-GB'):'', r.finishAt?new Date(r.finishAt).toLocaleTimeString('en-GB'):'',
       r.durationSec?Math.round(r.durationSec/60):'', r.geoStartOk===false?'off-site':(r.geoStartOk?'ok':''), r.geoFinishOk===false?'off-site':(r.geoFinishOk?'ok':'')]);
     const csv=[head,...rowsCsv].map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\r\n');

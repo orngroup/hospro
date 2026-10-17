@@ -143,6 +143,40 @@ const PACKAGES = [
     includes:["Room hire","Arrival drink","3-course menu","DJ","½ bottle wine pp"] }
 ];
 
+/* ---- BANK / PAYMENT DETAILS (for proforma invoices & contracts) ---- */
+const BANK_DETAILS = {
+  company:"Brandon Hall Management Limited",
+  bank:"Lloyds Bank",
+  sortCode:"30-98-97",
+  accountNumber:"38757762",
+  iban:"GB17LOYD30989738757762",
+  bic:"LOYDGB21031",
+  vat:"GB 499558606"
+};
+
+/* ---- TERMS & CONDITIONS (auto-loaded into quotes, proposals & agreements) ---- */
+const TERMS_SHORT = "This quotation is valid for 14 days and is subject to availability. All rates include VAT at the prevailing rate unless otherwise stated. Placing a booking constitutes acceptance of Brandon Hall Hotel & Spa's full terms and conditions.";
+const CONTRACT_TERMS = [
+  { h:"Taxes & Service Charge", t:"All meeting room, food and beverage, and related services are subject to applicable taxes (currently 20% VAT) and any service charge in effect on the date(s) of the event." },
+  { h:"Confirmation & Deposit", t:"A booking is confirmed on receipt of a signed agreement and the agreed deposit. Dates are held provisionally for 14 days and released thereafter unless confirmed." },
+  { h:"Payment Schedule", t:"Unless otherwise agreed in writing, a deposit is payable on confirmation, with the balance due in full prior to the event. A proforma invoice with payment details is issued on acceptance." },
+  { h:"Advance Payment", t:"Full pre-payment is required prior to arrival based on the final Event Order and any Group Room Night Commitment." },
+  { h:"Final Numbers", t:"Final confirmed numbers and dietary requirements are required a minimum of 7 working days before the event. Charges are based on the final number advised or the number attending, whichever is greater." },
+  { h:"Payment — BACS / Bank Transfer", t:"Account name: Brandon Hall Management Limited · Bank: Lloyds · Sort Code: 30-98-97 · Account Number: 38757762 · IBAN: GB17LOYD30989738757762 · BIC: LOYDGB21031 · VAT: GB 499558606. If bank details appear to change, please verify by phone before making any payment." },
+  { h:"Maximum Numbers", t:"Maximum numbers may decrease if additional equipment or staging is required. The Hotel may reduce numbers if required by law or regulatory guidance." },
+  { h:"Car Parking", t:"Complimentary for guests attending an event, on a first come first served basis. Please register vehicle registrations at reception." },
+  { h:"Check-in & Check-out", t:"Bedrooms are available from 3:00pm on the day of arrival and must be vacated by 11:00am on the day of departure." },
+  { h:"Rooming List", t:"Where bedrooms are contracted, a full rooming list with guest names is required a minimum of 21 working days prior to arrival." },
+  { h:"Cancellation by the Organiser", t:"Cancellation charges apply on a sliding scale by notice given: 0–3 days 100% of room commitment and 70% of anticipated spend; 4–90 days 90%/40%; 91–180 days 80%/40%; 181–365 days 70%/40%; 366+ days 50%/40%. All plus applicable taxes." },
+  { h:"Cancellation by the Hotel", t:"The Hotel may cancel without liability if the event might prejudice the Hotel's reputation, if the Hotel is unable to perform due to circumstances beyond its control, or if the Organiser fails to meet its financial obligations." },
+  { h:"Damage", t:"The Organiser is responsible for any damage caused by its employees, sub-contractors or guests and shall pay on demand the amount required to make good such damage." },
+  { h:"Force Majeure", t:"Performance is subject to termination without liability upon circumstances beyond either party's reasonable control, conditioned on written notice within 10 days of the event giving rise to it." },
+  { h:"Liability", t:"The Hotel's liability is limited to the total value of the booking. The Hotel is not liable for loss or damage to property brought onto the premises by the Organiser or guests, except where caused by the Hotel's negligence." },
+  { h:"Allergies & Dietary Requirements", t:"While every care is taken, the Hotel cannot guarantee the complete absence of allergens. Guests with allergies must inform the events team in advance and on the day." },
+  { h:"Governing Law", t:"This agreement is governed by the law of England and Wales. Disputes will first be addressed through good-faith negotiation." },
+  { h:"Entire Agreement", t:"This agreement contains the entire understanding between the parties and supersedes all prior discussions. No amendment is effective unless agreed in writing by both parties." }
+];
+
 /* ---- CARBON MODEL ----
    ESTIMATE from floor area, occupancy & event type using
    UK hospitality benchmarks. Overwrite room.carbonOverride
@@ -867,7 +901,7 @@ FLOW_MODULES = [
   { id:"hoscom",    name:"HosCOM", caption:"Compliance. Checks. Safety. Tasks.",  icon:"🛡", colour:"#4B5288", tint:"#E8EAF4",
     tabs:["compDash","compTasks","compActions","compReport","tasks"] },
   { id:"hossales",  name:"HosSALES",   caption:"Sales. Events. Dining. Revenue.",      icon:"💼", colour:"#6E4E7A", tint:"#EFE7F2",
-    tabs:["pipeline","quotes","quote","profit","contracts","payments","dining","beverage","fbTracker","localEvents","chat"] },
+    tabs:["pipeline","quotes","profit","contracts","payments","dining","beverage","fbTracker","localEvents","chat"] },
   { id:"hosvenue",  name:"HosVENUE",   caption:"Venue. Rooms. Corporate. Stays.",      icon:"🏛", colour:"#3B6585", tint:"#E4EDF4",
     tabs:["rooms","groupconfig","packages","corpdb","corprates","precheckin","feedback"] },
   { id:"hosstudio", name:"HosSTUDIO",  caption:"Marketing. Campaigns. Creative.",      icon:"📣", colour:"#9C4F63", tint:"#F6E6EA",

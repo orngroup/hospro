@@ -119,22 +119,22 @@
 
     // ----- the day's rooms (one doc per room: hoshouse_rooms/<date>__<room>) -----
     docId(date,room){ return date+"__"+room; },
-    blankRoom(date,room,type,cat){
+    blankRoom(date,room,type,cat,note){
       return { date, room:String(room), type:type||"Departure", cat:cat||"", status:"pending",
                housekeeper:"", housekeeperName:"", startAt:null, finishAt:null, durationSec:0,
-               checklist:{}, geoStartOk:null, geoFinishOk:null, notes:"", updatedAt:Date.now() };
+               checklist:{}, geoStartOk:null, geoFinishOk:null, notes:note||"", updatedAt:Date.now() };
     },
     // Reception: set the whole day's list (adds new, leaves existing progress alone, removes de-selected pending ones)
-    async setDayRooms(date, picks /* [{room,type,cat}] */){
+    async setDayRooms(date, picks /* [{room,type,cat,note}] */){
       const want = new Set(picks.map(p=>String(p.room)));
       if(ready){
         try{
           const snap = await db.collection("hoshouse_rooms").where("date","==",date).get();
           const have = {}; snap.forEach(d=>have[d.data().room]=d.data());
           const batch = db.batch();
-          picks.forEach(p=>{ const r=String(p.room);
-            if(!have[r]){ batch.set(db.collection("hoshouse_rooms").doc(this.docId(date,r)), this.blankRoom(date,r,p.type,p.cat)); }
-            else if(have[r].type!==p.type && have[r].status==="pending"){ batch.update(db.collection("hoshouse_rooms").doc(this.docId(date,r)), {type:p.type, updatedAt:Date.now()}); }
+          picks.forEach(p=>{ const r=String(p.room); const note=p.note||"";
+            if(!have[r]){ batch.set(db.collection("hoshouse_rooms").doc(this.docId(date,r)), this.blankRoom(date,r,p.type,p.cat,note)); }
+            else if(have[r].status==="pending" && (have[r].type!==p.type || (have[r].notes||"")!==note)){ batch.update(db.collection("hoshouse_rooms").doc(this.docId(date,r)), {type:p.type, notes:note, updatedAt:Date.now()}); }
           });
           snap.forEach(d=>{ const r=d.data(); if(!want.has(r.room) && r.status==="pending"){ batch.delete(db.collection("hoshouse_rooms").doc(this.docId(date,r.room))); } });
           await batch.commit();
@@ -144,8 +144,8 @@
       // local fallback
       const key="hoshouse_day_"+date; const have=lsGet(key,{});
       const map={}; picks.forEach(p=>{ const r=String(p.room);
-        map[r] = have[r] && have[r].status!=="pending" ? have[r] : (have[r]||this.blankRoom(date,r,p.type,p.cat));
-        if(map[r].status==="pending") map[r].type=p.type;
+        map[r] = have[r] && have[r].status!=="pending" ? have[r] : (have[r]||this.blankRoom(date,r,p.type,p.cat,p.note||""));
+        if(map[r].status==="pending"){ map[r].type=p.type; map[r].notes=p.note||""; }
       });
       lsSet(key,map); return true;
     },

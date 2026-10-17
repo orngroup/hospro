@@ -264,7 +264,7 @@ function hpRenderFixrayPlaceholder(v, tab){
 }
 
 /* ── Tab registry (single source of truth for the router) ── */
-const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, precheckin:renderPreCheckin, quotes:renderQuotes, brochure:renderBrochure, menu:renderMenu, quote:renderQuote,
+const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
     fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
@@ -609,12 +609,76 @@ function openRoom(r){
 function switchTab(t){ CURRENT_TAB=t; render(); }
 
 /* ============================================================ PACKAGES */
+/* Packages are editable and persist to localStorage + Firebase (meta/packages).
+   Edits mutate the live PACKAGES array so the quote builder picks them up too. */
+let _pkgLoaded=false;
+function hpPkgEnsure(){
+  if(_pkgLoaded) return; _pkgLoaded=true;
+  try{ const raw=localStorage.getItem('bh_packages'); if(raw){ const arr=JSON.parse(raw); if(Array.isArray(arr)&&arr.length){ PACKAGES.length=0; arr.forEach(p=>PACKAGES.push(p)); } } }catch(e){}
+  try{ if(typeof FB!=='undefined' && FB.ready && FB.db){ FB.db.collection('meta').doc('packages').get().then(d=>{ if(d.exists){ const arr=d.data().list; if(Array.isArray(arr)&&arr.length){ PACKAGES.length=0; arr.forEach(p=>PACKAGES.push(p)); try{localStorage.setItem('bh_packages',JSON.stringify(arr));}catch(e){} if(CURRENT_TAB==='packages') render(); } } }).catch(()=>{}); } }catch(e){}
+}
+function hpPkgSave(){
+  const arr=PACKAGES.map(p=>({id:p.id,name:p.name,per:p.per||'pp',from:+p.from||0,min:+p.min||1,includes:(p.includes||[]).slice()}));
+  try{ localStorage.setItem('bh_packages',JSON.stringify(arr)); }catch(e){}
+  try{ if(typeof FB!=='undefined' && FB.ready && FB.db){ FB.db.collection('meta').doc('packages').set({list:arr, updatedAt:Date.now()}).catch(()=>{}); } }catch(e){}
+}
+function hpPkgSlug(name){ return (name||'pkg').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)||('pkg-'+Date.now()); }
+function hpPkgEditor(id){
+  const p = id ? PACKAGES.find(x=>x.id===id) : null;
+  let ov=document.getElementById('pkgEditOv');
+  if(!ov){ ov=document.createElement('div'); ov.id='pkgEditOv'; ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,22,30,.55);display:flex;align-items:center;justify-content:center;padding:20px'; ov.onclick=e=>{ if(e.target===ov) ov.remove(); }; document.body.appendChild(ov); }
+  ov.innerHTML=`<div style="background:#fff;border-radius:16px;max-width:560px;width:100%;padding:24px;box-shadow:0 14px 50px rgba(0,0,0,.3);max-height:88vh;overflow:auto">
+    <div style="font:800 18px Lato;color:#1a2b3a;margin-bottom:14px">${p?'Edit package':'Add package'}</div>
+    <div style="display:grid;gap:12px">
+      <div><label style="font:700 12px Lato;color:#374151;display:block;margin-bottom:4px">Package name</label>
+        <input id="pk-name" value="${p?p.name.replace(/"/g,'&quot;'):''}" style="width:100%;padding:9px;border:1.5px solid #dfe4ea;border-radius:9px;font:14px Lato"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label style="font:700 12px Lato;color:#374151;display:block;margin-bottom:4px">From price (£)</label>
+          <input id="pk-from" type="number" min="0" step="0.01" value="${p?p.from:''}" style="width:100%;padding:9px;border:1.5px solid #dfe4ea;border-radius:9px;font:14px Lato"></div>
+        <div><label style="font:700 12px Lato;color:#374151;display:block;margin-bottom:4px">Basis</label>
+          <select id="pk-per" style="width:100%;padding:9px;border:1.5px solid #dfe4ea;border-radius:9px;font:14px Lato"><option value="pp" ${(!p||p.per==='pp')?'selected':''}>per person</option><option value="total" ${p&&p.per==='total'?'selected':''}>total</option></select></div>
+        <div><label style="font:700 12px Lato;color:#374151;display:block;margin-bottom:4px">Min guests</label>
+          <input id="pk-min" type="number" min="1" value="${p?p.min:1}" style="width:100%;padding:9px;border:1.5px solid #dfe4ea;border-radius:9px;font:14px Lato"></div>
+      </div>
+      <div><label style="font:700 12px Lato;color:#374151;display:block;margin-bottom:4px">What's included (one per line)</label>
+        <textarea id="pk-inc" rows="7" style="width:100%;padding:10px;border:1.5px solid #dfe4ea;border-radius:9px;font:13px Lato;resize:vertical">${p?(p.includes||[]).join('\n'):''}</textarea></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      ${p?`<button onclick="hpPkgDelete('${p.id}')" style="padding:10px 14px;border:none;border-radius:9px;background:#fdecec;color:#b4231f;font:700 13px Lato;cursor:pointer">Delete</button>`:''}
+      <div style="flex:1"></div>
+      <button onclick="document.getElementById('pkgEditOv').remove()" style="padding:10px 16px;border:1px solid #d1d5db;border-radius:9px;background:#fff;font:700 13px Lato;cursor:pointer">Cancel</button>
+      <button onclick="hpPkgSaveFromForm('${p?p.id:''}')" style="padding:10px 18px;border:none;border-radius:9px;background:#1a2b3a;color:#fff;font:700 13px Lato;cursor:pointer">Save package</button>
+    </div>
+  </div>`;
+}
+function hpPkgSaveFromForm(id){
+  const name=(document.getElementById('pk-name').value||'').trim();
+  if(!name){ alert('Please enter a package name.'); return; }
+  const rec={ id: id||hpPkgSlug(name), name, from:parseFloat(document.getElementById('pk-from').value)||0,
+    per:document.getElementById('pk-per').value||'pp', min:parseInt(document.getElementById('pk-min').value)||1,
+    includes:(document.getElementById('pk-inc').value||'').split('\n').map(s=>s.trim()).filter(Boolean) };
+  const i=PACKAGES.findIndex(x=>x.id===rec.id);
+  if(i>=0) PACKAGES[i]=rec; else PACKAGES.push(rec);
+  hpPkgSave(); const ov=document.getElementById('pkgEditOv'); if(ov) ov.remove(); render();
+}
+function hpPkgDelete(id){
+  if(!confirm('Delete this package? This cannot be undone.')) return;
+  const i=PACKAGES.findIndex(x=>x.id===id); if(i>=0) PACKAGES.splice(i,1);
+  hpPkgSave(); const ov=document.getElementById('pkgEditOv'); if(ov) ov.remove(); render();
+}
 function renderPackages(v){
+  hpPkgEnsure();
   v.appendChild(head("Packages & Pricing","Delegate rates, event packages and à la carte add-ons. All prices include VAT unless noted."));
+  const tb=el("div","");
+  tb.style.cssText="display:flex;justify-content:flex-end;margin:-6px 0 10px";
+  tb.innerHTML=`<button onclick="hpPkgEditor('')" style="padding:9px 16px;background:#2a6a4a;color:#fff;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer">➕ Add package</button>`;
+  v.appendChild(tb);
   const grid=el("div","pkg-grid");
   PACKAGES.forEach(p=>{
     const card=el("div","pkg-card");
-    card.innerHTML=`<h3>${p.name}</h3>
+    card.style.position="relative";
+    card.innerHTML=`<button onclick="hpPkgEditor('${p.id}')" title="Edit package" style="position:absolute;top:10px;right:10px;padding:5px 10px;border:1px solid #d1d5db;background:#fff;border-radius:8px;font:700 11px Lato;color:#1a2b3a;cursor:pointer">✏️ Edit</button>
+      <h3 style="padding-right:64px">${p.name}</h3>
       <div class="price">from <b>${money(p.from)}</b> ${p.per==="pp"?"per person":""}</div>
       <ul>${p.includes.map(i=>`<li>${i}</li>`).join("")}</ul>
       <div class="min">Minimum ${p.min} ${p.min>1?"guests":"guest"}</div>`;
@@ -679,6 +743,7 @@ function applyEventTemplate(tplId){
 }
 let quoteEnquiry=null;  // the enquiry a quote is being built for (required)
 function renderQuote(v){
+  if(typeof hpPkgEnsure==='function') hpPkgEnsure();
   const e=quoteEnquiry;
   if(!e){
     v.appendChild(head("Create a Quote","Quotes are built from a customer enquiry."));
@@ -754,11 +819,19 @@ function renderQuote(v){
     <button class="btn block" id="q-addopt" style="margin-top:14px;background:#4a7c59">➕ Add this as an option</button>
     <button class="btn block" id="q-sendlink" style="margin-top:8px;background:#2f6f9e">🔗 Create client proposal link</button>
     <div class="dual-btn" style="margin-top:8px">
+      <button class="btn ghost sm" id="q-save">💾 Save quote</button>
+      <button class="btn ghost sm" id="q-new">➕ New quote (same client)</button>
+    </div>
+    <div class="dual-btn" style="margin-top:8px">
       <button class="btn ghost sm" id="q-brochure">Brochure PDF</button>
       <button class="btn ghost sm" id="q-pdf">Simple PDF</button>
     </div>
     <button class="btn ghost block" id="q-kitchen" style="margin-top:8px">Kitchen / ops sheet</button>
-    <p class="qs-sub" style="margin-top:10px">Build a version, then <b>Add this as an option</b>. Add a second version for an A/B proposal. The client link shows all options to approve.</p>`;
+    <div class="dual-btn" style="margin-top:8px">
+      <button class="btn ghost sm" id="q-spell" type="button">🔤 Spell check</button>
+      <button class="btn ghost sm" id="q-terms" type="button">📄 View T&amp;Cs</button>
+    </div>
+    <p class="qs-sub" style="margin-top:10px">The proposal and PDF automatically include Brandon Hall's full terms &amp; conditions. Build a version, then <b>Add this as an option</b> for an A/B proposal. Spell-check runs automatically before the link is created.</p>`;
   wrap.appendChild(right);
   v.appendChild(wrap);
 
@@ -791,6 +864,10 @@ function renderQuote(v){
   $("#q-brochure").onclick=downloadBrochurePDF;
   if($("#q-sendlink")) $("#q-sendlink").onclick=sendQuoteLink;
   if($("#q-addopt")) $("#q-addopt").onclick=addQuoteOption;
+  if($("#q-spell")) $("#q-spell").onclick=runQuoteSpellCheck;
+  if($("#q-terms")) $("#q-terms").onclick=hpViewTerms;
+  if($("#q-save")) $("#q-save").onclick=saveQuoteDraft;
+  if($("#q-new")) $("#q-new").onclick=newQuoteSameClient;
   renderQuoteOptions();
   $("#q-kitchen").onclick=downloadKitchenSheet;
 
@@ -3385,6 +3462,54 @@ let MENU={ title:"Set Dinner Menu", subtitle:"", courses:[
   { name:"Desserts", items:[] }
 ], price:"", footer:"All dishes prepared using English beef & lamb, English pork and British dairy. Please advise of any allergies or dietary requirements." };
 
+/* Pre-built menu templates — pick one in the Menu Builder, then customise. */
+const MENU_FOOTER_STD = "All dishes prepared using English beef & lamb, English pork and British dairy. Please advise of any allergies or dietary requirements.";
+const MENU_TEMPLATES = [
+  { id:"blank", label:"— Start from blank —" },
+  { id:"wedding-classic", label:"Wedding Breakfast — Classic (3 course)", menu:{
+      title:"Wedding Breakfast", subtitle:"Classic Menu", price:"£35.00 per person", footer:MENU_FOOTER_STD,
+      courses:[
+        { name:"Starters", items:[{name:"Chicken liver parfait",desc:"with red onion marmalade & toasted brioche"},{name:"Soup of the day",desc:"with a warm bread roll"},{name:"Beetroot & goat's cheese salad",desc:"candied walnuts (v)"}] },
+        { name:"Mains", items:[{name:"Roast beef & Yorkshire pudding",desc:"roast potatoes, seasonal vegetables, red wine jus"},{name:"Chicken supreme",desc:"dauphinoise potato, tenderstem, tarragon cream"},{name:"Butternut squash risotto",desc:"toasted seeds, parmesan (v)"}] },
+        { name:"Desserts", items:[{name:"Sticky toffee pudding",desc:"butterscotch sauce, clotted cream"},{name:"Lemon tart",desc:"raspberry sorbet"}] },
+        { name:"To Finish", items:[{name:"Freshly brewed tea & coffee",desc:"with petit fours"}] }
+      ] } },
+  { id:"wedding-special", label:"Wedding Breakfast — Special (3 course)", menu:{
+      title:"Wedding Breakfast", subtitle:"Special Menu", price:"£49.00 per person", footer:MENU_FOOTER_STD,
+      courses:[
+        { name:"Starters", items:[{name:"Smoked salmon",desc:"caper berries, lemon, dill crème fraîche"},{name:"Wild mushroom bruschetta",desc:"truffle oil (v)"},{name:"Prawn cocktail",desc:"Marie Rose, baby gem, brown bread"}] },
+        { name:"Mains", items:[{name:"Slow-braised lamb",desc:"creamed potato, root vegetables, rosemary jus"},{name:"Pan-fried salmon",desc:"crushed new potatoes, wilted greens, lemon butter"},{name:"Wild mushroom Wellington",desc:"roast potatoes, seasonal vegetables (v)"}] },
+        { name:"Desserts", items:[{name:"Chocolate brownie",desc:"salted caramel, vanilla ice cream"},{name:"Vanilla cheesecake",desc:"berry compote"}] },
+        { name:"To Finish", items:[{name:"Freshly brewed tea & coffee",desc:"with petit fours"}] }
+      ] } },
+  { id:"ddr-lunch", label:"Day Delegate — Working Lunch", menu:{
+      title:"Working Lunch", subtitle:"Day Delegate", price:"", footer:MENU_FOOTER_STD,
+      courses:[
+        { name:"Buffet Lunch", items:[{name:"Sandwich & wrap selection",desc:"mixed fillings"},{name:"Hot fork option",desc:"chef's daily choice"},{name:"Seasonal salads"},{name:"Fresh fruit platter"}] },
+        { name:"Refreshments", items:[{name:"All-day tea, coffee & biscuits"}] }
+      ] } },
+  { id:"celebration-buffet", label:"Celebration — Evening Buffet", menu:{
+      title:"Evening Buffet", subtitle:"Celebration", price:"£22.00 per person", footer:MENU_FOOTER_STD,
+      courses:[
+        { name:"Finger Buffet", items:[{name:"Selection of sandwiches & wraps"},{name:"Mini fish & chips"},{name:"Chicken skewers",desc:"satay dip"},{name:"Vegetable spring rolls",desc:"sweet chilli (v)"},{name:"Bruschetta",desc:"tomato & basil (v)"}] },
+        { name:"To Finish", items:[{name:"Tea & coffee"}] }
+      ] } },
+  { id:"xmas-festive", label:"Christmas — Festive 3 Course", menu:{
+      title:"Festive Menu", subtitle:"Christmas Party", price:"£38.00 per person", footer:MENU_FOOTER_STD,
+      courses:[
+        { name:"Starters", items:[{name:"Roasted parsnip & apple soup",desc:"warm bread roll (v)"},{name:"Chicken liver parfait",desc:"spiced fruit chutney"},{name:"Smoked salmon",desc:"lemon & dill crème fraîche"}] },
+        { name:"Mains", items:[{name:"Roast turkey",desc:"all the trimmings, pigs in blankets, red wine jus"},{name:"Pan-fried salmon",desc:"crushed new potatoes, seasonal greens"},{name:"Wild mushroom Wellington",desc:"roast potatoes, vegetables (v)"}] },
+        { name:"Desserts", items:[{name:"Christmas pudding",desc:"brandy sauce"},{name:"Chocolate brownie",desc:"vanilla ice cream"}] },
+        { name:"To Finish", items:[{name:"Tea, coffee & mince pies"}] }
+      ] } }
+];
+function loadMenuTemplate(id){
+  const t=MENU_TEMPLATES.find(x=>x.id===id);
+  if(!t || id==='blank'){ MENU={ title:"Set Dinner Menu", subtitle:"", courses:[{name:"Starters",items:[]},{name:"Mains",items:[]},{name:"Desserts",items:[]}], price:"", footer:MENU_FOOTER_STD }; }
+  else { MENU=JSON.parse(JSON.stringify(t.menu)); }
+  switchTab("menu");
+}
+
 function renderMenuBuilder(v){
   v.appendChild(head("Menu Builder","Build a menu on the fly, then produce printable artwork to send or print."));
   const wrap=el("div","quote-layout");
@@ -3392,6 +3517,9 @@ function renderMenuBuilder(v){
   // left: editor
   const left=el("div","quote-panel");
   left.innerHTML=`<h3>Menu details</h3>
+    <div style="margin-bottom:12px"><label>Start from a template</label>
+      <select id="mn-tpl" style="width:100%"><option value="">— Choose a template to load —</option>${MENU_TEMPLATES.filter(t=>t.id!=='blank').map(t=>`<option value="${t.id}">${t.label}</option>`).join("")}<option value="blank">— Clear / start blank —</option></select>
+      <div class="qs-sub" style="margin-top:4px">Loads the template below, then edit anything you like.</div></div>
     <div class="form-grid">
       <div><label>Menu title</label><input id="mn-title" value="${MENU.title.replace(/"/g,'&quot;')}"></div>
       <div><label>Subtitle (optional)</label><input id="mn-sub" value="${(MENU.subtitle||'').replace(/"/g,'&quot;')}" placeholder="e.g. Wedding Breakfast"></div>
@@ -3415,6 +3543,7 @@ function renderMenuBuilder(v){
     MENU.title=$("#mn-title").value; MENU.subtitle=$("#mn-sub").value;
     MENU.price=$("#mn-price").value; MENU.footer=$("#mn-footer").value; renderMenuPreview(); }));
   $("#mn-addcourse").onclick=()=>{ MENU.courses.push({name:"New course",items:[]}); renderMenuCourses(); renderMenuPreview(); };
+  $("#mn-tpl").onchange=e=>{ const id=e.target.value; if(!id) return; if(MENU.courses.some(c=>c.items.some(i=>i.name)) && !confirm('Load this template? It will replace the current menu.')){ e.target.value=''; return; } loadMenuTemplate(id); };
   $("#mn-print").onclick=printMenu;
   $("#mn-reset").onclick=()=>{ MENU={ title:"Set Dinner Menu", subtitle:"", courses:[
     {name:"Starters",items:[]},{name:"Mains",items:[]},{name:"Desserts",items:[]}], price:"",
@@ -5455,10 +5584,115 @@ function saveQuoteOnly(){
   alert(`Quote saved · Ref ${rich.ref}\n\nYou can now download a PDF or send the client link.`);
 }
 
+/* ---- Quote spell check (offline, curated common misspellings) ---- */
+const HP_MISSPELL = {
+  accomodation:"accommodation", acommodation:"accommodation", accommodaton:"accommodation", accomodate:"accommodate",
+  recieve:"receive", recieved:"received", seperate:"separate", seperated:"separated", definately:"definitely",
+  occassion:"occasion", occassions:"occasions", occured:"occurred", occuring:"occurring", calender:"calendar",
+  tommorow:"tomorrow", tommorrow:"tomorrow", wether:"whether", untill:"until", resturant:"restaurant",
+  restaraunt:"restaurant", compliementary:"complimentary", complamentary:"complimentary", complimentry:"complimentary",
+  availabe:"available", availible:"available", availablity:"availability", bussiness:"business", enquriy:"enquiry",
+  guarentee:"guarantee", guarentees:"guarantees", neccessary:"necessary", necessery:"necessary", recomend:"recommend",
+  recomended:"recommended", refered:"referred", succesful:"successful", succesfully:"successfully", oppurtunity:"opportunity",
+  priviledge:"privilege", wich:"which", teh:"the", adn:"and", hte:"the", dietry:"dietary", begining:"beginning",
+  beggining:"beginning", foward:"forward", cancelation:"cancellation", deposite:"deposit", payed:"paid",
+  aknowledge:"acknowledge", congradulations:"congratulations", congratuations:"congratulations", speach:"speech",
+  enviroment:"environment", goverment:"government", febuary:"February", wednsday:"Wednesday", saturaday:"Saturday",
+  marage:"marriage", celebation:"celebration", buffay:"buffet", canape:"canapé", maitre:"maître",
+  aniversary:"anniversary", reccomend:"recommend", liase:"liaise", liason:"liaison", excercise:"exercise",
+  arrangment:"arrangement", arrangments:"arrangements", managment:"management", requirment:"requirement",
+  requirments:"requirements", accomodating:"accommodating", confirmaton:"confirmation", existance:"existence"
+};
+function hpQuoteSpellText(){
+  const parts=[];
+  (QUOTE_ROOMS||[]).forEach(l=>{ if(l.label) parts.push(l.label); });
+  (QUOTE_CUSTOM||[]).forEach(l=>{ if(l.label) parts.push(l.label); });
+  (QUOTE_ACC||[]).forEach(a=>{ if(a.label) parts.push(a.label); if(a.basis) parts.push(a.basis); });
+  (QUOTE_PAY||[]).forEach(p=>{ if(p.label) parts.push(p.label); });
+  try{ if(quoteEnquiry){ ['name','company','notes','message','event'].forEach(k=>{ if(quoteEnquiry[k]) parts.push(String(quoteEnquiry[k])); }); } }catch(e){}
+  return parts;
+}
+function hpQuoteSpellIssues(){
+  const seen={}, issues=[];
+  hpQuoteSpellText().forEach(txt=>{
+    (txt.match(/[A-Za-z'’]+/g)||[]).forEach(w=>{
+      const low=w.toLowerCase().replace(/[’']/g,"'");
+      const fix=HP_MISSPELL[low]||HP_MISSPELL[low.replace(/'/g,"")];
+      if(fix && !seen[low]){ seen[low]=1;
+        const cap=/^[A-Z]/.test(w); issues.push({ word:w, suggestion: cap? fix.charAt(0).toUpperCase()+fix.slice(1) : fix, context:txt }); }
+    });
+  });
+  return issues;
+}
+function hpSpellModal(issues, onProceed){
+  const text=hpQuoteSpellText().join('\n');
+  const list = issues.length
+    ? `<div style="margin:6px 0 10px">${issues.map(i=>`<div style="display:flex;gap:8px;align-items:baseline;padding:7px 10px;background:#fff6f5;border:1px solid #f3cfcb;border-radius:9px;margin-bottom:6px">
+         <b style="color:#b4231f;text-decoration:line-through">${i.word}</b><span style="color:#6b7280">→</span><b style="color:#2a6a4a">${i.suggestion}</b>
+         <span class="qs-sub" style="margin-left:auto;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.context}</span></div>`).join('')}</div>
+       <p class="qs-sub">Fix these in the quote fields above, then re-check. These are common misspellings — review in context before changing.</p>`
+    : `<div style="padding:12px;background:#ecf6f0;border:1px solid #bfe0cd;border-radius:9px;color:#1e6b2f;font-weight:700;margin-bottom:10px">✓ No common misspellings found.</div>
+       <p class="qs-sub">Give the text a final read below — your browser underlines anything it doesn't recognise.</p>`;
+  showModal("Spell check", issues.length?`${issues.length} to review`:"Looks clean", `
+    ${list}
+    <label style="font:700 12px Lato;color:#374151;display:block;margin:10px 0 4px">Final read-through</label>
+    <div contenteditable="true" spellcheck="true" style="min-height:90px;max-height:200px;overflow:auto;padding:10px;border:1.5px solid #dfe4ea;border-radius:9px;font:13px Lato;white-space:pre-wrap">${text.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</div>
+    <div class="dual-btn" style="margin-top:14px">
+      ${onProceed?`<button class="btn" id="sp-proceed">${issues.length?'Proceed anyway':'Looks good — create link'}</button>`:''}
+      <button class="btn ghost" id="sp-close">${onProceed?'Go back & edit':'Close'}</button>
+    </div>`);
+  if(onProceed && document.getElementById('sp-proceed')) document.getElementById('sp-proceed').onclick=()=>{ closeModal(); onProceed(); };
+  if(document.getElementById('sp-close')) document.getElementById('sp-close').onclick=closeModal;
+}
+function runQuoteSpellCheck(){ hpSpellModal(hpQuoteSpellIssues(), null); }
+
+/* View the full terms & conditions that auto-load into every quote/agreement */
+function hpViewTerms(){
+  const terms=(typeof CONTRACT_TERMS!=="undefined"?CONTRACT_TERMS:[]);
+  const short=(typeof TERMS_SHORT!=="undefined"?TERMS_SHORT:"");
+  const body=`
+    <p class="qs-sub">${short}</p>
+    <div style="max-height:52vh;overflow:auto;margin-top:10px;padding-right:6px">
+      ${terms.map((t,i)=>`<div style="margin-bottom:10px"><div style="font:700 13px Lato;color:#1a2b3a">${i+1}. ${t.h}</div><div style="font-size:12.5px;color:#4b5563;line-height:1.55;margin-top:2px">${t.t}</div></div>`).join("")}
+    </div>
+    <p class="qs-sub" style="margin-top:10px">These terms appear automatically on every client proposal, PDF and agreement — no need to attach them separately.</p>`;
+  showModal("Terms & Conditions", "Brandon Hall Hotel & Spa", body);
+}
+
+/* Save the current quote as a draft (keeps it in the Quotes list without issuing a client link) */
+function saveQuoteDraft(){
+  const q=gatherQuote();
+  if(!q.customer.name){ alert("Please enter the customer name first."); return; }
+  if(!q.lines.length){ alert("Add at least one room, package or add-on first."); return; }
+  const id = window._editingQuoteId || ("Q-"+Date.now().toString(36).toUpperCase());
+  const rich=buildRichQuote(q,id); rich.status="saved";
+  QuoteStore.create(rich);
+  if(typeof CustomerStore!=="undefined") CustomerStore.addQuote(rich);
+  if(rich.enquiryId && typeof DB!=="undefined"){ DB.update(rich.enquiryId,{ payments:rich.payments||[], quoteId:id }); }
+  window._editingQuoteId=id;
+  if(typeof toast==="function") toast("💾 Quote saved — Ref "+(rich.ref||id)+". Find it in Quotes.");
+  else alert("Quote saved — Ref "+(rich.ref||id));
+}
+/* Start a fresh quote for the same client (the current one stays saved in Quotes) */
+function newQuoteSameClient(){
+  if(!quoteEnquiry){ alert("Open an enquiry from the Sales Pipeline first."); return; }
+  if(!confirm("Start a new quote for "+(quoteEnquiry.name||"this client")+"?\n\nThe current quote stays saved in the Quotes list. Save it first if you haven't.")) return;
+  QUOTE_ROOMS=[]; QUOTE_ACC=[]; QUOTE_CUSTOM=[]; QUOTE_PAY=[]; QUOTE_OPTIONS=[];
+  window._editingQuoteId=null;
+  switchTab("quote");
+  if(typeof toast==="function") toast("New quote started for "+(quoteEnquiry.name||"this client"));
+}
+
 function sendQuoteLink(){
   const q=gatherQuote();
   if(!q.customer.name){ alert("Please enter the customer name first."); return; }
   if(!q.lines.length){ alert("Add at least one room, package or add-on to the quote."); return; }
+  // Spell check before issuing: if common misspellings found, pause and let them review.
+  if(!window._spellAck){
+    const issues=hpQuoteSpellIssues();
+    if(issues.length){ hpSpellModal(issues, ()=>{ window._spellAck=true; sendQuoteLink(); }); return; }
+  }
+  window._spellAck=false;
   // reuse existing quote id if this builder was opened from a saved quote
   const id = window._editingQuoteId || ("Q-"+Date.now().toString(36).toUpperCase());
   const rich=buildRichQuote(q,id);
@@ -5472,15 +5706,26 @@ function sendQuoteLink(){
   const url=`${origin}/quote.html?q=${id}`;
   const emailBody=`Dear ${(rich.client||"there").split(" ")[0]},\n\nThank you for your interest in Brandon Hall Hotel and Spa. Please view your proposal — including all the details, costs and terms — and accept it online here:\n\n${url}\n\nOnce you're happy, accepting the quote lets us prepare your formal agreement.\n\nKind regards,\n${SESSION?.name||"The Events Team"}\nBrandon Hall Hotel and Spa`;
   const mailto=`mailto:${encodeURIComponent(rich.clientEmail||"")}?cc=${encodeURIComponent("events@brandonhallhotelandspa.com")}&subject=${encodeURIComponent("Your proposal — Brandon Hall Hotel and Spa")}&body=${encodeURIComponent(emailBody)}`;
-  showModal("Client proposal link", rich.client, `
-    <p class="qs-sub">A full proposal page has been created for the client — with images, venue &amp; room details, costs, payment schedule and terms — ready to view and accept.</p>
+  const waText=`Dear ${(rich.client||"there").split(" ")[0]}, thank you for your interest in Brandon Hall Hotel and Spa. Your proposal is ready to view and accept online here: ${url}`;
+  const waUrl=`https://wa.me/?text=${encodeURIComponent(waText)}`;
+  showModal("Send the quote", rich.client, `
+    <p class="qs-sub">A full proposal page has been created for the client — images, venue &amp; room details, costs, payment schedule and terms — ready to view and accept.</p>
     <div class="embed-box" style="margin-top:10px">${url}<button class="cp" id="sq-copy">Copy</button></div>
-    <div class="dual-btn" style="margin-top:10px">
-      <a class="btn" href="${mailto}">✉ Email to client</a>
+    <div style="font:700 12px Lato;color:#374151;margin:14px 0 6px">Send it three ways</div>
+    <div class="dual-btn">
+      <button class="btn" id="sq-copy2">🔗 Copy link</button>
+      <button class="btn ghost" id="sq-pdf">⬇ Download PDF</button>
+      <a class="btn" style="background:#25D366" href="${waUrl}" target="_blank" rel="noopener">🟢 WhatsApp</a>
+    </div>
+    <div class="dual-btn" style="margin-top:8px">
+      <a class="btn ghost" href="${mailto}">✉ Email to client</a>
       <button class="btn ghost" id="sq-open">Preview page</button>
     </div>
-    ${rich.enquiryId?`<p class="qs-sub" style="margin-top:8px">Linked to the enquiry — acceptance will show on its Deal progress.</p>`:`<p class="qs-sub" style="margin-top:8px">Tip: build quotes from an enquiry (Sales Pipeline) to track acceptance on the deal.</p>`}`);
-  $("#sq-copy").onclick=()=>{ navigator.clipboard?.writeText(url); $("#sq-copy").textContent="Copied"; };
+    ${rich.enquiryId?`<p class="qs-sub" style="margin-top:8px">Linked to the enquiry — once the client accepts, it moves to <b>Accepted quotes</b> on the Sales dashboard.</p>`:`<p class="qs-sub" style="margin-top:8px">Tip: build quotes from an enquiry (Sales Pipeline) to track acceptance on the deal.</p>`}`);
+  const doCopy=(btn)=>{ navigator.clipboard?.writeText(url); if(btn){ const o=btn.textContent; btn.textContent="Copied ✓"; setTimeout(()=>btn.textContent=o,1200);} };
+  $("#sq-copy").onclick=()=>doCopy($("#sq-copy"));
+  $("#sq-copy2").onclick=()=>doCopy($("#sq-copy2"));
+  $("#sq-pdf").onclick=()=>{ try{ downloadQuotePDF(); }catch(e){ alert("Could not open the PDF view."); } };
   $("#sq-open").onclick=()=>window.open(url,"_blank");
 }
 
@@ -5612,6 +5857,93 @@ h2{font-family:'Cormorant Garamond',serif;font-size:21px;color:#1a2b47;margin:24
 
 /* ============================================================ QUOTES LIST */
 let QUOTES_FILTER={status:"",search:""};
+/* Find (or synthesise) the enquiry behind an accepted quote, for the agreement dialog */
+function hpAcceptedEnquiry(q){
+  let e=null;
+  try{ if(q.enquiryId && typeof pipelineData==="function") e=pipelineData().find(x=>x.id===q.enquiryId); }catch(err){}
+  if(e) return e;
+  return { id:q.enquiryId||q.id, name:q.client||"", company:q.company||"", email:q.clientEmail||"",
+    phone:q.clientPhone||"", event:(q.eventId||""), ratePlan:q.eventType||"Event",
+    roomName:q.room||"", room:"", pax:q.pax||"", value:q.subtotal||q.value||0,
+    date:q.eventDate||"", ref:q.ref||q.id, payments:q.payments||[] };
+}
+/* Printable proforma invoice (with bank details) for an accepted quote */
+function hpProforma(q){
+  if(!q){ alert("No quote selected."); return; }
+  const B=(typeof BANK_DETAILS!=="undefined")?BANK_DETAILS:{};
+  const val=Math.round(q.subtotal||q.value||0);
+  const pays=(q.payments&&q.payments.length)?q.payments:((q.enquiry&&q.enquiry.payments)||[]);
+  let due=val, dueLabel="Full balance now due";
+  const firstUnpaid=(pays||[]).find(p=>!p.paid && (+p.amount>0));
+  if(firstUnpaid){ due=Math.round(+firstUnpaid.amount); dueLabel=(firstUnpaid.label||"Deposit")+" now due"; }
+  const today=new Date().toLocaleDateString("en-GB");
+  const num="PF-"+(q.ref||q.id);
+  const evDate=q.eventDate&&/^\d{4}-\d{2}-\d{2}/.test((q.eventDate||"").slice(0,10))?new Date(q.eventDate).toLocaleDateString("en-GB"):"TBC";
+  const net=Math.round(due/1.2), vat=due-net;
+  const win=window.open("","_blank");
+  if(!win){ alert("Please allow pop-ups to open the proforma."); return; }
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${num}</title>
+  <style>
+    @page{margin:0}
+    body{font-family:Arial,Helvetica,sans-serif;color:#1a2230;font-size:13px;line-height:1.5;margin:0;padding:24mm}
+    .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1F3864;padding-bottom:14px}
+    .hd .co{font-size:20px;font-weight:800;color:#1F3864}
+    .hd .sub{color:#6b7280;font-size:12px;margin-top:2px}
+    .hd .ttl{text-align:right}
+    .hd .ttl h1{margin:0;font-size:22px;color:#1F3864;letter-spacing:1px}
+    .meta{display:flex;justify-content:space-between;margin-top:18px;gap:30px}
+    .meta .box{font-size:12.5px}
+    .meta b{color:#1F3864}
+    table.inv{width:100%;border-collapse:collapse;margin-top:20px}
+    table.inv th{background:#1F3864;color:#fff;text-align:left;padding:9px 11px;font-size:12px}
+    table.inv td{padding:9px 11px;border-bottom:1px solid #e6ebf1}
+    .tot{margin-top:10px;margin-left:auto;width:280px;font-size:13px}
+    .tot div{display:flex;justify-content:space-between;padding:5px 0}
+    .tot .due{border-top:2px solid #1F3864;margin-top:6px;padding-top:9px;font-weight:800;font-size:16px;color:#1F3864}
+    .bank{margin-top:22px;background:#f4f7fb;border:1px solid #d7e0ec;border-radius:10px;padding:14px 16px;font-size:12.5px}
+    .bank h3{margin:0 0 8px;color:#1F3864;font-size:14px}
+    .bank table{width:100%;border-collapse:collapse}
+    .bank td{padding:3px 0}.bank td:first-child{color:#6b7280;width:150px}
+    .note{margin-top:18px;font-size:11px;color:#6b7280;line-height:1.5}
+    .btns{position:fixed;top:10px;right:10px}@media print{.btns{display:none}}
+    .btns button{padding:8px 14px;border:none;border-radius:8px;background:#1F3864;color:#fff;font-weight:700;cursor:pointer;margin-left:6px}
+  </style></head><body>
+  <div class="btns"><button onclick="window.print()">Print / Save PDF</button></div>
+  <div class="hd">
+    <div><div class="co">Brandon Hall Hotel &amp; Spa</div>
+      <div class="sub">Main Street, Brandon, Coventry CV8 3FW<br>${B.company||""} · VAT ${B.vat||""}</div></div>
+    <div class="ttl"><h1>PROFORMA</h1><div class="sub">${num}<br>Date: ${today}</div></div>
+  </div>
+  <div class="meta">
+    <div class="box"><b>Bill to</b><br>${q.client||""}${q.company&&q.company!==q.client?("<br>"+q.company):""}${q.clientEmail?("<br>"+q.clientEmail):""}</div>
+    <div class="box" style="text-align:right"><b>Event</b><br>${q.eventType||"Event"}<br>Date: ${evDate}<br>Ref: ${q.ref||q.id}</div>
+  </div>
+  <table class="inv">
+    <tr><th>Description</th><th style="text-align:right">Amount</th></tr>
+    <tr><td>${q.eventType||"Event"} at Brandon Hall Hotel &amp; Spa — ${dueLabel}${(q.room?(" · "+q.room):"")}</td><td style="text-align:right">${money(net)}</td></tr>
+  </table>
+  <div class="tot">
+    <div><span>Net</span><span>${money(net)}</span></div>
+    <div><span>VAT @ 20%</span><span>${money(vat)}</span></div>
+    <div class="due"><span>Amount due</span><span>${money(due)}</span></div>
+    ${val!==due?`<div style="color:#6b7280;font-size:11.5px"><span>Total booking value</span><span>${money(val)}</span></div>`:""}
+  </div>
+  <div class="bank"><h3>Payment details — BACS / bank transfer</h3>
+    <table>
+      <tr><td>Account name</td><td><b>${B.company||""}</b></td></tr>
+      <tr><td>Bank</td><td>${B.bank||""}</td></tr>
+      <tr><td>Sort code</td><td>${B.sortCode||""}</td></tr>
+      <tr><td>Account number</td><td>${B.accountNumber||""}</td></tr>
+      <tr><td>IBAN</td><td>${B.iban||""}</td></tr>
+      <tr><td>BIC</td><td>${B.bic||""}</td></tr>
+      <tr><td>Payment reference</td><td><b>${q.ref||q.id}</b></td></tr>
+    </table>
+  </div>
+  <div class="note">This is a proforma invoice and is not a VAT invoice. A VAT invoice will be issued once payment is received. Payment confirms your booking and acceptance of Brandon Hall Hotel &amp; Spa's terms and conditions. If our bank details appear to change, please verify by phone before paying.</div>
+  </body></html>`);
+  win.document.close();
+}
+
 function renderQuotesList(v){
   v.appendChild(head("Quotes","Every proposal you've created — open, copy the link, email it, or re-open in the builder."));
   const all=(typeof QuoteStore!=="undefined")?QuoteStore.all():[];
@@ -5634,6 +5966,36 @@ function renderQuotesList(v){
     const empty=el("div","quote-panel");
     empty.innerHTML=`<p class="qs-sub">No quotes yet. Open an enquiry in the Sales Pipeline and use <b>Build quote</b> — every proposal you create will appear here.</p>`;
     v.appendChild(empty); return;
+  }
+
+  // ── Accepted — ready to convert (call client, send proforma + agreement) ──
+  const acceptedList=all.filter(q=>q.acceptedBy||q.status==="accepted")
+    .sort((a,b)=>(b.acceptedDate||b.created||"").localeCompare(a.acceptedDate||a.created||""));
+  if(acceptedList.length){
+    const ap=el("div","quote-panel");
+    ap.style.cssText="border-left:4px solid #4a9d6a;margin-bottom:16px";
+    ap.innerHTML=`<h3 style="margin-top:0">✅ Accepted — ready to convert</h3>
+      <p class="qs-sub">The client has accepted. Call to confirm, then send a <b>proforma invoice</b> (with bank details) and the <b>booking agreement</b> to sign.</p>
+      <div class="tbl-scroll"><table class="ct-table">
+        <tr><th>Client</th><th>Event</th><th>Date</th><th>Value</th><th>Accepted</th><th>Actions</th></tr>
+        ${acceptedList.map(q=>{
+          const e=hpAcceptedEnquiry(q); const phone=(e&&e.phone)||q.clientPhone||"";
+          return `<tr class="ct-row">
+            <td><b>${q.client||"—"}</b>${q.company&&q.company!==q.client?`<br><span class="qs-sub">${q.company}</span>`:""}${phone?`<br><span class="qs-sub">${phone}</span>`:""}</td>
+            <td>${q.eventType||"—"}</td>
+            <td>${fmt(q.eventDate)}</td>
+            <td>${money(Math.round(q.subtotal||q.value||0))}</td>
+            <td>${q.acceptedDate?fmt(q.acceptedDate):"✓"}${q.acceptedBy?`<br><span class="qs-sub">${q.acceptedBy}</span>`:""}</td>
+            <td class="q-actions">
+              ${phone?`<a class="mini-btn" href="tel:${phone.replace(/[^0-9+]/g,'')}" title="Call client">📞 Call</a>`:""}
+              <button class="mini-btn qa-proforma" data-id="${q.id}" title="Proforma invoice">🧾 Proforma</button>
+              <button class="mini-btn qa-agreement" data-id="${q.id}" title="Booking agreement">📝 Agreement</button>
+            </td></tr>`;
+        }).join("")}
+      </table></div>`;
+    v.appendChild(ap);
+    ap.querySelectorAll(".qa-proforma").forEach(b=>b.onclick=()=>{ const q=all.find(x=>x.id===b.dataset.id); hpProforma(q); });
+    ap.querySelectorAll(".qa-agreement").forEach(b=>b.onclick=()=>{ const q=all.find(x=>x.id===b.dataset.id); if(typeof openAgreementDialog==="function") openAgreementDialog(hpAcceptedEnquiry(q)); });
   }
 
   // filter bar

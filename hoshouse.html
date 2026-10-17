@@ -27,7 +27,8 @@
   .pindisp{font:800 28px inherit;letter-spacing:10px;min-height:34px;color:var(--navy)}
   /* rooms */
   .sect{font:800 13px inherit;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:16px 2px 8px}
-  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;gap:12px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .rnote{flex-basis:100%;background:#fff7e8;border:1px solid #f0d9ad;color:#7a5a1e;border-radius:9px;padding:8px 11px;font-size:13px;font-weight:600;margin-top:2px}
   .rmno{font:800 22px inherit;color:var(--navy);min-width:52px}
   .pill{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;color:#fff}
   .pill.dep{background:var(--dep)} .pill.stay{background:var(--stay)} .pill.arr{background:var(--arr)}
@@ -76,6 +77,7 @@
     <div class="u" onclick="backToList()" style="cursor:pointer">← Back</div></header>
   <div class="wrap">
     <div class="timer" id="rm-timer">00:00</div>
+    <div class="rnote" id="rm-note" style="display:none"></div>
     <div class="geo" id="rm-geo"></div>
     <div id="rm-warn"></div>
     <div class="chk" id="rm-chk"></div>
@@ -131,11 +133,13 @@
     const inprog=mine.filter(r=>r.status==='in_progress');
     const pending=rooms.filter(r=>r.status==='pending');
     const doneMine=mine.filter(r=>r.status==='done');
+    const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const note=r=> r.notes&&r.notes.trim() ? `<div class="rnote">📝 ${esc(r.notes)}</div>` : '';
     const row=r=>{
       const pc=DEFT[r.type]||'dep';
-      if(r.status==='in_progress') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button></div>`;
-      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min</div></div></div>`;
-      return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"></div><button class="go" onclick="startRoom('${r.room}')">Start</button></div>`;
+      if(r.status==='in_progress') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${note(r)}</div>`;
+      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min</div></div>${note(r)}</div>`;
+      return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"></div><button class="go" onclick="startRoom('${r.room}')">Start</button>${note(r)}</div>`;
     };
     let html='';
     if(inprog.length){ html+='<div class="sect">In progress</div>'+inprog.map(row).join(''); }
@@ -162,6 +166,7 @@
   function refreshActive(){ const r=rooms.find(x=>x.room===active.room); if(r) active=r; if($('scr-room').classList.contains('on')) renderActive(); }
   function renderActive(){
     const cl=active.checklist||{};
+    const nEl=$('rm-note'); if(active.notes&&active.notes.trim()){ nEl.textContent='📝 '+active.notes; nEl.style.display='block'; } else { nEl.style.display='none'; }
     $('rm-chk').innerHTML=HH.checklist.map(c=>`<label class="${cl[c]?'ok':''}"><input type="checkbox" ${cl[c]?'checked':''} onchange="toggleChk('${c.replace(/'/g,"")}',this.checked)"> ${c}</label>`).join('');
     $('rm-geo').textContent = active.geoStartOk===false ? '⚠ Start location was off-site (logged)' : (active.geoStartOk? '📍 On-site at start' : '');
   }
