@@ -40,17 +40,18 @@ const ROOMS = [
   { id:"woodlands-2",   name:"Woodlands 2",    m2:140, length:19.5, width:13.05, cap:{ boardroom:50, ushape:40, theatre:55, cabaret:90,  reception:120 } }
 ];
 
-/* ---- ROOM HIRE (from Meeting Packages sheet, inc VAT) ---- */
+/* ---- ROOM HIRE (inc VAT) — updated 17 Oct 2026 ----
+   half = half day (4 hours) · full = full day (9am–5pm)         */
 const ROOM_HIRE = {
-  "allkins":{half:250,full:350}, "beech":{half:300,full:450},
-  "brandon-1":{half:500,full:750}, "brandon-2":{half:300,full:400},
-  "brandon-suite":{half:500,full:850}, "hunt":{half:350,full:450},
-  "johnson":{half:250,full:350}, "jones":{half:250,full:350},
-  "parke":{half:250,full:350}, "warwick":{half:250,full:350},
-  "wolston-suite":{half:250,full:350}, "wolston-1":{half:250,full:350},
+  "allkins":{half:275,full:400}, "beech":{half:300,full:450},
+  "brandon-1":{half:400,full:600}, "brandon-2":{half:400,full:600},
+  "brandon-suite":{half:600,full:900}, "hunt":{half:250,full:400},
+  "johnson":{half:200,full:300}, "jones":{half:250,full:350},
+  "parke":{half:250,full:350}, "warwick":{half:200,full:300},
+  "wolston-suite":{half:350,full:600}, "wolston-1":{half:250,full:350},
   "wolston-2":{half:250,full:350}, "wolston-3":{half:250,full:350},
-  "woodlands":{half:750,full:1200}, "woodlands-1":{half:550,full:850},
-  "woodlands-2":{half:550,full:850}
+  "woodlands":{half:800,full:1000,fullNote:"– £6,000 (exclusive hire / large events)"},
+  "woodlands-1":{half:600,full:900}, "woodlands-2":{half:600,full:900}
 };
 
 /* ---- EVENT TYPES + recommended layout ---- */
@@ -856,6 +857,7 @@ MODULE_GROUPS = [
   { id:'people',  label:'People & Shifts',      icon:'👥', colour:'#2B726A', modules:['hospeople'] },
   { id:'hub',     label:'Document Hub',         icon:'📂', colour:'#55744F', modules:['hoshub'] },
   { id:'rev',     label:'Revenue',              icon:'💹', colour:'#1F7A8C', modules:['hosrev'] },
+  { id:'house',   label:'Housekeeping',         icon:'🧹', colour:'#2E6B5E', modules:['hoshouse'] },
 ];
 
 /* colour = deep module shade (sub-nav bar, white text) · tint = pastel (home card, active tab) */
@@ -878,6 +880,8 @@ FLOW_MODULES = [
     tabs:["hubDocs","hubContracts","hubSuppliers","hubFinance","hubHR"] },
   { id:"hosrev",    name:"HosREV",     caption:"Revenue. Rates. Competitors. Margin.", icon:"💹", colour:"#1F7A8C", tint:"#E2F0F3",
     tabs:["revDash","revCalendar","revCompset","revEvents","revForecast","revImport","revSettings"] },
+  { id:"hoshouse",  name:"HosHOUSE",   caption:"Housekeeping. Rooms. Allocation. Progress.", icon:"🧹", colour:"#2E6B5E", tint:"#E3F0EC",
+    tabs:["hhHub"] },
 ];
 
 /* Tab metadata (label + icon) for sidebar links and cards */
@@ -928,7 +932,8 @@ const TAB_META = {
   revDash:{label:"HosREV Dashboard",icon:"💹"}, revCalendar:{label:"Rate Calendar",icon:"📅"},
   revCompset:{label:"Competitors",icon:"🏨"}, revEvents:{label:"Events & Demand",icon:"🎟"},
   revForecast:{label:"Forecast & Margin",icon:"📈"}, revImport:{label:"Guestline Import",icon:"🔄"},
-  revSettings:{label:"HosREV Settings",icon:"⚙️"}
+  revSettings:{label:"HosREV Settings",icon:"⚙️"},
+  hhHub:{label:"Housekeeping",icon:"🧹"}
 };
 
 /* Which module a tab belongs to (for sidebar grouping / highlighting) */

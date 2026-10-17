@@ -271,7 +271,8 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
     rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings, rotaPayroll:renderRotaPayroll, localEvents:renderLocalEvents, fbTracker:renderFBTracker,
     staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs,
     brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography,
-    hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR
+    hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR,
+    hhHub:renderHosHouseHub
   };
 /* HosREV (hosrev.js, loaded before app.js) — register its screens when present */
 [["revDash","renderRevDash"],["revCalendar","renderRevCalendar"],["revCompset","renderRevCompset"],["revEvents","renderRevEvents"],
@@ -1928,7 +1929,7 @@ function renderAdmin(v){
   const rt=el("table","data-table");
   rt.innerHTML=`<tr><th>Room</th><th>m²</th><th>Max cap</th><th>Half day</th><th>Full day</th></tr>`+
     ROOMS.map(r=>{const h=ROOM_HIRE[r.id]||{};
-      return `<tr><td>${r.name}</td><td>${r.m2}</td><td>${maxCap(r)}</td><td>${h.half?money(h.half):"—"}</td><td>${h.full?money(h.full):"—"}</td></tr>`;}).join("");
+      return `<tr><td>${r.name}</td><td>${r.m2}</td><td>${maxCap(r)}</td><td>${h.half?money(h.half):"—"}</td><td>${h.full?money(h.full)+(h.fullNote?' <span style="color:var(--muted);font-size:11px">'+h.fullNote+'</span>':''):"—"}</td></tr>`;}).join("");
   v.appendChild(rt);
 
   // Competitor benchmarking
@@ -4380,7 +4381,7 @@ function renderHome(v){
       card.onmouseover = () => { card.style.borderColor=m.colour; card.style.boxShadow='0 4px 14px rgba(0,0,0,.10)'; card.style.transform='translateY(-2px)'; };
       card.onmouseout  = () => { card.style.borderColor='transparent'; card.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'; card.style.transform=''; };
       // HosREV opens straight on its dashboard (the sub-nav still shows its other screens)
-      card.onclick = () => (m.id==='hosrev' && RENDER_MAP.revDash) ? switchTab('revDash') : renderModuleLanding(m.id);
+      card.onclick = () => (m.id==='hosrev' && RENDER_MAP.revDash) ? switchTab('revDash') : (m.id==='hoshouse' ? switchTab('hhHub') : renderModuleLanding(m.id));
       if(!hpCanAccess(m.id)){
         card.style.cssText += ';opacity:.45;filter:grayscale(1);cursor:not-allowed;box-shadow:none';
         card.title = m.name+' is restricted';
@@ -4654,6 +4655,8 @@ const MOD_BG = {
 function renderModuleLanding(moduleId){
   // HosREV opens straight to its dashboard (the password lock in render() still applies)
   if(moduleId==='hosrev'){ CURRENT_TAB='revDash'; render(); return; }
+  // HosHOUSE opens straight to its hub of links
+  if(moduleId==='hoshouse'){ CURRENT_TAB='hhHub'; render(); return; }
   if(!hpCanAccess(moduleId)){ toast('🔒 That area is restricted. Ask Raj or Ajay if you need access.'); if(CURRENT_TAB!=="home"){ CURRENT_TAB="home"; render(); } return; }
   if(window.scrollY) window.scrollTo(0,0);
   { const ap=document.getElementById("app"); if(ap && ap.scrollTop) ap.scrollTop=0; }
@@ -8349,6 +8352,61 @@ function renderStaffDocs(v){
 }
 
 
+// ── HosHOUSE — housekeeping hub (links to the three standalone apps) ──────────
+const HH_HUB_STAFF = [
+  ["Ruth Addison (lead)","ruth","1001"],["Aryan","aryan","1002"],["Lara Jervis","lara","1003"],
+  ["Rahul Reghunath","rahul","1004"],["Jitendra","jitendra","1005"],["Manoj","manoj","1006"],
+  ["Tushar Ambekar","tushar","1007"],["Allen","allen","1008"],["Hassen","hassen","1009"],
+  ["Satya","satya","1010"],["Ayomidipupo","ayomide","1011"],["Yaya","yaya","1012"],
+  ["Edwin","edwin","1013"],["Dushyanth","dushyanth","1014"],["Anisha","anisha","1015"]
+];
+function hhOrigin(){ try{ return location.origin + location.pathname.replace(/[^/]*$/,''); }catch(e){ return ''; } }
+function renderHosHouseHub(v){
+  const base = hhOrigin();
+  const card = (icon,colour,title,desc,href,btn)=>`
+    <a href="${href}" target="_blank" style="display:flex;gap:14px;align-items:flex-start;text-decoration:none;background:#fff;border:1px solid #e4e9ef;border-left:4px solid ${colour};border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+      <div style="width:46px;height:46px;border-radius:11px;background:${colour}1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${icon}</div>
+      <div style="flex:1">
+        <div style="font:800 15px Lato;color:#1a2b3a">${title}</div>
+        <div style="font-size:12.5px;color:#5b6b7b;margin-top:3px;line-height:1.5">${desc}</div>
+        <div style="margin-top:10px;display:inline-block;padding:7px 14px;background:${colour};color:#fff;border-radius:8px;font:700 12px Lato">${btn} ↗</div>
+      </div></a>`;
+
+  const staffRows = HH_HUB_STAFF.map(([name,id,pin])=>`
+    <tr style="border-bottom:1px solid #eef2f6">
+      <td style="padding:7px 10px;font-weight:600;color:#1a2b3a">${name}</td>
+      <td style="padding:7px 10px"><a href="${base}hoshouse.html?u=${id}" target="_blank" style="color:#2E6B5E;text-decoration:none">hoshouse.html?u=${id}</a></td>
+      <td style="padding:7px 10px;font-weight:700;color:#1a2b3a">${pin}</td>
+      <td style="padding:7px 10px"><button onclick="hhCopy('${base}hoshouse.html?u=${id}',this)" style="padding:4px 10px;border:1px solid #cfd8e0;background:#f6f8fa;border-radius:7px;font:600 11px Lato;cursor:pointer;color:#1a2b3a">Copy link</button></td>
+    </tr>`).join('');
+
+  v.innerHTML = `
+  <div style="max-width:1000px;margin:0 auto;padding:4px 2px 30px">
+    <div style="margin-bottom:6px;font:800 22px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping</div>
+    <div style="font-size:13px;color:#5b6b7b;margin-bottom:20px">Reception sets the day's rooms, housekeepers work from their phones, and Laith sees everything live. These open in a new tab.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:26px">
+      ${card('📋','#3B6585','Reception — daily room form',"Opens on today's date. Tap the rooms that need cleaning and submit. This fills the housekeepers' apps instantly.",base+'hoshouse-entry.html','Open reception form')}
+      ${card('📱','#2E6B5E','Housekeeper app','The app each housekeeper uses. Personal links and PINs are listed below.',base+'hoshouse.html','Open housekeeper app')}
+      ${card('📊','#8a5a2b','Manager dashboard — Laith','Live board, productivity, alerts and CSV export. Passcode 4040.',base+'hoshouse-admin.html?mgr=laith','Open manager dashboard')}
+    </div>
+
+    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+      <div style="font:800 15px Lato;color:#1a2b3a;margin-bottom:4px">Housekeeper personal links</div>
+      <div style="font-size:12px;color:#5b6b7b;margin-bottom:12px">Send each person their own link on WhatsApp. They tap it, enter their PIN once, then “Add to Home Screen” so it sits like an app.</div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <tr style="background:#1F3864;color:#fff"><th style="padding:8px 10px;text-align:left">Housekeeper</th><th style="padding:8px 10px;text-align:left">Personal link</th><th style="padding:8px 10px;text-align:left">PIN</th><th style="padding:8px 10px;text-align:left"></th></tr>
+        ${staffRows}
+      </table></div>
+      <div style="font-size:11.5px;color:#8fa3b8;margin-top:12px">Full address is ${base || 'brandon.hospro.co.uk/'}hoshouse.html?u=&lt;name&gt;. Change PINs or the room list in the manager dashboard → Settings.</div>
+    </div>
+  </div>`;
+}
+function hhCopy(txt, btn){
+  try{ navigator.clipboard.writeText(txt); const o=btn.textContent; btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent=o,1200); }
+  catch(e){ try{ prompt('Copy link:', txt); }catch(_){} }
+}
+
 // ── HosBRAND — Logos, Photography, Collateral sub-sections ────────────────────
 
 function renderBrandLogos(v){
@@ -8362,19 +8420,21 @@ function renderBrandLogos(v){
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
       ${[
-        {title:'Primary Logo — Dark',      desc:'Navy on white · For all print and digital use',              file:'bh-logo.svg',  preview:'🏨'},
-        {title:'Primary Logo — Light',     desc:'White on dark · For dark backgrounds',                       file:'bh-logo.svg',  preview:'🏨'},
-        {title:'BH Monogram',              desc:'Icon mark only · For social media & app icons',              file:'',             preview:'🔷'},
-        {title:'Colour Palette',           desc:'Brand colours: Navy #1A2B3A · Gold #C78A3B · Cream',         file:'',             preview:'🎨'},
-        {title:'Brand Guidelines PDF',     desc:'Full brand guidelines — typography, colour, usage rules',    file:'',             preview:'📋'},
-        {title:'Email Signature',          desc:'Standard email signature template for all team members',     file:'',             preview:'✉️'},
+        {title:'Primary Logo — Blue',      desc:'Full-colour blue mark · For light backgrounds',              file:'assets/logos/logo---blue.png',              bg:'#ffffff'},
+        {title:'Primary Logo — Blue (transparent)', desc:'Blue mark on transparent background',             file:'assets/logos/logo---blue-transparent.png', bg:'#ffffff'},
+        {title:'Logo — White (transparent)', desc:'White mark · For dark or photo backgrounds',               file:'assets/logos/logo---white-transparent.png',bg:'#1a2b3a'},
+        {title:'Logo — Gold (transparent)', desc:'Gold mark on transparent background',                      file:'assets/logos/logo---gold-transparent.png', bg:'#1a2b3a'},
+        {title:'Vector Logo — Blue (SVG)', desc:'Scalable vector · For print and large format',              file:'assets/logos/logo-vector-blue.svg',         bg:'#ffffff'},
+        {title:'Vector Logo — White (SVG)',desc:'Scalable white vector · For dark backgrounds',              file:'assets/logos/logo-vector-white.svg',        bg:'#1a2b3a'},
+        {title:'Brand Guidelines PDF',     desc:'Full brand guidelines — typography, colour, usage rules',   file:'assets/logos/brand-guidelines.pdf',         bg:'#2a2118', preview:'📋'},
+        {title:'Colour Palette',           desc:'Brand colours: Navy #1A2B3A · Gold #C78A3B · Cream',        file:'',       bg:'#1a2b3a', preview:'🎨'},
       ].map(item => `<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px">
-        <div style="width:52px;height:52px;border-radius:12px;background:rgba(199,138,59,.2);border:1px solid rgba(199,138,59,.3);display:flex;align-items:center;justify-content:center;font-size:26px">${item.preview}</div>
+        <div style="height:92px;border-radius:12px;background:${item.bg||'rgba(199,138,59,.2)'};border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:30px;overflow:hidden">${(item.file && !item.preview) ? `<img src="/${item.file}" alt="${item.title}" style="max-width:82%;max-height:70px;object-fit:contain" />` : (item.preview||'🏨')}</div>
         <div>
           <div style="font-size:14px;font-weight:700;color:#fff">${item.title}</div>
           <div style="font-size:11px;color:#8fa3b8;margin-top:4px;line-height:1.5">${item.desc}</div>
         </div>
-        ${item.file ? `<div style="display:flex;gap:8px"><a href="/${item.file}" target="_blank" style="flex:1;padding:7px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">👁 View</a><a href="/${item.file}" download style="flex:1;padding:7px;background:#c78a3b;border:none;border-radius:7px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">⬇ Download</a></div>` : `<div style="padding:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:7px;font:11px Lato;color:#8fa3b8;text-align:center">Upload via GitHub to enable download</div>`}
+        ${item.file ? `<div style="display:flex;gap:8px"><a href="/${item.file}" target="_blank" style="flex:1;padding:7px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">👁 View</a><a href="/${item.file}" download style="flex:1;padding:7px;background:#c78a3b;border:none;border-radius:7px;font:600 11px Lato;color:#fff;text-decoration:none;text-align:center">⬇ Download</a></div>` : `<div style="padding:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:7px;font:11px Lato;color:#8fa3b8;text-align:center">Palette reference only</div>`}
       </div>`).join('')}
     </div>`;
   v.appendChild(wrap);
@@ -8382,28 +8442,63 @@ function renderBrandLogos(v){
 
 function renderBrandPhotography(v){
   v.innerHTML = '';
+  const lib = (typeof HP_PHOTO_LIB!=='undefined' && Array.isArray(HP_PHOTO_LIB)) ? HP_PHOTO_LIB : [];
+  const total = lib.reduce((n,c)=>n+(c.images?c.images.length:0),0);
   const wrap = document.createElement('div');
   wrap.style.cssText = 'padding:28px;min-height:100%';
+
+  if(!total){
+    wrap.innerHTML = `<div style="margin-bottom:24px">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Photography Library</div>
+      <div style="font-size:13px;color:#8fa3b8">No images loaded. Add optimised images under assets/photography and rebuild photos-data.js.</div></div>`;
+    v.appendChild(wrap); return;
+  }
+
+  const sections = lib.filter(c=>c.images && c.images.length).map(c => `
+    <div style="margin-bottom:30px">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:#fff">${c.label}</div>
+        <div style="font-size:12px;color:#8fa3b8">${c.images.length} image${c.images.length>1?'s':''}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
+        ${c.images.map(img => `
+          <button onclick="hpPhotoOpen('${img.f.replace(/'/g,"\\'")}','${(img.alt||'').replace(/'/g,"\\'")}')"
+            style="padding:0;border:1px solid rgba(255,255,255,.12);border-radius:10px;overflow:hidden;cursor:pointer;background:#0d1b28;aspect-ratio:4/3">
+            <img src="${img.t}" alt="${img.alt||''}" loading="lazy"
+              style="width:100%;height:100%;object-fit:cover;display:block" />
+          </button>`).join('')}
+      </div>
+    </div>`).join('');
+
   wrap.innerHTML = `
     <div style="margin-bottom:24px">
       <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">Photography Library</div>
-      <div style="font-size:13px;color:#8fa3b8">Approved hotel photography — bedrooms, venue, gardens, dining, spa</div>
+      <div style="font-size:13px;color:#8fa3b8">${total} approved images · click any photo to view full size and download</div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
-      ${['Exterior & Gardens','Bedrooms & Suites','Event Spaces','The Clarendon Restaurant','Spa & Wellness','Weddings & Events','Aerial Photography','Team & Service'].map(cat => `
-        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;cursor:pointer;transition:all .15s"
-          onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
-          <div style="font-size:32px;margin-bottom:10px">📷</div>
-          <div style="font-size:13px;font-weight:700;color:#fff">${cat}</div>
-          <div style="font-size:11px;color:#8fa3b8;margin-top:4px">Upload images to enable library</div>
-        </div>`).join('')}
-    </div>
-    <div style="margin-top:20px;padding:16px;background:rgba(199,138,59,.1);border:1px solid rgba(199,138,59,.3);border-radius:10px">
-      <div style="font-size:12px;font-weight:700;color:#c78a3b;margin-bottom:4px">📤 To add photography</div>
-      <div style="font-size:12px;color:#8fa3b8">Upload approved hotel images to the GitHub repo in a /photos folder. Contact your HosPRO administrator to enable the image library.</div>
-    </div>`;
+    ${sections}`;
   v.appendChild(wrap);
 }
+
+/* Lightbox for the photography library */
+function hpPhotoOpen(src, alt){
+  let ov = document.getElementById('hpPhotoOv');
+  if(!ov){
+    ov = document.createElement('div'); ov.id='hpPhotoOv';
+    ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(8,14,20,.94);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:24px';
+    ov.onclick=(e)=>{ if(e.target===ov) hpPhotoClose(); };
+    document.body.appendChild(ov);
+    document.addEventListener('keydown', function esc(e){ if(e.key==='Escape') hpPhotoClose(); });
+  }
+  ov.innerHTML = `
+    <img src="${src}" alt="${alt||''}" style="max-width:92vw;max-height:78vh;border-radius:10px;box-shadow:0 10px 50px rgba(0,0,0,.6)" />
+    <div style="display:flex;gap:10px;align-items:center">
+      <div style="font:13px Lato;color:#cfdbe8">${alt||''}</div>
+      <a href="${src}" download style="padding:8px 16px;background:#c78a3b;border-radius:8px;font:700 12px Lato;color:#fff;text-decoration:none">⬇ Download</a>
+      <button onclick="hpPhotoClose()" style="padding:8px 16px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:8px;font:700 12px Lato;color:#fff;cursor:pointer">✕ Close</button>
+    </div>`;
+  ov.style.display='flex';
+}
+function hpPhotoClose(){ const ov=document.getElementById('hpPhotoOv'); if(ov) ov.style.display='none'; }
 
 function renderBrandCollateral(v){
   v.innerHTML = '';

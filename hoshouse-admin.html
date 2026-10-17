@@ -45,8 +45,8 @@
 <!-- gate -->
 <div id="gate" class="lg">
   <div style="font-size:38px">🧹</div>
-  <h2 style="color:var(--navy);margin:6px 0">HosHouse — Management</h2>
-  <p class="muted">Enter the manager passcode.</p>
+  <h2 style="color:var(--navy);margin:6px 0" id="gateTitle">HosHouse — Management</h2>
+  <p class="muted" id="gateHello">Enter the manager passcode.</p>
   <input id="pc" type="password" placeholder="Passcode" style="width:100%" onkeydown="if(event.key==='Enter')tryGate()">
   <div style="margin-top:12px"><button class="btn" style="width:100%" onclick="tryGate()">Open</button></div>
   <div id="gmsg" style="color:var(--red);font-size:12px;min-height:16px;margin-top:8px"></div>
@@ -54,7 +54,7 @@
 
 <div id="app" class="hide">
   <header>
-    <div><div class="t">🧹 HosHouse — Management</div><div class="s">Live housekeeping board, productivity & alerts</div></div>
+    <div><div class="t" id="hdrTitle">🧹 HosHouse — Management</div><div class="s" id="hdrSub">Live housekeeping board, productivity &amp; alerts</div></div>
     <div class="row">
       <input type="date" id="date" onchange="reload()">
       <button class="btn ghost" onclick="exportCsv()">⬇ Export CSV</button>
@@ -80,6 +80,19 @@
   const $=id=>document.getElementById(id);
   const DEFT={Departure:'dep',Stayover:'stay','Arrival-ready':'arr'};
   let rooms=[], unwatch=null, curTab='today';
+
+  // Personalise for a named manager via ?mgr=laith
+  const MGR_NAMES = { laith:'Laith Hardy', ajay:'Ajay Kawa', ruth:'Ruth Addison' };
+  (function(){
+    try{
+      const q=new URLSearchParams(location.search).get('mgr');
+      if(!q) return;
+      const nm = MGR_NAMES[q.toLowerCase()] || (q.charAt(0).toUpperCase()+q.slice(1));
+      const first = nm.split(' ')[0];
+      if($('gateHello')) $('gateHello').textContent = 'Welcome, '+first+'. Enter your manager passcode.';
+      if($('hdrSub')) $('hdrSub').textContent = nm+' · live board, productivity & alerts';
+    }catch(e){}
+  })();
 
   function tryGate(){
     const pc=HH.cfg().managerPin || '4040';
