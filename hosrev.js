@@ -515,9 +515,19 @@ function renderRevCompset(v){
   const hotels=[...new Set(Object.values(HosrevStore._comp).flat().map(x=>x.hotel))];
   const days=[]; for(let i=0;i<14;i++) days.push(HOSREV_addDays(start,i));
   const wByHotel={}; (s.compSet||[]).forEach(c=>{ wByHotel[c.hotel]=c; });
+  const feed=HosrevStore._feed;
+  const live=!!(feed && !feed.mock);
+  const pulled=(feed && feed.pulled)? new Date(feed.pulled).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : null;
+  const statusBar=`<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin:0 0 14px;padding:11px 15px;border-radius:10px;font-size:13px;background:${live?'#e9f5ef':(feed&&feed.mock?'#eef3f8':'#fdf6e9')};border:1px solid ${live?'#bfe0cd':(feed&&feed.mock?'#cfe0ee':'#f0dcae')}">
+      <span style="font-weight:800;color:${live?'#1e6b2f':(feed&&feed.mock?'#2a5a7a':'#8a5a1e')}">${live?'🟢 Live rate feed':(feed&&feed.mock?'🧪 Mock feed':'🟡 Demo data')}</span>
+      <span>Source: <b>Google Hotels</b> <span class="hr-muted">(via the SerpApi rate-shopper)</span></span>
+      <span>Last checked: <b>${pulled||'— not yet'}</b></span>
+      ${live?`<span><b>${feed.nights}</b> nights loaded · Booking Genius −10% applied</span>`:`<span class="hr-muted">Goes live once the shopper runs (automatically each morning ~07:30). Showing demo rates until then.</span>`}
+    </div>`;
   v.innerHTML = `
     <div class="page-head"><h2>Competitors</h2>
       <p>Our ${rt.name} rate against the comp set for the next 14 nights. The comp reference is <b>weighted</b> — primary rivals count more than aspirational ones — and priced against the <b>Booking Genius</b> rate (shown − 10%), the price a logged-in guest actually pays. Each cell shows the displayed rate with the Genius estimate (<span class="hr-muted">G</span>) beneath.</p></div>
+    ${statusBar}
     <div class="hr-scroll">
     <table class="pipe-table hr-matrix">
       <thead><tr><th>Hotel</th>${days.map(d=>`<th>${hrDowName(d)}<br>${hrFmtDate(d)}</th>`).join("")}</tr></thead>
