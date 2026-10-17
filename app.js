@@ -8725,43 +8725,47 @@ const HH_HUB_STAFF = [
 function hhOrigin(){ try{ return location.origin + location.pathname.replace(/[^/]*$/,''); }catch(e){ return ''; } }
 function renderHosHouseHub(v){
   const base = hhOrigin();
-  const card = (icon,colour,title,desc,href,btn)=>`
-    <a href="${href}" target="_blank" style="display:flex;gap:14px;align-items:flex-start;text-decoration:none;background:#fff;border:1px solid #e4e9ef;border-left:4px solid ${colour};border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
-      <div style="width:46px;height:46px;border-radius:11px;background:${colour}1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${icon}</div>
-      <div style="flex:1">
-        <div style="font:800 15px Lato;color:#1a2b3a">${title}</div>
-        <div style="font-size:12.5px;color:#5b6b7b;margin-top:3px;line-height:1.5">${desc}</div>
-        <div style="margin-top:10px;display:inline-block;padding:7px 14px;background:${colour};color:#fff;border-radius:8px;font:700 12px Lato">${btn} ↗</div>
-      </div></a>`;
+  // compact link chip
+  const chip = (icon,colour,title,sub,href)=>`
+    <a href="${href}" target="_blank" title="${title}" style="display:flex;gap:10px;align-items:center;text-decoration:none;background:#fff;border:1px solid #e4e9ef;border-left:3px solid ${colour};border-radius:10px;padding:10px 13px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+      <div style="width:32px;height:32px;border-radius:8px;background:${colour}1a;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">${icon}</div>
+      <div style="min-width:0"><div style="font:800 13px Lato;color:#1a2b3a;white-space:nowrap">${title} <span style="color:${colour}">↗</span></div>
+        <div style="font-size:11px;color:#8296a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub}</div></div></a>`;
 
   const staffRows = HH_HUB_STAFF.map(([name,id,pin])=>`
     <tr style="border-bottom:1px solid #eef2f6">
-      <td style="padding:7px 10px;font-weight:600;color:#1a2b3a">${name}</td>
-      <td style="padding:7px 10px"><a href="${base}hoshouse.html?u=${id}" target="_blank" style="color:#2E6B5E;text-decoration:none">hoshouse.html?u=${id}</a></td>
-      <td style="padding:7px 10px;font-weight:700;color:#1a2b3a">${pin}</td>
-      <td style="padding:7px 10px"><button onclick="hhCopy('${base}hoshouse.html?u=${id}',this)" style="padding:4px 10px;border:1px solid #cfd8e0;background:#f6f8fa;border-radius:7px;font:600 11px Lato;cursor:pointer;color:#1a2b3a">Copy link</button></td>
+      <td style="padding:6px 10px;font-weight:600;color:#1a2b3a">${name}</td>
+      <td style="padding:6px 10px"><a href="${base}hoshouse.html?u=${id}" target="_blank" style="color:#2E6B5E;text-decoration:none">?u=${id}</a></td>
+      <td style="padding:6px 10px;font-weight:700;color:#1a2b3a">${pin}</td>
+      <td style="padding:6px 10px"><button onclick="hhCopy('${base}hoshouse.html?u=${id}',this)" style="padding:3px 9px;border:1px solid #cfd8e0;background:#f6f8fa;border-radius:6px;font:600 11px Lato;cursor:pointer;color:#1a2b3a">Copy</button></td>
     </tr>`).join('');
 
   v.innerHTML = `
   <div style="max-width:1000px;margin:0 auto;padding:4px 2px 30px">
-    <div style="margin-bottom:6px;font:800 22px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping</div>
-    <div style="font-size:13px;color:#5b6b7b;margin-bottom:20px">Reception sets the day's rooms, housekeepers work from their phones, and Laith sees everything live. These open in a new tab.</div>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:26px">
-      ${card('📋','#3B6585','Reception — daily room form',"Opens on today's date. Tap the rooms that need cleaning and submit. This fills the housekeepers' apps instantly.",base+'hoshouse-entry.html','Open reception form')}
-      ${card('📱','#2E6B5E','Housekeeper app','The app each housekeeper uses. Personal links and PINs are listed below.',base+'hoshouse.html','Open housekeeper app')}
-      ${card('📊','#8a5a2b','Manager dashboard — Laith','Live board, productivity, alerts and CSV export. Passcode 4040.',base+'hoshouse-admin.html?mgr=laith','Open manager dashboard')}
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div><div style="font:800 20px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping</div>
+        <div style="font-size:12.5px;color:#5b6b7b">Live room-cleaning tracking. Open the manager dashboard for the board, charts and staff efficiency.</div></div>
     </div>
 
-    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
-      <div style="font:800 15px Lato;color:#1a2b3a;margin-bottom:4px">Housekeeper personal links</div>
-      <div style="font-size:12px;color:#5b6b7b;margin-bottom:12px">Send each person their own link on WhatsApp. They tap it, enter their PIN once, then “Add to Home Screen” so it sits like an app.</div>
-      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
-        <tr style="background:#1F3864;color:#fff"><th style="padding:8px 10px;text-align:left">Housekeeper</th><th style="padding:8px 10px;text-align:left">Personal link</th><th style="padding:8px 10px;text-align:left">PIN</th><th style="padding:8px 10px;text-align:left"></th></tr>
+    <a href="${base}hoshouse-admin.html?mgr=laith" target="_blank" style="display:block;text-decoration:none;background:linear-gradient(135deg,#1a2b3a,#28405a);border-radius:14px;padding:18px 20px;color:#fff;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.12)">
+      <div style="font:800 16px Lato">📊 Open the Management Dashboard ↗</div>
+      <div style="font-size:12.5px;color:#c6d3e0;margin-top:3px">Live board, charts, staff efficiency, alerts, staff &amp; codes, room list and settings. Passcode 4040.</div>
+    </a>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:18px">
+      ${chip('📋','#3B6585','Reception daily form',"Pick today's rooms to clean",base+'hoshouse-entry.html')}
+      ${chip('📱','#2E6B5E','Housekeeper app','Per-person login + PIN',base+'hoshouse.html')}
+      ${chip('👥','#8a5a2b','Staff &amp; codes','Add/remove in the dashboard',base+'hoshouse-admin.html?mgr=laith')}
+    </div>
+
+    <details style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+      <summary style="cursor:pointer;font:800 13px Lato;color:#1a2b3a">Housekeeper personal links &amp; PINs</summary>
+      <div style="font-size:11.5px;color:#5b6b7b;margin:8px 0 10px">Send each person their link on WhatsApp. Add, remove or recode staff in the dashboard → Staff.</div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+        <tr style="background:#1F3864;color:#fff"><th style="padding:7px 10px;text-align:left">Housekeeper</th><th style="padding:7px 10px;text-align:left">Link</th><th style="padding:7px 10px;text-align:left">PIN</th><th></th></tr>
         ${staffRows}
       </table></div>
-      <div style="font-size:11.5px;color:#8fa3b8;margin-top:12px">Full address is ${base || 'brandon.hospro.co.uk/'}hoshouse.html?u=&lt;name&gt;. Change PINs or the room list in the manager dashboard → Settings.</div>
-    </div>
+    </details>
   </div>`;
 }
 function hhCopy(txt, btn){

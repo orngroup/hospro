@@ -17,8 +17,9 @@
   header .u{font-size:12px;color:#aebdce}
   .wrap{max-width:720px;margin:0 auto;padding:16px}
   /* login */
-  .lg{max-width:420px;margin:8vh auto;padding:24px;text-align:center}
-  .lg h1{font:800 22px inherit;color:var(--navy);margin:8px 0 4px}
+  .lg{max-width:420px;margin:7vh auto;padding:24px;text-align:center}
+  .lg .bh-logo{height:88px;width:auto;margin:0 auto 6px;display:block}
+  .lg h1{font:800 21px inherit;color:var(--navy);margin:6px 0 4px;letter-spacing:.3px}
   .lg p{color:var(--muted);font-size:14px;margin:0 0 18px}
   select,input{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:11px;font:16px inherit;margin-bottom:12px}
   .btn{width:100%;padding:14px;border:none;border-radius:12px;font:800 16px inherit;cursor:pointer;background:var(--navy);color:#fff}
@@ -53,9 +54,9 @@
 <!-- LOGIN -->
 <div class="screen on" id="scr-login">
   <div class="lg">
-    <div style="font-size:40px">🧹</div>
-    <h1>HosHouse</h1>
-    <p>Brandon Hall — Housekeeping</p>
+    <img src="bh-logo.svg" alt="Brandon Hall Hotel & Spa" class="bh-logo" onerror="this.style.display='none'">
+    <h1>HosHOUSE Management</h1>
+    <p>Select your name and enter your code</p>
     <select id="who"><option value="">Select your name…</option></select>
     <div class="pindisp" id="pindisp"></div>
     <div class="pinpad" id="pinpad"></div>
@@ -188,8 +189,8 @@
 
   // ---- init ----
   (async function(){
+    await HH.loadCfg();   // load shared staff list first so names are current
     buildLogin();
-    await HH.loadCfg();
     const saved=sessionStorage.getItem('hh_me');
     if(saved && HH.staffById(saved)){ ME=HH.staffById(saved); startList(); }
   })();

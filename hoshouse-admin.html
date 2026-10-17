@@ -39,6 +39,18 @@
   .rn{margin-top:3px;font-size:11.5px;color:#7a5a1e;background:#fff7e8;border:1px solid #f0d9ad;border-radius:7px;padding:3px 7px;display:inline-block;max-width:220px}
   .hide{display:none}
   .lbl{font-size:12px;font-weight:700;color:#374151;display:block;margin:10px 0 4px}
+  .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  @media(max-width:780px){.dash-grid{grid-template-columns:1fr}}
+  .leg{display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 0;color:#1f2a37}
+  .leg span{width:12px;height:12px;border-radius:3px;display:inline-block}
+  .leg b{margin-left:auto;color:#1a2b3a}
+  .tile{cursor:default}
+  .mini{padding:4px 9px;border:1px solid var(--line);border-radius:7px;background:#f6f8fa;font:600 11px inherit;color:var(--navy);cursor:pointer;text-decoration:none;display:inline-block}
+  .mini.danger{color:#b4231f;border-color:#f0cfcc;background:#fdf3f2}
+  .embed{margin-top:6px;font:12px ui-monospace,Menlo,Consolas,monospace;background:#f5f7f9;border:1px solid var(--line);border-radius:8px;padding:8px 10px;word-break:break-all}
+  .tip{position:relative}
+  .tip:hover::after{content:attr(data-tip);position:absolute;left:50%;bottom:100%;transform:translateX(-50%);background:#1a2b3a;color:#fff;font:600 11px inherit;padding:6px 9px;border-radius:7px;white-space:nowrap;max-width:260px;white-space:normal;width:max-content;max-width:240px;z-index:20;box-shadow:0 4px 14px rgba(0,0,0,.2);margin-bottom:6px}
+  .tip:hover::before{content:"";position:absolute;left:50%;bottom:100%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a2b3a;z-index:20}
 </style>
 </head>
 <body>
@@ -63,9 +75,11 @@
   </header>
   <div class="wrap">
     <div class="tabs">
-      <button class="on" data-tab="today" onclick="tab('today')">Today</button>
+      <button class="on" data-tab="dashboard" onclick="tab('dashboard')">📊 Dashboard</button>
+      <button data-tab="today" onclick="tab('today')">Today's rooms</button>
       <button data-tab="prod" onclick="tab('prod')">Productivity</button>
       <button data-tab="alerts" onclick="tab('alerts')">Alerts</button>
+      <button data-tab="staff" onclick="tab('staff')">👥 Staff</button>
       <button data-tab="rooms" onclick="tab('rooms')">Room list</button>
       <button data-tab="settings" onclick="tab('settings')">Settings</button>
     </div>
@@ -80,7 +94,9 @@
 <script>
   const $=id=>document.getElementById(id);
   const DEFT={Departure:'dep',Stayover:'stay','Arrival-ready':'arr'};
-  let rooms=[], unwatch=null, curTab='today';
+  let rooms=[], unwatch=null, curTab='dashboard', codesRevealed=false;
+  const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  function appBase(){ try{ return location.origin + location.pathname.replace(/[^/]*$/,''); }catch(e){ return ''; } }
 
   // Personalise for a named manager via ?mgr=laith
   const MGR_NAMES = { laith:'Laith Hardy', ajay:'Ajay Kawa', ruth:'Ruth Addison' };
@@ -118,11 +134,82 @@
   function hk(r){ return r.housekeeperName|| (HH.staffById(r.housekeeper)||{}).name || r.housekeeper || '—'; }
 
   function draw(){
+    if(curTab==='dashboard') return drawDashboard();
     if(curTab==='today') return drawToday();
     if(curTab==='prod') return drawProd();
     if(curTab==='alerts') return drawAlerts();
+    if(curTab==='staff') return drawStaff();
     if(curTab==='rooms') return drawRooms();
     if(curTab==='settings') return drawSettings();
+  }
+
+  // ---------- charts (inline SVG, no dependencies) ----------
+  const CH={todo:'#94a3b8',prog:'#d9930a',done:'#2a6a4a',over:'#b3261e'};
+  function donut(segs,center){ // segs:[{label,value,color}]
+    const tot=segs.reduce((s,x)=>s+x.value,0)||1; const R=54,C=2*Math.PI*R; let off=0;
+    const rings=segs.filter(s=>s.value>0).map(s=>{ const len=C*(s.value/tot); const dash=`${len} ${C-len}`; const el=`<circle r="${R}" cx="70" cy="70" fill="none" stroke="${s.color}" stroke-width="18" stroke-dasharray="${dash}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${esc(s.label)}: ${s.value}</title></circle>`; off+=len; return el; }).join('');
+    return `<svg viewBox="0 0 140 140" width="140" height="140" style="flex:0 0 auto">${rings}<text x="70" y="66" text-anchor="middle" font-size="26" font-weight="800" fill="#1a2b3a">${center.v}</text><text x="70" y="86" text-anchor="middle" font-size="10" fill="#6b7280">${esc(center.k)}</text></svg>`;
+  }
+  function hbars(items){ // items:[{label,value,sub}]
+    const max=Math.max(1,...items.map(i=>i.value));
+    return `<div style="display:flex;flex-direction:column;gap:7px">${items.map(i=>`
+      <div class="tip" data-tip="${esc(i.label)}: ${i.value} room${i.value!==1?'s':''}${i.sub?(' · '+esc(i.sub)):''}">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px"><b style="color:#1f2a37">${esc(i.label)}</b><span class="muted">${i.value}${i.sub?(' · '+esc(i.sub)):''}</span></div>
+        <div style="background:#eef1f5;border-radius:6px;height:12px;overflow:hidden"><div style="width:${Math.round(i.value/max*100)}%;height:100%;background:linear-gradient(90deg,#2a6a4a,#3f8f67)"></div></div>
+      </div>`).join('')}</div>`;
+  }
+
+  function staffEff(){ // compute per-housekeeper stats for today's rooms
+    const byHk={};
+    rooms.filter(r=>r.status==='done'||r.status==='in_progress').forEach(r=>{
+      const k=r.housekeeper||'?'; byHk[k]=byHk[k]||{name:hk(r),done:0,mins:0,over:0,prog:0};
+      if(r.status==='done'){ byHk[k].done++; byHk[k].mins+=(r.durationSec||0)/60; if((r.durationSec||0)>HH.cfg().windowMin*60) byHk[k].over++; }
+      if(r.status==='in_progress'){ byHk[k].prog++; if(over(r)) byHk[k].over++; }
+    });
+    return Object.values(byHk).sort((a,b)=>b.done-a.done);
+  }
+
+  function drawDashboard(){
+    const pend=rooms.filter(r=>r.status==='pending'), prog=rooms.filter(r=>r.status==='in_progress'), done=rooms.filter(r=>r.status==='done');
+    const overs=rooms.filter(over);
+    const pct=rooms.length?Math.round(done.length/rooms.length*100):0;
+    const allDone=done; const avg=allDone.length?Math.round(allDone.reduce((a,r)=>a+(r.durationSec||0)/60,0)/allDone.length):0;
+    const onNow=new Set(prog.map(r=>r.housekeeper)).size;
+    const tiles=[
+      ['Rooms today',rooms.length,'','All rooms reception set for cleaning today'],
+      ['Completed',done.length,'ok','Rooms finished and checked'],
+      ['In progress',prog.length,'amber','Rooms a housekeeper has started'],
+      ['To do',pend.length,'','Rooms not yet started'],
+      ['Over 30 min',overs.length,overs.length?'red':'','Rooms taking longer than the time allowed'],
+      ['Avg min/room',avg,'','Average time to clean a finished room today'],
+    ];
+    let html='<div class="tiles">'+tiles.map(([k,v,c,tip])=>`<div class="tile ${c} tip" data-tip="${esc(tip)}"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('')+'</div>';
+
+    // charts row
+    const segs=[{label:'Completed',value:done.length,color:CH.done},{label:'In progress',value:prog.length,color:CH.prog},{label:'To do',value:pend.length,color:CH.todo},{label:'Over 30 min',value:overs.length,color:CH.over}];
+    const eff=staffEff();
+    html+=`<div class="dash-grid">
+      <div class="panel"><h3>Today's progress</h3>
+        <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+          ${donut(segs,{v:pct+'%',k:'complete'})}
+          <div style="flex:1;min-width:160px">${segs.map(s=>`<div class="leg tip" data-tip="${esc(s.label)}: ${s.value}"><span style="background:${s.color}"></span>${esc(s.label)}<b>${s.value}</b></div>`).join('')}</div>
+        </div>
+      </div>
+      <div class="panel"><h3>Rooms done by housekeeper</h3>
+        ${eff.length?hbars(eff.map(e=>({label:e.name,value:e.done,sub:(e.done?Math.round(e.mins/e.done)+'m avg':'')}))):'<div class="muted">No rooms completed yet today.</div>'}
+      </div>
+    </div>`;
+
+    // staff efficiency table
+    html+=`<div class="panel"><h3>Staff efficiency — ${fmt($('date').value)}</h3>
+      <table><thead><tr><th>Housekeeper</th><th>Done</th><th>In progress</th><th>Avg min/room</th><th>Overruns</th><th>Efficiency</th></tr></thead><tbody>`;
+    html+= eff.length? eff.map(r=>{
+      const target=HH.cfg().windowMin||30; const effPct=r.done&&r.mins? Math.min(100,Math.round(target/(r.mins/r.done)*100)):0;
+      const bar=`<div style="background:#eef1f5;border-radius:5px;height:9px;width:90px;display:inline-block;vertical-align:middle;overflow:hidden"><div style="width:${effPct}%;height:100%;background:${effPct>=90?'#2a6a4a':effPct>=70?'#d9930a':'#b3261e'}"></div></div> <span class="muted">${effPct}%</span>`;
+      return `<tr><td><b>${esc(r.name)}</b></td><td>${r.done}</td><td>${r.prog}</td><td>${r.done?Math.round(r.mins/r.done):'—'}</td><td class="${r.over?'st over':''}">${r.over||0}</td><td>${r.done?bar:'<span class="muted">—</span>'}</td></tr>`;
+    }).join('') : '<tr><td colspan="6" class="muted" style="padding:14px">No activity yet today.</td></tr>';
+    html+='</tbody></table><p class="muted" style="margin-top:8px">Efficiency = time allowed per room ('+(HH.cfg().windowMin||30)+' min) ÷ actual average. 100% means on or under target.</p></div>';
+    $('pane').innerHTML=html;
   }
 
   function drawToday(){
@@ -189,6 +276,66 @@
     const lines=($('roomsTa').value||'').split(/\n+/).map(s=>s.trim()).filter(Boolean);
     const rooms=lines.map(l=>{ const [room,cat]=l.split(','); return {room:String(room).trim(), cat:(cat||'').trim()}; }).filter(r=>r.room);
     const cfg=HH.cfg(); cfg.rooms=rooms; await HH.saveCfg(cfg); alert('Saved '+rooms.length+' rooms.'); draw();
+  }
+
+  // ---------- staff management + credentials ----------
+  let lastAddedId=null;
+  function drawStaff(){
+    const staff=HH.staff;
+    let html=`<div class="panel"><h3>Add a housekeeper</h3>
+      <div class="row">
+        <input id="ns-name" placeholder="Full name" style="flex:1;min-width:180px">
+        <input id="ns-code" placeholder="Code (optional)" style="width:150px" maxlength="6">
+        <button class="btn alt" onclick="addStaffNow()">➕ Add &amp; get link</button>
+      </div>
+      <p class="muted" style="margin-top:6px">Leave the code blank to auto-assign the next free one. Adding a person creates a shareable login link and code.</p>
+      <div id="ns-result"></div></div>`;
+
+    html+=`<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0">Staff &amp; access codes <span class="muted">(${staff.length})</span></h3>
+        ${codesRevealed
+          ? `<button class="btn ghost" onclick="hideCodes()">🙈 Hide codes</button>`
+          : `<div class="row"><input id="rev-code" type="password" placeholder="Enter code to view" style="width:160px" onkeydown="if(event.key==='Enter')revealCodes()"><button class="btn" onclick="revealCodes()">🔓 View codes</button></div>`}
+      </div>
+      <div id="rev-msg" class="muted" style="margin-top:6px"></div>
+      <div style="overflow-x:auto"><table style="margin-top:10px"><thead><tr><th>Name</th><th>Code</th><th>Personal link</th><th></th></tr></thead><tbody>
+      ${staff.map(s=>{
+        const link=appBase()+'hoshouse.html?u='+s.id;
+        const code=codesRevealed?`<b>${esc(String(s.pin))}</b>`:'••••';
+        return `<tr${s.id===lastAddedId?' style="background:#ecf6f0"':''}>
+          <td><b>${esc(s.name)}</b></td>
+          <td>${code} ${codesRevealed?`<button class="mini" onclick="editCode('${s.id}')">edit</button>`:''}</td>
+          <td><button class="mini" onclick="copyTxt('${link}',this)">Copy link</button>${codesRevealed?` <a class="mini" href="https://wa.me/?text=${encodeURIComponent('Your HosHOUSE login: '+link+' — code '+s.pin)}" target="_blank">WhatsApp</a>`:''}</td>
+          <td><button class="mini danger" onclick="removeStaffNow('${s.id}','${esc(s.name).replace(/'/g,"")}')">Remove</button></td>
+        </tr>`;
+      }).join('')}
+      </tbody></table></div>
+      ${codesRevealed?`<div class="row" style="margin-top:10px"><button class="btn ghost" onclick="printCreds()">🖨 Print all credentials</button></div>`:`<p class="muted" style="margin-top:8px">Codes are hidden. Enter the access code to view and share them.</p>`}
+      </div>`;
+    $('pane').innerHTML=html;
+  }
+  async function addStaffNow(){
+    const name=($('ns-name').value||'').trim(); const code=($('ns-code').value||'').trim();
+    if(!name){ alert('Enter a name.'); return; }
+    const rec=await HH.addStaff(name, code||null);
+    lastAddedId=rec.id; draw();
+    const link=appBase()+'hoshouse.html?u='+rec.id; const box=$('ns-result');
+    if(box){ box.innerHTML=`<div style="margin-top:10px;padding:12px;background:#ecf6f0;border:1px solid #bfe0cd;border-radius:10px">
+      <b>${esc(rec.name)} added.</b> Share their login:
+      <div class="embed">${link}</div>
+      <div class="row" style="margin-top:8px"><span>Code: <b>${rec.pin}</b></span>
+        <button class="btn ghost" onclick="copyTxt('${link}',this)">Copy link</button>
+        <a class="btn ghost" href="https://wa.me/?text=${encodeURIComponent('Your HosHOUSE login: '+link+' — your code is '+rec.pin)}" target="_blank">WhatsApp link + code</a></div></div>`; }
+  }
+  function revealCodes(){ const v=($('rev-code')?$('rev-code').value:'')||''; if(v==='1006'){ codesRevealed=true; draw(); } else if($('rev-msg')){ $('rev-msg').textContent='Incorrect code.'; } }
+  function hideCodes(){ codesRevealed=false; draw(); }
+  async function editCode(id){ const s=HH.staffById(id); if(!s) return; const v=prompt('New code for '+s.name+':', s.pin); if(v&&v.trim()){ await HH.updateStaff(id,{pin:v.trim()}); draw(); } }
+  async function removeStaffNow(id,name){ if(!confirm('Remove '+name+'? Their login link will stop working.')) return; await HH.removeStaff(id); if(lastAddedId===id) lastAddedId=null; draw(); }
+  function copyTxt(t,btn){ try{ navigator.clipboard.writeText(t); const o=btn.textContent; btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent=o,1200);}catch(e){ try{prompt('Copy:',t);}catch(_){} } }
+  function printCreds(){
+    const rows=HH.staff.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(String(s.pin))}</td><td>${appBase()}hoshouse.html?u=${s.id}</td></tr>`).join('');
+    const w=window.open('','_blank'); if(!w){ alert('Allow pop-ups to print.'); return; }
+    w.document.write(`<html><head><title>HosHOUSE credentials</title><style>body{font:13px Arial;padding:24px;color:#1a2b3a}h1{font-size:18px;margin:0 0 4px}table{border-collapse:collapse;width:100%;margin-top:12px}td,th{border:1px solid #ccc;padding:7px 10px;text-align:left}th{background:#1F3864;color:#fff}</style></head><body><h1>HosHOUSE — staff logins</h1><p style="color:#6b7280">Confidential · ${new Date().toLocaleDateString('en-GB')}</p><table><tr><th>Name</th><th>Code</th><th>Login link</th></tr>${rows}</table></body></html>`); w.document.close();
   }
 
   function drawSettings(){

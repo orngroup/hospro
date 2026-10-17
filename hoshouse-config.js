@@ -91,20 +91,32 @@
   function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 
   const HH = {
-    staff: HK_STAFF,
     checklist: CHECKLIST,
     roomTypes: ROOM_TYPES,
     roomCats: ROOM_CATS,
     catLabel(code){ const c=ROOM_CATS.find(x=>x.code===code); return c?c.label:(code||''); },
     ready, db,
     todayISO,
-    staffById(id){ return HK_STAFF.find(s=>s.id===id)||null; },
+    // staff lives in the shared config so add/remove propagates to every device
+    get staff(){ return this.cfg().staff; },
+    staffById(id){ return this.cfg().staff.find(s=>s.id===id)||null; },
+    slugId(name){ let base=(name||'staff').toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,12)||'staff';
+      let id=base, n=1; const have=this.cfg().staff; while(have.some(s=>s.id===id)){ id=base+(++n); } return id; },
+    nextPin(){ const used=new Set(this.cfg().staff.map(s=>String(s.pin))); let p=1001; while(used.has(String(p))) p++; return String(p); },
+    async addStaff(name, pin){
+      const c=this.cfg(); name=(name||'').trim(); if(!name) return null;
+      const rec={ id:this.slugId(name), name, pin: pin?String(pin):this.nextPin() };
+      c.staff=(c.staff||[]).concat([rec]); await this.saveCfg(c); return rec;
+    },
+    async updateStaff(id, patch){ const c=this.cfg(); const s=(c.staff||[]).find(x=>x.id===id); if(!s) return null; Object.assign(s,patch); await this.saveCfg(c); return s; },
+    async removeStaff(id){ const c=this.cfg(); c.staff=(c.staff||[]).filter(s=>s.id!==id); await this.saveCfg(c); return true; },
 
     // ----- config (room list + settings) -----
     _cfg: null,
     cfg(){ if(!this._cfg) this._cfg = Object.assign({}, DEFAULTS, lsGet(LS_CFG, {}));
            this._cfg.geo = Object.assign({}, DEFAULTS.geo, this._cfg.geo||{});
            if(!Array.isArray(this._cfg.rooms) || !this._cfg.rooms.length) this._cfg.rooms = DEFAULTS.rooms;
+           if(!Array.isArray(this._cfg.staff) || !this._cfg.staff.length) this._cfg.staff = HK_STAFF.map(s=>Object.assign({},s));
            return this._cfg; },
     async loadCfg(){
       if(ready){ try{ const d=await db.collection("hoshouse_config").doc("current").get();
