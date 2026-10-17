@@ -132,7 +132,7 @@ async function boot(){
   if(DB.live()){
     FBStore.start();                       // begin live Firestore sync
     await FBStore.seedOnce(SEED_SAMPLES);   // seed only if empty
-    FBStore.onChange(()=>{ if(CURRENT_TAB==="pipeline"||CURRENT_TAB==="home") render(); });
+    FBStore.onChange(()=>{ if(CURRENT_TAB==="pipeline") render(); });
     if(typeof MktStore!=="undefined"){ MktStore.start();
       MktStore.onChange(()=>{ if(CURRENT_TAB==="marketing") render(); }); }
     if(typeof CorpGuestStore!=="undefined"){ CorpGuestStore.start();
@@ -147,18 +147,6 @@ async function boot(){
   buildSidebar();
   render();
   if(DB.live()){
-    // one-off (15 Oct 2026): delete the old test enquiries still marked "new" from before today,
-    // keeping today's website enquiries. Runs once for the whole team (flag in meta).
-    setTimeout(async()=>{ try{
-      const flag=FB.db.collection("meta").doc("cleanup_new_20261015");
-      if((await flag.get()).exists) return;
-      for(let i=0;i<20 && !DB.all().length;i++) await new Promise(r=>setTimeout(r,1500)); // wait for the live list
-      if(!DB.all().length) return;
-      const old=DB.all().filter(e=>e.id && e.status==="new" && e.created && String(e.created).slice(0,10)<"2026-10-15");
-      for(const e of old) await FB.db.collection("enquiries").doc(e.id).delete();
-      await flag.set({ done:new Date().toISOString(), by:(SESSION&&SESSION.name)||"", removed:old.map(e=>(e.name||"")+" "+String(e.created).slice(0,10)) });
-      if(old.length) render();
-    }catch(err){ console.warn("Old enquiry cleanup skipped",err); } }, 5000);
     // one-off: remove the five earlier sample enquiries now the Rezlynx report is the master
     setTimeout(async()=>{ try{
       const old=["Dairy Carbon Network","Andre Brissett","Dominic Hillyard","Rebekah Stretton","Samantha Courtnell"];
@@ -277,7 +265,7 @@ function hpRenderFixrayPlaceholder(v, tab){
 
 /* ── Tab registry (single source of truth for the router) ── */
 const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
-    competition:renderCompetition, profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
+    profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
     fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
     rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings, rotaPayroll:renderRotaPayroll, localEvents:renderLocalEvents, fbTracker:renderFBTracker,
@@ -1394,9 +1382,7 @@ function pipelineData(){
     if(r){ used.add(ref); out.push(Object.assign({_kind:"enquiry"}, e, { value:r.value, date:r.arrival||e.date, pax:r.pax||e.pax,
       status:r._bucket==="cancelled"?"cancelled":(e.status==="cancelled"?"confirmed":e.status), bookedDate:r.booked, departure:r.departure, rooms:r.rooms,
       roomName:r.room||e.roomName, room:r.room?roomIdFromName(r.room):e.room, ratePlan:r.ratePlan||e.ratePlan })); }
-    else out.push(Object.assign({_kind:"enquiry"}, e,
-      // Website planner and contact-form leads arrive with status "new": show them as Enquiry
-      e.status==="new" ? { status:"enquiry", _webNew:true } : {}));
+    else out.push(Object.assign({_kind:"enquiry"}, e));
   });
   Object.values(bobByRef).forEach(r=>{
     if(used.has(r.ref)) return;
@@ -1410,8 +1396,6 @@ function pipelineData(){
   });
   return out;
 }
-// Open the Sales Pipeline at the "New enquiries to follow up" section
-function hpGoNewEnq(){ PIPE_FILTER={room:"",event:"",status:"",owner:"",source:"",search:""}; window._pipeGoNew=true; switchTab("pipeline"); }
 function roomIdFromName(name){ const r=ROOMS.find(x=>x.name===name); return r?r.id:""; }
 
 function renderPipeline(v){
@@ -1430,32 +1414,6 @@ function renderPipeline(v){
       <button class="btn ghost" id="enq-link">Copy chat link</button>
     </div>`;
   v.appendChild(tb);
-  // ── New enquiries to follow up (website planner, events chat): newest first ──
-  { const esc=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
-    const fresh=pipelineData().filter(e=>e._webNew).sort((a,b)=>String(b.created||"").localeCompare(String(a.created||"")));
-    const dt=d=>{ if(!d) return "TBC"; const x=new Date(String(d).length<=10?d+"T12:00:00":d); return isNaN(x)?"TBC":x.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}); };
-    const rcv=d=>{ const x=new Date(d); return isNaN(x)?"—":x.toLocaleDateString("en-GB",{day:"numeric",month:"short"})+" "+x.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}); };
-    const etl=e=>e.eventLabel||(EVENT_TYPES.find(t=>t.id===e.event)||{}).label||"Event";
-    const sec=el("div"); sec.id="new-enquiries";
-    sec.style.cssText=`background:#fff;border:1px solid #e4e9ef;border-left:5px solid ${fresh.length?'#c62828':'#4a9d7f'};border-radius:12px;padding:14px 16px;margin:0 0 16px;scroll-margin-top:160px`;
-    sec.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="font-size:15px;font-weight:700;color:#1a2b3a">🔔 New enquiries to follow up <span style="background:${fresh.length?'#c62828':'#4a9d7f'};color:#fff;border-radius:20px;padding:1px 9px;font-size:12px;margin-left:4px">${fresh.length}</span></div>
-        <div style="font-size:11.5px;color:#5f6b78">${fresh.length?'Newest first. Open one, choose a stage and save to move it into the pipeline below.':'All caught up. New website enquiries appear here as soon as they arrive.'}</div></div>
-      ${fresh.length?`<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:13px">
-        <tr style="text-align:left;color:#5f6b78;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 8px">Received</th><th style="padding:6px 8px">Client</th><th style="padding:6px 8px">Event</th><th style="padding:6px 8px">Guests</th><th style="padding:6px 8px">Event date</th><th style="padding:6px 8px">Status</th><th></th></tr>
-        ${fresh.map((e,i)=>`<tr style="border-top:1px solid #eef1f4">
-          <td style="padding:8px;white-space:nowrap;color:#5f6b78">${rcv(e.created)}</td>
-          <td style="padding:8px"><b>${esc(e.name||"—")}</b>${e.company?`<div style="color:#5f6b78;font-size:11.5px">${esc(e.company)}</div>`:""}</td>
-          <td style="padding:8px">${esc(etl(e))}${e.webQuoteRef?`<div style="color:#5f6b78;font-size:11.5px">${esc(e.webQuoteRef)}</div>`:""}</td>
-          <td style="padding:8px">${e.pax||"—"}</td>
-          <td style="padding:8px;white-space:nowrap">${dt(e.date)}</td>
-          <td style="padding:8px">${e.stage==="Planner started"?'<span style="background:#fdf1e3;color:#9a5b12;border-radius:6px;padding:2px 7px;font-weight:700;font-size:11px">Started planner, not sent</span>':'<span style="background:#fdecea;color:#c62828;border-radius:6px;padding:2px 7px;font-weight:700;font-size:11px">'+esc(e.stage||"New enquiry")+'</span>'}</td>
-          <td style="padding:8px;white-space:nowrap;text-align:right">${e.webQuoteLink?`<a href="${esc(e.webQuoteLink)}" target="_blank" rel="noopener" style="font-weight:700;color:#1a2b3a;margin-right:10px">Quote</a>`:""}<button class="btn sm ne-open" data-i="${i}">Open</button></td></tr>`).join("")}
-      </table></div>`:""}`;
-    v.appendChild(sec);
-    sec.querySelectorAll(".ne-open").forEach(b=>b.onclick=()=>openEnquiryDetail(fresh[+b.dataset.i]));
-    if(window._pipeGoNew){ window._pipeGoNew=false; setTimeout(()=>sec.scrollIntoView({behavior:"smooth",block:"start"}),60); }
-  }
   $("#enq-new").onclick=()=>openEnquiryForm({});
   $("#enq-chat").onclick=()=>switchTab("chat");
   $("#enq-link").onclick=()=>{ const url=location.href.split("#")[0]+"#events-chat";
@@ -1469,13 +1427,12 @@ function renderPipeline(v){
     if(PIPE_FILTER.owner && e.owner!==PIPE_FILTER.owner) return false;
     if(PIPE_FILTER.event && e.event!==PIPE_FILTER.event) return false;
     if(PIPE_FILTER.source && e.source!==PIPE_FILTER.source) return false;
-    if(PIPE_FILTER.fresh && !e._webNew) return false;
     return true;
   });
-  const scopeActive = PIPE_FILTER.room||PIPE_FILTER.owner||PIPE_FILTER.event||PIPE_FILTER.source||PIPE_FILTER.fresh;
+  const scopeActive = PIPE_FILTER.room||PIPE_FILTER.owner||PIPE_FILTER.event||PIPE_FILTER.source;
   if(scopeActive){
     const chip=el("div","scope-chip");
-    chip.innerHTML=`<span>Filtered: <b>${[PIPE_FILTER.fresh?"New enquiries to follow up":"",PIPE_FILTER.owner,PIPE_FILTER.room,PIPE_FILTER.event?EVENT_TYPES.find(t=>t.id===PIPE_FILTER.event)?.label:"",PIPE_FILTER.source].filter(Boolean).join(" · ")}</b></span><button id="scope-clear">✕ Clear</button>`;
+    chip.innerHTML=`<span>Filtered: <b>${[PIPE_FILTER.owner,PIPE_FILTER.room,PIPE_FILTER.event?EVENT_TYPES.find(t=>t.id===PIPE_FILTER.event)?.label:"",PIPE_FILTER.source].filter(Boolean).join(" · ")}</b></span><button id="scope-clear">✕ Clear</button>`;
     v.appendChild(chip);
     $("#scope-clear").onclick=()=>{ PIPE_FILTER={room:"",event:"",status:"",owner:"",source:"",search:""}; render(); };
   }
@@ -1652,7 +1609,6 @@ function filteredPipe(){
     if(PIPE_FILTER.owner && e.owner!==PIPE_FILTER.owner) return false;
     if(PIPE_FILTER.source && e.source!==PIPE_FILTER.source) return false;
     if(PIPE_FILTER.search && !(e.name||"").toLowerCase().includes(PIPE_FILTER.search.toLowerCase())) return false;
-    if(PIPE_FILTER.fresh && !e._webNew) return false;
     return true;
   });
 }
@@ -1803,9 +1759,6 @@ function openEnquiryDetail(e){
       ${roomName?`<div class="stat"><div class="k">Room</div><div class="v" style="font-size:15px">${roomName}</div></div>`:""}
     </div>
     ${isBob?`<div class="bob-note">📊 From Rezlynx business-on-books (ref ${e.ref}). Editing below promotes it to a managed enquiry.</div>`:""}
-    ${e.webQuoteLink&&/^https:\/\/www\.brandonhallhotelandspa\.com\//.test(e.webQuoteLink)?`<div class="sec-title">🌐 Website quote ${e.webQuoteRef?`<span class="qs-sub">${e.webQuoteRef}</span>`:""}</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:8px">The specification and room plan this client built on the website${e.stage?` · ${e.stage}`:""}. The client has the same link.</p>
-    <div class="dual-btn"><a class="btn sm" href="${e.webQuoteLink}" target="_blank" rel="noopener">Open quote</a><a class="btn ghost sm" href="${e.webQuoteLink}&download=1" target="_blank" rel="noopener">Download PDF</a><button class="btn ghost sm" id="m-webq-copy">Copy link</button></div>`:""}
 
     <div class="sec-title">Manage</div>
     <div class="manage-grid">
@@ -2004,7 +1957,6 @@ Brandon Hall Hotel and Spa
   if($("#pay-default")) $("#pay-default").onclick=()=>{ paySched=stdSchedule(); renderPaySched(); };
   renderPaySched();
 
-  const wqc=$("#m-webq-copy"); if(wqc) wqc.onclick=()=>{ navigator.clipboard?.writeText(e.webQuoteLink).then(()=>{ wqc.textContent="Copied"; }); };
   $("#m-save").onclick=()=>{
     const newFollowUp=$("#m-followup").value;
     // if the follow-up date changed, record the previous one as "last follow-up"
@@ -3124,86 +3076,6 @@ function pieChart(data){
 
 /* ============================================================ MARKETING LIBRARY */
 let MKT_SECTION="logos";
-/* ============================================================ CHRISTMAS COMPETITION
-   Entries from www.brandonhallhotelandspa.com/christmas-competition/ (Firestore "competition").
-   Shows every entry, exports the mailing-list opt-ins and picks a random winner.
-   The winner is kept in meta/competition_xmas2026 so everyone sees the same result. */
-const COMP_ID="xmas2026", COMP_CLOSES="2026-12-14T23:59:59Z", COMP_URL="https://www.brandonhallhotelandspa.com/christmas-competition/";
-let COMP_ENTRIES=null, COMP_WINNER=null, COMP_LIVE=false;
-function compStart(){
-  if(COMP_LIVE || !(FB && FB.ready && FB.user && FB.db)) return;
-  COMP_LIVE=true;
-  FB.db.collection("competition").onSnapshot(s=>{ COMP_ENTRIES=s.docs.map(d=>({id:d.id,...d.data()})).filter(e=>e.campaign===COMP_ID)
-      .sort((a,b)=>String(b.created||"").localeCompare(String(a.created||""))); if(CURRENT_TAB==="competition") render(); },
-    err=>{ COMP_ENTRIES=[]; COMP_LIVE=false; window._compErr=err.message; if(CURRENT_TAB==="competition") render(); });
-  FB.db.collection("meta").doc("competition_"+COMP_ID).onSnapshot(d=>{ COMP_WINNER=d.exists?d.data():null; if(CURRENT_TAB==="competition") render(); }, ()=>{});
-}
-function compCsv(rows, name){
-  const cols=["created","firstName","lastName","email","phone","town","optIn","source"];
-  const q=x=>'"'+String(x==null?"":x).replace(/"/g,'""')+'"';
-  const csv=[cols.join(",")].concat(rows.map(r=>cols.map(c=>q(c==="created"?String(r.created||"").replace("T"," ").slice(0,16):r[c])).join(","))).join("\n");
-  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv"})); a.download=name; a.click();
-}
-function renderCompetition(v){
-  const esc=x=>String(x==null?"":x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
-  v.appendChild(head("🎄 Christmas competition 2026","Win a night for two with dinner. Entries from the website quiz, newest first."));
-  const box=el("div"); v.appendChild(box);
-  if(!(FB && FB.ready && FB.user)){ box.innerHTML=`<div class="card" style="padding:18px">Sign in with a live connection to see competition entries.</div>`; return; }
-  compStart();
-  if(COMP_ENTRIES===null){ box.innerHTML=`<div class="card" style="padding:18px">Loading entries…</div>`; return; }
-  if(window._compErr){ box.innerHTML=`<div class="card" style="padding:18px;color:#b3261e">Couldn't load entries (${esc(window._compErr)}). Check the "competition" rule has been added in Firebase → Firestore → Rules.</div>`; return; }
-  // one entry per person: keep the first entry for each email address
-  const byEmail={}; COMP_ENTRIES.slice().reverse().forEach(e=>{ const k=(e.email||"").toLowerCase(); if(k && !byEmail[k]) byEmail[k]=e; });
-  const unique=Object.values(byEmail), valid=unique.filter(e=>e.allCorrect && String(e.created||"")<=COMP_CLOSES);
-  const optins=unique.filter(e=>e.optIn), today=new Date().toISOString().slice(0,10);
-  const todayN=COMP_ENTRIES.filter(e=>String(e.created||"").slice(0,10)===today).length;
-  const closed=new Date()>new Date(COMP_CLOSES);
-  const W=COMP_WINNER;
-  const stat=(v,l,c)=>`<div style="background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06)"><div style="font-size:24px;font-weight:700;color:${c};line-height:1">${v}</div><div style="font-size:12px;color:#374151;margin-top:4px">${l}</div></div>`;
-  const srcs={}; unique.forEach(e=>{ const s=e.source||"direct"; srcs[s]=(srcs[s]||0)+1; });
-  box.innerHTML=`
-    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px">
-      ${stat(unique.length,"Entries (one per person)","#1a2b3a")}${stat(todayN,"Entered today","#4a9d7f")}${stat(optins.length,"Joined the mailing list","#c9a978")}${stat(closed?"Closed":"Open","Closes Sun 14 Dec 2026, 23:59","#c62828")}
-    </div>
-    <div class="card" style="padding:16px 18px;margin-bottom:14px">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <a class="btn ghost sm" href="${COMP_URL}" target="_blank" rel="noopener">Open the competition page</a>
-        <button class="btn ghost sm" id="cp-copy">Copy link for social</button>
-        <button class="btn ghost sm" id="cp-csv-opt">Download mailing list (${optins.length})</button>
-        <button class="btn ghost sm" id="cp-csv-all">Download all entries</button>
-        <button class="btn sm" id="cp-draw" style="margin-left:auto;background:#c62828;border-color:#c62828">🎁 ${W?"Draw again":"Pick a random winner"}</button>
-      </div>
-      <div style="font-size:11.5px;color:#5f6b78;margin-top:8px">Where entries came from: ${Object.entries(srcs).sort((a,b)=>b[1]-a[1]).map(([k,n])=>esc(k)+" "+n).join(" · ")||"—"}</div>
-      ${W?`<div style="margin-top:12px;padding:12px 14px;background:#fdf6e9;border-left:4px solid #c9a978;border-radius:8px">
-        🏆 <b>Winner: ${esc(W.firstName)} ${esc(W.lastName)}</b> · ${esc(W.email)}${W.phone?" · "+esc(W.phone):""}${W.town?" · "+esc(W.town):""}
-        <div style="font-size:11.5px;color:#5f6b78;margin-top:3px">Drawn at random from ${W.from} valid entries by ${esc(W.by)} on ${new Date(W.at).toLocaleString("en-GB")}</div></div>`:""}
-    </div>
-    <div class="card" style="padding:0;overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <tr style="text-align:left;color:#5f6b78;font-size:11px;text-transform:uppercase;letter-spacing:.4px;background:#f6f8f9"><th style="padding:9px 10px">Entered</th><th style="padding:9px 10px">Name</th><th style="padding:9px 10px">Email</th><th style="padding:9px 10px">Phone</th><th style="padding:9px 10px">Town</th><th style="padding:9px 10px">Mailing list</th><th style="padding:9px 10px">Source</th></tr>
-        ${COMP_ENTRIES.length?COMP_ENTRIES.map(e=>`<tr style="border-top:1px solid #eef1f4${byEmail[(e.email||"").toLowerCase()]!==e?";opacity:.5":""}">
-          <td style="padding:8px 10px;white-space:nowrap">${new Date(e.created).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</td>
-          <td style="padding:8px 10px"><b>${esc(e.firstName)} ${esc(e.lastName)}</b>${byEmail[(e.email||"").toLowerCase()]!==e?' <span style="font-size:11px;color:#9a5b12">repeat entry</span>':""}</td>
-          <td style="padding:8px 10px">${esc(e.email)}</td><td style="padding:8px 10px">${esc(e.phone||"—")}</td><td style="padding:8px 10px">${esc(e.town||"—")}</td>
-          <td style="padding:8px 10px">${e.optIn?"✓ Yes":"—"}</td><td style="padding:8px 10px;color:#5f6b78">${esc(e.source||"direct")}</td></tr>`).join("")
-          :`<tr><td colspan="7" style="padding:18px;color:#5f6b78">No entries yet. Share the link on social to get things going.</td></tr>`}
-      </table>
-    </div>`;
-  $("#cp-copy").onclick=()=>{ navigator.clipboard?.writeText(COMP_URL+"?src=facebook"); toast("Link copied: "+COMP_URL+"?src=facebook"); };
-  $("#cp-csv-opt").onclick=()=>compCsv(optins,"brandon-hall-mailing-list-christmas-2026.csv");
-  $("#cp-csv-all").onclick=()=>compCsv(unique,"brandon-hall-competition-entries-2026.csv");
-  $("#cp-draw").onclick=async()=>{
-    if(!valid.length){ toast("No valid entries to draw from yet"); return; }
-    if(!closed && !confirm("The competition doesn't close until Sunday 14 December. Draw a winner now anyway?")) return;
-    if(W && !confirm("A winner has already been drawn. Draw a new one? This replaces "+W.firstName+" "+W.lastName+".")) return;
-    const pick=valid[Math.floor((crypto.getRandomValues(new Uint32Array(1))[0]/4294967296)*valid.length)];
-    const rec={ entryId:pick.id, firstName:pick.firstName||"", lastName:pick.lastName||"", email:pick.email||"", phone:pick.phone||"", town:pick.town||"",
-      from:valid.length, by:(SESSION&&SESSION.name)||"", at:new Date().toISOString() };
-    try{ await FB.db.collection("meta").doc("competition_"+COMP_ID).set(rec); toast("🏆 Winner: "+rec.firstName+" "+rec.lastName); }
-    catch(err){ toast("Couldn't save the winner: "+err.message); }
-  };
-}
-
 function renderMarketing(v){
   v.appendChild(head("Marketing Library","All Brandon Hall marketing content in one place — browse, download and upload to each section."));
 
@@ -4556,13 +4428,6 @@ function renderSocialPreview(){
    quick link; for everyone else it shows greyed out. The P&L page also has its
    own logins (Ajay/Raj/Alia) as a second layer. */
 const HP_FIN_KEYS = ['ajay.kawa','raj.kumar','alia.taub'];
-// Signed in to HOSPRO as Ajay, Raj or Alia: hand the sign-in to the Financial Overview so its
-// login page is skipped. A one-time pass, valid for 60 seconds, read (and removed) by pl/index.html.
-function hpFinSSO(){ try{
-  const names={'ajay.kawa':'Ajay Kawa','raj.kumar':'Raj Kumar','alia.taub':'Alia Taub'};
-  const k=SESSION && SESSION._key; if(!names[k]) return;
-  localStorage.setItem('bhpl_sso', JSON.stringify({ user:names[k], exp:Date.now()+60000 }));
-}catch(e){} }
 
 function renderHome(v){
   const mods = userModules(SESSION?._key||"ajay.kawa");
@@ -4605,16 +4470,6 @@ function renderHome(v){
       </div>
     </div>`;
   wrap.appendChild(homeHero);
-
-  // ── New enquiries button: website planner and events chat leads nobody has opened and saved yet
-  //    (they arrive with status "new"). Opens Sales showing just those. ─────────────────────────
-  const freshN=PD.filter(e=>e._webNew).length;
-  const nb=document.createElement('button');
-  nb.className='hp-new-enq';
-  nb.style.cssText=`position:absolute;top:22px;right:24px;z-index:2;display:inline-flex;align-items:center;gap:9px;padding:11px 18px;border:0;border-radius:30px;cursor:pointer;font:700 14px Lato,system-ui,sans-serif;color:#fff;background:${freshN?'#c62828':'rgba(255,255,255,.18)'};box-shadow:${freshN?'0 4px 14px rgba(198,40,40,.45)':'none'}`;
-  nb.innerHTML=freshN?`🔔 <span style="background:#fff;color:#c62828;border-radius:20px;padding:1px 9px;font-size:13px">${freshN}</span> New ${freshN===1?'enquiry':'enquiries'} to follow up →`:`✓ No new enquiries`;
-  nb.onclick=()=>hpGoNewEnq();
-  homeHero.style.position='relative'; homeHero.querySelector('.hp-hero').style.position='relative'; homeHero.querySelector('.hp-hero').appendChild(nb);
 
   // ── Module cards — 2 rows of 6 ────────────────────────────────────────────
   const cardsSection = document.createElement('div');
@@ -4680,17 +4535,12 @@ function renderHome(v){
     { label:'Financial Overview', icon:'📊', url:'pl/',               colour:'#2a6a4a', fin:true },
     { label:'Daily F&B entry',    icon:'🍽', url:'fb-entry.html',      colour:'#8b5c8f' },
     { label:'Staff clock-in',     icon:'⏱', url:'clock.html',         colour:'#4a86c7' },
-    { label:'PMS',                icon:'🏨', url:'https://guestline.eu.auth0.com/login?state=hKFo2SA3YXhjWWszV2JfR2liT0ZtdExwSVFjSDVVZDI1SVVNVaFupWxvZ2luo3RpZNkgRGcya0JIWnBnLTdPV2pEQUI5ckU1M08xSEcyeDA1MkejY2lk2SBhM1RTRmg3OVpzWXBFcnZFSU5Pa2VvekhiSVBZUTNvYw&client=a3TSFh79ZsYpErvEINOkeozHbIPYQ3oc&protocol=oauth2&useRefreshTokensFallback=true&issuer=https%3A%2F%2Fguestline.eu.auth0.com%2F&scope=openid%20profile%20email%20offline_access&audience=https%3A%2F%2Fguestline.app&redirect_uri=https%3A%2F%2Fpms.eu.guestline.net%2Frezlynx%2FRLXWebForms%2Fsys%2Fwfrm_sys_LogOn.aspx%3Fsso_autoLogon%3Dtrue%26siteId%3DBRANDHALL&siteid=BRANDHALL&rezlynxlogin=true&response_type=code&response_mode=query', colour:'#1a2b3a' },
-    { label:'Saeker',             icon:'🛡', url:'https://7hospitalitymanagement.saeker.com/login', colour:'#b3261e' },
-    { label:'Website',            icon:'🌐', url:'https://www.brandonhallhotelandspa.com', colour:'#c9a978' },
-    { label:'Staff',              icon:'👤', url:'/staff',             colour:'#5f6b78' },
-    { label:'Coventry',           icon:'📍', url:'https://visitcoventry.co.uk/', colour:'#c62828' },
   ];
   const qStyle = c => `display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#fff;border:1px solid #e4e9ef;border-left:3px solid ${c};border-radius:9px;font:700 12px Lato;color:#1a2b3a;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,.05);cursor:pointer`;
   quick.innerHTML = `<span style="font-size:11px;font-weight:700;color:#8fa3b8;text-transform:uppercase;letter-spacing:.6px;margin-right:4px">Quick links</span>` +
     qLinks.map(q=> (q.fin && !finOK)
       ? `<span title="Finance team only — Ajay, Raj or Alia" style="${qStyle(q.colour)};opacity:.45;filter:grayscale(1);cursor:not-allowed">${q.icon} ${q.label} 🔒</span>`
-      : `<a href="${q.url}" target="_blank" rel="noopener"${q.fin?' onclick="hpFinSSO()"':''} style="${qStyle(q.colour)}">${q.icon} ${q.label}</a>`).join('');
+      : `<a href="${q.url}" target="_blank" rel="noopener" style="${qStyle(q.colour)}">${q.icon} ${q.label}</a>`).join('');
   wrap.appendChild(quick);
 
   // ── Stats bar — full width ─────────────────────────────────────────────────
@@ -8873,46 +8723,146 @@ const HH_HUB_STAFF = [
   ["Edwin","edwin","1013"],["Dushyanth","dushyanth","1014"],["Anisha","anisha","1015"]
 ];
 function hhOrigin(){ try{ return location.origin + location.pathname.replace(/[^/]*$/,''); }catch(e){ return ''; } }
+const HH_WIN_MIN = 30;  // default minutes per room (portal has no config file)
+const HH_CH = {todo:'#94a3b8', prog:'#d9930a', done:'#2E6B5E', over:'#b3261e'};
+function hhEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function hhNameFor(r){ if(r.housekeeperName) return r.housekeeperName; const m=HH_HUB_STAFF.find(s=>s[1]===r.housekeeper); return m?m[0]:(r.housekeeper||'—'); }
+function hhTodayISO(){ try{ return new Date().toLocaleDateString('en-CA'); }catch(e){ return new Date().toISOString().slice(0,10); } }
+async function hhFetchDay(dateISO){
+  if(typeof FB!=='undefined' && FB.db){
+    try{ const snap=await FB.db.collection('hoshouse_rooms').where('date','==',dateISO).get();
+      return snap.docs.map(d=>d.data()); }catch(e){ console.warn('hoshouse fetch', e&&e.code); }
+  }
+  try{ const m=JSON.parse(localStorage.getItem('hoshouse_day_'+dateISO)||'{}'); return Object.values(m); }catch(e){ return []; }
+}
+function hhDonut(segs,center){
+  const tot=segs.reduce((s,x)=>s+x.value,0)||1, R=54, C=2*Math.PI*R; let off=0;
+  const rings=segs.filter(s=>s.value>0).map(s=>{ const len=C*(s.value/tot); const el=`<circle r="${R}" cx="70" cy="70" fill="none" stroke="${s.color}" stroke-width="18" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${hhEsc(s.label)}: ${s.value}</title></circle>`; off+=len; return el; }).join('');
+  return `<svg viewBox="0 0 140 140" width="150" height="150" style="flex:0 0 auto">${rings}<circle r="54" cx="70" cy="70" fill="none" stroke="#eef1f5" stroke-width="18" style="${segs.some(s=>s.value>0)?'display:none':''}"></circle><text x="70" y="66" text-anchor="middle" font-size="26" font-weight="800" fill="#1a2b3a">${center.v}</text><text x="70" y="86" text-anchor="middle" font-size="10" fill="#8296a8">${hhEsc(center.k)}</text></svg>`;
+}
+function hhBars(items){
+  const max=Math.max(1,...items.map(i=>i.value));
+  return `<div style="display:flex;flex-direction:column;gap:8px">${items.map(i=>`
+    <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><b style="color:#1f2a37">${hhEsc(i.label)}</b><span style="color:#8296a8">${i.value}${i.sub?(' · '+hhEsc(i.sub)):''}</span></div>
+      <div style="background:#eef1f5;border-radius:6px;height:13px;overflow:hidden"><div style="width:${Math.round(i.value/max*100)}%;height:100%;background:linear-gradient(90deg,#2E6B5E,#3f9f78)"></div></div></div>`).join('')}</div>`;
+}
 function renderHosHouseHub(v){
   const base = hhOrigin();
-  const card = (icon,colour,title,desc,href,btn)=>`
-    <a href="${href}" target="_blank" style="display:flex;gap:14px;align-items:flex-start;text-decoration:none;background:#fff;border:1px solid #e4e9ef;border-left:4px solid ${colour};border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
-      <div style="width:46px;height:46px;border-radius:11px;background:${colour}1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${icon}</div>
-      <div style="flex:1">
-        <div style="font:800 15px Lato;color:#1a2b3a">${title}</div>
-        <div style="font-size:12.5px;color:#5b6b7b;margin-top:3px;line-height:1.5">${desc}</div>
-        <div style="margin-top:10px;display:inline-block;padding:7px 14px;background:${colour};color:#fff;border-radius:8px;font:700 12px Lato">${btn} ↗</div>
-      </div></a>`;
-
+  if(!window._hhDate) window._hhDate = hhTodayISO();
+  const chip = (icon,colour,title,href)=>`
+    <a href="${href}" target="_blank" title="${title}" style="display:inline-flex;gap:7px;align-items:center;text-decoration:none;background:#fff;border:1px solid #e4e9ef;border-left:3px solid ${colour};border-radius:9px;padding:8px 12px;font:700 12.5px Lato;color:#1a2b3a">
+      <span style="font-size:15px">${icon}</span>${title} <span style="color:${colour}">↗</span></a>`;
   const staffRows = HH_HUB_STAFF.map(([name,id,pin])=>`
     <tr style="border-bottom:1px solid #eef2f6">
-      <td style="padding:7px 10px;font-weight:600;color:#1a2b3a">${name}</td>
-      <td style="padding:7px 10px"><a href="${base}hoshouse.html?u=${id}" target="_blank" style="color:#2E6B5E;text-decoration:none">hoshouse.html?u=${id}</a></td>
-      <td style="padding:7px 10px;font-weight:700;color:#1a2b3a">${pin}</td>
-      <td style="padding:7px 10px"><button onclick="hhCopy('${base}hoshouse.html?u=${id}',this)" style="padding:4px 10px;border:1px solid #cfd8e0;background:#f6f8fa;border-radius:7px;font:600 11px Lato;cursor:pointer;color:#1a2b3a">Copy link</button></td>
+      <td style="padding:6px 10px;font-weight:600;color:#1a2b3a">${name}</td>
+      <td style="padding:6px 10px"><a href="${base}hoshouse.html?u=${id}" target="_blank" style="color:#2E6B5E;text-decoration:none">?u=${id}</a></td>
+      <td style="padding:6px 10px;font-weight:700;color:#1a2b3a">${pin}</td>
+      <td style="padding:6px 10px"><button onclick="hhCopy('${base}hoshouse.html?u=${id}',this)" style="padding:3px 9px;border:1px solid #cfd8e0;background:#f6f8fa;border-radius:6px;font:600 11px Lato;cursor:pointer;color:#1a2b3a">Copy</button></td>
     </tr>`).join('');
 
   v.innerHTML = `
-  <div style="max-width:1000px;margin:0 auto;padding:4px 2px 30px">
-    <div style="margin-bottom:6px;font:800 22px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping</div>
-    <div style="font-size:13px;color:#5b6b7b;margin-bottom:20px">Reception sets the day's rooms, housekeepers work from their phones, and Laith sees everything live. These open in a new tab.</div>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:26px">
-      ${card('📋','#3B6585','Reception — daily room form',"Opens on today's date. Tap the rooms that need cleaning and submit. This fills the housekeepers' apps instantly.",base+'hoshouse-entry.html','Open reception form')}
-      ${card('📱','#2E6B5E','Housekeeper app','The app each housekeeper uses. Personal links and PINs are listed below.',base+'hoshouse.html','Open housekeeper app')}
-      ${card('📊','#8a5a2b','Manager dashboard — Laith','Live board, productivity, alerts and CSV export. Passcode 4040.',base+'hoshouse-admin.html?mgr=laith','Open manager dashboard')}
+  <div style="max-width:1040px;margin:0 auto;padding:4px 2px 30px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div><div style="font:800 20px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping dashboard</div>
+        <div style="font-size:12.5px;color:#5b6b7b">Live room-cleaning progress, times and staff efficiency.</div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderDash()" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
+        <button onclick="hhRenderDash()" style="padding:7px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">↻ Refresh</button>
+      </div>
     </div>
 
-    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
-      <div style="font:800 15px Lato;color:#1a2b3a;margin-bottom:4px">Housekeeper personal links</div>
-      <div style="font-size:12px;color:#5b6b7b;margin-bottom:12px">Send each person their own link on WhatsApp. They tap it, enter their PIN once, then “Add to Home Screen” so it sits like an app.</div>
-      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
-        <tr style="background:#1F3864;color:#fff"><th style="padding:8px 10px;text-align:left">Housekeeper</th><th style="padding:8px 10px;text-align:left">Personal link</th><th style="padding:8px 10px;text-align:left">PIN</th><th style="padding:8px 10px;text-align:left"></th></tr>
+    <div id="hh-body"></div>
+
+    <div style="display:flex;gap:9px;flex-wrap:wrap;margin:18px 0 14px">
+      ${chip('📋','#3B6585','Reception form',base+'hoshouse-entry.html')}
+      ${chip('📱','#2E6B5E','Housekeeper app',base+'hoshouse.html')}
+      ${chip('📊','#8a5a2b','Full manager dashboard',base+'hoshouse-admin.html?mgr=laith')}
+      ${chip('👥','#6E4E7A','Staff & codes',base+'hoshouse-admin.html?mgr=laith')}
+    </div>
+
+    <details style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+      <summary style="cursor:pointer;font:800 13px Lato;color:#1a2b3a">Housekeeper personal links &amp; PINs</summary>
+      <div style="font-size:11.5px;color:#5b6b7b;margin:8px 0 10px">Send each person their link on WhatsApp. Add, remove or recode staff in the full dashboard → Staff.</div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+        <tr style="background:#1F3864;color:#fff"><th style="padding:7px 10px;text-align:left">Housekeeper</th><th style="padding:7px 10px;text-align:left">Link</th><th style="padding:7px 10px;text-align:left">PIN</th><th></th></tr>
         ${staffRows}
       </table></div>
-      <div style="font-size:11.5px;color:#8fa3b8;margin-top:12px">Full address is ${base || 'brandon.hospro.co.uk/'}hoshouse.html?u=&lt;name&gt;. Change PINs or the room list in the manager dashboard → Settings.</div>
-    </div>
+    </details>
   </div>`;
+  hhRenderDash();
+}
+async function hhRenderDash(){
+  const body=document.getElementById('hh-body'); if(!body) return;
+  const date=window._hhDate||hhTodayISO();
+  body.innerHTML=`<div style="padding:28px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:14px">Loading ${date}…</div>`;
+  const rooms=await hhFetchDay(date);
+  if(window._hhDate!==date && window._hhDate) { /* date changed mid-fetch */ }
+  const WIN=HH_WIN_MIN;
+  const over=r=> (r.status==='in_progress' && r.startAt && (Date.now()-r.startAt)/1000>WIN*60) || (r.status==='done' && (r.durationSec||0)>WIN*60);
+  const pend=rooms.filter(r=>r.status==='pending'), prog=rooms.filter(r=>r.status==='in_progress'), done=rooms.filter(r=>r.status==='done');
+  const overs=rooms.filter(over);
+  const pct=rooms.length?Math.round(done.length/rooms.length*100):0;
+  const avg=done.length?Math.round(done.reduce((a,r)=>a+(r.durationSec||0)/60,0)/done.length):0;
+  const onNow=new Set(prog.map(r=>r.housekeeper)).size;
+
+  if(!rooms.length){
+    body.innerHTML=`<div style="padding:30px;text-align:center;background:#fff;border:1px solid #e4e9ef;border-radius:14px">
+      <div style="font-size:30px;margin-bottom:6px">🧹</div>
+      <div style="font:800 15px Lato;color:#1a2b3a">No rooms set for ${date}</div>
+      <div style="font-size:12.5px;color:#8296a8;margin-top:4px">Reception submits the day's rooms on the daily form — once they do, the dashboard fills in here.</div></div>`;
+    return;
+  }
+
+  // per-person stats
+  const byHk={};
+  rooms.filter(r=>r.status==='done'||r.status==='in_progress').forEach(r=>{ const k=r.housekeeper||'?';
+    byHk[k]=byHk[k]||{name:hhNameFor(r),done:0,mins:0,over:0,prog:0};
+    if(r.status==='done'){ byHk[k].done++; byHk[k].mins+=(r.durationSec||0)/60; if((r.durationSec||0)>WIN*60) byHk[k].over++; }
+    if(r.status==='in_progress'){ byHk[k].prog++; if(over(r)) byHk[k].over++; }
+  });
+  const eff=Object.values(byHk).sort((a,b)=>b.done-a.done);
+
+  const tiles=[
+    ['Rooms today',rooms.length,'#1a2b3a','All rooms reception set for cleaning'],
+    ['Completed',done.length,'#2E6B5E','Rooms finished and checked'],
+    ['In progress',prog.length,'#d9930a','Rooms a housekeeper has started'],
+    ['Not done yet',pend.length,'#8296a8','Rooms not started'],
+    ['Over 30 min',overs.length,overs.length?'#b3261e':'#1a2b3a','Rooms taking longer than allowed'],
+    ['Avg min / room',avg,'#1a2b3a','Average time to clean a finished room'],
+  ];
+  const tileHtml=tiles.map(([k,vv,c,tip])=>`<div title="${hhEsc(tip)}" style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+    <div style="font:800 24px Lato;color:${c}">${vv}</div><div style="font-size:10.5px;color:#8296a8;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">${k}</div></div>`).join('');
+
+  const segs=[{label:'Completed',value:done.length,color:HH_CH.done},{label:'In progress',value:prog.length,color:HH_CH.prog},{label:'Not done',value:pend.length,color:HH_CH.todo},{label:'Over 30 min',value:overs.length,color:HH_CH.over}];
+  const legend=segs.map(s=>`<div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0"><span style="width:12px;height:12px;border-radius:3px;background:${s.color};display:inline-block"></span>${s.label}<b style="margin-left:auto;color:#1a2b3a">${s.value}</b></div>`).join('');
+
+  const effRows = eff.length ? eff.map(r=>{
+    const effPct=r.done&&r.mins?Math.min(100,Math.round(WIN/(r.mins/r.done)*100)):0;
+    const bar=`<div style="background:#eef1f5;border-radius:5px;height:9px;width:90px;display:inline-block;vertical-align:middle;overflow:hidden"><div style="width:${effPct}%;height:100%;background:${effPct>=90?'#2E6B5E':effPct>=70?'#d9930a':'#b3261e'}"></div></div> <span style="color:#8296a8">${effPct}%</span>`;
+    return `<tr style="border-top:1px solid #eef1f4"><td style="padding:8px 10px"><b>${hhEsc(r.name)}</b></td><td style="padding:8px 10px">${r.done}</td><td style="padding:8px 10px">${r.prog}</td><td style="padding:8px 10px">${r.done?Math.round(r.mins/r.done):'—'}</td><td style="padding:8px 10px;color:${r.over?'#b3261e':'#1f2a37'}">${r.over||0}</td><td style="padding:8px 10px">${r.done?bar:'<span style="color:#8296a8">—</span>'}</td></tr>`;
+  }).join('') : '<tr><td colspan="6" style="padding:14px;color:#8296a8">No rooms started yet.</td></tr>';
+
+  body.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px">${tileHtml}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="hh-dg">
+      <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:10px">Today's progress</div>
+        <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${hhDonut(segs,{v:pct+'%',k:'complete'})}<div style="flex:1;min-width:150px">${legend}</div></div>
+      </div>
+      <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:10px">Rooms done per person</div>
+        ${eff.length?hhBars(eff.map(e=>({label:e.name,value:e.done,sub:e.done?Math.round(e.mins/e.done)+'m avg':''}))):'<div style="color:#8296a8;font-size:13px">No rooms completed yet.</div>'}
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+      <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:8px">Staff efficiency</div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+        <tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Housekeeper</th><th style="padding:6px 10px">Rooms done</th><th style="padding:6px 10px">In progress</th><th style="padding:6px 10px">Avg min/room</th><th style="padding:6px 10px">Overruns</th><th style="padding:6px 10px">Efficiency</th></tr>
+        ${effRows}
+      </table></div>
+      <div style="font-size:11px;color:#8296a8;margin-top:8px">Efficiency = time allowed per room (${WIN} min) ÷ actual average. 100% = on or under target.</div>
+    </div>
+    <style>@media(max-width:720px){.hh-dg{grid-template-columns:1fr !important}}</style>`;
 }
 function hhCopy(txt, btn){
   try{ navigator.clipboard.writeText(txt); const o=btn.textContent; btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent=o,1200); }
@@ -9716,7 +9666,6 @@ function hpModuleStats(id){
       const p=hpSafe(pipe,[]);
       const open=p.filter(e=>["enquiry","provisional"].includes(e.status));
       return [
-        [p.filter(e=>e._webNew).length, "New enquiries to follow up", "pipelineNew", "#c62828", true],
         [hpMoney(open.reduce((s,e)=>s+(+e.value||0),0)), "Open pipeline value", "pipeline", "#8b5c8f"],
         [open.filter(e=>e.followUp && e.followUp<todayK).length, "Follow-ups overdue", "pipeline", "#b3261e", true],
         [p.filter(e=>e.status==="confirmed" && String(e.date||"").startsWith(monthK)).length, "Events confirmed this month", "pipeline", "#2a6a4a"],
@@ -9807,7 +9756,7 @@ function hpLandingExtras(m){
       box.innerHTML+=`<div class="hp-sec-h">Today at a glance</div>
         <div class="hp-glance">${stats.map(([v,l,tab,col,alert])=>{
           const hot = alert && Number(v)>0;
-          return `<button class="hp-stat${hot?' hot':''}" onclick="${tab==='pipelineNew'?'hpGoNewEnq()':`switchTab('${tab}')`}" style="--acc:${hot?'#b3261e':m.colour}">
+          return `<button class="hp-stat${hot?' hot':''}" onclick="switchTab('${tab}')" style="--acc:${hot?'#b3261e':m.colour}">
             <span class="hp-stat-v">${v}</span><span class="hp-stat-l">${l}</span><span class="hp-stat-go">Open →</span></button>`; }).join("")}</div>`;
     }
   }
