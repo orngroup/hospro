@@ -143,7 +143,8 @@ function HOSREV_DEFAULTS(){
     execRules:{ underTwin:true, underTwinBy:0.10, lowOccNudgePct:0.08, allowDropSupplement:true },
 
     general:{ window:365, maxWindow:365, quietThreshold:0.55, compressionPct:0.12,
-              capDailyChange:false, maxDailyChangePct:0.15, updatesPerDay:2, currency:"GBP" },
+              capDailyChange:false, maxDailyChangePct:0.15, updatesPerDay:2, currency:"GBP",
+              geniusRef:true },   // price against the Booking Genius rate (shown − 10%) when the feed provides it
 
     // Who signs off rates day to day (pending Ajay's approval)
     approver:"Patrik Vlach",
@@ -258,12 +259,16 @@ function hosrevLockedFor(date, s){
 }
 /* Weighted competitor reference: real competitors (comp set weight) count more
    than aspirational ones. Falls back to the plain median. */
+/* Effective competitor rate the engine prices against: the Booking Genius rate
+   (shown − 10%, the price a logged-in guest actually pays) when the feed provides
+   it and geniusRef is on; otherwise the shown rate. */
+function hrEffRate(s, x){ return (s && s.general && s.general.geniusRef!==false && x && x.genius) ? x.genius : (x? x.rate : null); }
 function hosrevCompRef(s, compArr){
-  const rates=(compArr||[]).map(x=>x.rate).filter(Boolean);
+  const rates=(compArr||[]).map(x=>hrEffRate(s,x)).filter(Boolean);
   if(!rates.length) return null;
   const wByHotel={}; (s.compSet||[]).forEach(c=>{ wByHotel[c.hotel]=(c.weight!=null?c.weight:2); });
   let num=0, den=0;
-  (compArr||[]).forEach(x=>{ if(!x.rate) return; const w=(wByHotel[x.hotel]!=null?wByHotel[x.hotel]:2); num+=x.rate*w; den+=w; });
+  (compArr||[]).forEach(x=>{ const er=hrEffRate(s,x); if(!er) return; const w=(wByHotel[x.hotel]!=null?wByHotel[x.hotel]:2); num+=er*w; den+=w; });
   if(den) return Math.round(num/den);
   const srt=rates.slice().sort((a,b)=>a-b); return srt[Math.floor(srt.length/2)];
 }
@@ -512,7 +517,7 @@ function renderRevCompset(v){
   const wByHotel={}; (s.compSet||[]).forEach(c=>{ wByHotel[c.hotel]=c; });
   v.innerHTML = `
     <div class="page-head"><h2>Competitors</h2>
-      <p>Our ${rt.name} rate against the comp set for the next 14 nights. The comp reference is <b>weighted</b> — primary rivals count more than aspirational ones.</p></div>
+      <p>Our ${rt.name} rate against the comp set for the next 14 nights. The comp reference is <b>weighted</b> — primary rivals count more than aspirational ones — and priced against the <b>Booking Genius</b> rate (shown − 10%), the price a logged-in guest actually pays. Each cell shows the displayed rate with the Genius estimate (<span class="hr-muted">G</span>) beneath.</p></div>
     <div class="hr-scroll">
     <table class="pipe-table hr-matrix">
       <thead><tr><th>Hotel</th>${days.map(d=>`<th>${hrDowName(d)}<br>${hrFmtDate(d)}</th>`).join("")}</tr></thead>
@@ -522,8 +527,11 @@ function renderRevCompset(v){
           return `<td><b>${hrMoney(r.rec)}</b></td>`;}).join("")}</tr>
         ${hotels.map(h=>{ const cs=wByHotel[h]; const tag=cs?` <span class="hr-muted">${cs.tier==='Primary'?'●':'○'}×${cs.weight}</span>`:'';
           return `<tr><td>${h}${tag}</td>${days.map(d=>{
-          const rec=HosrevStore.comp(d).find(x=>x.hotel===h); return `<td>${rec?hrMoney(rec.rate):'—'}</td>`;}).join("")}</tr>`;}).join("")}
-        <tr class="hr-medrow"><td><i>Comp ref (weighted)</i></td>${days.map(d=>{
+          const rec=HosrevStore.comp(d).find(x=>x.hotel===h);
+          if(!rec) return `<td>—</td>`;
+          const g=rec.genius?`<br><span class="hr-muted" style="font-size:11px">G ${hrMoney(rec.genius)}</span>`:'';
+          return `<td>${hrMoney(rec.rate)}${g}</td>`;}).join("")}</tr>`;}).join("")}
+        <tr class="hr-medrow"><td><i>Comp ref (weighted, Genius)</i></td>${days.map(d=>{
           const m=hosrevCompRef(s, HosrevStore.comp(d));
           return `<td><i>${m?hrMoney(m):'—'}</i></td>`;}).join("")}</tr>
       </tbody>
@@ -531,7 +539,7 @@ function renderRevCompset(v){
     <div class="sf-panel" style="margin-top:16px">
       <div class="sf-panel-head"><h3>Comp set</h3><a class="sf-link" onclick="switchTab('revSettings')">Edit in Settings →</a></div>
       ${HosrevStore._feed
-        ? `<p class="hr-muted">${HosrevStore._feed.mock?'🧪 <b>Mock feed</b> (structure test).':'🟢 <b>Live rate feed connected.</b>'} Pulled <b>${HosrevStore._feed.pulled?new Date(HosrevStore._feed.pulled).toLocaleString("en-GB"):'—'}</b> · ${HosrevStore._feed.nights} nights · source ${HosrevStore._feed.source}. These are real displayed OTA rates (incl. non-refundable advance-purchase and public deals). Booking.com <b>logged-in Genius</b> rates need a pro shopper (Lighthouse) — a later upgrade.</p>`
+        ? `<p class="hr-muted">${HosrevStore._feed.mock?'🧪 <b>Mock feed</b> (structure test).':'🟢 <b>Live rate feed connected.</b>'} Pulled <b>${HosrevStore._feed.pulled?new Date(HosrevStore._feed.pulled).toLocaleString("en-GB"):'—'}</b> · ${HosrevStore._feed.nights} nights · source ${HosrevStore._feed.source}. These are real displayed OTA rates (incl. non-refundable advance-purchase and public deals). We also apply a <b>Booking Genius</b> estimate — shown rate − 10% — which the engine prices against (a logged-in member rate from a pro shopper like Lighthouse would be a later upgrade).</p>`
         : `<p class="hr-muted"><b>The feed must be the real displayed consumer rate.</b> To be correct it has to capture promotions as a guest sees them on Booking.com — Genius discount, Getaway deal — and the 10% non-refundable advance-purchase rate. Anything less and the automation is pricing against the wrong number. The SerpApi rate-shopper (tools/hosrev-rateshop.mjs) publishes this to hosrev-comp.json twice a day; we never scrape OTAs directly. Currently showing demo rates.</p>`}
     </div>`;
 }
