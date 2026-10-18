@@ -2065,6 +2065,8 @@ function renderAdmin(v){
 function adminGroupsArr(){ return Object.keys(ACCESS_CONFIG.groups||{}).map(id=>[id, ACCESS_CONFIG.groups[id]]); }
 function adminPermLabel(p){ return (TAB_META[p] && TAB_META[p].label) || (PERM_EXTRA.find(x=>x.id===p)||{}).label || p; }
 function adminGroupName(id){ const g=ACCESS_CONFIG.groups[id]; return g?g.name:(id||"—"); }
+/* a user may be in several groups — return their group ids (new array or old string) */
+function adminUserGroups(u){ if(!u) return []; if(Array.isArray(u.groups)&&u.groups.length) return u.groups.slice(); if(u.group) return [u.group]; return []; }
 function adminLoginSlots(){
   // available login keys from firebase-config (if present), marking which are taken
   try{ if(typeof FB_LOGINS==="object" && FB_LOGINS) return Object.keys(FB_LOGINS); }catch(e){}
@@ -2093,7 +2095,7 @@ function adminUsersView(host){
         <td>${u.position||"—"}</td>
         <td>${u.email||"—"}</td>
         <td>${u.phone||"—"}</td>
-        <td><span style="display:inline-block;padding:3px 10px;border-radius:20px;background:#eef2f8;color:${ADMIN_NAVY};font-weight:600;font-size:12px">${adminGroupName(u.group)}</span></td>
+        <td>${(adminUserGroups(u).map(gid=>`<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:#eef2f8;color:${ADMIN_NAVY};font-weight:600;font-size:12px;margin:2px 3px 2px 0">${adminGroupName(gid)}</span>`).join("")) || '<span style="color:#9ca3af">— none —</span>'}</td>
         <td style="font-family:monospace;font-size:12px;color:#6b7280">${k}</td>
         <td style="white-space:nowrap">
           <button class="au-edit" data-k="${k}" style="padding:5px 11px;border:1px solid ${ADMIN_NAVY};border-radius:7px;background:#fff;color:${ADMIN_NAVY};font:600 12px Lato;cursor:pointer">Edit</button>
@@ -2115,8 +2117,9 @@ function adminUsersView(host){
 
 function adminUserModal(key){
   const isNew=!key;
-  const u = isNew ? {name:"",position:"",email:"",phone:"",group:"sales"} : (ACCESS_CONFIG.users[key]||{});
+  const u = isNew ? {name:"",position:"",email:"",phone:"",groups:["sales"]} : (ACCESS_CONFIG.users[key]||{});
   const groups=adminGroupsArr();
+  const myGroups = adminUserGroups(u);
   const takenKeys=Object.keys(ACCESS_CONFIG.users||{});
   const slots=adminLoginSlots();
   const slotOpts = slots.map(s=>{
@@ -2134,10 +2137,12 @@ function adminUserModal(key){
         <input id="au-email" type="email" value="${(u.email||"").replace(/"/g,'&quot;')}" placeholder="name@brandonhall.co.uk" style="width:100%;margin-top:4px;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font:400 14px Lato"></label>
       <label style="font:600 12px Lato;color:#374151">Phone number
         <input id="au-phone" value="${(u.phone||"").replace(/"/g,'&quot;')}" placeholder="07…" style="width:100%;margin-top:4px;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font:400 14px Lato"></label>
-      <label style="font:600 12px Lato;color:#374151">Security group
-        <select id="au-group" style="width:100%;margin-top:4px;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font:400 14px Lato">
-          ${groups.map(([id,g])=>`<option value="${id}" ${u.group===id?"selected":""}>${g.name}</option>`).join("")}
-        </select></label>
+      <div style="font:600 12px Lato;color:#374151">Security groups <span style="color:#9ca3af;font-weight:400">(tick one or more — they see the combined access)</span>
+        <div style="margin-top:6px;display:grid;gap:7px;border:1px solid #d1d5db;border-radius:8px;padding:10px 12px;max-height:180px;overflow:auto">
+          ${groups.map(([id,g])=>`<label style="display:flex;align-items:center;gap:9px;font:400 14px Lato;cursor:pointer">
+            <input type="checkbox" class="au-grp" value="${id}" ${myGroups.indexOf(id)>=0?"checked":""} style="width:16px;height:16px;accent-color:${ADMIN_NAVY};cursor:pointer">
+            <span>${g.name}</span></label>`).join("")}
+        </div></div>
       <label style="font:600 12px Lato;color:#374151">Login slot ${isNew?"":"<span style='color:#9ca3af'>(fixed)</span>"}
         <select id="au-key" ${isNew?"":"disabled"} style="width:100%;margin-top:4px;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font:400 14px Lato;font-family:monospace">
           ${slotOpts}
@@ -2155,9 +2160,11 @@ function adminUserModal(key){
     if(!name){ toast("Please enter a name"); return; }
     if(!k){ toast("Please choose a login slot"); return; }
     if(isNew && ACCESS_CONFIG.users[k]){ toast("That login slot is already in use"); return; }
+    const chosen=[...document.querySelectorAll("input.au-grp:checked")].map(c=>c.value);
+    if(!chosen.length){ toast("Pick at least one security group"); return; }
     ACCESS_CONFIG.users[k] = {
       name, position:$("#au-pos").value.trim(), email:$("#au-email").value.trim(),
-      phone:$("#au-phone").value.trim(), group:$("#au-group").value
+      phone:$("#au-phone").value.trim(), groups:chosen
     };
     hpAccessSave(); closeModal(); toast(isNew?"User added":"User saved"); render();
   };
@@ -2195,7 +2202,7 @@ function adminGroupsView(host){
       const del=el("button",""); del.textContent="🗑"; del.title="Delete group";
       del.style.cssText="border:none;background:none;cursor:pointer;font-size:12px";
       del.onclick=()=>{
-        const inUse=Object.values(ACCESS_CONFIG.users||{}).filter(u=>u.group===id).length;
+        const inUse=Object.values(ACCESS_CONFIG.users||{}).filter(u=>adminUserGroups(u).indexOf(id)>=0).length;
         if(inUse){ toast(`${inUse} user(s) are in this group — move them first`); return; }
         if(!confirm(`Delete the "${g.name}" group?`)) return;
         delete ACCESS_CONFIG.groups[id]; hpAccessSave(); toast("Group deleted"); render();

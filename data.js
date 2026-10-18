@@ -1016,40 +1016,49 @@ let ACCESS_CONFIG = JSON.parse(JSON.stringify(DEFAULT_ACCESS));
 try{ window.ACCESS_CONFIG = ACCESS_CONFIG; }catch(e){}
 
 function hpCurrentUserKey(userKey){ return userKey || (typeof SESSION!=="undefined" && SESSION && SESSION._key) || ""; }
-function hpGroupOf(userKey){
+/* A user can belong to MORE THAN ONE security group — they see the combined
+   set of everything those groups allow. Supports both the new `groups` array
+   and the old single `group` string, so older saved configs keep working. */
+function hpGroupsOf(userKey){
   const k=hpCurrentUserKey(userKey);
   const u=ACCESS_CONFIG.users&&ACCESS_CONFIG.users[k];
-  if(u&&u.group) return u.group;
-  // fallback for unmapped keys: original admins are directors, everyone else gets nothing until assigned
-  if(ROLE_ACCESS[k]==="all") return "director";
-  return "";
+  if(u){
+    if(Array.isArray(u.groups) && u.groups.length) return u.groups.slice();
+    if(u.group) return [u.group];
+  }
+  // fallback for unmapped keys: original admins are directors
+  if(ROLE_ACCESS[k]==="all") return ["director"];
+  return [];
 }
+/* Legacy single-group helper — returns the first group (kept for any old callers) */
+function hpGroupOf(userKey){ const gs=hpGroupsOf(userKey); return gs.length?gs[0]:""; }
 function hpGroupAllows(groupId, perm){
   const g=ACCESS_CONFIG.groups&&ACCESS_CONFIG.groups[groupId];
   if(!g) return false;
   if(g.allow==="all") return true;
   return Array.isArray(g.tabs) && g.tabs.indexOf(perm)>=0;
 }
+/* Does ANY of the user's groups grant this permission? */
+function hpUserAllows(perm, userKey){
+  return hpGroupsOf(userKey).some(g=>hpGroupAllows(g, perm));
+}
 /* Can the current user open this tab/permission? */
 function hpCanTab(tab, userKey){
   if(tab==="home") return true;
-  const g=hpGroupOf(userKey);
-  if(!g) return false;
-  return hpGroupAllows(g, tab);
+  return hpUserAllows(tab, userKey);
 }
-/* Can the current user open this module (any tab in it allowed)? */
+/* Can the current user open this module (any tab in it allowed, across all their groups)? */
 function hpCanAccess(modId, userKey){
-  const g=hpGroupOf(userKey);
-  if(!g) return false;
-  if(hpGroupAllows(g,"__all__")) return true;
-  const grp=ACCESS_CONFIG.groups[g];
-  if(grp && grp.allow==="all") return true;
+  const gs=hpGroupsOf(userKey);
+  if(!gs.length) return false;
+  // any "all" group sees everything
+  if(gs.some(g=>{ const grp=ACCESS_CONFIG.groups[g]; return grp && grp.allow==="all"; })) return true;
   const m=(FLOW_MODULES||[]).find(x=>x.id===modId);
-  if(!m) return hpGroupAllows(g, modId);
-  return (m.tabs||[]).some(t=>hpGroupAllows(g,t));
+  if(!m) return hpUserAllows(modId, userKey);
+  return (m.tabs||[]).some(t=>hpUserAllows(t, userKey));
 }
-function hpCanFinancial(userKey){ const g=hpGroupOf(userKey); return !!g && hpGroupAllows(g,"financial"); }
-function hpIsAdmin(userKey){ const g=hpGroupOf(userKey); return !!g && hpGroupAllows(g,"admin"); }
+function hpCanFinancial(userKey){ return hpUserAllows("financial", userKey); }
+function hpIsAdmin(userKey){ return hpUserAllows("admin", userKey); }
 function userModules(userKey){
   return (FLOW_MODULES||[]).filter(m=>hpCanAccess(m.id,userKey));
 }
