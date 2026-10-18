@@ -8730,14 +8730,18 @@ function hhOrigin(){ try{ return location.origin + location.pathname.replace(/[^
 function hpHelpEntry(key){
   if(typeof HELP_CONTENT!=="undefined" && HELP_CONTENT[key]) return HELP_CONTENT[key];
   if(typeof HELP_TOOLS!=="undefined" && HELP_TOOLS[key]) return HELP_TOOLS[key];
+  if(typeof HELP_GS!=="undefined"){ const g=HELP_GS.find(x=>x.id===key); if(g) return g; }
   return null;
 }
 function hpHelpTitle(key){ const H=hpHelpEntry(key); if(H&&H.t) return H.t; const m=(typeof TAB_META!=="undefined"&&TAB_META[key]); return m?m.label:key; }
 function hpHelpBodyHTML(H){
   if(!H) return `<p style="color:#6b7280;font-size:13.5px">No guide for this page yet — tell Ajay and we'll add one.</p>`;
-  const how=(H.h&&H.h.length)?`<div style="font:700 12px Lato;color:#1a2b3a;margin:14px 0 4px">How to use it</div><ol style="margin:0;padding-left:18px;color:#374151;font-size:13px;line-height:1.75">${H.h.map(x=>`<li>${x}</li>`).join('')}</ol>`:'';
-  const tips=(H.tip&&H.tip.length)?`<div style="margin-top:12px;background:#fff7e8;border:1px solid #f0d9ad;border-radius:9px;padding:9px 12px;font-size:12.5px;color:#7a5a1e;line-height:1.6">💡 ${H.tip.join('<br>💡 ')}</div>`:'';
-  return `<p style="font-size:13.5px;color:#374151;line-height:1.6;margin:0">${H.w||''}</p>${how}${tips}`;
+  const what=`<p style="font-size:14px;color:#374151;line-height:1.6;margin:0 0 2px">${H.w||''}</p>`;
+  const img=(H.img && typeof HELP_SVG!=="undefined" && HELP_SVG[H.img])?`<div style="margin:12px 0 6px">${HELP_SVG[H.img]}</div>`:'';
+  const how=(H.h&&H.h.length)?`<div style="font:700 12.5px Lato;color:#1a2b3a;margin:16px 0 5px">How to use it — step by step</div><ol style="margin:0;padding-left:20px;color:#374151;font-size:13.5px;line-height:1.9">${H.h.map(x=>`<li>${x}</li>`).join('')}</ol>`:'';
+  const see=(H.see)?`<div style="margin-top:12px;font-size:13px;color:#4b5563;background:#f5f7f9;border-radius:8px;padding:9px 12px"><b>What you'll see:</b> ${H.see}</div>`:'';
+  const tips=(H.tip&&H.tip.length)?`<div style="margin-top:12px;background:#fff7e8;border:1px solid #f0d9ad;border-radius:9px;padding:10px 12px;font-size:12.5px;color:#7a5a1e;line-height:1.65">💡 ${H.tip.join('<br>💡 ')}</div>`:'';
+  return `${what}${img}${how}${see}${tips}`;
 }
 function hpHelpOpen(key){
   key = key || (typeof CURRENT_TAB!=="undefined" ? String(CURRENT_TAB).replace(/^mod:/,'') : 'home');
@@ -8765,28 +8769,52 @@ function hpEnsureHelpButton(){
   b.onclick=()=>hpHelpOpen();
   document.body.appendChild(b);
 }
+function hpHelpSections(){
+  const mods=(typeof FLOW_MODULES!=="undefined")?FLOW_MODULES:[];
+  const secs=[];
+  secs.push({name:"Getting Started", keys:(typeof HELP_GS!=="undefined"?HELP_GS.map(g=>g.id):[])});
+  secs.push({name:"General", keys:["home"].filter(k=>typeof HELP_CONTENT!=="undefined"&&HELP_CONTENT[k])});
+  mods.forEach(m=>{ const keys=(m.tabs||[]).filter(t=>typeof HELP_CONTENT!=="undefined"&&HELP_CONTENT[t]); if(keys.length) secs.push({name:m.name, keys}); });
+  secs.push({name:"Tools", keys:(typeof HELP_TOOLS!=="undefined"?Object.keys(HELP_TOOLS):[])});
+  return secs;
+}
 function renderHelp(v){
-  v.innerHTML=`<div style="max-width:900px;margin:0 auto;padding:4px 2px 44px">
-    <div style="font:800 22px Lato;color:#1a2b3a;margin-bottom:4px">❔ Help &amp; Guides</div>
-    <div style="font-size:13px;color:#5b6b7b;margin-bottom:14px">How to use any page in HosPRO. Search below or pick from the list — and remember you can tap the <b>?</b> button on any page for its guide.</div>
-    <input id="help-search" placeholder="🔍 Search pages and guides…" oninput="hpHelpFilter(this.value)" autocomplete="off" style="width:100%;padding:11px 14px;border:1px solid #d7dde4;border-radius:10px;font:14px Lato;margin-bottom:8px">
-    <div id="help-list"></div>
-  </div>`;
-  hpHelpFilter('');
+  if(!window._helpActive) window._helpActive="gs-welcome";
+  v.innerHTML=`<div style="max-width:1080px;margin:0 auto;padding:2px 2px 44px">
+    <div style="font:800 22px Lato;color:#1a2b3a;margin-bottom:2px">❔ Help Centre</div>
+    <div style="font-size:13px;color:#5b6b7b;margin-bottom:14px">Simple, step-by-step guides for every page. Pick a topic on the left, or search. On any page you can also tap the round <b>?</b> button for instant help.</div>
+    <div class="help-wrap" style="display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start">
+      <div>
+        <input id="help-search" placeholder="🔍 Search…" oninput="hpHelpFilter(this.value)" autocomplete="off" style="width:100%;padding:10px 12px;border:1px solid #d7dde4;border-radius:9px;font:13.5px Lato;margin-bottom:10px">
+        <div id="help-nav" style="max-height:74vh;overflow:auto;border:1px solid #e4e9ef;border-radius:12px;background:#fff;padding:8px;box-shadow:0 1px 2px rgba(0,0,0,.03)"></div>
+      </div>
+      <div id="help-content" style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:22px 24px;box-shadow:0 1px 3px rgba(0,0,0,.04);min-height:420px"></div>
+    </div>
+  </div>
+  <style>@media(max-width:760px){.help-wrap{grid-template-columns:1fr !important}#help-nav{max-height:none !important}}</style>`;
+  hpHelpFilter("");
+  hpHelpShow(window._helpActive);
 }
 function hpHelpFilter(q){
-  const box=document.getElementById('help-list'); if(!box) return;
+  const nav=document.getElementById('help-nav'); if(!nav) return;
   q=(q||'').toLowerCase().trim();
-  const mods=(typeof FLOW_MODULES!=="undefined")?FLOW_MODULES:[];
   const match=(key)=>{ const H=hpHelpEntry(key); if(!H) return false; if(!q) return true; return ((H.t||'')+' '+(H.w||'')+' '+key).toLowerCase().includes(q); };
-  const card=(key)=>{ const H=hpHelpEntry(key); return `<button onclick="hpHelpOpen('${key}')" style="display:block;width:100%;text-align:left;background:#fff;border:1px solid #e4e9ef;border-radius:10px;padding:11px 14px;margin-bottom:7px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03)">
-     <div style="font:700 13.5px Lato;color:#1a2b3a">${H.t} <span style="color:#8a5a2b">›</span></div>
-     <div style="font-size:12px;color:#8296a8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${H.w||''}</div></button>`; };
-  const section=(name,keys)=>{ const t=keys.filter(match); if(!t.length) return ''; return `<div style="font:800 11.5px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 7px">${name}</div>${t.map(card).join('')}`; };
-  let html=section('General',['home']);
-  mods.forEach(m=>{ html+=section(m.name, m.tabs||[]); });
-  html+=section('Tools', (typeof HELP_TOOLS!=="undefined")?Object.keys(HELP_TOOLS):[]);
-  box.innerHTML = html || '<p style="color:#8296a8;padding:16px 0">No guides match your search.</p>';
+  let html='';
+  hpHelpSections().forEach(sec=>{
+    const keys=sec.keys.filter(match); if(!keys.length) return;
+    html+=`<div style="font:800 10.5px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin:10px 8px 5px">${sec.name}</div>`;
+    html+=keys.map(k=>{ const H=hpHelpEntry(k); const active=(k===window._helpActive);
+      return `<button onclick="hpHelpShow('${k}')" style="display:block;width:100%;text-align:left;border:none;border-radius:8px;padding:8px 10px;margin:1px 0;cursor:pointer;font:600 13px Lato;background:${active?'#eef2f8':'transparent'};color:${active?'#1a2b3a':'#374151'}">${H.t}</button>`;
+    }).join('');
+  });
+  nav.innerHTML = html || '<div style="color:#8296a8;padding:12px;font-size:13px">No topics match.</div>';
+}
+function hpHelpShow(key){
+  window._helpActive=key;
+  const box=document.getElementById('help-content'); if(!box) return;
+  const H=hpHelpEntry(key);
+  box.innerHTML=`<div style="font:800 19px Lato;color:#1a2b3a;margin-bottom:8px">${hpHelpTitle(key)}</div>${hpHelpBodyHTML(H)}`;
+  const s=document.getElementById('help-search'); hpHelpFilter(s?s.value:'');
 }
 
 const HH_WIN_MIN = 30;  // default minutes per room (portal has no config file)
