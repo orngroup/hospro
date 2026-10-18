@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Staff Clock-in PINs</title>
+<style>
+:root{--navy:#1F3864;--ink:#1a2b3a;--mut:#64707f;--line:#e4e9ef;}
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;margin:0;background:#f3f5f7;color:var(--ink)}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+header{background:var(--navy);color:#fff;border-radius:14px;padding:20px 22px;margin:8px 0 14px}
+header .t{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#c9a978;font-weight:700}
+header h1{margin:4px 0 2px;font-size:24px}
+header p{margin:4px 0 0;font-size:13px;color:#c7d2e0;line-height:1.5}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.bar input{flex:1;min-width:180px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px}
+.bar a,.bar button{padding:10px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;border:1px solid var(--navy)}
+.bar .go{background:var(--navy);color:#fff}
+.bar .pr{background:#fff;color:var(--navy)}
+.conf{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:10px 14px;font-size:12.5px;margin-bottom:14px}
+.dept{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px 14px 10px;margin-bottom:14px}
+.dept h2{font-size:15px;color:var(--navy);margin:12px 2px 6px}
+.dept h2 span{color:var(--mut);font-weight:500;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid #f1f4f7}
+td.nm{font-weight:600} td.cd{color:var(--mut);font-variant-numeric:tabular-nums}
+td.pn{font-weight:800;letter-spacing:3px;font-variant-numeric:tabular-nums;color:var(--navy)}
+.foot{font-size:11.5px;color:var(--mut);text-align:center;margin:10px 0 24px;line-height:1.6}
+@media print{body{background:#fff}.bar,.conf{display:none}.dept{break-inside:avoid;border-color:#ccc}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+<div class="wrap">
+<header>
+  <div class="t">Brandon Hall Hotel &amp; Spa</div>
+  <h1>Staff Clock-in PINs</h1>
+  <p>53 staff · Each person clocks in by scanning the wall QR (or opening the clock-in page), picking their name and entering their 4-digit PIN.</p>
+</header>
+<div class="bar">
+  <input id="q" placeholder="🔍 Search name or code…" oninput="filt()">
+  <a class="go" href="clock.html" target="_blank" rel="noopener">Open clock-in page →</a>
+  <button class="pr" onclick="window.print()">🖨 Print</button>
+</div>
+<div class="conf"><b>Confidential.</b> These are clock-in PINs — hand them to each person individually. Please don't leave this page on a shared screen.</div>
+<section class="dept"><h2>Admin / Events <span>(3)</span></h2><table><thead><tr><th>Name</th><th>Clock code</th><th>PIN</th></tr></thead><tbody><tr><td class="nm">Natalie Freeman</td><td class="cd">12941</td><td class="pn">9259</td></tr><tr><td class="nm">Nicola Cartwright</td><td class="cd">BH002</td><td class="pn">9125</td></tr><tr><td class="nm">Veronica Webb</td><td class="cd">12677</td><td class="pn">1948</td></tr></tbody></table></section>
+<section class="dept"><h2>Reception <span>(4)</span></h2><table><thead><tr><th>Name</th><th>Clock code</th><th>PIN</th></tr></thead><tbody><tr><td class="nm">Aghil Joy</td><td class="cd">12713</td><td class="pn">7882</td></tr><tr><td class="nm">Alice Asumeng</td><td class="cd">12898</td><td class="pn">8048</td></tr><tr><td class="nm">Manjusha Ushadevi</td><td class="cd">12685</td><td class="pn">8897</td></tr><tr><td class="nm">Patrik Vlach</td><td class="cd">13001</td><td class="pn">3881</td></tr></tbody></table></section>
+<section class="dept"><h2>Nights <span>(2)</span></h2><table><thead><tr><th>Name</th><th>Clock code</th><th>PIN</th></tr></thead><tbody><tr><td class="nm">Alan Wilkins</td><td class="cd">12893</td><td class="pn">9633</td></tr><tr><td class="nm">Amal Premkumar</td><td class="cd">12839</td><td class="pn">6507</td></tr></tbody></table></section>
+<section class="dept"><h2>Maintenance <span>(3)</span></h2><table><thead><tr><th>Name</th><th>Clock code</th><th>PIN</th></tr></thead><tbody><tr><td class="nm">Glenn Randell</td><td class="cd">BH010</td><td class="pn">5467</td></tr><tr><td class="nm">Herman Charles</td><td class="cd">BH012</td><td class="pn">9484</td></tr><tr><td class="nm">Pete</td><td class="cd">BH011</td><td class="pn">4069</td></tr></tbody></table></section>
+<section class="dept"><h2>Kitchen <span>(8)</span></h2><table><thead><tr><th>Name</th><th>Clock code</th><th>PIN</th></tr></thead><tbody><tr><td class="nm">Ashleigh</td><td class="cd">BHashleigh_49</td><td class="pn">9142</td></tr><tr><td class="nm">David (Head Chef)</td><td class="cd">BHdavid_head_chef_47</td><td class="pn">1341</td></tr><tr><td class="nm">David Marshall</td><td class="cd">12906</td><td class="pn">7462</td></tr><tr><td class="nm">Devendra Subedi</td><td class="cd">12803</td><td class="pn">6885</td></tr><tr><td class="nm">Matt</td><td class="cd">BHmatt_48</td><td class="pn">1046</td></tr><tr><td class="nm">Nathan Field</td><td class="cd">12949</td><td class="pn">4489</td></tr><tr><td class="nm">Noah</td><td class="cd">BHnoah_50</td><td class="pn">6503</td></tr><tr><td class="nm">Sajeed</td><td class="cd">BH014</td><td class="pn">2222</td></tr></tbody></table></section>
+<section class="dept"><h2>Bar <span>(2)</span></h2><table><thead><tr><th>Name</th><th>Clock code</th><th>PIN</th></tr></thead><tbody><tr><td class="nm">Jomy Mathai Joy</td><td class="cd">12684</td><td class="pn">6544</td></tr><tr><td class="nm">Rowan Wilkins</td><td class="cd">12943</td><td class="pn">4053</td></tr></tbody></table></section>
+<section class="dept"><h2>Food & Beverage <span>(16)</span></h2><table><thead><tr><th>Name</th><th>Clock code</th><th>PIN</th></tr></thead><tbody><tr><td class="nm">Anael Nkunga</td><td class="cd">12690</td><td class="pn">9332</td></tr><tr><td class="nm">Arthur Bennett</td><td class="cd">13089</td><td class="pn">8963</td></tr><tr><td class="nm">Betel Elias</td><td class="cd">13078</td><td class="pn">7677</td></tr><tr><td class="nm">Caitlin Playdon</td><td class="cd">12872</td><td class="pn">3770</td></tr><tr><td class="nm">Cameron McGregor</td><td class="cd">12948</td><td class="pn">3916</td></tr><tr><td class="nm">Catarina Li</td><td class="cd">BH019</td><td class="pn">2941</td></tr><tr><td class="nm">Darren Younge</td><td class="cd">13083</td><td class="pn">4938</td></tr><tr><td class="nm">Dhruvilsinh Chauhan</td><td class="cd">12874</td><td class="pn">2825</td></tr><tr><td class="nm">Jaimie-Leigh Watts</td><td class="cd">12945</td><td class="pn">3970</td></tr><tr><td class="nm">Jayan Gerget</td><td class="cd">13091</td><td class="pn">9863</td></tr><tr><td class="nm">Lily-Mae Mcdonald</td><td class="cd">13077</td><td class="pn">9632</td></tr><tr><td class="nm">Manjinder Kaur Shergill</td><td class="cd">12687</td><td class="pn">9584</td></tr><tr><td class="nm">Nevin Babu</td><td class="cd">12942</td><td class="pn">8703</td></tr><tr><td class="nm">Olivia Hale</td><td class="cd">13079</td><td class="pn">1882</td></tr><tr><td class="nm">Reuven Shergill</td><td class="cd">13084</td><td class="pn">4696</td></tr><tr><td class="nm">Sheba Tychicus</td><td class="cd">BH022</td><td class="pn">3543</td></tr></tbody></table></section>
+<section class="dept"><h2>Housekeeping <span>(15)</span></h2><table><thead><tr><th>Name</th><th>Clock code</th><th>PIN</th></tr></thead><tbody><tr><td class="nm">Allen Thomas</td><td class="cd">13085</td><td class="pn">6794</td></tr><tr><td class="nm">Anisha</td><td class="cd">BHanisha_54</td><td class="pn">4641</td></tr><tr><td class="nm">Aryan</td><td class="cd">BH030</td><td class="pn">9435</td></tr><tr><td class="nm">Ayomidipupo Yoemi</td><td class="cd">13088</td><td class="pn">7192</td></tr><tr><td class="nm">Dushyanth Vuyyuru</td><td class="cd">13041</td><td class="pn">3256</td></tr><tr><td class="nm">Edwin</td><td class="cd">BHedwin_53</td><td class="pn">8067</td></tr><tr><td class="nm">Haseen Muskaan</td><td class="cd">12998</td><td class="pn">4537</td></tr><tr><td class="nm">Jitendra Dasnur</td><td class="cd">13090</td><td class="pn">7052</td></tr><tr><td class="nm">Lara Jervis</td><td class="cd">12902</td><td class="pn">5027</td></tr><tr><td class="nm">Mani Sonti</td><td class="cd">13042</td><td class="pn">6769</td></tr><tr><td class="nm">Rahul Reghunath</td><td class="cd">12666</td><td class="pn">6651</td></tr><tr><td class="nm">Ruth Addison</td><td class="cd">12688</td><td class="pn">1707</td></tr><tr><td class="nm">Satya</td><td class="cd">BHsatya_51</td><td class="pn">3364</td></tr><tr><td class="nm">Tushar Ambekar</td><td class="cd">12838</td><td class="pn">2726</td></tr><tr><td class="nm">Yaya</td><td class="cd">BHyaya_52</td><td class="pn">9319</td></tr></tbody></table></section>
+<div class="foot">Brandon Hall Hotel &amp; Spa · Clock-in codes · Generated 18 October 2026<br>If someone's PIN doesn't work, a manager can re-publish the roster from HosPRO (Payroll &amp; Clock-in → Clock-in QR &amp; PINs → Save &amp; publish).</div>
+</div>
+<script>
+function filt(){var q=(document.getElementById('q').value||'').toLowerCase();
+  document.querySelectorAll('.dept').forEach(function(sec){var any=false;
+    sec.querySelectorAll('tbody tr').forEach(function(tr){var t=tr.textContent.toLowerCase();var ok=t.indexOf(q)>=0;tr.style.display=ok?'':'none';if(ok)any=true;});
+    sec.style.display=any?'':'none';});}
+</script>
+</body></html>
