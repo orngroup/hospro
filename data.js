@@ -967,7 +967,8 @@ const TAB_META = {
   revCompset:{label:"Competitors",icon:"🏨"}, revEvents:{label:"Events & Demand",icon:"🎟"},
   revForecast:{label:"Forecast & Margin",icon:"📈"}, revImport:{label:"Guestline Import",icon:"🔄"},
   revSettings:{label:"HosREV Settings",icon:"⚙️"},
-  hhHub:{label:"Housekeeping",icon:"🧹"}
+  hhHub:{label:"Housekeeping",icon:"🧹"},
+  help:{label:"Help & Guides",icon:"❔"}
 };
 
 /* Which module a tab belongs to (for sidebar grouping / highlighting) */

@@ -272,7 +272,7 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
     staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs,
     brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography,
     hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR,
-    hhHub:renderHosHouseHub
+    hhHub:renderHosHouseHub, help:renderHelp
   };
 /* HosREV (hosrev.js, loaded before app.js) — register its screens when present */
 [["revDash","renderRevDash"],["revCalendar","renderRevCalendar"],["revCompset","renderRevCompset"],["revEvents","renderRevEvents"],
@@ -442,6 +442,9 @@ function render(){
 
   // Lockdown: anyone other than Ajay sees the "portal updating" notice.
   if(HP_LOCKDOWN && SESSION && SESSION._key && SESSION._key!==HP_LOCKDOWN_USER){ hpRenderLockdown(v); return; }
+
+  // Floating "?" help button for every page (once logged in)
+  if(typeof SESSION!=="undefined" && SESSION && SESSION._key && typeof hpEnsureHelpButton==="function") hpEnsureHelpButton();
 
   // Module landing pages are routed as "mod:<id>"
   // Restricted modules (e.g. HosPEOPLE: payroll and HR) — block both the landing page and every tab in it
@@ -8723,6 +8726,69 @@ const HH_HUB_STAFF = [
   ["Edwin","edwin","1013"],["Dushyanth","dushyanth","1014"],["Anisha","anisha","1015"]
 ];
 function hhOrigin(){ try{ return location.origin + location.pathname.replace(/[^/]*$/,''); }catch(e){ return ''; } }
+/* ============================================================ HELP SYSTEM */
+function hpHelpEntry(key){
+  if(typeof HELP_CONTENT!=="undefined" && HELP_CONTENT[key]) return HELP_CONTENT[key];
+  if(typeof HELP_TOOLS!=="undefined" && HELP_TOOLS[key]) return HELP_TOOLS[key];
+  return null;
+}
+function hpHelpTitle(key){ const H=hpHelpEntry(key); if(H&&H.t) return H.t; const m=(typeof TAB_META!=="undefined"&&TAB_META[key]); return m?m.label:key; }
+function hpHelpBodyHTML(H){
+  if(!H) return `<p style="color:#6b7280;font-size:13.5px">No guide for this page yet — tell Ajay and we'll add one.</p>`;
+  const how=(H.h&&H.h.length)?`<div style="font:700 12px Lato;color:#1a2b3a;margin:14px 0 4px">How to use it</div><ol style="margin:0;padding-left:18px;color:#374151;font-size:13px;line-height:1.75">${H.h.map(x=>`<li>${x}</li>`).join('')}</ol>`:'';
+  const tips=(H.tip&&H.tip.length)?`<div style="margin-top:12px;background:#fff7e8;border:1px solid #f0d9ad;border-radius:9px;padding:9px 12px;font-size:12.5px;color:#7a5a1e;line-height:1.6">💡 ${H.tip.join('<br>💡 ')}</div>`:'';
+  return `<p style="font-size:13.5px;color:#374151;line-height:1.6;margin:0">${H.w||''}</p>${how}${tips}`;
+}
+function hpHelpOpen(key){
+  key = key || (typeof CURRENT_TAB!=="undefined" ? String(CURRENT_TAB).replace(/^mod:/,'') : 'home');
+  const H=hpHelpEntry(key);
+  let ov=document.getElementById('hpHelpOv');
+  if(!ov){ ov=document.createElement('div'); ov.id='hpHelpOv';
+    ov.style.cssText='position:fixed;inset:0;z-index:100001;background:rgba(15,22,30,.55);display:flex;align-items:center;justify-content:center;padding:20px';
+    ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+    document.body.appendChild(ov);
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ const o=document.getElementById('hpHelpOv'); if(o) o.remove(); } });
+  }
+  ov.innerHTML=`<div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:86vh;overflow:auto;box-shadow:0 16px 50px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:15px 20px;border-bottom:1px solid #eef2f6;position:sticky;top:0;background:#fff">
+      <div style="font:800 16px Lato;color:#1a2b3a">❔ ${hpHelpTitle(key)}</div>
+      <button onclick="document.getElementById('hpHelpOv').remove()" style="border:none;background:#eef1f5;border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer;color:#374151">✕</button>
+    </div>
+    <div style="padding:16px 20px">${hpHelpBodyHTML(H)}
+      <div style="margin-top:16px"><button onclick="document.getElementById('hpHelpOv').remove();switchTab('help')" style="padding:8px 14px;border:1px solid #d1d5db;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">📖 Open Help &amp; Guides</button></div>
+    </div></div>`;
+}
+function hpEnsureHelpButton(){
+  if(document.getElementById('hpHelpFab')) return;
+  const b=document.createElement('button'); b.id='hpHelpFab'; b.title='Help for this page'; b.innerHTML='?';
+  b.style.cssText='position:fixed;right:18px;bottom:18px;z-index:9999;width:46px;height:46px;border-radius:50%;border:none;background:#1a2b3a;color:#fff;font:800 22px Lato;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.28)';
+  b.onclick=()=>hpHelpOpen();
+  document.body.appendChild(b);
+}
+function renderHelp(v){
+  v.innerHTML=`<div style="max-width:900px;margin:0 auto;padding:4px 2px 44px">
+    <div style="font:800 22px Lato;color:#1a2b3a;margin-bottom:4px">❔ Help &amp; Guides</div>
+    <div style="font-size:13px;color:#5b6b7b;margin-bottom:14px">How to use any page in HosPRO. Search below or pick from the list — and remember you can tap the <b>?</b> button on any page for its guide.</div>
+    <input id="help-search" placeholder="🔍 Search pages and guides…" oninput="hpHelpFilter(this.value)" autocomplete="off" style="width:100%;padding:11px 14px;border:1px solid #d7dde4;border-radius:10px;font:14px Lato;margin-bottom:8px">
+    <div id="help-list"></div>
+  </div>`;
+  hpHelpFilter('');
+}
+function hpHelpFilter(q){
+  const box=document.getElementById('help-list'); if(!box) return;
+  q=(q||'').toLowerCase().trim();
+  const mods=(typeof FLOW_MODULES!=="undefined")?FLOW_MODULES:[];
+  const match=(key)=>{ const H=hpHelpEntry(key); if(!H) return false; if(!q) return true; return ((H.t||'')+' '+(H.w||'')+' '+key).toLowerCase().includes(q); };
+  const card=(key)=>{ const H=hpHelpEntry(key); return `<button onclick="hpHelpOpen('${key}')" style="display:block;width:100%;text-align:left;background:#fff;border:1px solid #e4e9ef;border-radius:10px;padding:11px 14px;margin-bottom:7px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03)">
+     <div style="font:700 13.5px Lato;color:#1a2b3a">${H.t} <span style="color:#8a5a2b">›</span></div>
+     <div style="font-size:12px;color:#8296a8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${H.w||''}</div></button>`; };
+  const section=(name,keys)=>{ const t=keys.filter(match); if(!t.length) return ''; return `<div style="font:800 11.5px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 7px">${name}</div>${t.map(card).join('')}`; };
+  let html=section('General',['home']);
+  mods.forEach(m=>{ html+=section(m.name, m.tabs||[]); });
+  html+=section('Tools', (typeof HELP_TOOLS!=="undefined")?Object.keys(HELP_TOOLS):[]);
+  box.innerHTML = html || '<p style="color:#8296a8;padding:16px 0">No guides match your search.</p>';
+}
+
 const HH_WIN_MIN = 30;  // default minutes per room (portal has no config file)
 const HH_CH = {todo:'#94a3b8', prog:'#d9930a', done:'#2E6B5E', over:'#b3261e'};
 function hhEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
