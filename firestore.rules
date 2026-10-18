@@ -14,7 +14,18 @@ service cloud.firestore {
           'nicola.cartwright@brandonhall.portal',
           'natalie.freeman@brandonhall.portal',
           'patrik.vlach@brandonhall.portal',
-          'veronica.webb@brandonhall.portal'
+          'veronica.webb@brandonhall.portal',
+          // Spare login slots — pre-approved so new people can be added in
+          // Admin → Users without editing these rules. Create the matching
+          // Auth account when you assign the slot to a person.
+          'staff1@brandonhall.portal',
+          'staff2@brandonhall.portal',
+          'staff3@brandonhall.portal',
+          'staff4@brandonhall.portal',
+          'staff5@brandonhall.portal',
+          'staff6@brandonhall.portal',
+          'staff7@brandonhall.portal',
+          'staff8@brandonhall.portal'
         ];
     }
 
@@ -62,14 +73,6 @@ service cloud.firestore {
     match /feedback/{doc} {
       allow read: if isStaff();
       allow create: if true;
-    }
-    // Christmas competition entries from the website quiz: anyone may enter,
-    // only staff can see, edit or remove entries.
-    match /competition/{doc} {
-      allow read, update, delete: if isStaff();
-      allow create: if request.resource.data.campaign == 'xmas2026'
-        && request.resource.data.size() <= 20
-        && request.resource.data.email is string && request.resource.data.email.size() < 200;
     }
 
     // Quotes and contracts: opened by clients from a link; clients may only

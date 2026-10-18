@@ -974,31 +974,84 @@ const TAB_META = {
 /* Which module a tab belongs to (for sidebar grouping / highlighting) */
 function moduleForTab(tab){ return FLOW_MODULES.find(m=>m.tabs.includes(tab)); }
 
-/* Role-based access. "all" or an array of module ids. */
-const ROLE_ACCESS = {
-  "ajay.kawa":"all", "raj.kumar":"all", "alia.taub":"all", "nicola.cartwright":"all", "natalie.freeman":"all", "veronica.webb":"all"
+/* ============================================================
+   ACCESS CONTROL — security groups + users (managed in Admin)
+   Permissions are per "permission id": every module tab, plus a
+   few extras (financial, admin). A group grants a set of these.
+   Director = everything. Stored live in Firebase (meta/access_config);
+   this is the built-in default / fallback.
+   ============================================================ */
+/* Extra permissions that aren't module tabs */
+const PERM_EXTRA = [
+  { id:"financial", label:"Financial Overview (P&L)" },
+  { id:"admin",     label:"Admin & User Setup" }
+];
+/* Legacy — kept so old references don't break */
+const ROLE_ACCESS = { "ajay.kawa":"all","raj.kumar":"all","alia.taub":"all" };
+
+function _tabsOf(modIds){ const out=[]; (FLOW_MODULES||[]).forEach(m=>{ if(modIds.indexOf(m.id)>=0) (m.tabs||[]).forEach(t=>out.push(t)); }); return out; }
+
+const DEFAULT_ACCESS = {
+  maintenance: false,
+  groups: {
+    director:     { name:"Director",       allow:"all" },
+    sales:        { name:"Sales & Events", tabs: _tabsOf(["hossales","hosvenue","hosstudio","hosbrand"]).concat(["hubDocs","hubContracts","hubSuppliers"]) },
+    finance:      { name:"Finance",        tabs: ["payments","hubFinance","hubHR","rotaPayroll","staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs","financial"] },
+    operations:   { name:"Operations",     tabs: _tabsOf(["hosrev","hosfix","hoscom"]).concat(["rooms","groupconfig","packages","hhHub","rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings"]) },
+    housekeeping: { name:"Housekeeping",   tabs: ["hhHub"] }
+  },
+  users: {
+    "ajay.kawa":        { name:"Ajay Kawa",        position:"Chief Commercial Officer", email:"", phone:"", group:"director" },
+    "raj.kumar":        { name:"Raj Kumar",        position:"Global COO",               email:"", phone:"", group:"director" },
+    "alia.taub":        { name:"Alia Taub",        position:"Director",                 email:"", phone:"", group:"director" },
+    "nicola.cartwright":{ name:"Nicola Cartwright", position:"Sales & Events",          email:"", phone:"", group:"sales" },
+    "natalie.freeman":  { name:"Natalie Freeman",  position:"Event Executive",          email:"", phone:"", group:"sales" },
+    "patrik.vlach":     { name:"Patrik Vlach",     position:"Front Office Manager",     email:"", phone:"", group:"operations" },
+    "veronica.webb":    { name:"Veronica Webb",    position:"Finance",                  email:"", phone:"", group:"finance" }
+  }
 };
-/* Modules only some people may open. Everyone else sees the card greyed out. */
-const MODULE_RESTRICT = {
-  hospeople: ["ajay.kawa","raj.kumar","alia.taub","veronica.webb"]   // staff, rota, payroll, HR
-};
-/* Individual sections with staff, pay or finance details — same people as HosPEOPLE */
-const TAB_RESTRICT = new Set(["hubHR","hubFinance","staffDocs","staffDash","staffProfiles","staffLeave","staffLeaveAdmin","rotaPayroll"]);
+
+/* Live config — replaced by the loader in app.js once Firebase/localStorage loads */
+let ACCESS_CONFIG = JSON.parse(JSON.stringify(DEFAULT_ACCESS));
+try{ window.ACCESS_CONFIG = ACCESS_CONFIG; }catch(e){}
+
+function hpCurrentUserKey(userKey){ return userKey || (typeof SESSION!=="undefined" && SESSION && SESSION._key) || ""; }
+function hpGroupOf(userKey){
+  const k=hpCurrentUserKey(userKey);
+  const u=ACCESS_CONFIG.users&&ACCESS_CONFIG.users[k];
+  if(u&&u.group) return u.group;
+  // fallback for unmapped keys: original admins are directors, everyone else gets nothing until assigned
+  if(ROLE_ACCESS[k]==="all") return "director";
+  return "";
+}
+function hpGroupAllows(groupId, perm){
+  const g=ACCESS_CONFIG.groups&&ACCESS_CONFIG.groups[groupId];
+  if(!g) return false;
+  if(g.allow==="all") return true;
+  return Array.isArray(g.tabs) && g.tabs.indexOf(perm)>=0;
+}
+/* Can the current user open this tab/permission? */
 function hpCanTab(tab, userKey){
-  const m=(typeof moduleForTab==="function")?moduleForTab(tab):null;
-  if(m && !hpCanAccess(m.id,userKey)) return false;
-  if(TAB_RESTRICT.has(tab)) return MODULE_RESTRICT.hospeople.includes(userKey || (typeof SESSION!=="undefined" && SESSION && SESSION._key) || "");
-  return true;
+  if(tab==="home") return true;
+  const g=hpGroupOf(userKey);
+  if(!g) return false;
+  return hpGroupAllows(g, tab);
 }
+/* Can the current user open this module (any tab in it allowed)? */
 function hpCanAccess(modId, userKey){
-  const list=MODULE_RESTRICT[modId];
-  if(!list) return true;
-  return list.includes(userKey || (typeof SESSION!=="undefined" && SESSION && SESSION._key) || "");
+  const g=hpGroupOf(userKey);
+  if(!g) return false;
+  if(hpGroupAllows(g,"__all__")) return true;
+  const grp=ACCESS_CONFIG.groups[g];
+  if(grp && grp.allow==="all") return true;
+  const m=(FLOW_MODULES||[]).find(x=>x.id===modId);
+  if(!m) return hpGroupAllows(g, modId);
+  return (m.tabs||[]).some(t=>hpGroupAllows(g,t));
 }
+function hpCanFinancial(userKey){ const g=hpGroupOf(userKey); return !!g && hpGroupAllows(g,"financial"); }
+function hpIsAdmin(userKey){ const g=hpGroupOf(userKey); return !!g && hpGroupAllows(g,"admin"); }
 function userModules(userKey){
-  const acc=ROLE_ACCESS[userKey]||"all";
-  if(acc==="all") return FLOW_MODULES;
-  return FLOW_MODULES.filter(m=>acc.includes(m.id));
+  return (FLOW_MODULES||[]).filter(m=>hpCanAccess(m.id,userKey));
 }
 
 /* ============================================================

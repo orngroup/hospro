@@ -110,7 +110,44 @@ function enterApp(user){
   const rl=$("#tb-role"); if(rl && user.title) rl.textContent=user.title;
   const av=$("#sf-avatar"); if(av) av.textContent=(user.name||"").split(" ").map(w=>w[0]).join("").slice(0,2);
   const badge=$("#tb-mode"); if(badge) badge.textContent = FB.ready? "Live" : "Demo";
+  try{ hpAccessLoad(); }catch(e){}
   boot();
+}
+
+/* ---- Access config: load/save (security groups + users), live via Firebase ---- */
+function hpAccessApply(cfg){
+  if(!cfg||typeof cfg!=="object") return;
+  try{
+    if("maintenance" in cfg) ACCESS_CONFIG.maintenance = !!cfg.maintenance;
+    if(cfg.groups && typeof cfg.groups==="object") ACCESS_CONFIG.groups = cfg.groups;
+    if(cfg.users && typeof cfg.users==="object") ACCESS_CONFIG.users = cfg.users;
+    window.ACCESS_CONFIG = ACCESS_CONFIG;
+  }catch(e){}
+}
+function hpAccessMergeDefaults(){
+  try{
+    ACCESS_CONFIG.groups = ACCESS_CONFIG.groups || {};
+    ACCESS_CONFIG.users  = ACCESS_CONFIG.users  || {};
+    Object.keys(DEFAULT_ACCESS.groups).forEach(g=>{ if(!ACCESS_CONFIG.groups[g]) ACCESS_CONFIG.groups[g]=JSON.parse(JSON.stringify(DEFAULT_ACCESS.groups[g])); });
+    Object.keys(DEFAULT_ACCESS.users ).forEach(u=>{ if(!ACCESS_CONFIG.users[u])  ACCESS_CONFIG.users[u]=JSON.parse(JSON.stringify(DEFAULT_ACCESS.users[u])); });
+  }catch(e){}
+}
+function hpAccessLoad(){
+  try{ const raw=localStorage.getItem('hp_access'); if(raw) hpAccessApply(JSON.parse(raw)); }catch(e){}
+  hpAccessMergeDefaults();
+  try{ if(typeof FB!=="undefined" && FB.ready && FB.db){
+    FB.db.collection('meta').doc('access_config').get().then(d=>{
+      if(d.exists){ hpAccessApply(d.data()); hpAccessMergeDefaults();
+        try{ localStorage.setItem('hp_access', JSON.stringify({maintenance:ACCESS_CONFIG.maintenance,groups:ACCESS_CONFIG.groups,users:ACCESS_CONFIG.users})); }catch(e){}
+        try{ render(); }catch(e){}
+      }
+    }).catch(()=>{});
+  } }catch(e){}
+}
+function hpAccessSave(){
+  const payload={ maintenance:!!ACCESS_CONFIG.maintenance, groups:ACCESS_CONFIG.groups, users:ACCESS_CONFIG.users, updatedAt:Date.now() };
+  try{ localStorage.setItem('hp_access', JSON.stringify(payload)); }catch(e){}
+  try{ if(typeof FB!=="undefined" && FB.ready && FB.db){ FB.db.collection('meta').doc('access_config').set(payload).catch(()=>{}); } }catch(e){}
 }
 $("#lg-pw").addEventListener("keydown",e=>{ if(e.key==="Enter")$("#lg-btn").click(); });
 $("#tb-logout").onclick=async ()=>{ if(typeof hrLock==='function') hrLock(true); try{ sessionStorage.removeItem("hosrev_ok"); }catch(e){} await fbSignOut(); SESSION=null; $("#app").classList.add("hidden");
@@ -387,14 +424,12 @@ async function hpRevPushSetup(){ try{ if(FB && FB.ready && FB.user && FB.db && S
    browser tab is closed or he signs out. */
 const HP_REV_OWNER="ajay.kawa";
 const HP_REV_PW_HASH="c8023b72ed8dcdecda725434debc42b2011ae19d4994db722b53436e21a9ef6f"; // BHREV
-try{ if(typeof hpCanAccess==="function"){ const _hpCanAccessBase=hpCanAccess;
-  hpCanAccess=function(id,userKey){ if(id==="hosrev") return (userKey||(SESSION&&SESSION._key))===HP_REV_OWNER; return _hpCanAccessBase.apply(this,arguments); }; } }catch(e){ console.warn("HosREV lock: access hook not installed",e); }
-/* Secondary password removed during access setup — HosREV is owner-only (Ajay). */
-function hpRevUnlocked(){ try{ return !!(SESSION && SESSION._key===HP_REV_OWNER); }catch(e){ return false; } }
+/* HosREV access now follows the security groups (Director / Operations). */
+function hpRevUnlocked(){ try{ return (typeof hpCanAccess==="function") ? hpCanAccess("hosrev") : !!(SESSION && SESSION._key===HP_REV_OWNER); }catch(e){ return false; } }
 async function hpRevSha(t){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
 function hpRenderRevLock(v){
   hpSetBreadcrumb({id:"hosrev",name:"HosREV"}, null);
-  if(!(SESSION && SESSION._key===HP_REV_OWNER)){ CURRENT_TAB="home"; toast("🔒 HosREV is restricted."); render(); return; }
+  if(!(typeof hpCanAccess==="function" && hpCanAccess("hosrev"))){ CURRENT_TAB="home"; toast("🔒 HosREV is restricted."); render(); return; }
   v.classList.add("hp-canvas");
   v.innerHTML=`<div style="max-width:420px;margin:60px auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.25);font-family:Lato,sans-serif">
     <div style="font-size:30px">💹🔒</div>
@@ -440,8 +475,8 @@ function render(){
   if(window.scrollY) window.scrollTo(0,0);     // keep the page itself pinned (only .sf-main scrolls)
   { const ap=document.getElementById("app"); if(ap && ap.scrollTop) ap.scrollTop=0; }
 
-  // Lockdown: anyone other than Ajay sees the "portal updating" notice.
-  if(HP_LOCKDOWN && SESSION && SESSION._key && SESSION._key!==HP_LOCKDOWN_USER){ hpRenderLockdown(v); return; }
+  // Maintenance mode (toggle in Admin): non-admins see the "portal updating" notice.
+  if(typeof ACCESS_CONFIG!=="undefined" && ACCESS_CONFIG && ACCESS_CONFIG.maintenance && !(typeof hpIsAdmin==="function" && hpIsAdmin())){ hpRenderLockdown(v); return; }
 
   // Floating "?" help button for every page (once logged in)
   if(typeof SESSION!=="undefined" && SESSION && SESSION._key && typeof hpEnsureHelpButton==="function") hpEnsureHelpButton();
@@ -1982,45 +2017,303 @@ Brandon Hall Hotel and Spa
 }
 
 /* ============================================================ ADMIN */
+/* ============================================================ ADMIN & USER SETUP
+   In-system RBAC. Director-only. Three views:
+     • Users          — add / edit / remove people, assign a security group
+     • Security Groups — grid of groups × permissions (tick = can see)
+     • System         — maintenance lock + reference data
+   Everything saves live via hpAccessSave() (localStorage + Firebase).
+   ============================================================ */
+let ADMIN_VIEW = "users";
+const ADMIN_NAVY = "#1F3864";
+
 function renderAdmin(v){
-  v.appendChild(head("Admin","Reference data, room readiness and competitor benchmarking for the team."));
-  v.appendChild(el("div","admin-note",
-    `<b>Demo mode.</b> Rooms, rates and packages read from <code>data.js</code>. Enquiries are stored in this browser only until Firebase is connected.`));
+  // Director / admin only
+  if(!(typeof hpIsAdmin==="function" && hpIsAdmin())){
+    v.appendChild(head("Admin & User Setup","Restricted area."));
+    const box=el("div","admin-note");
+    box.innerHTML=`🔒 <b>This area is for Directors only.</b> It controls who can see what across HosPRO. If you need a change to your access, please ask Ajay or Raj.`;
+    v.appendChild(box);
+    const b=el("button","btn ghost"); b.textContent="← Back to home"; b.style.marginTop="14px";
+    b.onclick=()=>switchTab("home"); v.appendChild(b);
+    return;
+  }
 
-  v.appendChild(el("div","sec-title","Users"));
-  const ut=el("table","data-table");
-  ut.innerHTML=`<tr><th>Name</th><th>Access code</th><th>Role</th></tr>`+
-    Object.values(USERS).map(u=>`<tr><td>${u.name}</td><td>${u.code}</td><td>${u.role}</td></tr>`).join("");
-  v.appendChild(ut);
+  v.appendChild(head("Admin & User Setup","Add people, set what each security group can see, and manage the system. Changes save live to everyone."));
 
-  // Room readiness (from M&E audit) — admin only
-  v.appendChild(el("div","sec-title","Room readiness (M&E audit)"));
+  // ── sub-nav tabs ──
+  const nav=el("div","");
+  nav.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 18px";
+  const tabs=[["users","👥 Users"],["groups","🔐 Security Groups"],["system","⚙️ System"]];
+  tabs.forEach(([id,lbl])=>{
+    const on = ADMIN_VIEW===id;
+    const b=el("button","");
+    b.textContent=lbl;
+    b.style.cssText=`padding:9px 16px;border-radius:9px;font:700 13px Lato;cursor:pointer;border:1.5px solid ${ADMIN_NAVY};${on?`background:${ADMIN_NAVY};color:#fff`:`background:#fff;color:${ADMIN_NAVY}`}`;
+    b.onclick=()=>{ ADMIN_VIEW=id; render(); };
+    nav.appendChild(b);
+  });
+  v.appendChild(nav);
+
+  const host=el("div",""); v.appendChild(host);
+  if(ADMIN_VIEW==="users")  adminUsersView(host);
+  else if(ADMIN_VIEW==="groups") adminGroupsView(host);
+  else adminSystemView(host);
+}
+
+/* ---- shared helpers ---- */
+function adminGroupsArr(){ return Object.keys(ACCESS_CONFIG.groups||{}).map(id=>[id, ACCESS_CONFIG.groups[id]]); }
+function adminPermLabel(p){ return (TAB_META[p] && TAB_META[p].label) || (PERM_EXTRA.find(x=>x.id===p)||{}).label || p; }
+function adminGroupName(id){ const g=ACCESS_CONFIG.groups[id]; return g?g.name:(id||"—"); }
+function adminLoginSlots(){
+  // available login keys from firebase-config (if present), marking which are taken
+  try{ if(typeof FB_LOGINS==="object" && FB_LOGINS) return Object.keys(FB_LOGINS); }catch(e){}
+  return Object.keys(ACCESS_CONFIG.users||{});
+}
+
+/* ===================== USERS ===================== */
+function adminUsersView(host){
+  const users=ACCESS_CONFIG.users||{};
+  const keys=Object.keys(users);
+
+  const bar=el("div",""); bar.style.cssText="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px";
+  bar.innerHTML=`<div style="font:700 15px Lato;color:${ADMIN_NAVY}">People (${keys.length})</div>`;
+  const add=el("button",""); add.textContent="＋ Add user";
+  add.style.cssText=`padding:9px 16px;border:none;border-radius:9px;background:${ADMIN_NAVY};color:#fff;font:700 13px Lato;cursor:pointer`;
+  add.onclick=()=>adminUserModal(null);
+  bar.appendChild(add);
+  host.appendChild(bar);
+
+  const t=el("table","data-table");
+  t.style.cssText="width:100%";
+  t.innerHTML=`<tr><th>Name</th><th>Position</th><th>Email</th><th>Phone</th><th>Security group</th><th>Login</th><th></th></tr>`+
+    keys.map(k=>{ const u=users[k]||{};
+      return `<tr>
+        <td style="font-weight:600">${u.name||k}</td>
+        <td>${u.position||"—"}</td>
+        <td>${u.email||"—"}</td>
+        <td>${u.phone||"—"}</td>
+        <td><span style="display:inline-block;padding:3px 10px;border-radius:20px;background:#eef2f8;color:${ADMIN_NAVY};font-weight:600;font-size:12px">${adminGroupName(u.group)}</span></td>
+        <td style="font-family:monospace;font-size:12px;color:#6b7280">${k}</td>
+        <td style="white-space:nowrap">
+          <button class="au-edit" data-k="${k}" style="padding:5px 11px;border:1px solid ${ADMIN_NAVY};border-radius:7px;background:#fff;color:${ADMIN_NAVY};font:600 12px Lato;cursor:pointer">Edit</button>
+          <button class="au-del" data-k="${k}" style="padding:5px 11px;border:1px solid #d1d5db;border-radius:7px;background:#fff;color:#b3261e;font:600 12px Lato;cursor:pointer;margin-left:4px">Remove</button>
+        </td></tr>`;
+    }).join("");
+  host.appendChild(t);
+  t.querySelectorAll(".au-edit").forEach(b=>b.onclick=()=>adminUserModal(b.dataset.k));
+  t.querySelectorAll(".au-del").forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k, u=users[k]||{};
+    if(!confirm(`Remove ${u.name||k}? They will lose all access at their next login.`)) return;
+    delete ACCESS_CONFIG.users[k]; hpAccessSave(); toast("User removed"); render();
+  });
+
+  const note=el("div","admin-note"); note.style.marginTop="14px";
+  note.innerHTML=`💡 <b>Login slots.</b> A new person needs a login created once in Firebase. Spare slots are pre-made — pick one when adding a user. See the <b>System</b> tab for the list of spare slots and the one-time setup steps.`;
+  host.appendChild(note);
+}
+
+function adminUserModal(key){
+  const isNew=!key;
+  const u = isNew ? {name:"",position:"",email:"",phone:"",group:"sales"} : (ACCESS_CONFIG.users[key]||{});
+  const groups=adminGroupsArr();
+  const takenKeys=Object.keys(ACCESS_CONFIG.users||{});
+  const slots=adminLoginSlots();
+  const slotOpts = slots.map(s=>{
+    const taken = takenKeys.indexOf(s)>=0 && s!==key;
+    return `<option value="${s}" ${s===key?"selected":""} ${taken?"disabled":""}>${s}${taken?" — in use":""}</option>`;
+  }).join("");
+
+  showModal(isNew?"Add user":"Edit user", isNew?"Create a person and assign their security group":"Update details or change their group",
+    `<div style="display:grid;gap:12px;max-width:460px">
+      <label style="font:600 12px Lato;color:#374151">Full name
+        <input id="au-name" value="${(u.name||"").replace(/"/g,'&quot;')}" placeholder="e.g. Jane Smith" style="width:100%;margin-top:4px;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font:400 14px Lato"></label>
+      <label style="font:600 12px Lato;color:#374151">Position
+        <input id="au-pos" value="${(u.position||"").replace(/"/g,'&quot;')}" placeholder="e.g. Events Executive" style="width:100%;margin-top:4px;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font:400 14px Lato"></label>
+      <label style="font:600 12px Lato;color:#374151">Email
+        <input id="au-email" type="email" value="${(u.email||"").replace(/"/g,'&quot;')}" placeholder="name@brandonhall.co.uk" style="width:100%;margin-top:4px;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font:400 14px Lato"></label>
+      <label style="font:600 12px Lato;color:#374151">Phone number
+        <input id="au-phone" value="${(u.phone||"").replace(/"/g,'&quot;')}" placeholder="07…" style="width:100%;margin-top:4px;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font:400 14px Lato"></label>
+      <label style="font:600 12px Lato;color:#374151">Security group
+        <select id="au-group" style="width:100%;margin-top:4px;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font:400 14px Lato">
+          ${groups.map(([id,g])=>`<option value="${id}" ${u.group===id?"selected":""}>${g.name}</option>`).join("")}
+        </select></label>
+      <label style="font:600 12px Lato;color:#374151">Login slot ${isNew?"":"<span style='color:#9ca3af'>(fixed)</span>"}
+        <select id="au-key" ${isNew?"":"disabled"} style="width:100%;margin-top:4px;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font:400 14px Lato;font-family:monospace">
+          ${slotOpts}
+        </select></label>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">
+        <button id="au-cancel" style="padding:9px 16px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:600 13px Lato;cursor:pointer">Cancel</button>
+        <button id="au-save" style="padding:9px 18px;border:none;border-radius:8px;background:${ADMIN_NAVY};color:#fff;font:700 13px Lato;cursor:pointer">${isNew?"Add user":"Save"}</button>
+      </div>
+    </div>`);
+
+  $("#au-cancel").onclick=closeModal;
+  $("#au-save").onclick=()=>{
+    const name=$("#au-name").value.trim();
+    const k = isNew ? $("#au-key").value : key;
+    if(!name){ toast("Please enter a name"); return; }
+    if(!k){ toast("Please choose a login slot"); return; }
+    if(isNew && ACCESS_CONFIG.users[k]){ toast("That login slot is already in use"); return; }
+    ACCESS_CONFIG.users[k] = {
+      name, position:$("#au-pos").value.trim(), email:$("#au-email").value.trim(),
+      phone:$("#au-phone").value.trim(), group:$("#au-group").value
+    };
+    hpAccessSave(); closeModal(); toast(isNew?"User added":"User saved"); render();
+  };
+}
+
+/* ===================== SECURITY GROUPS ===================== */
+function adminGroupsView(host){
+  const groups=adminGroupsArr();
+
+  const bar=el("div",""); bar.style.cssText="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:10px";
+  bar.innerHTML=`<div style="font:700 15px Lato;color:${ADMIN_NAVY}">Who can see what</div>`;
+  const add=el("button",""); add.textContent="＋ New group";
+  add.style.cssText=`padding:9px 16px;border:none;border-radius:9px;background:${ADMIN_NAVY};color:#fff;font:700 13px Lato;cursor:pointer`;
+  add.onclick=()=>{
+    const nm=prompt("Name the new security group (e.g. Reception):"); if(!nm) return;
+    const id="grp"+Date.now().toString(36);
+    ACCESS_CONFIG.groups[id]={name:nm.trim(),tabs:[]}; hpAccessSave(); toast("Group created"); render();
+  };
+  bar.appendChild(add); host.appendChild(bar);
+
+  const hint=el("div",""); hint.style.cssText="font:400 13px Lato;color:#6b7280;margin-bottom:14px";
+  hint.innerHTML=`Tick a box to let that group open that page. A grey, unticked box means it's hidden and greyed-out for them. <b>Director</b> always sees everything.`;
+  host.appendChild(hint);
+
+  // group header controls (rename / delete) for non-director custom groups
+  const gctrl=el("div",""); gctrl.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px";
+  groups.forEach(([id,g])=>{
+    const chip=el("div","");
+    chip.style.cssText=`display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e4e9ef;border-radius:20px;background:#fff;font:600 12px Lato;color:${ADMIN_NAVY}`;
+    chip.innerHTML=`<span>${g.name}</span>`;
+    if(id!=="director"){
+      const ren=el("button",""); ren.textContent="✏"; ren.title="Rename";
+      ren.style.cssText="border:none;background:none;cursor:pointer;font-size:12px";
+      ren.onclick=()=>{ const nm=prompt("Rename group:",g.name); if(nm){ ACCESS_CONFIG.groups[id].name=nm.trim(); hpAccessSave(); render(); } };
+      const del=el("button",""); del.textContent="🗑"; del.title="Delete group";
+      del.style.cssText="border:none;background:none;cursor:pointer;font-size:12px";
+      del.onclick=()=>{
+        const inUse=Object.values(ACCESS_CONFIG.users||{}).filter(u=>u.group===id).length;
+        if(inUse){ toast(`${inUse} user(s) are in this group — move them first`); return; }
+        if(!confirm(`Delete the "${g.name}" group?`)) return;
+        delete ACCESS_CONFIG.groups[id]; hpAccessSave(); toast("Group deleted"); render();
+      };
+      chip.appendChild(ren); chip.appendChild(del);
+    }
+    gctrl.appendChild(chip);
+  });
+  host.appendChild(gctrl);
+
+  // the grid: rows = permissions by module, columns = groups
+  const wrap=el("div",""); wrap.style.cssText="overflow:auto;border:1px solid #e4e9ef;border-radius:12px";
+  const tbl=el("table",""); tbl.style.cssText="border-collapse:collapse;width:100%;font:400 13px Lato;min-width:560px";
+
+  let head=`<thead><tr style="background:${ADMIN_NAVY};color:#fff">
+    <th style="text-align:left;padding:10px 12px;position:sticky;left:0;background:${ADMIN_NAVY};z-index:2">Page / function</th>`;
+  groups.forEach(([id,g])=>{ head+=`<th style="padding:10px 10px;white-space:nowrap">${g.name}</th>`; });
+  head+=`</tr></thead>`;
+
+  let body="<tbody>";
+  // module sections
+  (FLOW_MODULES||[]).forEach(m=>{
+    body+=`<tr style="background:#f3f5f7"><td colspan="${groups.length+1}" style="padding:7px 12px;font-weight:700;color:${ADMIN_NAVY};position:sticky;left:0;background:#f3f5f7">${m.icon} ${m.name}</td></tr>`;
+    (m.tabs||[]).forEach(p=>{ body+=adminPermRow(p,groups); });
+  });
+  // extras
+  body+=`<tr style="background:#f3f5f7"><td colspan="${groups.length+1}" style="padding:7px 12px;font-weight:700;color:${ADMIN_NAVY};position:sticky;left:0;background:#f3f5f7">🔑 Extra permissions</td></tr>`;
+  PERM_EXTRA.forEach(x=>{ body+=adminPermRow(x.id,groups); });
+  body+="</tbody>";
+
+  tbl.innerHTML=head+body;
+  wrap.appendChild(tbl); host.appendChild(wrap);
+
+  // wire checkboxes
+  tbl.querySelectorAll("input.ag-cb").forEach(cb=>{
+    cb.onchange=()=>{
+      const gid=cb.dataset.g, perm=cb.dataset.p;
+      const g=ACCESS_CONFIG.groups[gid]; if(!g||g.allow==="all") return;
+      g.tabs = Array.isArray(g.tabs)?g.tabs:[];
+      const i=g.tabs.indexOf(perm);
+      if(cb.checked){ if(i<0) g.tabs.push(perm); } else { if(i>=0) g.tabs.splice(i,1); }
+      hpAccessSave();
+      toast("Saved");
+    };
+  });
+}
+
+function adminPermRow(perm, groups){
+  let row=`<tr style="border-top:1px solid #eef1f4"><td style="padding:8px 12px;position:sticky;left:0;background:#fff;white-space:nowrap">${adminPermLabel(perm)}</td>`;
+  groups.forEach(([id,g])=>{
+    const all = g.allow==="all";
+    const on = all || (Array.isArray(g.tabs) && g.tabs.indexOf(perm)>=0);
+    row+=`<td style="text-align:center;padding:6px 10px">
+      <input type="checkbox" class="ag-cb" data-g="${id}" data-p="${perm}" ${on?"checked":""} ${all?"disabled title='Director sees everything'":""}
+        style="width:17px;height:17px;cursor:${all?"not-allowed":"pointer"};accent-color:${ADMIN_NAVY}"></td>`;
+  });
+  return row+`</tr>`;
+}
+
+/* ===================== SYSTEM ===================== */
+function adminSystemView(host){
+  // Maintenance lock
+  const mcard=el("div",""); mcard.style.cssText="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:16px 18px;margin-bottom:18px";
+  const on=!!ACCESS_CONFIG.maintenance;
+  mcard.innerHTML=`<div style="font:700 14px Lato;color:${ADMIN_NAVY};margin-bottom:6px">🛠 Maintenance lock</div>
+    <div style="font:400 13px Lato;color:#6b7280;margin-bottom:12px">When on, everyone except Directors sees a "system is being updated" screen. Use it while making big changes.</div>
+    <button id="ad-maint" style="padding:9px 16px;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer;background:${on?'#b3261e':'#2a6a4a'};color:#fff">${on?'🔒 Turn OFF maintenance lock':'Turn ON maintenance lock'}</button>
+    <span style="margin-left:10px;font:600 12px Lato;color:${on?'#b3261e':'#6b7280'}">${on?'Currently LOCKED':'Currently open'}</span>`;
+  host.appendChild(mcard);
+  $("#ad-maint").onclick=()=>{ ACCESS_CONFIG.maintenance=!ACCESS_CONFIG.maintenance; hpAccessSave(); toast(ACCESS_CONFIG.maintenance?"Maintenance lock ON":"Maintenance lock OFF"); render(); };
+
+  // Spare login slots
+  const slots=adminLoginSlots();
+  const taken=Object.keys(ACCESS_CONFIG.users||{});
+  const spare=slots.filter(s=>taken.indexOf(s)<0);
+  const scard=el("div",""); scard.style.cssText="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:16px 18px;margin-bottom:18px";
+  scard.innerHTML=`<div style="font:700 14px Lato;color:${ADMIN_NAVY};margin-bottom:6px">👤 Spare login slots (${spare.length} free)</div>
+    <div style="font:400 13px Lato;color:#6b7280;margin-bottom:10px">Each person needs a Firebase login created once. These spare slots are pre-made so you can add people without any coding. Assign one when you add a user.</div>
+    ${spare.length? `<div style="display:flex;flex-wrap:wrap;gap:6px">${spare.map(s=>`<span style="font-family:monospace;font-size:12px;background:#eef2f8;color:${ADMIN_NAVY};padding:4px 10px;border-radius:7px">${s}</span>`).join("")}</div>`
+      : `<div style="font:600 13px Lato;color:#b3261e">No spare slots free — ask your developer to add more.</div>`}
+    <details style="margin-top:12px"><summary style="cursor:pointer;font:600 12px Lato;color:${ADMIN_NAVY}">One-time Firebase setup steps</summary>
+      <ol style="font:400 12.5px Lato;color:#374151;margin:8px 0 0;padding-left:20px;line-height:1.7">
+        <li>Firebase Console → Authentication → Users → <b>Add user</b>.</li>
+        <li>Email = <code>&lt;slot&gt;@brandonhall.portal</code> (e.g. <code>staff1@brandonhall.portal</code>).</li>
+        <li>Password = the code from <code>firebase-config.js</code> for that slot.</li>
+        <li>That slot is now ready — assign it to a person here under Users.</li>
+      </ol></details>`;
+  host.appendChild(scard);
+
+  // Reference data (kept from the old admin screen)
+  const ref=el("div",""); ref.style.cssText="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:16px 18px";
+  ref.innerHTML=`<div style="font:700 14px Lato;color:${ADMIN_NAVY};margin-bottom:10px">📋 Reference data</div>`;
+  host.appendChild(ref);
+
+  ref.appendChild(el("div","sec-title","Room readiness (M&E audit)"));
   const rd=el("table","data-table");
   rd.innerHTML=`<tr><th>Room</th><th>Status</th><th>Note</th></tr>`+
     ROOMS.map(r=>{ const t=roomTech(r);
-      const status = t.sellable
-        ? `<span class="badge-ok">✓ Ready to sell</span>`
-        : `<span style="color:#b3261e;font-weight:600">✗ Not ready</span>`;
+      const status = t.sellable ? `<span class="badge-ok">✓ Ready to sell</span>` : `<span style="color:#b3261e;font-weight:600">✗ Not ready</span>`;
       return `<tr><td>${r.name}</td><td>${status}</td><td style="font-size:12.5px;color:var(--muted)">${t.adminNote||"—"}</td></tr>`;
     }).join("");
-  v.appendChild(rd);
+  ref.appendChild(rd);
 
-  v.appendChild(el("div","sec-title","Rooms & hire rates"));
+  ref.appendChild(el("div","sec-title","Rooms & hire rates"));
   const rt=el("table","data-table");
   rt.innerHTML=`<tr><th>Room</th><th>m²</th><th>Max cap</th><th>Half day</th><th>Full day</th></tr>`+
     ROOMS.map(r=>{const h=ROOM_HIRE[r.id]||{};
       return `<tr><td>${r.name}</td><td>${r.m2}</td><td>${maxCap(r)}</td><td>${h.half?money(h.half):"—"}</td><td>${h.full?money(h.full)+(h.fullNote?' <span style="color:var(--muted);font-size:11px">'+h.fullNote+'</span>':''):"—"}</td></tr>`;}).join("");
-  v.appendChild(rt);
+  ref.appendChild(rt);
 
-  // Competitor benchmarking
-  v.appendChild(el("div","sec-title","Competitor benchmarking"));
-  v.appendChild(el("p","",`<span style="font-size:13px;color:var(--muted);font-style:italic">${COMPSET_NOTE}</span>`));
+  ref.appendChild(el("div","sec-title","Competitor benchmarking"));
+  ref.appendChild(el("p","",`<span style="font-size:13px;color:var(--muted);font-style:italic">${COMPSET_NOTE}</span>`));
   const ct=el("table","data-table");
   ct.innerHTML=`<tr><th>Hotel</th><th>DDR</th><th>24hr</th><th>Wedding</th><th>Christmas</th><th>Afternoon Tea</th><th>Baby Shower</th></tr>`+
     COMPETITORS.map(c=>`<tr${c.us?' style="background:#eef2f8;font-weight:600"':''}>
       <td>${c.name}${c.us?' <span class="feat-tag" style="background:var(--navy)">US</span>':''}</td>
       <td>${c.ddr}</td><td>${c.h24}</td><td>${c.wedding}</td><td>${c.xmas}</td><td>${c.aftTea}</td><td>${c.babyShower}</td></tr>`).join("");
-  v.appendChild(ct);
+  ref.appendChild(ct);
 }
 
 /* ============================================================ SUPPLIERS */
@@ -4532,7 +4825,7 @@ function renderHome(v){
   //    live link only for Ajay, Raj and Alia; greyed out for everyone else. ───
   const quick = document.createElement('div');
   quick.style.cssText = 'padding:4px 28px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center';
-  const finOK = HP_FIN_KEYS.includes(SESSION && SESSION._key);
+  const finOK = (typeof hpCanFinancial==="function") ? hpCanFinancial() : HP_FIN_KEYS.includes(SESSION && SESSION._key);
   const qLinks = [
     { label:'Create invoice',     icon:'🧾', url:'createinvoice.html', colour:'#b89056' },
     { label:'Financial Overview', icon:'📊', url:'pl/',               colour:'#2a6a4a', fin:true },
@@ -4544,6 +4837,14 @@ function renderHome(v){
     qLinks.map(q=> (q.fin && !finOK)
       ? `<span title="Finance team only — Ajay, Raj or Alia" style="${qStyle(q.colour)};opacity:.45;filter:grayscale(1);cursor:not-allowed">${q.icon} ${q.label} 🔒</span>`
       : `<a href="${q.url}" target="_blank" rel="noopener" style="${qStyle(q.colour)}">${q.icon} ${q.label}</a>`).join('');
+  // Admin & User Setup — Directors only
+  if(typeof hpIsAdmin==="function" && hpIsAdmin()){
+    const adm=document.createElement('button');
+    adm.style.cssText=qStyle('#1F3864')+';border:none;background:#1F3864;color:#fff;border-left:3px solid #c9a978';
+    adm.innerHTML='⚙️ Admin &amp; User Setup';
+    adm.onclick=()=>switchTab('admin');
+    quick.appendChild(adm);
+  }
   wrap.appendChild(quick);
 
   // ── Stats bar — full width ─────────────────────────────────────────────────
