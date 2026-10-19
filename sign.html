@@ -128,7 +128,7 @@ function signCardBody(c, clientSigned, hotelSigned){
       </div>`;
   }
   if(clientSigned && !hotelSigned){
-    return `<div class="status signed">✓ Thank you, ${(c.client||"").split(" ")[0]} — you signed on ${fmt(c.clientDate)}. Brandon Hall will now counter-sign to confirm your event.</div>
+    return `<div class="status signed">✓ Thank you, ${(c.client||"").split(" ")[0]} — you signed on ${fmt(c.clientDate)}. Brandon Hall Hotel and Spa will now counter-sign to confirm your event.</div>
       <div class="sigrow">
         <div class="sigbox"><div class="sigline"><span class="sigd">${c.clientSig}</span></div><div class="siglabel">Client · ${fmt(c.clientDate)}</div></div>
         <div class="sigbox"><div class="sigline"></div><div class="siglabel">Brandon Hall Hotel and Spa · awaiting counter-signature</div></div>

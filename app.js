@@ -1033,12 +1033,31 @@ function renderRoomLines(){
   box.querySelectorAll(".menu-toggle").forEach(b=>b.onclick=()=>{
     const i=+b.dataset.i; const panel=$("#menu-panel-"+i);
     panel.classList.toggle("hidden");
-    if(!panel.dataset.built){ panel.innerHTML=Object.entries(MENU_ITEMS).map(([cat,items])=>
+    if(!panel.dataset.built){
+      const tplSel=`<div class="menu-cat" style="background:#f7f9fb;border:1px solid #eef1f4;border-radius:9px;padding:10px 12px;margin-bottom:8px">
+        <b>Pre-fill from a menu</b>
+        <select class="menu-load" data-i="${i}" style="width:100%;margin-top:5px;padding:7px 9px;border:1px solid #d7dde4;border-radius:7px">
+          <option value="">— choose a menu to load —</option>
+          <optgroup label="Standard">${MENU_TEMPLATES.filter(t=>t.id!=='blank'&&!t.sample).map(t=>`<option value="${t.id}">${t.label}</option>`).join("")}</optgroup>
+          <optgroup label="Sample menus (pending chef sign-off)">${MENU_TEMPLATES.filter(t=>t.sample).map(t=>`<option value="${t.id}">${t.label}</option>`).join("")}</optgroup>
+        </select>
+        <div class="qs-sub" style="margin-top:4px">Loads the full menu onto this function. Tick extra items below or edit it on the quote.</div>
+      </div>`;
+      panel.innerHTML=tplSel+Object.entries(MENU_ITEMS).map(([cat,items])=>
       `<div class="menu-cat"><b>${cat}</b>${items.map(it=>{
         const on=(QUOTE_ROOMS[i].menu||[]).includes(it);
         return `<label class="menu-chk"><input type="checkbox" data-mi="${i}" value="${it.replace(/"/g,'&quot;')}" ${on?"checked":""}> ${it}</label>`;
       }).join("")}</div>`).join("");
       panel.dataset.built="1";
+      const loadSel=panel.querySelector(".menu-load");
+      if(loadSel) loadSel.onchange=()=>{
+        const t=MENU_TEMPLATES.find(x=>x.id===loadSel.value); if(!t){ return; }
+        QUOTE_ROOMS[i].menu=menuLinesFromTemplate(t);
+        QUOTE_ROOMS[i].menuName=t.label;
+        b.textContent=`🍽️ Menu items (${QUOTE_ROOMS[i].menu.length})`;
+        if(typeof toast==="function") toast(`Loaded "${t.label}" onto this function`);
+        recalcQuote();
+      };
       panel.querySelectorAll("input[type=checkbox]").forEach(cb=>cb.onchange=()=>{
         const ri=+cb.dataset.mi; QUOTE_ROOMS[ri].menu=QUOTE_ROOMS[ri].menu||[];
         if(cb.checked){ if(!QUOTE_ROOMS[ri].menu.includes(cb.value)) QUOTE_ROOMS[ri].menu.push(cb.value); }
@@ -1184,6 +1203,7 @@ function downloadQuotePDF(){
       <div><h1>Brandon Hall Hotel and Spa</h1><div class="muted">Main Street, Brandon, Coventry CV8 3FW</div></div>
       <div style="text-align:right"><div class="muted">Quotation</div><b>${ref}</b><br><span class="muted">${new Date().toLocaleDateString("en-GB")}</span></div>
     </div>
+    ${roomImage(q.room,q.evId)?`<img src="${roomImage(q.room,q.evId)}" style="width:100%;height:150px;object-fit:cover;border-radius:8px;margin:14px 0" onerror="this.style.display='none'">`:""}
     <h2>Prepared for</h2>
     <div class="grid">
       <div><b>${q.customer.name}</b></div><div>${q.customer.co||""}</div>
@@ -1227,9 +1247,13 @@ function downloadBrochurePDF(){
     const dateStr=line.date? new Date(line.date).toLocaleDateString("en-GB") : "Date TBC";
     const pkg=PACKAGES.find(p=>p.id===line.pkg);
     const svg=room.restaurant?'':seatingSVG(room,line.layout,pax).replace(/background:#fbfaf7/,'background:#fff');
+    const photo=roomImage(room, q.evId);
+    const menuLines=(line.menu&&line.menu.length)?`<div style="margin-top:8px;font-size:12px;color:#3a4256"><b style="color:#1a2b47">Menu</b><br>${line.menu.map(m=>`${m}`).join("<br>")}</div>`:"";
     return `<div class="room-block">
       <h3 class="rb-title">${room.name} <span>· ${dateStr} · ${LAYOUT_LABELS[line.layout]} · ${pax} guests</span></h3>
+      ${photo?`<img src="${photo}" style="width:100%;height:150px;object-fit:cover;border-radius:8px;margin:8px 0" onerror="this.style.display='none'">`:""}
       ${pkg?`<div class="rb-pkg">${pkg.name}</div>`:""}
+      ${menuLines}
       <div style="max-width:440px;margin:8px auto 0">${svg}</div>
     </div>`;
   }).join("");
@@ -1305,14 +1329,14 @@ function downloadBrochurePDF(){
 
     <!-- VENUE + ROOMS -->
     <div class="page">
-      <h2>Your event at Brandon Hall</h2><div class="rule"></div>
+      <h2>Your event at Brandon Hall Hotel and Spa</h2><div class="rule"></div>
       ${q.evId==="wedding"?`
       <p class="lead">${WEDDING_CONTENT.intro}</p>
       <p class="lead">${WEDDING_CONTENT.suite}</p>
       <div class="grid2">${gallery}</div>
-      <h2 style="font-size:18px;margin-top:18px">Why Brandon Hall</h2><div class="rule"></div>
+      <h2 style="font-size:18px;margin-top:18px">Why Brandon Hall Hotel and Spa</h2><div class="rule"></div>
       ${WEDDING_CONTENT.reasons.map(r=>`<div class="box" style="padding:12px 16px;margin:8px 0"><b style="font-family:'Cormorant Garamond',serif;font-size:16px;color:#1a2b47">${r.t}</b><div style="font-size:12.5px;color:#3a4256;margin-top:3px">${r.d}</div></div>`).join("")}`
-      :`<p class="lead">Set within 17 acres of Warwickshire grounds, Brandon Hall offers elegant spaces for every occasion. Here's our proposal for your ${et.label.toLowerCase()}${q.rooms.length>1?` across ${q.rooms.length} rooms`:""}.</p>
+      :`<p class="lead">Set within 17 acres of Warwickshire grounds, Brandon Hall Hotel and Spa offers elegant spaces for every occasion. Here's our proposal for your ${et.label.toLowerCase()}${q.rooms.length>1?` across ${q.rooms.length} rooms`:""}.</p>
       <div class="grid2">${gallery}</div>`}
       <div class="stats">
         <div><b>${q.rooms.length}</b><span>${q.rooms.length>1?"Rooms":"Room"}</span></div>
@@ -4043,6 +4067,17 @@ function loadMenuTemplate(id){
   else { MENU=JSON.parse(JSON.stringify(t.menu)); window._menuIsSample=!!t.sample; }
   switchTab("menu");
 }
+/* Flatten a menu template into readable lines for a quote function (one per course). */
+function menuLinesFromTemplate(t){
+  if(!t || !t.menu) return [];
+  const out=[];
+  out.push(t.menu.title + (t.menu.price?` — ${t.menu.price}`:""));
+  (t.menu.courses||[]).forEach(c=>{
+    const items=(c.items||[]).map(it=>it.name).filter(Boolean);
+    if(items.length) out.push(`${c.name}: ${items.join(" · ")}`);
+  });
+  return out;
+}
 function renderMenuSampleFlag(){
   const box=$("#mn-sample-flag"); if(!box) return;
   box.innerHTML = window._menuIsSample
@@ -6109,7 +6144,7 @@ function buildRichQuote(q, id){
     const room=qSpace(line.room); if(!room) return null;
     const pkg=PACKAGES.find(p=>p.id===line.pkg);
     return { id:room.id, name:room.name, m2:room.m2, cap:room.cap||"", restaurant:!!room.restaurant,
-      img:roomImage(room), layout:line.layout||"", pax:parseInt(line.pax)||0,
+      img:roomImage(room, q.evId), layout:line.layout||"", pax:parseInt(line.pax)||0,
       date:line.date||"", pkg:pkg?{name:pkg.name,from:pkg.from,inc:pkg.includes||pkg.inc||[]}:null,
       hire:line.hire||"none", fn:fnLabel(line), menu:(line.menu||[]) };
   }).filter(Boolean);
@@ -6119,7 +6154,8 @@ function buildRichQuote(q, id){
     eventType:et?et.label:(q.evId||"Event"), evId:q.evId,
     eventDate:q.customer.date||(q.rooms[0]&&q.rooms[0].date)||"",
     pax:q.pax, rooms, lines:q.lines, subtotal:q.subtotal, carbon:q.carbon,
-    hero:(q.room?roomImage(q.room):(rooms[0]&&rooms[0].img))||"", gallery:(q.evId==="wedding"?(GALLERY.weddings||[]):(GALLERY.meetings||[])).slice(0,3),
+    hero:(q.room?roomImage(q.room,q.evId):(rooms[0]&&rooms[0].img))||(imgPoolFor(q.evId)[0]),
+    gallery:((["wedding","celebration","birthday","baby-shower","funeral","christmas"].includes(q.evId))?(GALLERY.weddings||[]):(GALLERY.hotel||[])).slice(0,3),
     payments:(q.payments&&q.payments.length)?q.payments:((q.enquiry&&Array.isArray(q.enquiry.payments))?q.enquiry.payments:[]),
     options:(typeof QUOTE_OPTIONS!=="undefined"&&QUOTE_OPTIONS.length)?QUOTE_OPTIONS.slice():null,
     ref:(q.enquiry&&q.enquiry.ref)||quoteRef(q.evId, q.customer.date||(q.rooms[0]&&q.rooms[0].date), q.customer.name), created:new Date().toISOString(), status:"issued"
@@ -6740,7 +6776,7 @@ function openContractDetail(c){
     <div class="sig-status">
       <div class="ss-row ${clientSigned?"done":""}"><span>${clientSigned?"✓":"○"} Client</span>
         <span>${clientSigned?`${c.clientSig} · ${fmt(c.clientDate)}`:"Awaiting signature"}</span></div>
-      <div class="ss-row ${hotelSigned?"done":""}"><span>${hotelSigned?"✓":"○"} Brandon Hall</span>
+      <div class="ss-row ${hotelSigned?"done":""}"><span>${hotelSigned?"✓":"○"} Brandon Hall Hotel and Spa</span>
         <span>${hotelSigned?`${c.hotelSig} · ${fmt(c.hotelDate)}`:(clientSigned?"Ready to counter-sign":"Awaiting client first")}</span></div>
     </div>
     ${!clientSigned?`<div class="embed-box" style="margin-top:12px">${url}<button class="cp" id="ct-copy">Copy link</button></div>

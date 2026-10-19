@@ -227,10 +227,36 @@ const GALLERY = {
     "assets/weddings/wedding-06.jpg"
   ]
 };
-/* Per-room hero: default to a meetings image; edit to assign specific shots */
-function roomImage(room){
-  const idx = Math.abs([...room.id].reduce((a,c)=>a+c.charCodeAt(0),0)) % GALLERY.meetings.length;
-  return GALLERY.meetings[idx];
+/* Local image pools — bundled in assets/ so they always load on the proposal
+   page and PDF (the CDN links above can be slow or blocked). */
+const IMG_POOLS = {
+  wedding: ["assets/weddings/wedding-04.jpg","assets/weddings/wedding-09.jpg","assets/weddings/wedding-13.jpg",
+    "assets/weddings/wedding-08.jpg","assets/weddings/wedding-06.jpg","assets/weddings/wedding-01.jpg",
+    "assets/weddings/wedding-16.jpg","assets/weddings/wedding-20.jpg"],
+  hotel: ["assets/hotel/exterior-front.png","assets/hotel/exterior-lawn.png","assets/hotel/bar-lounge.png",
+    "assets/hotel/restaurant.png","assets/hotel/terrace.png","assets/hotel/reception.png","assets/hotel/pool.png"]
+};
+GALLERY.hotel = IMG_POOLS.hotel.slice(0,6);
+/* A few rooms get a fixed, obvious shot */
+const ROOM_IMG = {
+  "restaurant":"assets/hotel/restaurant.png",
+  "brandon-suite":"assets/hotel/suite-bay.png",
+  "wolston-suite":"assets/hotel/suite-bay.png"
+};
+/* Which pool suits an event type */
+function imgPoolFor(evId){
+  if(["wedding","celebration","birthday","baby-shower","funeral","christmas"].includes(evId)) return IMG_POOLS.wedding;
+  return IMG_POOLS.hotel;
+}
+/* Per-room image — event-aware and local-first so it always shows.
+   A relevant photo per room/section on both the proposal and the PDF. */
+function roomImage(room, evId){
+  const id = (room && room.id) ? room.id : (typeof room==="string"? room : "");
+  if(id && ROOM_IMG[id]) return ROOM_IMG[id];
+  const pool = imgPoolFor(evId);
+  if(!id) return pool[0];
+  const idx = Math.abs([...String(id)].reduce((a,c)=>a+c.charCodeAt(0),0)) % pool.length;
+  return pool[idx];
 }
 
 /* ---- TECH / CONNECTIVITY PER ROOM ----
