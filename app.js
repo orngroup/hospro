@@ -9397,6 +9397,7 @@ function renderHosHouseHub(v){
         <input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderDash()" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
         <button onclick="hhAutoAllocate()" title="Share the day's rooms out across the rostered housekeepers (45 min/room, 30 min lunch)" style="padding:7px 12px;border:none;background:#2E6B5E;color:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer">⚖️ Auto-allocate rooms</button>
         <button onclick="hhEodReport()" title="Compile the end-of-day housekeeping report" style="padding:7px 12px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12px Lato;cursor:pointer">📄 End-of-day report</button>
+        <button onclick="hhClearDay()" title="Delete all rooms & areas for this date — use to reset after testing" style="padding:7px 12px;border:1px solid #e4b6b6;background:#fff;color:#b3261e;border-radius:8px;font:700 12px Lato;cursor:pointer">🗑 Clear test data</button>
         <button onclick="hhRenderDash()" style="padding:7px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">↻ Refresh</button>
       </div>
     </div>
@@ -9484,6 +9485,7 @@ async function hhRenderDash(){
         ${eff.length?hhBars(eff.map(e=>({label:e.name,value:e.done,sub:e.done?Math.round(e.mins/e.done)+'m avg':''}))):'<div style="color:#8296a8;font-size:13px">No rooms completed yet.</div>'}
       </div>
     </div>
+    ${hhDashStaffGrid(rooms)}
     <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
       <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:8px">Staff efficiency</div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -9497,6 +9499,36 @@ async function hhRenderDash(){
 function hhCopy(txt, btn){
   try{ navigator.clipboard.writeText(txt); const o=btn.textContent; btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent=o,1200); }
   catch(e){ try{ prompt('Copy link:', txt); }catch(_){} }
+}
+async function hhClearDay(){
+  const date=window._hhDate||hhTodayISO();
+  if(!confirm('Clear ALL housekeeping data for '+date+'?\n\nThis removes every room and public-area task for that day (allocations, progress, logs). Use it to reset after testing.')) return;
+  try{ if(typeof FB!=='undefined' && FB.db){ const snap=await FB.db.collection('hoshouse_rooms').where('date','==',date).get(); const batch=FB.db.batch(); snap.forEach(d=>batch.delete(d.ref)); await batch.commit(); } }catch(e){ console.warn('clear',e&&e.code); }
+  try{ localStorage.removeItem('hoshouse_day_'+date); }catch(e){}
+  toast('✓ Cleared housekeeping data for '+date); hhRenderDash();
+}
+/* At-a-glance grid: every housekeeper, their allocated rooms + public areas, and progress */
+function hhDashStaffGrid(rooms){
+  if(!rooms.length) return '';
+  const by={}; rooms.forEach(r=>{ const k=r.housekeeper||'_un'; (by[k]=by[k]||{name:r.housekeeperName||(k==='_un'?'Unallocated':k),rooms:[]}).rooms.push(r); });
+  const order=Object.keys(by).sort((a,b)=> a==='_un'?1:b==='_un'?-1:0);
+  const chip=r=>{ const col=r.status==='done'?'#ecf6f0;color:#2a6a4a':r.status==='in_progress'?'#fff3df;color:#9c5a00':'#eef1f5;color:#6b7280';
+    const mins=r.status==='done'?' '+Math.round((r.durationSec||0)/60)+'m':(r.status==='in_progress'&&r.startAt?' '+Math.round((Date.now()-r.startAt)/60000)+'m':'');
+    const label=r.area?('🧼 '+r.room):r.room;
+    return `<span style="display:inline-block;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:7px;margin:3px 4px 0 0;background:${col}">${hhEsc(label)}${mins}</span>`; };
+  const cards=order.map(k=>{ const g=by[k];
+    const d=g.rooms.filter(r=>r.status==='done').length, ip=g.rooms.filter(r=>r.status==='in_progress').length, pd=g.rooms.filter(r=>r.status==='pending').length;
+    const pct=g.rooms.length?Math.round(d/g.rooms.length*100):0;
+    const na=g.rooms.filter(r=>r.area).length;
+    return `<div style="background:#fbfcfd;border:1px solid #e4e9ef;border-radius:12px;padding:12px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><b style="color:#1a2b3a;font-size:13.5px">${hhEsc(g.name)}</b><span style="font-size:11.5px;color:#8296a8">${d}✓ · ${ip} now · ${pd} to go${na?' · '+na+' area'+(na>1?'s':''):''}</span></div>
+      <div style="height:8px;border-radius:5px;background:#eef1f5;overflow:hidden;margin-top:7px"><div style="width:${pct}%;height:100%;background:${k==='_un'?'#9aa7b5':'#2E6B5E'}"></div></div>
+      <div style="margin-top:3px">${g.rooms.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0)||(+a.room||0)-(+b.room||0)).map(chip).join('')||'<span style="font-size:12px;color:#8296a8">No rooms</span>'}</div>
+    </div>`; }).join('');
+  return `<div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font:800 14px Lato;color:#1a2b3a">Today at a glance — rooms by housekeeper</div><div style="font-size:11px;color:#8296a8">🧼 = public area</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" class="hh-sg">${cards}</div>
+    <style>@media(max-width:720px){.hh-sg{grid-template-columns:1fr!important}}</style></div>`;
 }
 const HH_TARGET={Departure:25,Stayover:15,"Arrival-ready":10,"Gents WC":20,"Ladies WC":20,"Accessible WC":10,Reception:20};
 function hhTgt(t){ return HH_TARGET[t]||30; }
@@ -9517,6 +9549,18 @@ async function hhEodReport(){
   const lost=rooms.filter(r=>r.lostProperty&&r.lostProperty.trim());
   const repl=rooms.filter(r=>r.replaced&&r.replaced.trim());
   const esc=hhEsc;
+  const tm=ts=>ts?new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'—';
+  const statTxt=r=>r.status==='done'?'✓ Done':r.status==='in_progress'?'In progress':'Not done';
+  // public areas table
+  const areasTable = areas.length ? `<div style="margin-top:14px"><div style="font:800 12.5px Lato;color:#1a2b3a;margin-bottom:4px">Public areas (${areas.filter(a=>a.status==='done').length}/${areas.length} done)</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="background:#f3f5f7;text-align:left"><th style="padding:5px 9px">Area</th><th style="padding:5px 9px">Status</th><th style="padding:5px 9px">By</th><th style="padding:5px 9px">Min</th></tr>
+    ${areas.sort((a,b)=>String(a.room).localeCompare(String(b.room))).map(a=>`<tr style="border-top:1px solid #eef1f4"><td style="padding:5px 9px">🧼 ${esc(a.room)}</td><td style="padding:5px 9px">${statTxt(a)}</td><td style="padding:5px 9px">${esc(a.housekeeperName||'—')}</td><td style="padding:5px 9px;text-align:center">${a.status==='done'?Math.round((a.durationSec||0)/60):'–'}</td></tr>`).join('')}
+    </table></div>` : '';
+  // full room list
+  const roomsTable = bedrooms.length ? `<div style="margin-top:14px"><div style="font:800 12.5px Lato;color:#1a2b3a;margin-bottom:4px">Rooms (${bedrooms.length})</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px"><tr style="background:#f3f5f7;text-align:left"><th style="padding:4px 8px">Room</th><th style="padding:4px 8px">Type</th><th style="padding:4px 8px">Housekeeper</th><th style="padding:4px 8px">Start</th><th style="padding:4px 8px">Finish</th><th style="padding:4px 8px">Min</th></tr>
+    ${bedrooms.slice().sort((a,b)=>(+a.room||0)-(+b.room||0)).map(r=>{ const o=(r.durationSec||0)>hhTgt(r.type)*60; return `<tr style="border-top:1px solid #eef1f4"><td style="padding:4px 8px;font-weight:700">${esc(r.room)}</td><td style="padding:4px 8px">${esc(r.type)}</td><td style="padding:4px 8px">${esc(r.housekeeperName||'—')}</td><td style="padding:4px 8px">${tm(r.startAt)}</td><td style="padding:4px 8px">${tm(r.finishAt)}</td><td style="padding:4px 8px;text-align:center;color:${o?'#b3261e':'#1a2b3a'};font-weight:${o?'700':'400'}">${r.status==='done'?Math.round((r.durationSec||0)/60):(r.status==='in_progress'?'…':'–')}</td></tr>`; }).join('')}
+    </table><div style="font-size:10.5px;color:#8296a8;margin-top:3px">Minutes in red are over the target for that room type.</div></div>` : '';
   const line=(l,v)=>`<tr><td style="padding:4px 10px;color:#5b6b7b">${l}</td><td style="padding:4px 10px;font-weight:700">${v}</td></tr>`;
   const listBlock=(title,arr,fn)=> arr.length?`<div style="margin-top:12px"><div style="font:800 12.5px Lato;color:#1a2b3a;margin-bottom:4px">${title} (${arr.length})</div><ul style="margin:0;padding-left:18px;font-size:12.5px;color:#374151;line-height:1.7">${arr.map(fn).join('')}</ul></div>`:'';
   const dfmt=new Date(date+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -9538,9 +9582,11 @@ async function hhEodReport(){
         <tr style="background:#1F3864;color:#fff"><th style="padding:5px 9px;text-align:left">Name</th><th style="padding:5px 9px">Rooms</th><th style="padding:5px 9px">Avg min</th><th style="padding:5px 9px">Over</th></tr>
         ${ppl.map(([k,v])=>`<tr style="border-top:1px solid #eef1f4"><td style="padding:5px 9px">${esc(k)}</td><td style="padding:5px 9px;text-align:center">${v.done}</td><td style="padding:5px 9px;text-align:center">${v.done?Math.round(v.mins/v.done):'–'}</td><td style="padding:5px 9px;text-align:center;color:${v.over?'#b3261e':'#1a2b3a'}">${v.over}</td></tr>`).join('')||'<tr><td colspan="4" style="padding:8px;color:#8296a8">No rooms completed.</td></tr>'}
       </table></div>
+    ${areasTable}
     ${listBlock('🔧 Reported to maintenance', maint, r=>`<li>Room ${esc(r.room)} — ${esc(r.maintenance)}</li>`)}
     ${listBlock('🎒 Lost property found', lost, r=>`<li>Room ${esc(r.room)} — ${esc(r.lostProperty)}</li>`)}
     ${listBlock('♻ Items replaced from store', repl, r=>`<li>Room ${esc(r.room)} — ${esc(r.replaced)}</li>`)}
+    ${roomsTable}
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
       <button onclick="hhEodPrint()" style="padding:9px 15px;border:1px solid #2E6B5E;border-radius:8px;background:#fff;color:#2E6B5E;font:700 13px Lato;cursor:pointer">🖨 Print / PDF</button>
       <button onclick="closeModal()" style="padding:9px 18px;border:none;border-radius:8px;background:#1F3864;color:#fff;font:700 13px Lato;cursor:pointer">Close</button>
