@@ -165,6 +165,13 @@ service cloud.firestore {
       allow update, delete: if isStaff();
     }
 
+    // ── HosHouse (housekeeping) — reception form, housekeeper phones and the
+    // manager dashboard share these. The phones sign in with a PIN in the app,
+    // not Firebase, so access is open for these two collections (same approach
+    // as HosFIX and the beverage iPad app).
+    match /hoshouse_rooms/{doc}  { allow read, write: if true; }
+    match /hoshouse_config/{doc} { allow read, write: if true; }
+
     match /{document=**} {
       allow read, write: if false;
     }

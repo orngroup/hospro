@@ -32,11 +32,92 @@
     { id:"laith",      name:"Laith Hardy",      pin:"1016", lead:true }
   ];
 
-  // ---- Checklist each room is cleaned against ----
-  const CHECKLIST = ["Bed","Bathroom","Floor","Surfaces","Bins","Amenities","Mini-bar"];
+  // ---- Summarised checklists (from the Housekeeping Room Standard).
+  //      Each item: key, short label, and a one-line "what this means" so the
+  //      cleaner knows what the box covers without a long form. ----
+  const CHECKLISTS = {
+    Departure: [
+      {k:"bedroom",   t:"Bedroom",            d:"Rubbish out, bed stripped & made with fresh linen, dusted high-to-low, mirrors smear-free."},
+      {k:"tray",      t:"Tea tray & kettle",  d:"Cups & spoons clean, tray refilled (tea, coffee, sugar, milk, biscuits), kettle rinsed."},
+      {k:"bathroom",  t:"Bathroom",           d:"Toilet (red cloth only), sink & tap, shower/bath, chrome shiny, mirror & 2 glasses."},
+      {k:"towels",    t:"Towels & toiletries",d:"Fresh towels + bath mat, 2 toilet rolls, shower gel / shampoo / soap refilled."},
+      {k:"floors",    t:"Floors",             d:"Vacuumed incl. edges & under the bed; hard floor mopped."},
+      {k:"fixit",     t:"Fix-it check",       d:"Plugs, bulbs, TV & remote, kettle, hairdryer, hangers; safe open & reset."},
+      {k:"amenities", t:"Guest info & extras",d:"Directory, Wi-Fi card, pen & notepad, spare roll & tissues in place."},
+      {k:"final",     t:"Final check",        d:"Presentable, windows secure, heating set, lights off, card out, door locked."}
+    ],
+    Stayover: [
+      {k:"rubbish",  t:"Rubbish & liners",   d:"Empty bins, fit new liners. Only clear the bin — never move guest items."},
+      {k:"bed",      t:"Bed made",           d:"Bed straightened / made, pillows plumped."},
+      {k:"bathroom", t:"Bathroom refreshed", d:"Toilet, sink, shower & chrome wiped; mirror clean."},
+      {k:"towels",   t:"Towels & toiletries",d:"Replace towels as needed; top up toiletries & toilet roll."},
+      {k:"tray",     t:"Tea tray refilled",  d:"Cups & spoons clean, tray restocked, kettle rinsed."},
+      {k:"floors",   t:"Vacuum & mop",       d:"Vacuum the floor; mop any hard floor."}
+    ],
+    "Arrival-ready": [
+      {k:"check",   t:"Room check",   d:"Quick look over a made-up room — clean, tidy, nothing missing."},
+      {k:"amenity", t:"Amenities",    d:"Towels, toiletries, tea tray and toilet roll all present."},
+      {k:"final",   t:"Final check",  d:"Fresh smell, heating set, lights off, card out, door locked."}
+    ],
+    WC: [
+      {k:"pans",    t:"Toilets & urinals", d:"Pans, seats, urinals and cisterns cleaned and disinfected."},
+      {k:"sinks",   t:"Sinks & taps",      d:"Sinks, taps and chrome cleaned and shined."},
+      {k:"mirrors", t:"Mirrors & surfaces",d:"Mirrors, ledges and partitions wiped smear-free."},
+      {k:"floor",   t:"Floor",             d:"Floor swept and mopped, including corners."},
+      {k:"bins",    t:"Bins emptied",      d:"All bins and sanitary units emptied, new liners."},
+      {k:"stock",   t:"Stocked",           d:"Soap, paper towels and toilet roll topped up."}
+    ],
+    Reception: [
+      {k:"floors",   t:"Floors",           d:"Entrance and lobby floors swept and mopped / vacuumed."},
+      {k:"surfaces", t:"Surfaces & desk",  d:"Reception desk, ledges and surfaces dusted and wiped."},
+      {k:"glass",    t:"Glass & doors",    d:"Entrance glass and doors cleaned, handles wiped."},
+      {k:"seating",  t:"Seating & tidy",   d:"Sofas / chairs straightened, cushions plumped, area tidy."},
+      {k:"bins",     t:"Bins",             d:"Bins emptied, new liners."}
+    ]
+  };
+  // which checklist a room/area type uses
+  function checklistKeyFor(type){
+    if(type==='Stayover') return 'Stayover';
+    if(type==='Arrival-ready') return 'Arrival-ready';
+    if(type==='Reception') return 'Reception';
+    if(/WC|Toilet/i.test(type||'')) return 'WC';
+    return 'Departure';
+  }
+  // target minutes per type (used for timers & efficiency)
+  const TARGET_MIN = { Departure:25, Stayover:15, "Arrival-ready":10, "Gents WC":20, "Ladies WC":20, "Accessible WC":10, Reception:20 };
 
-  // ---- Room-type options reception can tag a room with (daily clean status) ----
+  // ---- Room-type options reception can tag a room with ----
   const ROOM_TYPES = ["Departure","Stayover","Arrival-ready"];
+  // ---- Public areas (allocated alongside rooms). Toilets twice a day, reception once. ----
+  const PUBLIC_AREAS = [
+    { area:"Gents WC",      slots:["AM","PM"] },
+    { area:"Ladies WC",     slots:["AM","PM"] },
+    { area:"Accessible WC", slots:["AM","PM"] },
+    { area:"Reception",     slots:["Daily"]  }
+  ];
+
+  // ---- Allocation: map a rota staff id → housekeeper-app id, and work out capacity.
+  //      Capacity = (shift minutes − 30 min lunch) ÷ 45 min per room. ----
+  const ROTA_TO_HH = {
+    ruth_addison_30:'ruth', aryan_31:'aryan', lara_jervis_32:'lara', rahul_reghunath_33:'rahul',
+    jitendra_34:'jitendra', manoj_35:'manoj', tushar_ambekar_36:'tushar', allen_37:'allen',
+    hassen_38:'hassen', satya_51:'satya', ayomidipupo_yoemi_46:'ayomide', yaya_52:'yaya',
+    dushyanth_39:'dushyanth', anisha_54:'anisha', edwin_53:'edwin', laith_hardy_55:'laith'
+  };
+  function shiftMins(sh){
+    if(!sh) return 0; const s=String(sh).toLowerCase().trim();
+    if(['off','holiday','sick','in lieu','on call',''].includes(s)) return 0;
+    let t=0,m; const rg=/(\d+):(\d+)\s*-\s*(\d+):(\d+)/g;
+    while((m=rg.exec(sh))){ let d=(+m[3]*60+ +m[4])-(+m[1]*60+ +m[2]); if(d<0)d+=1440; t+=d; } return t;
+  }
+  function distribute(items, workers){
+    const plan=workers.map(w=>Object.assign({},w,{items:[]}));
+    items.forEach(it=>{ let pool=plan.filter(w=>w.items.length<w.cap); let pick;
+      if(pool.length){ pool.sort((a,b)=>(b.cap-b.items.length)-(a.cap-a.items.length)||a.items.length-b.items.length); pick=pool[0]; }
+      else if(plan.length){ pick=plan.slice().sort((a,b)=>a.items.length-b.items.length)[0]; }
+      if(pick) pick.items.push(it); });
+    return plan;
+  }
 
   // ---- Room categories (from Guestline). code = what shows on the box;
   //      label = friendly name; n = how many of that category the hotel has.
@@ -92,7 +173,11 @@
   function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 
   const HH = {
-    checklist: CHECKLIST,
+    checklists: CHECKLISTS,
+    get checklist(){ return CHECKLISTS.Departure.map(x=>x.t); }, // legacy
+    checklistFor(type){ return CHECKLISTS[checklistKeyFor(type)] || CHECKLISTS.Departure; },
+    targetMin(type){ return TARGET_MIN[type] || TARGET_MIN[checklistKeyFor(type)] || this.cfg().windowMin || 30; },
+    publicAreas: PUBLIC_AREAS,
     roomTypes: ROOM_TYPES,
     roomCats: ROOM_CATS,
     catLabel(code){ const c=ROOM_CATS.find(x=>x.code===code); return c?c.label:(code||''); },
@@ -135,7 +220,12 @@
     blankRoom(date,room,type,cat,note){
       return { date, room:String(room), type:type||"Departure", cat:cat||"", status:"pending",
                housekeeper:"", housekeeperName:"", startAt:null, finishAt:null, durationSec:0,
-               checklist:{}, geoStartOk:null, geoFinishOk:null, notes:note||"", updatedAt:Date.now() };
+               checklist:{}, geoStartOk:null, geoFinishOk:null, notes:note||"",
+               area:false, slot:"", replaced:"", maintenance:"", lostProperty:"", updatedAt:Date.now() };
+    },
+    blankArea(date, area, slot){
+      const id=area+(slot&&slot!=='Daily'?(' '+slot):'');
+      return Object.assign(this.blankRoom(date, id, area.indexOf('WC')>=0?area:'Reception', '', ''), { area:true, slot:slot||'' });
     },
     // Reception: set the whole day's list (adds new, leaves existing progress alone, removes de-selected pending ones)
     async setDayRooms(date, picks /* [{room,type,cat,note}] */){
@@ -149,14 +239,16 @@
             if(!have[r]){ batch.set(db.collection("hoshouse_rooms").doc(this.docId(date,r)), this.blankRoom(date,r,p.type,p.cat,note)); }
             else if(have[r].status==="pending" && (have[r].type!==p.type || (have[r].notes||"")!==note)){ batch.update(db.collection("hoshouse_rooms").doc(this.docId(date,r)), {type:p.type, notes:note, updatedAt:Date.now()}); }
           });
-          snap.forEach(d=>{ const r=d.data(); if(!want.has(r.room) && r.status==="pending"){ batch.delete(db.collection("hoshouse_rooms").doc(this.docId(date,r.room))); } });
+          snap.forEach(d=>{ const r=d.data(); if(!want.has(r.room) && r.status==="pending" && !r.area){ batch.delete(db.collection("hoshouse_rooms").doc(this.docId(date,r.room))); } });
           await batch.commit();
           return true;
         }catch(e){ console.warn("setDayRooms live",e&&e.code); }
       }
       // local fallback
       const key="hoshouse_day_"+date; const have=lsGet(key,{});
-      const map={}; picks.forEach(p=>{ const r=String(p.room);
+      const map={};
+      Object.values(have).forEach(r=>{ if(r && (r.area || (r.status && r.status!=="pending"))) map[String(r.room)]=r; }); // keep public areas + started/done rooms
+      picks.forEach(p=>{ const r=String(p.room);
         map[r] = have[r] && have[r].status!=="pending" ? have[r] : (have[r]||this.blankRoom(date,r,p.type,p.cat,p.note||""));
         if(map[r].status==="pending"){ map[r].type=p.type; map[r].notes=p.note||""; }
       });
@@ -178,6 +270,54 @@
       patch.updatedAt=Date.now();
       if(ready){ try{ await db.collection("hoshouse_rooms").doc(this.docId(date,room)).set(patch,{merge:true}); return true; }catch(e){ console.warn("updateRoom",e&&e.code); } }
       const key="hoshouse_day_"+date; const map=lsGet(key,{}); map[String(room)]=Object.assign(map[String(room)]||this.blankRoom(date,room),patch); lsSet(key,map); return true;
+    },
+
+    // ----- public areas (toilets twice daily, reception once) -----
+    async addPublicAreas(date){
+      const have=await this.getDayRooms(date);
+      const haveIds=new Set(have.map(r=>r.room));
+      const add=[];
+      PUBLIC_AREAS.forEach(a=> a.slots.forEach(slot=>{ const b=this.blankArea(date,a.area,slot); if(!haveIds.has(b.room)) add.push(b); }));
+      if(!add.length) return 0;
+      if(ready){ try{ const batch=db.batch(); add.forEach(b=>batch.set(db.collection("hoshouse_rooms").doc(this.docId(date,b.room)), b)); await batch.commit(); return add.length; }catch(e){ console.warn("addAreas",e&&e.code); } }
+      const key="hoshouse_day_"+date; const map=lsGet(key,{}); add.forEach(b=>{ map[b.room]=b; }); lsSet(key,map); return add.length;
+    },
+
+    // ----- the day's housekeepers from the PUBLISHED rota, with capacity -----
+    async rotaWorkers(date){
+      let pub=null;
+      if(ready){ try{ const d=await db.collection("hospro_public").doc("rota").get(); if(d.exists) pub=d.data(); }catch(e){ console.warn("rota read",e&&e.code); } }
+      if(!pub){ try{ pub={ staff:JSON.parse(localStorage.getItem('sp_staff')||'[]'), rota:JSON.parse(localStorage.getItem('sp_rota')||'{}') }; }catch(e){ pub={staff:[],rota:{}}; } }
+      const day=(pub.rota||{})[date]||{};
+      const hhStaff=this.cfg().staff;
+      const out=[];
+      (pub.staff||[]).forEach(s=>{
+        if(s.dept!=='housekeeping') return;
+        const hkId=ROTA_TO_HH[s.id]; if(!hkId) return;
+        const raw=day[s.id]; const sh=(raw&&typeof raw==='object')?raw.shift:raw;
+        const mins=shiftMins(sh); if(mins<=0) return;
+        const cap=Math.max(1, Math.floor((mins-30)/45));
+        const hk=hhStaff.find(x=>x.id===hkId);
+        out.push({ hkId, name:hk?hk.name:s.name, shift:sh, mins, cap });
+      });
+      return out;
+    },
+
+    // ----- allocate the day's rooms + areas across the rostered housekeepers -----
+    async autoAllocate(date){
+      const workers=await this.rotaWorkers(date);
+      const rooms=(await this.getDayRooms(date)).filter(r=>r.status!=='done' && r.status!=='in_progress');
+      if(!workers.length) return { ok:false, reason:'no-staff' };
+      if(!rooms.length) return { ok:false, reason:'no-rooms' };
+      // rooms first (by number), then areas
+      const ordered=rooms.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0) || (+a.room||0)-(+b.room||0));
+      const plan=distribute(ordered.map(r=>r.room), workers);
+      const map={}; plan.forEach(w=>w.items.forEach(room=>{ map[room]={hkId:w.hkId, name:w.name}; }));
+      const assigns=Object.keys(map).map(room=>({room, hkId:map[room].hkId, hkName:map[room].name}));
+      if(ready){ try{ const batch=db.batch(); assigns.forEach(a=>batch.set(db.collection("hoshouse_rooms").doc(this.docId(date,a.room)),{housekeeper:a.hkId, housekeeperName:a.hkName, updatedAt:Date.now()},{merge:true})); await batch.commit(); }
+        catch(e){ console.warn("allocate",e&&e.code); return {ok:false, reason:'save', error:e&&e.code}; } }
+      else { const key="hoshouse_day_"+date; const m=lsGet(key,{}); assigns.forEach(a=>{ if(m[a.room]){ m[a.room].housekeeper=a.hkId; m[a.room].housekeeperName=a.hkName; } }); lsSet(key,m); }
+      return { ok:true, assigned:assigns.length, plan, workers, totalCap:workers.reduce((t,w)=>t+w.cap,0) };
     },
 
     // ----- geo helper -----

@@ -9396,6 +9396,7 @@ function renderHosHouseHub(v){
       <div style="display:flex;gap:8px;align-items:center">
         <input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderDash()" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
         <button onclick="hhAutoAllocate()" title="Share the day's rooms out across the rostered housekeepers (45 min/room, 30 min lunch)" style="padding:7px 12px;border:none;background:#2E6B5E;color:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer">⚖️ Auto-allocate rooms</button>
+        <button onclick="hhEodReport()" title="Compile the end-of-day housekeeping report" style="padding:7px 12px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12px Lato;cursor:pointer">📄 End-of-day report</button>
         <button onclick="hhRenderDash()" style="padding:7px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">↻ Refresh</button>
       </div>
     </div>
@@ -9496,6 +9497,62 @@ async function hhRenderDash(){
 function hhCopy(txt, btn){
   try{ navigator.clipboard.writeText(txt); const o=btn.textContent; btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent=o,1200); }
   catch(e){ try{ prompt('Copy link:', txt); }catch(_){} }
+}
+const HH_TARGET={Departure:25,Stayover:15,"Arrival-ready":10,"Gents WC":20,"Ladies WC":20,"Accessible WC":10,Reception:20};
+function hhTgt(t){ return HH_TARGET[t]||30; }
+async function hhEodReport(){
+  const date=window._hhDate||hhTodayISO();
+  const rooms=await hhFetchDay(date);
+  if(!rooms.length){ toast('No rooms for '+date+' to report on.'); return; }
+  const bedrooms=rooms.filter(r=>!r.area), areas=rooms.filter(r=>r.area);
+  const done=rooms.filter(r=>r.status==='done'), prog=rooms.filter(r=>r.status==='in_progress'), pend=rooms.filter(r=>r.status==='pending');
+  const overT=r=>(r.durationSec||0)>hhTgt(r.type)*60;
+  const overs=done.filter(overT);
+  const avg=done.length?Math.round(done.reduce((a,r)=>a+(r.durationSec||0)/60,0)/done.length):0;
+  const totMin=Math.round(done.reduce((a,r)=>a+(r.durationSec||0)/60,0));
+  // per person
+  const by={}; rooms.forEach(r=>{ const k=r.housekeeperName||r.housekeeper||'Unallocated'; (by[k]=by[k]||{done:0,mins:0,over:0}); if(r.status==='done'){ by[k].done++; by[k].mins+=(r.durationSec||0)/60; if(overT(r)) by[k].over++; } });
+  const ppl=Object.entries(by).filter(([k])=>k!=='Unallocated'||by[k].done).sort((a,b)=>b[1].done-a[1].done);
+  const maint=rooms.filter(r=>r.maintenance&&r.maintenance.trim());
+  const lost=rooms.filter(r=>r.lostProperty&&r.lostProperty.trim());
+  const repl=rooms.filter(r=>r.replaced&&r.replaced.trim());
+  const esc=hhEsc;
+  const line=(l,v)=>`<tr><td style="padding:4px 10px;color:#5b6b7b">${l}</td><td style="padding:4px 10px;font-weight:700">${v}</td></tr>`;
+  const listBlock=(title,arr,fn)=> arr.length?`<div style="margin-top:12px"><div style="font:800 12.5px Lato;color:#1a2b3a;margin-bottom:4px">${title} (${arr.length})</div><ul style="margin:0;padding-left:18px;font-size:12.5px;color:#374151;line-height:1.7">${arr.map(fn).join('')}</ul></div>`:'';
+  const dfmt=new Date(date+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const html=`<div id="eod-print" style="font-size:13px;color:#1a2b3a">
+    <div style="font:800 16px Lato;color:#1F3864">Housekeeping — End-of-day report</div>
+    <div style="color:#5b6b7b;margin-bottom:10px">${dfmt}</div>
+    <table style="border-collapse:collapse;font-size:13px">
+      ${line('Rooms to clean', bedrooms.length)}
+      ${line('Public areas', areas.length)}
+      ${line('Completed', done.length+' of '+rooms.length+' ('+(rooms.length?Math.round(done.length/rooms.length*100):0)+'%)')}
+      ${line('Still in progress', prog.length)}
+      ${line('Not started', pend.length)}
+      ${line('Average time / room', (avg||'–')+' min')}
+      ${line('Over target time', overs.length)}
+      ${line('Total cleaning time', totMin+' min ('+(totMin/60).toFixed(1)+' h)')}
+    </table>
+    <div style="margin-top:12px"><div style="font:800 12.5px Lato;margin-bottom:4px">By housekeeper</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <tr style="background:#1F3864;color:#fff"><th style="padding:5px 9px;text-align:left">Name</th><th style="padding:5px 9px">Rooms</th><th style="padding:5px 9px">Avg min</th><th style="padding:5px 9px">Over</th></tr>
+        ${ppl.map(([k,v])=>`<tr style="border-top:1px solid #eef1f4"><td style="padding:5px 9px">${esc(k)}</td><td style="padding:5px 9px;text-align:center">${v.done}</td><td style="padding:5px 9px;text-align:center">${v.done?Math.round(v.mins/v.done):'–'}</td><td style="padding:5px 9px;text-align:center;color:${v.over?'#b3261e':'#1a2b3a'}">${v.over}</td></tr>`).join('')||'<tr><td colspan="4" style="padding:8px;color:#8296a8">No rooms completed.</td></tr>'}
+      </table></div>
+    ${listBlock('🔧 Reported to maintenance', maint, r=>`<li>Room ${esc(r.room)} — ${esc(r.maintenance)}</li>`)}
+    ${listBlock('🎒 Lost property found', lost, r=>`<li>Room ${esc(r.room)} — ${esc(r.lostProperty)}</li>`)}
+    ${listBlock('♻ Items replaced from store', repl, r=>`<li>Room ${esc(r.room)} — ${esc(r.replaced)}</li>`)}
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button onclick="hhEodPrint()" style="padding:9px 15px;border:1px solid #2E6B5E;border-radius:8px;background:#fff;color:#2E6B5E;font:700 13px Lato;cursor:pointer">🖨 Print / PDF</button>
+      <button onclick="closeModal()" style="padding:9px 18px;border:none;border-radius:8px;background:#1F3864;color:#fff;font:700 13px Lato;cursor:pointer">Close</button>
+    </div>
+  </div>`;
+  showModal('End-of-day report', date, html);
+}
+function hhEodPrint(){
+  const el=document.getElementById('eod-print'); if(!el) return;
+  const w=window.open('','_blank'); if(!w) return;
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Housekeeping report</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#1a2b3a}table{border-collapse:collapse}</style></head><body>'+el.innerHTML.replace(/<div style="display:flex[\s\S]*?<\/div>\s*$/,'')+'<script>setTimeout(()=>window.print(),400)<\/script></body></html>');
+  w.document.close();
 }
 
 // ── HosBRAND — Logos, Photography, Collateral sub-sections ────────────────────

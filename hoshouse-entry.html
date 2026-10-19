@@ -96,7 +96,8 @@
 
 <div class="foot">
   <span class="count" id="count">0 rooms</span>
-  <button class="btn btn-go" id="go" onclick="submitDay()">Submit</button>
+  <button class="btn" onclick="addAreas()" style="background:#6E4E7A;color:#fff">+ Public areas</button>
+  <button class="btn btn-go" id="go" onclick="submitAndAllocate()">Submit &amp; Allocate</button>
   <button class="btn btn-wa" onclick="shareWA()">WhatsApp</button>
 </div>
 
@@ -136,7 +137,8 @@
   async function loadDay(){
     const date=$('date').value; picks={}; locked={}; notes={};
     const rooms = await HH.getDayRooms(date);
-    rooms.forEach(r=>{ if(r.status && r.status!=='pending'){ locked[r.room]=r.status; } else { picks[r.room]=r.type||'Departure'; } if(r.notes) notes[r.room]=r.notes; });
+    rooms.forEach(r=>{ if(r.area) return;   // public areas are managed separately, not in the room grid
+      if(r.status && r.status!=='pending'){ locked[r.room]=r.status; } else { picks[r.room]=r.type||'Departure'; } if(r.notes) notes[r.room]=r.notes; });
     render();
   }
 
@@ -187,16 +189,32 @@
   function noteClear(){ if(noteRoom!=null) delete notes[noteRoom]; noteCancel(); render(); }
   function noteCancel(){ $('noteOvl').classList.remove('open'); noteRoom=null; }
 
-  async function submitDay(){
+  async function submitAndAllocate(){
     const date=$('date').value; const arr=Object.entries(picks).map(([room,type])=>({room,type,note:notes[room]||''}));
     if(!arr.length && !Object.keys(locked).length){ alert('Pick at least one room.'); return; }
-    $('go').disabled=true; $('go').textContent='Saving…';
-    try{ await HH.setDayRooms(date, arr);
-      const note=$('doneNote'); note.style.display='block';
-      note.textContent=`✓ ${arr.length} room${arr.length!==1?'s':''} sent to the housekeepers for ${fmt(date)}. You can re-submit to update the list.`;
+    const go=$('go'); go.disabled=true; go.textContent='Saving…';
+    const note=$('doneNote'); note.style.display='block';
+    try{
+      await HH.setDayRooms(date, arr);
+      go.textContent='Allocating…';
+      const res=await HH.autoAllocate(date);
+      if(res.ok){
+        note.textContent=`✓ ${arr.length} rooms sent and ${res.assigned} allocated across ${res.workers.length} housekeepers for ${fmt(date)} (45 min/room, 30 min lunch). Each person now sees only their own rooms.`;
+      } else if(res.reason==='no-staff'){
+        note.textContent=`✓ ${arr.length} rooms sent for ${fmt(date)}. No housekeepers are rostered in the rota today, so nothing was allocated yet — Ruth or Laith can allocate from the dashboard.`;
+      } else {
+        note.textContent=`✓ ${arr.length} rooms sent to the housekeepers for ${fmt(date)}.`;
+      }
       window.scrollTo(0,0);
-    }catch(e){ alert('Could not save: '+(e&&e.message||e)); }
-    $('go').disabled=false; $('go').textContent='Submit';
+    }catch(e){ note.textContent='Could not save: '+(e&&e.message||e); }
+    go.disabled=false; go.textContent='Submit & Allocate';
+  }
+  async function addAreas(){
+    const date=$('date').value;
+    const n=await HH.addPublicAreas(date);
+    const note=$('doneNote'); note.style.display='block';
+    note.textContent = n ? `✓ Added ${n} public-area task(s): toilets (AM & PM) and reception (daily). Press "Submit & Allocate" to share them out with the rooms.` : 'Public areas are already on today\'s list.';
+    window.scrollTo(0,0);
   }
 
   function fmt(iso){ try{ return new Date(iso+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); }catch(e){ return iso; } }
