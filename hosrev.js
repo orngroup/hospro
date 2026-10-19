@@ -585,6 +585,86 @@ function hosrevAddEvent(){
   render();
 }
 
+/* ============================================================ RENDER: Rate Trend
+   Daily line chart — each hotel a coloured line, showing how the average
+   displayed rate has moved over time. Data comes from hosrev-history.json,
+   which the rate-shopper appends to once per day. ============================ */
+const HR_TREND_COLOURS = ["#2E8B8B","#C0392B","#E67E22","#8E44AD","#27AE60","#2980B9","#D4A017","#C2185B","#16A085"];
+function hrTrendChart(hist){
+  const dates = Object.keys(hist.byPullDate||{}).sort();
+  if(!dates.length) return null;
+  // hotels: own first, then the rest alphabetically
+  const own = hist.own || "Brandon Hall Hotel and Spa";
+  const set = new Set(); dates.forEach(d=>Object.keys(hist.byPullDate[d]||{}).forEach(h=>set.add(h)));
+  const others = [...set].filter(h=>h!==own).sort();
+  const hotels = (set.has(own)?[own]:[]).concat(others);
+  // y range
+  let lo=Infinity, hi=-Infinity;
+  dates.forEach(d=>Object.values(hist.byPullDate[d]||{}).forEach(v=>{ if(v>0){ lo=Math.min(lo,v); hi=Math.max(hi,v); } }));
+  if(!isFinite(lo)){ lo=0; hi=100; }
+  lo=Math.floor((lo-10)/10)*10; hi=Math.ceil((hi+10)/10)*10; if(hi<=lo) hi=lo+50;
+  const W=900,H=420,padL=52,padR=18,padT=16,padB=64;
+  const xOf = i => dates.length===1 ? (padL+(W-padL-padR)/2) : padL + (i/(dates.length-1))*(W-padL-padR);
+  const yOf = v => H-padB - ((v-lo)/(hi-lo))*(H-padT-padB);
+  // y gridlines
+  const grid=[]; const steps=5;
+  for(let i=0;i<=steps;i++){ const v=lo+(hi-lo)*i/steps; const y=yOf(v);
+    grid.push(`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#eef1f5" stroke-width="1"/><text x="${padL-8}" y="${y+4}" text-anchor="end" font-size="11" fill="#8296a8">£${Math.round(v)}</text>`); }
+  // x labels (thin if many)
+  const everyX = Math.ceil(dates.length/9);
+  const xlab = dates.map((d,i)=> (i%everyX===0 || i===dates.length-1) ? `<text x="${xOf(i)}" y="${H-padB+18}" text-anchor="middle" font-size="10.5" fill="#8296a8">${new Date(d+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</text>` : '').join('');
+  // lines + points
+  const colFor = (h,idx)=> h===own ? "#1F3864" : HR_TREND_COLOURS[(idx-(hotels[0]===own?1:0))%HR_TREND_COLOURS.length];
+  const lines = hotels.map((h,idx)=>{
+    const col=colFor(h,idx); const own_=h===own;
+    const pts=[]; dates.forEach((d,i)=>{ const v=hist.byPullDate[d][h]; if(v>0) pts.push([xOf(i),yOf(v),d,v]); });
+    if(!pts.length) return '';
+    const path=pts.map((p,i)=>`${i?'L':'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+    const dots=pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${own_?3.5:2.6}" fill="${col}"><title>${h} · ${new Date(p[2]+'T12:00').toLocaleDateString('en-GB')} · £${p[3]}</title></circle>`).join('');
+    return `<path d="${path}" fill="none" stroke="${col}" stroke-width="${own_?3:1.8}" stroke-linejoin="round" stroke-linecap="round" opacity="${own_?1:.9}"/>${dots}`;
+  }).join('');
+  const svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%;height:auto;font-family:Lato,sans-serif">
+    ${grid.join('')}
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="#d7dde4" stroke-width="1"/>
+    <line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#d7dde4" stroke-width="1"/>
+    ${xlab}${lines}</svg>`;
+  const legend=`<div style="display:flex;flex-wrap:wrap;gap:12px 18px;margin-top:10px">${hotels.map((h,idx)=>{
+    const col=colFor(h,idx); const own_=h===own; const last=[...dates].reverse().find(d=>hist.byPullDate[d][h]>0);
+    const lastV=last?hist.byPullDate[last][h]:null;
+    return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;${own_?'font-weight:800;color:#1F3864':'color:#45586b'}"><span style="width:14px;height:3px;border-radius:2px;background:${col};display:inline-block"></span>${h}${lastV?` <span class="hr-muted">£${lastV}</span>`:''}</span>`;
+  }).join('')}</div>`;
+  return svg+legend;
+}
+function renderRevTrend(v){
+  HosrevStore.init();
+  v.innerHTML = `
+    <div class="page-head"><h2>Rate Trend</h2>
+      <p>How each hotel's <b>average displayed rate</b> (across the next ~30 nights) has moved day by day. Your hotel is the bold navy line. The trend builds up one point per day as the overnight rate-shopper runs — so it fills out over the coming days.</p></div>
+    <div id="hr-trend-body"><div class="sf-panel" style="text-align:center;padding:30px;color:#8296a8">Loading rate history…</div></div>`;
+  const box=()=>document.getElementById('hr-trend-body');
+  const showEmpty=(msg)=>{ const b=box(); if(b) b.innerHTML=`<div class="sf-panel" style="text-align:center;padding:34px"><div style="font-size:30px;margin-bottom:8px">📉</div><div style="font:800 15px Lato;color:#1a2b3a">No rate history yet</div><div class="hr-muted" style="margin-top:6px;max-width:34em;margin-left:auto;margin-right:auto">${msg}</div></div>`; };
+  try{
+    fetch("hosrev-history.json",{cache:"no-store"})
+      .then(r=> r.ok? r.json():null)
+      .then(j=>{
+        const b=box(); if(!b) return;
+        if(!j || !j.byPullDate || !Object.keys(j.byPullDate).length){ showEmpty("It starts collecting the first time the rate-shopper runs with live data. Check back after tomorrow morning's run."); return; }
+        const ndays=Object.keys(j.byPullDate).length;
+        const chart=hrTrendChart(j);
+        const updated=j.updated? new Date(j.updated).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"—";
+        b.innerHTML=`<div class="sf-panel" style="padding:16px 18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+            <div style="font:800 14px Lato;color:#1a2b3a">Average nightly rate by hotel</div>
+            <div class="hr-muted" style="font-size:12px">${ndays} day${ndays>1?'s':''} of history · updated ${updated}</div>
+          </div>
+          ${chart||''}
+          ${ndays<2?`<div style="margin-top:10px;background:#fdf6e9;border:1px solid #f0dcae;color:#8a5a1e;border-radius:9px;padding:9px 12px;font-size:12.5px">Only one day so far — the lines appear once there are at least two daily runs.</div>`:''}
+        </div>`;
+      })
+      .catch(()=>showEmpty("Couldn't load the rate history file. It appears once the rate-shopper has run with live data."));
+  }catch(e){ showEmpty("Couldn't load the rate history yet."); }
+}
+
 /* ============================================================ RENDER: Forecast & margin */
 function renderRevForecast(v){
   HosrevStore.init();

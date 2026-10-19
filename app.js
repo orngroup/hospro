@@ -313,7 +313,7 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
     hhHub:renderHosHouseHub, help:renderHelp
   };
 /* HosREV (hosrev.js, loaded before app.js) — register its screens when present */
-[["revDash","renderRevDash"],["revCalendar","renderRevCalendar"],["revCompset","renderRevCompset"],["revEvents","renderRevEvents"],
+[["revDash","renderRevDash"],["revCalendar","renderRevCalendar"],["revCompset","renderRevCompset"],["revTrend","renderRevTrend"],["revEvents","renderRevEvents"],
  ["revForecast","renderRevForecast"],["revImport","renderRevImport"],["revSettings","renderRevSettings"]]
   .forEach(([t,fn])=>{ if(typeof window[fn]==="function") RENDER_MAP[t]=window[fn]; });
 
