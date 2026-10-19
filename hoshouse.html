@@ -132,7 +132,10 @@
   function renderList(){
     const mine=rooms.filter(r=>r.housekeeper===ME.id);
     const inprog=mine.filter(r=>r.status==='in_progress');
-    const pending=rooms.filter(r=>r.status==='pending');
+    // Each person sees ONLY the rooms allocated to them (no picking).
+    // Rooms not yet allocated show only to a lead, so they can mop up.
+    const pending=rooms.filter(r=>r.status==='pending' && r.housekeeper===ME.id);
+    const unassigned=rooms.filter(r=>r.status==='pending' && !r.housekeeper);
     const doneMine=mine.filter(r=>r.status==='done');
     const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const note=r=> r.notes&&r.notes.trim() ? `<div class="rnote">📝 ${esc(r.notes)}</div>` : '';
@@ -144,7 +147,8 @@
     };
     let html='';
     if(inprog.length){ html+='<div class="sect">In progress</div>'+inprog.map(row).join(''); }
-    html+='<div class="sect">To do ('+pending.length+')</div>'+(pending.length?pending.map(row).join(''):'<div class="empty">Nothing waiting — nice work.</div>');
+    html+='<div class="sect">Your rooms ('+pending.length+')</div>'+(pending.length?pending.map(row).join(''):'<div class="empty">Nothing allocated to you yet — your manager will share rooms out shortly.</div>');
+    if(ME.lead && unassigned.length){ html+='<div class="sect">Unallocated — anyone spare ('+unassigned.length+')</div>'+unassigned.map(row).join(''); }
     if(doneMine.length){ html+='<div class="sect">Done today ('+doneMine.length+')</div>'+doneMine.map(row).join(''); }
     $('listWrap').innerHTML=html;
   }

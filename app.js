@@ -7791,7 +7791,8 @@ function renderRotaWeek(v){
   const rota=spGetRota(), fc=spGetFC(), staff=spActiveStaff();
   const days=spWeekDates(spWeekOffset), todayK=spDK(new Date());
   const pending=JSON.parse(localStorage.getItem('sp_rota_pending')||'{}');
-  const depts=SP_DEPTS.filter(d=>staff.some(s=>s.dept===d.id));
+  const inDept=(s,id)=> s.dept===id || (Array.isArray(s.altDepts) && s.altDepts.indexOf(id)>=0);
+  const depts=SP_DEPTS.filter(d=>staff.some(s=>inDept(s,d.id)));
 
   // Helper: parse a rota cell (may be string "09:00-17:00" or object {shift,dept})
   const parseCell=val=>{
@@ -7815,7 +7816,7 @@ function renderRotaWeek(v){
 
   let rows='';
   depts.forEach(dept=>{
-    const deptStaff=staff.filter(s=>s.dept===dept.id);
+    const deptStaff=staff.filter(s=>inDept(s,dept.id));
     if(!deptStaff.length) return;
 
     const allShifts=(dept.shifts&&dept.shifts.length?dept.shifts:[
@@ -7826,6 +7827,8 @@ function renderRotaWeek(v){
 
     deptStaff.forEach(s=>{
       const initials=s.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      const primaryHere = s.dept===dept.id;   // false when this person is shown in an additional dept
+      const homeDept = (SP_DEPTS.find(d=>d.id===s.dept)||{}).name || s.dept;
       let totalHrs=0;
 
       const cells=days.map(d=>{
@@ -7877,18 +7880,18 @@ function renderRotaWeek(v){
       // Count pending changes for this staff member
       const pendingCount=days.filter(d=>pending[spDK(d)]?.[s.id]).length;
 
-      rows+=`<tr id="row-${s.id}" style="border-bottom:1px solid #e5e7eb">
+      rows+=`<tr id="row-${s.id}-${dept.id}" style="border-bottom:1px solid #e5e7eb">
         <td style="padding:8px 10px;min-width:160px;background:#fff;position:sticky;left:0;z-index:1;box-shadow:2px 0 4px rgba(0,0,0,.05)">
           <div style="display:flex;align-items:center;gap:8px">
             <div style="width:30px;height:30px;border-radius:50%;background:${dept.colour};flex-shrink:0;display:flex;align-items:center;justify-content:center;font:700 11px Lato;color:#fff">${initials}</div>
             <div>
-              <div style="font-size:12px;font-weight:700;color:#1a2b3a">${s.name}</div>
-              <div style="font-size:10px;color:#374151">${s.role||''}</div>
+              <div style="font-size:12px;font-weight:700;color:#1a2b3a">${s.name}${primaryHere?'':' <span title="Also works here — their shift is shared with their home department" style="font-size:9px;font-weight:700;color:#7c3aed;background:#f5f0ff;border-radius:5px;padding:1px 5px;margin-left:3px">⇄ also</span>'}</div>
+              <div style="font-size:10px;color:#374151">${primaryHere?(s.role||''):('Home: '+homeDept)}</div>
             </div>
           </div>
         </td>
         ${cells}
-        <td style="padding:6px 8px;text-align:center;font-size:11px;font-weight:700;color:${totalHrs>0?'#166534':'#9ca3af'};background:#fff;white-space:nowrap">${totalHrs>0?totalHrs.toFixed(1)+'h':'—'}</td>
+        <td style="padding:6px 8px;text-align:center;font-size:11px;font-weight:700;color:${(primaryHere&&totalHrs>0)?'#166534':'#9ca3af'};background:#fff;white-space:nowrap">${primaryHere?(totalHrs>0?totalHrs.toFixed(1)+'h':'—'):'↩'}</td>
         <td style="padding:4px 6px;background:#fff;min-width:130px">
           <div style="display:flex;flex-direction:column;gap:4px">
             ${pendingCount>0?`
@@ -8737,11 +8740,19 @@ function hsOpenProfile(staffId){
             style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
         </div>`).join('')}
         <div>
-          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Department</label>
+          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Home department</label>
           <select data-field="dept" data-staffid="${staffId}" onchange="hsSaveDept(this)"
             style="width:100%;padding:8px;border:1.5px solid #d1d5db;border-radius:7px;font:13px Lato;color:#1a2b3a">
             ${(SP_DEPTS||[]).map(d=>`<option value="${d.id}"${p.dept===d.id?' selected':''}>${d.name}</option>`).join('')}
           </select>
+        </div>
+        <div style="grid-column:1 / -1">
+          <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:5px">Also works in <span style="font-weight:400;color:#9ca3af">(tick any other departments they cover — they'll show in each on the rota)</span></label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px 14px">
+            ${(SP_DEPTS||[]).filter(d=>d.id!==p.dept).map(d=>`<label style="display:flex;align-items:center;gap:6px;font:400 12.5px Lato;color:#1a2b3a;cursor:pointer">
+              <input type="checkbox" class="hs-altdept" data-staffid="${staffId}" value="${d.id}" ${Array.isArray(p.altDepts)&&p.altDepts.indexOf(d.id)>=0?'checked':''} onchange="hsSaveAltDepts('${staffId}')" style="width:15px;height:15px;accent-color:#7c3aed">
+              ${d.name}</label>`).join('')}
+          </div>
         </div>
         <div>
           <label style="font-size:11px;font-weight:700;color:#1a2b3a;display:block;margin-bottom:3px">Contract Type</label>
@@ -8885,6 +8896,15 @@ function hsSaveDept(sel){
   if(p){ p.dept=deptId; hsSaveProfiles(profiles); }
   if(typeof spGetStaff==='function'){ const staff=spGetStaff(), s=staff.find(x=>x.id===id); if(s){ s.dept=deptId; if(typeof spSaveStaff==='function') spSaveStaff(staff); } }
   toast('Department updated ✓');
+  hsOpenProfile(id);   // refresh so the "also works in" list excludes the new home dept
+}
+/* Save the extra departments a person covers (multi-department) */
+function hsSaveAltDepts(id){
+  const alt=[...document.querySelectorAll('input.hs-altdept[data-staffid="'+id+'"]:checked')].map(c=>c.value);
+  const profiles=hsGetProfiles(), p=profiles.find(x=>x.id===id);
+  if(p){ p.altDepts=alt; hsSaveProfiles(profiles); }
+  if(typeof spGetStaff==='function'){ const staff=spGetStaff(), s=staff.find(x=>x.id===id); if(s){ s.altDepts=alt; if(typeof spSaveStaff==='function') spSaveStaff(staff); } }
+  toast('Departments updated ✓');
 }
 
 /* Leaver handling — retains the profile & history, just takes them off the active rota */
@@ -9138,8 +9158,107 @@ const HH_HUB_STAFF = [
   ["Rahul Reghunath","rahul","1004"],["Jitendra","jitendra","1005"],["Manoj","manoj","1006"],
   ["Tushar Ambekar","tushar","1007"],["Allen","allen","1008"],["Hassen","hassen","1009"],
   ["Satya","satya","1010"],["Ayomidipupo","ayomide","1011"],["Yaya","yaya","1012"],
-  ["Edwin","edwin","1013"],["Dushyanth","dushyanth","1014"],["Anisha","anisha","1015"]
+  ["Edwin","edwin","1013"],["Dushyanth","dushyanth","1014"],["Anisha","anisha","1015"],
+  ["Laith Hardy (cover)","laith","1016"]
 ];
+/* Map a rota staff id (HosPEOPLE) → housekeeper-app id, so allocation knows who's who */
+const ROTA_TO_HH = {
+  ruth_addison_30:'ruth', aryan_31:'aryan', lara_jervis_32:'lara', rahul_reghunath_33:'rahul',
+  jitendra_34:'jitendra', manoj_35:'manoj', tushar_ambekar_36:'tushar', allen_37:'allen',
+  hassen_38:'hassen', satya_51:'satya', ayomidipupo_yoemi_46:'ayomide', yaya_52:'yaya',
+  dushyanth_39:'dushyanth', anisha_54:'anisha', edwin_53:'edwin', laith_hardy_55:'laith'
+};
+/* minutes in a shift string, summing split segments; 0 for off/holiday/etc */
+function hhShiftMins(sh){
+  if(!sh) return 0; const s=String(sh).toLowerCase().trim();
+  if(['off','holiday','sick','in lieu','on call',''].includes(s)) return 0;
+  let t=0,m; const rg=/(\d+):(\d+)\s*-\s*(\d+):(\d+)/g;
+  while((m=rg.exec(sh))){ let d=(+m[3]*60+ +m[4])-(+m[1]*60+ +m[2]); if(d<0)d+=1440; t+=d; }
+  return t;
+}
+/* Who's rostered in housekeeping on a date, with their room capacity.
+   Capacity = (shift minutes − 30 min lunch) ÷ 45 min per room. */
+function hhAllocatePlan(dateISO){
+  const rota=(typeof spGetRota==='function')?spGetRota():{};
+  const day=rota[dateISO]||{};
+  const staff=(typeof spGetStaff==='function')?spGetStaff():[];
+  const LUNCH=30, PERROOM=45;
+  const workers=[];
+  staff.filter(s=>s.dept==='housekeeping' && !s.leaver).forEach(s=>{
+    const hkId=ROTA_TO_HH[s.id]; if(!hkId) return;         // must exist in the housekeeper app
+    const raw=day[s.id]; const sh=(raw&&typeof raw==='object')?raw.shift:raw;
+    const mins=hhShiftMins(sh); if(mins<=0) return;         // off / holiday / not working
+    const net=Math.max(0, mins-LUNCH);
+    const cap=Math.max(1, Math.floor(net/PERROOM));         // at least 1 if they're in
+    const hh=HH_HUB_STAFF.find(x=>x[1]===hkId);
+    workers.push({ hkId, name: hh?hh[0]:s.name, shift:sh, mins, net, cap });
+  });
+  return workers;
+}
+/* Balanced distribution: fill to capacity first, then spread any overflow evenly */
+function hhDistribute(rooms, workers){
+  const plan=workers.map(w=>Object.assign({},w,{rooms:[]}));
+  rooms.forEach(rm=>{
+    let pool=plan.filter(w=>w.rooms.length<w.cap);
+    let pick;
+    if(pool.length){ pool.sort((a,b)=>(b.cap-b.rooms.length)-(a.cap-a.rooms.length) || a.rooms.length-b.rooms.length); pick=pool[0]; }
+    else if(plan.length){ pick=plan.slice().sort((a,b)=>a.rooms.length-b.rooms.length)[0]; }
+    if(pick) pick.rooms.push(rm);
+  });
+  return plan;
+}
+async function hhWriteAssign(dateISO, assigns){
+  if(typeof FB!=='undefined' && FB.db){
+    try{ const batch=FB.db.batch();
+      assigns.forEach(a=>{ batch.set(FB.db.collection('hoshouse_rooms').doc(dateISO+'__'+a.room),
+        {housekeeper:a.hkId, housekeeperName:a.hkName, updatedAt:Date.now()}, {merge:true}); });
+      await batch.commit(); return true;
+    }catch(e){ console.warn('assign live', e&&e.code); }
+  }
+  try{ const key='hoshouse_day_'+dateISO; const m=JSON.parse(localStorage.getItem(key)||'{}');
+    assigns.forEach(a=>{ if(m[a.room]){ m[a.room].housekeeper=a.hkId; m[a.room].housekeeperName=a.hkName; m[a.room].updatedAt=Date.now(); } });
+    localStorage.setItem(key, JSON.stringify(m)); return true;
+  }catch(e){ return false; }
+}
+async function hhAutoAllocate(){
+  const date=window._hhDate||hhTodayISO();
+  const workers=hhAllocatePlan(date);
+  const rooms=(await hhFetchDay(date)).filter(r=>r.status!=='done' && r.status!=='in_progress'); // allocate the not-yet-started rooms
+  if(!rooms.length){ toast('No rooms waiting to allocate for '+date+' — reception sets them on the daily form first.'); return; }
+  if(!workers.length){ toast('No housekeepers are rostered for '+date+' in the rota.'); return; }
+  const roomNos=rooms.map(r=>r.room).sort((a,b)=>(+a||0)-(+b||0));
+  const plan=hhDistribute(roomNos, workers);
+  const totalCap=workers.reduce((t,w)=>t+w.cap,0);
+  const over=roomNos.length>totalCap;
+  const rowsHtml=plan.map(w=>`<tr style="border-top:1px solid #eef1f4">
+    <td style="padding:7px 10px;font-weight:600">${hhEsc(w.name)}</td>
+    <td style="padding:7px 10px;color:#5b6b7b">${hhEsc(w.shift||'')}</td>
+    <td style="padding:7px 10px;text-align:center">${Math.round(w.net/60*10)/10}h</td>
+    <td style="padding:7px 10px;text-align:center">${w.cap}</td>
+    <td style="padding:7px 10px;text-align:center;font-weight:700;color:${w.rooms.length>w.cap?'#b3261e':'#2E6B5E'}">${w.rooms.length}</td>
+    <td style="padding:7px 10px;font-size:11.5px;color:#5b6b7b">${w.rooms.join(', ')||'—'}</td></tr>`).join('');
+  showModal('Auto-allocate rooms — '+date, roomNos.length+' rooms across '+workers.length+' housekeepers · 45 min per room, 30 min lunch',
+    `<div style="font-size:13px;color:#1a2b3a">
+      ${over?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:9px;padding:9px 12px;margin-bottom:10px;font-size:12.5px">⚠ ${roomNos.length} rooms is more than the team's capacity of ${totalCap} today — the extra are spread evenly, so some people go over 45 min/room. Add cover or move rooms to another day if needed.</div>`:''}
+      <div style="overflow:auto;border:1px solid #e4e9ef;border-radius:10px;max-height:52vh">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead><tr style="background:#1F3864;color:#fff;position:sticky;top:0"><th style="padding:7px 10px;text-align:left">Housekeeper</th><th style="padding:7px 10px;text-align:left">Shift</th><th style="padding:7px 10px">Net</th><th style="padding:7px 10px">Can do</th><th style="padding:7px 10px">Rooms</th><th style="padding:7px 10px;text-align:left">Room numbers</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+        <button onclick="closeModal()" style="padding:9px 15px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:600 13px Lato;cursor:pointer">Cancel</button>
+        <button id="hh-alloc-go" style="padding:9px 18px;border:none;border-radius:8px;background:#2E6B5E;color:#fff;font:700 13px Lato;cursor:pointer">Allocate &amp; save</button>
+      </div>
+      <div style="font-size:11px;color:#8296a8;margin-top:8px">Each housekeeper then sees only their own rooms in the app — no picking. You can re-run this any time (e.g. after reception adds rooms).</div>
+    </div>`);
+  const btn=document.getElementById('hh-alloc-go');
+  btn.onclick=async ()=>{
+    btn.disabled=true; btn.textContent='Saving…';
+    const assigns=[]; plan.forEach(w=>w.rooms.forEach(rm=>assigns.push({room:rm, hkId:w.hkId, hkName:w.name})));
+    const ok=await hhWriteAssign(date, assigns);
+    closeModal(); toast(ok?('✓ '+assigns.length+' rooms allocated'):'Could not save — check connection'); hhRenderDash();
+  };
+}
 function hhOrigin(){ try{ return location.origin + location.pathname.replace(/[^/]*$/,''); }catch(e){ return ''; } }
 /* ============================================================ HELP SYSTEM */
 function hpHelpEntry(key){
@@ -9276,6 +9395,7 @@ function renderHosHouseHub(v){
         <div style="font-size:12.5px;color:#5b6b7b">Live room-cleaning progress, times and staff efficiency.</div></div>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderDash()" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
+        <button onclick="hhAutoAllocate()" title="Share the day's rooms out across the rostered housekeepers (45 min/room, 30 min lunch)" style="padding:7px 12px;border:none;background:#2E6B5E;color:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer">⚖️ Auto-allocate rooms</button>
         <button onclick="hhRenderDash()" style="padding:7px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">↻ Refresh</button>
       </div>
     </div>

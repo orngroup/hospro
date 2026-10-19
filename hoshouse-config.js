@@ -28,7 +28,8 @@
     { id:"yaya",       name:"Yaya",             pin:"1012" },
     { id:"edwin",      name:"Edwin",            pin:"1013" },
     { id:"dushyanth",  name:"Dushyanth",        pin:"1014" },
-    { id:"anisha",     name:"Anisha",           pin:"1015" }
+    { id:"anisha",     name:"Anisha",           pin:"1015" },
+    { id:"laith",      name:"Laith Hardy",      pin:"1016", lead:true }
   ];
 
   // ---- Checklist each room is cleaned against ----
