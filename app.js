@@ -9900,6 +9900,10 @@ async function hhRenderManage(){
         <button onclick="hhAddRooms(false)" title="Add to the list without allocating yet" style="padding:9px 13px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12px Lato;cursor:pointer">+ Add to list</button>
         <button onclick="hhAddRooms(true)" title="Add and share just these new rooms to whoever has the fewest rooms left" style="padding:9px 13px;border:none;background:#2E6B5E;color:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer">+ Add &amp; give to lightest</button>
       </div>
+      <div style="margin:-4px 0 12px">
+        <button onclick="hhBulkOpen()" title="Open the full room grid and tick the rooms that need cleaning" style="display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border:1px solid #1F3864;background:#eef2f8;color:#1F3864;border-radius:9px;font:700 12.5px Lato;cursor:pointer">🗂️ Select rooms (bulk)</button>
+        <span style="font-size:11.5px;color:#8296a8;margin-left:10px">Type a few above, or pick from the whole house here.</span>
+      </div>
       <div style="overflow-x:auto;border:1px solid #eef1f4;border-radius:10px">
         <table style="width:100%;border-collapse:collapse;font-size:12.5px">
           <thead><tr style="background:#f5f7f9;text-align:left;color:#6b7280;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">
@@ -9958,6 +9962,86 @@ async function hhAddAreas(){
   const date=window._hhDate||hhTodayISO();
   const n=await hhAddPublicAreas(date);
   toast(n?('✓ Added '+n+' public-area task'+(n>1?'s':'')):'Public areas already on the list');
+  hhRenderManage(); hhRenderDash();
+}
+
+/* ---- Bulk room picker (the old reception grid, as a pop-up) ---- */
+const HH_ROOM_CATS=[
+  {code:"CLA_DBL",label:"Classic Double",n:25},{code:"CLA_TWN",label:"Classic Twin",n:21},
+  {code:"EXE_DBL",label:"Executive Double",n:48},{code:"EXE_DBL_ACC",label:"Executive Double (Access.)",n:3},
+  {code:"EXE_TRP",label:"Executive Triple",n:5},{code:"EXE_TWN",label:"Executive Twin",n:5},
+  {code:"EXE_TWN_ACC",label:"Executive Twin (Access.)",n:1},{code:"JSUI",label:"Junior Suite",n:4},
+  {code:"PRE_DBL",label:"Premier Double",n:8}
+];
+function hhCatLabel(code){ const c=HH_ROOM_CATS.find(x=>x.code===code); return c?c.label:(code||''); }
+function hhDefaultRooms(){ const out=[]; let n=1; HH_ROOM_CATS.forEach(c=>{ for(let i=0;i<c.n;i++) out.push({room:String(n++),cat:c.code}); }); return out; }
+async function hhRoomCatalogue(){
+  if(typeof FB!=='undefined' && FB.db){ try{ const d=await FB.db.collection('hoshouse_config').doc('current').get();
+    if(d.exists){ const r=d.data().rooms; if(Array.isArray(r)&&r.length) return r.map(x=>({room:String(x.room),cat:x.cat||''})); } }catch(e){} }
+  return hhDefaultRooms();
+}
+const HH_T_LET={Departure:'D',Stayover:'S','Arrival-ready':'A'};
+const HH_T_COL={Departure:'#2E6B5E',Stayover:'#d9930a','Arrival-ready':'#3B6585'};
+async function hhBulkOpen(){
+  const date=window._hhDate||hhTodayISO();
+  const rooms=await hhRoomCatalogue();
+  const day=await hhFetchDay(date);
+  const picks={}, locked={}, notes={};
+  day.filter(r=>!r.area).forEach(r=>{ const rm=String(r.room);
+    if(r.status&&r.status!=='pending') locked[rm]=r.status; else picks[rm]=r.type||'Departure';
+    if(r.notes) notes[rm]=r.notes; });
+  window._hhBulk={ rooms, picks, locked, notes, defType:'Departure', q:'' };
+  const typeBtns=['Departure','Stayover','Arrival-ready'].map(t=>
+    `<button class="hhbt" data-t="${t}" onclick="hhBulkSetType('${t}')" style="padding:6px 12px;border:1.5px solid ${HH_T_COL[t]};border-radius:20px;font:700 12px Lato;cursor:pointer;background:${t==='Departure'?HH_T_COL[t]:'#fff'};color:${t==='Departure'?'#fff':HH_T_COL[t]}">${t}</button>`).join('');
+  showModal('Select rooms', 'Tap a room to add it · tap again to change type · tap again to remove', `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <span style="font:700 12px Lato;color:#374151">New taps add as:</span>${typeBtns}
+      <input id="hh-bulk-find" placeholder="🔍 Find a room number…" oninput="hhBulkFilter(this.value)" style="margin-left:auto;padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato;min-width:150px">
+    </div>
+    <div style="font-size:11.5px;color:#6b7280;margin-bottom:8px">D = Departure · S = Stayover · A = Arrival-ready. Tap cycles D → S → A → off.</div>
+    <div id="hh-bulk-grid" style="max-height:50vh;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:7px;padding:2px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;flex-wrap:wrap">
+      <span id="hh-bulk-count" style="font:700 13px Lato;color:#1a2b3a"></span>
+      <div style="display:flex;gap:8px">
+        <button onclick="closeModal()" style="padding:9px 15px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:600 13px Lato;cursor:pointer">Cancel</button>
+        <button onclick="hhBulkConfirm()" style="padding:9px 20px;border:none;border-radius:8px;background:#1F3864;color:#fff;font:800 13px Lato;cursor:pointer">Confirm selection</button>
+      </div>
+    </div>`);
+  hhBulkRender();
+}
+function hhBulkRender(){
+  const B=window._hhBulk; const box=document.getElementById('hh-bulk-grid'); if(!B||!box) return;
+  const q=(B.q||'').toLowerCase();
+  const list=B.rooms.filter(r=>!q || String(r.room).toLowerCase().includes(q));
+  box.innerHTML=list.map(r=>{
+    const room=String(r.room);
+    if(B.locked[room]) return `<div style="border:1.5px solid #e4e9ef;border-radius:9px;padding:8px 5px;text-align:center;background:#f3f4f6;opacity:.75"><div style="font:800 15px Lato;color:#9aa7b5">${room}</div><div style="font-size:9px;color:#9aa7b5">${B.locked[room]==='done'?'done':'in prog.'}</div></div>`;
+    const t=B.picks[room]; const col=t?HH_T_COL[t]:'#d7dde4';
+    return `<div onclick="hhBulkTap('${room}')" style="border:1.5px solid ${col};border-radius:9px;padding:8px 5px;text-align:center;cursor:pointer;background:${t?col+'14':'#fff'}">
+      <div style="font:800 15px Lato;color:${t?col:'#1a2b3a'}">${room}${t?` <span style="font-size:11px">${HH_T_LET[t]}</span>`:''}</div>
+      <div style="font-size:9px;color:#8296a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${hhEsc(hhCatLabel(r.cat))}</div>
+    </div>`;
+  }).join('') || `<div style="grid-column:1/-1;padding:16px;text-align:center;color:#8296a8;font-size:13px">No room matches.</div>`;
+  const n=Object.keys(B.picks).length;
+  const cnt=document.getElementById('hh-bulk-count'); if(cnt) cnt.textContent=n+' room'+(n!==1?'s':'')+' selected';
+}
+function hhBulkTap(room){
+  const B=window._hhBulk; if(!B) return; const order=['Departure','Stayover','Arrival-ready'];
+  if(!B.picks[room]){ B.picks[room]=B.defType; }
+  else { const i=order.indexOf(B.picks[room]); if(i>=order.length-1){ delete B.picks[room]; } else B.picks[room]=order[i+1]; }
+  hhBulkRender();
+}
+function hhBulkSetType(t){
+  const B=window._hhBulk; if(!B) return; B.defType=t;
+  document.querySelectorAll('.hhbt').forEach(b=>{ const on=b.dataset.t===t; b.style.background=on?HH_T_COL[t]:'#fff'; b.style.color=on?'#fff':HH_T_COL[b.dataset.t]; });
+}
+function hhBulkFilter(v){ const B=window._hhBulk; if(!B) return; B.q=v; hhBulkRender(); }
+async function hhBulkConfirm(){
+  const B=window._hhBulk; if(!B) return;
+  const date=window._hhDate||hhTodayISO();
+  const arr=Object.entries(B.picks).map(([room,type])=>({room, type, note:B.notes[room]||''}));
+  await hhSetDayRooms(date, arr);
+  closeModal(); toast('✓ '+arr.length+' room'+(arr.length===1?'':'s')+' set for '+date);
   hhRenderManage(); hhRenderDash();
 }
 async function hhRenderDash(){
