@@ -1,0 +1,325 @@
+{
+ "pulled": "2026-10-19T22:41:23.339Z",
+ "source": "SerpApi Google Hotels",
+ "mock": false,
+ "geniusPct": 0.1,
+ "searches": 36,
+ "byDate": {
+  "2026-10-20": [
+   {
+    "hotel": "Brandon Hall Hotel and Spa",
+    "own": true,
+    "rate": 132,
+    "genius": 119
+   },
+   {
+    "hotel": "Coombe Abbey Hotel",
+    "rate": 105,
+    "genius": 95
+   },
+   {
+    "hotel": "DoubleTree by Hilton Coventry",
+    "rate": 159,
+    "genius": 143
+   },
+   {
+    "hotel": "Windmill Village Hotel, Golf Club & Spa",
+    "rate": 142,
+    "genius": 128
+   },
+   {
+    "hotel": "Novotel Coventry",
+    "rate": 149,
+    "genius": 134
+   },
+   {
+    "hotel": "Ramada Hotel & Suites by Wyndham Coventry",
+    "rate": 132,
+    "genius": 119
+   },
+   {
+    "hotel": "Chesford Grange",
+    "rate": 129,
+    "genius": 116
+   },
+   {
+    "hotel": "Nailcote Hall",
+    "rate": 101,
+    "genius": 91
+   },
+   {
+    "hotel": "Mallory Court",
+    "rate": 282,
+    "genius": 254
+   }
+  ],
+  "2026-10-21": [
+   {
+    "hotel": "Brandon Hall Hotel and Spa",
+    "own": true,
+    "rate": 98,
+    "genius": 88,
+    "beforeTax": 82
+   },
+   {
+    "hotel": "Coombe Abbey Hotel",
+    "rate": 131,
+    "genius": 118,
+    "beforeTax": 107
+   },
+   {
+    "hotel": "DoubleTree by Hilton Coventry",
+    "rate": 146,
+    "genius": 131,
+    "beforeTax": 122
+   },
+   {
+    "hotel": "Windmill Village Hotel, Golf Club & Spa",
+    "rate": 127,
+    "genius": 114
+   },
+   {
+    "hotel": "Novotel Coventry",
+    "rate": 108,
+    "genius": 97
+   },
+   {
+    "hotel": "Ramada Hotel & Suites by Wyndham Coventry",
+    "rate": 181,
+    "genius": 163,
+    "beforeTax": 151
+   },
+   {
+    "hotel": "Chesford Grange",
+    "rate": 98,
+    "genius": 88,
+    "beforeTax": 81
+   },
+   {
+    "hotel": "Nailcote Hall",
+    "rate": 87,
+    "genius": 78
+   }
+  ],
+  "2026-10-22": [
+   {
+    "hotel": "Brandon Hall Hotel and Spa",
+    "own": true,
+    "rate": 59,
+    "genius": 53,
+    "beforeTax": 49
+   },
+   {
+    "hotel": "Coombe Abbey Hotel",
+    "rate": 131,
+    "genius": 118,
+    "beforeTax": 107
+   },
+   {
+    "hotel": "DoubleTree by Hilton Coventry",
+    "rate": 78,
+    "genius": 70,
+    "beforeTax": 65
+   },
+   {
+    "hotel": "Windmill Village Hotel, Golf Club & Spa",
+    "rate": 77,
+    "genius": 69
+   },
+   {
+    "hotel": "Ramada Hotel & Suites by Wyndham Coventry",
+    "rate": 58,
+    "genius": 52,
+    "beforeTax": 49
+   },
+   {
+    "hotel": "Chesford Grange",
+    "rate": 77,
+    "genius": 69,
+    "beforeTax": 64
+   },
+   {
+    "hotel": "Nailcote Hall",
+    "rate": 94,
+    "genius": 85
+   }
+  ],
+  "2026-10-23": [
+   {
+    "hotel": "Brandon Hall Hotel and Spa",
+    "own": true,
+    "rate": 66,
+    "genius": 59
+   },
+   {
+    "hotel": "Coombe Abbey Hotel",
+    "rate": 89,
+    "genius": 80
+   },
+   {
+    "hotel": "DoubleTree by Hilton Coventry",
+    "rate": 74,
+    "genius": 67
+   },
+   {
+    "hotel": "Windmill Village Hotel, Golf Club & Spa",
+    "rate": 80,
+    "genius": 72
+   },
+   {
+    "hotel": "Ramada Hotel & Suites by Wyndham Coventry",
+    "rate": 75,
+    "genius": 68
+   },
+   {
+    "hotel": "Chesford Grange",
+    "rate": 67,
+    "genius": 60,
+    "beforeTax": 56
+   },
+   {
+    "hotel": "Nailcote Hall",
+    "rate": 112,
+    "genius": 101
+   },
+   {
+    "hotel": "Mallory Court",
+    "rate": 177,
+    "genius": 159
+   }
+  ],
+  "2026-10-24": [
+   {
+    "hotel": "Brandon Hall Hotel and Spa",
+    "own": true,
+    "rate": 70,
+    "genius": 63,
+    "beforeTax": 58
+   },
+   {
+    "hotel": "Coombe Abbey Hotel",
+    "rate": 131,
+    "genius": 118,
+    "beforeTax": 107
+   },
+   {
+    "hotel": "DoubleTree by Hilton Coventry",
+    "rate": 82,
+    "genius": 74,
+    "beforeTax": 68
+   },
+   {
+    "hotel": "Windmill Village Hotel, Golf Club & Spa",
+    "rate": 80,
+    "genius": 72
+   },
+   {
+    "hotel": "Novotel Coventry",
+    "rate": 83,
+    "genius": 75
+   },
+   {
+    "hotel": "Ramada Hotel & Suites by Wyndham Coventry",
+    "rate": 78,
+    "genius": 70,
+    "beforeTax": 65
+   },
+   {
+    "hotel": "Chesford Grange",
+    "rate": 109,
+    "genius": 98
+   },
+   {
+    "hotel": "Nailcote Hall",
+    "rate": 114,
+    "genius": 103
+   },
+   {
+    "hotel": "Mallory Court",
+    "rate": 367,
+    "genius": 330
+   }
+  ],
+  "2026-10-25": [
+   {
+    "hotel": "Brandon Hall Hotel and Spa",
+    "own": true,
+    "rate": 58,
+    "genius": 52,
+    "beforeTax": 48
+   },
+   {
+    "hotel": "Coombe Abbey Hotel",
+    "rate": 72,
+    "genius": 65,
+    "beforeTax": 59
+   },
+   {
+    "hotel": "DoubleTree by Hilton Coventry",
+    "rate": 56,
+    "genius": 50,
+    "beforeTax": 47
+   },
+   {
+    "hotel": "Ramada Hotel & Suites by Wyndham Coventry",
+    "rate": 57,
+    "genius": 51,
+    "beforeTax": 47
+   },
+   {
+    "hotel": "Chesford Grange",
+    "rate": 70,
+    "genius": 63,
+    "beforeTax": 58
+   },
+   {
+    "hotel": "Nailcote Hall",
+    "rate": 87,
+    "genius": 78
+   },
+   {
+    "hotel": "Mallory Court",
+    "rate": 202,
+    "genius": 182
+   }
+  ],
+  "2026-10-26": [
+   {
+    "hotel": "Brandon Hall Hotel and Spa",
+    "own": true,
+    "rate": 60,
+    "genius": 54,
+    "beforeTax": 50
+   },
+   {
+    "hotel": "Coombe Abbey Hotel",
+    "rate": 72,
+    "genius": 65,
+    "beforeTax": 59
+   },
+   {
+    "hotel": "DoubleTree by Hilton Coventry",
+    "rate": 71,
+    "genius": 64,
+    "beforeTax": 60
+   },
+   {
+    "hotel": "Ramada Hotel & Suites by Wyndham Coventry",
+    "rate": 61,
+    "genius": 55,
+    "beforeTax": 51
+   },
+   {
+    "hotel": "Chesford Grange",
+    "rate": 112,
+    "genius": 101,
+    "beforeTax": 93
+   },
+   {
+    "hotel": "Nailcote Hall",
+    "rate": 87,
+    "genius": 78
+   }
+  ]
+ }
+}
