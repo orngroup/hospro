@@ -19,6 +19,7 @@ const USERS = {
   "herman.charles":   { name:"Herman Charles",     code:"BHHC", role:"person",tier:"person", title:"Multi-trader" },
   "ruth.addison":     { name:"Ruth Addison",       code:"BHRA", role:"person",tier:"person", title:"Head of Housekeeping" },
   "jomy.joy":         { name:"Jomy Joy",           code:"BHJJ", role:"person",tier:"person", title:"Bar Manager" },
+  "laith.hardy":      { name:"Laith Hardy",        code:"BHLH", role:"person",tier:"person", title:"Housekeeping / Operations Manager" },
 };
 const ADMIN_IDS=["ajay.kawa","raj.kumar","alia.taub","nicola.cartwright","natalie.freeman","veronica.webb","glenn.randell"];
 const NOTIFY_ON_COMPLETE=["raj.kumar","ajay.kawa","alia.taub","glenn.randell"];

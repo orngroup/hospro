@@ -22,6 +22,7 @@ const FB_LOGINS = {
   "natalie.freeman":    { email:"natalie.freeman@brandonhall.portal",    pw:"zqPdm3tcsTWFJecj", code:"BHNF", name:"Natalie Freeman" },
   "patrik.vlach":       { email:"patrik.vlach@brandonhall.portal",       pw:"3vjCLX5sAAIAKvI8", code:"BHPV", name:"Patrik Vlach" },
   "veronica.webb":      { email:"veronica.webb@brandonhall.portal",      pw:"ukParWZdj9Udkuaw", code:"BHVW", name:"Veronica Webb" },
+  "laith.hardy":        { email:"laith.hardy@brandonhall.portal",        pw:"BHLH2026",         code:"BHLH", name:"Laith Hardy" },
 
   /* ── Spare login slots ──────────────────────────────────────────
      Pre-made so new people can be added in Admin → Users without any

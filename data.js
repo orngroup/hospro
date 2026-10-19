@@ -1007,7 +1007,8 @@ const DEFAULT_ACCESS = {
     "nicola.cartwright":{ name:"Nicola Cartwright", position:"Sales & Events",          email:"", phone:"", group:"sales" },
     "natalie.freeman":  { name:"Natalie Freeman",  position:"Event Executive",          email:"", phone:"", group:"sales" },
     "patrik.vlach":     { name:"Patrik Vlach",     position:"Front Office Manager",     email:"", phone:"", group:"operations" },
-    "veronica.webb":    { name:"Veronica Webb",    position:"Finance",                  email:"", phone:"", group:"finance" }
+    "veronica.webb":    { name:"Veronica Webb",    position:"Finance",                  email:"", phone:"", group:"finance" },
+    "laith.hardy":      { name:"Laith Hardy",      position:"Housekeeping / Operations Manager", email:"", phone:"", group:"operations" }
   }
 };
 

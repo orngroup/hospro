@@ -15,6 +15,7 @@ service cloud.firestore {
           'natalie.freeman@brandonhall.portal',
           'patrik.vlach@brandonhall.portal',
           'veronica.webb@brandonhall.portal',
+          'laith.hardy@brandonhall.portal',
           // Spare login slots — pre-approved so new people can be added in
           // Admin → Users without editing these rules. Create the matching
           // Auth account when you assign the slot to a person.
