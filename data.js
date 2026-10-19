@@ -227,36 +227,58 @@ const GALLERY = {
     "assets/weddings/wedding-06.jpg"
   ]
 };
-/* Local image pools — bundled in assets/ so they always load on the proposal
-   page and PDF (the CDN links above can be slow or blocked). */
-const IMG_POOLS = {
-  wedding: ["assets/weddings/wedding-04.jpg","assets/weddings/wedding-09.jpg","assets/weddings/wedding-13.jpg",
-    "assets/weddings/wedding-08.jpg","assets/weddings/wedding-06.jpg","assets/weddings/wedding-01.jpg",
-    "assets/weddings/wedding-16.jpg","assets/weddings/wedding-20.jpg"],
-  hotel: ["assets/hotel/exterior-front.png","assets/hotel/exterior-lawn.png","assets/hotel/bar-lounge.png",
-    "assets/hotel/restaurant.png","assets/hotel/terrace.png","assets/hotel/reception.png","assets/hotel/pool.png"]
-};
-GALLERY.hotel = IMG_POOLS.hotel.slice(0,6);
-/* A few rooms get a fixed, obvious shot */
+/* Real Brandon Hall photography, bundled in assets/ so it always loads on the
+   proposal page and PDF. These are the hotel's own venue photos. */
+const EVENTS_IMGS = [
+  "assets/photography/events/events-01-brandon-155.jpg","assets/photography/events/events-02-brandon-169.jpg",
+  "assets/photography/events/events-03-brandon-171.jpg","assets/photography/events/events-04-brandon-187.jpg",
+  "assets/photography/events/events-05-brandon-194.jpg","assets/photography/events/events-06-brandon-196.jpg",
+  "assets/photography/events/events-07-brandon-197.jpg","assets/photography/events/events-08-brandon-198.jpg",
+  "assets/photography/events/events-09-brandon-200.jpg","assets/photography/events/events-10-brandon-201.jpg",
+  "assets/photography/events/events-11-brandon-205.jpg","assets/photography/events/events-12-brandon-207.jpg",
+  "assets/photography/events/events-13-brandon-209.jpg","assets/photography/events/events-14-brandon-211.jpg",
+  "assets/photography/events/events-15-brandon-226.jpg","assets/photography/events/events-16-brandon-238.jpg",
+  "assets/photography/events/events-17-brandon-267.jpg","assets/photography/events/events-18-brandon-293.jpg",
+  "assets/photography/events/events-19-brandon-330.jpg","assets/photography/events/events-20-brandon-346.jpg",
+  "assets/photography/events/events-21-brandon-347.jpg","assets/photography/events/events-22-brandon-414.jpg",
+  "assets/photography/events/events-23-brandon-80.jpg","assets/photography/events/events-24-brandon-81.jpg",
+  "assets/photography/events/events-25-brandon-82.jpg","assets/photography/events/events-26-brandon-86.jpg",
+  "assets/photography/events/events-27-brandon-87.jpg"
+];
+const CLARENDON_IMGS = [
+  "assets/photography/clarendon/clarendon-01-1.jpg","assets/photography/clarendon/clarendon-02-2.jpg",
+  "assets/photography/clarendon/clarendon-03-3.jpg","assets/photography/clarendon/clarendon-04-4.jpg",
+  "assets/photography/clarendon/clarendon-05-5.jpg"
+];
+const WEDDING_IMGS = ["assets/weddings/wedding-04.jpg","assets/weddings/wedding-09.jpg","assets/weddings/wedding-13.jpg",
+  "assets/weddings/wedding-08.jpg","assets/weddings/wedding-06.jpg","assets/weddings/wedding-01.jpg",
+  "assets/weddings/wedding-16.jpg","assets/weddings/wedding-20.jpg"];
+const IMG_POOLS = { wedding: WEDDING_IMGS, event: EVENTS_IMGS };
+GALLERY.hotel = EVENTS_IMGS.slice(0,6);   // gallery strip for non-wedding proposals
+/* A fixed, correct photo for each function room (real event setups), the restaurant
+   (The Clarendon) and the suites — so no room ever shows a random pool/bedroom shot. */
 const ROOM_IMG = {
-  "restaurant":"assets/hotel/restaurant.png",
-  "brandon-suite":"assets/hotel/suite-bay.png",
-  "wolston-suite":"assets/hotel/suite-bay.png"
+  "woodlands":EVENTS_IMGS[18], "woodlands-1":EVENTS_IMGS[1], "woodlands-2":EVENTS_IMGS[2],
+  "brandon-suite":EVENTS_IMGS[3], "brandon-1":EVENTS_IMGS[4], "brandon-2":EVENTS_IMGS[5],
+  "wolston-suite":EVENTS_IMGS[6], "wolston-1":EVENTS_IMGS[7], "wolston-2":EVENTS_IMGS[8], "wolston-3":EVENTS_IMGS[9],
+  "allkins":EVENTS_IMGS[10], "beech":EVENTS_IMGS[11], "hunt":EVENTS_IMGS[12], "johnson":EVENTS_IMGS[13],
+  "jones":EVENTS_IMGS[14], "parke":EVENTS_IMGS[15], "warwick":EVENTS_IMGS[16],
+  "clarendon-restaurant":CLARENDON_IMGS[0]
 };
-/* Which pool suits an event type */
+function hashIdx(id, len){ return Math.abs([...String(id)].reduce((a,c)=>a+c.charCodeAt(0),0)) % len; }
 function imgPoolFor(evId){
-  if(["wedding","celebration","birthday","baby-shower","funeral","christmas"].includes(evId)) return IMG_POOLS.wedding;
-  return IMG_POOLS.hotel;
+  return (["wedding","celebration","birthday","baby-shower","funeral","christmas"].includes(evId)) ? IMG_POOLS.wedding : IMG_POOLS.event;
 }
-/* Per-room image — event-aware and local-first so it always shows.
-   A relevant photo per room/section on both the proposal and the PDF. */
+/* Per-room image — the correct Brandon Hall photo for that room and event.
+   Restaurant → Clarendon · weddings → wedding shots · function rooms → their
+   fixed event photo. Nothing random. */
 function roomImage(room, evId){
   const id = (room && room.id) ? room.id : (typeof room==="string"? room : "");
+  const wedding = ["wedding","celebration","birthday","baby-shower","funeral","christmas"].includes(evId);
+  if((room && room.restaurant) || id==="clarendon-restaurant") return CLARENDON_IMGS[id?hashIdx(id,CLARENDON_IMGS.length):0];
+  if(wedding){ return id? WEDDING_IMGS[hashIdx(id,WEDDING_IMGS.length)] : WEDDING_IMGS[0]; }
   if(id && ROOM_IMG[id]) return ROOM_IMG[id];
-  const pool = imgPoolFor(evId);
-  if(!id) return pool[0];
-  const idx = Math.abs([...String(id)].reduce((a,c)=>a+c.charCodeAt(0),0)) % pool.length;
-  return pool[idx];
+  return id? EVENTS_IMGS[hashIdx(id,EVENTS_IMGS.length)] : EVENTS_IMGS[0];
 }
 
 /* ---- TECH / CONNECTIVITY PER ROOM ----
