@@ -46,10 +46,10 @@ jobs:
         run: |
           git config user.name  "hosrev-bot"
           git config user.email "hosrev-bot@users.noreply.github.com"
-          if ! git diff --quiet -- hosrev-comp.json; then
-            git add hosrev-comp.json
+          git add hosrev-comp.json
+          if git diff --cached --quiet; then
+            echo "No rate changes to commit."
+          else
             git commit -m "HosREV: refresh competitor rates [skip ci]"
             git push
-          else
-            echo "No rate changes to commit."
           fi
