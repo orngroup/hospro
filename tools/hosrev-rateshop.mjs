@@ -154,5 +154,31 @@ async function main(){
   const fs = await import("node:fs");
   fs.writeFileSync(OUT_FILE, JSON.stringify(payload, null, 1));
   console.log(`\nDone. ${Object.keys(byDate).length} dates written to ${OUT_FILE}. Total searches: ${SEARCHES}.`);
+
+  // ---- Rate-trend history: one row per pull-day with each hotel's average
+  //      displayed rate across the shopped window. Appended to hosrev-history.json
+  //      (kept ~180 days) so HosREV can plot how each hotel moves over time. ----
+  const HIST_FILE = process.env.HIST_FILE || "hosrev-history.json";
+  const sums = {}, counts = {};
+  Object.values(byDate).forEach(rows => rows.forEach(r => {
+    if (!(r.rate > 0)) return;
+    sums[r.hotel] = (sums[r.hotel] || 0) + r.rate;
+    counts[r.hotel] = (counts[r.hotel] || 0) + 1;
+  }));
+  const avg = {};
+  Object.keys(sums).forEach(h => { avg[h] = Math.round(sums[h] / counts[h]); });
+  const pullDay = iso(today);                    // one entry per calendar day (re-runs overwrite)
+  let hist = { updated: "", own: OWN.hotel, byPullDate: {} };
+  try { if (fs.existsSync(HIST_FILE)) hist = JSON.parse(fs.readFileSync(HIST_FILE, "utf8")); } catch (e) { /* start fresh */ }
+  if (!hist.byPullDate) hist.byPullDate = {};
+  hist.byPullDate[pullDay] = avg;
+  hist.updated = new Date().toISOString();
+  hist.own = OWN.hotel;
+  // keep the most recent ~180 days
+  const keep = Object.keys(hist.byPullDate).sort().slice(-180);
+  const trimmed = {}; keep.forEach(k => { trimmed[k] = hist.byPullDate[k]; });
+  hist.byPullDate = trimmed;
+  fs.writeFileSync(HIST_FILE, JSON.stringify(hist, null, 1));
+  console.log(`History updated: ${Object.keys(hist.byPullDate).length} pull-days in ${HIST_FILE}.`);
 }
 main().catch(e => { console.error(e); process.exit(1); });
