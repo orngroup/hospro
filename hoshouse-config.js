@@ -44,7 +44,8 @@
       {k:"floors",    t:"Floors",             d:"Vacuumed incl. edges & under the bed; hard floor mopped."},
       {k:"fixit",     t:"Fix-it check",       d:"Plugs, bulbs, TV & remote, kettle, hairdryer, hangers; safe open & reset."},
       {k:"amenities", t:"Guest info & extras",d:"Directory, Wi-Fi card, pen & notepad, spare roll & tissues in place."},
-      {k:"final",     t:"Final check",        d:"Presentable, windows secure, heating set, lights off, card out, door locked."}
+      {k:"final",     t:"Final check",        d:"Presentable, windows secure, heating set, lights off, card out, door locked."},
+      {k:"dustcheck", t:"Final dust check",   d:"Last sweep for dust — tops of frames, skirtings, lamps, headboard, sockets, TV and ledges. Nothing missed."}
     ],
     Stayover: [
       {k:"rubbish",  t:"Rubbish & liners",   d:"Empty bins, fit new liners. Only clear the bin — never move guest items."},
@@ -52,7 +53,8 @@
       {k:"bathroom", t:"Bathroom refreshed", d:"Toilet, sink, shower & chrome wiped; mirror clean."},
       {k:"towels",   t:"Towels & toiletries",d:"Replace towels as needed; top up toiletries & toilet roll."},
       {k:"tray",     t:"Tea tray refilled",  d:"Cups & spoons clean, tray restocked, kettle rinsed."},
-      {k:"floors",   t:"Vacuum & mop",       d:"Vacuum the floor; mop any hard floor."}
+      {k:"floors",   t:"Vacuum & mop",       d:"Vacuum the floor; mop any hard floor."},
+      {k:"dustcheck",t:"Final dust check",   d:"Last sweep for dust — ledges, lamps, headboard, TV and surfaces. Nothing missed."}
     ],
     "Arrival-ready": [
       {k:"check",   t:"Room check",   d:"Quick look over a made-up room — clean, tidy, nothing missing."},

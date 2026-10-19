@@ -9441,45 +9441,48 @@ async function hhWriteAssign(dateISO, assigns){
     localStorage.setItem(key, JSON.stringify(m)); return true;
   }catch(e){ return false; }
 }
-async function hhAutoAllocate(){
+async function hhAllocateAll(){
   const date=window._hhDate||hhTodayISO();
-  const workers=hhAllocatePlan(date);
-  const rooms=(await hhFetchDay(date)).filter(r=>r.status!=='done' && r.status!=='in_progress'); // allocate the not-yet-started rooms
-  if(!rooms.length){ toast('No rooms waiting to allocate for '+date+' — reception sets them on the daily form first.'); return; }
-  if(!workers.length){ toast('No housekeepers are rostered for '+date+' in the rota.'); return; }
-  const roomNos=rooms.map(r=>r.room).sort((a,b)=>(+a||0)-(+b||0));
-  const plan=hhDistribute(roomNos, workers);
+  const crew=(window._hhCrew||await hhLoadCrew(date)).map(c=>Object.assign({cap:HH_DEFAULT_CAP}, c));
+  const rooms=(await hhFetchDay(date)).filter(r=>r.status!=='done' && r.status!=='in_progress'); // allocate the not-yet-started rooms + areas
+  if(!rooms.length){ toast('No rooms waiting to allocate for '+date+' — add the day\'s rooms first.'); return; }
+  if(!crew.length){ toast('Tick who\'s working today before you allocate.'); return; }
+  // rooms first (by number), then public areas
+  const ordered=rooms.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0) || (+a.room||0)-(+b.room||0)).map(r=>r.room);
+  const workers=crew.map(c=>({hkId:c.hkId, name:c.name, shift:c.shift||'', cap:c.cap||HH_DEFAULT_CAP, net:(c.cap||HH_DEFAULT_CAP)*45}));
+  const plan=hhDistribute(ordered, workers);
   const totalCap=workers.reduce((t,w)=>t+w.cap,0);
-  const over=roomNos.length>totalCap;
+  const over=ordered.length>totalCap;
   const rowsHtml=plan.map(w=>`<tr style="border-top:1px solid #eef1f4">
     <td style="padding:7px 10px;font-weight:600">${hhEsc(w.name)}</td>
-    <td style="padding:7px 10px;color:#5b6b7b">${hhEsc(w.shift||'')}</td>
-    <td style="padding:7px 10px;text-align:center">${Math.round(w.net/60*10)/10}h</td>
+    <td style="padding:7px 10px;color:#5b6b7b">${hhEsc(w.shift||'added / extra')}</td>
     <td style="padding:7px 10px;text-align:center">${w.cap}</td>
     <td style="padding:7px 10px;text-align:center;font-weight:700;color:${w.rooms.length>w.cap?'#b3261e':'#2E6B5E'}">${w.rooms.length}</td>
     <td style="padding:7px 10px;font-size:11.5px;color:#5b6b7b">${w.rooms.join(', ')||'—'}</td></tr>`).join('');
-  showModal('Auto-allocate rooms — '+date, roomNos.length+' rooms across '+workers.length+' housekeepers · 45 min per room, 30 min lunch',
+  showModal('Allocate &amp; distribute — '+date, ordered.length+' rooms across '+workers.length+' confirmed housekeepers',
     `<div style="font-size:13px;color:#1a2b3a">
-      ${over?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:9px;padding:9px 12px;margin-bottom:10px;font-size:12.5px">⚠ ${roomNos.length} rooms is more than the team's capacity of ${totalCap} today — the extra are spread evenly, so some people go over 45 min/room. Add cover or move rooms to another day if needed.</div>`:''}
+      ${over?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:9px;padding:9px 12px;margin-bottom:10px;font-size:12.5px">⚠ ${ordered.length} rooms is more than the team's rough capacity of ${totalCap} today — the extra are spread evenly, so some people get more. Add cover or move rooms if needed.</div>`:''}
       <div style="overflow:auto;border:1px solid #e4e9ef;border-radius:10px;max-height:52vh">
       <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-        <thead><tr style="background:#1F3864;color:#fff;position:sticky;top:0"><th style="padding:7px 10px;text-align:left">Housekeeper</th><th style="padding:7px 10px;text-align:left">Shift</th><th style="padding:7px 10px">Net</th><th style="padding:7px 10px">Can do</th><th style="padding:7px 10px">Rooms</th><th style="padding:7px 10px;text-align:left">Room numbers</th></tr></thead>
+        <thead><tr style="background:#1F3864;color:#fff;position:sticky;top:0"><th style="padding:7px 10px;text-align:left">Housekeeper</th><th style="padding:7px 10px;text-align:left">Shift</th><th style="padding:7px 10px">Can do</th><th style="padding:7px 10px">Rooms</th><th style="padding:7px 10px;text-align:left">Room numbers</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
         <button onclick="closeModal()" style="padding:9px 15px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:600 13px Lato;cursor:pointer">Cancel</button>
         <button id="hh-alloc-go" style="padding:9px 18px;border:none;border-radius:8px;background:#2E6B5E;color:#fff;font:700 13px Lato;cursor:pointer">Allocate &amp; save</button>
       </div>
-      <div style="font-size:11px;color:#8296a8;margin-top:8px">Each housekeeper then sees only their own rooms in the app — no picking. You can re-run this any time (e.g. after reception adds rooms).</div>
+      <div style="font-size:11px;color:#8296a8;margin-top:8px">Each housekeeper then sees only their own rooms in the app — no picking. Rooms already started or done aren't moved. Re-run any time.</div>
     </div>`);
   const btn=document.getElementById('hh-alloc-go');
   btn.onclick=async ()=>{
     btn.disabled=true; btn.textContent='Saving…';
     const assigns=[]; plan.forEach(w=>w.rooms.forEach(rm=>assigns.push({room:rm, hkId:w.hkId, hkName:w.name})));
     const ok=await hhWriteAssign(date, assigns);
-    closeModal(); toast(ok?('✓ '+assigns.length+' rooms allocated'):'Could not save — check connection'); hhRenderDash();
+    closeModal(); toast(ok?('✓ '+assigns.length+' rooms allocated'):'Could not save — check connection'); hhRenderManage(); hhRenderDash();
   };
 }
+/* back-compat alias */
+function hhAutoAllocate(){ return hhAllocateAll(); }
 function hhOrigin(){ try{ return location.origin + location.pathname.replace(/[^/]*$/,''); }catch(e){ return ''; } }
 /* ============================================================ HELP SYSTEM */
 function hpHelpEntry(key){
@@ -9595,6 +9598,112 @@ function hhBars(items){
     <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><b style="color:#1f2a37">${hhEsc(i.label)}</b><span style="color:#8296a8">${i.value}${i.sub?(' · '+hhEsc(i.sub)):''}</span></div>
       <div style="background:#eef1f5;border-radius:6px;height:13px;overflow:hidden"><div style="width:${Math.round(i.value/max*100)}%;height:100%;background:linear-gradient(90deg,#2E6B5E,#3f9f78)"></div></div></div>`).join('')}</div>`;
 }
+/* ============================================================
+   HOSHOUSE — one-page manager console (room selection + staff
+   confirmation + allocation + live dashboard, all in the hub).
+   Writes to the same hoshouse_rooms store the housekeeper app reads.
+   ============================================================ */
+const HH_DEFAULT_CAP = 8;                 // rooms for a confirmed person with no rota shift
+const HH_ROOM_TYPES  = ["Departure","Stayover","Arrival-ready"];
+const HH_PUBLIC_AREAS = [
+  { area:"Gents WC",      slots:["AM","PM"] },
+  { area:"Ladies WC",     slots:["AM","PM"] },
+  { area:"Accessible WC", slots:["AM","PM"] },
+  { area:"Reception",     slots:["Daily"]  }
+];
+function hhDocId(date,room){ return date+"__"+room; }
+function hhBlankRoom(date,room,type,note){
+  return { date, room:String(room), type:type||"Departure", cat:"", status:"pending",
+    housekeeper:"", housekeeperName:"", startAt:null, finishAt:null, durationSec:0,
+    checklist:{}, geoStartOk:null, geoFinishOk:null, notes:note||"",
+    area:false, slot:"", replaced:"", maintenance:"", lostProperty:"", updatedAt:Date.now() };
+}
+function hhBlankArea(date,area,slot){
+  const id=area+(slot&&slot!=='Daily'?(' '+slot):'');
+  return Object.assign(hhBlankRoom(date,id, area.indexOf('WC')>=0?area:'Reception',''), { area:true, slot:slot||'' });
+}
+/* Add / update / prune the day's ROOMS (leaves started/done rooms and areas alone). */
+async function hhSetDayRooms(date, picks){
+  const want=new Set(picks.map(p=>String(p.room)));
+  if(typeof FB!=='undefined' && FB.db){
+    try{
+      const snap=await FB.db.collection('hoshouse_rooms').where('date','==',date).get();
+      const have={}; snap.forEach(d=>have[d.data().room]=d.data());
+      const batch=FB.db.batch();
+      picks.forEach(p=>{ const r=String(p.room); const note=p.note||'';
+        if(!have[r]) batch.set(FB.db.collection('hoshouse_rooms').doc(hhDocId(date,r)), hhBlankRoom(date,r,p.type,note));
+        else if(have[r].status==='pending' && (have[r].type!==p.type || (have[r].notes||'')!==note)) batch.update(FB.db.collection('hoshouse_rooms').doc(hhDocId(date,r)), {type:p.type, notes:note, updatedAt:Date.now()});
+      });
+      snap.forEach(d=>{ const r=d.data(); if(!want.has(r.room) && r.status==='pending' && !r.area) batch.delete(FB.db.collection('hoshouse_rooms').doc(hhDocId(date,r.room))); });
+      await batch.commit(); return true;
+    }catch(e){ console.warn('hhSetDayRooms', e&&e.code); }
+  }
+  const key='hoshouse_day_'+date; let have={}; try{ have=JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){}
+  const map={};
+  Object.values(have).forEach(r=>{ if(r && (r.area || (r.status && r.status!=='pending'))) map[String(r.room)]=r; });
+  picks.forEach(p=>{ const r=String(p.room);
+    map[r]= have[r] && have[r].status!=='pending' ? have[r] : (have[r]||hhBlankRoom(date,r,p.type,p.note||''));
+    if(map[r].status==='pending'){ map[r].type=p.type; map[r].notes=p.note||''; }
+  });
+  try{ localStorage.setItem(key, JSON.stringify(map)); }catch(e){}
+  return true;
+}
+async function hhAddPublicAreas(date){
+  const have=await hhFetchDay(date); const haveIds=new Set(have.map(r=>r.room));
+  const add=[]; HH_PUBLIC_AREAS.forEach(a=>a.slots.forEach(slot=>{ const b=hhBlankArea(date,a.area,slot); if(!haveIds.has(b.room)) add.push(b); }));
+  if(!add.length) return 0;
+  if(typeof FB!=='undefined' && FB.db){ try{ const batch=FB.db.batch(); add.forEach(b=>batch.set(FB.db.collection('hoshouse_rooms').doc(hhDocId(date,b.room)), b)); await batch.commit(); return add.length; }catch(e){ console.warn('hhAddAreas',e&&e.code); } }
+  const key='hoshouse_day_'+date; let map={}; try{ map=JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){}
+  add.forEach(b=>{ map[b.room]=b; }); try{ localStorage.setItem(key, JSON.stringify(map)); }catch(e){}
+  return add.length;
+}
+async function hhRemoveRoom(room){
+  const date=window._hhDate||hhTodayISO();
+  if(typeof FB!=='undefined' && FB.db){ try{ await FB.db.collection('hoshouse_rooms').doc(hhDocId(date,room)).delete(); }catch(e){ console.warn('hhRemoveRoom',e&&e.code); } }
+  const key='hoshouse_day_'+date; try{ const map=JSON.parse(localStorage.getItem(key)||'{}'); delete map[String(room)]; localStorage.setItem(key, JSON.stringify(map)); }catch(e){}
+  hhRenderManage(); hhRenderDash();
+}
+
+/* ---- Crew: who's confirmed working today. Seeded from the rota, then the
+   manager ticks people on/off and can add anyone from the house list. ---- */
+function hhCrewKey(date){ return 'hoshouse_crew_'+date; }
+async function hhLoadCrew(date){
+  let crew=null;
+  if(typeof FB!=='undefined' && FB.db){ try{ const d=await FB.db.collection('hoshouse_config').doc('crew__'+date).get(); if(d.exists && Array.isArray(d.data().crew)) crew=d.data().crew; }catch(e){} }
+  if(!crew){ try{ const raw=localStorage.getItem(hhCrewKey(date)); if(raw) crew=JSON.parse(raw); }catch(e){} }
+  if(!crew){ // seed from the published rota
+    const w=hhAllocatePlan(date);
+    crew=w.map(x=>({ hkId:x.hkId, name:x.name, shift:x.shift||'', cap:x.cap||HH_DEFAULT_CAP }));
+  }
+  window._hhCrew=crew; return crew;
+}
+async function hhSaveCrew(date, crew){
+  window._hhCrew=crew;
+  try{ localStorage.setItem(hhCrewKey(date), JSON.stringify(crew)); }catch(e){}
+  if(typeof FB!=='undefined' && FB.db){ try{ await FB.db.collection('hoshouse_config').doc('crew__'+date).set({crew, updatedAt:Date.now()}); }catch(e){ console.warn('hhSaveCrew',e&&e.code); } }
+}
+async function hhToggleCrew(hkId){
+  const date=window._hhDate||hhTodayISO();
+  const crew=(window._hhCrew||await hhLoadCrew(date)).slice();
+  const i=crew.findIndex(c=>c.hkId===hkId);
+  if(i>=0){ crew.splice(i,1); }
+  else { const m=HH_HUB_STAFF.find(s=>s[1]===hkId); const plan=hhAllocatePlan(date).find(w=>w.hkId===hkId);
+    crew.push({ hkId, name:m?m[0]:hkId, shift:plan?plan.shift:'', cap:plan?plan.cap:HH_DEFAULT_CAP }); }
+  await hhSaveCrew(date, crew); hhRenderManage();
+}
+
+/* ---- Distribution helpers ---- */
+function hhCurrentLoad(rooms){ // remaining (not-done) rooms per housekeeper id
+  const load={}; rooms.forEach(r=>{ if(!r.housekeeper) return; if(r.status==='done') return; load[r.housekeeper]=(load[r.housekeeper]||0)+1; }); return load;
+}
+function hhToLightest(newRooms, workers, baseLoad){
+  const load={}; workers.forEach(w=>load[w.hkId]=baseLoad[w.hkId]||0);
+  const assigns=[];
+  newRooms.forEach(room=>{ const w=workers.slice().sort((a,b)=>(load[a.hkId]-load[b.hkId]) || (b.cap||0)-(a.cap||0))[0];
+    if(w){ assigns.push({room, hkId:w.hkId, hkName:w.name}); load[w.hkId]++; } });
+  return assigns;
+}
+
 function renderHosHouseHub(v){
   const base = hhOrigin();
   if(!window._hhDate) window._hhDate = hhTodayISO();
@@ -9612,36 +9721,162 @@ function renderHosHouseHub(v){
   v.innerHTML = `
   <div style="max-width:1040px;margin:0 auto;padding:4px 2px 30px">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-      <div><div style="font:800 20px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping dashboard</div>
-        <div style="font-size:12.5px;color:#5b6b7b">Live room-cleaning progress, times and staff efficiency.</div></div>
+      <div><div style="font:800 20px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping</div>
+        <div style="font-size:12.5px;color:#5b6b7b">Pick the day's rooms, confirm who's in, allocate — all on this page.</div></div>
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderDash()" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
-        <button onclick="hhAutoAllocate()" title="Share the day's rooms out across the rostered housekeepers (45 min/room, 30 min lunch)" style="padding:7px 12px;border:none;background:#2E6B5E;color:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer">⚖️ Auto-allocate rooms</button>
+        <input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderManage();hhRenderDash()" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
         <button onclick="hhEodReport()" title="Compile the end-of-day housekeeping report" style="padding:7px 12px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12px Lato;cursor:pointer">📄 End-of-day report</button>
         <button onclick="hhClearDay()" title="Delete all rooms & areas for this date — use to reset after testing" style="padding:7px 12px;border:1px solid #e4b6b6;background:#fff;color:#b3261e;border-radius:8px;font:700 12px Lato;cursor:pointer">🗑 Clear test data</button>
-        <button onclick="hhRenderDash()" style="padding:7px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">↻ Refresh</button>
+        <button onclick="hhRenderManage();hhRenderDash()" style="padding:7px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">↻ Refresh</button>
       </div>
     </div>
 
+    <div id="hh-manage"></div>
+
+    <div style="font:800 15px Lato;color:#1a2b3a;margin:22px 0 10px">📊 Live progress</div>
     <div id="hh-body"></div>
 
-    <div style="display:flex;gap:9px;flex-wrap:wrap;margin:18px 0 14px">
-      ${chip('📋','#3B6585','Reception form',base+'hoshouse-entry.html')}
-      ${chip('📱','#2E6B5E','Housekeeper app',base+'hoshouse.html')}
-      ${chip('📊','#8a5a2b','Full manager dashboard',base+'hoshouse-admin.html?mgr=laith')}
-      ${chip('👥','#6E4E7A','Staff & codes',base+'hoshouse-admin.html?mgr=laith')}
-    </div>
-
-    <details style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
-      <summary style="cursor:pointer;font:800 13px Lato;color:#1a2b3a">Housekeeper personal links &amp; PINs</summary>
-      <div style="font-size:11.5px;color:#5b6b7b;margin:8px 0 10px">Send each person their link on WhatsApp. Add, remove or recode staff in the full dashboard → Staff.</div>
+    <details style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-top:16px">
+      <summary style="cursor:pointer;font:800 13px Lato;color:#1a2b3a">📱 Housekeeper app links &amp; PINs</summary>
+      <div style="font-size:11.5px;color:#5b6b7b;margin:8px 0 10px">Send each person their own link on WhatsApp — they open it on their phone and type their PIN. This is the only outside link; everything else is on this page.</div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
         <tr style="background:#1F3864;color:#fff"><th style="padding:7px 10px;text-align:left">Housekeeper</th><th style="padding:7px 10px;text-align:left">Link</th><th style="padding:7px 10px;text-align:left">PIN</th><th></th></tr>
         ${staffRows}
       </table></div>
+      <div style="margin-top:10px"><a href="${base}hoshouse.html" target="_blank" style="font:700 12px Lato;color:#2E6B5E;text-decoration:none">Open the housekeeper app ↗</a></div>
     </details>
   </div>`;
+  hhRenderManage();
   hhRenderDash();
+}
+
+/* ---- The manage console: staff-working row + room selection + allocate ---- */
+async function hhRenderManage(){
+  const box=document.getElementById('hh-manage'); if(!box) return;
+  const date=window._hhDate||hhTodayISO();
+  box.innerHTML=`<div style="padding:20px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:14px">Loading…</div>`;
+  const [crew, rooms] = [await hhLoadCrew(date), await hhFetchDay(date)];
+  const crewIds=new Set(crew.map(c=>c.hkId));
+  const bedrooms=rooms.filter(r=>!r.area);
+  const areas=rooms.filter(r=>r.area);
+  const pend=bedrooms.filter(r=>r.status==='pending');
+  const unalloc=bedrooms.filter(r=>!r.housekeeper && r.status!=='done');
+
+  // ---- staff chips (every house member; tick = working today) ----
+  const chips=HH_HUB_STAFF.map(([name,id])=>{
+    const on=crewIds.has(id);
+    const plan=hhAllocatePlan(date).find(w=>w.hkId===id);
+    const sub=plan?plan.shift:'';
+    return `<button onclick="hhToggleCrew('${id}')" title="${on?'Working — tap to remove':'Tap to add to today'}" style="display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 11px;border-radius:9px;border:1.5px solid ${on?'#2E6B5E':'#d7dde4'};background:${on?'#eaf4f0':'#fff'};cursor:pointer;font:700 12px Lato;color:${on?'#1f5a4e':'#6b7b8a'}">
+      <span>${on?'✓ ':''}${hhEsc(name.replace(/ \(.*\)/,''))}</span>
+      ${sub?`<span style="font-weight:500;font-size:10px;color:#8296a8">${hhEsc(sub)}</span>`:(on?'<span style="font-weight:500;font-size:10px;color:#b07a2e">added / extra</span>':'')}
+    </button>`;
+  }).join('');
+
+  // ---- room list (pending rooms editable; started/done locked) ----
+  const typeOpt=(sel)=>HH_ROOM_TYPES.map(t=>`<option value="${t}" ${t===sel?'selected':''}>${t}</option>`).join('');
+  const roomRows=bedrooms.sort((a,b)=>(+a.room||0)-(+b.room||0)).map(r=>{
+    const locked=r.status!=='pending';
+    const stCol=r.status==='done'?'#2a6a4a':r.status==='in_progress'?'#9c5a00':'#6b7280';
+    const who=r.housekeeperName||(r.housekeeper?r.housekeeper:'—');
+    return `<tr style="border-top:1px solid #eef1f4">
+      <td style="padding:6px 8px;font-weight:700;color:#1a2b3a">${hhEsc(r.room)}</td>
+      <td style="padding:6px 8px">${locked
+        ? r.type
+        : `<select onchange="hhChangeType('${hhEsc(r.room)}',this.value)" style="padding:4px 6px;border:1px solid #d7dde4;border-radius:6px;font:12px Lato">${typeOpt(r.type)}</select>`}</td>
+      <td style="padding:6px 8px;color:#5b6b7b">${hhEsc(who)}</td>
+      <td style="padding:6px 8px;font-size:11px;font-weight:700;color:${stCol};text-transform:capitalize">${(r.status||'pending').replace('_',' ')}</td>
+      <td style="padding:6px 8px;color:#5b6b7b;font-size:11.5px">${hhEsc(r.notes||'')}</td>
+      <td style="padding:6px 8px;text-align:right">${locked?'':`<button onclick="hhRemoveRoom('${hhEsc(r.room)}')" title="Remove this room" style="border:none;background:none;color:#b3261e;cursor:pointer;font-size:14px">✕</button>`}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" style="padding:12px;color:#8296a8;font-size:12.5px">No rooms yet — read them off the Guestline printout and add them above.</td></tr>`;
+
+  const areaLine = areas.length
+    ? `<span style="font-size:11.5px;color:#5b6b7b">Public areas on list: ${areas.map(a=>hhEsc(a.room)).join(', ')}</span>`
+    : `<span style="font-size:11.5px;color:#8296a8">No public areas on the list yet.</span>`;
+
+  box.innerHTML=`
+    <!-- STAFF WORKING TODAY -->
+    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        <div style="font:800 14px Lato;color:#1a2b3a">👥 Who's working today</div>
+        <div style="font-size:11.5px;color:#8296a8"><b style="color:#1f5a4e">${crew.length}</b> confirmed · tap a name to add or remove</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:7px">${chips}</div>
+    </div>
+
+    <!-- ROOMS -->
+    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:14px">
+      <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:10px">🧹 Today's rooms <span style="font-weight:500;font-size:11.5px;color:#8296a8">· ${bedrooms.length} room${bedrooms.length===1?'':'s'}, ${unalloc.length} to allocate</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;background:#f7f9fb;border:1px solid #eef1f4;border-radius:10px;padding:10px 12px;margin-bottom:12px">
+        <div style="flex:1;min-width:200px"><label style="display:block;font:700 10.5px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Room numbers (from Guestline)</label>
+          <input id="hh-add-rooms" placeholder="e.g. 101 102 108 211" style="width:100%;padding:8px 10px;border:1px solid #d7dde4;border-radius:7px;font:13px Lato"></div>
+        <div><label style="display:block;font:700 10.5px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Clean type</label>
+          <select id="hh-add-type" style="padding:8px 10px;border:1px solid #d7dde4;border-radius:7px;font:13px Lato">${HH_ROOM_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+        <div style="flex:1;min-width:140px"><label style="display:block;font:700 10.5px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Note (optional)</label>
+          <input id="hh-add-note" placeholder="e.g. late checkout, VIP" style="width:100%;padding:8px 10px;border:1px solid #d7dde4;border-radius:7px;font:13px Lato"></div>
+        <button onclick="hhAddRooms(false)" title="Add to the list without allocating yet" style="padding:9px 13px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12px Lato;cursor:pointer">+ Add to list</button>
+        <button onclick="hhAddRooms(true)" title="Add and share just these new rooms to whoever has the fewest rooms left" style="padding:9px 13px;border:none;background:#2E6B5E;color:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer">+ Add &amp; give to lightest</button>
+      </div>
+      <div style="overflow-x:auto;border:1px solid #eef1f4;border-radius:10px">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+          <thead><tr style="background:#f5f7f9;text-align:left;color:#6b7280;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">
+            <th style="padding:6px 8px">Room</th><th style="padding:6px 8px">Type</th><th style="padding:6px 8px">Who</th><th style="padding:6px 8px">Status</th><th style="padding:6px 8px">Note</th><th></th></tr></thead>
+          <tbody>${roomRows}</tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button onclick="hhAddAreas()" style="padding:8px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">🧼 Add public areas (toilets + reception)</button>
+          ${areaLine}
+        </div>
+        <button onclick="hhAllocateAll()" title="Share all unstarted rooms across everyone confirmed working, balanced by hours" style="padding:10px 16px;border:none;background:#1F3864;color:#fff;border-radius:9px;font:800 13px Lato;cursor:pointer">⚖️ Allocate &amp; distribute${unalloc.length?(' ('+unalloc.length+')'):''}</button>
+      </div>
+    </div>`;
+}
+
+/* add rooms typed by the manager; distribute=true shares just the new ones to the lightest */
+async function hhAddRooms(distribute){
+  const date=window._hhDate||hhTodayISO();
+  const raw=(document.getElementById('hh-add-rooms')||{}).value||'';
+  const type=(document.getElementById('hh-add-type')||{}).value||'Departure';
+  const note=(document.getElementById('hh-add-note')||{}).value||'';
+  const nums=raw.split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean);
+  if(!nums.length){ toast('Type one or more room numbers first.'); return; }
+  const before=await hhFetchDay(date);
+  const existing=new Set(before.filter(r=>!r.area).map(r=>String(r.room)));
+  // keep the whole current pending list and add the new ones (setDayRooms needs the full desired pending set)
+  const picks=before.filter(r=>!r.area).map(r=>({room:r.room, type:r.type, note:r.notes||''}));
+  nums.forEach(n=>{ if(!existing.has(String(n))) picks.push({room:n, type, note}); });
+  await hhSetDayRooms(date, picks);
+  const newOnes=nums.filter(n=>!existing.has(String(n)));
+  if(distribute && newOnes.length){
+    const crew=window._hhCrew||await hhLoadCrew(date);
+    if(!crew.length){ toast('Added — but tick who\'s working before distributing.'); }
+    else {
+      const after=await hhFetchDay(date);
+      const load=hhCurrentLoad(after);
+      const assigns=hhToLightest(newOnes.map(String), crew, load);
+      await hhWriteAssign(date, assigns);
+      toast('✓ Added '+newOnes.length+' room'+(newOnes.length>1?'s':'')+' and gave them to the lightest-loaded staff');
+    }
+  } else {
+    toast('✓ Added '+newOnes.length+' room'+(newOnes.length===1?'':'s'));
+  }
+  const inp=document.getElementById('hh-add-rooms'); if(inp) inp.value='';
+  const nt=document.getElementById('hh-add-note'); if(nt) nt.value='';
+  hhRenderManage(); hhRenderDash();
+}
+async function hhChangeType(room, type){
+  const date=window._hhDate||hhTodayISO();
+  if(typeof FB!=='undefined' && FB.db){ try{ await FB.db.collection('hoshouse_rooms').doc(hhDocId(date,room)).set({type, updatedAt:Date.now()},{merge:true}); }catch(e){} }
+  else { const key='hoshouse_day_'+date; try{ const m=JSON.parse(localStorage.getItem(key)||'{}'); if(m[String(room)]){ m[String(room)].type=type; localStorage.setItem(key,JSON.stringify(m)); } }catch(e){} }
+}
+async function hhAddAreas(){
+  const date=window._hhDate||hhTodayISO();
+  const n=await hhAddPublicAreas(date);
+  toast(n?('✓ Added '+n+' public-area task'+(n>1?'s':'')):'Public areas already on the list');
+  hhRenderManage(); hhRenderDash();
 }
 async function hhRenderDash(){
   const body=document.getElementById('hh-body'); if(!body) return;
@@ -9661,7 +9896,7 @@ async function hhRenderDash(){
     body.innerHTML=`<div style="padding:30px;text-align:center;background:#fff;border:1px solid #e4e9ef;border-radius:14px">
       <div style="font-size:30px;margin-bottom:6px">🧹</div>
       <div style="font:800 15px Lato;color:#1a2b3a">No rooms set for ${date}</div>
-      <div style="font-size:12.5px;color:#8296a8;margin-top:4px">Reception submits the day's rooms on the daily form — once they do, the dashboard fills in here.</div></div>`;
+      <div style="font-size:12.5px;color:#8296a8;margin-top:4px">Add the day's rooms above, confirm who's working, then Allocate &amp; distribute — progress shows here.</div></div>`;
     return;
   }
 
