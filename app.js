@@ -643,7 +643,7 @@ function openRoom(r){
     $("#rm-laydesc").textContent=LAYOUT_INFO[k].desc;
   });
   $("#rm-quote").onclick=()=>{ closeModal(); alert("To build a quote, start from an enquiry in the Sales Pipeline."); switchTab("pipeline"); };
-  $("#rm-enq").onclick=()=>{ closeModal(); openEnquiryForm({room:r.id,event:evId}); };
+  $("#rm-enq").onclick=()=>{ closeModal(); startNewEnquiry({room:r.id,event:evId}); };
 }
 function switchTab(t){ CURRENT_TAB=t; render(); }
 
@@ -781,6 +781,34 @@ function applyEventTemplate(tplId){
     room:ROOMS[0].id, layout:f.layout, hire:f.hire, pkg:f.pkg, pax:40 }));
 }
 let quoteEnquiry=null;  // the enquiry a quote is being built for (required)
+/* Start a brand-new enquiry straight in the combined client-details + quote screen
+   (no two-stage form). The enquiry is written to the pipeline when they save. */
+function startNewEnquiry(pre){
+  quoteEnquiry = Object.assign({ _new:true, name:"", company:"", email:"", phone:"",
+    event:"wedding", date:"", pax:"", status:"enquiry", pipeStage:"prospect" }, pre||{});
+  QUOTE_ROOMS=[]; QUOTE_ACC=[]; QUOTE_CUSTOM=[]; QUOTE_PAY=[]; QUOTE_OPTIONS=[];
+  window._editingQuoteId=null;
+  switchTab("quote");
+}
+/* Make sure the enquiry behind the quote exists in the pipeline. Creates it on
+   first save (so it appears straight away) or updates the client details. */
+async function ensureEnquiryForQuote(q){
+  const cust=q.customer||{};
+  const patch={ name:cust.name||"", company:cust.co||"", email:cust.email||"", phone:cust.phone||"",
+    event:q.evId, date:cust.date||"", pax:parseInt(q.pax)||null, value:Math.round(q.subtotal||0) };
+  if(quoteEnquiry && quoteEnquiry.id && !quoteEnquiry._new){
+    try{ await DB.update(quoteEnquiry.id, patch); }catch(e){}
+    Object.assign(quoteEnquiry, patch);
+    return quoteEnquiry.id;
+  }
+  const rec=Object.assign({ status:"enquiry", pipeStage:(quoteEnquiry&&quoteEnquiry.pipeStage)||"prospect",
+    owner:(SESSION&&SESSION.name)||ENQ_OWNERS[0], source:"Quote builder",
+    enquiryDate:new Date().toISOString().slice(0,10), followUp:new Date().toISOString().slice(0,10) }, patch);
+  let id=null;
+  try{ const added=await DB.add(rec); id=(added&&added.id)||rec.id; }catch(e){ id=rec.id; }
+  quoteEnquiry=Object.assign(rec,{ id, _new:false });
+  return id;
+}
 function renderQuote(v){
   if(typeof hpPkgEnsure==='function') hpPkgEnsure();
   const e=quoteEnquiry;
@@ -789,18 +817,21 @@ function renderQuote(v){
     const msg=el("div","quote-panel");
     msg.innerHTML=`<div style="text-align:center;padding:30px 20px">
       <div style="font-size:40px;margin-bottom:10px">📋</div>
-      <h3 style="margin-bottom:8px">Start from an enquiry</h3>
-      <p class="qs-sub" style="max-width:34em;margin:0 auto 18px">Every quote belongs to a customer. Open an enquiry in the Sales Pipeline (or create a new one), then use <b>Build quote</b> — the customer details, payment terms and acceptance all stay linked to that booking.</p>
-      <button class="btn" id="q-gopipe">Go to Sales Pipeline</button>
+      <h3 style="margin-bottom:8px">Start a new enquiry</h3>
+      <p class="qs-sub" style="max-width:34em;margin:0 auto 18px">Add the client's details and build their quote on one screen. It's saved to the Sales Pipeline the moment you create the quote.</p>
+      <button class="btn" id="q-startnew" style="background:#c0392b">+ Start new enquiry</button>
+      <div style="margin-top:10px"><button class="btn ghost sm" id="q-gopipe">Open the Sales Pipeline</button></div>
     </div>`;
     v.appendChild(msg);
+    $("#q-startnew").onclick=()=>startNewEnquiry();
     $("#q-gopipe").onclick=()=>switchTab("pipeline");
     return;
   }
   const et=EVENT_TYPES.find(t=>t.id===e.event);
-  v.appendChild(head(`Quote — ${e.name}`,`Building a quote for this enquiry. Customer, payment terms and issue are all here and stay linked to the booking.`));
+  const isNew = e._new || !e.id;
+  v.appendChild(head(isNew?`New enquiry & quote`:`Quote — ${e.name}`,`Add the client's details and build the quote on one screen${isNew?" — it's added to the pipeline when you create the quote.":". Everything stays linked to the booking."}`));
   const exitBar=el("div",""); exitBar.style.cssText="margin:-4px 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap";
-  exitBar.innerHTML=`<button class="btn ghost sm" id="q-exit">← Exit to pipeline</button><span style="font-size:12px;color:var(--muted)">Saving keeps your quote on this enquiry — it won't send you back to Home.</span>`;
+  exitBar.innerHTML=`<button class="btn ghost sm" id="q-exit">← Exit to pipeline</button><span style="font-size:12px;color:var(--muted)">Your quote and the client's details save together — you won't be sent back to Home.</span>`;
   v.appendChild(exitBar);
   // seed rooms from enquiry if empty
   if(!QUOTE_ROOMS.length){ QUOTE_ROOMS=[newRoomLine({room:e.room||"woodlands",event:e.event||"wedding",pax:parseInt(e.pax)||40})]; }
@@ -808,9 +839,9 @@ function renderQuote(v){
 
   const wrap=el("div","quote-layout");
   const left=el("div","quote-panel");
-  left.innerHTML=`<h3>Customer <span class="qs-sub">(from enquiry)</span></h3>
+  left.innerHTML=`<h3>Client details <span class="qs-sub">${isNew?'(new enquiry)':'(from enquiry)'}</span></h3>
     <div class="form-grid">
-      <div><label>Customer name</label><input id="q-name" value="${(e.name||'').replace(/"/g,'&quot;')}"></div>
+      <div><label>Customer name *</label><input id="q-name" placeholder="Customer name" value="${(e.name||'').replace(/"/g,'&quot;')}"></div>
       <div><label>Company (optional)</label><input id="q-co" value="${(e.company||'').replace(/"/g,'&quot;')}"></div>
       <div><label>Email</label><input id="q-email" type="email" value="${e.email||''}"></div>
       <div><label>Phone</label><input id="q-phone" value="${e.phone||''}"></div>
@@ -859,9 +890,10 @@ function renderQuote(v){
   right.innerHTML=`<h3>Quote summary</h3><div id="q-summary"></div>
     <div id="q-options-box"></div>
     <button class="btn block" id="q-addopt" style="margin-top:14px;background:#4a7c59">➕ Add this as an option</button>
-    <button class="btn block" id="q-sendlink" style="margin-top:8px;background:#2f6f9e">🔗 Create client proposal link</button>
+    <button class="btn block" id="q-sendlink" style="margin-top:8px;background:#c0392b;font-weight:700">✅ Save &amp; create quote</button>
+    <p class="qs-sub" style="margin-top:6px;text-align:center">Saves the client to the pipeline and opens the ways to share.</p>
     <div class="dual-btn" style="margin-top:8px">
-      <button class="btn ghost sm" id="q-save">💾 Save quote</button>
+      <button class="btn ghost sm" id="q-save">💾 Save as draft</button>
       <button class="btn ghost sm" id="q-new">➕ New quote (same client)</button>
     </div>
     <div class="dual-btn" style="margin-top:8px">
@@ -1457,7 +1489,7 @@ function renderPipeline(v){
       <button class="btn ghost" id="enq-link">Copy chat link</button>
     </div>`;
   v.appendChild(tb);
-  $("#enq-new").onclick=()=>openEnquiryForm({});
+  $("#enq-new").onclick=()=>startNewEnquiry();
   $("#enq-chat").onclick=()=>switchTab("chat");
   $("#enq-link").onclick=()=>{ const url=location.href.split("#")[0]+"#events-chat";
     navigator.clipboard?.writeText(url); alert("Shareable events-chat link copied:\n"+url); };
@@ -5360,6 +5392,16 @@ function renderModuleLanding(moduleId){
       </div>
     </div>`;
 
+  // Quick action: Start New Enquiry (Sales) — straight into the combined client + quote screen
+  if(moduleId==='hossales'){
+    const quick=document.createElement('div');
+    quick.style.cssText="margin:0 0 18px";
+    quick.innerHTML=`<button id="hp-start-enq" style="display:inline-flex;align-items:center;gap:9px;padding:14px 22px;border:none;border-radius:12px;background:#c0392b;color:#fff;font:800 15px Lato;cursor:pointer;box-shadow:0 4px 16px rgba(192,57,43,.35)">➕ Start new enquiry</button>
+      <span style="color:rgba(255,255,255,.85);font-size:12.5px;margin-left:12px">Add the client and build their quote on one screen — no need to open the pipeline first.</span>`;
+    content.appendChild(quick);
+    setTimeout(()=>{ const b=document.getElementById('hp-start-enq'); if(b) b.onclick=()=>startNewEnquiry(); },0);
+  }
+
   // Sub-cards grid — larger cards, 3-4 per row max for readability
   const grid = document.createElement("div");
   grid.className = "hp-subgrid";
@@ -6192,10 +6234,11 @@ function hpViewTerms(){
 }
 
 /* Save the current quote as a draft (keeps it in the Quotes list without issuing a client link) */
-function saveQuoteDraft(){
+async function saveQuoteDraft(){
   const q=gatherQuote();
   if(!q.customer.name){ alert("Please enter the customer name first."); return; }
   if(!q.lines.length){ alert("Add at least one room, package or add-on first."); return; }
+  await ensureEnquiryForQuote(q); q.enquiry=quoteEnquiry;
   const id = window._editingQuoteId || ("Q-"+Date.now().toString(36).toUpperCase());
   const rich=buildRichQuote(q,id); rich.status="saved";
   QuoteStore.create(rich);
@@ -6215,7 +6258,7 @@ function newQuoteSameClient(){
   if(typeof toast==="function") toast("New quote started for "+(quoteEnquiry.name||"this client"));
 }
 
-function sendQuoteLink(){
+async function sendQuoteLink(){
   const q=gatherQuote();
   if(!q.customer.name){ alert("Please enter the customer name first."); return; }
   if(!q.lines.length){ alert("Add at least one room, package or add-on to the quote."); return; }
@@ -6225,6 +6268,8 @@ function sendQuoteLink(){
     if(issues.length){ hpSpellModal(issues, ()=>{ window._spellAck=true; sendQuoteLink(); }); return; }
   }
   window._spellAck=false;
+  // make sure the enquiry is in the pipeline, then link the quote to it
+  await ensureEnquiryForQuote(q); q.enquiry=quoteEnquiry;
   // reuse existing quote id if this builder was opened from a saved quote
   const id = window._editingQuoteId || ("Q-"+Date.now().toString(36).toUpperCase());
   const rich=buildRichQuote(q,id);
@@ -6240,8 +6285,9 @@ function sendQuoteLink(){
   const mailto=`mailto:${encodeURIComponent(rich.clientEmail||"")}?cc=${encodeURIComponent("events@brandonhallhotelandspa.com")}&subject=${encodeURIComponent("Your proposal — Brandon Hall Hotel and Spa")}&body=${encodeURIComponent(emailBody)}`;
   const waText=`Dear ${(rich.client||"there").split(" ")[0]}, thank you for your interest in Brandon Hall Hotel and Spa. Your proposal is ready to view and accept online here: ${url}`;
   const waUrl=`https://wa.me/?text=${encodeURIComponent(waText)}`;
-  showModal("Send the quote", rich.client, `
-    <p class="qs-sub">A full proposal page has been created for the client — images, venue &amp; room details, costs, payment schedule and terms — ready to view and accept.</p>
+  showModal("Saved &amp; ready to share", rich.client, `
+    <div style="background:#eaf4ee;border:1px solid #bfe0cd;color:#1e6b2f;border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:600;margin-bottom:10px">✓ Saved to the Sales Pipeline · Ref ${rich.ref||id}</div>
+    <p class="qs-sub">A full proposal page has been created for the client — images, venue &amp; room details, costs, payment schedule and terms — ready to view and accept. Share it:</p>
     <div class="embed-box" style="margin-top:10px">${url}<button class="cp" id="sq-copy">Copy</button></div>
     <div style="font:700 12px Lato;color:#374151;margin:14px 0 6px">Send it three ways</div>
     <div class="dual-btn">
