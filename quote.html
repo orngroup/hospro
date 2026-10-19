@@ -268,7 +268,11 @@ function acceptBody(q, accepted){
   const money=v=>"£"+(Math.round(v)||0).toLocaleString();
   if(accepted){
     const optLabel=q.acceptedOption?`<br><span style="font-size:13px;color:#4a6147">Selected: ${q.acceptedOption}</span>`:"";
-    return `<div class="status done">✓ Thank you, ${(q.acceptedBy||"").split(" ")[0]} — you accepted this proposal on ${fmt(q.acceptedDate)}.${optLabel} Our team will now prepare your agreement to sign.</div>`;
+    // "considering" = received the quote, deciding within a week; otherwise proceeding to contract
+    if(q.status==="considering"){
+      return `<div class="status done" style="background:#fff6e6;color:#8a5a00;border:1px solid #f0d9a8">✓ Thank you, ${(q.acceptedBy||"").split(" ")[0]} — we've noted that you've received this proposal on ${fmt(q.acceptedDate)} and will make a decision within a week.${optLabel}<br><br>There's nothing more you need to do for now — we'll be in touch, and you're welcome to come back here to proceed whenever you're ready.</div>`;
+    }
+    return `<div class="status done">✓ Thank you, ${(q.acceptedBy||"").split(" ")[0]} — you accepted this proposal on ${fmt(q.acceptedDate)}.${optLabel} Our team will now prepare your contract to sign.</div>`;
   }
   const optHTML = (q.options&&q.options.length>1) ? `
     <div style="margin-bottom:16px">
@@ -284,26 +288,55 @@ function acceptBody(q, accepted){
         </label>`).join("")}
       </div>
     </div>` : "";
-  return `<h2 style="margin-top:0">Accept your proposal</h2>
-    <p style="font-size:14px;margin-bottom:16px">By accepting, you confirm you're happy to proceed on the basis of this proposal and its terms. We'll then send you a formal agreement to sign.</p>
+  return `<h2 style="margin-top:0">Your response</h2>
+    <p style="font-size:14px;margin-bottom:16px">Please let us know how you'd like to respond to this proposal.</p>
     ${optHTML}
+    <div class="resp-select" style="margin-bottom:16px">
+      <label style="display:flex;gap:10px;align-items:flex-start;padding:13px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;cursor:pointer">
+        <input type="radio" name="resp-choice" value="proceed" checked style="margin-top:2px">
+        <span><b style="color:var(--navy)">I'd like to proceed</b><br><span style="font-size:13px;color:#5a6b7a">Please send me the contract.</span></span>
+      </label>
+      <label style="display:flex;gap:10px;align-items:flex-start;padding:13px 14px;border:1px solid var(--line);border-radius:10px;cursor:pointer">
+        <input type="radio" name="resp-choice" value="considering" style="margin-top:2px">
+        <span><b style="color:var(--navy)">I've received the quote</b><br><span style="font-size:13px;color:#5a6b7a">I'll make a decision within a week.</span></span>
+      </label>
+    </div>
     <div style="margin:14px 0"><label style="display:block;font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px">Your name</label>
       <input id="a-name" style="width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:9px;font-size:16px;font-family:inherit" placeholder="Your full name" value="${q.client||""}"></div>
-    <label class="consent"><input type="checkbox" id="a-consent"> <span>I confirm I am happy to accept this proposal and proceed to a formal agreement.</span></label>
-    <button class="btn" id="a-accept" disabled>Accept proposal</button>
+    <label class="consent"><input type="checkbox" id="a-consent"> <span id="a-consent-txt">I confirm I am happy to accept this proposal and proceed to a formal contract.</span></label>
+    <button class="btn" id="a-accept" disabled>Send my response</button>
     <div class="msg" id="a-msg"></div>`;
 }
 function wire(q, accepted){
   if(accepted) return;
   const cs=$("#a-consent"), btn=$("#a-accept");
-  if(cs) cs.onchange=()=>btn.disabled=!cs.checked;
+  // adapt the button + consent wording to the chosen response
+  function syncResp(){
+    const resp=(document.querySelector("input[name=resp-choice]:checked")||{}).value||"proceed";
+    const consenting = resp==="proceed";
+    const ctxt=$("#a-consent-txt"), cwrap=cs?cs.closest(".consent"):null;
+    if(resp==="proceed"){
+      if(ctxt) ctxt.textContent="I confirm I am happy to accept this proposal and proceed to a formal contract.";
+      if(cwrap) cwrap.style.display="";
+      btn.textContent="Accept & request contract";
+      btn.disabled = !(cs&&cs.checked);
+    } else {
+      if(cwrap) cwrap.style.display="none";
+      btn.textContent="Send my response";
+      btn.disabled = false;   // no consent needed just to acknowledge receipt
+    }
+  }
+  document.querySelectorAll("input[name=resp-choice]").forEach(r=>r.onchange=syncResp);
+  if(cs) cs.onchange=syncResp;
+  syncResp();
   if(btn) btn.onclick=async()=>{
     const name=$("#a-name").value.trim();
     if(!name){ $("#a-msg").textContent="Please type your name."; return; }
+    const resp=(document.querySelector("input[name=resp-choice]:checked")||{}).value||"proceed";
     const optChoice=document.querySelector("input[name=opt-choice]:checked");
     btn.disabled=true;
     const patch={ acceptedBy:name, acceptedDate:new Date().toISOString().slice(0,10),
-      acceptedAt:new Date().toISOString(), status:"accepted",
+      acceptedAt:new Date().toISOString(), status: resp==="considering"?"considering":"accepted",
       acceptedOption: optChoice?optChoice.value:"" };
     let ok=false;
     if(db){ try{ await db.collection("quotes").doc(q.id).update(patch); ok=true; }catch(e){ console.warn(e.message); } }

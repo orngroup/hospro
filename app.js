@@ -799,6 +799,9 @@ function renderQuote(v){
   }
   const et=EVENT_TYPES.find(t=>t.id===e.event);
   v.appendChild(head(`Quote — ${e.name}`,`Building a quote for this enquiry. Customer, payment terms and issue are all here and stay linked to the booking.`));
+  const exitBar=el("div",""); exitBar.style.cssText="margin:-4px 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap";
+  exitBar.innerHTML=`<button class="btn ghost sm" id="q-exit">← Exit to pipeline</button><span style="font-size:12px;color:var(--muted)">Saving keeps your quote on this enquiry — it won't send you back to Home.</span>`;
+  v.appendChild(exitBar);
   // seed rooms from enquiry if empty
   if(!QUOTE_ROOMS.length){ QUOTE_ROOMS=[newRoomLine({room:e.room||"woodlands",event:e.event||"wedding",pax:parseInt(e.pax)||40})]; }
   const preEvent = e.event || "wedding";
@@ -906,6 +909,7 @@ function renderQuote(v){
   if($("#q-spell")) $("#q-spell").onclick=runQuoteSpellCheck;
   if($("#q-terms")) $("#q-terms").onclick=hpViewTerms;
   if($("#q-save")) $("#q-save").onclick=saveQuoteDraft;
+  if($("#q-exit")) $("#q-exit").onclick=()=>switchTab("pipeline");
   if($("#q-new")) $("#q-new").onclick=newQuoteSameClient;
   renderQuoteOptions();
   $("#q-kitchen").onclick=downloadKitchenSheet;
@@ -1403,7 +1407,7 @@ const ENQ_STAGES=[["enquiry","Enquiry"],["provisional","Provisional"],["confirme
 const ENQ_OWNERS=["Nicola Cartwright","Natalie Freeman","Ajay Kawa","Raj Kumar","Alia Taub"];
 const ENQ_SOURCES=["Website","Events chat","Hitched","arrangeMY / agent","Phone","Email","Walk-in","Referral","BOB / Rezlynx","Other"];
 
-let PIPE_FILTER={ room:"", event:"", status:"", owner:"", source:"", search:"" };
+let PIPE_FILTER={ room:"", event:"", status:"", pipeStage:"", owner:"", source:"", search:"" };
 function pipeFilterActive(){ return Object.values(PIPE_FILTER).some(x=>x); }
 
 function pipelineData(){
@@ -1473,7 +1477,7 @@ function renderPipeline(v){
     const chip=el("div","scope-chip");
     chip.innerHTML=`<span>Filtered: <b>${[PIPE_FILTER.owner,PIPE_FILTER.room,PIPE_FILTER.event?EVENT_TYPES.find(t=>t.id===PIPE_FILTER.event)?.label:"",PIPE_FILTER.source].filter(Boolean).join(" · ")}</b></span><button id="scope-clear">✕ Clear</button>`;
     v.appendChild(chip);
-    $("#scope-clear").onclick=()=>{ PIPE_FILTER={room:"",event:"",status:"",owner:"",source:"",search:""}; render(); };
+    $("#scope-clear").onclick=()=>{ PIPE_FILTER={room:"",event:"",status:"",pipeStage:"",owner:"",source:"",search:""}; render(); };
   }
   // dashboard sections read from the scoped set
   allRaw = scoped;
@@ -1528,6 +1532,11 @@ function renderPipeline(v){
   v.appendChild(action);
   action.querySelectorAll(".ap-row").forEach(row=>row.onclick=()=>{
     const e=allRaw.find(x=>x.id===row.dataset.id); if(e) openEnquiryDetail(e); });
+
+  // ==== DIARY / CALENDAR ====
+  const diaryWrap=el("div"); diaryWrap.id="pipe-diary"; v.appendChild(diaryWrap);
+  window._diaryData=allRaw;
+  renderPipeDiary();
 
   // ==== SPACE HELD IN GUESTLINE ====
   const held=allRaw.filter(e=>e.spaceHeld && !["cancelled"].includes(e.status));
@@ -1612,6 +1621,7 @@ function renderPipeline(v){
   bar.innerHTML=`
     <input id="fb-search" placeholder="🔍 Search name…" value="${PIPE_FILTER.search}">
     <select id="fb-status"><option value="">All statuses</option>${ENQ_STAGES.map(([s,l])=>`<option value="${s}" ${PIPE_FILTER.status===s?"selected":""}>${l}</option>`).join("")}</select>
+    <select id="fb-pipestage" title="Guestline pipeline status"><option value="">All pipeline statuses</option>${PIPE_STAGES.map(s=>`<option value="${s.id}" ${PIPE_FILTER.pipeStage===s.id?"selected":""}>${s.label}</option>`).join("")}</select>
     <select id="fb-room"><option value="">All rooms</option>${rooms.map(r=>`<option ${PIPE_FILTER.room===r?"selected":""}>${r}</option>`).join("")}</select>
     <select id="fb-event"><option value="">All event types</option>${EVENT_TYPES.map(t=>`<option value="${t.id}" ${PIPE_FILTER.event===t.id?"selected":""}>${t.label}</option>`).join("")}</select>
     <select id="fb-owner"><option value="">All owners</option>${owners.map(o=>`<option ${PIPE_FILTER.owner===o?"selected":""}>${o}</option>`).join("")}</select>
@@ -1622,12 +1632,13 @@ function renderPipeline(v){
   const setF=(k,val)=>{ PIPE_FILTER[k]=val; renderPipeRows(); updateFilterCount(); };
   $("#fb-search").oninput=e=>setF("search",e.target.value);
   $("#fb-status").onchange=e=>setF("status",e.target.value);
+  if($("#fb-pipestage")) $("#fb-pipestage").onchange=e=>setF("pipeStage",e.target.value);
   $("#fb-room").onchange=e=>setF("room",e.target.value);
   $("#fb-event").onchange=e=>setF("event",e.target.value);
   $("#fb-owner").onchange=e=>setF("owner",e.target.value);
   $("#fb-source").onchange=e=>setF("source",e.target.value);
   $("#fb-sort").onchange=e=>{ PIPE_SORT=e.target.value; renderPipeRows(); };
-  if($("#fb-clear")) $("#fb-clear").onclick=()=>{ PIPE_FILTER={room:"",event:"",status:"",owner:"",source:"",search:""}; render(); };
+  if($("#fb-clear")) $("#fb-clear").onclick=()=>{ PIPE_FILTER={room:"",event:"",status:"",pipeStage:"",owner:"",source:"",search:""}; render(); };
 
   // filtered count + table container
   v.appendChild(el("div","pipe-count",`<span id="pipe-count"></span>`));
@@ -1644,6 +1655,7 @@ function filteredPipe(){
     const roomName=e.roomName||ROOMS.find(r=>r.id===e.room)?.name||"";
     if(PIPE_FILTER.room && roomName!==PIPE_FILTER.room) return false;
     if(PIPE_FILTER.status && e.status!==PIPE_FILTER.status) return false;
+    if(PIPE_FILTER.pipeStage && e.pipeStage!==PIPE_FILTER.pipeStage) return false;
     if(PIPE_FILTER.event && e.event!==PIPE_FILTER.event) return false;
     if(PIPE_FILTER.owner && e.owner!==PIPE_FILTER.owner) return false;
     if(PIPE_FILTER.source && e.source!==PIPE_FILTER.source) return false;
@@ -1699,6 +1711,83 @@ function ragStatus(e){
   if(e.followUp && e.followUp<today) return "amber"; // needs chasing
   return "yellow";
 }
+/* ---- Diary / calendar strip (Nicola's request) ----
+   PIPE_CAL_DAYS = window length (5 / 7 / 10 days).
+   PIPE_CAL_DOW  = "" shows the next N consecutive days; 0–6 shows the next 8
+   occurrences of that weekday only (e.g. find the next free Saturdays fast). */
+let PIPE_CAL_DAYS=7, PIPE_CAL_DOW="", PIPE_CAL_START=null;
+const DOW_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+function renderPipeDiary(){
+  const box=$("#pipe-diary"); if(!box) return;
+  const data=(window._diaryData||[]);
+  const today=new Date(); today.setHours(0,0,0,0);
+  const start=PIPE_CAL_START?new Date(PIPE_CAL_START):new Date(today);
+  start.setHours(0,0,0,0);
+  const iso=d=>d.toISOString().slice(0,10);
+  // build the list of day cells
+  let days=[];
+  if(PIPE_CAL_DOW===""){
+    for(let i=0;i<PIPE_CAL_DAYS;i++){ const d=new Date(start); d.setDate(d.getDate()+i); days.push(d); }
+  } else {
+    const want=+PIPE_CAL_DOW; const d=new Date(start);
+    while(d.getDay()!==want) d.setDate(d.getDate()+1);
+    for(let i=0;i<8;i++){ const dd=new Date(d); dd.setDate(dd.getDate()+i*7); days.push(dd); }
+  }
+  // events keyed by date (confirmed + provisional + enquiry with a real event date)
+  const evByDate={};
+  data.forEach(e=>{
+    if(e.status==="cancelled") return;
+    const dk=/^\d{4}-\d{2}-\d{2}/.test(e.date||"")?e.date.slice(0,10):null;
+    if(!dk) return;
+    (evByDate[dk]=evByDate[dk]||[]).push(e);
+  });
+  const et=id=>EVENT_TYPES.find(t=>t.id===id);
+  const col=days.map(d=>{
+    const dk=iso(d); const evs=(evByDate[dk]||[]).sort((a,b)=>(b.value||0)-(a.value||0));
+    const isToday=iso(d)===iso(today);
+    const free=evs.length===0;
+    const chips=evs.slice(0,4).map(e=>{
+      const t=et(e.event);
+      const cls=e.status==="confirmed"?"dc-conf":e.status==="provisional"?"dc-prov":"dc-enq";
+      return `<div class="diary-chip ${cls}" data-id="${e.id}" title="${e.name} · ${t?t.label:(e.ratePlan||'')} · ${e.status}">${t?t.icon:"•"} ${e.name}</div>`;
+    }).join("")+(evs.length>4?`<div class="diary-more">+${evs.length-4} more</div>`:"");
+    return `<div class="diary-col ${isToday?'is-today':''} ${free?'is-free':''}">
+      <div class="diary-dh"><b>${d.toLocaleDateString('en-GB',{weekday:'short'})}</b> ${d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}${isToday?' · Today':''}</div>
+      <div class="diary-body">${free?`<div class="diary-free">Available</div>`:chips}</div>
+    </div>`;
+  }).join("");
+  const rangeLbl = PIPE_CAL_DOW===""
+    ? `${days[0].toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – ${days[days.length-1].toLocaleDateString('en-GB',{day:'numeric',month:'short'})}`
+    : `Next 8 ${DOW_NAMES[+PIPE_CAL_DOW]}s`;
+  box.innerHTML=`<div class="diary-panel">
+    <div class="diary-head">
+      <h3>📅 Diary</h3>
+      <div class="diary-ctrls">
+        <span class="diary-seg" role="group">
+          ${[5,7,10].map(n=>`<button class="dseg ${PIPE_CAL_DAYS===n&&PIPE_CAL_DOW===''?'on':''}" data-days="${n}">${n}-day</button>`).join("")}
+        </span>
+        <select id="diary-dow" title="Jump to a single weekday">
+          <option value="">All days</option>
+          ${[1,2,3,4,5,6,0].map(i=>`<option value="${i}" ${String(PIPE_CAL_DOW)===String(i)?'selected':''}>${DOW_NAMES[i]}s only</option>`).join("")}
+        </select>
+        <button class="btn ghost sm" id="diary-prev">‹</button>
+        <button class="btn ghost sm" id="diary-today">Today</button>
+        <button class="btn ghost sm" id="diary-next">›</button>
+        <span class="diary-range">${rangeLbl}</span>
+      </div>
+    </div>
+    <div class="diary-grid" style="grid-template-columns:repeat(${days.length},minmax(120px,1fr))">${col}</div>
+    <div class="diary-legend"><span class="diary-chip dc-conf">Confirmed</span><span class="diary-chip dc-prov">Provisional</span><span class="diary-chip dc-enq">Enquiry</span><span class="diary-free-k">Available = no event booked</span></div>
+  </div>`;
+  box.querySelectorAll(".dseg").forEach(b=>b.onclick=()=>{ PIPE_CAL_DAYS=+b.dataset.days; PIPE_CAL_DOW=""; renderPipeDiary(); });
+  $("#diary-dow").onchange=e=>{ PIPE_CAL_DOW=e.target.value; renderPipeDiary(); };
+  const step=PIPE_CAL_DOW===""?PIPE_CAL_DAYS:56;
+  $("#diary-prev").onclick=()=>{ const s=new Date(start); s.setDate(s.getDate()-step); PIPE_CAL_START=s.toISOString().slice(0,10); renderPipeDiary(); };
+  $("#diary-next").onclick=()=>{ const s=new Date(start); s.setDate(s.getDate()+step); PIPE_CAL_START=s.toISOString().slice(0,10); renderPipeDiary(); };
+  $("#diary-today").onclick=()=>{ PIPE_CAL_START=null; renderPipeDiary(); };
+  box.querySelectorAll(".diary-chip[data-id]").forEach(ch=>ch.onclick=()=>{
+    const e=data.find(x=>x.id===ch.dataset.id); if(e) openEnquiryDetail(e); });
+}
 function renderPipeRows(){
   const box=$("#pipe-table"); if(!box)return;
   const evK=e=>/^\d{4}-\d{2}-\d{2}/.test(e.date||"")?e.date.slice(0,10):"9999";
@@ -1709,6 +1798,7 @@ function renderPipeRows(){
   if(!list.length){ box.innerHTML=`<div class="empty"><div class="big">No matches</div>Try clearing a filter.</div>`; return; }
   box.innerHTML=`<table class="pipe-table">
     <tr><th title="Status: Red overdue · Amber due soon · Green on track">RAG</th><th>Name</th><th>Enquired</th><th>Status</th><th>Event / Rate</th><th>Room</th><th>Event date</th><th>PAX</th><th>Owner</th><th>Last follow-up</th><th>Next follow-up</th><th style="text-align:right">Value</th></tr>`+
+
     list.slice(0,200).map(e=>{
       const roomName=e.roomName||ROOMS.find(r=>r.id===e.room)?.name||"—";
       const et=EVENT_TYPES.find(t=>t.id===e.event);
@@ -1718,7 +1808,7 @@ function renderPipeRows(){
         <td><span class="rag rag-${rag}" title="${rag}"></span></td>
         <td class="pr-name">${e.name}${overdueF?' <span class="pr-flag" title="Follow-up overdue">⚠</span>':''}</td>
         <td style="white-space:nowrap">${enqDate(e)?fmtDate(enqDate(e)):"—"}</td>
-        <td><span class="status-pill st-${e.status}">${STATUS_LABEL[e.status]||e.status}</span></td>
+        <td><span class="status-pill st-${e.status}">${STATUS_LABEL[e.status]||e.status}</span>${e.pipeStage&&typeof PIPE_STAGE_LABEL!=="undefined"&&PIPE_STAGE_LABEL[e.pipeStage]?`<br><span class="pipe-stage-badge" title="Guestline status">${PIPE_STAGE_LABEL[e.pipeStage]}</span>`:""}</td>
         <td>${et?et.icon+" "+et.label:(e.ratePlan||"—")}</td>
         <td>${roomName}</td><td>${fmtDate(e.date)}</td><td>${e.pax||"—"}</td>
         <td>${e.owner||"—"}</td>
@@ -1766,6 +1856,7 @@ function openEnquiryForm(pre){
     <div><label>Guests</label><input id="e-pax" type="number" min="1"></div>
     <div><label>Owner</label><select id="e-owner">${ENQ_OWNERS.map(o=>`<option ${SESSION&&SESSION.name===o?"selected":""}>${o}</option>`).join("")}</select></div>
     <div><label>Stage</label><select id="e-stage">${ENQ_STAGES.map(([s,l])=>`<option value="${s}">${l}</option>`).join("")}</select></div>
+    <div><label>Pipeline status <span class="qs-sub">(Guestline)</span></label><select id="e-pipestage" title="Day-to-day working status">${PIPE_STAGES.map(s=>`<option value="${s.id}" title="${s.hint}" ${s.id==="prospect"?"selected":""}>${s.label}</option>`).join("")}</select></div>
     <div><label>Estimated value (£)</label><input id="e-value" type="number" min="0" placeholder="0"></div>
     <div><label>Source</label><select id="e-source">${ENQ_SOURCES.map(s=>`<option>${s}</option>`).join("")}</select></div>
     <div><label>Follow-up date</label><input id="e-followup" type="date" value="${today}"></div>
@@ -1780,7 +1871,7 @@ function openEnquiryForm(pre){
     if(!name){ $("#e-name").focus(); return; }
     DB.add({ name, company:$("#e-co").value, email:$("#e-email").value, phone:$("#e-phone").value,
       event:$("#e-event").value, enquiryDate:$("#e-enqdate").value||today, date:$("#e-date").value, room:$("#e-room").value,
-      pax:parseInt($("#e-pax").value)||null, owner:$("#e-owner").value, status:$("#e-stage").value,
+      pax:parseInt($("#e-pax").value)||null, owner:$("#e-owner").value, status:$("#e-stage").value, pipeStage:$("#e-pipestage")?.value||"prospect",
       value:parseFloat($("#e-value").value)||0, source:$("#e-source").value, followUp:$("#e-followup").value,
       allergens:$("#e-allergens").value, notes:$("#e-notes").value });
     closeModal(); render();
@@ -1803,6 +1894,7 @@ function openEnquiryDetail(e){
     <div class="manage-grid">
       <div><label>Owner</label><select id="m-owner">${ENQ_OWNERS.map(o=>`<option ${e.owner===o?"selected":""}>${o}</option>`).join("")}</select></div>
       <div><label>Stage</label><select id="m-stage">${ENQ_STAGES.map(([s,l])=>`<option value="${s}" ${e.status===s?"selected":""}>${l}</option>`).join("")}</select></div>
+      <div><label>Pipeline status <span class="qs-sub">(Guestline)</span></label><select id="m-pipestage" title="Day-to-day working status"><option value="">—</option>${PIPE_STAGES.map(s=>`<option value="${s.id}" title="${s.hint}" ${e.pipeStage===s.id?"selected":""}>${s.label}</option>`).join("")}</select></div>
       <div><label>Value (£)</label><input id="m-value" type="number" min="0" value="${Math.round(e.value)||0}"></div>
       <div><label>Enquiry date</label><input id="m-enqdate" type="date" value="${enqDate(e)}"></div>
       <div><label>Event date</label><input id="m-date" type="date" value="${/^\d{4}-\d{2}-\d{2}/.test(e.date||"")?e.date.slice(0,10):""}"></div>
@@ -2000,7 +2092,7 @@ Brandon Hall Hotel and Spa
     const newFollowUp=$("#m-followup").value;
     // if the follow-up date changed, record the previous one as "last follow-up"
     const lastFollowUp = (e.followUp && newFollowUp!==e.followUp) ? e.followUp : (e.lastFollowUp||"");
-    const patch={ owner:$("#m-owner").value, status:$("#m-stage").value,
+    const patch={ owner:$("#m-owner").value, status:$("#m-stage").value, pipeStage:$("#m-pipestage")?.value||"",
       value:parseFloat($("#m-value").value)||0, date:$("#m-date").value||e.date, enquiryDate:$("#m-enqdate").value||enqDate(e),
       followUp:newFollowUp, lastFollowUp, rag:$("#m-rag").value, source:$("#m-source").value, checklist,
       spaceHeld:$("#m-held")?.checked||false, heldFrom:$("#m-heldfrom")?.value||"", holdExpiry:$("#m-holdexp")?.value||"", payments:paySched };
@@ -3768,6 +3860,7 @@ let MENU={ title:"Set Dinner Menu", subtitle:"", courses:[
 
 /* Pre-built menu templates — pick one in the Menu Builder, then customise. */
 const MENU_FOOTER_STD = "All dishes prepared using English beef & lamb, English pork and British dairy. Please advise of any allergies or dietary requirements.";
+const MENU_FOOTER_SAMPLE = "Please let us know about any allergies or dietary requirements when booking. Our kitchen handles all 14 major allergens, so we cannot guarantee any dish is entirely free from traces.";
 const MENU_TEMPLATES = [
   { id:"blank", label:"— Start from blank —" },
   { id:"wedding-classic", label:"Wedding Breakfast — Classic (3 course)", menu:{
@@ -3805,13 +3898,124 @@ const MENU_TEMPLATES = [
         { name:"Mains", items:[{name:"Roast turkey",desc:"all the trimmings, pigs in blankets, red wine jus"},{name:"Pan-fried salmon",desc:"crushed new potatoes, seasonal greens"},{name:"Wild mushroom Wellington",desc:"roast potatoes, vegetables (v)"}] },
         { name:"Desserts", items:[{name:"Christmas pudding",desc:"brandy sauce"},{name:"Chocolate brownie",desc:"vanilla ice cream"}] },
         { name:"To Finish", items:[{name:"Tea, coffee & mince pies"}] }
+      ] } },
+
+  /* ── SAMPLE MENUS (loaded Oct 2026 from the 2026 brand menus) ──
+     sample:true → flagged in HosPRO as draft, pending chef sign-off. For
+     Natalie & Lauren to select while the chef confirms. NOT on the website. */
+  { id:"sample-street-food", sample:true, label:"Street Food Buffet", menu:{
+      title:"Street Food Buffet", subtitle:"Buffet Selector", price:"", footer:MENU_FOOTER_SAMPLE,
+      courses:[
+        { name:"To Start", items:[
+          {name:"Crispy Halloumi Fries (V)",desc:"hot honey and herbs"},
+          {name:"Mini Vegetable Samosas",desc:"tamarind chutney"},
+          {name:"Mediterranean Mezze",desc:"hummus, olives, flatbreads"}] },
+        { name:"To Follow", items:[
+          {name:"Brandon Burger Stack",desc:"Angus beef smash burgers, cheese, burger sauce, brioche bun"},
+          {name:"Indian Street Grill",desc:"chicken tikka skewers, paneer tikka skewers (V), coriander yoghurt"},
+          {name:"Mexican Street Kitchen",desc:"soft tortillas, pulled beef chilli, spiced bean chilli (V), salsa, guacamole, jalapeños"}] },
+        { name:"Sides", items:[{name:"Skin-on fries · Sweet potato fries · House slaw · Mixed salad"}] },
+        { name:"To Finish", items:[
+          {name:"Warwickshire Ice Cream",desc:"selection of local ice creams"},
+          {name:"Eton Mess Pots",desc:"crushed meringue, berries, cream"},
+          {name:"Warm Churros",desc:"chocolate and salted caramel sauce"}] }
+      ] } },
+  { id:"sample-classic-conference", sample:true, label:"Classic Conference Menu 2026", menu:{
+      title:"Classic Menu 2026", subtitle:"Conference & Events — choose one starter, one main, one dessert", price:"£35.00 per person", footer:MENU_FOOTER_SAMPLE,
+      courses:[
+        { name:"To Start", items:[
+          {name:"Roasted Tomato Soup",desc:"chive oil, focaccia croutons"},
+          {name:"Chicken Liver Parfait",desc:"beetroot, orange and crostini"},
+          {name:"Classic Prawn Cocktail",desc:"iceberg lettuce, Marie Rose sauce, wholemeal bread"}] },
+        { name:"To Follow", items:[
+          {name:"Roasted Chicken Breast",desc:"creamed potato, Tenderstem broccoli, truffle tarragon sauce"},
+          {name:"Grilled Salmon",desc:"creamed potato, Tenderstem broccoli, saffron caper sauce"},
+          {name:"Potato Gnocchi",desc:"cheddar mustard sauce, chive, red pepper and toasted seeds"}] },
+        { name:"To Finish", items:[
+          {name:"Milk Chocolate Blondie",desc:"miso caramel, vanilla ice cream"},
+          {name:"Sticky Toffee Pudding",desc:"hot toffee sauce, vanilla ice cream"},
+          {name:"Vegan dessert available on request"}] }
+      ] } },
+  { id:"sample-canape", sample:true, label:"Canapé Menu", menu:{
+      title:"Canapé Menu", subtitle:"Drinks Receptions & Celebrations", price:"", footer:MENU_FOOTER_SAMPLE,
+      courses:[
+        { name:"Canapés", items:[
+          {name:"Chicken Liver Parfait",desc:"shallot marmalade, toasted brioche"},
+          {name:"Maple-Glazed Chipolatas",desc:"grain mustard dip"},
+          {name:"Mini Welsh Rarebits"},
+          {name:"Salmon Fishcake",desc:"cucumber pickle"},
+          {name:"Tomato and Baby Mozzarella (V)"}] },
+        { name:"Extra Tasty (+£2.00 supplement per guest, per dish)", items:[
+          {name:"Rare Roast Beef",desc:"horseradish, mini Yorkshire puddings"},
+          {name:"Whipped Rosary Goat's Cheese (V)",desc:"basil"},
+          {name:"Mini Cod and Chips",desc:"pea mayonnaise"},
+          {name:"Pulled Ham Hock and Cheddar Croquette"},
+          {name:"Smoked Salmon",desc:"pomegranate, rye toasts"}] },
+        { name:"Even More Delicious (+£3.00 supplement per guest, per dish)", items:[
+          {name:"Seared King Scallops",desc:"corn purée, air-dried bacon"},
+          {name:"Eastern Spiced Lamb Skewers",desc:"coriander yoghurt"},
+          {name:"Mini Cheese and Bacon Brioche Burgers",desc:"handmade"},
+          {name:"Wild Mushroom and Truffle Tart (V)"}] }
+      ] } },
+  { id:"sample-afternoon-tea", sample:true, label:"Afternoon Tea", menu:{
+      title:"Afternoon Tea", subtitle:"Your countryside retreat in the heart of the Midlands", price:"Classic £24.95 · Extra Special £29.95 · Champagne £39.95 per person", footer:MENU_FOOTER_SAMPLE,
+      courses:[
+        { name:"Savoury", items:[
+          {name:"Smoked Salmon Finger Sandwiches",desc:"cream cheese and cucumber"},
+          {name:"Mature Cheddar and Caramelised Shallot Tart"},
+          {name:"Toasted Ham and Tomato Croissant"}] },
+        { name:"Sweet", items:[
+          {name:"Warm Milk Chocolate Blondie"},
+          {name:"Apple Beignets",desc:"Chantilly cream"},
+          {name:"Chocolate Orange Tuile"}] },
+        { name:"Scones", items:[
+          {name:"Freshly Baked Scones",desc:"clotted cream and strawberry jam"}] },
+        { name:"To Finish", items:[{name:"Freshly brewed tea or coffee",desc:"upgrade with a glass of Prosecco or Champagne"}] }
+      ] } },
+  { id:"sample-xmas-private", sample:true, label:"Christmas Private Party Nights", menu:{
+      title:"Christmas Private Party Nights", subtitle:"Festive dinner · live entertainment · dancing", price:"From £45.00 per person", footer:MENU_FOOTER_SAMPLE,
+      courses:[
+        { name:"To Start", items:[{name:"Parsnip Soup",desc:"tarragon oil, croutons"}] },
+        { name:"To Follow", items:[{name:"Pan-Roast Chicken",desc:"creamed potato, seasonal greens, truffle tarragon sauce"}] },
+        { name:"To Finish", items:[{name:"Warm Milk Chocolate Blondie",desc:"miso caramel, vanilla ice cream"}] }
+      ] } },
+  { id:"sample-xmas-joiner", sample:true, label:"Christmas Joiner Party Nights", menu:{
+      title:"Christmas Joiner Party Nights", subtitle:"Festive dinner · live entertainment · dancing", price:"£55.00 per person", footer:MENU_FOOTER_SAMPLE,
+      courses:[
+        { name:"To Start", items:[{name:"Parsnip Soup",desc:"tarragon oil, croutons"}] },
+        { name:"To Follow", items:[{name:"Pan-Roast Chicken",desc:"creamed potato, seasonal greens, truffle tarragon sauce"}] },
+        { name:"To Finish", items:[{name:"Warm Milk Chocolate Blondie",desc:"miso caramel, vanilla ice cream"}] }
+      ] } },
+  { id:"sample-xmas-day", sample:true, label:"Christmas Day Lunch", menu:{
+      title:"Christmas Day Lunch", subtitle:"Friday 25 December 2026", price:"Adults £80.00 · Children 4–12 £45.00 · Under 4 free", footer:MENU_FOOTER_SAMPLE,
+      courses:[
+        { name:"To Start", items:[
+          {name:"Chicken Liver Parfait",desc:"beetroot, orange, sourdough"},
+          {name:"Celeriac and Parsnip Soup",desc:"sage, pumpkin seeds"},
+          {name:"Prawn Cocktail",desc:"Marie Rose sauce, wholemeal bread"}] },
+        { name:"To Follow", items:[
+          {name:"Roast Turkey Crown",desc:"pigs in blankets, roast potatoes, sage stuffing, red wine sauce"},
+          {name:"Seared Sea Bass",desc:"chive baby potatoes, Champagne sauce"},
+          {name:"Beetroot and Butternut Squash Wellington",desc:"roast potatoes, Champagne sauce"},
+          {name:"All served with seasonal greens, braised red cabbage, roast carrots and parsnips"}] },
+        { name:"To Finish", items:[
+          {name:"Warm Christmas Pudding",desc:"brandy sauce, vanilla ice cream"},
+          {name:"Vegan Chocolate Mousse",desc:"vanilla cream, orange tuile"},
+          {name:"Chocolate and Coffee Sundae",desc:"brownie, fudge sauce, chocolate ganache"},
+          {name:"Mince pies"}] }
       ] } }
 ];
 function loadMenuTemplate(id){
   const t=MENU_TEMPLATES.find(x=>x.id===id);
-  if(!t || id==='blank'){ MENU={ title:"Set Dinner Menu", subtitle:"", courses:[{name:"Starters",items:[]},{name:"Mains",items:[]},{name:"Desserts",items:[]}], price:"", footer:MENU_FOOTER_STD }; }
-  else { MENU=JSON.parse(JSON.stringify(t.menu)); }
+  if(!t || id==='blank'){ MENU={ title:"Set Dinner Menu", subtitle:"", courses:[{name:"Starters",items:[]},{name:"Mains",items:[]},{name:"Desserts",items:[]}], price:"", footer:MENU_FOOTER_STD }; window._menuIsSample=false; }
+  else { MENU=JSON.parse(JSON.stringify(t.menu)); window._menuIsSample=!!t.sample; }
   switchTab("menu");
+}
+function renderMenuSampleFlag(){
+  const box=$("#mn-sample-flag"); if(!box) return;
+  box.innerHTML = window._menuIsSample
+    ? `<div class="sample-flag">⚠️ <b>Sample menu — pending chef sign-off.</b> Fine for Natalie & Lauren to share with clients as a sample. Not confirmed by the chef and <b>not to go on the website yet</b>.</div>`
+    : "";
 }
 
 function renderMenuBuilder(v){
@@ -3822,8 +4026,12 @@ function renderMenuBuilder(v){
   const left=el("div","quote-panel");
   left.innerHTML=`<h3>Menu details</h3>
     <div style="margin-bottom:12px"><label>Start from a template</label>
-      <select id="mn-tpl" style="width:100%"><option value="">— Choose a template to load —</option>${MENU_TEMPLATES.filter(t=>t.id!=='blank').map(t=>`<option value="${t.id}">${t.label}</option>`).join("")}<option value="blank">— Clear / start blank —</option></select>
+      <select id="mn-tpl" style="width:100%"><option value="">— Choose a template to load —</option>
+        <optgroup label="Standard templates">${MENU_TEMPLATES.filter(t=>t.id!=='blank'&&!t.sample).map(t=>`<option value="${t.id}">${t.label}</option>`).join("")}</optgroup>
+        <optgroup label="Sample menus — pending chef sign-off">${MENU_TEMPLATES.filter(t=>t.sample).map(t=>`<option value="${t.id}">${t.label}</option>`).join("")}</optgroup>
+        <option value="blank">— Clear / start blank —</option></select>
       <div class="qs-sub" style="margin-top:4px">Loads the template below, then edit anything you like.</div></div>
+    <div id="mn-sample-flag"></div>
     <div class="form-grid">
       <div><label>Menu title</label><input id="mn-title" value="${MENU.title.replace(/"/g,'&quot;')}"></div>
       <div><label>Subtitle (optional)</label><input id="mn-sub" value="${(MENU.subtitle||'').replace(/"/g,'&quot;')}" placeholder="e.g. Wedding Breakfast"></div>
@@ -3843,6 +4051,7 @@ function renderMenuBuilder(v){
   v.appendChild(wrap);
 
   renderMenuCourses();
+  renderMenuSampleFlag();
   ["mn-title","mn-sub","mn-price","mn-footer"].forEach(id=>$("#"+id).addEventListener("input",()=>{
     MENU.title=$("#mn-title").value; MENU.subtitle=$("#mn-sub").value;
     MENU.price=$("#mn-price").value; MENU.footer=$("#mn-footer").value; renderMenuPreview(); }));
@@ -3851,7 +4060,7 @@ function renderMenuBuilder(v){
   $("#mn-print").onclick=printMenu;
   $("#mn-reset").onclick=()=>{ MENU={ title:"Set Dinner Menu", subtitle:"", courses:[
     {name:"Starters",items:[]},{name:"Mains",items:[]},{name:"Desserts",items:[]}], price:"",
-    footer:MENU.footer }; switchTab("menu"); };
+    footer:MENU.footer }; window._menuIsSample=false; switchTab("menu"); };
   renderMenuPreview();
 }
 function renderMenuCourses(){
@@ -4859,17 +5068,24 @@ function renderHome(v){
   const statsBar = document.createElement('div');
   statsBar.style.cssText = 'display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:16px 28px;margin-top:4px';
   const stats = [
-    {icon:'📊',val:pipe.length,label:'Open enquiries',colour:'#4a86c7'},
-    {icon:'💰',val:'£'+Math.round(confVal/1000)+'k',label:'Confirmed value',colour:'#2a6a4a'},
-    {icon:'🆕',val:newWk,label:'New this week',colour:'#4a9d7f'},
-    {icon:'⚠️',val:overdue,label:'Overdue follow-ups',colour:'#c78a3b'},
-    {icon:'✅',val:tasks,label:'Open tasks',colour:'#8b5c8f'},
-    {icon:'📅',val:events,label:'Upcoming events',colour:'#4a86c7'},
+    {icon:'📊',val:pipe.length,label:'Open enquiries',colour:'#4a86c7',go:'pipeline'},
+    {icon:'💰',val:'£'+Math.round(confVal/1000)+'k',label:'Confirmed value',colour:'#2a6a4a',go:'pipeline'},
+    {icon:'🆕',val:newWk,label:'New this week',colour:'#4a9d7f',go:'pipeline'},
+    {icon:'⚠️',val:overdue,label:'Overdue follow-ups',colour:'#c78a3b',go:'pipeline'},
+    {icon:'✅',val:tasks,label:'Open tasks',colour:'#8b5c8f',go:'tasks'},
+    {icon:'📅',val:events,label:'Upcoming events',colour:'#4a86c7',go:'pipeline'},
   ];
   stats.forEach(s => {
     const sc = document.createElement('div');
     sc.style.cssText = 'background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;align-items:center;gap:10px';
     sc.innerHTML = `<span style="font-size:22px">${s.icon}</span><div><div style="font-size:22px;font-weight:700;color:${s.colour};line-height:1">${s.val}</div><div style="font-size:11px;color:#374151;margin-top:2px">${s.label}</div></div>`;
+    if(s.go && (typeof hpCanTab!=="function" || hpCanTab(s.go))){
+      sc.style.cursor='pointer';
+      sc.title='Open '+(s.go==='tasks'?'Tasks':'the Sales Pipeline');
+      sc.onclick=()=>switchTab(s.go);
+      sc.onmouseover=()=>{ sc.style.boxShadow='0 4px 14px rgba(0,0,0,.12)'; sc.style.transform='translateY(-1px)'; };
+      sc.onmouseout =()=>{ sc.style.boxShadow='0 1px 3px rgba(0,0,0,.06)'; sc.style.transform=''; };
+    }
     statsBar.appendChild(sc);
   });
   wrap.appendChild(statsBar);
@@ -5751,7 +5967,7 @@ function dealStageIndex(e){
   if(e.status==="confirmed" || (c&&c.hotelSig)) return 5;
   if(c&&c.clientSig) return 4;
   if(c) return 3;
-  if(e.dealStage==="accepted" || e.quoteAccepted || (q&&q.acceptedBy)) return 2;
+  if(e.dealStage==="accepted" || e.quoteAccepted || (q&&q.acceptedBy&&q.status!=="considering")) return 2;
   if(e.dealStage==="quoted" || e.quoteIssued) return 1;
   return 0;
 }
@@ -5786,7 +6002,11 @@ function renderDealTrack(e){
     const url = e.quoteLink
       ? `${origin}/${e.quoteLink}`
       : `${origin}/quote.html?q=${e.quoteId||""}`;
-    act.innerHTML=`<div class="embed-box" style="margin-bottom:8px">${url}<button class="cp" id="d-copy">Copy</button></div>
+    const considering = q && q.status==="considering" && q.acceptedBy;
+    const considerNote = considering
+      ? `<div class="deal-ok" style="background:#fff6e6;color:#8a5a00;margin-bottom:8px">⏳ Client received the quote${q.acceptedDate?" on "+new Date(q.acceptedDate).toLocaleDateString("en-GB"):""} — deciding within a week. Chase if nothing by then.</div>`
+      : "";
+    act.innerHTML=considerNote+`<div class="embed-box" style="margin-bottom:8px">${url}<button class="cp" id="d-copy">Copy</button></div>
       <a class="btn block" href="${url}" target="_blank" style="margin-bottom:8px;text-align:center">Open proposal →</a>
       <p class="qs-sub" style="margin-bottom:8px">Quote issued — awaiting client acceptance. You can mark it accepted once they confirm.</p>
       <button class="btn ghost block" id="d-accept">2 · Mark quote as accepted</button>`;

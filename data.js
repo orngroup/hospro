@@ -605,49 +605,55 @@ const EVENT_TEMPLATES = {
 const LOST_REASONS = ["Price / budget","Date unavailable","Went to competitor","No response",
   "Capacity / space","Changed plans","Duplicate enquiry","Other"];
 
-/* Checklist templates per event type — auto-generate task reminders with
-   offsets relative to the event date (days before, negative = after). */
+/* Detailed pipeline stage — Guestline-style working status that sits alongside
+   the simple funnel (Enquiry / Provisional / Confirmed / Cancelled). This is the
+   day-to-day status the sales team moves a deal through. id = stored value,
+   label = short badge text, hint = tooltip explanation. */
+const PIPE_STAGES = [
+  { id:"prospect",   label:"Prospect",        hint:"New lead — not yet qualified or quoted" },
+  { id:"te2",        label:"TE2",             hint:"Tentative enquiry — early interest, low certainty" },
+  { id:"jfo",        label:"JFO",             hint:"Just for one / information only — no date held" },
+  { id:"te1",        label:"TE1",             hint:"Tentative enquiry — strong interest, date in mind" },
+  { id:"def",        label:"DEF",             hint:"Definite — client has committed, moving to contract" },
+  { id:"opt2",       label:"2nd option",      hint:"Second option — behind another client for this date/space" },
+  { id:"opt1",       label:"1st option",      hint:"First option — holding the space for this client" },
+  { id:"holding",    label:"Holding (shared)",hint:"Holding alongside another client for the same date/space" },
+  { id:"contract-sent",     label:"Contract sent",     hint:"Contract sent to client — waiting on return" },
+  { id:"contract-returned", label:"Contract returned", hint:"Contract returned by client — ready to counter-sign / confirm" }
+];
+const PIPE_STAGE_LABEL = Object.fromEntries(PIPE_STAGES.map(s=>[s.id,s.label]));
+
+/* Checklist / activity templates — auto-generate task reminders with offsets.
+   fromBooking:true  → offset = days AFTER the enquiry came in (chasing stage)
+   (no fromBooking)  → offset = days BEFORE the event date (delivery stage);
+                       a NEGATIVE offset means that many days AFTER the event.
+   STANDARD_ACTIVITIES is Nicola's standard set applied to every enquiry; event
+   types below add a few extras on top. */
+const STANDARD_ACTIVITIES = [
+  { task:"Follow-up call",                         offset:1,  fromBooking:true },   // day after enquiry
+  { task:"Questions on proposal",                  offset:3,  fromBooking:true },   // 3 days after enquiry
+  { task:"1-week chase — ready for contract or release?", offset:7,  fromBooking:true },
+  { task:"2-week chase — ready for contract or release?", offset:14, fromBooking:true },
+  { task:"Final details meeting",                  offset:30 },                     // month before event
+  { task:"Rooming list due",                       offset:14 },                     // min 2 weeks before
+  { task:"Payment link reminder (per terms)",      offset:14 },                     // chase deposit/balance
+  { task:"Pre-event meeting with operations",      offset:5 },                      // ~week before
+  { task:"Post-event feedback call",               offset:-1 },                     // day after event
+  { task:"Resolicitation call (rebook)",           offset:-335 }                    // ~1 month before anniversary
+];
 const CHECKLIST_TEMPLATES = {
-  wedding: [
-    { task:"Initial follow-up call", offset:-2, fromBooking:true },
-    { task:"Send proposal / brochure", offset:-5, fromBooking:true },
-    { task:"Provisional hold / viewing offered", offset:-10, fromBooking:true },
-    { task:"Deposit due", offset:60 },
-    { task:"Menu tasting", offset:90 },
-    { task:"Final numbers & rooming list", offset:14 },
-    { task:"Dietary requirements", offset:14 },
-    { task:"Final balance due", offset:7 },
-    { task:"12-month anniversary card", offset:-365 }
-  ],
-  meeting: [
-    { task:"Initial follow-up", offset:-1, fromBooking:true },
-    { task:"Send proposal", offset:-3, fromBooking:true },
-    { task:"Confirm AV & layout", offset:14 },
-    { task:"Final delegate numbers", offset:5 },
-    { task:"Rooming list (if residential)", offset:7 },
-    { task:"Dietary requirements", offset:5 },
-    { task:"Final balance / PO", offset:3 }
-  ],
-  celebration: [
-    { task:"Initial follow-up", offset:-2, fromBooking:true },
-    { task:"Send proposal", offset:-4, fromBooking:true },
-    { task:"Deposit due", offset:30 },
-    { task:"Final numbers", offset:10 },
-    { task:"Dietary requirements", offset:10 },
-    { task:"Final balance due", offset:7 }
-  ],
-  default: [
-    { task:"Initial follow-up", offset:-2, fromBooking:true },
-    { task:"Send proposal", offset:-4, fromBooking:true },
-    { task:"Final numbers", offset:7 },
-    { task:"Final balance due", offset:3 }
-  ]
+  wedding:     [ { task:"Menu tasting", offset:90 }, { task:"Dietary requirements", offset:14 } ],
+  meeting:     [ { task:"Confirm AV & layout", offset:14 }, { task:"Final delegate numbers", offset:5 } ],
+  celebration: [ { task:"Dietary requirements", offset:10 } ],
+  default:     []
 };
 function checklistFor(eventId){
-  if(eventId==="wedding") return CHECKLIST_TEMPLATES.wedding;
-  if(eventId==="meeting") return CHECKLIST_TEMPLATES.meeting;
-  if(["celebration","birthday","baby-shower","christmas","funeral"].includes(eventId)) return CHECKLIST_TEMPLATES.celebration;
-  return CHECKLIST_TEMPLATES.default;
+  let extras = CHECKLIST_TEMPLATES.default;
+  if(eventId==="wedding") extras = CHECKLIST_TEMPLATES.wedding;
+  else if(eventId==="meeting") extras = CHECKLIST_TEMPLATES.meeting;
+  else if(["celebration","birthday","baby-shower","christmas","funeral"].includes(eventId)) extras = CHECKLIST_TEMPLATES.celebration;
+  // standard activities first, then any event-specific extras
+  return STANDARD_ACTIVITIES.concat(extras);
 }
 
 /* Menu items selectable per function (for kitchen sheet) */
@@ -1043,9 +1049,16 @@ function hpGroupAllows(groupId, perm){
 function hpUserAllows(perm, userKey){
   return hpGroupsOf(userKey).some(g=>hpGroupAllows(g, perm));
 }
+/* Builder / sub-pages reached from inside the app (not the menu). They inherit
+   the access of the page they're launched from, so they need no permission box.
+   e.g. the quote builder opens from the Sales Pipeline, so pipeline access = quote access. */
+const TAB_PARENT = { quote:"pipeline" };
+/* Pages open to every signed-in staff member, whatever their group. */
+const TAB_OPEN = { home:1, help:1 };
 /* Can the current user open this tab/permission? */
 function hpCanTab(tab, userKey){
-  if(tab==="home") return true;
+  if(TAB_OPEN[tab]) return true;
+  if(TAB_PARENT[tab]) return hpUserAllows(TAB_PARENT[tab], userKey);
   return hpUserAllows(tab, userKey);
 }
 /* Can the current user open this module (any tab in it allowed, across all their groups)? */
