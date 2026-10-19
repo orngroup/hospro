@@ -425,8 +425,13 @@ async function hpRevPushSetup(){ try{ if(FB && FB.ready && FB.user && FB.db && S
    browser tab is closed or he signs out. */
 const HP_REV_OWNER="ajay.kawa";
 const HP_REV_PW_HASH="c8023b72ed8dcdecda725434debc42b2011ae19d4994db722b53436e21a9ef6f"; // BHREV
-/* HosREV access now follows the security groups (Director / Operations). */
-function hpRevUnlocked(){ try{ return (typeof hpCanAccess==="function") ? hpCanAccess("hosrev") : !!(SESSION && SESSION._key===HP_REV_OWNER); }catch(e){ return false; } }
+/* HosREV access now follows the security groups (Director / Operations).
+   Directors / admins go straight in — no second password prompt. */
+function hpRevUnlocked(){ try{
+  if(SESSION && SESSION._key && typeof ADMIN_IDS!=="undefined" && ADMIN_IDS.indexOf(SESSION._key)>=0) return true;
+  if(typeof hpIsAdmin==="function" && hpIsAdmin()) return true;
+  return (typeof hpCanAccess==="function") ? hpCanAccess("hosrev") : !!(SESSION && SESSION._key===HP_REV_OWNER);
+}catch(e){ return false; } }
 async function hpRevSha(t){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
 function hpRenderRevLock(v){
   hpSetBreadcrumb({id:"hosrev",name:"HosREV"}, null);
@@ -9800,24 +9805,12 @@ function renderHosHouseHub(v){
       <td style="padding:6px 10px"><button onclick="hhCopy('${base}hoshouse.html?u=${id}',this)" style="padding:3px 9px;border:1px solid #cfd8e0;background:#f6f8fa;border-radius:6px;font:600 11px Lato;cursor:pointer;color:#1a2b3a">Copy</button></td>
     </tr>`).join('');
 
-  v.innerHTML = `
-  <div style="max-width:1040px;margin:0 auto;padding:4px 2px 30px">
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-      <div><div style="font:800 20px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping</div>
-        <div style="font-size:12.5px;color:#5b6b7b">Pick the day's rooms, confirm who's in, allocate — all on this page.</div></div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderManage();hhRenderDash()" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
-        <button onclick="hhEodReport()" title="Compile the end-of-day housekeeping report" style="padding:7px 12px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12px Lato;cursor:pointer">📄 End-of-day report</button>
-        <button onclick="hhClearDay()" title="Delete all rooms & areas for this date — use to reset after testing" style="padding:7px 12px;border:1px solid #e4b6b6;background:#fff;color:#b3261e;border-radius:8px;font:700 12px Lato;cursor:pointer">🗑 Clear test data</button>
-        <button onclick="hhRenderManage();hhRenderDash()" style="padding:7px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">↻ Refresh</button>
-      </div>
-    </div>
-
+  const view = window._hhView || 'today';
+  const tab=(id,label)=>`<button onclick="hhSetView('${id}')" style="padding:7px 15px;border:none;background:${view===id?'#1F3864':'transparent'};color:${view===id?'#fff':'#45586b'};font:700 12.5px Lato;cursor:pointer">${label}</button>`;
+  const todayHTML=`
     <div id="hh-manage"></div>
-
     <div style="font:800 15px Lato;color:#1a2b3a;margin:22px 0 10px">📊 Live progress</div>
     <div id="hh-body"></div>
-
     <details style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-top:16px">
       <summary style="cursor:pointer;font:800 13px Lato;color:#1a2b3a">📱 Housekeeper app links &amp; PINs</summary>
       <div style="font-size:11.5px;color:#5b6b7b;margin:8px 0 10px">Send each person their own link on WhatsApp — they open it on their phone and type their PIN. This is the only outside link; everything else is on this page.</div>
@@ -9826,11 +9819,31 @@ function renderHosHouseHub(v){
         ${staffRows}
       </table></div>
       <div style="margin-top:10px"><a href="${base}hoshouse.html" target="_blank" style="font:700 12px Lato;color:#2E6B5E;text-decoration:none">Open the housekeeper app ↗</a></div>
-    </details>
+    </details>`;
+
+  v.innerHTML = `
+  <div style="max-width:1040px;margin:0 auto;padding:4px 2px 30px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div><div style="font:800 20px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping</div>
+        <div style="font-size:12.5px;color:#5b6b7b">${view==='reports'?'Productivity, average times and missed rooms over any date range.':"Pick the day's rooms, confirm who's in, allocate — all on this page."}</div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${view==='today'?`<input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderManage();hhRenderDash()" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
+        <button onclick="hhEodReport()" title="Compile the end-of-day housekeeping report" style="padding:7px 12px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12px Lato;cursor:pointer">📄 End-of-day report</button>
+        <button onclick="hhClearDay()" title="Delete all rooms & areas for this date — use to reset after testing" style="padding:7px 12px;border:1px solid #e4b6b6;background:#fff;color:#b3261e;border-radius:8px;font:700 12px Lato;cursor:pointer">🗑 Clear test data</button>
+        <button onclick="hhRenderManage();hhRenderDash()" style="padding:7px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">↻ Refresh</button>`:''}
+      </div>
+    </div>
+
+    <div style="display:inline-flex;border:1px solid #d7dde4;border-radius:9px;overflow:hidden;margin-bottom:16px">
+      ${tab('today','Today')}${tab('reports','📈 Reports')}
+    </div>
+
+    ${view==='reports'?`<div id="hh-reports"></div>`:todayHTML}
   </div>`;
-  hhRenderManage();
-  hhRenderDash();
+  if(view==='reports'){ renderHosHouseReports(); }
+  else { hhRenderManage(); hhRenderDash(); }
 }
+function hhSetView(x){ window._hhView=x; switchTab('hhHub'); }
 
 /* ---- The manage console: staff-working row + room selection + allocate ---- */
 async function hhRenderManage(){
@@ -10043,6 +10056,136 @@ async function hhBulkConfirm(){
   await hhSetDayRooms(date, arr);
   closeModal(); toast('✓ '+arr.length+' room'+(arr.length===1?'':'s')+' set for '+date);
   hhRenderManage(); hhRenderDash();
+}
+
+/* ============================================================
+   HOSHOUSE REPORTS — productivity, average times, missed rooms
+   over any date range, for one person or the whole team.
+   ============================================================ */
+let HH_REP_FROM=null, HH_REP_TO=null, HH_REP_STAFF='';
+function hhDateRangeList(from,to){
+  const out=[]; let d=new Date(from+'T12:00'); const end=new Date(to+'T12:00');
+  if(isNaN(d)||isNaN(end)||d>end) return out;
+  let guard=0;
+  while(d<=end && guard++<400){ out.push(d.toLocaleDateString('en-CA')); d.setDate(d.getDate()+1); }
+  return out;
+}
+async function hhReportData(from,to){
+  const dates=hhDateRangeList(from,to); const all=[];
+  for(const dk of dates){ const rooms=await hhFetchDay(dk); rooms.forEach(r=>all.push(Object.assign({_date:dk}, r))); }
+  return all;
+}
+function hhRepTgt(r){ return (typeof hhTgt==='function'? hhTgt(r.type) : (HH_TARGET&&HH_TARGET[r.type])||30); }
+async function renderHosHouseReports(){
+  const box=document.getElementById('hh-reports'); if(!box) return;
+  if(!HH_REP_TO) HH_REP_TO=hhTodayISO();
+  if(!HH_REP_FROM){ const d=new Date(HH_REP_TO+'T12:00'); d.setDate(d.getDate()-6); HH_REP_FROM=d.toLocaleDateString('en-CA'); }
+  const lab='font:700 10.5px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:3px';
+  const inp='padding:8px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato';
+  const staffOpts=`<option value="">All staff</option>`+HH_HUB_STAFF.map(([name,id])=>`<option value="${id}" ${HH_REP_STAFF===id?'selected':''}>${hhEsc(name.replace(/ \(.*\)/,''))}</option>`).join('');
+  box.innerHTML=`
+    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div><label style="${lab}">From</label><input type="date" id="rep-from" value="${HH_REP_FROM}" style="${inp}"></div>
+      <div><label style="${lab}">To</label><input type="date" id="rep-to" value="${HH_REP_TO}" style="${inp}"></div>
+      <div><label style="${lab}">Staff</label><select id="rep-staff" style="${inp}">${staffOpts}</select></div>
+      <button onclick="hhRunReport()" style="padding:9px 16px;border:none;background:#1F3864;color:#fff;border-radius:8px;font:800 13px Lato;cursor:pointer">Run report</button>
+      <button onclick="hhReportCSV()" style="padding:9px 14px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12.5px Lato;cursor:pointer">⬇ Export CSV</button>
+      <span style="font-size:11px;color:#8296a8">Quick ranges:
+        <a href="#" onclick="hhRepQuick(0);return false" style="color:#2E6B5E">Today</a> ·
+        <a href="#" onclick="hhRepQuick(6);return false" style="color:#2E6B5E">7 days</a> ·
+        <a href="#" onclick="hhRepQuick(29);return false" style="color:#2E6B5E">30 days</a></span>
+    </div>
+    <div id="rep-out"><div style="padding:24px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:14px">Loading…</div></div>`;
+  hhRunReport();
+}
+function hhRepQuick(daysBack){
+  HH_REP_TO=hhTodayISO(); const d=new Date(HH_REP_TO+'T12:00'); d.setDate(d.getDate()-daysBack);
+  HH_REP_FROM=d.toLocaleDateString('en-CA');
+  const f=document.getElementById('rep-from'), t=document.getElementById('rep-to');
+  if(f) f.value=HH_REP_FROM; if(t) t.value=HH_REP_TO;
+  hhRunReport();
+}
+async function hhRunReport(){
+  HH_REP_FROM=(document.getElementById('rep-from')||{}).value||HH_REP_FROM;
+  HH_REP_TO=(document.getElementById('rep-to')||{}).value||HH_REP_TO;
+  HH_REP_STAFF=(document.getElementById('rep-staff')||{}).value||'';
+  const out=document.getElementById('rep-out'); if(!out) return;
+  out.innerHTML=`<div style="padding:24px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:14px">Compiling ${HH_REP_FROM} → ${HH_REP_TO}…</div>`;
+  let rows=await hhReportData(HH_REP_FROM, HH_REP_TO);
+  if(HH_REP_STAFF) rows=rows.filter(r=>r.housekeeper===HH_REP_STAFF);
+  window._hhRepRows=rows;
+  const beds=rows.filter(r=>!r.area), areas=rows.filter(r=>r.area);
+  if(!rows.length){ out.innerHTML=`<div style="padding:30px;text-align:center;background:#fff;border:1px solid #e4e9ef;border-radius:14px"><div style="font:800 15px Lato;color:#1a2b3a">No housekeeping data in this range</div><div style="font-size:12.5px;color:#8296a8;margin-top:4px">Try a wider date range or a different person.</div></div>`; return; }
+  const done=beds.filter(r=>r.status==='done');
+  const missed=beds.filter(r=>r.status!=='done');
+  const over=done.filter(r=>(r.durationSec||0)>hhRepTgt(r)*60);
+  const avg=done.length?Math.round(done.reduce((a,r)=>a+(r.durationSec||0)/60,0)/done.length):0;
+  const comp=beds.length?Math.round(done.length/beds.length*100):0;
+  const areasDone=areas.filter(r=>r.status==='done').length;
+  const days=hhDateRangeList(HH_REP_FROM,HH_REP_TO).length;
+  // per-person
+  const by={};
+  beds.forEach(r=>{ const k=r.housekeeper||'_un'; by[k]=by[k]||{name:hhNameFor(r),done:0,mins:0,over:0,missed:0,total:0};
+    by[k].total++; if(r.status==='done'){ by[k].done++; by[k].mins+=(r.durationSec||0)/60; if((r.durationSec||0)>hhRepTgt(r)*60) by[k].over++; } else by[k].missed++; });
+  areas.forEach(r=>{ const k=r.housekeeper||'_un'; if(by[k]) by[k].areas=(by[k].areas||0)+(r.status==='done'?1:0); });
+  const people=Object.values(by).sort((a,b)=>b.done-a.done);
+  const tile=(v,k,c,tip)=>`<div title="${hhEsc(tip||'')}" style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.04)"><div style="font:800 24px Lato;color:${c}">${v}</div><div style="font-size:10.5px;color:#8296a8;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">${k}</div></div>`;
+  const effPct=p=>p.done&&p.mins?Math.min(140,Math.round(hhRepTgt({type:'Departure'})/(p.mins/p.done)*100)):0;
+  const pRows=people.map(p=>{
+    const e=p.done&&p.mins?Math.round(p.mins/p.done):0;
+    return `<tr style="border-top:1px solid #eef1f4">
+      <td style="padding:8px 10px;font-weight:700">${hhEsc(p.name)}</td>
+      <td style="padding:8px 10px;text-align:center">${p.done}</td>
+      <td style="padding:8px 10px;text-align:center">${e||'—'}</td>
+      <td style="padding:8px 10px;text-align:center;color:${p.over?'#b3261e':'#1f2a37'}">${p.over||0}</td>
+      <td style="padding:8px 10px;text-align:center;color:${p.missed?'#b3261e':'#1f2a37'}">${p.missed||0}</td>
+      <td style="padding:8px 10px;text-align:center">${p.areas||0}</td></tr>`;
+  }).join('') || `<tr><td colspan="6" style="padding:14px;color:#8296a8">No rooms in range.</td></tr>`;
+  const missRows=missed.slice(0,60).sort((a,b)=>(a._date||'').localeCompare(b._date||'')||(+a.room||0)-(+b.room||0)).map(r=>`
+    <tr style="border-top:1px solid #eef1f4">
+      <td style="padding:6px 10px">${new Date(r._date+'T12:00').toLocaleDateString('en-GB')}</td>
+      <td style="padding:6px 10px;font-weight:700">${hhEsc(r.room)}</td>
+      <td style="padding:6px 10px">${r.type||''}</td>
+      <td style="padding:6px 10px">${hhEsc(r.housekeeperName||hhNameFor(r)||'Unallocated')}</td>
+      <td style="padding:6px 10px;color:#b3261e;font-weight:700">${(r.status||'pending')==='in_progress'?'Not finished':'Not started'}</td></tr>`).join('');
+  out.innerHTML=`
+    <div style="font-size:12.5px;color:#5b6b7b;margin-bottom:10px">${HH_REP_FROM} → ${HH_REP_TO} · ${days} day${days>1?'s':''}${HH_REP_STAFF?' · '+hhEsc(HH_HUB_STAFF.find(s=>s[1]===HH_REP_STAFF)?.[0]||''):' · whole team'}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px">
+      ${tile(beds.length,'Rooms','#1a2b3a','All bedrooms in range')}
+      ${tile(done.length,'Completed','#2E6B5E','Rooms finished')}
+      ${tile(comp+'%','Completion','#1a2b3a','Completed ÷ total rooms')}
+      ${tile(missed.length,'Missed / not done',missed.length?'#b3261e':'#1a2b3a','Left not started or unfinished')}
+      ${tile(avg,'Avg min / room','#1a2b3a','Average time on a finished room')}
+      ${tile(over.length,'Over target',over.length?'#b3261e':'#1a2b3a','Finished rooms over the allowed time')}
+      ${tile(areasDone,'Public areas done','#1a2b3a','Toilets & reception completed')}
+    </div>
+    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:14px">
+      <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:8px">Productivity by housekeeper</div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+        <tr style="text-align:center;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px;text-align:left">Housekeeper</th><th style="padding:6px 10px">Rooms done</th><th style="padding:6px 10px">Avg min/room</th><th style="padding:6px 10px">Over target</th><th style="padding:6px 10px">Missed</th><th style="padding:6px 10px">Areas</th></tr>
+        ${pRows}
+      </table></div>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+      <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:8px">Missed / not-done rooms ${missed.length>60?'(first 60)':''}</div>
+      ${missed.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Date</th><th style="padding:6px 10px">Room</th><th style="padding:6px 10px">Type</th><th style="padding:6px 10px">Who</th><th style="padding:6px 10px">Status</th></tr>
+        ${missRows}</table></div>`:`<div style="padding:10px;color:#2E6B5E;font-weight:700;font-size:13px">✓ Every room in this range was completed.</div>`}
+    </div>`;
+}
+function hhReportCSV(){
+  const rows=window._hhRepRows||[];
+  if(!rows.length){ toast('Run a report first.'); return; }
+  const esc=s=>`"${String(s==null?'':s).replace(/"/g,'""')}"`;
+  const head=['Date','Room','Type','Area','Housekeeper','Status','Minutes','Over target'];
+  const lines=[head.join(',')];
+  rows.forEach(r=>{ const mins=r.status==='done'?Math.round((r.durationSec||0)/60):'';
+    const over=(r.status==='done'&&(r.durationSec||0)>hhRepTgt(r)*60)?'Yes':'';
+    lines.push([esc(r._date),esc(r.room),esc(r.type),esc(r.area?'Yes':''),esc(r.housekeeperName||hhNameFor(r)||''),esc(r.status||'pending'),esc(mins),esc(over)].join(',')); });
+  const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`hoshouse-report-${HH_REP_FROM}_to_${HH_REP_TO}.csv`; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
 }
 async function hhRenderDash(){
   const body=document.getElementById('hh-body'); if(!body) return;
