@@ -1,0 +1,55 @@
+name: HosREV rate-shopper
+
+# Runs the SerpApi Google Hotels collector and commits hosrev-comp.json
+# back to the repo, so GitHub Pages serves the latest competitor rates to HosREV.
+
+on:
+  schedule:
+    # Times are UTC. 06:30 UTC ≈ 07:30 BST. Add a second line for twice-daily.
+    - cron: "30 6 * * *"
+    # - cron: "30 15 * * *"   # uncomment for a second afternoon run (doubles searches)
+  workflow_dispatch:           # lets you run it on demand from the Actions tab
+    inputs:
+      days_ahead:
+        description: "Check-in dates to shop (use 7 for a free-plan test; 30 is the live default)"
+        required: false
+        default: "30"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hosrev-rateshop
+  cancel-in-progress: false
+
+jobs:
+  rateshop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run rate-shopper
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          DAYS_AHEAD: ${{ github.event.inputs.days_ahead || '30' }}   # 30 live; manual run can pass 7 for a free test
+          ADULTS: "2"
+          CURRENCY: "GBP"
+        run: node tools/hosrev-rateshop.mjs
+
+      - name: Commit updated rates
+        run: |
+          git config user.name  "hosrev-bot"
+          git config user.email "hosrev-bot@users.noreply.github.com"
+          if ! git diff --quiet -- hosrev-comp.json; then
+            git add hosrev-comp.json
+            git commit -m "HosREV: refresh competitor rates [skip ci]"
+            git push
+          else
+            echo "No rate changes to commit."
+          fi
