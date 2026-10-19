@@ -72,7 +72,7 @@ select.staff-picker option{background:#1a2b3a;color:#fff}
 .btn-back:hover{background:rgba(255,255,255,.18);color:#fff}
 
 /* Week summary */
-.week-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.week-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
 .sum-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center}
 .sum-num{font-size:26px;font-weight:700}
 .sum-label{font-size:10px;color:#8fa3b8;text-transform:uppercase;letter-spacing:.6px;margin-top:2px}
@@ -135,7 +135,7 @@ select.staff-picker option{background:#1a2b3a;color:#fff}
 @media(max-width:480px){
   .screen{padding:20px 14px}
   .rota-name{font-size:24px}
-  .week-summary{grid-template-columns:repeat(3,1fr)}
+  .week-summary{grid-template-columns:repeat(2,1fr)}
 }
 </style>
 </head>
@@ -356,13 +356,11 @@ function buildRotaView(person) {
   const myShifts = days.map(d => ({d, shift:cellShift((rota[dk(d)]||{})[person.id])}));
   const workDays = myShifts.filter(x => shiftType(x.shift)==='working').length;
   const totalHrs = myShifts.reduce((t,x) => t+parseHours(x.shift), 0);
-  const offDays  = myShifts.filter(x => shiftType(x.shift)==='off'||x.shift==='').length;
 
   // Summary
   document.getElementById('week-summary').innerHTML = [
     {num: workDays, label:'Shifts', colour:'#c78a3b'},
     {num: Math.round(totalHrs*10)/10+'h', label:'Hours', colour:'#4a86c7'},
-    {num: offDays,  label:'Days off', colour:'#8fa3b8'},
   ].map(s=>`<div class="sum-card">
     <div class="sum-num" style="color:${s.colour}">${s.num}</div>
     <div class="sum-label">${s.label}</div>
