@@ -15,8 +15,8 @@
     rota: (typeof ATTEND_ROTA_SEED!=="undefined") ? JSON.parse(JSON.stringify(ATTEND_ROTA_SEED)) : {},
     rotaLabel: "Bundled rota (1–18 Oct 2026)",
     grace: GRACE_DEFAULT,
-    clockRows: null,      // [{name, d:'YYYY-MM-DD', t:minutes, type:'In'|'Out'}]
-    clockLabel: "",
+    clockRows: (typeof ATTEND_CLOCK_SEED!=="undefined") ? ATTEND_CLOCK_SEED : null,  // [{name, d, t, type}]
+    clockLabel: (typeof ATTEND_CLOCK_LABEL!=="undefined") ? ATTEND_CLOCK_LABEL : "",
     results: null,
     sort: "cost"
   };
@@ -142,6 +142,7 @@
 
   window.renderAttendance = function(v){
     attLoad();
+    if(ATT.clockRows && ATT.clockRows.length && !ATT.results){ try{ analyse(); }catch(e){} }  // show the bundled data straight away
     const R=ATT.results;
     const tile=(val,lab,col,tip)=>`<div title="${tip||''}" style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:13px 15px;box-shadow:0 1px 2px rgba(0,0,0,.04)"><div style="font:800 24px Lato;color:${col}">${val}</div><div style="font-size:10.5px;color:#8296a8;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">${lab}</div></div>`;
     v.innerHTML = `
