@@ -316,6 +316,8 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
 [["revDash","renderRevDash"],["revCalendar","renderRevCalendar"],["revCompset","renderRevCompset"],["revTrend","renderRevTrend"],["revEvents","renderRevEvents"],
  ["revForecast","renderRevForecast"],["revImport","renderRevImport"],["revSettings","renderRevSettings"]]
   .forEach(([t,fn])=>{ if(typeof window[fn]==="function") RENDER_MAP[t]=window[fn]; });
+/* HosPEOPLE Attendance (attendance.js) */
+if(typeof window.renderAttendance==="function") RENDER_MAP.rotaAttend=window.renderAttendance;
 
 /* Tabs whose render functions were designed for the dark navy canvas
    (light text, translucent buttons). Every other tab renders on a light
