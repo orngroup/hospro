@@ -26,8 +26,12 @@
       if(s.grace) ATT.grace=s.grace; } }catch(e){} }
   function attSave(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({ rota:ATT.rota, rotaLabel:ATT.rotaLabel, clockRows:ATT.clockRows, clockLabel:ATT.clockLabel, grace:ATT.grace })); }catch(e){} }
 
+  // People to leave out of the attendance review (management / not relevant).
+  const EXCLUDE = ["patrik vlach","veronica webb","natalie freeman"];
+
   // ---------- name helpers ----------
   const norm = s => String(s||"").toLowerCase().replace(/[^a-z ]+/g," ").replace(/\s+/g," ").trim();
+  function isExcluded(n){ const x=norm(n); return EXCLUDE.some(e=>{ const p=e.split(" "); return p.every(tok=>x.includes(tok)); }); }
   const firstKey = s => { const t=norm(s).split(" "); return t[0]||""; };
   const lastKey  = s => { const t=norm(s).split(" "); return t.length>1?t[t.length>2?t.length-1:1]:""; };
 
@@ -108,6 +112,7 @@
     let minD=null,maxD=null; clock.forEach(r=>{ if(!minD||r.d<minD)minD=r.d; if(!maxD||r.d>maxD)maxD=r.d; });
     const rows=[];
     Object.keys(byName).forEach(cn=>{
+      if(isExcluded(cn)) return;                 // left out of the review
       const rn=matchRota(cn); if(!rn) return;
       const sched=rota[rn]; const st=matchStaff(cn)||matchStaff(rn)||{rate:0,dept:""};
       let daysSched=0,daysClocked=0,noScan=0,timesLate=0,totalLate=0,lost=0;
