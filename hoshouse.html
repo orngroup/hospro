@@ -133,10 +133,66 @@
 <script>
   const $=id=>document.getElementById(id);
   const DEFT={Departure:'dep',Stayover:'stay','Arrival-ready':'arr'}, LET={Departure:'Departure',Stayover:'Stayover','Arrival-ready':'Arrival-ready'};
-  let ME=null, rooms=[], unwatch=null, active=null, tmr=null, pinBuf='';
+  let ME=null, rooms=[], unwatch=null, active=null, tmr=null, pinBuf='', prevSnap=null, STARS={}, starUnwatch=null;
   const today=HH.todayISO();
 
+  // ---- performance stars (managers rate 1–5; shared + live) ----
+  function starsFor(hkId){ return STARS[hkId]||0; }
+  function starsHTML(hkId, editable){
+    let s=''; const n=starsFor(hkId);
+    for(let i=1;i<=5;i++){ const on=i<=n;
+      s+=`<span ${editable?`onclick="setStar('${hkId}',${i})"`:''} style="font-size:19px;line-height:1;cursor:${editable?'pointer':'default'};color:${on?'#f0a500':'#cfd6de'}">★</span>`; }
+    return `<span style="display:inline-flex;gap:1px;align-items:center">${s}</span>`;
+  }
+  async function setStar(hkId,n){ if(!(ME&&ME.lead))return; STARS[hkId]=(STARS[hkId]===n?0:n); await saveStars(); renderTeam(); }
+  async function loadStars(){
+    if(HH.ready&&HH.db){ try{ const d=await HH.db.collection('hoshouse_config').doc('stars__'+today).get(); if(d.exists) return d.data().stars||{}; }catch(e){} }
+    try{ return JSON.parse(localStorage.getItem('hoshouse_stars_'+today)||'{}'); }catch(e){ return {}; }
+  }
+  async function saveStars(){
+    try{ localStorage.setItem('hoshouse_stars_'+today, JSON.stringify(STARS)); }catch(e){}
+    if(HH.ready&&HH.db){ try{ await HH.db.collection('hoshouse_config').doc('stars__'+today).set({stars:STARS, updatedAt:Date.now()}); }catch(e){} }
+  }
+  function watchStars(){
+    if(HH.ready&&HH.db){ try{ return HH.db.collection('hoshouse_config').doc('stars__'+today).onSnapshot(d=>{ STARS=(d.exists&&d.data().stars)||{};
+      if($('scr-team').classList.contains('on')) renderTeam(); if($('scr-list').classList.contains('on')) renderList(); }); }catch(e){} }
+    loadStars().then(m=>{ STARS=m||{}; if($('scr-team').classList.contains('on')) renderTeam(); if($('scr-list').classList.contains('on')) renderList(); });
+    return null;
+  }
+
   function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on')); $(id).classList.add('on'); }
+
+  // ---- notifications ----
+  function hhToast(msg){
+    let t=document.getElementById('hh-toast');
+    if(!t){ t=document.createElement('div'); t.id='hh-toast';
+      t.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1F3864;color:#fff;padding:12px 16px;border-radius:12px;font:700 14px/1.35 system-ui,-apple-system,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.35);z-index:99999;max-width:90%;text-align:center;opacity:0;transition:opacity .25s';
+      document.body.appendChild(t); }
+    t.textContent=msg; t.style.opacity='1'; clearTimeout(window._hhToastT);
+    window._hhToastT=setTimeout(()=>{ if(t) t.style.opacity='0'; }, 4500);
+  }
+  function hhNotify(title, body){
+    hhToast(title+' — '+body);
+    try{ if('Notification' in window && Notification.permission==='granted'){ new Notification(title,{ body, icon:'icon-192.png', tag:'hh-'+Date.now() }); } }catch(e){}
+    try{ if(navigator.vibrate) navigator.vibrate(120); }catch(e){}
+  }
+  function requestNotifyPerm(){ try{ if('Notification' in window && Notification.permission==='default'){ Notification.requestPermission(); } }catch(e){} }
+  // compare each live update to the last snapshot and raise notifications
+  function hhNotifyDiff(list){
+    const snap={}; list.forEach(r=>{ snap[r.room]={hk:r.housekeeper||'', status:r.status||'pending', name:r.housekeeperName||''}; });
+    if(prevSnap && ME){
+      const mine=[], done=[];
+      list.forEach(r=>{ const p=prevSnap[r.room];
+        if(r.housekeeper===ME.id && r.status!=='done' && (!p || p.hk!==ME.id)) mine.push(r);         // newly allocated to me
+        if(ME.lead && r.status==='done' && r.housekeeper!==ME.id && (!p || p.status!=='done')) done.push(r); // newly completed → leads
+      });
+      if(mine.length) hhNotify(mine.length===1?'New room for you':(mine.length+' new rooms'),
+        mine.length===1?('Room '+mine[0].room+' · '+(mine[0].type||'')):('Rooms '+mine.map(x=>x.room).join(', ')));
+      if(done.length) hhNotify(done.length===1?'Room completed':(done.length+' rooms completed'),
+        done.map(x=>'Room '+x.room+(x.housekeeperName?(' · '+x.housekeeperName):'')).join('  ·  '));
+    }
+    prevSnap=snap;
+  }
 
   // ---- login ----
   function buildLogin(){
@@ -159,19 +215,24 @@
     ME=s; try{ localStorage.setItem('hh_pref',id); sessionStorage.setItem('hh_me',id); }catch(e){}
     startList();
   }
-  function logout(){ try{ sessionStorage.removeItem('hh_me'); }catch(e){} if(unwatch) unwatch(); ME=null; pinBuf=''; $('pindisp').textContent=''; showScreen('scr-login'); }
+  function logout(){ try{ sessionStorage.removeItem('hh_me'); }catch(e){} if(unwatch) unwatch(); if(starUnwatch){ try{ starUnwatch(); }catch(e){} } ME=null; pinBuf=''; $('pindisp').textContent=''; showScreen('scr-login'); }
 
   // ---- room list ----
   function startList(){
     $('hdr-user').textContent=ME.name.split(' ')[0]+' · Sign out';
     $('hdr-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
     $('hdr-team').style.display = ME.lead ? 'block' : 'none';   // leads get the team overview
-    showScreen('scr-list');
+    requestNotifyPerm();
     if(unwatch) unwatch();
-    unwatch=HH.watchDay(today, list=>{ rooms=list;
+    if(starUnwatch){ try{ starUnwatch(); }catch(e){} }
+    starUnwatch=watchStars();
+    prevSnap=null;   // first tick primes the snapshot without firing notifications
+    unwatch=HH.watchDay(today, list=>{ rooms=list; hhNotifyDiff(list);
       if($('scr-list').classList.contains('on')) renderList();
       if($('scr-team').classList.contains('on')) renderTeam();
       if(active) refreshActive(); });
+    // Managers (Laith / Ruth) land on the team view — they rarely clean rooms.
+    if(ME.lead){ showTeam(); } else { showScreen('scr-list'); }
   }
   // ---- team view (leads: Laith / Ruth) ----
   function showTeam(){ $('tm-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); const lt=$('lead-tools'); if(lt) lt.style.display = (ME&&ME.lead)?'block':'none'; showScreen('scr-team'); renderTeam(); }
@@ -250,11 +311,12 @@
         const col=r.status==='done'?'#ecf6f0;color:#2a6a4a':r.status==='in_progress'?'#fff3df;color:#9c5a00':'#eef1f5;color:#6b7280';
         const mins=r.status==='done'?' '+Math.round((r.durationSec||0)/60)+'m':(r.status==='in_progress'&&r.startAt?' '+Math.round((Date.now()-r.startAt)/60000)+'m':'');
         return `<span class="tvroom" style="background:${col}">${esc(r.room)}${mins}</span>`; }).join('');
+      const stars = k==='_un' ? '' : `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px"><span style="font-size:11.5px;color:var(--muted)">Rating</span>${starsHTML(k, !!(ME&&ME.lead))}</div>`;
       return `<div class="tvrow"><div style="display:flex;justify-content:space-between;align-items:center">
           <span class="tvname">${esc(g.name)}</span>
           <span style="font-size:12px;color:var(--muted)">${d} done · ${ip} now · ${pd} to go${gAvg?' · '+gAvg+'m avg':''}</span></div>
         <div class="tvbar"><div style="width:${gp}%;height:100%;background:${k==='_un'?'#9aa7b5':'var(--ok)'}"></div></div>
-        <div style="margin-top:2px">${chips||'<span style="font-size:12px;color:var(--muted)">No rooms</span>'}</div></div>`;
+        <div style="margin-top:2px">${chips||'<span style="font-size:12px;color:var(--muted)">No rooms</span>'}</div>${stars}</div>`;
     }).join('');
     $('teamWrap').innerHTML = rooms.length ? (tiles+rows) : '<div class="empty">No rooms set yet today. Add them with the Manager tools above (or reception sends them over), then Allocate.</div>';
   }
@@ -274,7 +336,20 @@
       if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min</div></div>${note(r)}</div>`;
       return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"></div><button class="go" onclick="startRoom('${r.room}')">Start</button>${note(r)}</div>`;
     };
-    let html='';
+    const myAvg=doneMine.length?Math.round(doneMine.reduce((a,r)=>a+(r.durationSec||0)/60,0)/doneMine.length):0;
+    const left=pending.length+inprog.length;
+    const rated=starsFor(ME.id);
+    const welcome=`<div style="background:#1F3864;color:#fff;border-radius:14px;padding:15px 16px;margin-bottom:12px">
+      <div style="font:800 18px system-ui,-apple-system,sans-serif">👋 Welcome, ${esc(ME.name.split(' ')[0])}</div>
+      <div style="font-size:12.5px;opacity:.85;margin-top:2px">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:13px">
+        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px;text-align:center"><div style="font:800 22px system-ui">${doneMine.length}</div><div style="font-size:10.5px;opacity:.85;text-transform:uppercase;letter-spacing:.4px">Done</div></div>
+        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px;text-align:center"><div style="font:800 22px system-ui">${left}</div><div style="font-size:10.5px;opacity:.85;text-transform:uppercase;letter-spacing:.4px">Left</div></div>
+        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px;text-align:center"><div style="font:800 22px system-ui">${myAvg||'–'}</div><div style="font-size:10.5px;opacity:.85;text-transform:uppercase;letter-spacing:.4px">Avg min</div></div>
+      </div>
+      <div style="margin-top:11px;font-size:12.5px;display:flex;align-items:center;gap:8px"><span style="opacity:.85">Today's rating:</span> ${starsHTML(ME.id,false)} ${rated?'':'<span style="opacity:.7">— not rated yet</span>'}</div>
+    </div>`;
+    let html=welcome;
     if(inprog.length){ html+='<div class="sect">In progress</div>'+inprog.map(row).join(''); }
     html+='<div class="sect">Your rooms ('+pending.length+')</div>'+(pending.length?pending.map(row).join(''):'<div class="empty">Nothing allocated to you yet — your manager will share rooms out shortly.</div>');
     if(ME.lead && unassigned.length){ html+='<div class="sect">Unallocated — anyone spare ('+unassigned.length+')</div>'+unassigned.map(row).join(''); }
