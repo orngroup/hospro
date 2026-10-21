@@ -88,9 +88,27 @@
 
 <!-- TEAM VIEW (leads only) -->
 <div class="screen" id="scr-team">
-  <header><div><div class="t">👁 Team today</div><div class="u" id="tm-date"></div></div>
+  <header><div><div class="t">👁 Manager view</div><div class="u" id="tm-date"></div></div>
     <div class="u" onclick="showScreen('scr-list');renderList()" style="cursor:pointer">← My rooms</div></header>
-  <div class="wrap" id="teamWrap"></div>
+  <div class="wrap">
+    <div id="lead-tools" style="display:none;background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 13px;margin-bottom:12px">
+      <div style="font-weight:800;color:#1F3864;margin-bottom:9px">🛠 Manager tools</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+        <input id="lead-add" inputmode="numeric" placeholder="Room numbers e.g. 101 102" style="flex:1;min-width:150px;padding:10px;border:1px solid #d7dde4;border-radius:9px;font-size:15px">
+        <select id="lead-type" style="padding:10px;border:1px solid #d7dde4;border-radius:9px;font-size:15px"><option>Departure</option><option>Stayover</option><option>Arrival-ready</option></select>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button onclick="leadAddRooms(false)" style="flex:1;min-width:120px;padding:10px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:9px;font-weight:700;font-size:13px">+ Add</button>
+        <button onclick="leadAddRooms(true)" style="flex:1;min-width:150px;padding:10px;border:none;background:#2E6B5E;color:#fff;border-radius:9px;font-weight:700;font-size:13px">+ Add &amp; give to lightest</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        <button onclick="leadAllocateAll()" style="flex:1;min-width:140px;padding:10px;border:none;background:#1F3864;color:#fff;border-radius:9px;font-weight:800;font-size:13px">⚖️ Allocate all</button>
+        <button onclick="leadAddAreas()" style="flex:1;min-width:120px;padding:10px;border:1px solid #d7dde4;background:#fff;color:#1a2b3a;border-radius:9px;font-weight:700;font-size:13px">🧼 Public areas</button>
+      </div>
+      <div id="lead-msg" style="font-size:12.5px;color:#2a6a4a;font-weight:700;margin-top:7px;min-height:16px"></div>
+    </div>
+    <div id="teamWrap"></div>
+  </div>
 </div>
 
 <!-- ACTIVE ROOM -->
@@ -156,7 +174,56 @@
       if(active) refreshActive(); });
   }
   // ---- team view (leads: Laith / Ruth) ----
-  function showTeam(){ $('tm-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); showScreen('scr-team'); renderTeam(); }
+  function showTeam(){ $('tm-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); const lt=$('lead-tools'); if(lt) lt.style.display = (ME&&ME.lead)?'block':'none'; showScreen('scr-team'); renderTeam(); }
+  // ---- manager tools (leads: add rooms ad-hoc, allocate) ----
+  function leadMsg(t){ const e=$('lead-msg'); if(!e)return; e.textContent=t; clearTimeout(window._leadMsgT); window._leadMsgT=setTimeout(()=>{ if($('lead-msg')) $('lead-msg').textContent=''; },4500); }
+  async function leadWorkerPool(){
+    try{ const w=await HH.rotaWorkers(today); if(w&&w.length) return w.map(x=>({hkId:x.hkId,name:x.name})); }catch(e){}
+    const have={}; rooms.forEach(r=>{ if(r.housekeeper) have[r.housekeeper]=r.housekeeperName||r.housekeeper; });
+    const pool=Object.keys(have).map(id=>({hkId:id,name:have[id]}));
+    if(pool.length) return pool;
+    return HH.staff.filter(s=>!s.lead).map(s=>({hkId:s.id,name:s.name}));
+  }
+  async function leadDistribute(newRooms){
+    const pool=await leadWorkerPool(); if(!pool.length) return 0;
+    const after=await HH.getDayRooms(today);
+    const load={}; pool.forEach(w=>load[w.hkId]=0);
+    after.forEach(r=>{ if(r.housekeeper && r.status!=='done' && load[r.housekeeper]!=null) load[r.housekeeper]++; });
+    let n=0;
+    for(const room of newRooms){ const w=pool.slice().sort((a,b)=>load[a.hkId]-load[b.hkId])[0]; if(!w) break;
+      await HH.updateRoom(today, room, {housekeeper:w.hkId, housekeeperName:w.name}); load[w.hkId]++; n++; }
+    return n;
+  }
+  async function leadAddRooms(distribute){
+    if(!(ME&&ME.lead)) return;
+    const raw=($('lead-add').value||'').trim(); const type=$('lead-type').value||'Departure';
+    const nums=raw.split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean);
+    if(!nums.length){ leadMsg('Type one or more room numbers first.'); return; }
+    const existing=new Set(rooms.filter(r=>!r.area).map(r=>String(r.room)));
+    const picks=rooms.filter(r=>!r.area).map(r=>({room:r.room,type:r.type,note:r.notes||''}));
+    nums.forEach(nn=>{ if(!existing.has(String(nn))) picks.push({room:nn,type,note:''}); });
+    await HH.setDayRooms(today, picks);
+    const newOnes=nums.filter(nn=>!existing.has(String(nn)));
+    if(distribute && newOnes.length){ const n=await leadDistribute(newOnes.map(String)); leadMsg('✓ Added '+newOnes.length+' · shared '+n+' to the lightest-loaded.'); }
+    else { leadMsg('✓ Added '+newOnes.length+' room'+(newOnes.length===1?'':'s')+'.'); }
+    $('lead-add').value=''; renderTeam();
+  }
+  async function leadAllocateAll(){
+    if(!(ME&&ME.lead)) return;
+    const pool=await leadWorkerPool(); if(!pool.length){ leadMsg('No housekeepers to allocate to yet.'); return; }
+    const day=await HH.getDayRooms(today);
+    const todo=day.filter(r=>r.status!=='done' && r.status!=='in_progress');
+    if(!todo.length){ leadMsg('Nothing waiting to allocate.'); return; }
+    const load={}; pool.forEach(w=>load[w.hkId]=0);
+    const ordered=todo.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0)||(+a.room||0)-(+b.room||0));
+    for(const r of ordered){ const w=pool.slice().sort((a,b)=>load[a.hkId]-load[b.hkId])[0];
+      await HH.updateRoom(today, r.room, {housekeeper:w.hkId, housekeeperName:w.name}); load[w.hkId]++; }
+    leadMsg('✓ Allocated '+ordered.length+' room'+(ordered.length===1?'':'s')+' across '+pool.length+' staff.'); renderTeam();
+  }
+  async function leadAddAreas(){
+    if(!(ME&&ME.lead)) return;
+    const n=await HH.addPublicAreas(today); leadMsg(n?('✓ Added '+n+' public-area task'+(n>1?'s':'')):'Public areas already on the list.'); renderTeam();
+  }
   function renderTeam(){
     const esc=s=>String(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
     const done=rooms.filter(r=>r.status==='done'), prog=rooms.filter(r=>r.status==='in_progress'), pend=rooms.filter(r=>r.status==='pending');
@@ -177,6 +244,7 @@
       <div class="tvbar"><div style="width:${pct}%;height:100%;background:var(--ok)"></div></div></div>`;
     const rows=order.map(k=>{ const g=by[k];
       const d=g.rooms.filter(r=>r.status==='done').length, ip=g.rooms.filter(r=>r.status==='in_progress').length, pd=g.rooms.filter(r=>r.status==='pending').length;
+      const dmins=g.rooms.filter(r=>r.status==='done'); const gAvg=dmins.length?Math.round(dmins.reduce((a,r)=>a+(r.durationSec||0)/60,0)/dmins.length):0;
       const gp=g.rooms.length?Math.round(d/g.rooms.length*100):0;
       const chips=g.rooms.sort((a,b)=>(+a.room||0)-(+b.room||0)).map(r=>{
         const col=r.status==='done'?'#ecf6f0;color:#2a6a4a':r.status==='in_progress'?'#fff3df;color:#9c5a00':'#eef1f5;color:#6b7280';
@@ -184,11 +252,11 @@
         return `<span class="tvroom" style="background:${col}">${esc(r.room)}${mins}</span>`; }).join('');
       return `<div class="tvrow"><div style="display:flex;justify-content:space-between;align-items:center">
           <span class="tvname">${esc(g.name)}</span>
-          <span style="font-size:12px;color:var(--muted)">${d} done · ${ip} now · ${pd} to go</span></div>
+          <span style="font-size:12px;color:var(--muted)">${d} done · ${ip} now · ${pd} to go${gAvg?' · '+gAvg+'m avg':''}</span></div>
         <div class="tvbar"><div style="width:${gp}%;height:100%;background:${k==='_un'?'#9aa7b5':'var(--ok)'}"></div></div>
         <div style="margin-top:2px">${chips||'<span style="font-size:12px;color:var(--muted)">No rooms</span>'}</div></div>`;
     }).join('');
-    $('teamWrap').innerHTML = rooms.length ? (tiles+rows) : '<div class="empty">No rooms set yet today. Reception sends them over on the daily form, then allocate.</div>';
+    $('teamWrap').innerHTML = rooms.length ? (tiles+rows) : '<div class="empty">No rooms set yet today. Add them with the Manager tools above (or reception sends them over), then Allocate.</div>';
   }
   function renderList(){
     const mine=rooms.filter(r=>r.housekeeper===ME.id);
