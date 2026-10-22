@@ -181,6 +181,10 @@ service cloud.firestore {
     // as HosFIX and the beverage iPad app).
     match /hoshouse_rooms/{doc}  { allow read, write: if true; }
     match /hoshouse_config/{doc} { allow read, write: if true; }
+    // Room photos (completion shots + cannot-start door photos). The housekeeper
+    // phones sign in with a PIN in the app, not Firebase, so this is open like
+    // the two collections above. Delete is blocked so evidence can't be wiped.
+    match /hoshouse_photos/{doc} { allow read, create, update: if true; allow delete: if isStaff(); }
 
     match /{document=**} {
       allow read, write: if false;

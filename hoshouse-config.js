@@ -274,6 +274,22 @@
       const key="hoshouse_day_"+date; const map=lsGet(key,{}); map[String(room)]=Object.assign(map[String(room)]||this.blankRoom(date,room),patch); lsSet(key,map); return true;
     },
 
+    // ----- room photos (completion shots + cannot-start door photos) -----
+    // rec: { date, room, slot, label, dataUrl, by, byName, kind }
+    async addPhoto(rec){
+      rec.takenAt = rec.takenAt || Date.now();
+      rec.room = String(rec.room);
+      const id = rec.date+"__"+rec.room+"__"+rec.slot+"__"+rec.takenAt;
+      if(ready){ try{ await db.collection("hoshouse_photos").doc(id).set(rec); return id; }catch(e){ console.warn("addPhoto",e&&e.code); } }
+      const key="hoshouse_photos_"+rec.date; const arr=lsGet(key,[]); arr.push(Object.assign({id},rec)); lsSet(key,arr); return id;
+    },
+    async getRoomPhotos(date, room){
+      room=String(room);
+      if(ready){ try{ const snap=await db.collection("hoshouse_photos").where("date","==",date).where("room","==",room).get();
+        return snap.docs.map(d=>d.data()).sort((a,b)=>(a.takenAt||0)-(b.takenAt||0)); }catch(e){ console.warn("getRoomPhotos",e&&e.code); } }
+      return lsGet("hoshouse_photos_"+date,[]).filter(p=>String(p.room)===room).sort((a,b)=>(a.takenAt||0)-(b.takenAt||0));
+    },
+
     // ----- public areas (toilets twice daily, reception once) -----
     async addPublicAreas(date){
       const have=await this.getDayRooms(date);

@@ -9839,12 +9839,13 @@ function renderHosHouseHub(v){
     </div>
 
     <div style="display:inline-flex;border:1px solid #d7dde4;border-radius:9px;overflow:hidden;margin-bottom:16px">
-      ${tab('today','Today')}${tab('reports','📈 Reports')}
+      ${tab('today','Today')}${tab('history','🔎 History')}${tab('reports','📈 Reports')}
     </div>
 
-    ${view==='reports'?`<div id="hh-reports"></div>`:todayHTML}
+    ${view==='reports'?`<div id="hh-reports"></div>`:(view==='history'?hhHistoryHTML():todayHTML)}
   </div>`;
   if(view==='reports'){ renderHosHouseReports(); }
+  else if(view==='history'){ /* search form is ready; results load on demand */ }
   else { hhRenderManage(); hhRenderDash(); }
 }
 function hhSetView(x){ window._hhView=x; switchTab('hhHub'); }
@@ -9876,17 +9877,19 @@ async function hhRenderManage(){
   const typeOpt=(sel)=>HH_ROOM_TYPES.map(t=>`<option value="${t}" ${t===sel?'selected':''}>${t}</option>`).join('');
   const roomRows=bedrooms.sort((a,b)=>(+a.room||0)-(+b.room||0)).map(r=>{
     const locked=r.status!=='pending';
-    const stCol=r.status==='done'?'#2a6a4a':r.status==='in_progress'?'#9c5a00':'#6b7280';
+    const stCol=r.status==='done'?'#2a6a4a':r.status==='in_progress'?'#9c5a00':r.status==='blocked'?'#b3261e':'#6b7280';
+    const stText=r.status==='blocked'?('⛔ '+(r.blockReason==='dnd'?'DND':'Refused')):(r.status||'pending').replace('_',' ');
+    const cam=((r.photos&&Object.keys(r.photos).length)||r.blockReason==='dnd')?' 📷':'';
     const who=r.housekeeperName||(r.housekeeper?r.housekeeper:'—');
-    return `<tr style="border-top:1px solid #eef1f4">
+    return `<tr onclick="hhOpenRoom('${hhEsc(r.room)}')" style="border-top:1px solid #eef1f4;cursor:pointer">
       <td style="padding:6px 8px;font-weight:700;color:#1a2b3a">${hhEsc(r.room)}</td>
-      <td style="padding:6px 8px">${locked
+      <td style="padding:6px 8px" onclick="event.stopPropagation()">${locked
         ? r.type
         : `<select onchange="hhChangeType('${hhEsc(r.room)}',this.value)" style="padding:4px 6px;border:1px solid #d7dde4;border-radius:6px;font:12px Lato">${typeOpt(r.type)}</select>`}</td>
       <td style="padding:6px 8px;color:#5b6b7b">${hhEsc(who)}</td>
-      <td style="padding:6px 8px;font-size:11px;font-weight:700;color:${stCol};text-transform:capitalize">${(r.status||'pending').replace('_',' ')}</td>
+      <td style="padding:6px 8px;font-size:11px;font-weight:700;color:${stCol};text-transform:capitalize">${stText}${cam}</td>
       <td style="padding:6px 8px;color:#5b6b7b;font-size:11.5px">${hhEsc(r.notes||'')}</td>
-      <td style="padding:6px 8px;text-align:right">${locked?'':`<button onclick="hhRemoveRoom('${hhEsc(r.room)}')" title="Remove this room" style="border:none;background:none;color:#b3261e;cursor:pointer;font-size:14px">✕</button>`}</td>
+      <td style="padding:6px 8px;text-align:right" onclick="event.stopPropagation()">${locked?'':`<button onclick="hhRemoveRoom('${hhEsc(r.room)}')" title="Remove this room" style="border:none;background:none;color:#b3261e;cursor:pointer;font-size:14px">✕</button>`}</td>
     </tr>`;
   }).join('') || `<tr><td colspan="6" style="padding:12px;color:#8296a8;font-size:12.5px">No rooms yet — read them off the Guestline printout and add them above.</td></tr>`;
 
@@ -10199,7 +10202,7 @@ async function hhRenderDash(){
   if(window._hhDate!==date && window._hhDate) { /* date changed mid-fetch */ }
   const WIN=HH_WIN_MIN;
   const over=r=> (r.status==='in_progress' && r.startAt && (Date.now()-r.startAt)/1000>WIN*60) || (r.status==='done' && (r.durationSec||0)>WIN*60);
-  const pend=rooms.filter(r=>r.status==='pending'), prog=rooms.filter(r=>r.status==='in_progress'), done=rooms.filter(r=>r.status==='done');
+  const pend=rooms.filter(r=>r.status==='pending'||r.status==='blocked'), prog=rooms.filter(r=>r.status==='in_progress'), done=rooms.filter(r=>r.status==='done');
   const overs=rooms.filter(over);
   const pct=rooms.length?Math.round(done.length/rooms.length*100):0;
   const avg=done.length?Math.round(done.reduce((a,r)=>a+(r.durationSec||0)/60,0)/done.length):0;
@@ -10281,10 +10284,11 @@ function hhDashStaffGrid(rooms){
   if(!rooms.length) return '';
   const by={}; rooms.forEach(r=>{ const k=r.housekeeper||'_un'; (by[k]=by[k]||{name:r.housekeeperName||(k==='_un'?'Unallocated':k),rooms:[]}).rooms.push(r); });
   const order=Object.keys(by).sort((a,b)=> a==='_un'?1:b==='_un'?-1:0);
-  const chip=r=>{ const col=r.status==='done'?'#ecf6f0;color:#2a6a4a':r.status==='in_progress'?'#fff3df;color:#9c5a00':'#eef1f5;color:#6b7280';
+  const chip=r=>{ const col=r.status==='done'?'#ecf6f0;color:#2a6a4a':r.status==='in_progress'?'#fff3df;color:#9c5a00':r.status==='blocked'?'#fdecea;color:#b3261e':'#eef1f5;color:#6b7280';
     const mins=r.status==='done'?' '+Math.round((r.durationSec||0)/60)+'m':(r.status==='in_progress'&&r.startAt?' '+Math.round((Date.now()-r.startAt)/60000)+'m':'');
-    const label=r.area?('🧼 '+r.room):r.room;
-    return `<span style="display:inline-block;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:7px;margin:3px 4px 0 0;background:${col}">${hhEsc(label)}${mins}</span>`; };
+    const label=(r.status==='blocked'?'⛔ ':(r.area?'🧼 ':''))+r.room;
+    const cam=((r.photos&&Object.keys(r.photos).length)||r.blockReason==='dnd')?' 📷':'';
+    return `<span onclick="hhOpenRoom('${hhEsc(r.room)}')" title="View room, status & photos" style="display:inline-block;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:7px;margin:3px 4px 0 0;cursor:pointer;background:${col}">${hhEsc(label)}${mins}${cam}</span>`; };
   const cards=order.map(k=>{ const g=by[k];
     const d=g.rooms.filter(r=>r.status==='done').length, ip=g.rooms.filter(r=>r.status==='in_progress').length, pd=g.rooms.filter(r=>r.status==='pending').length;
     const pct=g.rooms.length?Math.round(d/g.rooms.length*100):0;
@@ -10298,6 +10302,120 @@ function hhDashStaffGrid(rooms){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font:800 14px Lato;color:#1a2b3a">Today at a glance — rooms by housekeeper</div><div style="font-size:11px;color:#8296a8">🧼 = public area</div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" class="hh-sg">${cards}</div>
     <style>@media(max-width:720px){.hh-sg{grid-template-columns:1fr!important}}</style></div>`;
+}
+/* ---- room photos (completion shots + cannot-start door photos) ---- */
+async function hhLoadPhotos(date, room){
+  if(typeof FB!=='undefined' && FB.db){ try{
+    const snap=await FB.db.collection('hoshouse_photos').where('date','==',date).where('room','==',String(room)).get();
+    return snap.docs.map(d=>d.data()).sort((a,b)=>(a.takenAt||0)-(b.takenAt||0));
+  }catch(e){ console.warn('hhLoadPhotos',e&&e.code); } }
+  try{ return JSON.parse(localStorage.getItem('hoshouse_photos_'+date)||'[]').filter(p=>String(p.room)===String(room)).sort((a,b)=>(a.takenAt||0)-(b.takenAt||0)); }catch(e){ return []; }
+}
+function hhModal(html){
+  let o=document.getElementById('hh-modal');
+  if(!o){ o=document.createElement('div'); o.id='hh-modal'; document.body.appendChild(o); }
+  o.innerHTML=`<div onclick="hhCloseModal()" style="position:fixed;inset:0;background:rgba(18,30,48,.5);z-index:3000"></div>
+    <div style="position:fixed;z-index:3001;top:50%;left:50%;transform:translate(-50%,-50%);width:min(680px,94vw);max-height:90vh;overflow:auto;background:#f7f9fc;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3)">${html}</div>`;
+  o.style.display='block';
+}
+function hhCloseModal(){ const o=document.getElementById('hh-modal'); if(o){ o.style.display='none'; o.innerHTML=''; } }
+function hhPhotoFig(p){
+  const src=p.dataUrl||p.url||''; const t=p.takenAt?new Date(p.takenAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+  return `<figure style="margin:0"><a href="${src}" target="_blank" rel="noopener"><img src="${src}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:10px;border:1px solid #e1e8f1"></a>
+    <figcaption style="font-size:11px;color:#6b7280;margin-top:3px;line-height:1.3">${hhEsc(p.label||p.slot||'')}<br>${t}${p.byName?(' · '+hhEsc(p.byName)):''}</figcaption></figure>`;
+}
+async function hhOpenRoom(room){
+  const date=window._hhDate||hhTodayISO();
+  hhModal('<div style="padding:34px;text-align:center;color:#8296a8">Loading room '+hhEsc(room)+'…</div>');
+  let r=null;
+  if(typeof FB!=='undefined' && FB.db){ try{ const d=await FB.db.collection('hoshouse_rooms').doc(hhDocId(date,room)).get(); if(d.exists) r=d.data(); }catch(e){} }
+  if(!r){ const day=await hhFetchDay(date); r=day.find(x=>String(x.room)===String(room))||{room,status:'pending'}; }
+  const photos=await hhLoadPhotos(date, room);
+  hhModal(hhRoomDetailHTML(r, photos, date));
+}
+function hhRoomDetailHTML(r, photos, date){
+  const esc=hhEsc;
+  const t=ms=>ms?new Date(ms).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+  const comp=photos.filter(p=>p.kind!=='cannotstart'); const door=photos.filter(p=>p.kind==='cannotstart');
+  const statusTxt=r.status==='blocked'?("Can't start — "+(r.blockReason==='dnd'?'Do Not Disturb':'Guest refused')):((r.status||'pending').replace('_',' '));
+  const statusCol=r.status==='done'?'#2a6a4a':r.status==='in_progress'?'#9c5a00':r.status==='blocked'?'#b3261e':'#6b7280';
+  const dur=r.durationSec?Math.round(r.durationSec/60)+' min':'';
+  const logLine=(ic,lab,val)=> val&&String(val).trim()?`<div style="font-size:12.5px;color:#1f2a37;margin-top:4px">${ic} <b>${lab}:</b> ${esc(val)}</div>`:'';
+  return `
+    <div style="position:sticky;top:0;background:linear-gradient(135deg,#1F3864,#2a4a80);color:#fff;padding:15px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-radius:16px 16px 0 0">
+      <div><div style="font:800 19px Lato">Room ${esc(r.room)}</div>
+        <div style="font-size:12.5px;opacity:.9;margin-top:2px">${esc(r.type||'')} · ${esc(date)}${r.housekeeperName?(' · '+esc(r.housekeeperName)):''}</div></div>
+      <button onclick="hhCloseModal()" style="flex:none;background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;font-size:19px;cursor:pointer">×</button>
+    </div>
+    <div style="padding:16px 18px 24px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <span style="background:${statusCol};color:#fff;font:800 11px Lato;text-transform:uppercase;letter-spacing:.4px;padding:4px 10px;border-radius:999px">${esc(statusTxt)}</span>
+        ${r.startAt?`<span style="font-size:12px;color:#5b6b7b">Started ${t(r.startAt)}</span>`:''}
+        ${r.finishAt?`<span style="font-size:12px;color:#5b6b7b">· Finished ${t(r.finishAt)}${dur?(' · '+dur):''}</span>`:''}
+      </div>
+      ${r.status==='blocked'?`<div style="background:#fdecea;border:1px solid #f3c0ba;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#b3261e;margin-bottom:12px">
+        ⛔ Could not be cleaned — ${r.blockReason==='dnd'?'Do Not Disturb sign on the door':'guest refused service'}. Logged by ${esc(r.blockedBy||r.housekeeperName||'housekeeper')} at ${t(r.blockedAt)}.</div>`:''}
+      ${r.notes&&r.notes.trim()?`<div style="background:#fff7e8;border:1px solid #f0d9ad;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#7a5a1e;margin-bottom:12px">📝 ${esc(r.notes)}</div>`:''}
+
+      ${comp.length?`<div style="font:800 12px Lato;color:#1a2b3a;text-transform:uppercase;letter-spacing:.4px;margin:4px 0 8px">Completion photos (${comp.length})</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${comp.map(hhPhotoFig).join('')}</div>`
+        : (r.status==='done'?'<div style="font-size:12.5px;color:#b3261e;background:#fdecea;border:1px solid #f3c0ba;border-radius:10px;padding:10px 12px">⚠ Marked done but no completion photos were found for this room.</div>':'')}
+
+      ${door.length?`<div style="font:800 12px Lato;color:#1a2b3a;text-transform:uppercase;letter-spacing:.4px;margin:16px 0 8px">Do Not Disturb — door photo</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${door.map(hhPhotoFig).join('')}</div>`:''}
+
+      <div style="margin-top:14px">
+        ${logLine('🔧','To maintenance',r.maintenance)}
+        ${logLine('♻','Items replaced',r.replaced)}
+        ${logLine('🎒','Lost property',r.lostProperty)}
+      </div>
+    </div>`;
+}
+
+/* ---- room cleaning history search (date + room) ---- */
+function hhHistoryHTML(){
+  const d=window._hhHistDate||hhTodayISO();
+  const lab='display:block;font:700 10.5px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px';
+  return `<div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+    <div style="font:800 15px Lato;color:#1a2b3a;margin-bottom:4px">🔎 Room cleaning history</div>
+    <div style="font-size:12.5px;color:#5b6b7b;margin-bottom:12px">Look up any room on any date — who cleaned it, when, and the photos taken. Use this if a guest says a room wasn't serviced.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div><label style="${lab}">Date</label><input type="date" id="hh-hist-date" value="${d}" style="padding:8px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato"></div>
+      <div><label style="${lab}">Room number</label><input id="hh-hist-room" placeholder="e.g. 211" style="padding:8px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato;width:130px"></div>
+      <button onclick="hhHistoryGo(false)" style="padding:9px 16px;border:none;background:#1F3864;color:#fff;border-radius:8px;font:800 12.5px Lato;cursor:pointer">Search</button>
+      <button onclick="hhHistoryGo(true)" title="Every room on this date" style="padding:9px 14px;border:1px solid #d7dde4;background:#fff;color:#1a2b3a;border-radius:8px;font:700 12.5px Lato;cursor:pointer">Whole day</button>
+    </div>
+  </div>
+  <div id="hh-hist-out"></div>`;
+}
+async function hhHistoryGo(wholeDay){
+  const date=(document.getElementById('hh-hist-date')||{}).value||hhTodayISO();
+  window._hhHistDate=date;
+  const room=((document.getElementById('hh-hist-room')||{}).value||'').trim();
+  const out=document.getElementById('hh-hist-out'); if(!out) return;
+  if(!wholeDay && !room){ out.innerHTML='<div style="padding:16px;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:12px">Enter a room number, or tap “Whole day”.</div>'; return; }
+  out.innerHTML='<div style="padding:20px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:12px">Searching…</div>';
+  let rooms=await hhFetchDay(date);
+  if(!wholeDay) rooms=rooms.filter(r=>String(r.room)===room);
+  rooms=rooms.filter(r=>!r.area).sort((a,b)=>(+a.room||0)-(+b.room||0));
+  if(!rooms.length){ out.innerHTML='<div style="padding:22px;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:12px">No record of '+(room?('room '+hhEsc(room)):'any rooms')+' for '+hhEsc(date)+'.</div>'; return; }
+  const t=ms=>ms?new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'—';
+  const cards=[];
+  for(const r of rooms){
+    const photos=await hhLoadPhotos(date, r.room);
+    const stCol=r.status==='done'?'#2a6a4a':r.status==='in_progress'?'#9c5a00':r.status==='blocked'?'#b3261e':'#6b7280';
+    const stText=r.status==='blocked'?("Can't start — "+(r.blockReason==='dnd'?'DND':'refused')):((r.status||'pending').replace('_',' '));
+    cards.push(`<div style="background:#fff;border:1px solid #e4e9ef;border-left:4px solid ${stCol};border-radius:12px;padding:13px 15px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div><b style="font-size:15px;color:#1a2b3a">Room ${hhEsc(r.room)}</b> <span style="font-size:12px;color:#5b6b7b">· ${hhEsc(r.type||'')}${r.housekeeperName?(' · '+hhEsc(r.housekeeperName)):''}</span></div>
+        <span style="font-size:11.5px;font-weight:800;color:${stCol};text-transform:capitalize">${hhEsc(stText)}</span>
+      </div>
+      <div style="font-size:11.5px;color:#8296a8;margin-top:4px">${r.startAt?('Started '+t(r.startAt)):''}${r.finishAt?(' · Finished '+t(r.finishAt)+' · '+Math.round((r.durationSec||0)/60)+' min'):''}${r.blockedAt?('Logged '+t(r.blockedAt)):''}</div>
+      ${photos.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px;margin-top:10px">${photos.map(hhPhotoFig).join('')}</div>`
+        :`<div style="font-size:12px;color:${r.status==='done'?'#b3261e':'#8296a8'};margin-top:8px">${r.status==='done'?'⚠ No photos found for this clean.':'No photos.'}</div>`}
+    </div>`);
+  }
+  out.innerHTML=cards.join('');
 }
 const HH_TARGET={Departure:25,Stayover:15,"Arrival-ready":10,"Gents WC":20,"Ladies WC":20,"Accessible WC":10,Reception:20};
 function hhTgt(t){ return HH_TARGET[t]||30; }

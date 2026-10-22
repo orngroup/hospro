@@ -121,11 +121,14 @@
     <div class="geo" id="rm-geo"></div>
     <div id="rm-warn"></div>
     <div class="chk" id="rm-chk"></div>
+    <div id="rm-photos"></div>
     <div id="rm-logs"></div>
     <button class="btn" id="rm-finish" style="background:var(--ok)" onclick="finishRoom()">Finish &amp; sign off room</button>
   </div>
 </div>
 
+<input type="file" id="camInput" accept="image/*" capture="environment" style="position:fixed;left:-9999px;top:0">
+<div id="hhOverlay" style="display:none"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
@@ -135,6 +138,10 @@
   const DEFT={Departure:'dep',Stayover:'stay','Arrival-ready':'arr'}, LET={Departure:'Departure',Stayover:'Stayover','Arrival-ready':'Arrival-ready'};
   let ME=null, rooms=[], unwatch=null, active=null, tmr=null, pinBuf='', prevSnap=null, STARS={}, starUnwatch=null;
   const today=HH.todayISO();
+  const PHOTO_SLOTS=[{k:'bath',label:'Bathtub interior'},{k:'mirror',label:'Mirror'},{k:'wc',label:'WC / toilet'},{k:'bed',label:'Bedroom incl. bed'}];
+  const THUMBS={}; // in-memory thumbnails for this session (room -> slot -> dataUrl)
+  function localThumb(room,slot,du){ (THUMBS[room]=THUMBS[room]||{})[slot]=du; }
+  function getThumb(room,slot){ return (THUMBS[room]||{})[slot]; }
 
   // ---- performance stars (managers rate 1–5; shared + live) ----
   function starsFor(hkId){ return STARS[hkId]||0; }
@@ -325,16 +332,21 @@
     const inprog=mine.filter(r=>r.status==='in_progress');
     // Each person sees ONLY the rooms allocated to them (no picking).
     // Rooms not yet allocated show only to a lead, so they can mop up.
-    const pending=rooms.filter(r=>r.status==='pending' && r.housekeeper===ME.id);
+    const pending=rooms.filter(r=>(r.status==='pending'||r.status==='blocked') && r.housekeeper===ME.id);
     const unassigned=rooms.filter(r=>r.status==='pending' && !r.housekeeper);
     const doneMine=mine.filter(r=>r.status==='done');
     const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const note=r=> r.notes&&r.notes.trim() ? `<div class="rnote">📝 ${esc(r.notes)}</div>` : '';
+    const plus=r=>`<button class="go" style="background:#eef1f5;color:var(--navy);padding:11px 13px" title="Add a note (cot, extra towels…)" onclick="event.stopPropagation();addNote('${r.room}')">＋</button>`;
+    const blockedNote=r=> r.status==='blocked' ? `<div class="rnote" style="background:#fdecea;border-color:#f3c0ba;color:#b3261e">⛔ ${r.blockReason==='dnd'?'Do Not Disturb':'Guest refused'} · ${r.blockedAt?new Date(r.blockedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):''}${r.blockReason==='dnd'?' · door photo saved':''}</div>` : '';
     const row=r=>{
       const pc=DEFT[r.type]||'dep';
-      if(r.status==='in_progress') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${note(r)}</div>`;
-      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min</div></div>${note(r)}</div>`;
-      return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"></div><button class="go" onclick="startRoom('${r.room}')">Start</button>${note(r)}</div>`;
+      if(r.status==='in_progress') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${plus(r)}${note(r)}</div>`;
+      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min · 📷4</div></div>${plus(r)}${note(r)}</div>`;
+      return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"></div>
+        <button class="go" onclick="startRoom('${r.room}')">Start</button>
+        <button class="go" style="background:var(--red)" title="Can't clean this room right now" onclick="cannotStart('${r.room}')">Can't start</button>
+        ${plus(r)}${blockedNote(r)}${note(r)}</div>`;
     };
     const myAvg=doneMine.length?Math.round(doneMine.reduce((a,r)=>a+(r.durationSec||0)/60,0)/doneMine.length):0;
     const left=pending.length+inprog.length;
@@ -363,8 +375,68 @@
   async function startRoom(room){
     const g=await HH.checkGeo();
     if(g.blocked){ alert('You appear to be '+(g.distance||'?')+' m from the hotel. Move on-site to start this room.'); return; }
-    await HH.updateRoom(today, room, { status:'in_progress', housekeeper:ME.id, housekeeperName:ME.name, startAt:Date.now(), geoStartOk: g.ok===true, geoStartDist: g.distance||null });
+    await HH.updateRoom(today, room, { status:'in_progress', housekeeper:ME.id, housekeeperName:ME.name, startAt:Date.now(), geoStartOk: g.ok===true, geoStartDist: g.distance||null, blockReason:'', blockedAt:null });
     openRoom(room);
+  }
+  // ---- camera capture with a burnt-in date/time + room stamp ----
+  function capturePhoto(caption){
+    return new Promise(res=>{
+      const inp=$('camInput'); inp.value='';
+      inp.onchange=async function(){ const f=inp.files&&inp.files[0]; inp.onchange=null; if(!f){ res(null); return; } res(await compressBurn(f, caption)); };
+      inp.click();
+    });
+  }
+  function compressBurn(file, caption){
+    return new Promise(res=>{
+      const img=new Image(), url=URL.createObjectURL(file);
+      img.onload=function(){
+        let w=img.width,h=img.height; const M=1000;
+        if(w>h && w>M){ h=Math.round(h*M/w); w=M; } else if(h>=w && h>M){ w=Math.round(w*M/h); h=M; }
+        const c=document.createElement('canvas'); c.width=w; c.height=h; const ctx=c.getContext('2d');
+        ctx.drawImage(img,0,0,w,h);
+        const stamp=caption+'  ·  '+new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        const fs=Math.max(13,Math.round(w*0.030)); ctx.font='700 '+fs+'px system-ui,Arial,sans-serif';
+        const pad=Math.round(fs*0.55), bh=fs+pad*2;
+        ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(0,h-bh,w,bh);
+        ctx.fillStyle='#fff'; ctx.textBaseline='middle'; ctx.fillText(stamp, pad, h-bh/2, w-pad*2);
+        URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg',0.55));
+      };
+      img.onerror=function(){ URL.revokeObjectURL(url); res(null); };
+      img.src=url;
+    });
+  }
+  // ---- quick note (cot, extra towels, etc.) ----
+  async function addNote(room){
+    const r=rooms.find(x=>x.room===room)||{};
+    const cur=r.notes||'';
+    const val=prompt('Note for room '+room+' (cot, extra towels, late checkout…):', cur);
+    if(val===null) return;
+    await HH.updateRoom(today, room, {notes:val.trim()});
+  }
+  // ---- cannot start flow ----
+  function closeOverlay(){ const o=$('hhOverlay'); o.style.display='none'; o.innerHTML=''; }
+  function cannotStart(room){
+    const o=$('hhOverlay'); o.style.display='block';
+    o.innerHTML=`<div style="position:fixed;inset:0;background:rgba(10,20,35,.55);z-index:1000" onclick="closeOverlay()"></div>
+      <div style="position:fixed;left:0;right:0;bottom:0;z-index:1001;background:#fff;border-radius:18px 18px 0 0;padding:18px;max-width:720px;margin:0 auto">
+        <div style="font:800 17px inherit;color:var(--navy);margin-bottom:3px">Can't start Room ${room}</div>
+        <div style="color:var(--muted);font-size:13px;margin-bottom:14px">Why can't this room be cleaned right now?</div>
+        <button class="btn" style="background:var(--amber);margin-bottom:10px" onclick="csReason('${room}','refused')">🙅 Guest refused service</button>
+        <button class="btn" style="background:var(--dep)" onclick="csReason('${room}','dnd')">🚪 Do Not Disturb — take photo of the door &amp; sign</button>
+        <button class="btn" style="background:#eef1f5;color:var(--ink);margin-top:10px" onclick="closeOverlay()">Cancel</button>
+      </div>`;
+  }
+  async function csReason(room, reason){
+    if(reason==='dnd'){
+      const du=await capturePhoto('Room '+room+' · Do Not Disturb');
+      if(!du) return;  // cancelled — leave the sheet open
+      const ts=Date.now();
+      await HH.addPhoto({date:today, room, slot:'door', label:'Do Not Disturb door', dataUrl:du, by:ME.id, byName:ME.name, kind:'cannotstart', takenAt:ts});
+      await HH.updateRoom(today, room, {status:'blocked', blockReason:'dnd', blockedAt:ts, blockedBy:ME.name, housekeeper:ME.id, housekeeperName:ME.name});
+    } else {
+      await HH.updateRoom(today, room, {status:'blocked', blockReason:'refused', blockedAt:Date.now(), blockedBy:ME.name, housekeeper:ME.id, housekeeperName:ME.name});
+    }
+    closeOverlay(); backToList();
   }
   function openRoom(room){
     active=rooms.find(r=>r.room===room) || {room, type:'Departure', checklist:{}};
@@ -382,7 +454,34 @@
       <div style="font-size:12.5px;color:var(--muted);font-weight:500;padding-left:32px;line-height:1.35">${it.d}</div>
     </label>`).join('');
     renderLogs();
+    renderPhotos();
     $('rm-geo').textContent = active.geoStartOk===false ? '⚠ Start location was off-site (logged)' : (active.geoStartOk? '📍 On-site at start' : '');
+  }
+  function renderPhotos(){
+    const box=$('rm-photos'); if(!box) return;
+    if(active.area){ box.innerHTML=''; return; }   // public areas don't need the 4 room photos
+    const photos=active.photos||{};
+    const n=PHOTO_SLOTS.filter(s=>photos[s.k]).length;
+    const slot=s=>{ const taken=!!photos[s.k]; const th=getThumb(active.room,s.k);
+      return `<div style="background:#fff;border:1.5px solid ${taken?'var(--ok)':'var(--line)'};border-radius:12px;padding:10px;text-align:center">
+        ${th?`<img src="${th}" alt="" style="width:100%;height:80px;object-fit:cover;border-radius:8px;margin-bottom:7px">`:`<div style="height:80px;border-radius:8px;background:${taken?'#ecf6f0':'#f3f5f8'};display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:7px">${taken?'✓':'📷'}</div>`}
+        <div style="font-size:12.5px;font-weight:700;color:${taken?'var(--ok)':'var(--ink)'};margin-bottom:7px">${s.label}</div>
+        <button class="go" style="width:100%;background:${taken?'#eef1f5':'var(--navy)'};color:${taken?'var(--navy)':'#fff'};padding:9px" onclick="takeSlot('${s.k}')">${taken?'Retake':'Take photo'}</button>
+      </div>`; };
+    box.innerHTML=`<div class="sect" style="margin-top:14px">📷 Completion photos — all 4 required (${n}/4)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${PHOTO_SLOTS.map(slot).join('')}</div>`;
+    const fin=$('rm-finish'); if(fin){ const ready=n===4; fin.style.opacity=ready?'1':'.55'; fin.textContent=ready?'Finish & sign off room':'Take all 4 photos to finish ('+n+'/4)'; }
+  }
+  async function takeSlot(slotK){
+    const slot=PHOTO_SLOTS.find(s=>s.k===slotK); if(!slot||!active) return;
+    const du=await capturePhoto('Room '+active.room+' · '+slot.label);
+    if(!du) return;
+    const ts=Date.now();
+    localThumb(active.room, slotK, du);
+    await HH.addPhoto({date:today, room:active.room, slot:slotK, label:slot.label, dataUrl:du, by:ME.id, byName:ME.name, kind:'complete', takenAt:ts});
+    const photos=Object.assign({}, active.photos||{}); photos[slotK]=ts; active.photos=photos;
+    await HH.updateRoom(today, active.room, {photos});
+    renderPhotos();
   }
   function renderLogs(){
     const box=$('rm-logs'); if(!box) return;
@@ -404,6 +503,10 @@
     const el=$('rm-timer'); el.textContent=mmss(s); el.className='timer'+(s>=win*60?' red':s>=(win-5)*60?' amber':'');
   }
   async function finishRoom(){
+    if(!active.area){
+      const photos=active.photos||{}; const miss=PHOTO_SLOTS.filter(s=>!photos[s.k]).map(s=>s.label);
+      if(miss.length){ alert('Please take all 4 completion photos before signing off:\n\n• '+miss.join('\n• ')); return; }
+    }
     const cl=active.checklist||{}; const items=HH.checklistFor(active.type); const missed=items.filter(it=>!cl[it.k]).map(it=>it.t);
     if(missed.length && !confirm('Not ticked: '+missed.join(', ')+'. Finish anyway?')) return;
     const g=await HH.checkGeo();
