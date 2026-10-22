@@ -137,6 +137,15 @@ service cloud.firestore {
       allow read, update, delete: if isStaff();
     }
 
+    // Social media request form (/mktrequest): anyone with the link can SUBMIT
+    // a request (no login); only staff can read, action or delete them.
+    match /mkt_requests/{id} {
+      allow create: if request.resource.data.status == 'new'
+        && request.resource.data.ref is string
+        && request.resource.data.concept is string;
+      allow read, update, delete: if isStaff();
+    }
+
     // ── HosHUB (document hub) — staff only ──
     // Config = custom categories + extra folders (hoshub/config).
     match /hoshub/{doc}       { allow read, write: if isStaff(); }

@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Social Media Request · Brandon Hall Hotel &amp; Spa</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --navy:#1F3864; --navy2:#2a4a80; --teal:#2B726A; --gold:#9c7a3c; --ink:#1a2230; --mut:#64748b; --line:#e4e9ef; --bg:#eef2f7; --card:#fff; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Lato,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px 60px}
+  header.top{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:26px 16px 30px;text-align:center}
+  header.top .inner{max-width:760px;margin:0 auto}
+  header.top img{height:54px;width:auto;margin-bottom:10px;filter:brightness(0) invert(1)}
+  header.top .est{font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:.8}
+  header.top h1{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:30px;margin:8px 0 4px;letter-spacing:.3px}
+  header.top p{margin:0;font-size:13.5px;opacity:.9;max-width:52em;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 2px 10px rgba(16,34,64,.06);padding:22px 20px;margin-top:-14px}
+  .note{background:#f4f7fb;border:1px solid #dde6f1;border-radius:12px;padding:12px 14px;font-size:13px;color:#42506a;margin-bottom:22px}
+  .note b{color:var(--navy)}
+  fieldset{border:none;margin:0 0 6px;padding:0}
+  .sec{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:19px;color:var(--navy);margin:22px 0 2px;padding-bottom:6px;border-bottom:2px solid #eef1f6}
+  .sec:first-of-type{margin-top:4px}
+  label.f{display:block;margin:15px 0 0}
+  label.f .lab{display:block;font-weight:700;font-size:13px;margin-bottom:5px}
+  label.f .lab .req{color:#c0392b}
+  label.f .hint{font-weight:400;color:var(--mut);font-size:12px;margin-left:2px}
+  input[type=text],input[type=email],input[type=date],input[type=url],textarea,select{
+    width:100%;padding:11px 12px;border:1px solid #cfd8e3;border-radius:10px;font:inherit;background:#fff;color:var(--ink)}
+  textarea{min-height:84px;resize:vertical}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(43,114,106,.15)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .chip{display:inline-flex;align-items:center;gap:7px;border:1px solid #cfd8e3;border-radius:999px;padding:8px 14px;cursor:pointer;font-size:13.5px;user-select:none}
+  .chip input{accent-color:var(--teal);width:16px;height:16px}
+  .chip.on{border-color:var(--teal);background:#eaf3f1;color:var(--teal);font-weight:700}
+  .drop{margin-top:7px;border:1.5px dashed #b9c6d6;border-radius:12px;padding:16px;text-align:center;background:#fafcfe;cursor:pointer}
+  .drop:hover{border-color:var(--teal);background:#f3f9f8}
+  .drop .big{font-weight:700;color:var(--navy)}
+  .drop .sm{font-size:12px;color:var(--mut);margin-top:3px}
+  .files{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+  .frow{display:flex;align-items:center;gap:10px;background:#f5f8fc;border:1px solid #e1e8f1;border-radius:9px;padding:7px 10px;font-size:13px}
+  .frow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .frow .sz{color:var(--mut);font-size:12px}
+  .frow .x{cursor:pointer;color:#c0392b;font-weight:900;border:none;background:none;font-size:16px;line-height:1}
+  .thumb{width:34px;height:34px;border-radius:6px;object-fit:cover;background:#dde6f1;flex:none}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:560px){.grid2{grid-template-columns:1fr}}
+  .actions{margin-top:26px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  button.go{background:var(--teal);color:#fff;border:none;border-radius:11px;padding:14px 26px;font:900 15px Lato;cursor:pointer;flex:1;min-width:200px}
+  button.go:disabled{opacity:.6;cursor:default}
+  .tiny{font-size:12px;color:var(--mut)}
+  .ok,.err{border-radius:12px;padding:14px 16px;margin-top:14px;font-size:14px;display:none}
+  .ok{background:#eaf4ee;border:1px solid #bfe0cd;color:#1e6b2f}
+  .err{background:#fdecea;border:1px solid #f3c0ba;color:#b3261e}
+  .done{display:none;text-align:center;padding:30px 10px}
+  .done .big{font-family:'Cormorant Garamond',serif;font-size:30px;color:var(--navy);font-weight:700}
+  .done .ref{display:inline-block;margin:12px 0;background:#eaf3f1;color:var(--teal);font-weight:900;letter-spacing:1px;border-radius:10px;padding:10px 18px;font-size:18px}
+  .done button{margin-top:14px;background:var(--navy);color:#fff;border:none;border-radius:10px;padding:12px 22px;font:700 14px Lato;cursor:pointer}
+  footer{text-align:center;color:var(--mut);font-size:12px;margin-top:26px;line-height:1.7}
+  .barwrap{display:none;margin-top:12px}
+  .bar{height:8px;background:#e4e9ef;border-radius:99px;overflow:hidden}
+  .bar > i{display:block;height:100%;width:0;background:var(--teal);transition:width .25s}
+</style>
+</head>
+<body>
+<header class="top"><div class="inner">
+  <img src="/bh-logo.svg" alt="" onerror="this.style.display='none'">
+  <div class="est">Brandon Hall Hotel &amp; Spa</div>
+  <h1>Social Media Request</h1>
+  <p>One form per post or campaign so nothing is missed or duplicated. Your request goes straight into HosPRO for the marketing team to action — no need to email.</p>
+</div></header>
+
+<div class="wrap">
+  <div class="card" id="card">
+    <div class="note">
+      <b>How this works:</b> complete one form for each individual post or campaign idea. The more detail you give (wording, images, links, call to action, dates), the faster it can go live. Fields marked <span style="color:#c0392b">*</span> are required. Everything is collated in one place so there are no more scattered emails.
+    </div>
+
+    <form id="form" novalidate>
+      <div class="sec">Who &amp; when</div>
+      <div class="grid2">
+        <label class="f"><span class="lab">Your name <span class="req">*</span></span>
+          <input type="text" id="requestedBy" autocomplete="name" required></label>
+        <label class="f"><span class="lab">Your email <span class="hint">— for any follow-up</span></span>
+          <input type="email" id="email" autocomplete="email"></label>
+      </div>
+      <label class="f"><span class="lab">Department / area</span>
+        <select id="dept">
+          <option value="">Select…</option>
+          <option>Weddings</option><option>Meetings &amp; Corporate</option><option>Events &amp; Private Dining</option>
+          <option>Spa &amp; Leisure</option><option>Dining / F&amp;B</option><option>Rooms &amp; Stays</option>
+          <option>Front Office / Reception</option><option>General / Hotel</option>
+        </select></label>
+
+      <div class="sec">The post</div>
+      <label class="f"><span class="lab">Post concept / title <span class="req">*</span></span>
+        <input type="text" id="concept" placeholder="e.g. Christmas Party Nights — now taking bookings" required></label>
+      <label class="f"><span class="lab">Campaign or event it belongs to <span class="hint">— helps us group &amp; avoid duplicates</span></span>
+        <input type="text" id="category" placeholder="e.g. Christmas 2026 · Weddings · Festive Afternoon Tea"></label>
+
+      <label class="f"><span class="lab">Which channels?</span></label>
+      <div class="chips" id="channels">
+        <label class="chip"><input type="checkbox" value="Facebook">Facebook</label>
+        <label class="chip"><input type="checkbox" value="Instagram">Instagram</label>
+        <label class="chip"><input type="checkbox" value="LinkedIn">LinkedIn</label>
+        <label class="chip"><input type="checkbox" value="Website / Blog">Website / Blog</label>
+        <label class="chip"><input type="checkbox" value="Any / Not sure">Any / Not sure</label>
+      </div>
+
+      <label class="f"><span class="lab">Content wording / text to include
+        <span class="hint">— if specific words MUST appear, put them here exactly</span></span>
+        <textarea id="wording" placeholder="The caption or key message. Include prices, dates, phone numbers or hashtags exactly as they should appear."></textarea></label>
+
+      <label class="f"><span class="lab">Specific call to action</span>
+        <input type="text" id="cta" placeholder="e.g. Book now · Call 024 7646 3666 · Link in bio · DM us"></label>
+
+      <div class="sec">Images, files &amp; links</div>
+      <label class="f"><span class="lab">Preferred images — describe what you'd like</span>
+        <textarea id="prefImages" placeholder="e.g. use the new spa photos, the Christmas tree in reception, a specific dish. Then attach them below if you have them."></textarea></label>
+
+      <label class="f"><span class="lab">Attach images <span class="hint">— JP/ PNG, you can add several</span></span></label>
+      <div class="drop" id="dropImg"><div class="big">📷 Tap to add images</div><div class="sm">or drag &amp; drop here</div>
+        <input type="file" id="imgInput" accept="image/*" multiple hidden></div>
+      <div class="files" id="imgList"></div>
+
+      <label class="f"><span class="lab">Attach files / brochures <span class="hint">— PDF, Word, etc.</span></span></label>
+      <div class="drop" id="dropFile"><div class="big">📎 Tap to add files</div><div class="sm">brochures, flyers, documents</div>
+        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv" multiple hidden></div>
+      <div class="files" id="fileList"></div>
+
+      <label class="f"><span class="lab">Which brochure is this based on? <span class="hint">— if any</span></span>
+        <input type="text" id="brochure" placeholder="e.g. Christmas brochure 2026, Wedding brochure"></label>
+      <label class="f"><span class="lab">Relevant links</span>
+        <textarea id="links" placeholder="Booking page, event page, articles, anything we should link to (one per line)."></textarea></label>
+
+      <div class="sec">Timing</div>
+      <div class="grid2">
+        <label class="f"><span class="lab">Ideal post date</span>
+          <input type="date" id="idealDate"></label>
+        <label class="f"><span class="lab">Needed by <span class="hint">— latest it can go</span></span>
+          <input type="date" id="neededBy"></label>
+      </div>
+      <label class="f"><span class="lab">Any timing / push notes</span>
+        <textarea id="push" placeholder="e.g. must go before 1 Nov, boost for the weekend, repeat weekly until sold out, tie in with the event date."></textarea></label>
+
+      <div class="err" id="err"></div>
+      <div class="barwrap" id="barwrap"><div class="bar"><i id="barfill"></i></div><div class="tiny" id="barmsg" style="margin-top:6px"></div></div>
+      <div class="actions">
+        <button type="submit" class="go" id="submitBtn">Submit request</button>
+        <span class="tiny">Stored securely in HosPRO · Brandon Hall Hotel &amp; Spa</span>
+      </div>
+    </form>
+  </div>
+
+  <div class="card done" id="done">
+    <div class="big">Thank you — request received ✔</div>
+    <p style="color:#42506a">It's now in HosPRO for the marketing team to pick up and action. Keep your reference in case you need to chase it.</p>
+    <div class="ref" id="refOut">MR-000000</div>
+    <div><button type="button" id="again">Submit another request</button></div>
+  </div>
+
+  <footer>
+    Brandon Hall Hotel &amp; Spa · Social media requests<br>
+    Please use this form rather than emailing — it keeps every request in one place.
+  </footer>
+</div>
+
+<!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="/firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+  var FB={ready:false};
+  try{
+    if(typeof firebase!=="undefined" && typeof firebaseConfig!=="undefined"){
+      firebase.initializeApp(firebaseConfig);
+      FB.auth=firebase.auth(); FB.db=firebase.firestore();
+      try{ FB.storage=firebase.storage(); }catch(e){ FB.storage=null; }
+      FB.ready=true;
+    }
+  }catch(e){ console.warn("Firebase init failed:",e&&e.message); }
+
+  var $=function(id){return document.getElementById(id);};
+  var imgFiles=[], docFiles=[];
+
+  // ---- channel chips ----
+  Array.prototype.forEach.call(document.querySelectorAll('#channels .chip'),function(ch){
+    var cb=ch.querySelector('input');
+    cb.addEventListener('change',function(){ ch.classList.toggle('on',cb.checked); });
+  });
+
+  // ---- file pickers ----
+  function human(n){ if(n<1024)return n+' B'; if(n<1048576)return (n/1024).toFixed(0)+' KB'; return (n/1048576).toFixed(1)+' MB'; }
+  function renderList(box,arr,isImg){
+    box.innerHTML='';
+    arr.forEach(function(f,i){
+      var row=document.createElement('div'); row.className='frow';
+      if(isImg){ var im=document.createElement('img'); im.className='thumb'; im.src=URL.createObjectURL(f); row.appendChild(im); }
+      var nm=document.createElement('div'); nm.className='nm'; nm.textContent=f.name; row.appendChild(nm);
+      var sz=document.createElement('div'); sz.className='sz'; sz.textContent=human(f.size); row.appendChild(sz);
+      var x=document.createElement('button'); x.type='button'; x.className='x'; x.textContent='×';
+      x.addEventListener('click',function(){ arr.splice(i,1); renderList(box,arr,isImg); }); row.appendChild(x);
+      box.appendChild(row);
+    });
+  }
+  function wireDrop(dropId,inputId,arr,box,isImg){
+    var drop=$(dropId), input=$(inputId);
+    drop.addEventListener('click',function(){ input.click(); });
+    input.addEventListener('change',function(){ add(input.files); input.value=''; });
+    ['dragover','dragenter'].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.style.borderColor='#2B726A'; }); });
+    ['dragleave','drop'].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.style.borderColor=''; }); });
+    drop.addEventListener('drop',function(e){ if(e.dataTransfer&&e.dataTransfer.files) add(e.dataTransfer.files); });
+    function add(list){ Array.prototype.forEach.call(list,function(f){
+        if(f.size>25*1048576){ alert('"'+f.name+'" is over 25 MB and was skipped.'); return; }
+        arr.push(f); }); renderList(box,arr,isImg); }
+  }
+  wireDrop('dropImg','imgInput',imgFiles,$('imgList'),true);
+  wireDrop('dropFile','fileInput',docFiles,$('fileList'),false);
+
+  // ---- image compression (fallback + to keep uploads light) ----
+  function compress(file,maxW,q){
+    return new Promise(function(res){
+      if(!/^image\//.test(file.type)){ res(file); return; }
+      var img=new Image(), url=URL.createObjectURL(file);
+      img.onload=function(){
+        var w=img.width,h=img.height; if(w>maxW){ h=Math.round(h*maxW/w); w=maxW; }
+        var c=document.createElement('canvas'); c.width=w; c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        c.toBlob(function(b){ URL.revokeObjectURL(url); res(b&&b.size<file.size?b:file); },'image/jpeg',q||0.78);
+      };
+      img.onerror=function(){ URL.revokeObjectURL(url); res(file); };
+      img.src=url;
+    });
+  }
+  function toDataURL(blob){ return new Promise(function(res){ var r=new FileReader(); r.onload=function(){res(r.result);}; r.onerror=function(){res(null);}; r.readAsDataURL(blob); }); }
+
+  function ref(){
+    var d=new Date(), p=function(n){return (n<10?'0':'')+n;};
+    return 'MR-'+String(d.getFullYear()).slice(2)+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
+  }
+
+  var barwrap=$('barwrap'), barfill=$('barfill'), barmsg=$('barmsg');
+  function progress(pct,msg){ barwrap.style.display='block'; barfill.style.width=pct+'%'; if(msg)barmsg.textContent=msg; }
+
+  // ---- upload one file to Storage, fall back to inline data URL for images ----
+  function uploadOne(refId,file,canStore){
+    return new Promise(function(res){
+      function inline(){
+        if(/^image\//.test(file.type)){
+          compress(file,1000,0.6).then(function(b){ return toDataURL(b); }).then(function(du){
+            if(du && du.length<900000) res({name:file.name,type:file.type,size:file.size,dataUrl:du,store:'inline'});
+            else res({name:file.name,type:file.type,size:file.size,store:'failed'});
+          });
+        } else res({name:file.name,type:file.type,size:file.size,store:'failed'});
+      }
+      if(!canStore){ inline(); return; }
+      compress(file,1600,0.82).then(function(blob){
+        var path='mkt_requests/'+refId+'/'+Date.now()+'_'+file.name.replace(/[^\w.\-]+/g,'_');
+        var task=FB.storage.ref().child(path).put(blob,{contentType:file.type||'application/octet-stream'});
+        task.on('state_changed',null,function(){ inline(); /* storage failed → inline */ },function(){
+          task.snapshot.ref.getDownloadURL().then(function(u){
+            res({name:file.name,type:file.type,size:blob.size,url:u,store:'storage'});
+          }).catch(inline);
+        });
+      });
+    });
+  }
+
+  function showErr(m){ var e=$('err'); e.textContent=m; e.style.display='block'; window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}); }
+
+  $('form').addEventListener('submit',function(ev){
+    ev.preventDefault();
+    $('err').style.display='none';
+    var requestedBy=$('requestedBy').value.trim(), concept=$('concept').value.trim();
+    if(!requestedBy){ showErr('Please add your name.'); $('requestedBy').focus(); return; }
+    if(!concept){ showErr('Please add a post concept / title.'); $('concept').focus(); return; }
+    if(!FB.ready){ showErr('Could not reach the server. Please check your connection and try again.'); return; }
+
+    var btn=$('submitBtn'); btn.disabled=true; btn.textContent='Submitting…';
+    var channels=[]; Array.prototype.forEach.call(document.querySelectorAll('#channels input:checked'),function(c){channels.push(c.value);});
+    var refId=ref();
+
+    // auth (anonymous) so Storage uploads are allowed; not fatal if it fails
+    var authP = FB.auth && !FB.auth.currentUser ? FB.auth.signInAnonymously().then(function(){return true;}).catch(function(){return false;}) : Promise.resolve(true);
+
+    authP.then(function(authed){
+      var canStore = !!(FB.storage && authed);
+      var all=imgFiles.concat(docFiles), results=[], done=0, total=all.length;
+      progress(total?5:40, total? 'Uploading '+total+' file'+(total>1?'s':'')+'…' : 'Saving…');
+      var seq=Promise.resolve();
+      all.forEach(function(f){
+        seq=seq.then(function(){ return uploadOne(refId,f,canStore).then(function(r){ results.push(r); done++; progress(total?5+Math.round(done/total*80):40, 'Uploading '+done+'/'+total+'…'); }); });
+      });
+      return seq.then(function(){ return {results:results, channels:channels, refId:refId, authed:authed}; });
+    }).then(function(ctx){
+      progress(92,'Saving request…');
+      var failed=ctx.results.filter(function(r){return r.store==='failed';}).map(function(r){return r.name;});
+      var doc={
+        ref:ctx.refId, status:'new',
+        requestedBy:requestedBy, email:$('email').value.trim(), dept:$('dept').value,
+        concept:concept, category:$('category').value.trim(),
+        channels:ctx.channels,
+        wording:$('wording').value.trim(), cta:$('cta').value.trim(),
+        prefImages:$('prefImages').value.trim(), brochure:$('brochure').value.trim(),
+        links:$('links').value.trim(),
+        idealDate:$('idealDate').value||'', neededBy:$('neededBy').value||'',
+        push:$('push').value.trim(),
+        files:ctx.results,
+        createdAt:Date.now(),
+        createdDate:new Date().toISOString().slice(0,10),
+        uploadNote: failed.length? ('Could not attach: '+failed.join(', ')) : ''
+      };
+      return FB.db.collection('mkt_requests').doc(ctx.refId).set(doc).then(function(){ return {refId:ctx.refId, failed:failed}; });
+    }).then(function(r){
+      progress(100,'Done');
+      $('refOut').textContent=r.refId;
+      $('card').style.display='none'; $('done').style.display='block';
+      window.scrollTo({top:0,behavior:'smooth'});
+      if(r.failed.length){ var d=$('done'); var w=document.createElement('p'); w.className='tiny'; w.style.color='#b3261e';
+        w.textContent='Note: some files were too large to attach ('+r.failed.join(', ')+') — please email those to the marketing team.'; d.insertBefore(w,d.querySelector('.ref').nextSibling); }
+    }).catch(function(e){
+      console.error(e); btn.disabled=false; btn.textContent='Submit request';
+      showErr('Sorry — something went wrong saving your request ('+(e&&e.code||e&&e.message||'error')+'). Please try again.');
+      barwrap.style.display='none';
+    });
+  });
+
+  $('again').addEventListener('click',function(){ location.reload(); });
+})();
+</script>
+</body>
+</html>
