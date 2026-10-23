@@ -889,7 +889,7 @@ VIEWS.docs = () => {
   return `<h2>Documents and <span class="fl">policies</span></h2>
   <p class="lead">Fire risk assessments (Soldorlet), the fire service letter, policies and procedures, contracts, statements and quotes. Files are stored privately in HosFIRE, never in the website code.</p>
   <div class="tabs2">${["", ...HF_DOC_CATS].map((c) => `<button data-dc="${h(c)}" class="${f.cat === c ? "on" : ""}">${c || "All"} (${c ? reg("doc").filter((d) => d.cat === c).length : reg("doc").length})</button>`).join("")}</div>
-  <div class="row" style="margin-bottom:10px"><div class="grow"></div><button class="btn red" id="d-new">+ Add document</button></div>
+  <div class="row" style="margin-bottom:10px"><div class="grow"></div><button class="btn ghost" id="d-bulk">⬆ Upload several files</button><button class="btn red" id="d-new">+ Add document</button></div>
   <div class="tw"><table><tr><th>Document</th><th>Category</th><th>Date</th><th>Version</th><th>Issued by</th><th>File</th></tr>
   ${rows.map((d) => `<tr><td><a href="#" data-d="${d.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(d.title)}</a>${d.notes ? `<div class="muted">${h(d.notes)}</div>` : ""}</td><td class="muted">${h(d.cat)}</td><td>${d.date ? fds(d.date) : ""}</td><td>${h(d.version)}</td><td>${h(d.author)}</td>
     <td>${d.file ? `<a href="#" data-open="${d.id}">View</a>` : `<span class="pill p-amb">Upload</span>`}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">No documents.</td></tr>`}
@@ -898,9 +898,44 @@ VIEWS.docs = () => {
 BIND.docs = (v) => {
   $$("[data-dc]", v).forEach((b) => (b.onclick = () => { S.f.doc.cat = b.dataset.dc; render(); }));
   $("#d-new", v).onclick = () => editReg("doc", null);
+  $("#d-bulk", v).onclick = bulkUpload;
   $$("[data-d]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); editReg("doc", a.dataset.d); }));
   $$("[data-open]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); openFile(S.data.registers.find((x) => x.id === a.dataset.open).file); }));
 };
+
+/* Upload many files at once. A file named "doc-fra-rev1__Anything.pdf" (or
+   "doc-eicr+cert-06__…") is attached to those entries; any other file becomes
+   a new document named after the file. */
+function bulkUpload() {
+  const m = modal(`<h3>Upload several files</h3>
+    <p class="muted">Choose all the files at once (you can select a whole folder's contents). Files from the "HosFIRE documents to upload" folder are matched to their entries automatically; any other file is added as a new document.</p>
+    <div class="f2"><div><label>Category for new files</label><select id="bu-cat">${HF_DOC_CATS.map((c) => `<option ${c === "Other" ? "selected" : ""}>${h(c)}</option>`).join("")}</select></div><div></div></div>
+    <input type="file" id="bu-f" multiple><div id="bu-list" class="muted" style="margin-top:8px"></div>
+    <div class="row" style="margin-top:12px"><button class="btn red" id="bu-go">Upload</button><button class="btn ghost" data-close>Close</button></div><div class="err" id="bu-msg"></div>`);
+  const fi = $("#bu-f", m);
+  const plan = () => Array.from(fi.files).map((f) => { const i = f.name.indexOf("__"); const ids = i > 0 ? f.name.slice(0, i).split("+") : [];
+    const known = ids.filter((id) => S.data.registers.some((r) => r.id === id)); return { f, ids, known, title: (i > 0 ? f.name.slice(i + 2) : f.name).replace(/\.[^.]+$/, "") }; });
+  fi.onchange = () => { const P = plan(); $("#bu-list", m).innerHTML = `${P.length} files · ${P.filter((x) => x.known.length).length} match existing entries · ${P.filter((x) => !x.known.length).length} will be new documents`; };
+  $("#bu-go", m).onclick = async () => {
+    const P = plan(), msg = $("#bu-msg", m); if (!P.length) { msg.textContent = "Choose the files first."; return; }
+    $("#bu-go", m).disabled = true; S.hold = true; let n = 0, fail = 0;
+    for (const x of P) {
+      msg.textContent = `Uploading ${n + fail + 1} of ${P.length}: ${x.title}`;
+      try {
+        const file = await upload("documents", x.f);
+        if (x.known.length) { for (const id of x.known) await put("registers", id, { file }); }
+        else {
+          const kind = x.ids[0] && x.ids[0].startsWith("cert-") ? "cert" : "doc";
+          await (x.ids[0] ? put("registers", x.ids[0], { kind, title: x.title, cat: $("#bu-cat", m).value, date: "", version: "", author: "", file }) : add("registers", { kind: "doc", title: x.title, cat: $("#bu-cat", m).value, date: "", version: "", author: "", file }));
+        }
+        n++;
+      } catch (e) { fail++; console.warn(x.f.name, e); }
+    }
+    audit(`Bulk upload: ${n} file(s)${fail ? `, ${fail} failed` : ""}`);
+    S.hold = false; render(); m.close();
+    modal(`<h3>Upload finished</h3><p>${n} file${n === 1 ? "" : "s"} uploaded${fail ? `, <b style="color:var(--red)">${fail} failed</b> — try those again` : ""}.</p><button class="btn" data-close>OK</button>`);
+  };
+}
 
 /* ============================================================ TRAINING */
 function courseState(date, months) {

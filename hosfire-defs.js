@@ -155,9 +155,9 @@ const HF_SOURCES = [
 
 const HF_STATUS = ["Not started", "In progress", "Completed"];
 const HF_PRIORITY = ["High", "Medium", "Low"];
-const HF_ACTION_CATS = ["FRA action", "Leader Systems", "Emergency lighting", "Gas appliances", "Inspection", "Records", "Other"];
+const HF_ACTION_CATS = ["FRA action", "Leader Systems", "Emergency lighting", "Electrical and lighting", "Gas appliances", "Saeker", "Inspection", "Records", "Other"];
 
-const HF_DOC_CATS = ["Fire risk assessment", "Inspection / enforcement", "Policy and procedure", "Contract", "Certificate / report", "Quote", "Statement", "Training", "Other"];
+const HF_DOC_CATS = ["Fire risk assessment", "Inspection / enforcement", "Policy and procedure", "Contract", "Certificate / report", "Quote", "Correspondence", "Statement", "Form", "Manual (equipment)", "Training", "Photo / evidence", "Other"];
 
 const HF_COURSES = [
   ["induction", "Fire induction", 0],

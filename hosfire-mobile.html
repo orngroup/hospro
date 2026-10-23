@@ -196,6 +196,7 @@ function list() {
       <div class="stat"><b style="color:var(--amb)">${my.filter((a) => a.status === "In progress").length}</b><span>My in progress</span></div>
       <div class="stat"><b style="color:var(--ok)">${my.filter((a) => a.status === "Completed").length}</b><span>My completed</span></div></div>
     <div class="chips">${[["mine", "My tasks"], ["high", "High priority"], ["open", "All open"], ["done", "Completed"]].map(([k, l]) => `<button data-f="${k}" class="${S.filter === k ? "on" : ""}">${l}</button>`).join("")}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><button class="btn red" id="newtask">+ New task</button><button class="btn" id="newdoc">📄 Upload document</button></div>
     <input id="q" placeholder="Search actions…" value="${h(S.q)}" style="margin-bottom:10px">
     ${rows.map((a) => `<button class="item ${stCls(a.status) === "c" ? "done" : stCls(a.status) === "ip" ? "ip" : ""}" data-id="${a.id}">
       <div class="r"><span class="ref">${h(a.ref)}</span><span class="grow"></span>${a.priority === "High" ? '<span class="pill p-h">High</span>' : ""}<span class="pill p-${stCls(a.status)}">${h(a.status)}</span></div>
@@ -274,8 +275,40 @@ function render() {
     $$("[data-f]", v).forEach((b) => (b.onclick = () => { S.filter = b.dataset.f; render(); }));
     $("#q", v).oninput = (e) => { S.q = e.target.value; clearTimeout(S.qt); S.qt = setTimeout(() => { render(); const q = $("#q"); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }, 350); };
     $$("[data-id]", v).forEach((b) => (b.onclick = () => openAction(b.dataset.id)));
+    $("#newtask", v).onclick = () => { S.view = "new"; S.draft = { newPhotos: [] }; render(); window.scrollTo(0, 0); };
+    $("#newdoc", v).onclick = () => { S.view = "doc"; S.draft = { newPhotos: [] }; render(); window.scrollTo(0, 0); };
+  } else if (S.view === "doc") {
+    $("#back").classList.remove("hide"); $("#savebar").classList.remove("hide"); $("#save").textContent = "Upload document";
+    v.innerHTML = `<div class="card"><h2>Upload a document</h2><div class="muted">A certificate, job sheet, report or photo of a paper record. It goes into HosFIRE → Documents.</div>
+      <label>What is it</label><input id="dc-title" placeholder="e.g. Leader job sheet — sounder repairs 24 Oct">
+      <label>Category</label><select id="dc-cat">${(typeof HF_DOC_CATS !== "undefined" ? HF_DOC_CATS : ["Other"]).map((c) => `<option ${c === "Certificate / report" ? "selected" : ""}>${h(c)}</option>`).join("")}</select>
+      <label>Date on the document</label><input id="dc-date" type="date" value="${today()}">
+      <label>From (contractor / company)</label><input id="dc-from" placeholder="e.g. Leader Systems"></div>
+      <div class="card"><label style="margin-top:0">File</label>
+      <input type="file" id="dc-file" accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx" class="hide"><input type="file" id="dc-cam" accept="image/*" capture="environment" class="hide">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn" id="dc-pick" type="button">📁 Choose file</button><button class="btn ghost" id="dc-shot" type="button">📷 Photograph it</button></div>
+      <div id="dc-name" class="muted" style="margin-top:8px">No file chosen.</div></div>`;
+    const setF = async (f) => { if (!f) return; S.draft.docFile = f.type && f.type.startsWith("image/") ? new File([await shrink(f)], (f.name || "photo").replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }) : f; $("#dc-name").textContent = "Ready: " + S.draft.docFile.name; };
+    $("#dc-pick", v).onclick = () => $("#dc-file").click(); $("#dc-shot", v).onclick = () => $("#dc-cam").click();
+    $("#dc-file", v).onchange = (e) => setF(e.target.files[0]); $("#dc-cam", v).onchange = (e) => setF(e.target.files[0]);
+  } else if (S.view === "new") {
+    $("#back").classList.remove("hide"); $("#savebar").classList.remove("hide"); $("#save").textContent = "Add task";
+    v.innerHTML = `<div class="card"><h2>New task</h2><div class="muted">Something you have found that needs doing. It is added to the HosFIRE action tracker.</div>
+      <label>What needs doing</label><input id="nt-title" placeholder="e.g. Fire door to kitchen corridor not closing">
+      <label>Where</label><input id="nt-where" placeholder="e.g. Ground floor, by room 12">
+      <label>Category</label><select id="nt-cat">${(typeof HF_ACTION_CATS !== "undefined" ? HF_ACTION_CATS : ["Other"]).map((c) => `<option ${c === "Other" ? "selected" : ""}>${h(c)}</option>`).join("")}</select>
+      <label>Priority</label><div class="seg seg3">${["High", "Medium", "Low"].map((x) => `<button data-pr="${x}" class="${x === (S.draft.priority || "Medium") ? "on" : ""}">${x}</button>`).join("")}</div>
+      <label>Note</label><textarea id="nt-note" placeholder="What you saw, what is needed"></textarea></div>
+      <div class="card"><label style="margin-top:0">Photo</label><div class="photos" id="photos"></div>
+      <input type="file" id="cam" accept="image/*" capture="environment" class="hide"><input type="file" id="lib" accept="image/*" multiple class="hide">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><button class="btn" id="takepic" type="button">📷 Take photo</button><button class="btn ghost" id="pickpic" type="button">🖼 From photos</button></div></div>`;
+    $$("[data-pr]", v).forEach((b) => (b.onclick = () => { S.draft.priority = b.dataset.pr; $$("[data-pr]", v).forEach((x) => x.classList.toggle("on", x === b)); }));
+    $("#takepic", v).onclick = () => $("#cam").click(); $("#pickpic", v).onclick = () => $("#lib").click();
+    const addNew = async (fl) => { for (const f of Array.from(fl)) { const blob = await shrink(f); S.draft.newPhotos.push({ blob, name: f.name || "photo.jpg", preview: URL.createObjectURL(blob) }); }
+      $("#photos").innerHTML = S.draft.newPhotos.map((p) => `<div class="new"><img src="${p.preview}"></div>`).join(""); };
+    $("#cam", v).onchange = (e) => addNew(e.target.files); $("#lib", v).onchange = (e) => addNew(e.target.files);
   } else {
-    $("#back").classList.remove("hide"); $("#savebar").classList.remove("hide");
+    $("#back").classList.remove("hide"); $("#savebar").classList.remove("hide"); $("#save").textContent = "Save update";
     const keep = { note: $("#note") ? $("#note").value : null, cap: $("#cap") ? $("#cap").value : null };
     if (keep.note != null) S.draft.note = keep.note; if (keep.cap != null) S.draft.caption = keep.cap;
     v.innerHTML = detail();
@@ -295,7 +328,58 @@ function openAction(id) {
   S.draft = { status: a.status || "Not started", pct: (typeof a.pct === "number") ? a.pct : null, steps: JSON.parse(JSON.stringify(a.steps || [])), note: "", caption: "", newPhotos: [] };
   render(); window.scrollTo(0, 0);
 }
+async function saveNew() {
+  const d = S.draft, title = $("#nt-title").value.trim(), where = $("#nt-where").value.trim(), note = $("#nt-note").value.trim();
+  if (!title) return toast("Say what needs doing");
+  const btn = $("#save"); btn.disabled = true; btn.textContent = "Adding…";
+  try {
+    const n = S.actions.map((a) => String(a.ref || "")).filter((r) => /^M\d+$/.test(r)).map((r) => +r.slice(1));
+    const ref = "M" + (Math.max(0, ...n) + 1);
+    const photos = [];
+    for (const [i, p] of d.newPhotos.entries()) {
+      if (!S.live) continue;
+      btn.textContent = `Uploading photo ${i + 1} of ${d.newPhotos.length}…`;
+      const path = `hosfire/actions/${ref}/${Date.now()}_${i}.jpg`;
+      await fb.st.ref(path).put(p.blob, { contentType: "image/jpeg" });
+      photos.push({ path, name: p.name, caption: where, at: Date.now(), by: S.user.name });
+    }
+    const doc = { ref, title: where ? `${title} — ${where}` : title, detail: note, notes: note, category: $("#nt-cat").value, priority: d.priority || "Medium",
+      status: "Not started", owner: S.user.name, contractor: "", due: "", source: "Found on site (HosFIRE Mobile)", steps: [], photos,
+      history: [{ at: Date.now(), by: S.user.name, status: "Not started", note: "Added on HosFIRE Mobile" + (photos.length ? ` with ${photos.length} photo(s)` : "") }],
+      byName: S.user.name, byEmail: S.user.email };
+    if (S.live) {
+      doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await fb.db.collection("hosfire_actions").add(doc);
+      fb.db.collection("hosfire_audit").add({ what: `New action ${ref} added on HosFIRE Mobile: ${doc.title}`, ref, byName: S.user.name, byEmail: S.user.email, createdAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {});
+    } else { S.actions.push({ id: "m" + Date.now(), ...doc }); try { const j = JSON.parse(localStorage.getItem("hosfire_demo_v1") || "{}"); j.actions = S.actions; localStorage.setItem("hosfire_demo_v1", JSON.stringify(j)); } catch (e) {} }
+    toast(`${ref} added`); S.view = "list"; S.filter = "mine"; render(); window.scrollTo(0, 0);
+  } catch (e) { toast("Not added: " + e.message); }
+  btn.disabled = false; btn.textContent = "Add task";
+}
+async function saveDoc() {
+  const f = S.draft.docFile, title = $("#dc-title").value.trim();
+  if (!f) return toast("Choose or photograph the document first");
+  if (!title) return toast("Say what the document is");
+  if (f.size > 25 * 1024 * 1024) return toast("File is over 25 MB");
+  const btn = $("#save"); btn.disabled = true; btn.textContent = "Uploading…";
+  try {
+    const doc = { kind: "doc", title, cat: $("#dc-cat").value, date: $("#dc-date").value, version: "", author: $("#dc-from").value.trim(), notes: "Uploaded on HosFIRE Mobile", byName: S.user.name, byEmail: S.user.email };
+    if (S.live) {
+      if (navigator.onLine === false) throw new Error("No signal — try again when you have signal.");
+      const path = `hosfire/documents/${Date.now()}_${f.name.replace(/[^\w.\- ]+/g, "_")}`;
+      await fb.st.ref(path).put(f, { contentType: f.type || "application/octet-stream" });
+      doc.file = { path, name: f.name, size: f.size, uploadedBy: S.user.name, uploadedAt: Date.now() };
+      doc.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await fb.db.collection("hosfire_registers").add(doc);
+      fb.db.collection("hosfire_audit").add({ what: `Document uploaded on HosFIRE Mobile: ${title}`, ref: "", byName: S.user.name, byEmail: S.user.email, createdAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {});
+    }
+    toast("Uploaded — " + title); S.view = "list"; render(); window.scrollTo(0, 0);
+  } catch (e) { toast("Not uploaded: " + e.message); }
+  btn.disabled = false; btn.textContent = "Upload document";
+}
 async function save() {
+  if (S.view === "doc") return saveDoc();
+  if (S.view === "new") return saveNew();
   const a = S.actions.find((x) => x.id === S.openId), d = S.draft;
   d.note = $("#note").value.trim(); d.caption = $("#cap").value.trim();
   const btn = $("#save"); btn.disabled = true; btn.textContent = "Saving…";
@@ -332,7 +416,7 @@ async function save() {
 
 document.addEventListener("DOMContentLoaded", () => {
   S.live = init(); buildLogin();
-  $("#back").onclick = () => { if (S.draft && (S.draft.newPhotos.length || ($("#note") && $("#note").value.trim())) && !confirmLeave()) return; S.view = "list"; render(); window.scrollTo(0, 0); };
+  $("#back").onclick = () => { if (S.draft && ((S.draft.newPhotos || []).length || ($("#note") && $("#note").value.trim()) || ($("#nt-title") && $("#nt-title").value.trim())) && !confirmLeave()) return; S.view = "list"; render(); window.scrollTo(0, 0); };
   $("#save").onclick = save;
   window.addEventListener("online", render); window.addEventListener("offline", render);
   if (S.live) fb.auth.onAuthStateChanged((u) => {
