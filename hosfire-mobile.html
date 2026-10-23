@@ -125,7 +125,7 @@ Object.entries(typeof FB_LOGINS !== "undefined" ? FB_LOGINS : {}).forEach(([k, v
 Object.assign(LOGINS, typeof HF_EXTRA_LOGINS !== "undefined" ? HF_EXTRA_LOGINS : {});
 const keyByEmail = (e) => Object.keys(LOGINS).find((k) => LOGINS[k].email === e);
 
-const S = { live: false, key: null, user: null, actions: [], view: "list", filter: "mine", q: "", openId: null, draft: null };
+const S = { live: false, key: null, user: null, actions: [], view: "list", filter: "open", q: "", openId: null, draft: null };
 let fb = null, unsub = null;
 
 function init() {
@@ -184,25 +184,27 @@ function list() {
   const A = S.actions;
   let rows = A.slice();
   if (S.filter === "mine") rows = rows.filter((a) => mine(a) && a.status !== "Completed");
+  else if (S.filter.startsWith("src:")) rows = rows.filter((a) => HF_SOURCE_OF(a).key === S.filter.slice(4) && a.status !== "Completed");
   else if (S.filter === "open") rows = rows.filter((a) => a.status !== "Completed");
   else if (S.filter === "high") rows = rows.filter((a) => a.priority === "High" && a.status !== "Completed");
   else if (S.filter === "done") rows = rows.filter((a) => a.status === "Completed");
   if (S.q) { const q = S.q.toLowerCase(); rows = rows.filter((a) => (a.ref + " " + a.title + " " + (a.notes || "")).toLowerCase().includes(q)); }
   const pr = { High: 0, Medium: 1, Low: 2 }, so = { "In progress": 0, "Not started": 1, "Completed": 2 };
   rows.sort((a, b) => (so[a.status] - so[b.status]) || (pr[a.priority] - pr[b.priority]) || nat(a.ref, b.ref));
-  const my = A.filter(mine);
+  const open = A.filter((a) => a.status !== "Completed");
+  const srcs = HF_SOURCES_TAG.filter((t) => open.some((a) => HF_SOURCE_OF(a).key === t.key));
   return `<div class="stats">
-      <div class="stat"><b style="color:var(--red)">${my.filter((a) => a.status === "Not started").length}</b><span>My not started</span></div>
-      <div class="stat"><b style="color:var(--amb)">${my.filter((a) => a.status === "In progress").length}</b><span>My in progress</span></div>
-      <div class="stat"><b style="color:var(--ok)">${my.filter((a) => a.status === "Completed").length}</b><span>My completed</span></div></div>
-    <div class="chips">${[["mine", "My tasks"], ["high", "High priority"], ["open", "All open"], ["done", "Completed"]].map(([k, l]) => `<button data-f="${k}" class="${S.filter === k ? "on" : ""}">${l}</button>`).join("")}</div>
+      <div class="stat"><b style="color:var(--red)">${A.filter((a) => a.status === "Not started").length}</b><span>Not started</span></div>
+      <div class="stat"><b style="color:var(--amb)">${A.filter((a) => a.status === "In progress").length}</b><span>In progress</span></div>
+      <div class="stat"><b style="color:var(--ok)">${A.filter((a) => a.status === "Completed").length}</b><span>Completed</span></div></div>
+    <div class="chips">${[["open", `All open (${open.length})`], ["high", "High priority"], ["mine", "My tasks"], ...srcs.map((t) => ["src:" + t.key, `<i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${t.color};margin-right:5px"></i>${t.label} (${open.filter((a) => HF_SOURCE_OF(a).key === t.key).length})`]), ["done", "Completed"]].map(([k, l]) => `<button data-f="${k}" class="${S.filter === k ? "on" : ""}">${l}</button>`).join("")}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><button class="btn red" id="newtask">+ New task</button><button class="btn" id="newdoc">📄 Upload document</button></div>
     <input id="q" placeholder="Search actions…" value="${h(S.q)}" style="margin-bottom:10px">
-    ${rows.map((a) => `<button class="item ${stCls(a.status) === "c" ? "done" : stCls(a.status) === "ip" ? "ip" : ""}" data-id="${a.id}">
-      <div class="r"><span class="ref">${h(a.ref)}</span><span class="grow"></span>${a.priority === "High" ? '<span class="pill p-h">High</span>' : ""}<span class="pill p-${stCls(a.status)}">${h(a.status)}</span></div>
+    ${rows.map((a) => { const sc = HF_SOURCE_OF(a); return `<button class="item ${stCls(a.status) === "c" ? "done" : ""}" data-id="${a.id}" style="border-left-color:${sc.color}">
+      <div class="r"><span class="ref" style="color:${sc.color}">${h(a.ref)}</span><span class="pill" style="background:${sc.color};color:#fff">${h(sc.label)}</span><span class="grow"></span>${a.priority === "High" ? '<span class="pill p-h">High</span>' : ""}<span class="pill p-${stCls(a.status)}">${h(a.status)}</span></div>
       <div class="tt">${h(a.title)}</div>
       <div class="m">${h(a.owner || "")}${a.due ? " · due " + fds(a.due) : ""}${(a.photos || []).length ? " · 📷 " + a.photos.length : ""} · ${prog(a)}%</div>
-      <div class="bar"><i style="width:${prog(a)}%;${prog(a) >= 100 ? "background:var(--ok)" : ""}"></i></div></button>`).join("") || `<div class="card muted">${S.filter === "mine" ? "No open tasks with your name as owner. Try “All open”." : "Nothing here."}</div>`}`;
+      <div class="bar"><i style="width:${prog(a)}%;${prog(a) >= 100 ? "background:var(--ok)" : ""}"></i></div></button>`; }).join("") || `<div class="card muted">${S.filter === "mine" ? "No open tasks with your name as owner. Try “All open”." : "Nothing here."}</div>`}`;
 }
 
 /* ---------- detail ---------- */
@@ -211,7 +213,7 @@ function detail() {
   const d = S.draft;
   const pc = d.pct != null ? d.pct : prog({ ...a, status: d.status, steps: d.steps, pct: undefined });
   return `<div class="card">
-      <div class="row" style="display:flex;gap:8px;align-items:center"><b style="color:var(--blue);font-size:18px">${h(a.ref)}</b><span class="grow" style="flex:1"></span>${a.priority === "High" ? '<span class="pill p-h">High</span>' : ""}</div>
+      <div class="row" style="display:flex;gap:8px;align-items:center"><b style="color:${HF_SOURCE_OF(a).color};font-size:18px">${h(a.ref)}</b><span class="pill" style="background:${HF_SOURCE_OF(a).color};color:#fff">${h(HF_SOURCE_OF(a).label)}</span><span class="grow" style="flex:1"></span>${a.priority === "High" ? '<span class="pill p-h">High</span>' : ""}</div>
       <h2>${h(a.title)}</h2>
       ${a.detail ? `<div class="muted">${h(a.detail)}</div>` : ""}
       <div class="muted" style="margin-top:6px">${h(a.category || "")}${a.owner ? " · " + h(a.owner) : ""}${a.contractor ? " · " + h(a.contractor) : ""}${a.due ? " · due " + fds(a.due) : ""}</div>
@@ -352,7 +354,7 @@ async function saveNew() {
       await fb.db.collection("hosfire_actions").add(doc);
       fb.db.collection("hosfire_audit").add({ what: `New action ${ref} added on HosFIRE Mobile: ${doc.title}`, ref, byName: S.user.name, byEmail: S.user.email, createdAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {});
     } else { S.actions.push({ id: "m" + Date.now(), ...doc }); try { const j = JSON.parse(localStorage.getItem("hosfire_demo_v1") || "{}"); j.actions = S.actions; localStorage.setItem("hosfire_demo_v1", JSON.stringify(j)); } catch (e) {} }
-    toast(`${ref} added`); S.view = "list"; S.filter = "mine"; render(); window.scrollTo(0, 0);
+    toast(`${ref} added`); S.view = "list"; S.filter = "open"; render(); window.scrollTo(0, 0);
   } catch (e) { toast("Not added: " + e.message); }
   btn.disabled = false; btn.textContent = "Add task";
 }

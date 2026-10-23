@@ -267,3 +267,15 @@ const HF_AUDIT = [
     ["peeps", "PEEPs / refuge arrangements and the refuge communication system", "Drills, PEEPs, permits, A13"]]}
 ];
 const HF_READY = ["Not ready", "Partly ready", "Ready"];
+
+/* Who an action came from / sits with — shown as a coloured tag in HosFIRE and
+   HosFIRE Mobile. Hotel (our own) actions stay blue. */
+const HF_SOURCES_TAG = [
+  { key: "leader",    label: "Leader Systems",  color: "#6A3FA0", test: (a) => /leader/i.test(`${a.contractor} ${a.category}`) },
+  { key: "warmfix",   label: "WarmFix (gas)",   color: "#8D5524", test: (a) => /warmfix/i.test(a.contractor || "") || a.category === "Gas appliances" },
+  { key: "yec",       label: "YEC",             color: "#AD1457", test: (a) => /\byec\b/i.test(a.contractor || "") },
+  { key: "soldorlet", label: "Soldorlet (FRA)", color: "#00897B", test: (a) => /soldorlet|gareth/i.test(`${a.contractor} ${a.source}`) || a.category === "FRA action" },
+  { key: "saeker",    label: "Saeker",          color: "#E07B00", test: (a) => a.category === "Saeker" },
+  { key: "hotel",     label: "Brandon Hall",    color: "#1D4E89", test: () => true }
+];
+function HF_SOURCE_OF(a) { a = a || {}; return HF_SOURCES_TAG.find((s) => s.test({ contractor: a.contractor || "", category: a.category || "", source: a.source || "" })); }
