@@ -891,7 +891,7 @@ VIEWS.docs = () => {
   <div class="tabs2">${["", ...HF_DOC_CATS].map((c) => `<button data-dc="${h(c)}" class="${f.cat === c ? "on" : ""}">${c || "All"} (${c ? reg("doc").filter((d) => d.cat === c).length : reg("doc").length})</button>`).join("")}</div>
   <div class="row" style="margin-bottom:10px"><div class="grow"></div><button class="btn ghost" id="d-bulk">⬆ Upload several files</button><button class="btn red" id="d-new">+ Add document</button></div>
   <div class="tw"><table><tr><th>Document</th><th>Category</th><th>Date</th><th>Version</th><th>Issued by</th><th>File</th></tr>
-  ${rows.map((d) => `<tr><td><a href="#" data-d="${d.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(d.title)}</a>${d.notes ? `<div class="muted">${h(d.notes)}</div>` : ""}</td><td class="muted">${h(d.cat)}</td><td>${d.date ? fds(d.date) : ""}</td><td>${h(d.version)}</td><td>${h(d.author)}</td>
+  ${rows.map((d) => `<tr><td><a href="#" data-d="${d.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(d.title)}</a>${d.notes ? `<div class="muted">${h(d.notes)}</div>` : ""}</td><td><select data-dcat="${d.id}" style="padding:5px 6px;font-size:13px;width:auto;max-width:170px">${(HF_DOC_CATS.includes(d.cat) ? HF_DOC_CATS : [d.cat, ...HF_DOC_CATS]).map((c) => `<option ${c === d.cat ? "selected" : ""}>${h(c)}</option>`).join("")}</select></td><td>${d.date ? fds(d.date) : ""}</td><td>${h(d.version)}</td><td>${h(d.author)}</td>
     <td>${d.file ? `<a href="#" data-open="${d.id}">View</a>` : `<span class="pill p-amb">Upload</span>`}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">No documents.</td></tr>`}
   </table></div>`;
 };
@@ -899,6 +899,7 @@ BIND.docs = (v) => {
   $$("[data-dc]", v).forEach((b) => (b.onclick = () => { S.f.doc.cat = b.dataset.dc; render(); }));
   $("#d-new", v).onclick = () => editReg("doc", null);
   $("#d-bulk", v).onclick = bulkUpload;
+  $$("[data-dcat]", v).forEach((sl) => (sl.onchange = async () => { await put("registers", sl.dataset.dcat, { cat: sl.value }); toast("Moved to " + sl.value); }));
   $$("[data-d]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); editReg("doc", a.dataset.d); }));
   $$("[data-open]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); openFile(S.data.registers.find((x) => x.id === a.dataset.open).file); }));
 };
@@ -1156,7 +1157,14 @@ BIND.settings = (v) => {
       for (const k of ["actions", "registers", "diary"]) {
         for (const it of j[k] || []) {
           const { id, ...rest } = it; if (!id) continue;
-          if (!over && S.data[k].some((x) => x.id === id)) { skip++; continue; }
+          const ex = S.data[k].find((x) => x.id === id);
+          // Documents / certificates already there (e.g. uploaded before the list was loaded): take the
+          // title, category, date etc. from the starting data but keep the uploaded file.
+          if (ex && k === "registers" && (rest.kind === "doc" || rest.kind === "cert")) {
+            const meta = {}; ["kind", "title", "name", "ref", "cat", "date", "version", "author", "contractor", "last", "months", "certRef", "notes"].forEach((f) => { if (rest[f] !== undefined && rest[f] !== "") meta[f] = rest[f]; });
+            await put(k, id, meta); n++; continue;
+          }
+          if (!over && ex) { skip++; continue; }
           await put(k, id, { ...rest, seeded: j.version || true, ...(k === "actions" && !rest.history ? { history: [{ at: Date.now(), by: S.user.name, status: rest.status, note: "Loaded from starting data" }] } : {}) }, false); n++;
         }
       }
