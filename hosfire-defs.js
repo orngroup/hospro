@@ -16,7 +16,15 @@ const HF_EXTRA_LOGINS = {
 /* Fire safety managers: can load the starting data, enter past records
    from a source, delete actions and documents. Others record checks and
    update actions. */
-const HF_ADMINS = ["ajay.kawa", "raj.kumar", "alia.taub", "patrik.vlach"];
+const HF_ADMINS = ["glenn.randell", "ajay.kawa", "raj.kumar", "alia.taub", "patrik.vlach"];
+
+/* The named Fire Safety Manager (shown in the header, dashboard and inspector pack). */
+const HF_FIRE_MANAGER = { key: "glenn.randell", name: "Glenn Randell", role: "Maintenance Manager" };
+
+/* Extra access code asked for when someone arrives already signed in to HosPRO
+   (from the HosFIRE tile). Light gate only — the real protection is the login
+   and the Firestore rules. Remembered until the browser tab is closed. */
+const HF_ACCESS_CODE = "999";
 
 /* The four fire marshals. Weekly test rota: the day rotates Mon → Tue → Wed
    and the marshal rotates each week, starting on HF_ROTA_START. */
@@ -82,7 +90,10 @@ const HF_CHECKS = [
     fields: [["issues", "Issues found / passed to Granite Leisure", "textarea", false]],
     items: [["sauna", "Sauna heater guard in place; nothing stored on or near the heater", true], ["towels", "No towels or linen drying on heaters", true],
             ["chem", "Pool chemicals stored apart (acids away from chlorine) and the store locked", true], ["plant", "Plant room clear of combustible storage", true],
-            ["exits", "Spa fire exits and changing room routes clear", true], ["alarm", "Fire alarm sounder audible / visual beacon working in wet areas (from last weekly test)", false]] },
+            ["exits", "Spa fire exits and changing room routes clear", true], ["alarm", "Fire alarm sounder audible / visual beacon working in wet areas (from last weekly test)", false],
+            ["steam", "Steam room generator and controls area clear; no storage", true], ["robes", "Robes / towels available at the spa exit for guests evacuated from wet areas", false],
+            ["treat", "Treatment rooms: no candles left unattended; wax heaters and electrics switched off when not in use", true],
+            ["count", "Spa reception can produce a list of guests in the spa (for roll call)", true]] },
   { id: "co_alarm", ref: "BHH-FS-24", name: "Plant room CO alarm and gas check", short: "Gas / CO", freq: "monthly", owner: "Maintenance", std: "Gas Safety (Installation and Use) Regs 1998",
     intro: "Test the carbon monoxide alarm(s) in the boiler plant room and check appliances under a warning notice are still isolated.",
     fields: [["notes", "Notes", "textarea", false]],
@@ -113,6 +124,16 @@ const HF_CHECKS = [
              ["zone", "Zone / device", "text", true], ["cause", "Cause", "textarea", true], ["call999", "999 called", "select:Yes|No", true],
              ["frs", "Fire service attended", "select:Yes|No", true], ["action", "Action taken / reset by", "textarea", true]],
     items: [] },
+  { id: "event", ref: "BHH-FS-25", name: "Pre-event fire safety check (venue booking)", short: "Event", freq: "event", owner: "Events / duty manager", std: "RRO 2005 Art. 14, 15; approved premises",
+    intro: "Before every event, wedding ceremony or function room booking. Check the numbers against the room's fire occupancy limit and the layout keeps every exit clear.",
+    fields: [["venue", "Room / venue", "venue", true], ["bookingRef", "Booking reference / client", "text", true], ["eventType", "Type", "select:Wedding ceremony|Wedding breakfast / reception|Meeting / conference|Dinner / party|Funeral / celebration of life|Other", true],
+             ["guests", "Number of guests and staff in the room", "number", true], ["layout", "Layout", "select:boardroom|ushape|theatre|cabaret|reception", true], ["time", "Event start time", "time", false],
+             ["marshal", "Fire marshal / duty manager on duty", "text", true]],
+    items: [["capacity", "Numbers are within the room's fire occupancy limit for this layout", true], ["exits", "All exits and routes clear of tables, staging, AV, prams and coats", true],
+            ["signs", "Exit signs visible (not covered by drapes or décor)", true], ["doors", "Fire doors not wedged or propped", true],
+            ["flames", "No naked flames, or candles only in approved enclosed holders", true], ["decor", "Drapes and décor flame-retardant (supplier certificate seen) — N/A if none", false],
+            ["elec", "Supplier electrical equipment visibly safe and PAT-tested; no trailing leads across exits", true], ["brief", "Event lead / organiser told the evacuation route, assembly point and not to use the lift", true],
+            ["peep", "Guests needing assistance identified and plan agreed (PEEP)", true], ["contractors", "Outside suppliers signed in and given the fire information", false]] },
   { id: "contractor", ref: "BHH-FS-11", name: "Contractor visit / service", short: "Contractor", freq: "event", owner: "Maintenance", std: "BS 5839-1 / 5266-1 / 5306-3",
     intro: "Record every contractor visit for a fire safety system. Upload the certificate in the Certificates tab.",
     fields: [["contractor", "Contractor and engineer", "text", true], ["system", "System", "select:Fire alarm|Emergency lighting|Extinguishers|Kitchen suppression (Ansul)|Gas|Electrical|Fire doors|Kitchen extract|Other", true],
@@ -194,3 +215,55 @@ const HF_CALENDAR = [
   { what: "Fire door inspection", every: 12, cert: "CERT-08" },
   { what: "Kitchen extract duct clean (TR19)", every: 12, cert: "CERT-09" }
 ];
+
+/* ── What the fire safety officer looks at (Fire Safety Order audit) ──
+   Used by the "Audit readiness" tab. [id, what he will ask for / look at, where the evidence is] */
+const HF_AUDIT = [
+  { t: "Fire risk assessment and management", items: [
+    ["fra", "A current fire risk assessment covering the whole premises — hotel, bedrooms, kitchens, spa, Woodlands and the function / ceremony rooms", "Documents"],
+    ["fraplan", "Progress on the FRA action plan (A1–A19), with dates and evidence", "Actions"],
+    ["rp", "Who the responsible person is, and the named Fire Safety Manager (Glenn Randell)", "Dashboard / Settings"],
+    ["coop", "Co-operation with Granite Leisure and the owner for shared areas (spa, Woodlands) — signed responsibilities statement", "Documents (BHH-FS-17)"],
+    ["policy", "Fire safety policy and written fire procedure, signed and adopted", "Documents"]]},
+  { t: "Fire alarm and detection", items: [
+    ["weekly", "Weekly call point tests — logbook showing date, call point, result, who did it", "Weekly tests / Back-records"],
+    ["service", "Fire alarm service certificates every 6 months or less (BS 5839-1) — current one", "Certificates"],
+    ["faults", "Open faults (sounders, detectors, Chair Room) and what is being done in the meantime", "Actions (A1, A2, L1, L2)"],
+    ["false", "False alarm log with causes, and the investigation (reception, bar, restaurant)", "Logbook (alarm events), A6"],
+    ["zones", "Zone charts at the panels", "Actions (A4, L3)"],
+    ["999", "How the fire service is called (alarm not monitored — staff call 999)", "Regulations / procedure"]]},
+  { t: "Escape routes, doors and lighting", items: [
+    ["routes", "Escape routes and final exits clear, unlocked and signed — he will walk them", "Daily checks"],
+    ["doors", "Fire doors closing and latching, not wedged; bedroom doors; annual inspection", "Fire door checks, A12"],
+    ["el", "Emergency lighting monthly tests and annual 3-hour certificate; the 43 failed fittings", "Checks, Certificates, E1–E6"],
+    ["notices", "Fire action notices in bedrooms and public areas", "Walk-round, I6"]]},
+  { t: "Firefighting equipment and hazards", items: [
+    ["ext", "Extinguishers serviced annually and checked monthly", "Certificates, Extinguisher checks"],
+    ["kitchen", "Kitchen: suppression (Ansul) serviced, extract duct cleaned (TR19), filters cleaned", "Certificates, Kitchen checks, A10, A18"],
+    ["gas", "Gas safety record; the 3 failed appliances isolated or replaced", "Certificates, G1–G4"],
+    ["elec", "EICR and PAT current", "Certificates"],
+    ["laundry", "Laundry: lint cleaning, dryers not left running", "Laundry checks, A19"],
+    ["hotwork", "Hot work permits for contractors", "Drills, PEEPs, permits"],
+    ["arson", "Bins and combustible storage away from the building", "Walk-round"]]},
+  { t: "Spa and leisure (shared with Granite Leisure)", items: [
+    ["spa_fra", "The spa is covered by the FRA and its actions", "Documents / Actions"],
+    ["spa_evac", "Spa evacuation procedure — guests in the pool, sauna, steam room, treatment rooms; robes and towels; roll call from spa bookings", "Spa checks / procedure"],
+    ["spa_alarm", "Alarm audible / visible in wet areas and treatment rooms", "Weekly tests, Spa checks"],
+    ["spa_chem", "Pool chemical store: acids and chlorine kept apart, store locked, signed", "Spa checks"],
+    ["spa_heat", "Sauna and steam room heaters: guards, nothing stored, controls", "Spa checks"],
+    ["spa_staff", "Spa staff trained and in the drills", "Training"],
+    ["spa_panel", "Zone chart at the spa panel", "A4"]]},
+  { t: "Function rooms, events and room bookings (approved premises)", items: [
+    ["occ", "Maximum occupancy for each function room / ceremony room, agreed with the FRA", "Venues & events"],
+    ["layout", "Event layouts keep every exit clear; pre-event check done for each booking", "Venues & events"],
+    ["ceremony", "Rooms named on the marriage licence application are covered by the FRA", "Venues & events, I10"],
+    ["decor", "Candles, décor and supplier equipment controlled at events", "Pre-event checks"],
+    ["bedrooms", "Bedroom bookings: guests needing assistance identified at check-in (PEEP), night staff told", "Drills, PEEPs, permits"]]},
+  { t: "People: training, drills and night staff", items: [
+    ["train", "Staff fire induction and annual refresher records", "Training"],
+    ["marshals", "Fire marshals named and trained", "Training"],
+    ["drills", "Drills twice a year, including night staff, with records", "Drills"],
+    ["night", "Night staffing: how many, what they do, can they evacuate the building", "Procedure, I9"],
+    ["peeps", "PEEPs / refuge arrangements and the refuge communication system", "Drills, PEEPs, permits, A13"]]}
+];
+const HF_READY = ["Not ready", "Partly ready", "Ready"];

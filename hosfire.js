@@ -166,6 +166,8 @@ function certState(c) {
 
 /* ---------- action progress (from its steps) ---------- */
 function progressOf(a) {
+  if (a.status === "Completed") return 100;
+  if (typeof a.pct === "number" && a.pct !== null) return a.pct;
   const st = a.steps || [];
   if (st.length) return Math.round((st.filter((x) => x.done).length / st.length) * 100);
   return a.status === "Completed" ? 100 : 0;
@@ -190,13 +192,16 @@ function buildLogin() {
   const sel = $("#lg-user");
   sel.innerHTML = `<option value="">Choose your name…</option>` + Object.entries(LOGINS).sort((a, b) => a[1].name.localeCompare(b[1].name))
     .map(([k, v]) => `<option value="${h(k)}">${h(v.name)}</option>`).join("");
+  try { const last = localStorage.getItem("hosfire_last_user"); if (last && LOGINS[last]) sel.value = last; } catch (e) {}
+  $("#lg-code").placeholder = "HosFIRE code";
   $("#lg-code").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#lg-go").click(); });
   $("#lg-go").onclick = async () => {
     const k = sel.value, code = $("#lg-code").value.trim().toUpperCase(), err = $("#lg-err");
     err.textContent = "";
     if (!k) { err.textContent = "Choose your name."; return; }
     const m = LOGINS[k];
-    if (code !== String(m.code).toUpperCase()) { err.textContent = "Incorrect access code."; return; }
+    if (code !== HF_ACCESS_CODE && code !== String(m.code).toUpperCase()) { err.textContent = "Incorrect access code."; return; }
+    try { sessionStorage.setItem("hosfire_gate", "1"); localStorage.setItem("hosfire_last_user", k); } catch (e) {}
     if (!S.live) { enter(k); return; }
     try { await fb.auth.signInWithEmailAndPassword(m.email, m.pw); /* onAuthStateChanged enters */ }
     catch (e) {
@@ -206,18 +211,32 @@ function buildLogin() {
   };
   $("#logout").onclick = async (e) => { e.preventDefault(); unsub.splice(0).forEach((u) => u()); if (S.live) await fb.auth.signOut(); location.reload(); };
 }
+function gate(k) {
+  let ok = false; try { ok = sessionStorage.getItem("hosfire_gate") === "1"; } catch (e) {}
+  if (ok) { enter(k); return; }
+  const card = $(".lgcard");
+  card.innerHTML = `<img src="assets/marketing/logos/logo-blue-transparent.png" onerror="this.src='assets/bh-logo.svg'" alt="Brandon Hall">
+    <h1>Hos<span>FIRE</span></h1><p>Signed in as <b>${h(LOGINS[k].name)}</b></p>
+    <label>HosFIRE access code</label><input id="gt-code" type="password" inputmode="numeric" autocomplete="off" autofocus>
+    <button class="btn red block" id="gt-go">Open HosFIRE</button><div class="err" id="gt-err"></div>
+    <p class="muted" style="margin-top:10px"><a href="index.html">← Back to HosPRO</a></p>`;
+  const go = () => { if ($("#gt-code").value.trim() === HF_ACCESS_CODE) { try { sessionStorage.setItem("hosfire_gate", "1"); } catch (e) {} enter(k); } else $("#gt-err").textContent = "Incorrect code."; };
+  $("#gt-go").onclick = go; $("#gt-code").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); }); setTimeout(() => $("#gt-code").focus(), 50);
+}
 function enter(k) {
+  try { sessionStorage.setItem("hosfire_gate", "1"); } catch (e) {}
   S.key = k; S.user = LOGINS[k];
   $("#login").classList.add("hide"); $("#app").classList.remove("hide");
   $("#who-name").textContent = S.user.name;
-  const b = $("#mode-badge"); b.textContent = S.live ? (isAdmin() ? "Fire safety manager" : "Fire team") : "DEMO"; if (!S.live) b.classList.add("demo");
+  const b = $("#mode-badge"); b.textContent = !S.live ? "DEMO" : k === HF_FIRE_MANAGER.key ? "Fire Safety Manager" : isAdmin() ? "Admin" : "Fire team"; if (!S.live) b.classList.add("demo");
+  const sub = $("header .sub"); if (sub) sub.innerHTML = `Fire Safety Manager: <b>${h(HF_FIRE_MANAGER.name)}</b> · ${h(HF_HOTEL.name)}`;
   listen();
 }
 
 /* ============================================================ NAV */
 const TABS = [
   ["dash", "Dashboard"], ["checks", "Record a check"], ["log", "Logbook"], ["rota", "Weekly tests"], ["back", "Back-records"], ["actions", "Actions"],
-  ["certs", "Certificates"], ["docs", "Documents"], ["training", "Training"], ["drills", "Drills, PEEPs, permits"],
+  ["audit", "Audit readiness"], ["venues", "Venues & events"], ["certs", "Certificates"], ["docs", "Documents"], ["training", "Training"], ["drills", "Drills, PEEPs, permits"],
   ["diary", "Diary"], ["regs", "Regulations"], ["pack", "Inspector pack"], ["settings", "Settings"]
 ];
 function nav() {
@@ -255,12 +274,27 @@ VIEWS.dash = () => {
   <p class="lead">${h(HF_HOTEL.name)} · ${fd(today())}</p>
   ${empty ? `<div class="warn"><b>No starting data loaded yet.</b> ${isAdmin() ? `Go to <a href="#" data-go="settings">Settings</a> and load the HosFIRE starting data file.` : "Ask a fire safety manager to load the starting data."}</div>` : ""}
   ${dIns >= 0 && dIns <= 60 ? `<div class="warn"><b>Fire Safety Order audit: ${fd(insp.date)} at ${h(insp.time)}</b> — ${h(insp.inspector)}, ${h(insp.body)} (ref ${h(insp.ref)}). ${dIns === 0 ? "Today." : dIns + " day" + (dIns > 1 ? "s" : "") + " to go."}</div>` : ""}
-  <div class="grid g4">
-    <div class="card tile r"><div class="n">${highOpen.length}</div><div class="l">High-priority actions open</div></div>
-    <div class="card tile a"><div class="n">${open.length}</div><div class="l">Actions open (of ${A.length})</div></div>
-    <div class="card tile g"><div class="n">${A.length ? Math.round((done / A.length) * 100) : 0}%</div><div class="l">Actions completed</div></div>
-    <div class="card tile ${overdue.length ? "r" : "g"}"><div class="n">${overdue.length}</div><div class="l">Certificates overdue${soon.length ? ` · ${soon.length} due soon` : ""}</div></div>
-  </div>
+  ${(() => { const ar = auditScore(); const overall = A.length ? Math.round(A.reduce((t, a) => t + progressOf(a), 0) / A.length) : 0;
+    return `<div class="grid g5">
+    <div class="card tile ${ar.pc >= 80 ? "g" : ar.pc >= 50 ? "a" : "r"}" data-go="audit" style="cursor:pointer"><div class="n">${ar.pc}%</div><div class="l">Audit readiness (${ar.ready} of ${ar.total} ready)</div></div>
+    <div class="card tile r" data-go="actions" style="cursor:pointer"><div class="n">${highOpen.length}</div><div class="l">High-priority actions open</div></div>
+    <div class="card tile a" data-go="actions" style="cursor:pointer"><div class="n">${open.length}</div><div class="l">Actions open (of ${A.length})</div></div>
+    <div class="card tile"><div class="n">${overall}%</div><div class="l">Overall action progress</div></div>
+    <div class="card tile ${overdue.length ? "r" : "g"}" data-go="certs" style="cursor:pointer"><div class="n">${overdue.length}</div><div class="l">Certificates overdue${soon.length ? ` · ${soon.length} due soon` : ""}</div></div>
+  </div>`; })()}
+  ${A.length ? (() => {
+    const cats = HF_ACTION_CATS.filter((c) => A.some((a) => a.category === c));
+    const byCat = cats.map((c) => { const l = A.filter((a) => a.category === c); return { label: c, counts: Object.fromEntries(HF_STATUS.map((s) => [s, l.filter((a) => a.status === s).length])) }; });
+    const prog = cats.map((c) => { const l = A.filter((a) => a.category === c); return { label: c, value: Math.round(l.reduce((t, a) => t + progressOf(a), 0) / l.length), note: `(${l.length})` }; });
+    const ar = HF_AUDIT.map((g) => { const sc = auditScore(g); return { label: g.t.replace(/ \(.*\)$/, "").replace(/^Function rooms, events and room bookings/, "Events & rooms").replace(/^People: /, "").replace(/^Fire risk assessment and management/, "FRA & management").replace(/^Firefighting equipment and hazards/, "Equipment & hazards").replace(/^Escape routes, doors and lighting/, "Escape, doors, lighting"), value: sc.pc }; });
+    const bw = backWeeks(), bm = {}; bw.forEach((wc) => { const k = wc.slice(0, 7); bm[k] = bm[k] || { n: 0, d: 0 }; bm[k].n++; if (inRange("weekly_alarm", wc, addDays(wc, 6)).length) bm[k].d++; });
+    return `<div class="grid g4c" style="margin-top:12px">
+      <div class="card"><h3 style="margin-top:0">Action status by category</h3>${stackedBars(byCat, HF_STATUS)}</div>
+      <div class="card"><h3 style="margin-top:0">Progress by category</h3><p class="muted" style="margin-top:-4px">Average % complete</p>${simpleBars(prog)}</div>
+      <div class="card"><h3 style="margin-top:0">Audit readiness by area</h3><p class="muted" style="margin-top:-4px">From the Audit readiness tab</p>${simpleBars(ar, "%", 100, "var(--red)")}</div>
+      <div class="card"><h3 style="margin-top:0">Weekly alarm tests evidenced</h3><p class="muted" style="margin-top:-4px">Feb–Oct 2026, weeks with a back-record</p>
+        ${simpleBars(Object.keys(bm).map((k) => ({ label: `${MON[+k.slice(5) - 1]} ${k.slice(0, 4)}`, value: bm[k].d, note: `of ${bm[k].n}` })), "", 5, "var(--navy)")}</div>
+    </div>`; })() : ""}
   <div class="grid g2" style="margin-top:12px">
     <div class="card">
       <h3 style="margin-top:0">This week's fire alarm test</h3>
@@ -269,28 +303,14 @@ VIEWS.dash = () => {
       ${ws.rec ? `<p class="muted">Done by ${h(ws.rec.byName)} on ${fd(ws.rec.date)} at ${h((ws.rec.fields || {}).time || "")} — call point ${h((ws.rec.fields || {}).callpoint || "")}.</p>` : `<button class="btn red sm" data-rec="weekly_alarm" style="margin-top:8px">Record this week's test</button>`}`}
       <h3>Checks due now</h3>
       ${dueNow.length ? dueNow.map((x) => `<div class="row" style="padding:4px 0;border-bottom:1px solid var(--line)"><div class="grow">${h(x.c.name)} <span class="muted">· ${h(x.c.freq)}</span></div><button class="btn sm ghost" data-rec="${x.c.id}">Record</button></div>`).join("") : `<p class="muted">All daily, weekly and monthly checks are recorded for this period.</p>`}
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0">Open high-priority actions</h3>
-      ${highOpen.length ? highOpen.sort((a, b) => natRef(a.ref, b.ref)).map((a) => `<div style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--line)"><b style="flex:0 0 40px">${h(a.ref)}</b><div style="flex:1">${h(a.title)}</div><div style="flex:0 0 auto">${pill(a.status)}</div></div>`).join("") : `<p class="muted">None.</p>`}
       <h3>Drills in the last 12 months</h3>
       <p>${drills.length} recorded · day ${drills.filter((d) => (d.fields || {}).shift === "Day").length} · night ${drills.filter((d) => (d.fields || {}).shift === "Night").length} ${drills.filter((d) => (d.fields || {}).shift === "Night").length ? "" : pill("Night drill needed")}</p>
     </div>
+    <div class="card">
+      <h3 style="margin-top:0">Open high-priority actions</h3>
+      ${highOpen.length ? highOpen.sort((a, b) => natRef(a.ref, b.ref)).map((a) => `<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><b style="flex:0 0 40px">${h(a.ref)}</b><div style="flex:1">${h(a.title)}</div><div style="flex:0 0 auto">${progBar(progressOf(a), 50)}</div></div>`).join("") : `<p class="muted">None.</p>`}
+    </div>
   </div>
-  ${A.length ? (() => {
-    const cats = HF_ACTION_CATS.filter((c) => A.some((a) => a.category === c));
-    const byCat = cats.map((c) => { const l = A.filter((a) => a.category === c); return { label: c, counts: Object.fromEntries(HF_STATUS.map((s) => [s, l.filter((a) => a.status === s).length])) }; });
-    const prog = cats.map((c) => { const l = A.filter((a) => a.category === c); return { label: c, value: Math.round(l.reduce((t, a) => t + progressOf(a), 0) / l.length), note: `(${l.length})` }; });
-    const pri = HF_PRIORITY.map((p) => { const l = A.filter((a) => a.priority === p); return { label: p + " priority", counts: Object.fromEntries(HF_STATUS.map((s) => [s, l.filter((a) => a.status === s).length])) }; }).filter((r) => Object.values(r.counts).some(Boolean));
-    const overall = Math.round(A.reduce((t, a) => t + progressOf(a), 0) / A.length);
-    const bw = backWeeks(), bm = {}; bw.forEach((wc) => { const k = wc.slice(0, 7); bm[k] = bm[k] || { n: 0, d: 0 }; bm[k].n++; if (inRange("weekly_alarm", wc, addDays(wc, 6)).length) bm[k].d++; });
-    return `<div class="grid g2" style="margin-top:12px">
-      <div class="card"><h3 style="margin-top:0">Action status by category</h3>${stackedBars(byCat, HF_STATUS)}</div>
-      <div class="card"><h3 style="margin-top:0">Progress by category <span class="muted" style="font-weight:400">· overall ${overall}%</span></h3><p class="muted" style="margin-top:-4px">Average of each action's completed steps</p>${simpleBars(prog)}</div>
-      <div class="card"><h3 style="margin-top:0">Action status by priority</h3>${stackedBars(pri, HF_STATUS)}</div>
-      <div class="card"><h3 style="margin-top:0">Weekly alarm tests evidenced, Feb–Oct 2026</h3><p class="muted" style="margin-top:-4px">Weeks with a back-record (Saeker or scanned sheet) out of weeks in the month</p>
-        ${simpleBars(Object.keys(bm).map((k) => ({ label: `${MON[+k.slice(5) - 1]} ${k.slice(0, 4)}`, value: bm[k].d, note: `of ${bm[k].n}` })), "", 5, "var(--navy)")}</div>
-    </div>`; })() : ""}
   <h3>Latest entries</h3>
   ${recent.length ? `<div class="tw"><table><tr><th>Check</th><th>Date</th><th>Result</th><th>By</th><th>Entered</th></tr>
     ${recent.map((r) => `<tr><td>${h((CHECK[r.type] || {}).name || r.type)}${r.imported ? `<span class="imp">PAST RECORD</span>` : ""}</td><td>${fds(r.date)}</td><td>${h(resultOf(r))}</td><td>${h(r.byName)}</td><td class="muted">${fdt(r.createdAt)}</td></tr>`).join("")}</table></div>` : `<p class="muted">Nothing recorded yet.</p>`}`;
@@ -340,6 +360,7 @@ function openCheck(typeId, opt = {}) {
       ${!past ? `<p class="muted" style="margin-top:2px">You can record a check up to 7 days late. The time you save it is shown next to it.</p>` : ""}
       ${c.fields.map(([k, l, t, req]) => {
         const lab = `<label>${h(l)}${req ? ' <b style="color:var(--red)">*</b>' : ""}</label>`;
+        if (t === "venue") return lab + `<select data-f="${k}"><option value="">Choose…</option>${reg("venue").sort((a, b) => natRef(a.name, b.name)).map((x) => `<option>${h(x.name)}</option>`).join("")}<option>Other (write in notes)</option></select>`;
         if (t.startsWith("select:")) return lab + `<select data-f="${k}"><option value="">Choose…</option>${t.slice(7).split("|").map((o) => `<option>${h(o)}</option>`).join("")}</select>`;
         if (t === "textarea") return lab + `<textarea data-f="${k}"></textarea>`;
         return lab + `<input type="${t === "number" ? "number" : t === "time" ? "time" : t === "date" ? "date" : "text"}" data-f="${k}">`;
@@ -376,6 +397,13 @@ function openCheck(typeId, opt = {}) {
     if (past && (!val("__sourceRef") || !val("__doneBy"))) return (err.textContent = "Give the source reference and the name shown in the source.");
     if (!val("__confirm")) return (err.textContent = "Tick the confirmation box.");
     const rec = { type: id, ref: c.ref, date, fields, items, notes };
+    if (id === "event") {
+      const vn = reg("venue").find((x) => x.name === fields.venue), lim = vn && vn.fire && Number(vn.fire[fields.layout]);
+      if (lim && Number(fields.guests) > lim) {
+        if (items.capacity === "pass") return (err.textContent = `${fields.guests} is over the fire limit of ${lim} for ${fields.venue} (${fields.layout}). Reduce numbers or mark "Numbers within limit" as Fail.`);
+        rec.overCapacity = { limit: lim };
+      }
+    }
     if (id === "weekly_alarm") { const w = rotaWeek(rotaIndex(date)); if (w.i >= 0) rec.rota = { wc: w.wc, plannedDay: w.day, plannedMarshal: w.marshal }; }
     if (past) Object.assign(rec, { imported: true, source: val("__source"), sourceRef: val("__sourceRef"), doneBy: val("__doneBy") });
     try {
@@ -645,10 +673,11 @@ VIEWS.actions = () => {
   </div>
   <div class="tw"><table><tr><th style="width:56px">Ref</th><th>Action</th><th>Category</th><th>Priority</th><th>Owner</th><th>Due</th><th style="width:150px">Status</th><th style="width:150px">Progress</th><th>Last update</th></tr>
   ${rows.map((a) => { const late = a.due && a.status !== "Completed" && a.due < today(); const last = (a.history || []).slice(-1)[0];
-    return `<tr><td><b>${h(a.ref)}</b></td><td><a href="#" data-edit="${a.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(a.title)}</a>${a.notes ? `<div class="muted">${h(a.notes)}</div>` : ""}</td>
+    return `<tr><td><b>${h(a.ref)}</b></td><td><a href="#" data-edit="${a.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(a.title)}</a>${(a.photos || []).length ? ` <span class="pill p-navy" title="Photos from HosFIRE Mobile">📷 ${a.photos.length}</span>` : ""}${a.notes ? `<div class="muted">${h(a.notes)}</div>` : ""}</td>
     <td class="muted">${h(a.category)}</td><td>${pill(a.priority)}</td><td>${h(a.owner)}</td><td style="${late ? "color:var(--red);font-weight:700" : ""}">${a.due ? fds(a.due) : ""}</td>
     <td><select data-st="${a.id}" style="padding:6px;font-weight:700;color:${a.status === "Completed" ? "var(--ok)" : a.status === "In progress" ? "var(--amber)" : "var(--red)"}">${HF_STATUS.map((s) => `<option ${a.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></td>
-    <td><a href="#" data-edit="${a.id}" style="text-decoration:none;color:inherit">${progBar(progressOf(a), 80)}${(a.steps || []).length ? `<span class="muted">${a.steps.filter((x) => x.done).length} of ${a.steps.length} steps</span>` : ""}</a></td>
+    <td><div class="pct">${[0, 25, 50, 75, 100].map((n) => `<button data-pct="${a.id}" data-n="${n}" class="${progressOf(a) === n ? "on" : ""}" title="Set ${n}%">${n}</button>`).join("")}</div>
+    <a href="#" data-edit="${a.id}" style="text-decoration:none;color:inherit">${progBar(progressOf(a), 80)}${typeof a.pct === "number" && a.pct !== null && a.status !== "Completed" ? `<span class="muted">set by hand</span>` : (a.steps || []).length ? `<span class="muted">${a.steps.filter((x) => x.done).length} of ${a.steps.length} steps</span>` : ""}</a></td>
     <td class="muted">${last ? `${fdt(last.at)}<br>${h(last.by)}` : ""}</td></tr>`; }).join("") || `<tr><td colspan="9" class="muted">No actions match.</td></tr>`}
   </table></div>`;
 };
@@ -659,6 +688,13 @@ BIND.actions = (v) => {
   $("#af-q", v).onchange = (e) => { f.q = e.target.value; render(); };
   $("#a-new", v).onclick = () => editAction(null);
   $$("[data-edit]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); editAction(a.dataset.edit); }));
+  $$("[data-pct]", v).forEach((b) => (b.onclick = async () => {
+    const a = S.data.actions.find((x) => x.id === b.dataset.pct), n = +b.dataset.n;
+    const status = n === 100 ? "Completed" : n === 0 ? (a.status === "Completed" ? "In progress" : a.status) : "In progress";
+    const upd = { pct: n, status, history: (a.history || []).concat([{ at: Date.now(), by: S.user.name, status, note: `Progress set to ${n}%` }]) };
+    if (status === "Completed" && a.status !== "Completed") upd.completedOn = today();
+    await put("actions", a.id, upd); audit(`Action ${a.ref} progress → ${n}%`, a.ref); toast(`${a.ref}: ${n}%`);
+  }));
   $$("[data-st]", v).forEach((s) => (s.onchange = () => {
     const a = S.data.actions.find((x) => x.id === s.dataset.st);
     const status = s.value;
@@ -684,12 +720,18 @@ function editAction(id) {
     <div class="f2"><div><label>Priority</label>${sel("priority", HF_PRIORITY)}</div><div><label>Status</label>${sel("status", HF_STATUS)}</div>
     <div><label>Owner</label><input data-k="owner" value="${h(a.owner)}"></div><div><label>Contractor</label><input data-k="contractor" value="${h(a.contractor)}"></div>
     <div><label>Due date</label><input type="date" data-k="due" value="${h(a.due)}"></div><div><label>Source</label><input data-k="source" value="${h(a.source)}"></div></div>
+    ${(a.photos || []).length ? `<label>Photos from the app (${a.photos.length})</label><div id="ph" style="display:flex;gap:8px;flex-wrap:wrap"></div>` : ""}
     <label>Progress steps</label><div id="steps"></div>
     <div class="row"><input id="step-new" placeholder="Add a step, e.g. Quote approved" class="grow" style="width:auto;flex:1"><button class="btn sm ghost" id="step-add">Add step</button></div>
     <label>Latest note</label><textarea data-k="notes">${h(a.notes)}</textarea>
     ${(a.history || []).length ? `<label>History</label><div class="tw"><table>${a.history.slice().reverse().map((x) => `<tr><td class="muted" style="width:150px">${fdt(x.at)}</td><td>${h(x.by)}</td><td>${pill(x.status)}</td><td>${h(x.note)}</td></tr>`).join("")}</table></div>` : ""}
     <div class="row" style="margin-top:12px"><button class="btn red" id="as">Save</button><button class="btn ghost" data-close>Cancel</button><div class="grow"></div>${id && isAdmin() ? `<button class="btn ghost" id="ad" style="color:var(--red)">Delete</button>` : ""}</div><div class="err" id="ae"></div>`);
   const steps = JSON.parse(JSON.stringify(a.steps || [])), was = JSON.stringify(steps);
+  if ((a.photos || []).length && S.live && fb.st) {
+    a.photos.forEach(async (ph) => { try { const url = await fb.st.ref(ph.path).getDownloadURL();
+      const el = document.createElement("a"); el.href = url; el.target = "_blank"; el.title = `${ph.caption || ""} — ${ph.by}, ${fdt(ph.at)}`;
+      el.innerHTML = `<img src="${url}" style="width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--line)">`; const box = $("#ph", m); if (box) box.appendChild(el); } catch (e) {} });
+  }
   const drawSteps = () => {
     const pc = steps.length ? Math.round((steps.filter((x) => x.done).length / steps.length) * 100) : null;
     $("#steps", m).innerHTML = (pc === null ? `<p class="muted">No steps yet. Add the steps needed to close this action; progress is worked out from them.</p>` : progBar(pc, 200)) +
@@ -702,7 +744,7 @@ function editAction(id) {
   $("#as", m).onclick = async () => {
     const o = {}; $$("[data-k]", m).forEach((el) => (o[el.dataset.k] = el.value.trim()));
     if (!o.title) return ($("#ae", m).textContent = "Enter the action.");
-    o.steps = steps;
+    o.steps = steps; if (JSON.stringify(steps) !== was) o.pct = null;
     if (JSON.stringify(steps) !== was && steps.length) {
       const allDone = steps.every((x) => x.done), any = steps.some((x) => x.done);
       if (allDone && o.status !== "Completed") o.status = "Completed";
@@ -717,6 +759,80 @@ function editAction(id) {
   const d = $("#ad", m); if (d) d.onclick = async () => { if (!confirmBox(m, "Delete this action? It will be removed from the tracker.")) return; await del("actions", id); audit(`Deleted action ${a.ref}`, a.ref); m.close(); };
 }
 function confirmBox(m, msg) { const e = $(".err", m); if (e && e.dataset.sure !== "1") { e.textContent = msg + " Press again to confirm."; e.dataset.sure = "1"; return false; } return true; }
+
+/* ============================================================ AUDIT READINESS */
+function auditScore(group) {
+  const items = group ? group.items : HF_AUDIT.flatMap((g) => g.items);
+  const st = (id) => (S.data.registers.find((r) => r.id === "audit-" + id) || {}).status || "Not ready";
+  const pts = items.reduce((t, [id]) => t + ({ "Ready": 1, "Partly ready": 0.5 }[st(id)] || 0), 0);
+  return { pc: items.length ? Math.round((pts / items.length) * 100) : 0, ready: items.filter(([id]) => st(id) === "Ready").length, total: items.length };
+}
+VIEWS.audit = () => {
+  const get = (id) => S.data.registers.find((r) => r.id === "audit-" + id) || {};
+  const sc = auditScore();
+  return `<h2>Audit <span class="fl">readiness</span></h2>
+  <p class="lead">What the fire safety officer will look at during the Fire Safety Order audit — including the spa and the function / ceremony rooms. Mark each one and note where the evidence is.</p>
+  <div class="grid g5" style="margin-bottom:12px">
+    <div class="card tile ${sc.pc >= 80 ? "g" : sc.pc >= 50 ? "a" : "r"}"><div class="n">${sc.pc}%</div><div class="l">Overall readiness</div></div>
+    ${["Ready", "Partly ready", "Not ready"].map((x, i) => `<div class="card tile ${["g", "a", "r"][i]}"><div class="n">${HF_AUDIT.flatMap((g) => g.items).filter(([id]) => (get(id).status || "Not ready") === x).length}</div><div class="l">${x}</div></div>`).join("")}
+  </div>
+  ${HF_AUDIT.map((g) => { const gs = auditScore(g); return `<h3 class="row"><span class="grow">${h(g.t)}</span><span style="font-size:13px">${progBar(gs.pc, 120)}</span></h3>
+  <div class="tw"><table><tr><th>What he will look at</th><th style="width:170px">Where the evidence is</th><th style="width:260px">Status</th><th style="width:28%">Notes</th></tr>
+  ${g.items.map(([id, t, ev]) => { const r = get(id), st = r.status || "Not ready"; return `<tr><td>${h(t)}</td><td class="muted">${h(ev)}</td>
+    <td><div class="seg">${HF_READY.map((x) => `<button data-au="${id}" data-v="${x}" class="${st === x ? "on " + (x === "Ready" ? "pass" : x === "Not ready" ? "fail" : "na") : ""}" style="font-size:12px">${x}</button>`).join("")}</div>
+    ${r.updatedBy ? `<div class="muted" style="font-size:11px;margin-top:3px">${h(r.updatedBy)} · ${fdt(r.updatedAt)}</div>` : ""}</td>
+    <td><input data-aun="${id}" value="${h(r.note)}" placeholder="e.g. in the red folder, tab 3"></td></tr>`; }).join("")}</table></div>`; }).join("")}`;
+};
+BIND.audit = (v) => {
+  $$("[data-au]", v).forEach((b) => (b.onclick = async () => { await put("registers", "audit-" + b.dataset.au, { kind: "audit", status: b.dataset.v }); audit(`Audit readiness: ${b.dataset.au} → ${b.dataset.v}`); }));
+  $$("[data-aun]", v).forEach((i) => (i.onchange = async () => { await put("registers", "audit-" + i.dataset.aun, { kind: "audit", note: i.value.trim() }); }));
+};
+
+/* ============================================================ VENUES & EVENTS */
+const LAYOUTS = [["boardroom", "Boardroom"], ["ushape", "U-shape"], ["theatre", "Theatre"], ["cabaret", "Cabaret"], ["reception", "Reception"]];
+VIEWS.venues = () => {
+  const V = reg("venue").sort((a, b) => natRef(a.name, b.name));
+  const ev = recs("event").sort((a, b) => natRef(b.date, a.date));
+  return `<h2>Venues and <span class="fl">events</span></h2>
+  <p class="lead">Fire information for every function and ceremony room, and a pre-event fire check for each booking. The fire limit is the maximum number agreed with the fire risk assessor; until it is confirmed, the sales capacity is shown for reference only.</p>
+  <div class="row" style="margin-bottom:10px"><button class="btn red" data-rec="event">Record a pre-event check</button><div class="grow"></div>${isAdmin() ? `<button class="btn ghost" id="v-new">+ Add room</button>` : ""}</div>
+  <div class="tw"><table><tr><th>Room</th><th>Ceremony licence</th><th>Exits</th><th>Alarm zone</th><th>Fire limit by layout<br><span style="font-weight:400;text-transform:none">(sales capacity)</span></th><th>Last event check</th></tr>
+  ${V.map((x) => { const last = ev.find((e) => (e.fields || {}).venue === x.name);
+    return `<tr><td><a href="#" data-v="${x.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(x.name)}</a>${x.m2 ? `<div class="muted">${h(x.m2)} m²</div>` : ""}</td><td>${x.ceremony ? h(x.ceremony) : '<span class="muted">—</span>'}</td>
+    <td>${h(x.exits || "—")}</td><td>${h(x.zone || "—")}</td>
+    <td style="font-size:12px">${LAYOUTS.map(([k, l]) => { const f = (x.fire || {})[k], sc = (x.sales || {})[k]; return sc || f ? `<span style="white-space:nowrap">${l}: <b style="color:${f ? "var(--ok)" : "var(--amber)"}">${f || "?"}</b> <span class="muted">(${sc || "–"})</span></span>` : ""; }).filter(Boolean).join(" · ")}</td>
+    <td>${last ? `${fds(last.date)}<br><span class="muted">${h((last.fields || {}).bookingRef)}</span>` : '<span class="muted">None</span>'}</td></tr>`; }).join("") || `<tr><td colspan="6" class="muted">No rooms yet — load the starting data or add a room.</td></tr>`}
+  </table></div>
+  <h3>Pre-event checks</h3>
+  <div class="tw"><table><tr><th>Date</th><th>Room</th><th>Booking</th><th>Type</th><th>Guests</th><th>Result</th><th>Checked by</th></tr>
+  ${ev.map((e) => { const f = e.fields || {}; return `<tr data-id="${e.id}" style="cursor:pointer"><td>${fds(e.date)}</td><td>${h(f.venue)}</td><td>${h(f.bookingRef)}</td><td>${h(f.eventType)}</td><td>${h(f.guests)} ${h(f.layout)}${e.overCapacity ? " " + pill("Over limit") : ""}</td><td>${h(resultOf(e))}</td><td>${h(e.byName)}</td></tr>`; }).join("") || `<tr><td colspan="7" class="muted">No pre-event checks yet.</td></tr>`}
+  </table></div>`;
+};
+BIND.venues = (v) => {
+  bindRec(v);
+  $$("tr[data-id]", v).forEach((tr) => (tr.onclick = () => viewRecord(tr.dataset.id)));
+  const edit = (id) => {
+    const x = id ? S.data.registers.find((r) => r.id === id) : { kind: "venue", fire: {}, sales: {} };
+    const m = modal(`<h3>${id ? h(x.name) : "Add room"}</h3>
+      <div class="f2"><div><label>Room name</label><input data-k="name" value="${h(x.name)}"></div><div><label>Floor area (m²)</label><input data-k="m2" value="${h(x.m2)}"></div>
+      <div><label>On the marriage licence (ceremony room)</label><select data-k="ceremony">${["", "Yes", "Applied for", "No"].map((o) => `<option ${x.ceremony === o ? "selected" : ""}>${o}</option>`).join("")}</select></div>
+      <div><label>Number of exits</label><input data-k="exits" value="${h(x.exits)}"></div>
+      <div><label>Fire alarm zone</label><input data-k="zone" value="${h(x.zone)}"></div><div><label>Assembly point</label><input data-k="assembly" value="${h(x.assembly)}"></div></div>
+      <label>Fire occupancy limit by layout (agreed with the fire risk assessor)</label>
+      <div class="f2">${LAYOUTS.map(([k, l]) => `<div><label style="text-transform:none">${l} <span class="muted">(sales ${h((x.sales || {})[k] || "–")})</span></label><input type="number" data-fl="${k}" value="${h((x.fire || {})[k])}"></div>`).join("")}</div>
+      <label>Notes (escape routes, layout rules, refuges)</label><textarea data-k="notes">${h(x.notes)}</textarea>
+      <div class="row" style="margin-top:12px"><button class="btn red" id="vs">Save</button><button class="btn ghost" data-close>Cancel</button></div><div class="err"></div>`);
+    $("#vs", m).onclick = async () => {
+      const o = { kind: "venue", fire: {}, sales: x.sales || {} }; $$("[data-k]", m).forEach((el) => (o[el.dataset.k] = el.value.trim()));
+      $$("[data-fl]", m).forEach((el) => { if (el.value) o.fire[el.dataset.fl] = Number(el.value); });
+      if (!o.name) return;
+      if (id) await put("registers", id, o); else await add("registers", o);
+      audit(`Venue ${o.name} updated`); m.close(); toast("Saved");
+    };
+  };
+  const nb = $("#v-new", v); if (nb) nb.onclick = () => edit(null);
+  $$("[data-v]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); edit(a.dataset.v); }));
+};
 
 /* ============================================================ CERTIFICATES */
 VIEWS.certs = () => {
@@ -920,7 +1036,7 @@ VIEWS.regs = () => `<h2>Regulations and <span class="fl">standards</span></h2>
 /* ============================================================ INSPECTOR PACK */
 VIEWS.pack = () => {
   const f = S.f.pack || (S.f.pack = { from: addMonths(today(), -6), to: today() });
-  const secs = [["summary", "Summary"], ["actions", "Action tracker"], ["certs", "Certificates"], ["weekly", "Weekly fire alarm tests"], ["records", "All check records"], ["drills", "Drills"], ["training", "Training matrix"], ["docs", "Document list"], ["regs", "Regulations summary"]];
+  const secs = [["summary", "Summary"], ["actions", "Action tracker"], ["certs", "Certificates"], ["weekly", "Weekly fire alarm tests"], ["records", "All check records"], ["drills", "Drills"], ["training", "Training matrix"], ["docs", "Document list"], ["audit", "Audit readiness"], ["venues", "Venues and event checks"], ["regs", "Regulations summary"]];
   return `<h2>Inspector <span class="fl">pack</span></h2>
   <p class="lead">Builds a printable pack from the live records. Choose "Save as PDF" in the print window to download it. Past records entered from a source are labelled as such in the pack.</p>
   <div class="card"><div class="f2"><div><label>Records from</label><input type="date" id="pk-from" value="${f.from}"></div><div><label>Records to</label><input type="date" id="pk-to" value="${f.to}"></div></div>
@@ -948,7 +1064,9 @@ function packHTML(from, to, on) {
     const open = A.filter((a) => a.status !== "Completed");
     out += `<h2>Summary</h2>${tbl(["Item", "Position"], [
       ["Inspection", `${fd(ins.date)} ${h(ins.time)} — ${h(ins.inspector)}, ${h(ins.body)} (ref ${h(ins.ref)})`],
+      ["Fire Safety Manager", h(HF_FIRE_MANAGER.name) + " (" + h(HF_FIRE_MANAGER.role) + ")"],
       ["Fire marshals", h(marshals().join(", "))],
+      ["Audit readiness", auditScore().pc + "%"],
       ["Evacuation strategy", "Simultaneous evacuation. Alarm not monitored: staff call 999."],
       ["Actions", `${A.length} total · ${A.filter((a) => a.status === "Completed").length} completed · ${A.filter((a) => a.status === "In progress").length} in progress · ${A.filter((a) => a.status === "Not started").length} not started · ${open.filter((a) => a.priority === "High").length} high-priority open`],
       ["Weekly alarm tests in period", String(R.filter((r) => r.type === "weekly_alarm").length)],
@@ -966,6 +1084,9 @@ function packHTML(from, to, on) {
   if (on.drills) out += `<h2>Fire drills</h2>${tbl(["Date", "Day / night", "Evacuation time", "Staff", "Issues"], R.filter((r) => r.type === "drill").map((r) => { const f = r.fields || {}; return [fd(r.date) + src(r), h(f.shift), h(f.evac) + " min", h(f.staff), h(f.issues)]; }))}`;
   if (on.training) out += `<h2 class="pb">Training matrix</h2>${tbl(["Name", "Role", "Shift", ...HF_COURSES.map((c) => c[1])], reg("training").sort((a, b) => natRef(a.name, b.name)).map((t) => [h(t.name) + (t.marshal ? " (marshal)" : ""), h(t.role), h(t.shift), ...HF_COURSES.map(([k]) => ((t.courses || {})[k] ? fds(t.courses[k]) : "—"))]))}`;
   if (on.docs) out += `<h2>Document list</h2>${tbl(["Document", "Category", "Date", "Version", "Issued by", "Held"], reg("doc").sort((a, b) => natRef(a.cat, b.cat)).map((d) => [h(d.title), h(d.cat), d.date ? fds(d.date) : "", h(d.version), h(d.author), d.file ? "Yes (HosFIRE)" : "Paper / to upload"]))}`;
+  if (on.audit) out += `<h2 class="pb">Audit readiness</h2>` + HF_AUDIT.map((g) => `<h3>${h(g.t)} — ${auditScore(g).pc}%</h3>${tbl(["Item", "Evidence", "Status", "Notes"], g.items.map(([id, t, ev]) => { const r = S.data.registers.find((x) => x.id === "audit-" + id) || {}; return [h(t), h(ev), `<b>${h(r.status || "Not ready")}</b>`, h(r.note)]; }))}`).join("");
+  if (on.venues) out += `<h2 class="pb">Function and ceremony rooms</h2>${tbl(["Room", "Ceremony licence", "Exits", "Zone", "Fire limit by layout (sales capacity)"], reg("venue").sort((a, b) => natRef(a.name, b.name)).map((x) => [h(x.name), h(x.ceremony || ""), h(x.exits || ""), h(x.zone || ""), LAYOUTS.map(([k, l]) => ((x.sales || {})[k] || (x.fire || {})[k]) ? `${l}: ${(x.fire || {})[k] || "to confirm"} (${(x.sales || {})[k] || "–"})` : "").filter(Boolean).join("; ")]))}
+    <h3>Pre-event checks in period</h3>${tbl(["Date", "Room", "Booking", "Guests", "Result", "By"], R.filter((r) => r.type === "event").map((r) => { const f = r.fields || {}; return [fds(r.date), h(f.venue), h(f.bookingRef), h(f.guests) + " " + h(f.layout), h(resultOf(r)), h(r.byName)]; }))}`;
   if (on.regs) out += `<h2 class="pb">Regulations summary</h2>` + HF_REGS.map((g) => `<h3>${h(g.t)}</h3>${tbl(["", ""], g.items.map(([a, b]) => [`<b>${h(a)}</b>`, h(b)]))}`).join("");
   return out;
 }
@@ -1026,6 +1147,6 @@ document.addEventListener("DOMContentLoaded", () => {
   S.live = fbInit();
   buildLogin();
   if (DEMO) { const b = document.createElement("p"); b.className = "muted"; b.style.color = "#B3261E"; b.textContent = "DEMO MODE — nothing is saved to HosPRO. Data stays in this browser only."; $(".lgcard").appendChild(b); }
-  if (S.live) fb.auth.onAuthStateChanged((u) => { if (u && !S.user) { const k = keyByEmail(u.email); if (k) enter(k); } });
+  if (S.live) fb.auth.onAuthStateChanged((u) => { if (u && !S.user) { const k = keyByEmail(u.email); if (k) gate(k); } });
 });
 })();

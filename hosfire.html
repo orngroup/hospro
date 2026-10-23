@@ -44,7 +44,14 @@ main{max-width:1180px;margin:0 auto;padding:18px}
 h2{color:var(--navy);margin:4px 0 4px;font-size:22px} h2 .fl{color:var(--red)}
 h3{color:var(--navy);margin:18px 0 8px;font-size:16px}
 .lead{color:var(--muted);margin:0 0 14px}
-.grid{display:grid;gap:12px} .g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))} .g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.grid{display:grid;gap:12px}
+.g5{grid-template-columns:repeat(5,minmax(0,1fr))} .g4c{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:1100px){.g5{grid-template-columns:repeat(3,minmax(0,1fr))} .g4c{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.g5,.g4c{grid-template-columns:1fr 1fr} .g4c{grid-template-columns:1fr}}
+.pct{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-bottom:4px}
+.pct button{border:none;background:#fff;font:700 11px Lato,sans-serif;padding:3px 6px;cursor:pointer;color:var(--muted);border-right:1px solid var(--line)}
+.pct button:last-child{border-right:none} .pct button.on{background:var(--navy);color:#fff}
+.seg button.on.na{background:var(--c-prog);color:#fff} .g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))} .g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
 .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .tile{border-left:5px solid var(--navy)} .tile .n{font-size:30px;font-weight:900;color:var(--navy)} .tile .l{font-size:13px;color:var(--muted);font-weight:700}
 .tile.r{border-left-color:var(--red)} .tile.r .n{color:var(--red)} .tile.a{border-left-color:var(--amber)} .tile.a .n{color:var(--amber)} .tile.g{border-left-color:var(--ok)} .tile.g .n{color:var(--ok)}
@@ -106,7 +113,7 @@ tr:hover td{background:#fbfaf7}
     <label>Your name</label>
     <select id="lg-user"></select>
     <label>Access code</label>
-    <input id="lg-code" type="password" autocomplete="off" placeholder="e.g. BHAK">
+    <input id="lg-code" type="password" autocomplete="off" placeholder="HosFIRE code">
     <button class="btn red block" id="lg-go">Sign in</button>
     <div class="err" id="lg-err"></div>
     <p class="muted" style="margin-top:10px">Every record you make is saved under your name with the date and time.</p>
@@ -118,7 +125,7 @@ tr:hover td{background:#fbfaf7}
     <img src="assets/marketing/logos/logo-blue-transparent.png" onerror="this.src='assets/bh-logo.svg'" alt="">
     <div><div class="brand">Hos<span>FIRE</span></div><div class="sub">Fire safety · Brandon Hall Hotel and Spa</div></div>
     <div class="sp"></div>
-    <div class="who"><b id="who-name"></b><span id="mode-badge" class="badge"></span><br><a href="#" id="logout" style="color:#c9d3de;font-size:12px">Sign out</a></div>
+    <a href="index.html" style="color:#c9d3de;font-size:12px;text-decoration:none;margin-right:14px">← HosPRO</a><div class="who"><b id="who-name"></b><span id="mode-badge" class="badge"></span><br><a href="#" id="logout" style="color:#c9d3de;font-size:12px">Sign out</a></div>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
