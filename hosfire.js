@@ -1,0 +1,1031 @@
+/* ============================================================
+   HosFIRE — fire safety records for Brandon Hall Hotel and Spa
+   Standalone module: loaded only by hosfire.html. Uses its own
+   Firestore collections (hosfire_*) and Storage folder (hosfire/),
+   so nothing else in HosPRO is read or changed.
+   ?demo=1 runs it without Firebase (data kept in this browser only).
+   ============================================================ */
+(function () {
+"use strict";
+
+/* ---------- helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const h = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const pad = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = (s) => { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split("-").map(Number); return new Date(y, m - 1, d); };
+const today = () => ymd(new Date());
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return ymd(d); };
+const addMonths = (s, n) => { const d = parse(s); const day = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() + n); const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); d.setDate(Math.min(day, last)); return ymd(d); };
+const daysBetween = (a, b) => Math.round((parse(b) - parse(a)) / 86400000);
+const mondayOf = (s) => { const d = parse(s); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return ymd(d); };
+const fd = (s) => { if (!s) return ""; const d = parse(s); return `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`; };
+const fds = (s) => { if (!s) return ""; const d = parse(s); return `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`; };
+const ms = (t) => (t && t.toMillis ? t.toMillis() : (typeof t === "number" ? t : (t && t.seconds ? t.seconds * 1000 : Date.now())));
+const fdt = (t) => { const d = new Date(ms(t)); return `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const natRef = (a, b) => String(a || "").localeCompare(String(b || ""), "en", { numeric: true });
+const DEMO = /[?&]demo=1/.test(location.search);
+const CHECK = Object.fromEntries(HF_CHECKS.map((c) => [c.id, c]));
+
+function toast(msg) { const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); }
+function modal(html) {
+  const m = document.createElement("div"); m.className = "modal";
+  m.innerHTML = `<div class="mbox">${html}</div>`;
+  m.close = () => { if (!m.isConnected) return; m.remove(); if (m.onclose) m.onclose(); };
+  m.addEventListener("mousedown", (e) => { if (e.target === m) m.close(); });
+  document.body.appendChild(m);
+  $$("[data-close]", m).forEach((b) => (b.onclick = () => m.close()));
+  return m;
+}
+const pill = (txt) => {
+  const map = { "Completed": "p-ok", "In progress": "p-amb", "Not started": "p-red", "High": "p-red", "Medium": "p-amb", "Low": "p-grey",
+    "Overdue": "p-red", "Due soon": "p-amb", "OK": "p-ok", "No date": "p-grey", "Done": "p-ok", "Due": "p-amb", "Missed": "p-red", "Planned": "p-navy", "Pass": "p-ok", "Fail": "p-red" };
+  return `<span class="pill ${map[txt] || "p-grey"}">${h(txt)}</span>`;
+};
+
+/* ---------- logins ---------- */
+const LOGINS = {};
+Object.entries(typeof FB_LOGINS !== "undefined" ? FB_LOGINS : {}).forEach(([k, v]) => { if (!v.spare) LOGINS[k] = v; });
+Object.assign(LOGINS, HF_EXTRA_LOGINS);
+const keyByEmail = (e) => Object.keys(LOGINS).find((k) => LOGINS[k].email === e);
+
+/* ---------- store ---------- */
+const COLS = { records: "hosfire_records", actions: "hosfire_actions", registers: "hosfire_registers", diary: "hosfire_diary", audit: "hosfire_audit", config: "hosfire_config" };
+const S = { live: false, user: null, key: null, tab: "dash", data: { records: [], actions: [], registers: [], diary: [], audit: [], config: [] }, f: {} };
+let fb = null;
+
+function fbInit() {
+  if (DEMO) return false;
+  try {
+    if (typeof firebase === "undefined" || typeof firebaseConfig === "undefined") return false;
+    const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(firebaseConfig);
+    fb = { app, auth: firebase.auth(), db: firebase.firestore(), st: firebase.storage ? firebase.storage() : null };
+    return true;
+  } catch (e) { console.warn("HosFIRE: Firebase not available", e); return false; }
+}
+
+const demoKey = "hosfire_demo_v1";
+function demoLoad() { try { const j = JSON.parse(localStorage.getItem(demoKey) || "null"); if (j) Object.assign(S.data, j); } catch (e) {} }
+function demoSave() { try { localStorage.setItem(demoKey, JSON.stringify(S.data)); } catch (e) {} }
+
+let rerenderT = null;
+const rerender = () => { clearTimeout(rerenderT); rerenderT = setTimeout(() => { if (!S.hold) render(); }, 60); };
+const unsub = [];
+function listen() {
+  if (!S.live) { demoLoad(); render(); return; }
+  Object.entries(COLS).forEach(([k, col]) => {
+    unsub.push(fb.db.collection(col).onSnapshot((snap) => {
+      S.data[k] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      rerender();
+    }, (err) => { console.warn(col, err); if (k === "records") toast("Cannot read HosFIRE data — check the Firestore rules have been published."); }));
+  });
+}
+const stamp = () => ({ byName: S.user.name, byEmail: S.user.email });
+const now = () => (S.live ? firebase.firestore.FieldValue.serverTimestamp() : Date.now());
+async function add(k, obj) {
+  const doc = { ...obj, ...stamp(), createdAt: now() };
+  if (S.live) { const r = await fb.db.collection(COLS[k]).add(doc); return r.id; }
+  const id = "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  S.data[k].push({ id, ...doc }); demoSave(); rerender(); return id;
+}
+async function put(k, id, obj, merge = true) {
+  const doc = { ...obj, updatedBy: S.user.name, updatedAt: now() };
+  if (S.live) { await fb.db.collection(COLS[k]).doc(id).set(doc, { merge }); return; }
+  const i = S.data[k].findIndex((x) => x.id === id);
+  if (i >= 0) S.data[k][i] = merge ? { ...S.data[k][i], ...doc } : { id, ...doc }; else S.data[k].push({ id, ...doc });
+  demoSave(); rerender();
+}
+async function del(k, id) {
+  if (S.live) { await fb.db.collection(COLS[k]).doc(id).delete(); return; }
+  S.data[k] = S.data[k].filter((x) => x.id !== id); demoSave(); rerender();
+}
+function audit(what, ref) { add("audit", { what, ref: ref || "" }).catch(() => {}); }
+async function upload(folder, file) {
+  if (!S.live || !fb.st) throw new Error("File upload needs the live system (not demo mode).");
+  if (file.size > 25 * 1024 * 1024) throw new Error("File is over 25 MB.");
+  const safe = file.name.replace(/[^\w.\- ]+/g, "_");
+  const path = `hosfire/${folder}/${Date.now()}_${safe}`;
+  await fb.st.ref(path).put(file, { contentType: file.type || "application/octet-stream" });
+  return { path, name: file.name, size: file.size, uploadedBy: S.user.name, uploadedAt: Date.now() };
+}
+async function openFile(f) {
+  if (!f || !f.path) return;
+  try { const url = await fb.st.ref(f.path).getDownloadURL(); window.open(url, "_blank", "noopener"); }
+  catch (e) { toast("Could not open the file: " + e.message); }
+}
+const isAdmin = () => HF_ADMINS.includes(S.key) || (DEMO && S.key);
+const reg = (kind) => S.data.registers.filter((r) => r.kind === kind);
+const cfg = () => S.data.config.find((c) => c.id === "main") || {};
+const marshals = () => (cfg().marshals && cfg().marshals.length ? cfg().marshals : HF_MARSHALS);
+const rotaStart = () => cfg().rotaStart || HF_ROTA_START;
+
+/* ---------- rota ---------- */
+function rotaWeek(i) {
+  const wc = addDays(rotaStart(), 7 * i);
+  const off = ((i % 3) + 3) % 3, m = marshals();
+  return { i, wc, day: addDays(wc, off), dayName: HF_ROTA_DAYS[off], marshal: m[((i % m.length) + m.length) % m.length] };
+}
+const rotaIndex = (s) => Math.floor(daysBetween(rotaStart(), mondayOf(s)) / 7);
+const recs = (type) => S.data.records.filter((r) => r.type === type && !r.correctionOf);
+const effective = (r) => S.data.records.find((x) => x.correctionOf === r.id) || r;
+function weekStatus(w) {
+  const done = recs("weekly_alarm").filter((r) => r.date >= w.wc && r.date <= addDays(w.wc, 6)).sort((a, b) => natRef(a.date, b.date));
+  if (done.length) return { st: "Done", rec: done[0] };
+  if (today() > addDays(w.wc, 6)) return { st: "Missed" };
+  if (today() > w.day) return { st: "Overdue" };
+  if (today() >= w.wc) return { st: "Due" };
+  return { st: "Planned" };
+}
+
+/* ---------- check status ---------- */
+function periodStart(freq, d = today()) { if (freq === "daily") return d; if (freq === "weekly") return mondayOf(d); if (freq === "monthly") return d.slice(0, 8) + "01"; return null; }
+function checkStatus(c) {
+  const all = recs(c.id).sort((a, b) => natRef(b.date, a.date));
+  const last = all[0];
+  if (c.freq === "event") return { st: last ? "Recorded" : "None yet", last };
+  const ps = periodStart(c.freq);
+  const done = all.find((r) => r.date >= ps);
+  return { st: done ? "Done" : "Due", last, done };
+}
+function resultOf(r) {
+  const vals = Object.values(r.items || {});
+  const fails = vals.filter((v) => v === "fail").length;
+  return fails ? `${fails} fail${fails > 1 ? "s" : ""}` : (vals.length ? "All pass" : "Recorded");
+}
+
+/* ---------- certificates ---------- */
+function certState(c) {
+  if (!c.last || !c.months) return { next: "", st: "No date" };
+  const next = addMonths(c.last, Number(c.months));
+  const d = daysBetween(today(), next);
+  return { next, st: d < 0 ? "Overdue" : d <= 30 ? "Due soon" : "OK", days: d };
+}
+
+/* ---------- action progress (from its steps) ---------- */
+function progressOf(a) {
+  const st = a.steps || [];
+  if (st.length) return Math.round((st.filter((x) => x.done).length / st.length) * 100);
+  return a.status === "Completed" ? 100 : 0;
+}
+const progBar = (pc, w = 120) => `<div title="${pc}% complete" style="display:flex;align-items:center;gap:6px"><div style="width:${w}px;height:8px;background:#ebe7df;border-radius:4px;overflow:hidden"><div style="width:${pc}%;height:100%;background:${pc >= 100 ? "var(--c-done)" : pc > 0 ? "var(--c-prog)" : "transparent"};border-radius:4px"></div></div><b style="font-size:12px">${pc}%</b></div>`;
+
+/* ---------- simple accessible bar charts (HTML, hover titles, legend) ---------- */
+const SC = { "Completed": "var(--c-done)", "In progress": "var(--c-prog)", "Not started": "var(--c-not)" };
+function stackedBars(rows, keys) { // rows: [{label, counts:{key:n}}]
+  const max = Math.max(1, ...rows.map((r) => keys.reduce((t, k) => t + (r.counts[k] || 0), 0)));
+  return `<div class="legend">${keys.map((k) => `<span><i style="background:${SC[k]}"></i>${h(k)}</span>`).join("")}</div>
+  ${rows.map((r) => { const tot = keys.reduce((t, k) => t + (r.counts[k] || 0), 0);
+    return `<div class="bar-row"><div class="bl">${h(r.label)}</div><div class="bt"><div class="bs" style="width:${(tot / max) * 100}%">${keys.filter((k) => r.counts[k]).map((k) =>
+      `<div class="seg2" style="flex:${r.counts[k]};background:${SC[k]}" title="${h(r.label)} — ${h(k)}: ${r.counts[k]}">${r.counts[k]}</div>`).join("")}</div></div><div class="bv">${tot}</div></div>`; }).join("")}`;
+}
+function simpleBars(rows, unit = "%", max = 100, color = "var(--navy)") { // rows: [{label, value, note}]
+  return rows.map((r) => `<div class="bar-row" title="${h(r.label)}: ${r.value}${unit}${r.note ? " — " + h(r.note) : ""}"><div class="bl">${h(r.label)}</div><div class="bt"><div class="bs" style="width:${Math.max(0, Math.min(100, (r.value / max) * 100))}%;background:${color};border-radius:0 4px 4px 0"></div></div><div class="bv">${r.value}${unit}${r.note ? `<span class="muted"> ${h(r.note)}</span>` : ""}</div></div>`).join("");
+}
+
+/* ============================================================ LOGIN */
+function buildLogin() {
+  const sel = $("#lg-user");
+  sel.innerHTML = `<option value="">Choose your name…</option>` + Object.entries(LOGINS).sort((a, b) => a[1].name.localeCompare(b[1].name))
+    .map(([k, v]) => `<option value="${h(k)}">${h(v.name)}</option>`).join("");
+  $("#lg-code").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#lg-go").click(); });
+  $("#lg-go").onclick = async () => {
+    const k = sel.value, code = $("#lg-code").value.trim().toUpperCase(), err = $("#lg-err");
+    err.textContent = "";
+    if (!k) { err.textContent = "Choose your name."; return; }
+    const m = LOGINS[k];
+    if (code !== String(m.code).toUpperCase()) { err.textContent = "Incorrect access code."; return; }
+    if (!S.live) { enter(k); return; }
+    try { await fb.auth.signInWithEmailAndPassword(m.email, m.pw); /* onAuthStateChanged enters */ }
+    catch (e) {
+      err.textContent = (e.code === "auth/user-not-found" || e.code === "auth/invalid-credential" || e.code === "auth/invalid-login-credentials")
+        ? "This login has not been set up in Firebase yet. Ask Ajay (Settings tab shows how)." : e.message;
+    }
+  };
+  $("#logout").onclick = async (e) => { e.preventDefault(); unsub.splice(0).forEach((u) => u()); if (S.live) await fb.auth.signOut(); location.reload(); };
+}
+function enter(k) {
+  S.key = k; S.user = LOGINS[k];
+  $("#login").classList.add("hide"); $("#app").classList.remove("hide");
+  $("#who-name").textContent = S.user.name;
+  const b = $("#mode-badge"); b.textContent = S.live ? (isAdmin() ? "Fire safety manager" : "Fire team") : "DEMO"; if (!S.live) b.classList.add("demo");
+  listen();
+}
+
+/* ============================================================ NAV */
+const TABS = [
+  ["dash", "Dashboard"], ["checks", "Record a check"], ["log", "Logbook"], ["rota", "Weekly tests"], ["back", "Back-records"], ["actions", "Actions"],
+  ["certs", "Certificates"], ["docs", "Documents"], ["training", "Training"], ["drills", "Drills, PEEPs, permits"],
+  ["diary", "Diary"], ["regs", "Regulations"], ["pack", "Inspector pack"], ["settings", "Settings"]
+];
+function nav() {
+  $("#nav").innerHTML = TABS.map(([k, l]) => `<button data-t="${k}" class="${S.tab === k ? "on" : ""}">${l}</button>`).join("");
+  $$("#nav button").forEach((b) => (b.onclick = () => { S.tab = b.dataset.t; render(); window.scrollTo(0, 0); }));
+}
+function render() {
+  if (!S.user) return;
+  nav();
+  const v = $("#view");
+  const fn = VIEWS[S.tab] || VIEWS.dash;
+  v.innerHTML = fn();
+  (BIND[S.tab] || (() => {}))(v);
+}
+
+/* ============================================================ DASHBOARD */
+const VIEWS = {}, BIND = {};
+VIEWS.dash = () => {
+  const A = S.data.actions;
+  const open = A.filter((a) => a.status !== "Completed");
+  const highOpen = open.filter((a) => a.priority === "High");
+  const done = A.filter((a) => a.status === "Completed").length;
+  const certs = reg("cert").map((c) => ({ ...c, ...certState(c) }));
+  const overdue = certs.filter((c) => c.st === "Overdue");
+  const soon = certs.filter((c) => c.st === "Due soon");
+  const wi = rotaIndex(today()), w = wi >= 0 ? rotaWeek(wi) : rotaWeek(0), ws = weekStatus(w);
+  const insp = HF_HOTEL.inspection, dIns = daysBetween(today(), insp.date);
+  const due = HF_CHECKS.filter((c) => c.freq !== "event").map((c) => ({ c, s: checkStatus(c) }));
+  const dueNow = due.filter((x) => x.s.st === "Due");
+  const recent = S.data.records.slice().sort((a, b) => ms(b.createdAt) - ms(a.createdAt)).slice(0, 8);
+  const drills = recs("drill").filter((r) => r.date >= addMonths(today(), -12));
+  const empty = !A.length && !reg("cert").length;
+  return `
+  <h2>Fire safety <span class="fl">dashboard</span></h2>
+  <p class="lead">${h(HF_HOTEL.name)} · ${fd(today())}</p>
+  ${empty ? `<div class="warn"><b>No starting data loaded yet.</b> ${isAdmin() ? `Go to <a href="#" data-go="settings">Settings</a> and load the HosFIRE starting data file.` : "Ask a fire safety manager to load the starting data."}</div>` : ""}
+  ${dIns >= 0 && dIns <= 60 ? `<div class="warn"><b>Fire Safety Order audit: ${fd(insp.date)} at ${h(insp.time)}</b> — ${h(insp.inspector)}, ${h(insp.body)} (ref ${h(insp.ref)}). ${dIns === 0 ? "Today." : dIns + " day" + (dIns > 1 ? "s" : "") + " to go."}</div>` : ""}
+  <div class="grid g4">
+    <div class="card tile r"><div class="n">${highOpen.length}</div><div class="l">High-priority actions open</div></div>
+    <div class="card tile a"><div class="n">${open.length}</div><div class="l">Actions open (of ${A.length})</div></div>
+    <div class="card tile g"><div class="n">${A.length ? Math.round((done / A.length) * 100) : 0}%</div><div class="l">Actions completed</div></div>
+    <div class="card tile ${overdue.length ? "r" : "g"}"><div class="n">${overdue.length}</div><div class="l">Certificates overdue${soon.length ? ` · ${soon.length} due soon` : ""}</div></div>
+  </div>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card">
+      <h3 style="margin-top:0">This week's fire alarm test</h3>
+      ${wi < 0 ? `<p class="muted">Rota starts ${fd(rotaStart())}. First test: ${h(w.dayName)} ${fds(w.day)} — ${h(w.marshal)}.</p>` : `
+      <div class="row"><div class="grow"><b>${h(w.dayName)} ${fds(w.day)}</b><br><span class="muted">Planned marshal: ${h(w.marshal)}</span></div>${pill(ws.st)}</div>
+      ${ws.rec ? `<p class="muted">Done by ${h(ws.rec.byName)} on ${fd(ws.rec.date)} at ${h((ws.rec.fields || {}).time || "")} — call point ${h((ws.rec.fields || {}).callpoint || "")}.</p>` : `<button class="btn red sm" data-rec="weekly_alarm" style="margin-top:8px">Record this week's test</button>`}`}
+      <h3>Checks due now</h3>
+      ${dueNow.length ? dueNow.map((x) => `<div class="row" style="padding:4px 0;border-bottom:1px solid var(--line)"><div class="grow">${h(x.c.name)} <span class="muted">· ${h(x.c.freq)}</span></div><button class="btn sm ghost" data-rec="${x.c.id}">Record</button></div>`).join("") : `<p class="muted">All daily, weekly and monthly checks are recorded for this period.</p>`}
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Open high-priority actions</h3>
+      ${highOpen.length ? highOpen.sort((a, b) => natRef(a.ref, b.ref)).map((a) => `<div style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--line)"><b style="flex:0 0 40px">${h(a.ref)}</b><div style="flex:1">${h(a.title)}</div><div style="flex:0 0 auto">${pill(a.status)}</div></div>`).join("") : `<p class="muted">None.</p>`}
+      <h3>Drills in the last 12 months</h3>
+      <p>${drills.length} recorded · day ${drills.filter((d) => (d.fields || {}).shift === "Day").length} · night ${drills.filter((d) => (d.fields || {}).shift === "Night").length} ${drills.filter((d) => (d.fields || {}).shift === "Night").length ? "" : pill("Night drill needed")}</p>
+    </div>
+  </div>
+  ${A.length ? (() => {
+    const cats = HF_ACTION_CATS.filter((c) => A.some((a) => a.category === c));
+    const byCat = cats.map((c) => { const l = A.filter((a) => a.category === c); return { label: c, counts: Object.fromEntries(HF_STATUS.map((s) => [s, l.filter((a) => a.status === s).length])) }; });
+    const prog = cats.map((c) => { const l = A.filter((a) => a.category === c); return { label: c, value: Math.round(l.reduce((t, a) => t + progressOf(a), 0) / l.length), note: `(${l.length})` }; });
+    const pri = HF_PRIORITY.map((p) => { const l = A.filter((a) => a.priority === p); return { label: p + " priority", counts: Object.fromEntries(HF_STATUS.map((s) => [s, l.filter((a) => a.status === s).length])) }; }).filter((r) => Object.values(r.counts).some(Boolean));
+    const overall = Math.round(A.reduce((t, a) => t + progressOf(a), 0) / A.length);
+    const bw = backWeeks(), bm = {}; bw.forEach((wc) => { const k = wc.slice(0, 7); bm[k] = bm[k] || { n: 0, d: 0 }; bm[k].n++; if (inRange("weekly_alarm", wc, addDays(wc, 6)).length) bm[k].d++; });
+    return `<div class="grid g2" style="margin-top:12px">
+      <div class="card"><h3 style="margin-top:0">Action status by category</h3>${stackedBars(byCat, HF_STATUS)}</div>
+      <div class="card"><h3 style="margin-top:0">Progress by category <span class="muted" style="font-weight:400">· overall ${overall}%</span></h3><p class="muted" style="margin-top:-4px">Average of each action's completed steps</p>${simpleBars(prog)}</div>
+      <div class="card"><h3 style="margin-top:0">Action status by priority</h3>${stackedBars(pri, HF_STATUS)}</div>
+      <div class="card"><h3 style="margin-top:0">Weekly alarm tests evidenced, Feb–Oct 2026</h3><p class="muted" style="margin-top:-4px">Weeks with a back-record (Saeker or scanned sheet) out of weeks in the month</p>
+        ${simpleBars(Object.keys(bm).map((k) => ({ label: `${MON[+k.slice(5) - 1]} ${k.slice(0, 4)}`, value: bm[k].d, note: `of ${bm[k].n}` })), "", 5, "var(--navy)")}</div>
+    </div>`; })() : ""}
+  <h3>Latest entries</h3>
+  ${recent.length ? `<div class="tw"><table><tr><th>Check</th><th>Date</th><th>Result</th><th>By</th><th>Entered</th></tr>
+    ${recent.map((r) => `<tr><td>${h((CHECK[r.type] || {}).name || r.type)}${r.imported ? `<span class="imp">PAST RECORD</span>` : ""}</td><td>${fds(r.date)}</td><td>${h(resultOf(r))}</td><td>${h(r.byName)}</td><td class="muted">${fdt(r.createdAt)}</td></tr>`).join("")}</table></div>` : `<p class="muted">Nothing recorded yet.</p>`}`;
+};
+BIND.dash = (v) => { bindRec(v); $$("[data-go]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); S.tab = a.dataset.go; render(); })); };
+function bindRec(v) { $$("[data-rec]", v).forEach((b) => (b.onclick = () => openCheck(b.dataset.rec))); }
+
+/* ============================================================ RECORD A CHECK */
+VIEWS.checks = () => {
+  const groups = [["daily", "Daily"], ["weekly", "Weekly"], ["monthly", "Monthly"], ["event", "When it happens"]];
+  return `<h2>Record a <span class="fl">check</span></h2>
+  <p class="lead">Record the check when you do it. Your name, the date and the time you saved it are recorded automatically. Items marked <b style="color:var(--red)">★</b> must be checked every time.</p>
+  ${groups.map(([f, l]) => `<h3>${l}</h3><div class="grid g4">${HF_CHECKS.filter((c) => c.freq === f).map((c) => {
+    const s = checkStatus(c);
+    return `<div class="card" style="border-top:4px solid ${s.st === "Due" ? "var(--red)" : "var(--navy)"}">
+      <div class="row"><b class="grow">${h(c.name)}</b>${f === "event" ? "" : pill(s.st)}</div>
+      <div class="muted">${h(c.ref)} · ${h(c.owner)}</div>
+      <div class="muted">Last: ${s.last ? `${fds(s.last.date)} (${h(s.last.byName)})` : "none"}</div>
+      <button class="btn ${s.st === "Due" ? "red" : ""} sm" data-rec="${c.id}" style="margin-top:8px">Record</button></div>`;
+  }).join("")}</div>`).join("")}
+  ${isAdmin() ? `<h3>Records from before HosFIRE</h3><div class="note">Past records can be entered only as a copy of something recorded at the time (panel event log, Saeker, a paper form, a contractor report). Each one is labelled <span class="imp">PAST RECORD</span> with its source and the date it was entered, in the logbook and in the inspector pack.</div>
+  <button class="btn ghost" id="past-btn">Enter a past record from a source</button>` : ""}`;
+};
+BIND.checks = (v) => { bindRec(v); const p = $("#past-btn", v); if (p) p.onclick = () => openCheck(null, { past: true }); };
+
+function openCheck(typeId, opt = {}) {
+  const past = !!opt.past;
+  const typeSel = past ? `<label>Check type</label><select data-k="__type">${HF_CHECKS.map((c) => `<option value="${c.id}" ${c.id === typeId ? "selected" : ""}>${h(c.name)}</option>`).join("")}</select>` : "";
+  const m = modal(`<h3>${past ? "Enter a past record from a source" : h(CHECK[typeId].name)}</h3>${typeSel}<div id="ck-body"></div>
+    <div class="row" style="margin-top:14px"><button class="btn red" id="ck-save">Save record</button><button class="btn ghost" data-close>Cancel</button></div><div class="err" id="ck-err"></div>`);
+  const body = $("#ck-body", m);
+  const draw = (id) => {
+    const c = CHECK[id];
+    const w = id === "weekly_alarm" ? rotaWeek(rotaIndex(today())) : null;
+    body.innerHTML = `
+      <p class="muted">${h(c.ref)} · ${h(c.std)} · ${h(c.owner)}</p>
+      <div class="note">${h(c.intro)}</div>
+      ${w && !past && rotaIndex(today()) >= 0 ? `<p class="muted">Rota this week: <b>${h(w.dayName)} ${fds(w.day)}</b>, planned marshal <b>${h(w.marshal)}</b>. If you are covering, record it under your own name.</p>` : ""}
+      ${past && opt.min ? `<p><b>Period: ${fds(opt.min)} to ${fds(opt.max)}</b> — pick the date shown in Saeker.</p>` : ""}
+      ${past ? `<div class="warn">Copy only what the source shows. Do not fill in anything the source does not record — leave it as "N/A" with a note.</div>
+        <div class="f2"><div><label>Source</label><select data-k="__source">${HF_SOURCES.map((s) => `<option>${h(s)}</option>`).join("")}</select></div>
+        <div><label>Source reference (Saeker task ID, page or event number)</label><input data-k="__sourceRef" placeholder="e.g. Saeker task 10482"></div></div>
+        <label>Name of the person who did the check (as shown in the source)</label><input data-k="__doneBy">
+        <div class="f2"><div><label>Scanned testing sheet (if from a paper sheet)</label><select data-k="__scan"><option value="">None</option>${reg("scan").filter((x) => !x.checkType || x.checkType === id).sort((a, b) => natRef(b.period, a.period)).map((x) => `<option value="${x.id}">${h(x.title)}</option>`).join("")}</select></div>
+        <div><label>…or upload the scan now</label><input type="file" data-k="__scanfile" accept="image/*,.pdf"></div></div>` : ""}
+      <div class="f2"><div><label>Date of the check</label><input type="date" data-k="__date" value="${past ? "" : today()}" ${past ? `min="${h(opt.min || "")}" max="${h(opt.max && opt.max < today() ? opt.max : addDays(today(), -1))}"` : `min="${addDays(today(), -7)}" max="${today()}"`}></div><div></div></div>
+      ${!past ? `<p class="muted" style="margin-top:2px">You can record a check up to 7 days late. The time you save it is shown next to it.</p>` : ""}
+      ${c.fields.map(([k, l, t, req]) => {
+        const lab = `<label>${h(l)}${req ? ' <b style="color:var(--red)">*</b>' : ""}</label>`;
+        if (t.startsWith("select:")) return lab + `<select data-f="${k}"><option value="">Choose…</option>${t.slice(7).split("|").map((o) => `<option>${h(o)}</option>`).join("")}</select>`;
+        if (t === "textarea") return lab + `<textarea data-f="${k}"></textarea>`;
+        return lab + `<input type="${t === "number" ? "number" : t === "time" ? "time" : t === "date" ? "date" : "text"}" data-f="${k}">`;
+      }).join("")}
+      ${c.items.length ? `<label style="margin-top:14px">Checks</label>` : ""}
+      ${c.items.map(([k, l, must]) => `<div class="chk ${must ? "must" : ""}"><div class="t">${must ? '<b style="color:var(--red)">★</b> ' : ""}${h(l)}</div>
+        <div class="seg" data-i="${k}"><button data-v="pass" class="pass">Pass</button><button data-v="fail" class="fail">Fail</button><button data-v="na" class="na">N/A</button></div></div>`).join("")}
+      <label>Notes (required for any Fail or N/A)</label><textarea data-k="__notes"></textarea>
+      ${c.items.length ? `<label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" data-k="__mkact" checked style="width:auto"> Create an action for each Fail</label>` : ""}
+      <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" data-k="__confirm" style="width:auto">
+        ${past ? "I confirm this is copied from the source named above and nothing has been added." : "I confirm I carried out this check myself on the date shown."}</label>`;
+    const sc = $("[data-k=__scan]", body), sf = $("[data-k=__scanfile]", body);
+    const toPaper = () => { const so = $("[data-k=__source]", body); if (so) so.value = HF_SOURCES.find((x) => /paper/i.test(x)); const sr = $("[data-k=__sourceRef]", body); if (sr && !sr.value && sc && sc.value) sr.value = sc.options[sc.selectedIndex].text; };
+    if (sc) sc.onchange = toPaper; if (sf) sf.onchange = toPaper;
+    $$(".seg", body).forEach((sg) => $$("button", sg).forEach((b) => (b.onclick = () => { $$("button", sg).forEach((x) => x.classList.remove("on")); b.classList.add("on"); })));
+  };
+  const typeEl = $("[data-k=__type]", m);
+  draw(typeId || (typeEl && typeEl.value) || HF_CHECKS[0].id);
+  if (typeEl) typeEl.onchange = () => draw(typeEl.value);
+  $("#ck-save", m).onclick = async () => {
+    const id = typeEl ? typeEl.value : typeId, c = CHECK[id], err = $("#ck-err", m);
+    const val = (k) => { const el = $(`[data-k=${k}]`, m); return el ? (el.type === "checkbox" ? el.checked : el.value.trim()) : ""; };
+    const date = val("__date"), notes = val("__notes");
+    const fields = {}; $$("[data-f]", m).forEach((el) => (fields[el.dataset.f] = el.value.trim()));
+    const items = {}; $$(".seg", m).forEach((sg) => { const on = $("button.on", sg); items[sg.dataset.i] = on ? on.dataset.v : ""; });
+    if (!date) return (err.textContent = "Enter the date of the check.");
+    if (!past && (date > today() || date < addDays(today(), -7))) return (err.textContent = "Date must be within the last 7 days. Older records go in as past records from a source.");
+    if (past && date >= today()) return (err.textContent = "A past record must be dated before today.");
+    const missF = c.fields.filter(([k, , , req]) => req && !fields[k]).map(([, l]) => l);
+    if (missF.length) return (err.textContent = "Please complete: " + missF.join(", "));
+    const missI = c.items.filter(([k]) => !items[k]).map(([, l]) => l);
+    if (missI.length) return (err.textContent = `Answer every check (${missI.length} not answered).`);
+    if (Object.values(items).some((x) => x === "fail" || x === "na") && !notes) return (err.textContent = "Add a note explaining each Fail or N/A.");
+    if (past && (!val("__sourceRef") || !val("__doneBy"))) return (err.textContent = "Give the source reference and the name shown in the source.");
+    if (!val("__confirm")) return (err.textContent = "Tick the confirmation box.");
+    const rec = { type: id, ref: c.ref, date, fields, items, notes };
+    if (id === "weekly_alarm") { const w = rotaWeek(rotaIndex(date)); if (w.i >= 0) rec.rota = { wc: w.wc, plannedDay: w.day, plannedMarshal: w.marshal }; }
+    if (past) Object.assign(rec, { imported: true, source: val("__source"), sourceRef: val("__sourceRef"), doneBy: val("__doneBy") });
+    try {
+      $("#ck-save", m).disabled = true;
+      if (past) {
+        const sfi = $("[data-k=__scanfile]", m);
+        if (sfi && sfi.files[0]) {
+          err.textContent = "Uploading scan…";
+          const file = await upload("scans", sfi.files[0]);
+          rec.scanId = await add("registers", { kind: "scan", title: `${c.name} — ${sfi.files[0].name}`, checkType: id, period: date.slice(0, 7), file });
+          rec.scanFile = file;
+        } else if (val("__scan")) { const sx = S.data.registers.find((x) => x.id === val("__scan")); rec.scanId = sx.id; rec.scanFile = sx.file || null; }
+      }
+      const rid = await add("records", rec);
+      if (val("__mkact") && !past) {
+        for (const [k, l] of c.items.filter(([k]) => items[k] === "fail")) {
+          await add("actions", { ref: nextRef("C"), title: `${c.short}: ${l} — failed`, detail: notes, category: "Other", priority: "High", owner: "", due: addDays(today(), 7),
+            status: "Not started", source: `${c.ref} on ${fds(date)}`, recordId: rid, history: [{ at: Date.now(), by: S.user.name, status: "Not started", note: "Raised from a failed check" }] });
+        }
+      }
+      m.close(); toast("Saved under " + S.user.name);
+    } catch (e) { $("#ck-save", m).disabled = false; err.textContent = "Could not save: " + e.message; }
+  };
+}
+function nextRef(prefix) {
+  const n = S.data.actions.map((a) => String(a.ref || "")).filter((r) => r.startsWith(prefix)).map((r) => parseInt(r.slice(prefix.length), 10) || 0);
+  return prefix + (Math.max(0, ...n) + 1);
+}
+
+/* ============================================================ LOGBOOK */
+VIEWS.log = () => {
+  const f = S.f.log || (S.f.log = { type: "", month: "", q: "" });
+  const months = Array.from(new Set(S.data.records.map((r) => (r.date || "").slice(0, 7)))).sort().reverse();
+  let rows = S.data.records.filter((r) => !r.correctionOf).slice();
+  if (f.type) rows = rows.filter((r) => r.type === f.type);
+  if (f.month) rows = rows.filter((r) => (r.date || "").startsWith(f.month));
+  if (f.q) { const q = f.q.toLowerCase(); rows = rows.filter((r) => JSON.stringify([r.byName, r.doneBy, r.notes, r.fields, r.source, r.sourceRef]).toLowerCase().includes(q)); }
+  rows.sort((a, b) => natRef(b.date, a.date) || ms(b.createdAt) - ms(a.createdAt));
+  return `<h2>Fire safety <span class="fl">logbook</span></h2>
+  <p class="lead">Every check, test, drill and alarm event. Records cannot be edited or deleted — a mistake is put right with a correction, which keeps the original.</p>
+  <div class="row" style="margin-bottom:10px">
+    <select id="lf-type" style="width:auto"><option value="">All checks</option>${HF_CHECKS.map((c) => `<option value="${c.id}" ${f.type === c.id ? "selected" : ""}>${h(c.name)}</option>`).join("")}</select>
+    <select id="lf-month" style="width:auto"><option value="">All months</option>${months.map((mo) => `<option ${f.month === mo ? "selected" : ""} value="${mo}">${MON[+mo.slice(5) - 1]} ${mo.slice(0, 4)}</option>`).join("")}</select>
+    <input id="lf-q" placeholder="Search name, note, call point…" value="${h(f.q)}" style="width:240px">
+    <span class="muted">${rows.length} record${rows.length === 1 ? "" : "s"}</span>
+  </div>
+  <div class="tw"><table><tr><th>Date</th><th>Check</th><th>Detail</th><th>Result</th><th>Done by</th><th>Saved</th></tr>
+  ${rows.map((r) => { const c = CHECK[r.type] || { name: r.type }; const corr = S.data.records.find((x) => x.correctionOf === r.id);
+    const fl = r.fields || {};
+    const det = r.type === "weekly_alarm" ? `Call point ${h(fl.callpoint)} · zone ${h(fl.zone)} · ${h(fl.time)}` : r.type === "drill" ? `${h(fl.shift)} · ${h(fl.evac)} min · ${h(fl.staff)} staff` : r.type === "alarm_event" ? `${h(fl.kind)} · ${h(fl.zone)}` : r.type === "contractor" ? `${h(fl.contractor)} · ${h(fl.jobref)}` : h((r.notes || "").slice(0, 70));
+    const late = !r.imported && daysBetween(r.date, ymd(new Date(ms(r.createdAt)))) > 0;
+    return `<tr data-id="${r.id}" style="cursor:pointer"><td><b>${fds(r.date)}</b></td><td>${h(c.name)}${r.imported ? `<span class="imp">PAST RECORD</span>` : ""}${corr ? `<span class="imp" style="background:var(--ambbg);color:var(--amber)">CORRECTED</span>` : ""}</td>
+      <td>${det}</td><td>${resultOf(effective(r)).includes("fail") ? pill(resultOf(effective(r))) : h(resultOf(effective(r)))}</td><td>${h(r.imported ? r.doneBy : r.byName)}</td>
+      <td class="muted">${fdt(r.createdAt)}${late ? " (late)" : ""}${r.imported ? `<br>by ${h(r.byName)} from ${h(r.source)}` : ""}</td></tr>`; }).join("") || `<tr><td colspan="6" class="muted">No records.</td></tr>`}
+  </table></div>`;
+};
+BIND.log = (v) => {
+  const f = S.f.log;
+  $("#lf-type", v).onchange = (e) => { f.type = e.target.value; render(); };
+  $("#lf-month", v).onchange = (e) => { f.month = e.target.value; render(); };
+  $("#lf-q", v).onchange = (e) => { f.q = e.target.value; render(); };
+  $$("tr[data-id]", v).forEach((tr) => (tr.onclick = () => viewRecord(tr.dataset.id)));
+};
+function recordHTML(r) {
+  const c = CHECK[r.type] || { name: r.type, fields: [], items: [] };
+  return `<table>
+    <tr><td style="width:38%"><b>Date of check</b></td><td>${fd(r.date)}</td></tr>
+    <tr><td><b>Done by</b></td><td>${h(r.imported ? r.doneBy : r.byName)}</td></tr>
+    <tr><td><b>Saved</b></td><td>${fdt(r.createdAt)} by ${h(r.byName)}</td></tr>
+    ${r.imported ? `<tr><td><b>Source</b></td><td>${h(r.source)} — ${h(r.sourceRef)}</td></tr>` : ""}
+    ${r.rota ? `<tr><td><b>Rota</b></td><td>Planned ${fds(r.rota.plannedDay)} · ${h(r.rota.plannedMarshal)}</td></tr>` : ""}
+    ${c.fields.map(([k, l]) => `<tr><td><b>${h(l)}</b></td><td>${h((r.fields || {})[k])}</td></tr>`).join("")}
+    ${c.items.map(([k, l, must]) => `<tr><td>${must ? "★ " : ""}${h(l)}</td><td>${pill({ pass: "Pass", fail: "Fail", na: "N/A" }[(r.items || {})[k]] || "—")}</td></tr>`).join("")}
+    <tr><td><b>Notes</b></td><td>${h(r.notes)}</td></tr></table>`;
+}
+function viewRecord(id) {
+  const r = S.data.records.find((x) => x.id === id); if (!r) return;
+  const corr = S.data.records.filter((x) => x.correctionOf === id);
+  const m = modal(`<h3>${h((CHECK[r.type] || {}).name || r.type)}${r.imported ? ' <span class="imp">PAST RECORD</span>' : ""}</h3>${recordHTML(r)}
+    ${corr.map((c) => `<div class="note"><b>Correction</b> saved ${fdt(c.createdAt)} by ${h(c.byName)}:<br>${h(c.notes)}</div>`).join("")}
+    ${r.scanFile ? `<p><a href="#" id="scan-open">📎 View the scanned testing sheet</a></p>` : ""}
+    <div class="row" style="margin-top:12px"><button class="btn ghost" id="corr">Add a correction</button><button class="btn" data-close>Close</button></div>`);
+  const so = $("#scan-open", m); if (so) so.onclick = (e) => { e.preventDefault(); openFile(r.scanFile); };
+  $("#corr", m).onclick = () => {
+    m.close();
+    const m2 = modal(`<h3>Correction</h3><p class="muted">The original record stays as it is. Explain what was wrong and what is correct.</p>
+      <textarea id="cn"></textarea><div class="row" style="margin-top:10px"><button class="btn red" id="cs">Save correction</button><button class="btn ghost" data-close>Cancel</button></div>`);
+    $("#cs", m2).onclick = async () => {
+      const t = $("#cn", m2).value.trim(); if (!t) return;
+      await add("records", { type: r.type, date: r.date, correctionOf: r.id, notes: t, fields: r.fields || {}, items: r.items || {} });
+      m2.close(); toast("Correction saved");
+    };
+  };
+}
+
+/* ============================================================ WEEKLY TESTS (rota) */
+VIEWS.rota = () => {
+  const ci = Math.max(0, rotaIndex(today()));
+  const from = Math.max(0, ci - 6), to = ci + 20;
+  const weeks = []; for (let i = from; i <= to; i++) weeks.push(rotaWeek(i));
+  const pre = recs("weekly_alarm").filter((r) => r.date < rotaStart()).sort((a, b) => natRef(b.date, a.date));
+  const ms4 = marshals();
+  return `<h2>Weekly fire alarm <span class="fl">tests</span></h2>
+  <p class="lead">One call point each week (BS 5839-1). The day rotates Monday → Tuesday → Wednesday and the marshal rotates each week. If the planned marshal is away, another marshal does the test under their own name.</p>
+  <div class="grid g4" style="margin-bottom:12px">${ms4.map((n) => { const mine = recs("weekly_alarm").filter((r) => (r.imported ? r.doneBy : r.byName) === n);
+    return `<div class="card tile"><div class="l">${h(n)}</div><div class="n" style="font-size:24px">${mine.length}</div><div class="muted">tests recorded · last ${mine.length ? fds(mine.sort((a, b) => natRef(b.date, a.date))[0].date) : "—"}</div></div>`; }).join("")}</div>
+  <div class="tw"><table><tr><th>Week commencing</th><th>Planned day</th><th>Planned marshal</th><th>Status</th><th>Actual test</th><th>Done by</th></tr>
+  ${weeks.map((w) => { const s = weekStatus(w); const r = s.rec; const fl = (r && r.fields) || {};
+    return `<tr style="${w.i === ci ? "background:#fff7f5" : ""}"><td>${fds(w.wc)}${w.i === ci ? " <b style='color:var(--red)'>this week</b>" : ""}</td><td>${h(w.dayName)} ${fds(w.day)}</td><td>${h(w.marshal)}</td><td>${pill(s.st)}</td>
+    <td>${r ? `${fd(r.date)} ${h(fl.time || "")} · CP ${h(fl.callpoint || "")}` : (s.st === "Due" || s.st === "Overdue") ? `<button class="btn red sm" data-rec="weekly_alarm">Record</button>` : ""}</td><td>${r ? h(r.imported ? r.doneBy : r.byName) : ""}</td></tr>`; }).join("")}
+  </table></div>
+  <h3>Before the rota started (${fds(rotaStart())})</h3>
+  ${pre.length ? `<div class="tw"><table><tr><th>Date</th><th>Call point</th><th>Done by</th><th>Source</th></tr>${pre.map((r) => `<tr><td>${fd(r.date)}</td><td>${h((r.fields || {}).callpoint)}</td><td>${h(r.imported ? r.doneBy : r.byName)}</td><td>${r.imported ? `<span class="imp">PAST RECORD</span> ${h(r.source)} — ${h(r.sourceRef)}` : "Recorded in HosFIRE"}</td></tr>`).join("")}</table></div>`
+    : `<p class="muted">None entered. Tests carried out before the rota started can be entered from the panel event log or Saeker by a fire safety manager (Record a check → Enter a past record from a source).</p>`}`;
+};
+BIND.rota = bindRec;
+
+
+/* ============================================================ BACK-RECORDS (Feb 2026 → rota start) */
+const BACK_WEEKLY = ["weekly_alarm", "el_weekly", "doors_weekly", "kitchen", "spa"];
+const BACK_MONTHLY = ["el_monthly", "doors_monthly", "extinguishers", "co_alarm", "walkround"];
+function backWeeks() { const out = []; for (let wc = mondayOf(HF_BACKFILL_FROM); wc < rotaStart() && wc <= today(); wc = addDays(wc, 7)) out.push(wc); return out; }
+function backMonths() { const out = []; for (let m = HF_BACKFILL_FROM.slice(0, 8) + "01"; m < rotaStart() && m <= today(); m = addMonths(m, 1)) out.push(m); return out; }
+const inRange = (type, a, b) => recs(type).filter((r) => r.date >= a && r.date <= b);
+VIEWS.back = () => {
+  const W = backWeeks(), M = backMonths();
+  const cell = (type, a, b) => { const r = inRange(type, a, b); return r.length ? `<td style="background:var(--okbg)"><b style="color:var(--ok)">✓ ${fds(r[0].date).replace(/ \d{4}$/, "")}${r[0].scanFile ? " 📎" : ""}</b><br><span class="muted">${h(r[0].doneBy || r[0].byName)}</span></td>`
+    : `<td>${isAdmin() ? `<button class="btn sm ghost" data-bf="${type}" data-a="${a}" data-b="${b}">Enter</button>` : `<span class="muted">—</span>`}</td>`; };
+  const doneW = W.filter((wc) => inRange("weekly_alarm", wc, addDays(wc, 6)).length).length;
+  return `<h2>Back-records <span class="fl">February to October 2026</span></h2>
+  <p class="lead">Every week and month from ${fd(HF_BACKFILL_FROM)} until the rota starts on ${fds(rotaStart())}. A slot turns green only when a record is entered from evidence — a scanned testing sheet (📎) or Saeker — so the inspector can see exactly what is evidenced.</p>
+  <div class="grid g4" style="margin-bottom:12px">
+    <div class="card tile ${doneW === W.length ? "g" : "a"}"><div class="n">${doneW} / ${W.length}</div><div class="l">Weekly alarm tests entered</div></div>
+    <div class="card tile"><div class="n">${S.data.records.filter((r) => r.imported && r.date < rotaStart()).length}</div><div class="l">Back-records entered in total</div></div>
+  </div>
+  ${isAdmin() ? `<div class="card" style="margin-bottom:14px"><h3 style="margin-top:0">Fastest way: import the Saeker export</h3>
+    <p class="muted">Export the completed tasks from Saeker as a CSV file (Feb 2026 to date) and load it here. You match each Saeker task name to a HosFIRE check, then every completed task becomes a back-record with its Saeker reference. Nothing is created for weeks Saeker does not show.</p>
+    <input type="file" id="sk-file" accept=".csv,text/csv"><div id="sk-map"></div></div>
+  <div class="card" style="margin-bottom:14px"><h3 style="margin-top:0">Scanned testing sheets</h3>
+    <p class="muted">Upload each scanned sheet with the check and month it covers. Then click "Enter" in the grid below and pick the scan: every entry made from it links back to the sheet, and the inspector pack lists it as the source.</p>
+    <div class="f2"><div><label>Check on the sheet</label><select id="sc-type"><option value="">Several / mixed</option>${HF_CHECKS.map((c) => `<option value="${c.id}">${h(c.name)}</option>`).join("")}</select></div>
+    <div><label>Month covered</label><input type="month" id="sc-month" min="2026-02" max="${today().slice(0, 7)}"></div></div>
+    <label>Scanned files (PDF or photos — you can choose several)</label><input type="file" id="sc-files" multiple accept="image/*,.pdf">
+    <button class="btn red" id="sc-up" style="margin-top:8px">Upload scans</button> <span class="muted" id="sc-msg"></span>
+    ${reg("scan").length ? `<div class="tw" style="margin-top:10px"><table><tr><th>Scan</th><th>Check</th><th>Month</th><th>Entries made from it</th><th></th></tr>
+    ${reg("scan").sort((a, b) => natRef(a.period, b.period)).map((x) => { const n = S.data.records.filter((r) => r.scanId === x.id).length;
+      return `<tr><td>${h(x.title)}</td><td>${h((CHECK[x.checkType] || {}).name || "Several")}</td><td>${x.period ? MON[+x.period.slice(5) - 1] + " " + x.period.slice(0, 4) : ""}</td><td>${n ? n : pill("None yet")}</td><td>${x.file ? `<a href="#" data-scan="${x.id}">View</a>` : ""}</td></tr>`; }).join("")}</table></div>` : ""}
+  </div>` : ""}
+  <h3>Weekly checks</h3>
+  <div class="tw"><table><tr><th>Week commencing</th>${BACK_WEEKLY.map((t) => `<th>${h(CHECK[t].short)}</th>`).join("")}</tr>
+  ${W.map((wc) => `<tr><td><b>${fds(wc)}</b></td>${BACK_WEEKLY.map((t) => cell(t, wc, addDays(wc, 6))).join("")}</tr>`).join("")}</table></div>
+  <h3>Monthly checks</h3>
+  <div class="tw"><table><tr><th>Month</th>${BACK_MONTHLY.map((t) => `<th>${h(CHECK[t].short)}</th>`).join("")}</tr>
+  ${M.map((m) => `<tr><td><b>${MON[+m.slice(5, 7) - 1]} ${m.slice(0, 4)}</b></td>${BACK_MONTHLY.map((t) => cell(t, m, addDays(addMonths(m, 1), -1))).join("")}</tr>`).join("")}</table></div>`;
+};
+function parseCSV(text) {
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true; else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += c;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  return rows.filter((r) => r.some((x) => x.trim()));
+}
+function parseDateTime(s) {
+  s = String(s || "").trim(); let m, d = null, t = "";
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) d = `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  else if ((m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/))) d = `${m[3].length === 2 ? "20" + m[3] : m[3]}-${pad(m[2])}-${pad(m[1])}`;
+  const tm = s.match(/(\d{1,2}):(\d{2})/); if (tm && d) t = `${pad(tm[1])}:${tm[2]}`;
+  return d && parse(d) && !isNaN(parse(d)) ? { d, t } : null;
+}
+BIND.back = (v) => {
+  $$("[data-bf]", v).forEach((b) => (b.onclick = () => openCheck(b.dataset.bf, { past: true, min: b.dataset.a, max: b.dataset.b })));
+  $$("[data-scan]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); openFile(S.data.registers.find((x) => x.id === a.dataset.scan).file); }));
+  const up = $("#sc-up", v);
+  if (up) up.onclick = async () => {
+    const files = Array.from($("#sc-files", v).files), type = $("#sc-type", v).value, mo = $("#sc-month", v).value, msg = $("#sc-msg", v);
+    if (!files.length || !mo) { msg.textContent = "Choose the month and at least one file."; return; }
+    S.hold = true; let n = 0;
+    try {
+      for (const f of files) { msg.textContent = `Uploading ${n + 1} of ${files.length}…`; const file = await upload("scans", f);
+        await add("registers", { kind: "scan", title: `${type ? CHECK[type].short : "Testing sheet"} ${MON[+mo.slice(5) - 1]} ${mo.slice(0, 4)} — ${f.name}`, checkType: type, period: mo, file }); n++; }
+      audit(`Uploaded ${n} scanned testing sheet(s) for ${mo}`);
+      S.hold = false; render(); toast(`${n} scan${n === 1 ? "" : "s"} uploaded`);
+    } catch (e) { S.hold = false; render(); toast("Upload stopped: " + e.message); }
+  };
+  const fi = $("#sk-file", v); if (!fi) return;
+  fi.onchange = async () => {
+    const file = fi.files[0]; if (!file) return;
+    const rows = parseCSV(await file.text()); if (rows.length < 2) { $("#sk-map", v).innerHTML = `<p class="err">No rows found in the file.</p>`; return; }
+    const head = rows[0], data = rows.slice(1);
+    const pick = (res) => { for (const re of res) { const i = head.findIndex((x) => re.test(x.trim())); if (i >= 0) return i; } return -2; };
+    const G = { date: pick([/^(completed|done) ?(date|on|at)/i, /date/i, /^completed$/i]), task: pick([/^task( name| title)?$/i, /title|task name/i, /^(name|check)$/i, /task/i]),
+      by: pick([/completed by|done by/i, /^(user|staff|assignee|by)$/i, /assign|user|staff/i]), ref: pick([/task ?id|^id$/i, /ref|number|no\.?$/i]), status: pick([/status|state/i]) };
+    const colSel = (id, label, g, optional) => `<div><label>${label}</label><select id="${id}">${optional ? `<option value="-1">(none)</option>` : ""}${head.map((x, i) => `<option value="${i}" ${i === g ? "selected" : ""}>${h(x)}</option>`).join("")}</select></div>`;
+    const box = $("#sk-map", v);
+    box.innerHTML = `<p class="muted">${data.length} rows in ${h(file.name)}. Choose the columns:</p>
+      <div class="f2">${colSel("sk-date", "Date completed", G.date)}${colSel("sk-task", "Task name", G.task)}
+      ${colSel("sk-by", "Completed by", G.by)}${colSel("sk-ref", "Saeker task ID / reference", G.ref, true)}
+      ${colSel("sk-status", "Status column (optional)", G.status, true)}<div><label>Status value meaning completed</label><input id="sk-done" value="Completed"></div></div>
+      <button class="btn" id="sk-next" style="margin-top:10px">Next: match task names</button><div id="sk-tasks"></div>`;
+    $("#sk-next", box).onclick = () => {
+      const ci = (id) => +$("#" + id, box).value;
+      const [cD, cT, cB, cR, cS] = ["sk-date", "sk-task", "sk-by", "sk-ref", "sk-status"].map(ci), doneVal = $("#sk-done", box).value.trim().toLowerCase();
+      const ok = data.filter((r) => cS < 0 || String(r[cS] || "").trim().toLowerCase() === doneVal);
+      const names = Array.from(new Set(ok.map((r) => String(r[cT] || "").trim()).filter(Boolean))).sort();
+      const auto = (n) => { const x = n.toLowerCase();
+        if (/alarm|call ?point|mcp/.test(x) && !/event|false/.test(x)) return "weekly_alarm"; if (/emergency light|e\.?l\.?\b/.test(x)) return /month/.test(x) ? "el_monthly" : "el_weekly";
+        if (/door/.test(x)) return /month/.test(x) ? "doors_monthly" : "doors_weekly"; if (/extinguish/.test(x)) return "extinguishers"; if (/extract|filter|kitchen|ansul/.test(x)) return "kitchen";
+        if (/lint|dryer|laundry/.test(x)) return "laundry"; if (/spa|sauna|pool/.test(x)) return "spa"; if (/\bco\b|carbon|gas/.test(x)) return "co_alarm"; if (/drill|evacuat/.test(x)) return "drill";
+        if (/walk|audit|inspection/.test(x)) return "walkround"; if (/daily|exit|route/.test(x)) return "daily"; return ""; };
+      $("#sk-tasks", box).innerHTML = `<p class="muted">${ok.length} completed rows, ${names.length} different task names. Match each to a HosFIRE check, or leave as "Ignore".</p>
+        <div class="tw"><table><tr><th>Saeker task name</th><th>Rows</th><th>HosFIRE check</th></tr>${names.map((n, i) => `<tr><td>${h(n)}</td><td>${ok.filter((r) => String(r[cT]).trim() === n).length}</td>
+        <td><select data-tn="${i}"><option value="">Ignore</option>${HF_CHECKS.map((c) => `<option value="${c.id}" ${auto(n) === c.id ? "selected" : ""}>${h(c.name)}</option>`).join("")}</select></td></tr>`).join("")}</table></div>
+        <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="sk-conf" style="width:auto"> I confirm this file is an export from Saeker and has not been edited.</label>
+        <button class="btn red" id="sk-go" style="margin-top:8px">Import</button> <span class="muted" id="sk-msg"></span>`;
+      $("#sk-go", box).onclick = async () => {
+        const msg = $("#sk-msg", box); if (!$("#sk-conf", box).checked) { msg.textContent = "Tick the confirmation box."; return; }
+        const map = {}; $$("[data-tn]", box).forEach((s) => { if (s.value) map[names[+s.dataset.tn]] = s.value; });
+        let n = 0, skip = 0, bad = 0; $("#sk-go", box).disabled = true; S.hold = true;
+        for (let i = 0; i < data.length; i++) {
+          const r = data[i]; if (!ok.includes(r)) continue;
+          const type = map[String(r[cT] || "").trim()]; if (!type) continue;
+          const dt = parseDateTime(r[cD]); if (!dt || dt.d >= today()) { bad++; continue; }
+          const sref = `${file.name} row ${i + 2}${cR >= 0 && r[cR] ? " · Saeker " + String(r[cR]).trim() : ""}`;
+          if (S.data.records.some((x) => x.type === type && x.date === dt.d && x.sourceRef === sref)) { skip++; continue; }
+          await add("records", { type, ref: CHECK[type].ref, date: dt.d, fields: dt.t ? { time: dt.t } : {}, items: {}, imported: true, source: "Saeker task history",
+            sourceRef: sref, doneBy: String(r[cB] || "").trim(), saekerTask: String(r[cT]).trim(),
+            notes: `Saeker shows task "${String(r[cT]).trim()}" completed. Individual check items were not recorded in Saeker.` });
+          n++; if (n % 20 === 0) msg.textContent = `Imported ${n}…`;
+        }
+        audit(`Saeker import from ${file.name}: ${n} back-records${skip ? `, ${skip} already there` : ""}${bad ? `, ${bad} rows with no usable date` : ""}`);
+        S.hold = false; render();
+        const done = `Imported ${n} back-records from Saeker${skip ? `, ${skip} already there` : ""}${bad ? `, ${bad} rows skipped (no usable date)` : ""}.`;
+        modal(`<h3>Saeker import finished</h3><p>${h(done)}</p><button class="btn" data-close>OK</button>`);
+      };
+    };
+  };
+};
+
+/* ============================================================ ACTIONS */
+VIEWS.actions = () => {
+  const f = S.f.act || (S.f.act = { cat: "", st: "open", q: "" });
+  let rows = S.data.actions.slice();
+  if (f.cat) rows = rows.filter((a) => a.category === f.cat);
+  if (f.st === "open") rows = rows.filter((a) => a.status !== "Completed"); else if (f.st) rows = rows.filter((a) => a.status === f.st);
+  if (f.q) { const q = f.q.toLowerCase(); rows = rows.filter((a) => JSON.stringify([a.ref, a.title, a.detail, a.owner, a.notes]).toLowerCase().includes(q)); }
+  const pr = { High: 0, Medium: 1, Low: 2 }, so = { "Not started": 0, "In progress": 1, "Completed": 2 };
+  rows.sort((a, b) => (so[a.status] - so[b.status]) || (pr[a.priority] - pr[b.priority]) || natRef(a.ref, b.ref));
+  const cnt = (s) => S.data.actions.filter((a) => a.status === s).length;
+  return `<h2>Action <span class="fl">tracker</span></h2>
+  <p class="lead">Every fire safety action in one line: FRA actions A1–A19, Leader Systems work, emergency lighting, gas appliances and anything raised from a failed check. Change the status in the line; each change is logged with your name.</p>
+  <div class="grid g4" style="margin-bottom:12px">
+    <div class="card tile"><div class="n">${S.data.actions.length ? Math.round(S.data.actions.reduce((t, a) => t + progressOf(a), 0) / S.data.actions.length) : 0}%</div><div class="l">Overall progress (steps done)</div></div>
+    <div class="card tile r"><div class="n">${cnt("Not started")}</div><div class="l">Not started</div></div>
+    <div class="card tile a"><div class="n">${cnt("In progress")}</div><div class="l">In progress</div></div>
+    <div class="card tile g"><div class="n">${cnt("Completed")}</div><div class="l">Completed</div></div>
+  </div>
+  <div class="tabs2">${["", ...HF_ACTION_CATS].map((c) => `<button data-cat="${h(c)}" class="${f.cat === c ? "on" : ""}">${c || "All"} (${c ? S.data.actions.filter((a) => a.category === c).length : S.data.actions.length})</button>`).join("")}</div>
+  <div class="row" style="margin-bottom:10px">
+    <select id="af-st" style="width:auto">${[["open", "Open (not completed)"], ["", "All statuses"], ...HF_STATUS.map((s) => [s, s])].map(([v, l]) => `<option value="${v}" ${f.st === v ? "selected" : ""}>${l}</option>`).join("")}</select>
+    <input id="af-q" placeholder="Search…" value="${h(f.q)}" style="width:220px"><div class="grow"></div>
+    <button class="btn red" id="a-new">+ Add action</button>
+  </div>
+  <div class="tw"><table><tr><th style="width:56px">Ref</th><th>Action</th><th>Category</th><th>Priority</th><th>Owner</th><th>Due</th><th style="width:150px">Status</th><th style="width:150px">Progress</th><th>Last update</th></tr>
+  ${rows.map((a) => { const late = a.due && a.status !== "Completed" && a.due < today(); const last = (a.history || []).slice(-1)[0];
+    return `<tr><td><b>${h(a.ref)}</b></td><td><a href="#" data-edit="${a.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(a.title)}</a>${a.notes ? `<div class="muted">${h(a.notes)}</div>` : ""}</td>
+    <td class="muted">${h(a.category)}</td><td>${pill(a.priority)}</td><td>${h(a.owner)}</td><td style="${late ? "color:var(--red);font-weight:700" : ""}">${a.due ? fds(a.due) : ""}</td>
+    <td><select data-st="${a.id}" style="padding:6px;font-weight:700;color:${a.status === "Completed" ? "var(--ok)" : a.status === "In progress" ? "var(--amber)" : "var(--red)"}">${HF_STATUS.map((s) => `<option ${a.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></td>
+    <td><a href="#" data-edit="${a.id}" style="text-decoration:none;color:inherit">${progBar(progressOf(a), 80)}${(a.steps || []).length ? `<span class="muted">${a.steps.filter((x) => x.done).length} of ${a.steps.length} steps</span>` : ""}</a></td>
+    <td class="muted">${last ? `${fdt(last.at)}<br>${h(last.by)}` : ""}</td></tr>`; }).join("") || `<tr><td colspan="9" class="muted">No actions match.</td></tr>`}
+  </table></div>`;
+};
+BIND.actions = (v) => {
+  const f = S.f.act;
+  $$("[data-cat]", v).forEach((b) => (b.onclick = () => { f.cat = b.dataset.cat; render(); }));
+  $("#af-st", v).onchange = (e) => { f.st = e.target.value; render(); };
+  $("#af-q", v).onchange = (e) => { f.q = e.target.value; render(); };
+  $("#a-new", v).onclick = () => editAction(null);
+  $$("[data-edit]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); editAction(a.dataset.edit); }));
+  $$("[data-st]", v).forEach((s) => (s.onchange = () => {
+    const a = S.data.actions.find((x) => x.id === s.dataset.st);
+    const status = s.value;
+    const m = modal(`<h3>${h(a.ref)} → ${h(status)}</h3><label>What has been done / evidence (optional)</label><textarea id="sn" placeholder="e.g. Leader job sheet T-09110 filed; photo uploaded to Documents"></textarea>
+      <div class="row" style="margin-top:10px"><button class="btn red" id="ss">Save</button><button class="btn ghost" data-close>Cancel</button></div>`);
+    m.onclose = render;
+    $("#ss", m).onclick = async () => {
+      const note = $("#sn", m).value.trim();
+      const history = (a.history || []).concat([{ at: Date.now(), by: S.user.name, status, note }]);
+      const upd = { status, history }; if (status === "Completed") upd.completedOn = today();
+      if (note) upd.notes = note;
+      await put("actions", a.id, upd); audit(`Action ${a.ref} status → ${status}${note ? ": " + note : ""}`, a.ref); m.close(); toast("Updated");
+    };
+  }));
+};
+function editAction(id) {
+  const a = id ? S.data.actions.find((x) => x.id === id) : { ref: nextRef("N"), status: "Not started", priority: "Medium", category: "Other" };
+  const sel = (k, opts) => `<select data-k="${k}">${opts.map((o) => `<option ${a[k] === o ? "selected" : ""}>${h(o)}</option>`).join("")}</select>`;
+  const m = modal(`<h3>${id ? "Edit action " + h(a.ref) : "New action"}</h3>
+    <div class="f2"><div><label>Ref</label><input data-k="ref" value="${h(a.ref)}"></div><div><label>Category</label>${sel("category", HF_ACTION_CATS)}</div></div>
+    <label>Action</label><input data-k="title" value="${h(a.title)}">
+    <label>Detail</label><textarea data-k="detail">${h(a.detail)}</textarea>
+    <div class="f2"><div><label>Priority</label>${sel("priority", HF_PRIORITY)}</div><div><label>Status</label>${sel("status", HF_STATUS)}</div>
+    <div><label>Owner</label><input data-k="owner" value="${h(a.owner)}"></div><div><label>Contractor</label><input data-k="contractor" value="${h(a.contractor)}"></div>
+    <div><label>Due date</label><input type="date" data-k="due" value="${h(a.due)}"></div><div><label>Source</label><input data-k="source" value="${h(a.source)}"></div></div>
+    <label>Progress steps</label><div id="steps"></div>
+    <div class="row"><input id="step-new" placeholder="Add a step, e.g. Quote approved" class="grow" style="width:auto;flex:1"><button class="btn sm ghost" id="step-add">Add step</button></div>
+    <label>Latest note</label><textarea data-k="notes">${h(a.notes)}</textarea>
+    ${(a.history || []).length ? `<label>History</label><div class="tw"><table>${a.history.slice().reverse().map((x) => `<tr><td class="muted" style="width:150px">${fdt(x.at)}</td><td>${h(x.by)}</td><td>${pill(x.status)}</td><td>${h(x.note)}</td></tr>`).join("")}</table></div>` : ""}
+    <div class="row" style="margin-top:12px"><button class="btn red" id="as">Save</button><button class="btn ghost" data-close>Cancel</button><div class="grow"></div>${id && isAdmin() ? `<button class="btn ghost" id="ad" style="color:var(--red)">Delete</button>` : ""}</div><div class="err" id="ae"></div>`);
+  const steps = JSON.parse(JSON.stringify(a.steps || [])), was = JSON.stringify(steps);
+  const drawSteps = () => {
+    const pc = steps.length ? Math.round((steps.filter((x) => x.done).length / steps.length) * 100) : null;
+    $("#steps", m).innerHTML = (pc === null ? `<p class="muted">No steps yet. Add the steps needed to close this action; progress is worked out from them.</p>` : progBar(pc, 200)) +
+      steps.map((x, i) => `<div class="chk"><input type="checkbox" data-si="${i}" ${x.done ? "checked" : ""} style="width:auto"><div class="t">${h(x.t)}${x.done && x.by ? `<br><span class="muted">Done ${x.on ? fds(x.on) : ""} · ${h(x.by)}</span>` : ""}</div><button class="btn sm ghost" data-sd="${i}" title="Remove step">✕</button></div>`).join("");
+    $$("[data-si]", m).forEach((cb) => (cb.onchange = () => { const x = steps[+cb.dataset.si]; x.done = cb.checked; x.by = cb.checked ? S.user.name : ""; x.on = cb.checked ? today() : ""; drawSteps(); }));
+    $$("[data-sd]", m).forEach((b) => (b.onclick = () => { steps.splice(+b.dataset.sd, 1); drawSteps(); }));
+  };
+  drawSteps();
+  $("#step-add", m).onclick = () => { const t = $("#step-new", m).value.trim(); if (!t) return; steps.push({ t, done: false }); $("#step-new", m).value = ""; drawSteps(); };
+  $("#as", m).onclick = async () => {
+    const o = {}; $$("[data-k]", m).forEach((el) => (o[el.dataset.k] = el.value.trim()));
+    if (!o.title) return ($("#ae", m).textContent = "Enter the action.");
+    o.steps = steps;
+    if (JSON.stringify(steps) !== was && steps.length) {
+      const allDone = steps.every((x) => x.done), any = steps.some((x) => x.done);
+      if (allDone && o.status !== "Completed") o.status = "Completed";
+      else if (!allDone && any && o.status === "Not started") o.status = "In progress";
+      if (!o.notes || o.notes === (a.notes || "")) { const nd = steps.filter((x, i) => x.done && !((a.steps || [])[i] || {}).done).map((x) => x.t); if (nd.length) o.notes = "Done: " + nd.join("; "); }
+    }
+    if (!id || o.status !== a.status || o.notes !== (a.notes || "")) o.history = (a.history || []).concat([{ at: Date.now(), by: S.user.name, status: o.status, note: id ? (o.notes !== (a.notes || "") ? o.notes : "Edited") : "Created" }]);
+    if (o.status === "Completed" && a.status !== "Completed") o.completedOn = today();
+    if (id) await put("actions", id, o); else await add("actions", o);
+    audit(`${id ? "Edited" : "Added"} action ${o.ref}: ${o.title}`, o.ref); m.close(); toast("Saved");
+  };
+  const d = $("#ad", m); if (d) d.onclick = async () => { if (!confirmBox(m, "Delete this action? It will be removed from the tracker.")) return; await del("actions", id); audit(`Deleted action ${a.ref}`, a.ref); m.close(); };
+}
+function confirmBox(m, msg) { const e = $(".err", m); if (e && e.dataset.sure !== "1") { e.textContent = msg + " Press again to confirm."; e.dataset.sure = "1"; return false; } return true; }
+
+/* ============================================================ CERTIFICATES */
+VIEWS.certs = () => {
+  const rows = reg("cert").map((c) => ({ ...c, ...certState(c) })).sort((a, b) => natRef(a.ref, b.ref));
+  return `<h2>Certificates and <span class="fl">service dates</span></h2>
+  <p class="lead">Every contractor certificate, when it was last done and when it is next due. Upload the certificate PDF against each line.</p>
+  <div class="row" style="margin-bottom:10px"><div class="grow"></div><button class="btn red" id="c-new">+ Add certificate</button></div>
+  <div class="tw"><table><tr><th>Ref</th><th>Certificate</th><th>Contractor</th><th>Last done</th><th>Interval</th><th>Next due</th><th>Status</th><th>Certificate no.</th><th>File</th></tr>
+  ${rows.map((c) => `<tr><td><b>${h(c.ref)}</b></td><td><a href="#" data-c="${c.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(c.name)}</a>${c.notes ? `<div class="muted">${h(c.notes)}</div>` : ""}</td>
+    <td>${h(c.contractor)}</td><td>${c.last ? fds(c.last) : "—"}</td><td>${c.months ? c.months + " months" : ""}</td><td>${c.next ? fds(c.next) : ""}</td><td>${pill(c.st)}</td><td>${h(c.certRef)}</td>
+    <td>${c.file ? `<a href="#" data-open="${c.id}">View</a>` : `<span class="muted">Not uploaded</span>`}</td></tr>`).join("") || `<tr><td colspan="9" class="muted">No certificates yet.</td></tr>`}
+  </table></div>`;
+};
+BIND.certs = (v) => {
+  $("#c-new", v).onclick = () => editReg("cert", null);
+  $$("[data-c]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); editReg("cert", a.dataset.c); }));
+  $$("[data-open]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); openFile(S.data.registers.find((x) => x.id === a.dataset.open).file); }));
+};
+
+/* generic register editor (cert, doc, peep, permit) */
+const REG_FIELDS = {
+  cert: [["ref", "Ref"], ["name", "Certificate / service"], ["contractor", "Contractor"], ["last", "Last done", "date"], ["months", "Interval (months)", "number"], ["certRef", "Certificate / job number"], ["notes", "Notes", "textarea"]],
+  doc: [["title", "Title"], ["cat", "Category", "select", HF_DOC_CATS], ["date", "Date of document", "date"], ["version", "Version / revision"], ["author", "Author / issued by"], ["notes", "Notes", "textarea"]],
+  peep: [["guest", "Guest name / room"], ["needs", "Assistance needed"], ["plan", "Evacuation plan (who helps, route, refuge)", "textarea"], ["from", "From", "date"], ["to", "To", "date"], ["told", "Night staff told (name)"]],
+  permit: [["no", "Permit number"], ["date", "Date", "date"], ["location", "Location"], ["work", "Work being done"], ["contractor", "Contractor / person doing the work"], ["authorisedBy", "Authorised by (hotel staff — not the contractor)"], ["watchEnd", "Fire watch ended (time)", "time"], ["closed", "Permit closed", "select", ["No", "Yes"]]]
+};
+const REG_FOLDER = { cert: "certificates", doc: "documents", peep: "peeps", permit: "permits" };
+function editReg(kind, id) {
+  const r = id ? S.data.registers.find((x) => x.id === id) : { kind };
+  const fields = REG_FIELDS[kind];
+  const m = modal(`<h3>${id ? "Edit" : "Add"} ${{ cert: "certificate", doc: "document", peep: "PEEP", permit: "hot work permit" }[kind]}</h3>
+    ${fields.map(([k, l, t, opts]) => `<label>${h(l)}</label>${t === "textarea" ? `<textarea data-k="${k}">${h(r[k])}</textarea>` : t === "select" ? `<select data-k="${k}">${opts.map((o) => `<option ${r[k] === o ? "selected" : ""}>${h(o)}</option>`).join("")}</select>` : `<input type="${t || "text"}" data-k="${k}" value="${h(r[k])}">`}`).join("")}
+    ${kind === "cert" || kind === "doc" || kind === "permit" ? `<label>File (PDF, photo or Word, up to 25 MB)</label>${r.file ? `<p class="muted">Current: <a href="#" id="rf-open">${h(r.file.name)}</a> · uploaded by ${h(r.file.uploadedBy)}. Choosing a new file replaces the link (the old file is kept in storage).</p>` : ""}<input type="file" id="rf">` : ""}
+    <div class="row" style="margin-top:12px"><button class="btn red" id="rs">Save</button><button class="btn ghost" data-close>Cancel</button><div class="grow"></div>${id && isAdmin() ? `<button class="btn ghost" id="rd" style="color:var(--red)">Delete</button>` : ""}</div><div class="err" id="re"></div>`);
+  const fo = $("#rf-open", m); if (fo) fo.onclick = (e) => { e.preventDefault(); openFile(r.file); };
+  $("#rs", m).onclick = async () => {
+    const o = { kind }; $$("[data-k]", m).forEach((el) => (o[el.dataset.k] = el.value.trim()));
+    try {
+      $("#rs", m).disabled = true;
+      const fi = $("#rf", m); if (fi && fi.files[0]) { $("#re", m).textContent = "Uploading…"; o.file = await upload(REG_FOLDER[kind], fi.files[0]); }
+      if (id) await put("registers", id, o); else await add("registers", o);
+      audit(`${id ? "Updated" : "Added"} ${kind}: ${o.name || o.title || o.guest || o.no || ""}${o.file ? " (file uploaded)" : ""}`);
+      m.close(); toast("Saved");
+    } catch (e) { $("#rs", m).disabled = false; $("#re", m).textContent = e.message; }
+  };
+  const d = $("#rd", m); if (d) d.onclick = async () => { if (!confirmBox(m, "Delete this entry?")) return; await del("registers", id); audit(`Deleted ${kind} ${r.name || r.title || ""}`); m.close(); };
+}
+
+/* ============================================================ DOCUMENTS */
+VIEWS.docs = () => {
+  const f = S.f.doc || (S.f.doc = { cat: "" });
+  let rows = reg("doc"); if (f.cat) rows = rows.filter((d) => d.cat === f.cat);
+  rows.sort((a, b) => natRef(a.cat, b.cat) || natRef(b.date, a.date));
+  return `<h2>Documents and <span class="fl">policies</span></h2>
+  <p class="lead">Fire risk assessments (Soldorlet), the fire service letter, policies and procedures, contracts, statements and quotes. Files are stored privately in HosFIRE, never in the website code.</p>
+  <div class="tabs2">${["", ...HF_DOC_CATS].map((c) => `<button data-dc="${h(c)}" class="${f.cat === c ? "on" : ""}">${c || "All"} (${c ? reg("doc").filter((d) => d.cat === c).length : reg("doc").length})</button>`).join("")}</div>
+  <div class="row" style="margin-bottom:10px"><div class="grow"></div><button class="btn red" id="d-new">+ Add document</button></div>
+  <div class="tw"><table><tr><th>Document</th><th>Category</th><th>Date</th><th>Version</th><th>Issued by</th><th>File</th></tr>
+  ${rows.map((d) => `<tr><td><a href="#" data-d="${d.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(d.title)}</a>${d.notes ? `<div class="muted">${h(d.notes)}</div>` : ""}</td><td class="muted">${h(d.cat)}</td><td>${d.date ? fds(d.date) : ""}</td><td>${h(d.version)}</td><td>${h(d.author)}</td>
+    <td>${d.file ? `<a href="#" data-open="${d.id}">View</a>` : `<span class="pill p-amb">Upload</span>`}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">No documents.</td></tr>`}
+  </table></div>`;
+};
+BIND.docs = (v) => {
+  $$("[data-dc]", v).forEach((b) => (b.onclick = () => { S.f.doc.cat = b.dataset.dc; render(); }));
+  $("#d-new", v).onclick = () => editReg("doc", null);
+  $$("[data-d]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); editReg("doc", a.dataset.d); }));
+  $$("[data-open]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); openFile(S.data.registers.find((x) => x.id === a.dataset.open).file); }));
+};
+
+/* ============================================================ TRAINING */
+function courseState(date, months) {
+  if (!date) return { st: "missing" };
+  if (!months) return { st: "ok" };
+  const exp = addMonths(date, months), d = daysBetween(today(), exp);
+  return { st: d < 0 ? "expired" : d <= 30 ? "soon" : "ok", exp };
+}
+VIEWS.training = () => {
+  const rows = reg("training").sort((a, b) => (b.marshal ? 1 : 0) - (a.marshal ? 1 : 0) || natRef(a.name, b.name));
+  const bg = { missing: "#f4f4f4", ok: "var(--okbg)", soon: "var(--ambbg)", expired: "var(--redbg)" };
+  return `<h2>Training <span class="fl">matrix</span></h2>
+  <p class="lead">Fire training for every member of staff (RRO 2005 Art. 21): induction, annual refresher, fire marshal course and drills. Green = in date, amber = due within 30 days, red = expired, grey = no record.</p>
+  <div class="grid g4" style="margin-bottom:12px">${marshals().map((n) => { const t = rows.find((r) => r.name === n) || { courses: {} }; const c = t.courses || {};
+    return `<div class="card tile ${c.marshal ? "g" : "r"}"><div class="l">Fire marshal</div><div style="font-weight:900;font-size:17px;color:var(--navy)">${h(n)}</div><div class="muted">Marshal course: ${c.marshal ? fds(c.marshal) : "date not recorded"}</div></div>`; }).join("")}</div>
+  <div class="row" style="margin-bottom:10px"><div class="grow"></div><button class="btn red" id="t-new">+ Add staff member</button></div>
+  <div class="tw"><table><tr><th>Name</th><th>Role</th><th>Shift</th>${HF_COURSES.map(([, l, mo]) => `<th>${h(l)}${mo ? `<br><span style="font-weight:400;text-transform:none">every ${mo} months</span>` : ""}</th>`).join("")}</tr>
+  ${rows.map((t) => `<tr><td><a href="#" data-t="${t.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(t.name)}</a>${t.marshal ? ` <span class="pill p-red">Marshal</span>` : ""}</td><td>${h(t.role)}</td><td>${h(t.shift)}</td>
+    ${HF_COURSES.map(([k, , mo]) => { const d = (t.courses || {})[k]; const s = courseState(d, mo); return `<td style="background:${bg[s.st]}">${d ? fds(d) : "—"}${s.exp && s.st !== "ok" ? `<br><small>due ${fds(s.exp)}</small>` : ""}</td>`; }).join("")}</tr>`).join("") || `<tr><td colspan="${3 + HF_COURSES.length}" class="muted">No staff added.</td></tr>`}
+  </table></div>`;
+};
+BIND.training = (v) => {
+  const edit = (id) => {
+    const t = id ? S.data.registers.find((x) => x.id === id) : { kind: "training", courses: {} };
+    const m = modal(`<h3>${id ? h(t.name) : "Add staff member"}</h3>
+      <div class="f2"><div><label>Name</label><input data-k="name" value="${h(t.name)}"></div><div><label>Role</label><input data-k="role" value="${h(t.role)}"></div>
+      <div><label>Shift</label><select data-k="shift">${["Day", "Night", "Both"].map((s) => `<option ${t.shift === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
+      <div><label>Fire marshal</label><select data-k="marshal"><option value="">No</option><option value="1" ${t.marshal ? "selected" : ""}>Yes</option></select></div></div>
+      <div class="f2">${HF_COURSES.map(([k, l]) => `<div><label>${h(l)}</label><input type="date" data-c="${k}" value="${h((t.courses || {})[k])}"></div>`).join("")}</div>
+      <p class="muted">Enter the date the training actually took place. Leave blank if there is no record.</p>
+      <div class="row" style="margin-top:12px"><button class="btn red" id="ts">Save</button><button class="btn ghost" data-close>Cancel</button><div class="grow"></div>${id && isAdmin() ? `<button class="btn ghost" id="td" style="color:var(--red)">Delete</button>` : ""}</div><div class="err"></div>`);
+    $("#ts", m).onclick = async () => {
+      const o = { kind: "training", courses: {} };
+      $$("[data-k]", m).forEach((el) => (o[el.dataset.k] = el.value.trim())); o.marshal = !!o.marshal;
+      $$("[data-c]", m).forEach((el) => (o.courses[el.dataset.c] = el.value));
+      if (!o.name) return;
+      if (id) await put("registers", id, o, false); else await add("registers", o);
+      audit(`Training record ${id ? "updated" : "added"}: ${o.name}`); m.close(); toast("Saved");
+    };
+    const d = $("#td", m); if (d) d.onclick = async () => { if (!confirmBox(m, "Delete this person from the matrix?")) return; await del("registers", id); m.close(); };
+  };
+  $("#t-new", v).onclick = () => edit(null);
+  $$("[data-t]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); edit(a.dataset.t); }));
+};
+
+/* ============================================================ DRILLS, PEEPs, PERMITS */
+VIEWS.drills = () => {
+  const dr = recs("drill").sort((a, b) => natRef(b.date, a.date));
+  const yr = dr.filter((d) => d.date >= addMonths(today(), -12));
+  const peeps = reg("peep").sort((a, b) => natRef(b.from, a.from));
+  const permits = reg("permit").sort((a, b) => natRef(b.date, a.date));
+  return `<h2>Drills, PEEPs and <span class="fl">hot work permits</span></h2>
+  <h3>Fire drills</h3>
+  <p class="muted">At least twice a year, with at least one involving night staff. Last 12 months: ${yr.length} drill${yr.length === 1 ? "" : "s"} (day ${yr.filter((d) => (d.fields || {}).shift === "Day").length}, night ${yr.filter((d) => (d.fields || {}).shift === "Night").length}).</p>
+  <button class="btn red sm" data-rec="drill">Record a drill</button>
+  <div class="tw" style="margin-top:8px"><table><tr><th>Date</th><th>Day / night</th><th>Evacuation time</th><th>Staff</th><th>Issues</th><th>Recorded by</th></tr>
+  ${dr.map((d) => { const f = d.fields || {}; return `<tr data-id="${d.id}" style="cursor:pointer"><td>${fd(d.date)}${d.imported ? `<span class="imp">PAST RECORD</span>` : ""}</td><td>${h(f.shift)}</td><td>${h(f.evac)} min</td><td>${h(f.staff)}</td><td>${h(f.issues)}</td><td>${h(d.imported ? d.doneBy : d.byName)}</td></tr>`; }).join("") || `<tr><td colspan="6" class="muted">No drills recorded.</td></tr>`}
+  </table></div>
+  <h3>Guest PEEPs (personal emergency evacuation plans)</h3>
+  <button class="btn red sm" data-new="peep">+ Add PEEP</button>
+  <div class="tw" style="margin-top:8px"><table><tr><th>Guest / room</th><th>Assistance</th><th>Plan</th><th>Stay</th><th>Night staff told</th></tr>
+  ${peeps.map((p) => `<tr><td><a href="#" data-r="${p.id}" data-kind="peep">${h(p.guest)}</a></td><td>${h(p.needs)}</td><td>${h(p.plan)}</td><td>${fds(p.from)} – ${fds(p.to)}</td><td>${h(p.told)}</td></tr>`).join("") || `<tr><td colspan="5" class="muted">None recorded.</td></tr>`}
+  </table></div>
+  <h3>Hot work permits</h3>
+  <div class="note">The person who authorises a permit must be a member of hotel staff, not the contractor doing the work.</div>
+  <button class="btn red sm" data-new="permit">+ Add permit</button>
+  <div class="tw" style="margin-top:8px"><table><tr><th>No.</th><th>Date</th><th>Location / work</th><th>Contractor</th><th>Authorised by</th><th>Fire watch ended</th><th>Closed</th></tr>
+  ${permits.map((p) => `<tr><td><a href="#" data-r="${p.id}" data-kind="permit">${h(p.no || "—")}</a></td><td>${fds(p.date)}</td><td>${h(p.location)}<br><span class="muted">${h(p.work)}</span></td><td>${h(p.contractor)}</td><td>${h(p.authorisedBy)}${p.authorisedBy && p.contractor && p.authorisedBy.trim().toLowerCase() === p.contractor.trim().toLowerCase() ? " " + pill("Same as contractor") : ""}</td><td>${h(p.watchEnd)}</td><td>${pill(p.closed === "Yes" ? "Done" : "Due")}</td></tr>`).join("") || `<tr><td colspan="7" class="muted">None recorded.</td></tr>`}
+  </table></div>`;
+};
+BIND.drills = (v) => {
+  bindRec(v);
+  $$("tr[data-id]", v).forEach((tr) => (tr.onclick = () => viewRecord(tr.dataset.id)));
+  $$("[data-new]", v).forEach((b) => (b.onclick = () => editReg(b.dataset.new, null)));
+  $$("[data-r]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); editReg(a.dataset.kind, a.dataset.r); }));
+};
+
+/* ============================================================ DIARY */
+function diaryItems(from, to) {
+  const out = [];
+  const push = (date, title, kind, extra = {}) => { if (date >= from && date <= to) out.push({ date, title, kind, ...extra }); };
+  // weekly alarm tests
+  for (let i = Math.max(0, rotaIndex(from)); ; i++) { const w = rotaWeek(i); if (w.wc > to) break; const s = weekStatus(w); push(w.day, `Weekly fire alarm test — ${w.marshal}`, "Weekly test", { st: s.st }); }
+  // monthly checks: first Monday of each month
+  let mo = from.slice(0, 8) + "01";
+  while (mo <= to) {
+    let d = mo; while (parse(d).getDay() !== 1) d = addDays(d, 1);
+    HF_CHECKS.filter((c) => c.freq === "monthly").forEach((c) => { const done = recs(c.id).some((r) => r.date.slice(0, 7) === mo.slice(0, 7)); push(d, `${c.name} (during ${MON[+mo.slice(5, 7) - 1]})`, "Monthly check", { st: done ? "Done" : (today() > addMonths(mo, 1) ? "Missed" : "Due") }); });
+    mo = addMonths(mo, 1);
+  }
+  // certificates next due
+  reg("cert").forEach((c) => { const s = certState(c); if (s.next) push(s.next < from ? from : s.next, `${c.name} due${s.next < from ? " (overdue since " + fds(s.next) + ")" : ""}`, "Contractor", { st: s.st }); });
+  // actions due
+  S.data.actions.filter((a) => a.due && a.status !== "Completed").forEach((a) => push(a.due, `${a.ref}: ${a.title}`, "Action due", { st: a.status }));
+  // inspection
+  push(HF_HOTEL.inspection.date, `Fire Safety Order audit ${HF_HOTEL.inspection.time} — ${HF_HOTEL.inspection.inspector}`, "Inspection");
+  // custom
+  S.data.diary.forEach((d) => push(d.date, d.title, d.kind || "Diary", { id: d.id, who: d.who, st: d.done ? "Done" : "Planned" }));
+  return out.sort((a, b) => natRef(a.date, b.date));
+}
+VIEWS.diary = () => {
+  const from = mondayOf(addDays(today(), -14)), to = addDays(mondayOf(today()), 7 * 16 + 6);
+  const items = diaryItems(from, to);
+  const weeks = {}; items.forEach((it) => { const k = mondayOf(it.date); (weeks[k] = weeks[k] || []).push(it); });
+  return `<h2>Fire safety <span class="fl">diary</span></h2>
+  <p class="lead">Weekly tests, monthly checks, contractor visits, certificates falling due, action deadlines and drills — two weeks back and sixteen weeks ahead.</p>
+  <div class="row" style="margin-bottom:10px"><div class="grow"></div><button class="btn red" id="dy-new">+ Add to diary (drill, visit, training…)</button></div>
+  ${Object.keys(weeks).sort().map((k) => `<div class="wk"><h4>Week commencing ${fd(k)}${k === mondayOf(today()) ? " — this week" : ""}</h4>
+    ${weeks[k].map((it) => `<div class="di"><div class="d">${DOW[parse(it.date).getDay()]} ${parse(it.date).getDate()} ${MON[parse(it.date).getMonth()]}</div><div class="x">${h(it.title)}${it.who ? ` <span class="muted">· ${h(it.who)}</span>` : ""}<br><span class="muted">${h(it.kind)}</span></div>
+      <div>${it.st ? pill(it.st === "Overdue" && it.kind === "Weekly test" ? "Overdue" : it.st) : ""}${it.id ? ` <button class="btn sm ghost" data-dd="${it.id}">${it.st === "Done" ? "Undo" : "Mark done"}</button>` : ""}</div></div>`).join("")}</div>`).join("")}`;
+};
+BIND.diary = (v) => {
+  $("#dy-new", v).onclick = () => {
+    const m = modal(`<h3>Add to diary</h3><div class="f2"><div><label>Date</label><input type="date" data-k="date" value="${today()}"></div>
+      <div><label>Type</label><select data-k="kind">${["Fire drill (day)", "Fire drill (night)", "Contractor visit", "Training", "Meeting", "Other"].map((o) => `<option>${o}</option>`).join("")}</select></div></div>
+      <label>What</label><input data-k="title"><label>Who</label><input data-k="who">
+      <div class="row" style="margin-top:12px"><button class="btn red" id="ys">Save</button><button class="btn ghost" data-close>Cancel</button></div>`);
+    $("#ys", m).onclick = async () => { const o = {}; $$("[data-k]", m).forEach((el) => (o[el.dataset.k] = el.value.trim())); if (!o.title || !o.date) return; await add("diary", o); m.close(); };
+  };
+  $$("[data-dd]", v).forEach((b) => (b.onclick = async () => { const d = S.data.diary.find((x) => x.id === b.dataset.dd); await put("diary", d.id, { done: !d.done }); }));
+};
+
+/* ============================================================ REGULATIONS */
+VIEWS.regs = () => `<h2>Regulations and <span class="fl">standards</span></h2>
+  <p class="lead">What the law and the British Standards require, and how HosFIRE records each one. This is a summary for the team, not legal advice.</p>
+  ${HF_REGS.map((g) => `<h3>${h(g.t)}</h3><div class="tw"><table>${g.items.map(([a, b]) => `<tr><td style="width:210px"><b>${h(a)}</b></td><td>${h(b)}</td></tr>`).join("")}</table></div>`).join("")}
+  <h3>Our checks</h3>
+  <div class="tw"><table><tr><th>Ref</th><th>Check</th><th>How often</th><th>Who</th><th>Standard</th></tr>
+  ${HF_CHECKS.map((c) => `<tr><td>${h(c.ref)}</td><td>${h(c.name)}</td><td>${h({ daily: "Daily", weekly: "Weekly", monthly: "Monthly", event: "Each time" }[c.freq])}</td><td>${h(c.owner)}</td><td class="muted">${h(c.std)}</td></tr>`).join("")}</table></div>
+  <h3>Contractor intervals</h3>
+  <div class="tw"><table>${HF_CALENDAR.map((c) => `<tr><td>${h(c.what)}</td><td>Every ${c.every} months</td></tr>`).join("")}</table></div>`;
+
+/* ============================================================ INSPECTOR PACK */
+VIEWS.pack = () => {
+  const f = S.f.pack || (S.f.pack = { from: addMonths(today(), -6), to: today() });
+  const secs = [["summary", "Summary"], ["actions", "Action tracker"], ["certs", "Certificates"], ["weekly", "Weekly fire alarm tests"], ["records", "All check records"], ["drills", "Drills"], ["training", "Training matrix"], ["docs", "Document list"], ["regs", "Regulations summary"]];
+  return `<h2>Inspector <span class="fl">pack</span></h2>
+  <p class="lead">Builds a printable pack from the live records. Choose "Save as PDF" in the print window to download it. Past records entered from a source are labelled as such in the pack.</p>
+  <div class="card"><div class="f2"><div><label>Records from</label><input type="date" id="pk-from" value="${f.from}"></div><div><label>Records to</label><input type="date" id="pk-to" value="${f.to}"></div></div>
+  <label>Sections</label>${secs.map(([k, l]) => `<label class="row" style="text-transform:none;font-size:14px;color:var(--ink);margin:4px 0"><input type="checkbox" data-sec="${k}" checked style="width:auto"> ${l}</label>`).join("")}
+  <button class="btn red" id="pk-go" style="margin-top:10px">Create PDF / print</button></div>`;
+};
+BIND.pack = (v) => {
+  $("#pk-go", v).onclick = () => {
+    const from = $("#pk-from", v).value, to = $("#pk-to", v).value; S.f.pack = { from, to };
+    const on = Object.fromEntries($$("[data-sec]", v).map((c) => [c.dataset.sec, c.checked]));
+    $("#print").innerHTML = packHTML(from, to, on);
+    audit(`Inspector pack created (${from} to ${to})`);
+    setTimeout(() => window.print(), 300);
+  };
+};
+function packHTML(from, to, on) {
+  const ins = HF_HOTEL.inspection;
+  const A = S.data.actions.slice().sort((a, b) => natRef(a.category, b.category) || natRef(a.ref, b.ref));
+  const R = S.data.records.filter((r) => !r.correctionOf && r.date >= from && r.date <= to).sort((a, b) => natRef(a.date, b.date));
+  const tbl = (heads, rows) => `<table><tr>${heads.map((x) => `<th>${h(x)}</th>`).join("")}</tr>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${heads.length}">None in this period.</td></tr>`}</table>`;
+  const src = (r) => (r.imported ? ` <i>(past record entered ${fdt(r.createdAt)} from: ${h(r.source)} — ${h(r.sourceRef)}${r.scanFile ? "; scanned sheet held in HosFIRE" : ""})</i>` : "");
+  let out = `<div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #B3261E;padding-bottom:8px"><img src="assets/marketing/logos/logo-blue-transparent.png" style="height:56px" onerror="this.style.display='none'">
+    <div><h1>${h(HF_HOTEL.name)} — Fire Safety Records</h1><div>${h(HF_HOTEL.address)} · Records ${fds(from)} to ${fds(to)} · Produced ${fdt(Date.now())} by ${h(S.user.name)} from HosFIRE</div></div></div>`;
+  if (on.summary) {
+    const open = A.filter((a) => a.status !== "Completed");
+    out += `<h2>Summary</h2>${tbl(["Item", "Position"], [
+      ["Inspection", `${fd(ins.date)} ${h(ins.time)} — ${h(ins.inspector)}, ${h(ins.body)} (ref ${h(ins.ref)})`],
+      ["Fire marshals", h(marshals().join(", "))],
+      ["Evacuation strategy", "Simultaneous evacuation. Alarm not monitored: staff call 999."],
+      ["Actions", `${A.length} total · ${A.filter((a) => a.status === "Completed").length} completed · ${A.filter((a) => a.status === "In progress").length} in progress · ${A.filter((a) => a.status === "Not started").length} not started · ${open.filter((a) => a.priority === "High").length} high-priority open`],
+      ["Weekly alarm tests in period", String(R.filter((r) => r.type === "weekly_alarm").length)],
+      ["Check records in period", String(R.length) + ` (of which ${R.filter((r) => r.imported).length} past records entered from a source)`],
+      ["Drills in period", String(R.filter((r) => r.type === "drill").length)]])}`;
+  }
+  if (on.actions) out += `<h2 class="pb">Action tracker</h2>${tbl(["Ref", "Action", "Category", "Priority", "Owner", "Due", "Status", "Progress", "Latest note"], A.map((a) => [`<b>${h(a.ref)}</b>`, h(a.title), h(a.category), h(a.priority), h(a.owner), a.due ? fds(a.due) : "", `<b>${h(a.status)}</b>${a.completedOn ? "<br>" + fds(a.completedOn) : ""}`, `${progressOf(a)}%${(a.steps || []).length ? `<br>${a.steps.filter((x) => x.done).length}/${a.steps.length} steps` : ""}`, h(a.notes)]))}`;
+  if (on.certs) out += `<h2>Certificates</h2>${tbl(["Ref", "Certificate", "Contractor", "Last done", "Next due", "Status", "Cert no."], reg("cert").sort((a, b) => natRef(a.ref, b.ref)).map((c) => { const s = certState(c); return [h(c.ref), h(c.name) + (c.notes ? `<br><i>${h(c.notes)}</i>` : ""), h(c.contractor), c.last ? fds(c.last) : "—", s.next ? fds(s.next) : "", s.st, h(c.certRef)]; }))}`;
+  if (on.weekly) {
+    const W = R.filter((r) => r.type === "weekly_alarm");
+    out += `<h2 class="pb">Weekly fire alarm tests (BS 5839-1)</h2>${tbl(["Date", "Time", "Call point", "Zone", "Panel", "Sounders", "Reset", "Logbook", "Done by", "Planned (rota)"], W.map((r) => { const f = r.fields || {}, i = r.items || {}; const t = (k) => ({ pass: "✓", fail: "✗", na: "N/A" }[i[k]] || "");
+      return [fd(r.date) + src(r), h(f.time), h(f.callpoint), h(f.zone), t("panel"), t("sounders"), t("reset"), t("logbook"), h(r.imported ? r.doneBy : r.byName), r.rota ? `${fds(r.rota.plannedDay)} · ${h(r.rota.plannedMarshal)}` : ""]; }))}`;
+  }
+  if (on.records) out += `<h2 class="pb">All check records</h2>${tbl(["Date", "Check", "Result", "Done by", "Saved", "Notes"], R.filter((r) => r.type !== "weekly_alarm").map((r) => [fds(r.date), h((CHECK[r.type] || {}).name || r.type) + src(r), h(resultOf(effective(r))), h(r.imported ? r.doneBy : r.byName), fdt(r.createdAt), h(r.notes) + (S.data.records.find((x) => x.correctionOf === r.id) ? " <i>(corrected)</i>" : "")]))}`;
+  if (on.drills) out += `<h2>Fire drills</h2>${tbl(["Date", "Day / night", "Evacuation time", "Staff", "Issues"], R.filter((r) => r.type === "drill").map((r) => { const f = r.fields || {}; return [fd(r.date) + src(r), h(f.shift), h(f.evac) + " min", h(f.staff), h(f.issues)]; }))}`;
+  if (on.training) out += `<h2 class="pb">Training matrix</h2>${tbl(["Name", "Role", "Shift", ...HF_COURSES.map((c) => c[1])], reg("training").sort((a, b) => natRef(a.name, b.name)).map((t) => [h(t.name) + (t.marshal ? " (marshal)" : ""), h(t.role), h(t.shift), ...HF_COURSES.map(([k]) => ((t.courses || {})[k] ? fds(t.courses[k]) : "—"))]))}`;
+  if (on.docs) out += `<h2>Document list</h2>${tbl(["Document", "Category", "Date", "Version", "Issued by", "Held"], reg("doc").sort((a, b) => natRef(a.cat, b.cat)).map((d) => [h(d.title), h(d.cat), d.date ? fds(d.date) : "", h(d.version), h(d.author), d.file ? "Yes (HosFIRE)" : "Paper / to upload"]))}`;
+  if (on.regs) out += `<h2 class="pb">Regulations summary</h2>` + HF_REGS.map((g) => `<h3>${h(g.t)}</h3>${tbl(["", ""], g.items.map(([a, b]) => [`<b>${h(a)}</b>`, h(b)]))}`).join("");
+  return out;
+}
+
+/* ============================================================ SETTINGS */
+VIEWS.settings = () => {
+  const c = cfg();
+  const au = S.data.audit.slice().sort((a, b) => ms(b.createdAt) - ms(a.createdAt)).slice(0, 40);
+  return `<h2>Settings</h2>
+  ${!isAdmin() ? `<p class="muted">Only fire safety managers can change settings.</p>` : `
+  <div class="card"><h3 style="margin-top:0">Load starting data</h3>
+  <p class="muted">Loads the actions, certificates, document list, training matrix and diary from the HosFIRE starting data file (hosfire-seed.json). Items already in HosFIRE are left alone unless you tick "replace". Check records are never loaded this way.</p>
+  <input type="file" id="seed-file" accept=".json"><label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="seed-over" style="width:auto"> Replace items that already exist (same ID)</label>
+  <button class="btn red" id="seed-go">Load</button> <span id="seed-msg" class="muted"></span>
+  <p class="muted">Loaded version: ${h(c.seedVersion || "none")}</p></div>
+  <div class="card" style="margin-top:12px"><h3 style="margin-top:0">Fire marshals and rota</h3>
+  <div class="f2"><div><label>Marshals, in rota order (one per line)</label><textarea id="st-m" rows="4">${h(marshals().join("\n"))}</textarea></div>
+  <div><label>Rota starts (Monday)</label><input type="date" id="st-r" value="${h(rotaStart())}"><p class="muted">Changing these changes the planned rota for every week, past and future. Recorded tests are not affected.</p></div></div>
+  <button class="btn" id="st-save">Save</button></div>
+  <div class="card" style="margin-top:12px"><h3 style="margin-top:0">Backup</h3><p class="muted">Download everything in HosFIRE as a JSON file.</p><button class="btn ghost" id="bk">Download backup</button></div>`}
+  <div class="card" style="margin-top:12px"><h3 style="margin-top:0">Logins</h3>
+  <p class="muted">HosFIRE uses the HosPRO logins. Glenn Randell has a HosFIRE-only login: create it once in Firebase Console → Authentication → Add user with email <code>${h(HF_EXTRA_LOGINS["glenn.randell"].email)}</code>. His access code is ${h(HF_EXTRA_LOGINS["glenn.randell"].code)}.</p></div>
+  <h3>Change log</h3>
+  <div class="tw"><table><tr><th>When</th><th>Who</th><th>What</th></tr>${au.map((a) => `<tr><td class="muted">${fdt(a.createdAt)}</td><td>${h(a.byName)}</td><td>${h(a.what)}</td></tr>`).join("") || `<tr><td colspan="3" class="muted">Nothing yet.</td></tr>`}</table></div>`;
+};
+BIND.settings = (v) => {
+  if (!isAdmin()) return;
+  $("#seed-go", v).onclick = async () => {
+    const fi = $("#seed-file", v).files[0], msg = $("#seed-msg", v); if (!fi) { msg.textContent = "Choose the file first."; return; }
+    try {
+      const j = JSON.parse(await fi.text()); const over = $("#seed-over", v).checked; let n = 0, skip = 0; S.hold = true;
+      for (const k of ["actions", "registers", "diary"]) {
+        for (const it of j[k] || []) {
+          const { id, ...rest } = it; if (!id) continue;
+          if (!over && S.data[k].some((x) => x.id === id)) { skip++; continue; }
+          await put(k, id, { ...rest, seeded: j.version || true, ...(k === "actions" && !rest.history ? { history: [{ at: Date.now(), by: S.user.name, status: rest.status, note: "Loaded from starting data" }] } : {}) }, false); n++;
+        }
+      }
+      await put("config", "main", { seedVersion: j.version || "", marshals: (j.config && j.config.marshals) || marshals(), rotaStart: (j.config && j.config.rotaStart) || rotaStart() });
+      audit(`Starting data ${j.version || ""} loaded: ${n} items${skip ? `, ${skip} already there` : ""}`);
+      S.hold = false; render();
+      modal(`<h3>Starting data loaded</h3><p>Loaded ${n} items${skip ? `, ${skip} already there (left alone)` : ""}.</p><button class="btn" data-close>OK</button>`);
+    } catch (e) { S.hold = false; render(); toast("Could not load: " + e.message); }
+  };
+  $("#st-save", v).onclick = async () => {
+    const ml = $("#st-m", v).value.split("\n").map((x) => x.trim()).filter(Boolean); const rs = $("#st-r", v).value;
+    if (!ml.length || !rs || parse(rs).getDay() !== 1) { toast("Enter marshals and a Monday start date"); return; }
+    await put("config", "main", { marshals: ml, rotaStart: rs }); audit(`Rota changed: ${ml.join(", ")} from ${rs}`); toast("Saved");
+  };
+  $("#bk", v).onclick = () => {
+    const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), by: S.user.name, data: S.data }, (k, val) => (val && val.toMillis ? val.toMillis() : val), 2)], { type: "application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `hosfire-backup-${today()}.json`; a.click();
+  };
+};
+
+/* ============================================================ START */
+document.addEventListener("DOMContentLoaded", () => {
+  S.live = fbInit();
+  buildLogin();
+  if (DEMO) { const b = document.createElement("p"); b.className = "muted"; b.style.color = "#B3261E"; b.textContent = "DEMO MODE — nothing is saved to HosPRO. Data stays in this browser only."; $(".lgcard").appendChild(b); }
+  if (S.live) fb.auth.onAuthStateChanged((u) => { if (u && !S.user) { const k = keyByEmail(u.email); if (k) enter(k); } });
+});
+})();

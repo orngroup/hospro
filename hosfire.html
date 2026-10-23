@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2C3E50">
+<title>HosFIRE — Brandon Hall Fire Safety</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#2C3E50;--navy2:#22313F;--gold:#BB9979;--red:#B3261E;--red2:#D9432F;--redbg:#FCEBE8;--cream:#F2ECE2;--bg:#F5F3EF;
+  --ink:#1f2a37;--c-done:#1E8A55;--c-prog:#C77D12;--c-not:#B3261E;--muted:#5f6b78;--line:#e2ded6;--ok:#2a6a4a;--okbg:#E7F2EC;--amber:#9c5a00;--ambbg:#FFF4E0;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Lato,-apple-system,"Segoe UI",Arial,sans-serif}
+button,input,select,textarea{font:inherit}
+.hide{display:none!important}
+/* login */
+#login{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--navy) 0%,var(--navy2) 60%,#3a1d1a 100%)}
+.lgcard{background:#fff;border-radius:16px;padding:28px;width:min(420px,92vw);box-shadow:0 20px 50px rgba(0,0,0,.35);border-top:6px solid var(--red)}
+.lgcard img{height:64px;display:block;margin:0 auto 8px}
+.lgcard h1{margin:4px 0 2px;text-align:center;color:var(--navy);font-size:24px;letter-spacing:.5px}
+.lgcard h1 span{color:var(--red)}
+.lgcard p{margin:0 0 18px;text-align:center;color:var(--muted);font-size:13px}
+label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:10px 0 4px}
+input,select,textarea{width:100%;padding:10px 11px;border:1.5px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
+textarea{min-height:70px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border:none;border-radius:9px;background:var(--navy);color:#fff;font-weight:700;cursor:pointer}
+.btn.red{background:var(--red)} .btn.gold{background:var(--gold)} .btn.ghost{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
+.btn.sm{padding:6px 11px;font-size:13px} .btn.block{width:100%;justify-content:center;margin-top:14px}
+.err{color:var(--red);font-size:13px;margin-top:8px;min-height:18px}
+/* shell */
+header{background:var(--navy);color:#fff;display:flex;align-items:center;gap:14px;padding:10px 18px;position:sticky;top:0;z-index:20;border-bottom:4px solid var(--red)}
+header img{height:38px;background:#fff;border-radius:6px;padding:3px}
+header .brand{font-weight:900;font-size:19px;letter-spacing:.6px} header .brand span{color:#ff8a78}
+header .sub{font-size:12px;color:#c9d3de}
+header .sp{flex:1} header .who{font-size:13px;text-align:right}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--gold);color:#fff;margin-left:6px}
+.badge.demo{background:#7f8c8d}
+nav{background:#fff;border-bottom:1px solid var(--line);display:flex;gap:2px;overflow-x:auto;padding:0 10px;position:sticky;top:62px;z-index:15}
+nav button{border:none;background:none;padding:12px 12px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent}
+nav button.on{color:var(--red);border-bottom-color:var(--red)}
+main{max-width:1180px;margin:0 auto;padding:18px}
+h2{color:var(--navy);margin:4px 0 4px;font-size:22px} h2 .fl{color:var(--red)}
+h3{color:var(--navy);margin:18px 0 8px;font-size:16px}
+.lead{color:var(--muted);margin:0 0 14px}
+.grid{display:grid;gap:12px} .g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))} .g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.tile{border-left:5px solid var(--navy)} .tile .n{font-size:30px;font-weight:900;color:var(--navy)} .tile .l{font-size:13px;color:var(--muted);font-weight:700}
+.tile.r{border-left-color:var(--red)} .tile.r .n{color:var(--red)} .tile.a{border-left-color:var(--amber)} .tile.a .n{color:var(--amber)} .tile.g{border-left-color:var(--ok)} .tile.g .n{color:var(--ok)}
+table{width:100%;border-collapse:collapse;font-size:14px;background:#fff}
+th{background:var(--navy);color:#fff;text-align:left;padding:8px 9px;font-size:12px;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0}
+td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:hover td{background:#fbfaf7}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.pill{display:inline-block;font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.p-ok{background:var(--okbg);color:var(--ok)} .p-red{background:var(--redbg);color:var(--red)} .p-amb{background:var(--ambbg);color:var(--amber)} .p-grey{background:#eef0f2;color:#5f6b78} .p-navy{background:#e6ebf1;color:var(--navy)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row>*{flex:0 0 auto} .grow{flex:1 1 auto}
+.chk{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;background:#fff}
+.chk.must{border-left:4px solid var(--red);background:#fffaf9}
+.chk .t{flex:1}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:none;background:#fff;padding:6px 11px;font-weight:700;cursor:pointer;color:var(--muted)}
+.seg button.on.pass{background:var(--ok);color:#fff} .seg button.on.fail{background:var(--red);color:#fff} .seg button.on.na{background:#7f8c8d;color:#fff}
+.note{background:var(--cream);border-left:4px solid var(--gold);padding:10px 12px;border-radius:8px;font-size:13px;margin:10px 0}
+.warn{background:var(--redbg);border-left:4px solid var(--red);padding:10px 12px;border-radius:8px;font-size:13px;margin:10px 0}
+.modal{position:fixed;inset:0;background:rgba(20,28,38,.55);display:flex;align-items:flex-start;justify-content:center;z-index:50;overflow:auto;padding:30px 12px}
+.mbox{background:#fff;border-radius:14px;width:min(760px,100%);padding:20px 22px;border-top:5px solid var(--red)}
+.mbox h3{margin-top:0}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px} @media(max-width:640px){.f2{grid-template-columns:1fr}}
+.muted{color:var(--muted);font-size:13px}
+.tabs2{display:flex;gap:6px;margin:6px 0 12px;flex-wrap:wrap}
+.tabs2 button{border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:6px 13px;font-weight:700;cursor:pointer;color:var(--muted)}
+.tabs2 button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.imp{background:#eef2f8;color:var(--navy);font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px;margin-left:4px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:10px;z-index:60;font-weight:700}
+.wk{margin-bottom:14px} .wk h4{margin:0 0 6px;color:var(--navy)}
+.di{display:flex;gap:10px;padding:7px 10px;border-bottom:1px solid var(--line);font-size:14px;background:#fff}
+.di .d{width:110px;font-weight:700;color:var(--navy)} .di .x{flex:1}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.bar-row{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+.bar-row .bl{width:140px;flex:0 0 140px;color:var(--ink)} .bar-row .bt{flex:1;min-width:0} .bar-row .bv{flex:0 0 auto;min-width:46px;font-weight:700;color:var(--ink)}
+.bar-row .bs{display:flex;gap:2px;height:20px;min-width:2px}
+.seg2{color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;min-width:16px;overflow:hidden}
+.seg2:first-child{border-radius:0} .seg2:last-child{border-radius:0 4px 4px 0}
+@media(max-width:640px){.bar-row .bl{width:96px;flex-basis:96px}}
+#print{display:none}
+@media print{
+  body{background:#fff} header,nav,main,.modal,.toast{display:none!important}
+  #print{display:block;padding:0 6mm;font-size:11px}
+  #print h1{color:var(--navy);font-size:20px;margin:0} #print h2{font-size:15px;margin:14px 0 6px;color:var(--navy);border-bottom:2px solid var(--red);padding-bottom:3px}
+  #print table{font-size:10px} #print th{position:static}
+  .pb{page-break-before:always}
+}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="lgcard">
+    <img src="assets/marketing/logos/logo-blue-transparent.png" onerror="this.src='assets/bh-logo.svg'" alt="Brandon Hall">
+    <h1>Hos<span>FIRE</span></h1>
+    <p>Fire safety records — Brandon Hall Hotel and Spa</p>
+    <label>Your name</label>
+    <select id="lg-user"></select>
+    <label>Access code</label>
+    <input id="lg-code" type="password" autocomplete="off" placeholder="e.g. BHAK">
+    <button class="btn red block" id="lg-go">Sign in</button>
+    <div class="err" id="lg-err"></div>
+    <p class="muted" style="margin-top:10px">Every record you make is saved under your name with the date and time.</p>
+  </div>
+</div>
+
+<div id="app" class="hide">
+  <header>
+    <img src="assets/marketing/logos/logo-blue-transparent.png" onerror="this.src='assets/bh-logo.svg'" alt="">
+    <div><div class="brand">Hos<span>FIRE</span></div><div class="sub">Fire safety · Brandon Hall Hotel and Spa</div></div>
+    <div class="sp"></div>
+    <div class="who"><b id="who-name"></b><span id="mode-badge" class="badge"></span><br><a href="#" id="logout" style="color:#c9d3de;font-size:12px">Sign out</a></div>
+  </header>
+  <nav id="nav"></nav>
+  <main id="view"></main>
+</div>
+<div id="print"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="hosfire-defs.js"></script>
+<script src="hosfire.js"></script>
+</body>
+</html>

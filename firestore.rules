@@ -186,6 +186,41 @@ service cloud.firestore {
     // the two collections above. Delete is blocked so evidence can't be wiped.
     match /hoshouse_photos/{doc} { allow read, create, update: if true; allow delete: if isStaff(); }
 
+    // ── HosFIRE (fire safety records) — hosfire.html only ──
+    // Staff logins plus Glenn's HosFIRE-only login. Check records can be
+    // created but never edited or deleted (mistakes are corrected with a new
+    // record), and each one must carry the signed-in person's email and the
+    // server time.
+    function isFire() {
+      return isStaff() || (request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email in ['glenn.randell@brandonhall.portal']);
+    }
+    function isFireAdmin() {
+      return isStaff() && request.auth.token.email in [
+          'ajay.kawa@brandonhall.portal',
+          'raj.kumar@brandonhall.portal',
+          'alia.taub@brandonhall.portal',
+          'patrik.vlach@brandonhall.portal'
+        ];
+    }
+    match /hosfire_records/{doc} {
+      allow read: if isFire();
+      allow create: if isFire()
+        && request.resource.data.byEmail == request.auth.token.email
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+    match /hosfire_actions/{doc}   { allow read, create, update: if isFire(); allow delete: if isFireAdmin(); }
+    match /hosfire_registers/{doc} { allow read, create, update: if isFire(); allow delete: if isFireAdmin(); }
+    match /hosfire_diary/{doc}     { allow read, create, update: if isFire(); allow delete: if isFireAdmin(); }
+    match /hosfire_config/{doc}    { allow read: if isFire(); allow write: if isFireAdmin(); }
+    match /hosfire_audit/{doc} {
+      allow read: if isFire();
+      allow create: if isFire() && request.resource.data.byEmail == request.auth.token.email;
+      allow update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -310,7 +310,7 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
     staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs,
     brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography,
     hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR,
-    hhHub:renderHosHouseHub, help:renderHelp
+    hhHub:renderHosHouseHub, fireHub:renderFireHub, help:renderHelp
   };
 /* HosREV (hosrev.js, loaded before app.js) — register its screens when present */
 [["revDash","renderRevDash"],["revCalendar","renderRevCalendar"],["revCompset","renderRevCompset"],["revTrend","renderRevTrend"],["revEvents","renderRevEvents"],
@@ -5099,7 +5099,7 @@ function renderHome(v){
       card.onmouseover = () => { card.style.borderColor=m.colour; card.style.boxShadow='0 4px 14px rgba(0,0,0,.10)'; card.style.transform='translateY(-2px)'; };
       card.onmouseout  = () => { card.style.borderColor='transparent'; card.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'; card.style.transform=''; };
       // HosREV opens straight on its dashboard (the sub-nav still shows its other screens)
-      card.onclick = () => (m.id==='hosrev' && RENDER_MAP.revDash) ? switchTab('revDash') : (m.id==='hoshouse' ? switchTab('hhHub') : renderModuleLanding(m.id));
+      card.onclick = () => (m.id==='hosrev' && RENDER_MAP.revDash) ? switchTab('revDash') : (m.id==='hoshouse' ? switchTab('hhHub') : m.id==='hosfire' ? switchTab('fireHub') : renderModuleLanding(m.id));
       if(!hpCanAccess(m.id)){
         card.style.cssText += ';opacity:.45;filter:grayscale(1);cursor:not-allowed;box-shadow:none';
         card.title = m.name+' is restricted';
@@ -5390,6 +5390,8 @@ function renderModuleLanding(moduleId){
   if(moduleId==='hosrev'){ CURRENT_TAB='revDash'; render(); return; }
   // HosHOUSE opens straight to its hub of links
   if(moduleId==='hoshouse'){ CURRENT_TAB='hhHub'; render(); return; }
+  // HosFIRE is its own page (hosfire.html); this opens its launch screen
+  if(moduleId==='hosfire'){ CURRENT_TAB='fireHub'; render(); return; }
   if(!hpCanAccess(moduleId)){ toast('🔒 That area is restricted. Ask Raj or Ajay if you need access.'); if(CURRENT_TAB!=="home"){ CURRENT_TAB="home"; render(); } return; }
   if(window.scrollY) window.scrollTo(0,0);
   { const ap=document.getElementById("app"); if(ap && ap.scrollTop) ap.scrollTop=0; }
@@ -9793,6 +9795,30 @@ function hhToLightest(newRooms, workers, baseLoad){
   newRooms.forEach(room=>{ const w=workers.slice().sort((a,b)=>(load[a.hkId]-load[b.hkId]) || (b.cap||0)-(a.cap||0))[0];
     if(w){ assigns.push({room, hkId:w.hkId, hkName:w.name}); load[w.hkId]++; } });
   return assigns;
+}
+
+/* ── HosFIRE launch screen. HosFIRE is a standalone page (hosfire.html) with
+   its own data (hosfire_* collections); this screen only links to it. ── */
+function renderFireHub(v){
+  const url = location.href.split('#')[0].replace(/[^/]*$/,'') + 'hosfire.html';
+  const tile=(icon,t,d)=>`<div style="background:#fff;border:1px solid #e4e9ef;border-left:3px solid #B3261E;border-radius:10px;padding:12px 14px"><div style="font:800 13px Lato;color:#1a2b3a">${icon} ${t}</div><div style="font-size:12px;color:#5b6b7b;margin-top:3px;line-height:1.45">${d}</div></div>`;
+  v.innerHTML = `<div style="max-width:980px;margin:0 auto;padding:24px 28px">
+    <div style="background:linear-gradient(135deg,#2C3E50 0%,#22313F 60%,#5a1f1a 100%);border-radius:16px;padding:26px 28px;color:#fff;border-bottom:4px solid #B3261E">
+      <div style="font:900 26px Lato;letter-spacing:.5px">Hos<span style="color:#ff8a78">FIRE</span></div>
+      <div style="font-size:14px;color:#d5dde6;margin-top:4px">Fire safety records for Brandon Hall Hotel &amp; Spa — weekly alarm tests, checks, actions, certificates, training and the inspector pack.</div>
+      <a href="${url}" target="_blank" rel="noopener" style="display:inline-block;margin-top:16px;padding:11px 20px;background:#B3261E;color:#fff;border-radius:10px;font:800 14px Lato;text-decoration:none">Open HosFIRE ↗</a>
+      <button onclick="hhCopy('${url}',this)" style="margin-left:8px;padding:10px 14px;border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:10px;font:700 12.5px Lato;cursor:pointer">Copy link</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:16px">
+      ${tile('✅','Record a check','Daily, weekly and monthly checks, drills and alarm events — saved under your name with the date and time.')}
+      ${tile('🔔','Weekly alarm tests','Rota for the four fire marshals, rotating Monday, Tuesday and Wednesday.')}
+      ${tile('📋','Action tracker','FRA actions A1–A19, Leader Systems, emergency lighting and gas — with progress.')}
+      ${tile('📜','Certificates & documents','Service dates, certificates, the FRA and the fire service letter.')}
+      ${tile('🗂','Back-records','February to October 2026 from scanned testing sheets and Saeker.')}
+      ${tile('🖨','Inspector pack','A printable PDF of the live records for the fire officer.')}
+    </div>
+    <div style="font-size:12px;color:#8fa3b8;margin-top:14px">Sign in with your usual HosPRO name and code. Fire marshals without a HosPRO login have their own HosFIRE login.</div>
+  </div>`;
 }
 
 function renderHosHouseHub(v){
