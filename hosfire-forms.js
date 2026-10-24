@@ -206,7 +206,8 @@
     return `<div class="ff-bar noprint">
         <button class="btn ghost" id="ff-back">← All forms</button>
         <div class="grow"></div>
-        <span class="muted" style="font-size:12.5px">Fill in, then Print / Save as PDF. Upload the signed scan under Documents.</span>
+        <span class="muted" style="font-size:12.5px">${S.formRec ? "Saved in HosFIRE — view, edit, download or re-save." : "Save to HosFIRE to view & download later, or Print / Save as PDF now."}</span>
+        <button class="btn gold" id="ff-save">💾 ${S.formRec ? "Update saved" : "Save to HosFIRE"}</button>
         <button class="btn red" id="ff-print">🖨 Print / Save as PDF</button>
       </div>
       <div class="ff-doc" id="ff-doc">
@@ -225,7 +226,15 @@
 
   function renderGallery() {
     let html = `<h2>Fire safety <span class="fl">forms</span></h2>
-      <p class="lead">Complete any form on screen — the hotel details are already filled in — then <b>Print</b> or <b>Save as PDF</b>. Once signed, scan and upload it under <b>Documents</b>. These mirror the pro-formas in the fire safety pack.</p>`;
+      <p class="lead">Complete any form on screen — the hotel details are already filled in — then <b>Save to HosFIRE</b> (to view &amp; download it again later) or <b>Print / Save as PDF</b>. Once signed, scan and upload under <b>Documents</b>. These mirror the pro-formas in the fire safety pack.</p>`;
+    const done = (typeof reg === "function" ? reg("formfill") : []).slice().sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+    if (done.length) {
+      html += `<h3 style="margin:16px 0 8px">✅ Completed &amp; saved (${done.length})</h3>
+        <div class="tw"><table><tr><th>Form</th><th>Date</th><th>Saved by</th><th>Saved</th><th></th></tr>
+        ${done.map((r) => `<tr><td><a href="#" data-view="${esc(r.id)}" style="color:var(--navy);font-weight:700;text-decoration:none">${esc(r.title || "Form")}</a></td><td>${esc(r.date ? (typeof fds === "function" ? fds(r.date) : r.date) : "")}</td><td>${esc(r.by || "")}</td><td class="muted">${esc(r.savedAtStr || "")}</td>
+          <td style="white-space:nowrap;text-align:right"><a href="#" data-view="${esc(r.id)}" style="color:var(--navy);font-weight:700;text-decoration:none;margin-right:12px">👁 View / download</a><a href="#" data-delrec="${esc(r.id)}" style="color:var(--red);font-weight:700;text-decoration:none">🗑 Delete</a></td></tr>`).join("")}
+        </table></div>`;
+    }
     GROUPS.forEach((g) => {
       const items = FORMS.filter((f) => f.group === g);
       if (!items.length) return;
@@ -240,18 +249,49 @@
 
   VIEWS.forms = () => (S.form ? renderOpen(FORMS.find((x) => x.id === S.form) || FORMS[0]) : renderGallery());
 
+  function addGridRow(v) {
+    const tb = v.querySelector(".ff-grid tbody"); if (!tb) return false;
+    const cols = tb.querySelector("tr").children.length;
+    const tr = document.createElement("tr"); let c = "";
+    for (let i = 0; i < cols; i++) c += `<td><input class="ff-in" value=""></td>`;
+    tr.innerHTML = c; tb.appendChild(tr); return true;
+  }
+  function fillValues(v, vals) {
+    if (!vals || !vals.length) return;
+    const doc = v.querySelector("#ff-doc"); if (!doc) return;
+    let guard = 0;
+    while (doc.querySelectorAll("input,textarea,select").length < vals.length && guard < 200) { if (!addGridRow(v)) break; guard++; }
+    const els = doc.querySelectorAll("input,textarea,select");
+    vals.forEach((val, i) => { if (els[i]) els[i].value = val; });
+  }
+
   BIND.forms = (v) => {
     const $$l = (s) => Array.prototype.slice.call(v.querySelectorAll(s));
-    $$l("[data-form]").forEach((b) => (b.onclick = () => { S.form = b.dataset.form; render(); window.scrollTo(0, 0); }));
-    const back = v.querySelector("#ff-back"); if (back) back.onclick = () => { S.form = null; render(); };
-    const addr = v.querySelector("[data-addrow]"); if (addr) addr.onclick = () => {
-      const tb = v.querySelector(".ff-grid tbody"); if (!tb) return;
-      const cols = tb.querySelector("tr").children.length;
-      const tr = document.createElement("tr"); let c = "";
-      for (let i = 0; i < cols; i++) c += `<td><input class="ff-in" value=""></td>`;
-      tr.innerHTML = c; tb.appendChild(tr);
-    };
+    $$l("[data-form]").forEach((b) => (b.onclick = () => { S.form = b.dataset.form; S.formRec = null; render(); window.scrollTo(0, 0); }));
+    $$l("[data-view]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); const rec = reg("formfill").find((r) => r.id === a.dataset.view); if (!rec) return; S.form = rec.formId; S.formRec = rec.id; render(); window.scrollTo(0, 0); }));
+    $$l("[data-delrec]").forEach((a) => (a.onclick = async (e) => { e.preventDefault(); const rec = reg("formfill").find((r) => r.id === a.dataset.delrec); if (!confirm(`Delete the saved "${(rec && rec.title) || "form"}"?`)) return; await del("registers", a.dataset.delrec); audit(`Deleted saved form: ${(rec && rec.title) || ""}`); }));
+    const back = v.querySelector("#ff-back"); if (back) back.onclick = () => { S.form = null; S.formRec = null; render(); };
+    const addr = v.querySelector("[data-addrow]"); if (addr) addr.onclick = () => addGridRow(v);
     const pr = v.querySelector("#ff-print"); if (pr) pr.onclick = () => printForm(v.querySelector("#ff-doc"), (FORMS.find((x) => x.id === S.form) || {}).title || "Fire safety form");
+    // re-populate a saved form
+    if (S.form && S.formRec) { const rec = reg("formfill").find((r) => r.id === S.formRec); if (rec) fillValues(v, rec.vals); }
+    // save / update
+    const sv = v.querySelector("#ff-save"); if (sv) sv.onclick = async () => {
+      const f = FORMS.find((x) => x.id === S.form) || {}; const doc = v.querySelector("#ff-doc"); if (!doc) return;
+      const vals = Array.prototype.slice.call(doc.querySelectorAll("input,textarea,select")).map((el) => el.value);
+      const dateEl = doc.querySelector(".ff-meta .ff-in"); // first meta input is Site; date is 3rd — find by label
+      let date = td(); const metas = doc.querySelectorAll(".ff-meta > div");
+      metas.forEach((d) => { const l = d.querySelector("label"); if (l && /date/i.test(l.textContent)) { const i = d.querySelector(".ff-in"); if (i && i.value) date = i.value; } });
+      const rec = { kind: "formfill", formId: f.id, title: f.title, no: f.no, date: date, by: me(), vals: vals, savedAt: Date.now(), savedAtStr: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) };
+      sv.disabled = true;
+      try {
+        if (S.formRec) { await put("registers", S.formRec, rec); } else { const id = await add("registers", rec); S.formRec = id; }
+        fillValues(v, vals); // a demo-mode rerender can blank the form; restore the entered values
+        const sv2 = v.querySelector("#ff-save"); if (sv2) { sv2.textContent = "💾 Update saved"; sv2.disabled = false; }
+        const hint = v.querySelector(".ff-bar .muted"); if (hint) hint.textContent = "Saved in HosFIRE — view, edit, download or re-save.";
+        toast("Saved to HosFIRE"); audit(`Form saved: ${f.title}`);
+      } catch (e) { sv.disabled = false; alert("Couldn't save: " + (e.message || e)); }
+    };
   };
 
   function printForm(docEl, title) {
