@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en-GB" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#2C3E50">
+<title>Brandon Hall — Financial Summary</title>
+<meta name="description" content="Brandon Hall Hotel & Spa — monthly management accounts & financial summary: revenue, GOP, EBITDA, departments and the 12-month forecast. For the management team.">
+<meta property="og:title" content="Brandon Hall Hotel & Spa — Financial Summary">
+<meta property="og:description" content="Monthly management accounts at a glance: revenue, GOP, EBITDA, departments and 12-month forecast.">
+<meta property="og:type" content="website">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="/assets/icon-192.png">
+<link rel="apple-touch-icon" href="/assets/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BH Finance">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{--bg:#F2ECE2;--surface:#fff;--surface2:#FAF6EE;--border:#E7DECE;--ink:#131517;--muted:#4b5158;--faint:#78808a;
+    --brand:#2C3E50;--brand2:#22313F;--gold:#BB9979;--pos:#2F7A54;--posbg:#E4EFE7;--neg:#AB3C0C;--negbg:#F6E5DA;--radius:14px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.4}
+  body{padding-bottom:env(safe-area-inset-bottom)}
+  .hide{display:none!important}
+  button{font:inherit;cursor:pointer}
+  /* ---- Welcome ---- */
+  #welcome{position:fixed;inset:0;z-index:50;background:linear-gradient(165deg,var(--brand) 0%,var(--brand2) 60%,#1a2831 100%);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 24px}
+  #welcome img{height:74px;filter:brightness(0) invert(1);margin-bottom:18px}
+  #welcome .k{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:700}
+  #welcome h1{font-size:27px;font-weight:800;margin:10px 0 4px;line-height:1.15}
+  #welcome .sub{font-size:14px;opacity:.85;max-width:22em;margin:0 auto 26px}
+  #welcome .pick{font-size:12.5px;letter-spacing:1px;text-transform:uppercase;opacity:.7;margin-bottom:12px}
+  .names{display:flex;flex-direction:column;gap:11px;width:100%;max-width:320px}
+  .names button{background:rgba(255,255,255,.1);border:1.5px solid rgba(187,153,121,.5);color:#fff;border-radius:13px;padding:15px;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+  .names button:active{background:rgba(255,255,255,.2)}
+  .names button .ar{color:var(--gold)}
+  #welcome .tip{margin-top:26px;font-size:12px;opacity:.7;max-width:24em}
+  #welcome .tip a{color:var(--gold);text-decoration:underline}
+  /* ---- App shell ---- */
+  header.top{position:sticky;top:0;z-index:20;background:var(--brand);color:#fff;padding:10px 14px calc(10px);display:flex;align-items:center;gap:10px;padding-top:max(10px,env(safe-area-inset-top))}
+  header.top .logo{height:30px;background:#fff;border-radius:6px;padding:3px}
+  header.top .ttl{font-weight:800;font-size:15px;line-height:1.1}
+  header.top .ttl small{display:block;font-weight:500;font-size:11px;opacity:.8}
+  header.top .sp{flex:1}
+  header.top .ic{background:rgba(255,255,255,.12);border:none;color:#fff;width:34px;height:34px;border-radius:9px;font-size:16px;display:flex;align-items:center;justify-content:center}
+  .periodbar{background:var(--brand2);color:#fff;display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:13px}
+  .periodbar select{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 8px;font:inherit;font-size:13px}
+  .periodbar .who{margin-left:auto;opacity:.85;font-size:12px}
+  /* tabs */
+  nav.tabs{position:sticky;top:0;z-index:15;display:flex;gap:4px;overflow-x:auto;background:var(--surface);border-bottom:1px solid var(--border);padding:8px 10px;scrollbar-width:none}
+  nav.tabs::-webkit-scrollbar{display:none}
+  nav.tabs button{white-space:nowrap;border:none;background:transparent;color:var(--muted);font-weight:700;font-size:13.5px;padding:7px 12px;border-radius:9px}
+  nav.tabs button.on{background:var(--brand);color:#fff}
+  main{padding:14px 12px 30px;max-width:720px;margin:0 auto}
+  /* cards & tables */
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 14px}
+  .kpi .l{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.4px;font-weight:700}
+  .kpi .v{font-size:21px;font-weight:800;margin-top:3px}
+  .kpi .d{font-size:11.5px;margin-top:3px;font-weight:700}
+  .kpi.wide{grid-column:1 / -1}
+  .pos{color:var(--pos)} .neg{color:var(--neg)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px 0;margin-top:14px;overflow:hidden}
+  .card h3{margin:0;padding:12px 15px 8px;font-size:14px;color:var(--brand)}
+  .seg{display:inline-flex;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:3px;margin:2px 0 10px}
+  .seg button{border:none;background:transparent;color:var(--muted);font-weight:700;font-size:13px;padding:6px 14px;border-radius:8px}
+  .seg button.on{background:var(--brand);color:#fff}
+  table.pl{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.pl td{padding:7px 14px;border-top:1px solid #f1ebdd}
+  table.pl .lab{color:var(--ink)}
+  table.pl .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  table.pl .b{text-align:right;font-variant-numeric:tabular-nums;color:var(--faint);font-size:12px;white-space:nowrap}
+  table.pl .vr{text-align:right;font-variant-numeric:tabular-nums;font-size:12px;font-weight:700;white-space:nowrap;width:62px}
+  tr.head td{background:var(--brand);color:#fff;font-weight:800;font-size:11px;letter-spacing:.5px;text-transform:uppercase;padding:6px 14px}
+  tr.total td{font-weight:800;background:var(--surface2)}
+  tr.total .lab{color:var(--brand)}
+  .thd td{color:var(--faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;padding:6px 14px 3px}
+  .scroll{overflow-x:auto}
+  table.fc{border-collapse:collapse;font-size:12.5px;min-width:760px}
+  table.fc th,table.fc td{padding:6px 9px;border:1px solid var(--border);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  table.fc th{background:var(--brand);color:#fff;font-size:11px;position:sticky;left:0}
+  table.fc td.lab,table.fc th.lab{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1}
+  table.fc th.lab{background:var(--brand)}
+  table.fc td.fcast{background:#faf4ea;color:var(--muted)}
+  table.fc tr.total td{font-weight:800;background:var(--surface2)}
+  .chartcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 14px;margin-top:14px}
+  .chartcard h3{margin:0 0 8px;font-size:13.5px;color:var(--brand)}
+  .chartwrap{position:relative;height:200px}
+  .note{font-size:12px;color:var(--faint);margin-top:10px;padding:0 2px;line-height:1.5}
+  .sup{display:flex;justify-content:space-between;padding:8px 14px;border-top:1px solid #f1ebdd;font-size:13.5px}
+  .sup .amt{font-variant-numeric:tabular-nums;font-weight:700}
+  /* sheet */
+  #sheetwrap{position:fixed;inset:0;z-index:40;display:none}
+  #sheetwrap.on{display:block}
+  #sheetwrap .bg{position:absolute;inset:0;background:rgba(10,20,30,.5)}
+  #sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:18px 18px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom));max-height:86vh;overflow:auto}
+  #sheet h3{margin:0 0 4px;color:var(--brand);font-size:18px}
+  #sheet p,#sheet li{font-size:14px;color:var(--muted);line-height:1.55}
+  #sheet ol{padding-left:20px;margin:8px 0}
+  #sheet .btn{display:block;width:100%;text-align:center;background:var(--brand);color:#fff;border:none;border-radius:11px;padding:13px;font-weight:700;margin-top:14px}
+  #sheet .btn.g{background:var(--surface2);color:var(--brand);border:1px solid var(--border)}
+  .loading{padding:50px 20px;text-align:center;color:var(--faint)}
+  @media(prefers-color-scheme:dark){
+    :root{--bg:#171E27;--surface:#222C38;--surface2:#27313E;--border:#38434F;--ink:#ECE4D6;--muted:#AEB8C2;--faint:#808a95;--brand:#34506C;--brand2:#22313F;--pos:#4FB07E;--posbg:#1B3A2A;--neg:#D9683F;--negbg:#3A241A}
+    header.top .logo{background:#fff}
+    table.pl td{border-top:1px solid #2d3742}
+  }
+</style>
+</head>
+<body>
+
+<!-- WELCOME -->
+<div id="welcome">
+  <img src="/assets/marketing/logos/logo-white-transparent.png" onerror="this.onerror=null;this.src='/bh-logo.svg';this.style.filter='brightness(0) invert(1)'" alt="Brandon Hall">
+  <div class="k">Brandon Hall Hotel &amp; Spa</div>
+  <h1>Welcome to the<br>Financial Summary</h1>
+  <div class="sub">Monthly management accounts — revenue, profit and the 12-month forecast, at a glance.</div>
+  <div class="pick">Select your name</div>
+  <div class="names" id="names"></div>
+  <div class="tip">Tip: add this to your home screen for one-tap access. Tap <b>ⓘ</b> inside for how.</div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hide">
+  <header class="top">
+    <img class="logo" src="/assets/marketing/logos/logo-blue.png" onerror="this.onerror=null;this.src='/bh-logo.svg'" alt="">
+    <div class="ttl">Brandon Hall<small>Financial Summary</small></div>
+    <div class="sp"></div>
+    <button class="ic" id="infoBtn" title="Share &amp; add to home screen">ⓘ</button>
+  </header>
+  <div class="periodbar">
+    <span>Period</span>
+    <select id="monthSel"></select>
+    <span class="who" id="who"></span>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+  <main id="view"><div class="loading">Loading the latest accounts…</div></main>
+</div>
+
+<!-- SHARE / INSTALL SHEET -->
+<div id="sheetwrap"><div class="bg" id="sheetbg"></div><div id="sheet"></div></div>
+
+<script>
+const MONEY0 = (n)=> (n==null||isNaN(n)) ? "—" : (n<0?"-":"")+"£"+Math.abs(Math.round(n)).toLocaleString("en-GB");
+const PCT = (n,d=1)=> (n==null||isNaN(n)) ? "—" : n.toFixed(d)+"%";
+const NUM = (n)=> (n==null||isNaN(n)) ? "—" : Math.round(n).toLocaleString("en-GB");
+const USERS = { ajay:"Ajay Kawa", raj:"Raj Kumar", alia:"Alia Taub" };
+const $ = (s,r=document)=>r.querySelector(s);
+const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
+let IDX=null, DATA=null, TRENDS=null, SETUP=null, MONTH=null, TAB="overview", charts=[];
+const DATA_BASE = "../pl/data/";
+
+/* ---------- welcome / name ---------- */
+function buildNames(){
+  const box=$("#names");
+  Object.keys(USERS).forEach(k=>{
+    const b=el("button",null,`<span>${USERS[k]}</span><span class="ar">→</span>`);
+    b.onclick=()=>{ try{localStorage.setItem("plm_user",k);}catch(e){} start(k); };
+    box.appendChild(b);
+  });
+}
+function start(k){
+  $("#welcome").classList.add("hide");
+  $("#app").classList.remove("hide");
+  $("#who").textContent = (USERS[k]||"").split(" ")[0];
+  if(!IDX) load();
+}
+
+/* ---------- data ---------- */
+async function getJSON(u){ const r=await fetch(u+(u.indexOf("?")<0?("?v="+Date.now()):"")); if(!r.ok) throw new Error(u); return r.json(); }
+async function load(){
+  try{
+    IDX = await getJSON(DATA_BASE+"index.json");
+    MONTH = IDX.latest;
+    buildMonthSel();
+    TRENDS = await getJSON(DATA_BASE+"trends.json").catch(()=>null);
+    SETUP  = await getJSON(DATA_BASE+"setup.json").catch(()=>null);
+    await loadMonth(MONTH);
+  }catch(e){ $("#view").innerHTML=`<div class="loading">Couldn't load the accounts.<br><small>${e.message||e}</small></div>`; }
+}
+async function loadMonth(id){
+  MONTH=id; $("#view").innerHTML=`<div class="loading">Loading ${id}…</div>`;
+  try{ DATA = await getJSON(DATA_BASE+id+".json"); buildTabs(); render(); }
+  catch(e){ $("#view").innerHTML=`<div class="loading">Couldn't load ${id}.</div>`; }
+}
+function buildMonthSel(){
+  const s=$("#monthSel"); s.innerHTML="";
+  (IDX.months||[]).slice().reverse().forEach(m=>{ const o=el("option"); o.value=m.id; o.textContent=m.label+" · "+m.period; s.appendChild(o); });
+  s.value=MONTH; s.onchange=()=>loadMonth(s.value);
+}
+
+/* ---------- tabs ---------- */
+const TABS=[["overview","Overview"],["pl","P&L"],["depts","Departments"],["forecast","Forecast"],["trends","Trends"],["setup","Set-Up"]];
+function buildTabs(){
+  const n=$("#tabs"); n.innerHTML="";
+  TABS.forEach(([k,l])=>{ if(k==="setup"&&!SETUP) return; const b=el("button",k===TAB?"on":"",l); b.onclick=()=>{TAB=k;buildTabs();render();window.scrollTo(0,0);}; n.appendChild(b); });
+}
+
+/* ---------- helpers ---------- */
+function varPct(a,b){ if(a==null||b==null||b===0) return null; return (a-b)/Math.abs(b)*100; }
+function varCls(a,b,cost){ const v=varPct(a,b); if(v==null) return ""; const good = cost? (a<=b):(a>=b); return good?"pos":"neg"; }
+function isStatLabel(l){ return /occupanc|rate|revpar|trevpar|gopar|rooms|sleeper|density|manning|%|number|complementary|available|occupied|order/i.test(l); }
+function fmtStat(l,v){ if(v==null) return "—"; const L=l.toLowerCase();
+  if(L.includes("occupanc")||L.includes("%")||L.includes("density")) return (v<=1?(v*100):v).toFixed(1)+"%";
+  if(/rate|revpar|trevpar|gopar/.test(L)) return MONEY0(v);
+  return NUM(v);
+}
+
+/* ---------- OVERVIEW ---------- */
+function find(label){ return (DATA.pl||[]).find(r=>r.label===label)||{}; }
+function renderOverview(){
+  const rev=find("TOTAL REVENUE"), gop=find("GROSS OPERATING PROFIT"), ebitda=find("EBITDA"), nop=find("Net Operating Profit");
+  const occ=find("Occupancy"), adr=find("Average Daily Rate"), revpar=find("REVPAR"), pay=find("Total Payroll % Sales");
+  const m=DATA.meta||{};
+  const kpi=(l,v,a,b,cost)=>{ const vp=varPct(a,b); const cls=varCls(a,b,cost); return `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="d ${cls}">${vp==null?"&nbsp;":((vp>=0?"▲ ":"▼ ")+Math.abs(vp).toFixed(0)+"% vs budget")}</div></div>`; };
+  let h=`<div class="kpis">
+    <div class="kpi wide"><div class="l">${m.period} · Total revenue</div><div class="v">${MONEY0(rev.ma)}</div><div class="d ${varCls(rev.ma,rev.mb,false)}">${(()=>{const v=varPct(rev.ma,rev.mb);return v==null?"":((v>=0?"▲ ":"▼ ")+Math.abs(v).toFixed(0)+"% vs budget "+MONEY0(rev.mb));})()}</div></div>
+    ${kpi("Gross Op. Profit",MONEY0(gop.ma),gop.ma,gop.mb,false)}
+    ${kpi("EBITDA",MONEY0(ebitda.ma),ebitda.ma,ebitda.mb,false)}
+    ${kpi("Net Op. Profit",MONEY0(nop.ma),nop.ma,nop.mb,false)}
+    ${kpi("Occupancy",fmtStat("Occupancy",occ.ma),occ.ma,occ.mb,false)}
+    ${kpi("ADR",fmtStat("Average Daily Rate",adr.ma),adr.ma,adr.mb,false)}
+    ${kpi("RevPAR",fmtStat("REVPAR",revpar.ma),revpar.ma,revpar.mb,false)}
+  </div>`;
+  // YTD strip
+  h+=`<div class="card"><h3>Year to date (${IDX.ytdFrom} →)</h3>
+    <table class="pl"><tr class="thd"><td>&nbsp;</td><td class="num">Actual</td><td class="b">Budget</td><td class="vr">Var</td></tr>
+    ${[["Total revenue",rev,false],["Gross Op. Profit",gop,false],["EBITDA",ebitda,false],["Net Op. Profit",nop,false]].map(([l,r,c])=>{
+      const vp=varPct(r.ya,r.yb); return `<tr><td class="lab">${l}</td><td class="num">${MONEY0(r.ya)}</td><td class="b">${MONEY0(r.yb)}</td><td class="vr ${varCls(r.ya,r.yb,c)}">${vp==null?"—":(vp>=0?"+":"")+vp.toFixed(0)+"%"}</td></tr>`;
+    }).join("")}</table></div>`;
+  // mini revenue trend
+  h+=`<div class="chartcard"><h3>Revenue &amp; EBITDA trend</h3><div class="chartwrap"><canvas id="ovTrend"></canvas></div></div>`;
+  h+=`<div class="note">Figures are from the monthly management accounts (${m.period}). ▲/▼ compares actual to ${m.budgetName||"budget"}.</div>`;
+  return h;
+}
+
+/* ---------- P&L ---------- */
+let PLMODE="month";
+function renderPL(){
+  const cols = PLMODE==="month" ? ["ma","mb"] : ["ya","yb"];
+  let costMode=false; const costSecs=["COSTS","UNDISTRIBUTED EXPENSES","FIXED EXPENSES"];
+  let rows="";
+  (DATA.pl||[]).forEach(r=>{
+    if(r.head){ costMode = costSecs.includes(r.label.toUpperCase()); const stat=/STATISTIC/i.test(r.label); rows+=`<tr class="head"><td colspan="4">${r.label}</td></tr>`; return; }
+    const a=r[cols[0]], b=r[cols[1]];
+    const stat = r.ma!=null && isStatLabel(r.label) && !/revenue|cost|profit|income|total|payroll %/i.test(r.label);
+    const isTot=/^TOTAL|GROSS OPERATING|EBITDA|Net Operating Profit$|EBITDAR/i.test(r.label);
+    const aF = stat? fmtStat(r.label,a) : MONEY0(a);
+    const bF = stat? fmtStat(r.label,b) : MONEY0(b);
+    const vp = stat? null : varPct(a,b);
+    const vcls = stat? "" : varCls(a,b,costMode);
+    rows+=`<tr class="${isTot?"total":""}"><td class="lab">${r.label}</td><td class="num">${aF}</td><td class="b">${bF}</td><td class="vr ${vcls}">${vp==null?"":(vp>=0?"+":"")+vp.toFixed(0)+"%"}</td></tr>`;
+  });
+  return `<div class="seg"><button class="${PLMODE==="month"?"on":""}" onclick="PLMODE='month';render()">This month</button><button class="${PLMODE==="ytd"?"on":""}" onclick="PLMODE='ytd';render()">Year to date</button></div>
+    <div class="card"><table class="pl"><tr class="thd"><td>${DATA.meta.period} P&amp;L</td><td class="num">Actual</td><td class="b">Budget</td><td class="vr">Var</td></tr>${rows}</table></div>
+    <div class="note">Green = favourable to budget, red = unfavourable (costs are flipped so under-budget reads green).</div>`;
+}
+
+/* ---------- DEPARTMENTS ---------- */
+function renderDepts(){
+  const d=DATA.depts||{}; let h="";
+  Object.keys(d).forEach(name=>{
+    const rows=d[name]||[]; let body="";
+    rows.forEach(r=>{
+      if(r.head){ body+=`<tr class="head"><td colspan="3">${r.label}</td></tr>`; return; }
+      const stat=isStatLabel(r.label) && !/revenue|cost|profit|total/i.test(r.label);
+      const aF=stat?fmtStat(r.label,r.ma):MONEY0(r.ma);
+      const bF=stat?fmtStat(r.label,r.mb):MONEY0(r.mb);
+      const isTot=/^TOTAL|PROFIT|INCOME/i.test(r.label);
+      body+=`<tr class="${isTot?"total":""}"><td class="lab">${r.label}</td><td class="num">${aF}</td><td class="b">${bF}</td></tr>`;
+    });
+    h+=`<div class="card"><h3>${name}</h3><table class="pl"><tr class="thd"><td>&nbsp;</td><td class="num">Actual</td><td class="b">Budget</td></tr>${body}</table></div>`;
+  });
+  return h || `<div class="note">No departmental detail for this month.</div>`;
+}
+
+/* ---------- FORECAST ---------- */
+function renderForecast(){
+  const fc=DATA.forecast; if(!fc||!fc.rows) return `<div class="note">No forecast in this month's file.</div>`;
+  const mo=fc.months||[], ac=fc.actualCount||0;
+  const head=`<tr><th class="lab">12-month forecast</th>${mo.map((m,i)=>`<th>${m}${i>=ac?" *":""}</th>`).join("")}<th>FY</th></tr>`;
+  const body=fc.rows.map(r=>{
+    if(r.head) return `<tr class="total"><td class="lab">${r.label}</td>${mo.map(()=>`<td></td>`).join("")}<td></td></tr>`;
+    const isTot=/^TOTAL|GROSS OPERATING|EBITDA|Net Operating/i.test(r.label);
+    return `<tr class="${isTot?"total":""}"><td class="lab">${r.label}</td>${(r.m||[]).map((v,i)=>`<td class="${i>=ac?"fcast":""}">${v==null?"":MONEY0(v)}</td>`).join("")}<td>${r.fy==null?"":MONEY0(r.fy)}</td></tr>`;
+  }).join("");
+  return `<div class="note" style="margin-top:0">Months marked <b>*</b> are forecast; the rest are actual. Swipe the table sideways.</div>
+    <div class="card scroll" style="padding:10px"><table class="fc">${head}${body}</table></div>`;
+}
+
+/* ---------- TRENDS ---------- */
+function renderTrends(){
+  if(!TRENDS) return `<div class="note">No trend data.</div>`;
+  return `<div class="chartcard"><h3>Revenue (£)</h3><div class="chartwrap"><canvas id="c_rev"></canvas></div></div>
+    <div class="chartcard"><h3>GOP &amp; EBITDA (£)</h3><div class="chartwrap"><canvas id="c_prof"></canvas></div></div>
+    <div class="chartcard"><h3>Occupancy &amp; ADR</h3><div class="chartwrap"><canvas id="c_occ"></canvas></div></div>
+    <div class="chartcard"><h3>Rooms vs F&amp;B revenue (£)</h3><div class="chartwrap"><canvas id="c_mix"></canvas></div></div>
+    <div class="note">Mar 2026 → ${IDX.months[IDX.months.length-1].label}. Source: monthly management accounts.</div>`;
+}
+function drawCharts(){
+  charts.forEach(c=>{try{c.destroy();}catch(e){}}); charts=[];
+  const brand=getComputedStyle(document.documentElement).getPropertyValue("--brand").trim()||"#2C3E50";
+  const gold=getComputedStyle(document.documentElement).getPropertyValue("--gold").trim()||"#BB9979";
+  const grid=getComputedStyle(document.documentElement).getPropertyValue("--border").trim()||"#E7DECE";
+  const tick=getComputedStyle(document.documentElement).getPropertyValue("--faint").trim()||"#78808a";
+  const L=TRENDS.labels, base={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tick,font:{size:11},boxWidth:12}}},scales:{x:{ticks:{color:tick,font:{size:10}},grid:{display:false}},y:{ticks:{color:tick,font:{size:10},callback:v=>"£"+(v/1000)+"k"},grid:{color:grid}}}};
+  const mk=(id,cfg)=>{const cv=$("#"+id);if(cv)charts.push(new Chart(cv,cfg));};
+  if(TAB==="overview"){
+    mk("ovTrend",{type:"bar",data:{labels:L,datasets:[{label:"Revenue",data:TRENDS.revenue,backgroundColor:brand,borderRadius:4},{label:"EBITDA",type:"line",data:TRENDS.ebitda,borderColor:gold,backgroundColor:gold,tension:.3,pointRadius:2}]},options:base});
+    return;
+  }
+  mk("c_rev",{type:"bar",data:{labels:L,datasets:[{label:"Revenue",data:TRENDS.revenue,backgroundColor:brand,borderRadius:4}]},options:base});
+  mk("c_prof",{type:"line",data:{labels:L,datasets:[{label:"GOP",data:TRENDS.gop,borderColor:brand,backgroundColor:brand,tension:.3,pointRadius:2},{label:"EBITDA",data:TRENDS.ebitda,borderColor:gold,backgroundColor:gold,tension:.3,pointRadius:2}]},options:base});
+  const occOpt=JSON.parse(JSON.stringify(base)); occOpt.scales.y.ticks={color:tick,font:{size:10}}; occOpt.scales.y.ticks.callback=undefined;
+  mk("c_occ",{type:"line",data:{labels:L,datasets:[{label:"Occupancy %",data:TRENDS.occupancy.map(x=>x*100),borderColor:brand,backgroundColor:brand,tension:.3,pointRadius:2,yAxisID:"y"},{label:"ADR £",data:TRENDS.adr,borderColor:gold,backgroundColor:gold,tension:.3,pointRadius:2,yAxisID:"y1"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tick,font:{size:11},boxWidth:12}}},scales:{x:{ticks:{color:tick,font:{size:10}},grid:{display:false}},y:{position:"left",ticks:{color:tick,font:{size:10},callback:v=>v+"%"},grid:{color:grid}},y1:{position:"right",ticks:{color:tick,font:{size:10},callback:v=>"£"+v},grid:{display:false}}}}});
+  mk("c_mix",{type:"bar",data:{labels:L,datasets:[{label:"Rooms",data:TRENDS.roomsRev,backgroundColor:brand,borderRadius:4},{label:"F&B",data:TRENDS.fbRev,backgroundColor:gold,borderRadius:4}]},options:base});
+}
+
+/* ---------- SET-UP ---------- */
+function renderSetup(){
+  if(!SETUP) return `<div class="note">No set-up cost data.</div>`;
+  const t=SETUP.totals||{}, m=SETUP.meta||{};
+  let h=`<div class="kpis">
+    <div class="kpi wide"><div class="l">${m.title||"Set-up / refurbishment"}</div><div class="v">${MONEY0(t.gross)}</div><div class="d">gross · ${NUM(t.count)} transactions</div></div>
+    <div class="kpi"><div class="l">Net</div><div class="v">${MONEY0(t.net)}</div></div>
+    <div class="kpi"><div class="l">VAT</div><div class="v">${MONEY0(t.vat)}</div></div>
+  </div>`;
+  const sup=SETUP.bySupplier||[];
+  if(sup.length){
+    const arr=sup.slice().sort((a,b)=>(b.gross||b.amount||0)-(a.gross||a.amount||0)).slice(0,20);
+    h+=`<div class="card"><h3>Top suppliers</h3>${arr.map(s=>`<div class="sup"><span>${s.supplier||s.name||s.label||"—"}</span><span class="amt">${MONEY0(s.gross||s.amount||s.net||0)}</span></div>`).join("")}</div>`;
+  }
+  h+=`<div class="note">${m.source?("Source: "+m.source+". "):""}Set-up &amp; refurbishment costs, separate from the operating management accounts.</div>`;
+  return h;
+}
+
+/* ---------- render ---------- */
+function render(){
+  const v=$("#view");
+  if(TAB==="overview") v.innerHTML=renderOverview();
+  else if(TAB==="pl") v.innerHTML=renderPL();
+  else if(TAB==="depts") v.innerHTML=renderDepts();
+  else if(TAB==="forecast") v.innerHTML=renderForecast();
+  else if(TAB==="trends") v.innerHTML=renderTrends();
+  else if(TAB==="setup") v.innerHTML=renderSetup();
+  if((TAB==="trends"||TAB==="overview") && window.Chart && TRENDS) setTimeout(drawCharts,30);
+}
+
+/* ---------- share / install sheet ---------- */
+function openSheet(){
+  const iOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  $("#sheet").innerHTML=`<h3>Share &amp; add to home screen</h3>
+    <p>Keep the Financial Summary one tap away.</p>
+    <p style="font-weight:700;color:var(--ink);margin-top:14px">${iOS?"On iPhone / iPad":"On Android"}</p>
+    <ol>${iOS
+      ? `<li>Tap the <b>Share</b> button <span style="font-size:17px">⬆️</span> at the bottom of Safari.</li><li>Choose <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b> — it opens full screen like an app.</li>`
+      : `<li>Tap the <b>⋮</b> menu (top right of Chrome).</li><li>Choose <b>Install app</b> / <b>Add to Home screen</b>.</li><li>Confirm — it opens like an app.</li>`}</ol>
+    <button class="btn" id="shareBtn">Share the link</button>
+    <button class="btn g" id="copyBtn">Copy link</button>
+    <button class="btn g" id="closeSheet">Close</button>`;
+  $("#sheetwrap").classList.add("on");
+  const url=location.href.split("#")[0];
+  $("#shareBtn").onclick=()=>{ if(navigator.share) navigator.share({title:"Brandon Hall — Financial Summary",text:"Brandon Hall Hotel & Spa monthly financial summary",url}); else { navigator.clipboard&&navigator.clipboard.writeText(url); alert("Link copied"); } };
+  $("#copyBtn").onclick=()=>{ (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>alert("Link copied"),()=>prompt("Copy the link:",url)); };
+  $("#closeSheet").onclick=closeSheet;
+}
+function closeSheet(){ $("#sheetwrap").classList.remove("on"); }
+
+/* ---------- init ---------- */
+buildNames();
+$("#infoBtn").onclick=openSheet;
+$("#sheetbg").onclick=closeSheet;
+(function(){ try{ const u=localStorage.getItem("plm_user"); if(u&&USERS[u]) start(u); }catch(e){} })();
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{})); }
+</script>
+</body>
+</html>
