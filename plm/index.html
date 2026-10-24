@@ -102,6 +102,33 @@
   #sheet .btn{display:block;width:100%;text-align:center;background:var(--brand);color:#fff;border:none;border-radius:11px;padding:13px;font-weight:700;margin-top:14px}
   #sheet .btn.g{background:var(--surface2);color:var(--brand);border:1px solid var(--border)}
   .loading{padding:50px 20px;text-align:center;color:var(--faint)}
+  /* ---- drawer (app nav) ---- */
+  #drawer{position:fixed;inset:0;z-index:45;display:none}
+  #drawer.on{display:block}
+  #drawer .dbg{position:absolute;inset:0;background:rgba(10,20,30,.55)}
+  .dpanel{position:absolute;top:0;bottom:0;left:0;width:82%;max-width:330px;background:var(--surface);box-shadow:6px 0 36px rgba(0,0,0,.35);display:flex;flex-direction:column;animation:slidein .18s ease}
+  @keyframes slidein{from{transform:translateX(-18px);opacity:.6}to{transform:none;opacity:1}}
+  .dhead{background:var(--brand);color:#fff;padding:max(18px,env(safe-area-inset-top)) 18px 18px;display:flex;align-items:center;gap:12px}
+  .dhead img{height:34px;background:#fff;border-radius:7px;padding:3px}
+  .dname{font-weight:800;font-size:16px;line-height:1.1}
+  .dlink{background:none;border:none;color:var(--gold);font-size:12.5px;font-weight:700;padding:3px 0 0}
+  #dnav{flex:1;overflow:auto;padding:10px}
+  #dnav button{display:flex;align-items:center;gap:14px;width:100%;border:none;background:transparent;color:var(--ink);font-size:16px;font-weight:600;padding:14px 14px;border-radius:12px;text-align:left}
+  #dnav button .di{font-size:19px;width:24px;text-align:center}
+  #dnav button.on{background:var(--brand);color:#fff}
+  .dfoot{padding:14px;border-top:1px solid var(--border)}
+  .dfoot button{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--brand);border-radius:12px;padding:13px;font-weight:700}
+  /* ---- app-style P&L rows ---- */
+  .plhead{background:var(--brand);color:#fff;font-weight:800;font-size:11px;letter-spacing:.5px;text-transform:uppercase;padding:7px 15px}
+  .plrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 15px;border-top:1px solid #f1ebdd}
+  .pll{font-size:14px;color:var(--ink);flex:1;min-width:0;line-height:1.25}
+  .plr{text-align:right;white-space:nowrap}
+  .pla{font-size:15.5px;font-weight:700;font-variant-numeric:tabular-nums}
+  .plv{font-size:11.5px;margin-top:1px;font-variant-numeric:tabular-nums}
+  .plv .vb{color:var(--faint)}
+  .plrow.total{background:var(--surface2)}
+  .plrow.total .pll{font-weight:800;color:var(--brand)}
+  .plrow.total .pla{font-size:17px}
   @media(prefers-color-scheme:dark){
     :root{--bg:#171E27;--surface:#222C38;--surface2:#27313E;--border:#38434F;--ink:#ECE4D6;--muted:#AEB8C2;--faint:#808a95;--brand:#34506C;--brand2:#22313F;--pos:#4FB07E;--posbg:#1B3A2A;--neg:#D9683F;--negbg:#3A241A}
     header.top .logo{background:#fff}
@@ -125,18 +152,26 @@
 <!-- APP -->
 <div id="app" class="hide">
   <header class="top">
-    <img class="logo" src="/assets/marketing/logos/logo-blue.png" onerror="this.onerror=null;this.src='/bh-logo.svg'" alt="">
-    <div class="ttl">Brandon Hall<small>Financial Summary</small></div>
+    <button class="ic" id="menuBtn" aria-label="Menu">☰</button>
+    <div class="ttl" id="secTtl">Overview<small id="secSub">Brandon Hall · Financial Summary</small></div>
     <div class="sp"></div>
     <button class="ic" id="infoBtn" title="Share &amp; add to home screen">ⓘ</button>
   </header>
   <div class="periodbar">
-    <span>Period</span>
     <select id="monthSel"></select>
     <span class="who" id="who"></span>
   </div>
-  <nav class="tabs" id="tabs"></nav>
   <main id="view"><div class="loading">Loading the latest accounts…</div></main>
+
+  <!-- DRAWER -->
+  <div id="drawer"><div class="dbg" id="drawerbg"></div><aside class="dpanel">
+    <div class="dhead">
+      <img src="/assets/marketing/logos/logo-blue.png" onerror="this.onerror=null;this.src='/bh-logo.svg'" alt="">
+      <div><div class="dname" id="dname">Financial Summary</div><button class="dlink" id="switchUser">Switch user</button></div>
+    </div>
+    <nav id="dnav"></nav>
+    <div class="dfoot"><button id="dShare">Share / add to home screen</button></div>
+  </aside></div>
 </div>
 
 <!-- SHARE / INSTALL SHEET -->
@@ -149,7 +184,7 @@ const NUM = (n)=> (n==null||isNaN(n)) ? "—" : Math.round(n).toLocaleString("en
 const USERS = { ajay:"Ajay Kawa", raj:"Raj Kumar", alia:"Alia Taub" };
 const $ = (s,r=document)=>r.querySelector(s);
 const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
-let IDX=null, DATA=null, TRENDS=null, SETUP=null, MONTH=null, TAB="overview", charts=[];
+let IDX=null, DATA=null, TRENDS=null, SETUP=null, MONTH=null, TAB="overview", charts=[], SESSION=null;
 const DATA_BASE = "../pl/data/";
 
 /* ---------- welcome / name ---------- */
@@ -162,10 +197,12 @@ function buildNames(){
   });
 }
 function start(k){
+  SESSION=k;
   $("#welcome").classList.add("hide");
   $("#app").classList.remove("hide");
   $("#who").textContent = (USERS[k]||"").split(" ")[0];
-  if(!IDX) load();
+  setSection();
+  if(!IDX) load(); else render();
 }
 
 /* ---------- data ---------- */
@@ -182,7 +219,7 @@ async function load(){
 }
 async function loadMonth(id){
   MONTH=id; $("#view").innerHTML=`<div class="loading">Loading ${id}…</div>`;
-  try{ DATA = await getJSON(DATA_BASE+id+".json"); buildTabs(); render(); }
+  try{ DATA = await getJSON(DATA_BASE+id+".json"); setSection(); render(); }
   catch(e){ $("#view").innerHTML=`<div class="loading">Couldn't load ${id}.</div>`; }
 }
 function buildMonthSel(){
@@ -191,12 +228,16 @@ function buildMonthSel(){
   s.value=MONTH; s.onchange=()=>loadMonth(s.value);
 }
 
-/* ---------- tabs ---------- */
-const TABS=[["overview","Overview"],["pl","P&L"],["depts","Departments"],["forecast","Forecast"],["trends","Trends"],["setup","Set-Up"]];
-function buildTabs(){
-  const n=$("#tabs"); n.innerHTML="";
-  TABS.forEach(([k,l])=>{ if(k==="setup"&&!SETUP) return; const b=el("button",k===TAB?"on":"",l); b.onclick=()=>{TAB=k;buildTabs();render();window.scrollTo(0,0);}; n.appendChild(b); });
+/* ---------- navigation (hamburger drawer) ---------- */
+const TABS=[["overview","Overview","📊"],["pl","P&L","📄"],["depts","Departments","🏨"],["forecast","Forecast","📈"],["trends","Trends","📉"],["setup","Set-Up","🧾"]];
+function tabLabel(k){ const t=TABS.find(x=>x[0]===k); return t?t[1]:""; }
+function setSection(){ const t=$("#secTtl"); if(t&&t.childNodes[0]) t.childNodes[0].nodeValue=tabLabel(TAB)+" "; const d=$("#dname"); if(d) d.textContent=(USERS[SESSION]||"Financial Summary"); }
+function buildDrawer(){
+  const n=$("#dnav"); if(!n) return; n.innerHTML="";
+  TABS.forEach(([k,l,ic])=>{ if(k==="setup"&&!SETUP) return; const b=el("button",k===TAB?"on":"",`<span class="di">${ic}</span><span>${l}</span>`); b.onclick=()=>{ TAB=k; closeDrawer(); setSection(); render(); window.scrollTo(0,0); }; n.appendChild(b); });
 }
+function openDrawer(){ buildDrawer(); $("#drawer").classList.add("on"); }
+function closeDrawer(){ $("#drawer").classList.remove("on"); }
 
 /* ---------- helpers ---------- */
 function varPct(a,b){ if(a==null||b==null||b===0) return null; return (a-b)/Math.abs(b)*100; }
@@ -237,13 +278,13 @@ function renderOverview(){
 }
 
 /* ---------- P&L ---------- */
-let PLMODE="month";
+let PLMODE="ytd";
 function renderPL(){
   const cols = PLMODE==="month" ? ["ma","mb"] : ["ya","yb"];
-  let costMode=false; const costSecs=["COSTS","UNDISTRIBUTED EXPENSES","FIXED EXPENSES"];
-  let rows="";
+  const costSecs=["COSTS","UNDISTRIBUTED EXPENSES","FIXED EXPENSES"]; let costMode=false;
+  let out="";
   (DATA.pl||[]).forEach(r=>{
-    if(r.head){ costMode = costSecs.includes(r.label.toUpperCase()); const stat=/STATISTIC/i.test(r.label); rows+=`<tr class="head"><td colspan="4">${r.label}</td></tr>`; return; }
+    if(r.head){ costMode=costSecs.includes(r.label.toUpperCase()); out+=`<div class="plhead">${r.label}</div>`; return; }
     const a=r[cols[0]], b=r[cols[1]];
     const stat = r.ma!=null && isStatLabel(r.label) && !/revenue|cost|profit|income|total|payroll %/i.test(r.label);
     const isTot=/^TOTAL|GROSS OPERATING|EBITDA|Net Operating Profit$|EBITDAR/i.test(r.label);
@@ -251,11 +292,15 @@ function renderPL(){
     const bF = stat? fmtStat(r.label,b) : MONEY0(b);
     const vp = stat? null : varPct(a,b);
     const vcls = stat? "" : varCls(a,b,costMode);
-    rows+=`<tr class="${isTot?"total":""}"><td class="lab">${r.label}</td><td class="num">${aF}</td><td class="b">${bF}</td><td class="vr ${vcls}">${vp==null?"":(vp>=0?"+":"")+vp.toFixed(0)+"%"}</td></tr>`;
+    const vline = stat ? `<div class="plv"><span class="vb">bud ${bF}</span></div>`
+      : `<div class="plv"><span class="vb">bud ${bF}</span> · <span class="${vcls}">${vp==null?"—":(vp>=0?"+":"")+vp.toFixed(0)+"%"}</span></div>`;
+    out+=`<div class="plrow ${isTot?"total":""}"><div class="pll">${r.label}</div><div class="plr"><div class="pla">${aF}</div>${vline}</div></div>`;
   });
-  return `<div class="seg"><button class="${PLMODE==="month"?"on":""}" onclick="PLMODE='month';render()">This month</button><button class="${PLMODE==="ytd"?"on":""}" onclick="PLMODE='ytd';render()">Year to date</button></div>
-    <div class="card"><table class="pl"><tr class="thd"><td>${DATA.meta.period} P&amp;L</td><td class="num">Actual</td><td class="b">Budget</td><td class="vr">Var</td></tr>${rows}</table></div>
-    <div class="note">Green = favourable to budget, red = unfavourable (costs are flipped so under-budget reads green).</div>`;
+  const mp = PLMODE==="month";
+  return `<div class="seg"><button class="${mp?"":"on"}" onclick="PLMODE='ytd';render()">Year to date</button><button class="${mp?"on":""}" onclick="PLMODE='month';render()">This month</button></div>
+    <div style="font-size:12px;color:var(--faint);margin:2px 2px 8px">${mp?DATA.meta.period:("Year to date · "+IDX.ytdFrom+" →")} — actual, with budget &amp; variance</div>
+    <div class="card" style="margin-top:0">${out}</div>
+    <div class="note">Green = favourable to budget, red = unfavourable (costs are flipped, so under-budget reads green). Tap ☰ to switch section.</div>`;
 }
 
 /* ---------- DEPARTMENTS ---------- */
@@ -372,6 +417,10 @@ function closeSheet(){ $("#sheetwrap").classList.remove("on"); }
 buildNames();
 $("#infoBtn").onclick=openSheet;
 $("#sheetbg").onclick=closeSheet;
+$("#menuBtn").onclick=openDrawer;
+$("#drawerbg").onclick=closeDrawer;
+$("#dShare").onclick=()=>{ closeDrawer(); openSheet(); };
+$("#switchUser").onclick=()=>{ closeDrawer(); try{localStorage.removeItem("plm_user");}catch(e){} $("#app").classList.add("hide"); $("#welcome").classList.remove("hide"); };
 (function(){ try{ const u=localStorage.getItem("plm_user"); if(u&&USERS[u]) start(u); }catch(e){} })();
 if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{})); }
 </script>
