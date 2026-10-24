@@ -18,8 +18,8 @@
 <meta name="apple-mobile-web-app-title" content="BH Finance">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  :root{--bg:#F2ECE2;--surface:#fff;--surface2:#FAF6EE;--border:#E7DECE;--ink:#131517;--muted:#4b5158;--faint:#78808a;
-    --brand:#2C3E50;--brand2:#22313F;--gold:#BB9979;--pos:#2F7A54;--posbg:#E4EFE7;--neg:#AB3C0C;--negbg:#F6E5DA;--radius:14px}
+  :root{--bg:#FFFFFF;--surface:#FFFFFF;--surface2:#F2F5F8;--border:#E3E7EC;--ink:#0E1114;--muted:#343a40;--faint:#6a7076;
+    --brand:#2C3E50;--brand2:#22313F;--gold:#B4894E;--pos:#1E7D46;--posbg:#E6F2EB;--neg:#CC2E26;--negbg:#FBE9E7;--line:#EDF0F3;--radius:14px}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.4}
   body{padding-bottom:env(safe-area-inset-bottom)}
@@ -68,7 +68,7 @@
   .seg button{border:none;background:transparent;color:var(--muted);font-weight:700;font-size:13px;padding:6px 14px;border-radius:8px}
   .seg button.on{background:var(--brand);color:#fff}
   table.pl{width:100%;border-collapse:collapse;font-size:13.5px}
-  table.pl td{padding:7px 14px;border-top:1px solid #f1ebdd}
+  table.pl td{padding:7px 14px;border-top:1px solid var(--line)}
   table.pl .lab{color:var(--ink)}
   table.pl .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
   table.pl .b{text-align:right;font-variant-numeric:tabular-nums;color:var(--faint);font-size:12px;white-space:nowrap}
@@ -89,7 +89,7 @@
   .chartcard h3{margin:0 0 8px;font-size:13.5px;color:var(--brand)}
   .chartwrap{position:relative;height:200px}
   .note{font-size:12px;color:var(--faint);margin-top:10px;padding:0 2px;line-height:1.5}
-  .sup{display:flex;justify-content:space-between;padding:8px 14px;border-top:1px solid #f1ebdd;font-size:13.5px}
+  .sup{display:flex;justify-content:space-between;padding:8px 14px;border-top:1px solid var(--line);font-size:13.5px}
   .sup .amt{font-variant-numeric:tabular-nums;font-weight:700}
   /* sheet */
   #sheetwrap{position:fixed;inset:0;z-index:40;display:none}
@@ -120,7 +120,7 @@
   .dfoot button{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--brand);border-radius:12px;padding:13px;font-weight:700}
   /* ---- app-style P&L rows ---- */
   .plhead{background:var(--brand);color:#fff;font-weight:800;font-size:11px;letter-spacing:.5px;text-transform:uppercase;padding:7px 15px}
-  .plrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 15px;border-top:1px solid #f1ebdd}
+  .plrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 15px;border-top:1px solid var(--line)}
   .pll{font-size:14px;color:var(--ink);flex:1;min-width:0;line-height:1.25}
   .plr{text-align:right;white-space:nowrap}
   .pla{font-size:15.5px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -129,11 +129,11 @@
   .plrow.total{background:var(--surface2)}
   .plrow.total .pll{font-weight:800;color:var(--brand)}
   .plrow.total .pla{font-size:17px}
-  @media(prefers-color-scheme:dark){
-    :root{--bg:#171E27;--surface:#222C38;--surface2:#27313E;--border:#38434F;--ink:#ECE4D6;--muted:#AEB8C2;--faint:#808a95;--brand:#34506C;--brand2:#22313F;--pos:#4FB07E;--posbg:#1B3A2A;--neg:#D9683F;--negbg:#3A241A}
-    header.top .logo{background:#fff}
-    table.pl td{border-top:1px solid #2d3742}
-  }
+  /* global period toggle in the period bar */
+  .seg2{display:inline-flex;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:9px;padding:2px}
+  .seg2 button{border:none;background:transparent;color:#fff;font-weight:700;font-size:12.5px;padding:5px 12px;border-radius:7px;opacity:.75}
+  .seg2 button.on{background:var(--gold);color:#1b2838;opacity:1}
+  .periodhint{font-size:12px;color:var(--faint);margin:2px 2px 10px}
 </style>
 </head>
 <body>
@@ -159,6 +159,7 @@
   </header>
   <div class="periodbar">
     <select id="monthSel"></select>
+    <div class="seg2" id="pmode"><button data-pm="ytd">YTD</button><button data-pm="month">Month</button></div>
     <span class="who" id="who"></span>
   </div>
   <main id="view"><div class="loading">Loading the latest accounts…</div></main>
@@ -186,6 +187,10 @@ const $ = (s,r=document)=>r.querySelector(s);
 const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
 let IDX=null, DATA=null, TRENDS=null, SETUP=null, MONTH=null, TAB="overview", charts=[], SESSION=null;
 const DATA_BASE = "../pl/data/";
+let PMODE="ytd"; // default Year to date across all sections
+function COL(){ return PMODE==="month"?["ma","mb"]:["ya","yb"]; }
+function periodLbl(){ return PMODE==="month" ? (DATA&&DATA.meta?DATA.meta.period:"") : ("Year to date · "+(IDX?IDX.ytdFrom:"")+" →"); }
+function buildPmode(){ document.querySelectorAll("#pmode button").forEach(b=>{ b.classList.toggle("on", b.dataset.pm===PMODE); b.onclick=()=>{ if(PMODE===b.dataset.pm) return; PMODE=b.dataset.pm; buildPmode(); render(); window.scrollTo(0,0); }; }); }
 
 /* ---------- welcome / name ---------- */
 function buildNames(){
@@ -254,33 +259,33 @@ function find(label){ return (DATA.pl||[]).find(r=>r.label===label)||{}; }
 function renderOverview(){
   const rev=find("TOTAL REVENUE"), gop=find("GROSS OPERATING PROFIT"), ebitda=find("EBITDA"), nop=find("Net Operating Profit");
   const occ=find("Occupancy"), adr=find("Average Daily Rate"), revpar=find("REVPAR"), pay=find("Total Payroll % Sales");
-  const m=DATA.meta||{};
+  const m=DATA.meta||{}; const c=COL(), oc=(PMODE==="month"?["ya","yb"]:["ma","mb"]); const ytd=PMODE!=="month";
+  const A=r=>r[c[0]], B=r=>r[c[1]];
   const kpi=(l,v,a,b,cost)=>{ const vp=varPct(a,b); const cls=varCls(a,b,cost); return `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="d ${cls}">${vp==null?"&nbsp;":((vp>=0?"▲ ":"▼ ")+Math.abs(vp).toFixed(0)+"% vs budget")}</div></div>`; };
-  let h=`<div class="kpis">
-    <div class="kpi wide"><div class="l">${m.period} · Total revenue</div><div class="v">${MONEY0(rev.ma)}</div><div class="d ${varCls(rev.ma,rev.mb,false)}">${(()=>{const v=varPct(rev.ma,rev.mb);return v==null?"":((v>=0?"▲ ":"▼ ")+Math.abs(v).toFixed(0)+"% vs budget "+MONEY0(rev.mb));})()}</div></div>
-    ${kpi("Gross Op. Profit",MONEY0(gop.ma),gop.ma,gop.mb,false)}
-    ${kpi("EBITDA",MONEY0(ebitda.ma),ebitda.ma,ebitda.mb,false)}
-    ${kpi("Net Op. Profit",MONEY0(nop.ma),nop.ma,nop.mb,false)}
-    ${kpi("Occupancy",fmtStat("Occupancy",occ.ma),occ.ma,occ.mb,false)}
-    ${kpi("ADR",fmtStat("Average Daily Rate",adr.ma),adr.ma,adr.mb,false)}
-    ${kpi("RevPAR",fmtStat("REVPAR",revpar.ma),revpar.ma,revpar.mb,false)}
+  let h=`<div class="periodhint">${ytd?("Year to date · "+IDX.ytdFrom+" → "+m.periodShort):m.period} — actual vs ${m.budgetName||"budget"}</div>
+  <div class="kpis">
+    <div class="kpi wide"><div class="l">${ytd?"Year to date":m.period} · Total revenue</div><div class="v">${MONEY0(A(rev))}</div><div class="d ${varCls(A(rev),B(rev),false)}">${(()=>{const v=varPct(A(rev),B(rev));return v==null?"":((v>=0?"▲ ":"▼ ")+Math.abs(v).toFixed(0)+"% vs budget "+MONEY0(B(rev)));})()}</div></div>
+    ${kpi("Gross Op. Profit",MONEY0(A(gop)),A(gop),B(gop),false)}
+    ${kpi("EBITDA",MONEY0(A(ebitda)),A(ebitda),B(ebitda),false)}
+    ${kpi("Net Op. Profit",MONEY0(A(nop)),A(nop),B(nop),false)}
+    ${kpi("Occupancy",fmtStat("Occupancy",A(occ)),A(occ),B(occ),false)}
+    ${kpi("ADR",fmtStat("Average Daily Rate",A(adr)),A(adr),B(adr),false)}
+    ${kpi("RevPAR",fmtStat("REVPAR",A(revpar)),A(revpar),B(revpar),false)}
   </div>`;
-  // YTD strip
-  h+=`<div class="card"><h3>Year to date (${IDX.ytdFrom} →)</h3>
+  const o0=oc[0],o1=oc[1];
+  h+=`<div class="card"><h3>${ytd?(m.period+" — this month"):("Year to date "+IDX.ytdFrom+" →")}</h3>
     <table class="pl"><tr class="thd"><td>&nbsp;</td><td class="num">Actual</td><td class="b">Budget</td><td class="vr">Var</td></tr>
-    ${[["Total revenue",rev,false],["Gross Op. Profit",gop,false],["EBITDA",ebitda,false],["Net Op. Profit",nop,false]].map(([l,r,c])=>{
-      const vp=varPct(r.ya,r.yb); return `<tr><td class="lab">${l}</td><td class="num">${MONEY0(r.ya)}</td><td class="b">${MONEY0(r.yb)}</td><td class="vr ${varCls(r.ya,r.yb,c)}">${vp==null?"—":(vp>=0?"+":"")+vp.toFixed(0)+"%"}</td></tr>`;
+    ${[["Total revenue",rev],["Gross Op. Profit",gop],["EBITDA",ebitda],["Net Op. Profit",nop]].map(([l,r])=>{
+      const vp=varPct(r[o0],r[o1]); return `<tr><td class="lab">${l}</td><td class="num">${MONEY0(r[o0])}</td><td class="b">${MONEY0(r[o1])}</td><td class="vr ${varCls(r[o0],r[o1],false)}">${vp==null?"—":(vp>=0?"+":"")+vp.toFixed(0)+"%"}</td></tr>`;
     }).join("")}</table></div>`;
-  // mini revenue trend
   h+=`<div class="chartcard"><h3>Revenue &amp; EBITDA trend</h3><div class="chartwrap"><canvas id="ovTrend"></canvas></div></div>`;
-  h+=`<div class="note">Figures are from the monthly management accounts (${m.period}). ▲/▼ compares actual to ${m.budgetName||"budget"}.</div>`;
+  h+=`<div class="note">From the monthly management accounts. ▲/▼ compares actual to ${m.budgetName||"budget"}. Use <b>YTD / Month</b> at the top and the month selector to change the period.</div>`;
   return h;
 }
 
 /* ---------- P&L ---------- */
-let PLMODE="ytd";
 function renderPL(){
-  const cols = PLMODE==="month" ? ["ma","mb"] : ["ya","yb"];
+  const cols = COL(); const mp = PMODE==="month";
   const costSecs=["COSTS","UNDISTRIBUTED EXPENSES","FIXED EXPENSES"]; let costMode=false;
   let out="";
   (DATA.pl||[]).forEach(r=>{
@@ -296,29 +301,27 @@ function renderPL(){
       : `<div class="plv"><span class="vb">bud ${bF}</span> · <span class="${vcls}">${vp==null?"—":(vp>=0?"+":"")+vp.toFixed(0)+"%"}</span></div>`;
     out+=`<div class="plrow ${isTot?"total":""}"><div class="pll">${r.label}</div><div class="plr"><div class="pla">${aF}</div>${vline}</div></div>`;
   });
-  const mp = PLMODE==="month";
-  return `<div class="seg"><button class="${mp?"":"on"}" onclick="PLMODE='ytd';render()">Year to date</button><button class="${mp?"on":""}" onclick="PLMODE='month';render()">This month</button></div>
-    <div style="font-size:12px;color:var(--faint);margin:2px 2px 8px">${mp?DATA.meta.period:("Year to date · "+IDX.ytdFrom+" →")} — actual, with budget &amp; variance</div>
+  return `<div class="periodhint">${mp?DATA.meta.period:("Year to date · "+IDX.ytdFrom+" →")} — actual, with budget &amp; variance</div>
     <div class="card" style="margin-top:0">${out}</div>
-    <div class="note">Green = favourable to budget, red = unfavourable (costs are flipped, so under-budget reads green). Tap ☰ to switch section.</div>`;
+    <div class="note">Green = favourable to budget, red = unfavourable (costs are flipped, so under-budget reads green). Use <b>YTD / Month</b> at the top to switch the period.</div>`;
 }
 
 /* ---------- DEPARTMENTS ---------- */
 function renderDepts(){
-  const d=DATA.depts||{}; let h="";
+  const d=DATA.depts||{}; let h=""; const c=COL(), mp=PMODE==="month";
   Object.keys(d).forEach(name=>{
     const rows=d[name]||[]; let body="";
     rows.forEach(r=>{
       if(r.head){ body+=`<tr class="head"><td colspan="3">${r.label}</td></tr>`; return; }
       const stat=isStatLabel(r.label) && !/revenue|cost|profit|total/i.test(r.label);
-      const aF=stat?fmtStat(r.label,r.ma):MONEY0(r.ma);
-      const bF=stat?fmtStat(r.label,r.mb):MONEY0(r.mb);
+      const aF=stat?fmtStat(r.label,r[c[0]]):MONEY0(r[c[0]]);
+      const bF=stat?fmtStat(r.label,r[c[1]]):MONEY0(r[c[1]]);
       const isTot=/^TOTAL|PROFIT|INCOME/i.test(r.label);
       body+=`<tr class="${isTot?"total":""}"><td class="lab">${r.label}</td><td class="num">${aF}</td><td class="b">${bF}</td></tr>`;
     });
     h+=`<div class="card"><h3>${name}</h3><table class="pl"><tr class="thd"><td>&nbsp;</td><td class="num">Actual</td><td class="b">Budget</td></tr>${body}</table></div>`;
   });
-  return h || `<div class="note">No departmental detail for this month.</div>`;
+  return (h?`<div class="periodhint">${mp?DATA.meta.period:("Year to date · "+IDX.ytdFrom+" →")} — actual vs budget by department</div>`+h : `<div class="note">No departmental detail for this month.</div>`);
 }
 
 /* ---------- FORECAST ---------- */
@@ -384,6 +387,11 @@ function renderSetup(){
 /* ---------- render ---------- */
 function render(){
   const v=$("#view");
+  const usesPeriod = (TAB==="overview"||TAB==="pl"||TAB==="depts");
+  const pm=$("#pmode"), ms=$("#monthSel");
+  if(pm) pm.style.display = usesPeriod?"inline-flex":"none";
+  if(ms) ms.style.display = (usesPeriod||TAB==="forecast")?"":"none";
+  buildPmode();
   if(TAB==="overview") v.innerHTML=renderOverview();
   else if(TAB==="pl") v.innerHTML=renderPL();
   else if(TAB==="depts") v.innerHTML=renderDepts();
