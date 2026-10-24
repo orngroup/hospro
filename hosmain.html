@@ -412,7 +412,11 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
     <select class="lg-select" id="lg-sel">
       <option value="">Select your name…</option>
     </select>
+    <input id="lg-pin" type="tel" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4-digit PIN"
+      style="width:100%;max-width:320px;margin-top:12px;padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font:700 18px 'Lato';text-align:center;letter-spacing:8px;box-sizing:border-box">
+    <div id="lg-err" style="color:#ff9d9d;font-size:12px;min-height:15px;margin:7px 0 2px"></div>
     <button class="lg-btn" id="lg-btn" disabled>Sign in</button>
+    <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:12px;max-width:300px;line-height:1.5">New here? Pick your name and enter <b>9999</b>. Forgotten your PIN? Ask your manager.</div>
   </div>
 </div>
 
@@ -476,6 +480,7 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
       <div class="t-badge" id="badge-comp">—</div>
     </div>
   </div>
+  <div id="mh-active" style="margin:22px auto 0;max-width:360px;width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:16px;text-align:center"></div>
   <button class="mh-signout" id="btn-signout-home">Sign out</button>
 </div>
 
@@ -537,6 +542,17 @@ const USERS = [
   {"id":"herman", "name":"Herman Charles", "role":"Multi-trader (non-electrical)","level":1, "color":"#2a6a4a", "admin":false, "seeCosts":false, "whatsapp":"447956606261", "tier":"person"},
   {"id":"ruth",   "name":"Ruth Addison",   "role":"Head of Housekeeping",         "level":1, "color":"#be185d", "admin":false, "seeCosts":false, "whatsapp":"447810171310", "tier":"person"},
   {"id":"jomy",   "name":"Jomy",           "role":"Bar Manager",                  "level":1, "color":"#0891b2", "admin":false, "seeCosts":false, "whatsapp":"447436401901", "tier":"person"},
+  // ── REPORTERS: can log a fault and see their own reports (PIN 9999) ────────
+  {"id":"laith",    "name":"Laith Hardy",    "role":"Operations",        "level":1, "color":"#8b5cf6", "admin":false, "seeCosts":false, "tier":"reporter"},
+  {"id":"aghil",    "name":"Aghil Joy",      "role":"Reception",         "level":1, "color":"#0ea5e9", "admin":false, "seeCosts":false, "tier":"reporter"},
+  {"id":"manjusha", "name":"Manjusha",       "role":"Front Desk",        "level":1, "color":"#f59e0b", "admin":false, "seeCosts":false, "tier":"reporter"},
+  {"id":"manju",    "name":"Manju",          "role":"Front Desk",        "level":1, "color":"#f97316", "admin":false, "seeCosts":false, "tier":"reporter"},
+  {"id":"alice",    "name":"Alice Grace",    "role":"Reception",         "level":1, "color":"#ec4899", "admin":false, "seeCosts":false, "tier":"reporter"},
+  {"id":"alan",     "name":"Alan",           "role":"Night Porter",      "level":1, "color":"#64748b", "admin":false, "seeCosts":false, "tier":"reporter"},
+  {"id":"david",    "name":"David",          "role":"Head Chef",         "level":1, "color":"#dc2626", "admin":false, "seeCosts":false, "tier":"reporter"},
+  {"id":"veronica", "name":"Veronica",       "role":"Admin",             "level":1, "color":"#14b8a6", "admin":false, "seeCosts":false, "tier":"reporter"},
+  {"id":"natalie",  "name":"Natalie Freeman","role":"Events",            "level":1, "color":"#a855f7", "admin":false, "seeCosts":false, "tier":"reporter"},
+  {"id":"nicola",   "name":"Nicola Cartwright","role":"Marketing",       "level":1, "color":"#d946ef", "admin":false, "seeCosts":false, "tier":"reporter"},
 ];
 
 // Admin IDs — can see all jobs, assign, full admin
@@ -550,6 +566,20 @@ const APPROVAL_THRESHOLD = 50;
 const NOTIFY_COMPLETE = ['raj','ajay','alia','glenn'];
 const NOTIFY_ASSIGN = ['glenn','ruth','pete','herman','daniel','jomy'];
 
+// ── LOGIN PINs & ROLES (name + 4-digit PIN) ──────────────────────────────────
+// Admin (see everything): Raj, Ajay, Glenn.  Fixers (see only jobs assigned to them): Herman, Pete.
+// Everyone else is a reporter (log a fault + see own reports). Default PIN 9999.
+const PINS = { raj:"0000", ajay:"1111", glenn:"2222", herman:"3333", pete:"4444" };
+const pinFor = id => (PINS[id] || "9999");
+const ADMIN_TIER = ["raj","ajay","glenn"];
+const FIXER_TIER = ["herman","pete"];
+function tierOf(id){ id=id||ME; return ADMIN_TIER.includes(id)?"admin":(FIXER_TIER.includes(id)?"fixer":"reporter"); }
+function isAdmin(id){ return tierOf(id)==="admin"; }
+function isFixer(id){ return tierOf(id)==="fixer"; }
+function isReporter(id){ return tierOf(id)==="reporter"; }
+// Jobs this signed-in user may see
+function myJobs(){ if(isAdmin()) return JOBS.slice(); if(isFixer()) return JOBS.filter(j=>(j.assignees||[]).includes(ME)); return JOBS.filter(j=>j.createdBy===ME); }
+
 const PROPERTY = {"bedrooms":{"label":"Bedrooms","icon":"\ud83d\udecf\ufe0f","rooms":["Room 1","Room 2","Room 3","Room 4","Room 5","Room 6","Room 7","Room 8","Room 9","Room 10","Room 11","Room 12","Room 13","Room 14","Room 15","Room 16","Room 17","Room 18","Room 19","Room 20","Room 21","Room 22","Room 23","Room 24","Room 25","Room 26","Room 27","Room 28","Room 29","Room 30","Room 31","Room 32","Room 33","Room 34","Room 35","Room 36","Room 37","Room 38","Room 39","Room 40","Room 41","Room 42","Room 43","Room 44","Room 45","Room 46","Room 47","Room 48","Room 49","Room 50","Room 51","Room 52","Room 53","Room 54","Room 55","Room 56","Room 57","Room 58","Room 59","Room 60","Room 61","Room 62","Room 63","Room 64","Room 65","Room 66","Room 67","Room 68","Room 69","Room 70","Room 71","Room 72","Room 73","Room 74","Room 75","Room 76","Room 77","Room 78","Room 79","Room 80","Room 81","Room 82","Room 83","Room 84","Room 85","Room 86","Room 87","Room 88","Room 89","Room 90","Room 91","Room 92","Room 93","Room 94","Room 95","Room 96","Room 97","Room 98","Room 99","Room 100","Room 101","Room 102","Room 103","Room 104","Room 105","Room 106","Room 107","Room 108","Room 109","Room 110","Room 111","Room 112","Room 113","Room 114","Room 115","Room 116","Room 117","Room 118","Room 119","Room 120","Beech Suite","Brandon Suite 1","Brandon Suite 2","Hunt Room","Warwick Room","Wolston Suite","Junior Suite","Accessible Room"]},"meeting_events":{"label":"Meeting & Events","icon":"\ud83c\udfaa","rooms":["Wolston Suite","Brandon Suite","Brandon Suite 1","Brandon Suite 2","Beech Room","Hunt Room","Warwick Room","Boardroom","Event Lawn","Marquee Area"]},"food_beverage":{"label":"Food & Beverage","icon":"\ud83c\udf7d\ufe0f","rooms":["Restaurant","Bar","Private Dining","Terrace","Kitchen"]},"spa":{"label":"Spa & Leisure","icon":"\ud83d\udc86","rooms":["Spa","Pool","Gym","Treatment Room 1","Treatment Room 2","Sauna","Steam Room"]},"public_areas":{"label":"Public Areas","icon":"\ud83c\udfdb\ufe0f","rooms":["Reception","Lobby","Corridors (Ground)","Corridors (First)","Corridors (Second)","Lift","Car Park","Gardens","Woodlands","Main Entrance","Staff Areas","Cellar/Store"]},"external":{"label":"External / Grounds","icon":"\ud83c\udf33","rooms":["Car Park","Gardens","Woodlands","External Walls","Roof","Outbuildings"]},"maintenance":{"label":"Maintenance Areas","icon":"\ud83d\udd27","rooms":["Boiler Room","Plant Room","Electrical Cupboard","Linen Store","Bin Store","Cellar"]}};
 
 const WORK_TYPES = [{"id": "plumbing", "label": "Plumbing", "icon": "\ud83d\udd27"}, {"id": "electrical", "label": "Electrical", "icon": "\u26a1"}, {"id": "decorating", "label": "Decorating / Painting", "icon": "\ud83c\udfa8"}, {"id": "carpentry", "label": "Carpentry / Joinery", "icon": "\ud83e\udeb5"}, {"id": "hvac", "label": "HVAC / Air Con", "icon": "\u2744\ufe0f"}, {"id": "cleaning", "label": "Cleaning / Housekeeping", "icon": "\ud83e\uddf9"}, {"id": "groundswork", "label": "Grounds / Landscaping", "icon": "\ud83c\udf3f"}, {"id": "glazing", "label": "Glazing / Windows", "icon": "\ud83e\ude9f"}, {"id": "flooring", "label": "Flooring / Carpets", "icon": "\ud83c\udfe0"}, {"id": "roofing", "label": "Roofing", "icon": "\ud83c\udfd7\ufe0f"}, {"id": "pest", "label": "Pest Control", "icon": "\ud83d\udc1b"}, {"id": "fire", "label": "Fire Safety", "icon": "\ud83d\udd25"}, {"id": "general", "label": "General Maintenance", "icon": "\ud83d\udd28"}];
@@ -559,6 +589,8 @@ let ME = null;
 let MY_USER = null;
 let IS_SUPER = false;
 let IS_APPROVER = false;
+let IS_FIXER = false;
+let IS_REPORTER = false;
 let VIEW = 'dashboard';
 let FILTER = 'all';
 let ACTIVE_MODULE = 'home'; // 'home'|'maintenance'|'compliance'
@@ -702,48 +734,81 @@ function initInstall(){
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 function initLogin(){
-  const sel=$('lg-sel');
-  USERS.forEach(u=>{
-    const o=document.createElement('option');
-    o.value=u.id; o.textContent=u.name+' ('+u.role+')'; sel.appendChild(o);
-  });
-  sel.addEventListener('change',()=>{ $('lg-btn').disabled=!sel.value; });
-  $('lg-btn').addEventListener('click',()=>{
-    const uid=sel.value; if(!uid) return;
-    ME=uid; MY_USER=USERS.find(u=>u.id===uid);
-    if(!MY_USER) return;
-    IS_SUPER=SUPERVISORS.includes(ME);
-    IS_APPROVER=APPROVAL_USERS.includes(ME);
-    sessionStorage.setItem('hf_user',ME);
-    $('tb-user').textContent=MY_USER.name.split(' ')[0]+' ('+MY_USER.role.split(' ')[0]+')';
-    showModuleHome();
+  const sel=$('lg-sel'), pin=$('lg-pin'), btn=$('lg-btn'), err=$('lg-err');
+  if(sel && sel.options.length<=1){
+    USERS.forEach(u=>{ const o=document.createElement('option'); o.value=u.id; o.textContent=u.name+' ('+u.role+')'; sel.appendChild(o); });
+  }
+  function refresh(){ if(btn) btn.disabled=!(sel && sel.value && pin && pin.value.length===4); }
+  if(sel) sel.addEventListener('change',()=>{ if(err) err.textContent=''; if(pin){ pin.value=''; } refresh(); });
+  if(pin) pin.addEventListener('input',()=>{ pin.value=pin.value.replace(/\D/g,'').slice(0,4); if(err) err.textContent=''; refresh(); });
+  function trySignIn(){
+    const uid=sel?sel.value:''; if(!uid) return;
+    const entered=(pin?pin.value:'')||'';
+    if(entered!==pinFor(uid)){ if(err) err.textContent='Incorrect PIN — please try again'; if(pin) pin.value=''; refresh(); return; }
+    if(pin) pin.value=''; if(err) err.textContent='';
+    loginAs(uid);
     setTimeout(maybeAskNotifications,2500);
-  });
+  }
+  if(btn) btn.addEventListener('click',trySignIn);
+  if(pin) pin.addEventListener('keydown',e=>{ if(e.key==='Enter') trySignIn(); });
+  // Personal link (?u= or PRESET_USER) pre-selects the name — they just key their PIN
+  try{
+    const uid = PRESET_USER || new URLSearchParams(location.search).get('u');
+    if(uid && USERS.some(u=>u.id===uid) && sel){ sel.value=uid; setTimeout(()=>{ try{pin&&pin.focus();}catch(e){} },250); }
+  }catch(e){}
+  refresh();
 }
 
 // ── MODULE HOME ──────────────────────────────────────────────────────────────
+// ── MAINTENANCE TEAM ON DUTY (home screen) ───────────────────────────────────
+const MAINT_TEAM=[["glenn","Glenn"],["herman","Herman"],["pete","Pete"]];
+const activeKey=()=>'hf_active_'+todayStr();
+function getActiveToday(){ try{ const v=localStorage.getItem(activeKey()); if(v) return JSON.parse(v); }catch(e){} return MAINT_TEAM.map(t=>t[0]); }
+function setActiveToday(ids){ try{ localStorage.setItem(activeKey(),JSON.stringify(ids)); }catch(e){} }
+function toggleActive(id){ if(!isAdmin()) return; let a=getActiveToday(); a=a.includes(id)?a.filter(x=>x!==id):a.concat([id]); setActiveToday(a); renderActiveToday(); }
+function renderActiveToday(){
+  const box=$('mh-active'); if(!box) return;
+  const active=getActiveToday();
+  const chips=MAINT_TEAM.map(([id,nm])=>{ const on=active.includes(id);
+    return `<button type="button" ${isAdmin()?`onclick="toggleActive('${id}')"`:'disabled'}
+      style="display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:999px;border:1px solid ${on?'rgba(76,166,156,.6)':'rgba(255,255,255,.18)'};background:${on?'rgba(76,166,156,.22)':'rgba(255,255,255,.06)'};color:#fff;font:700 13px 'Lato';${isAdmin()?'cursor:pointer':'opacity:.95'};touch-action:manipulation">
+      <span style="width:9px;height:9px;border-radius:50%;background:${on?'#43d19e':'rgba(255,255,255,.3)'}"></span>${nm}</button>`;
+  }).join('');
+  box.innerHTML=`<div style="font-size:11px;font-weight:700;letter-spacing:.6px;color:rgba(255,255,255,.7);margin-bottom:11px;text-transform:uppercase">👷 Maintenance on duty today</div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:center">${chips}</div>
+    ${isAdmin()?'<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:10px">Tap a name to set who’s in today</div>':''}`;
+}
+
 function showModuleHome(){
   showScreen('scr-home');
   const hr=new Date().getHours();
   const g=hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
   $('mh-greeting').textContent=g+', '+(MY_USER?.name.split(' ')[0]||'');
-  // Badges
-  const openJobs=JOBS.filter(j=>j.status!=='complete').length;
-  const urgentJobs=JOBS.filter(j=>j.priority==='urgent'&&j.status!=='complete').length;
+  // Badges (scoped to what this user can see)
+  const mine=myJobs();
+  const openJobs=mine.filter(j=>j.status!=='complete').length;
+  const urgentJobs=mine.filter(j=>j.priority==='urgent'&&j.status!=='complete').length;
   $('badge-maint').textContent=urgentJobs>0?urgentJobs+' urgent':openJobs+' open';
+  // Compliance tile: admin only
+  const ct=$('tile-comp'); if(ct) ct.style.display=isAdmin()?'':'none';
   const overdueComp=COMP_TASKS.filter(t=>taskStatus(t)==='overdue').length;
-  $('badge-comp').textContent=overdueComp>0?overdueComp+' overdue':'Up to date';
+  if($('badge-comp')) $('badge-comp').textContent=overdueComp>0?overdueComp+' overdue':'Up to date';
+  // Maintenance tile sub-label by role
+  const ms=document.querySelector('#tile-maint .t-sub');
+  if(ms) ms.textContent = isReporter()?'Report a fault · My reports' : isFixer()?'My jobs · Update progress' : 'Jobs · Stock · Projects';
+  renderActiveToday();
 }
 
 $('tile-maint') && $('tile-maint').addEventListener('click',()=>openModule('maintenance'));
 $('tile-comp') && $('tile-comp').addEventListener('click',()=>openModule('compliance'));
 
 function openModule(mod){
+  if(mod==='compliance' && !isAdmin()){ toast('Compliance is for admins only'); return; }
   ACTIVE_MODULE=mod;
   $('scr-home').classList.remove('active');
   $('app').style.display='flex';
   if(mod==='maintenance'){
-    VIEW='dashboard'; FILTER='all';
+    VIEW=isReporter()?'jobs':'dashboard'; FILTER='all';
     buildMaintenanceNav();
     render();
   } else {
@@ -809,12 +874,25 @@ function sendNotif(title,body,tag){
 
 // ── MAINTENANCE NAV ──────────────────────────────────────────────────────────
 function buildMaintenanceNav(){
-  $('bnav').innerHTML=`
+  let btns;
+  if(isReporter()){
+    btns=`
+    <button class="bnav on" data-v="jobs"><span class="ico">📋</span>My Reports</button>
+    <button class="bnav" data-v="new"><span class="ico">➕</span>Report a Fault</button>`;
+  } else if(isFixer()){
+    btns=`
+    <button class="bnav on" data-v="dashboard"><span class="ico">📊</span>Dashboard</button>
+    <button class="bnav" data-v="jobs"><span class="ico">🔧</span>My Jobs<span class="bb" id="bn-u" style="display:none"></span></button>
+    <button class="bnav" data-v="new"><span class="ico">➕</span>New Job</button>`;
+  } else {
+    btns=`
     <button class="bnav on" data-v="dashboard"><span class="ico">📊</span>Dashboard</button>
     <button class="bnav" data-v="jobs"><span class="ico">🔧</span>Jobs<span class="bb" id="bn-u" style="display:none"></span></button>
     <button class="bnav" data-v="new"><span class="ico">➕</span>New Job</button>
     <button class="bnav" data-v="stock"><span class="ico">📦</span>Stock</button>
     <button class="bnav" data-v="report"><span class="ico">📈</span>Report</button>`;
+  }
+  $('bnav').innerHTML=btns;
   $('bnav').querySelectorAll('.bnav').forEach(b=>b.addEventListener('click',()=>{
     if(b.dataset.v==='new'){ openNewJob(); return; }
     VIEW=b.dataset.v; FILTER='all';
@@ -825,7 +903,7 @@ function buildMaintenanceNav(){
 }
 
 function updateBadge(){
-  const u=JOBS.filter(j=>j.priority==='urgent'&&j.status!=='complete').length;
+  const u=myJobs().filter(j=>j.priority==='urgent'&&j.status!=='complete').length;
   const bn=$('bn-u'); if(!bn) return;
   bn.textContent=u; bn.style.display=u?'':'none';
 }
@@ -863,11 +941,12 @@ function render(){
 
 // ── DASHBOARD ────────────────────────────────────────────────────────────────
 function renderDashboard(){
-  const open=JOBS.filter(j=>j.status!=='complete');
+  const _J=myJobs();
+  const open=_J.filter(j=>j.status!=='complete');
   const urgent=open.filter(j=>j.priority==='urgent');
   const inprog=open.filter(j=>j.status==='in-progress');
   const notstart=open.filter(j=>j.status==='not-started');
-  const complete=JOBS.filter(j=>j.status==='complete');
+  const complete=_J.filter(j=>j.status==='complete');
 
   let html=`<div style="padding:14px">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:4px">
@@ -898,7 +977,7 @@ function renderDashboard(){
   }
 
   // Recent urgent/open jobs
-  const recent=JOBS.filter(j=>j.status!=='complete').slice(0,5);
+  const recent=_J.filter(j=>j.status!=='complete').slice(0,5);
   if(recent.length){
     html+=`<div style="padding:0 14px 14px">
       <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--navy);margin-bottom:10px">Open jobs</div>`;
@@ -910,11 +989,7 @@ function renderDashboard(){
 
 // ── JOBS LIST ─────────────────────────────────────────────────────────────────
 function renderJobs(){
-  let jobs=[...JOBS];
-  // Fixers only see their own assigned jobs
-  const myTier=MY_USER?.tier||'admin';
-  // Person tier: only see jobs assigned to them
-  if(myTier==='person') jobs=jobs.filter(j=>(j.assignees||[]).includes(ME));
+  let jobs=myJobs();
   // Sort: urgent first, then by date desc
   jobs.sort((a,b)=>{
     const order={urgent:0,'not-started':1,'in-progress':2,complete:3};
@@ -933,7 +1008,7 @@ function renderJobs(){
   let html=`<div class="chips">
     ${['all','urgent','not-started','in-progress','complete'].map(f=>`
       <span class="chip ${FILTER===f?'on':''}" data-filter="${f}">${
-        f==='all'?'All ('+JOBS.filter(j=>j.status!=='complete').length+')':
+        f==='all'?'All ('+myJobs().filter(j=>j.status!=='complete').length+')':
         f==='urgent'?'🟠 Urgent':f==='not-started'?'🔴 Not started':
         f==='in-progress'?'🟡 In progress':'🟢 Complete'
       }</span>`).join('')}
@@ -1879,8 +1954,12 @@ function loginAs(uid){
   ME=uid;
   MY_USER=USERS.find(u=>u.id===uid);
   sessionStorage.setItem('hf_user',uid);
-  IS_SUPER=SUPERVISORS.includes(uid);
-  IS_APPROVER=APPROVAL_USERS.includes(uid);
+  // Role from the new scheme (admin / fixer / reporter)
+  if(MY_USER){ MY_USER.tier=tierOf(uid); MY_USER.admin=isAdmin(uid); MY_USER.seeCosts=isAdmin(uid); }
+  IS_SUPER=isAdmin(uid);
+  IS_APPROVER=isAdmin(uid);
+  IS_FIXER=isFixer(uid);
+  IS_REPORTER=isReporter(uid);
   if(typeof fcmEnsureRegistered==='function') setTimeout(()=>fcmEnsureRegistered(true),1500);
   loadPhones();
   $('tb-user') && ($('tb-user').textContent=MY_USER.name.split(' ')[0]+' ('+MY_USER.role.split(' ')[0]+')');
@@ -2128,17 +2207,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   loadPhones();
   // Restore session
   const saved=sessionStorage.getItem('hf_user');
-  if(saved){
-    ME=saved; MY_USER=USERS.find(u=>u.id===saved);
-    if(MY_USER){
-      IS_SUPER=SUPERVISORS.includes(ME);
-      IS_APPROVER=APPROVAL_USERS.includes(ME);
-      $('tb-user').textContent=MY_USER.name.split(' ')[0]+' ('+MY_USER.role.split(' ')[0]+')';
-      showModuleHome();
-      checkSyncHash();
-      return;
-    }
-  }
+  if(saved && USERS.find(u=>u.id===saved)){ loginAs(saved); return; }
 
   // Onboarding: 1 add to home screen → 2 notifications → 3 selfie → over-18 sign-in
   const installed   = window.matchMedia('(display-mode:standalone)').matches || navigator.standalone === true;
@@ -2148,15 +2217,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   const hasPreset   = PRESET_USER && USERS.find(u=>u.id===PRESET_USER);
 
   if (!installed && !seen) {
-    showScreen('scr-install');                       // first visit in the browser
-  } else if (!notifDone && canNotify && Notification.permission === 'default') {
-    showScreen('scr-onb-notif');                     // never asked about notifications
-  } else if (hasPreset && !localStorage.getItem('hf_selfie_'+PRESET_USER) && !localStorage.getItem('hf_selfie_skip_'+PRESET_USER)) {
-    showScreen('scr-onb-selfie');                    // personal link, no photo yet
-  } else if (hasPreset) {
-    showScreen('scr-dob'); showDOBScreen();          // over-18 confirmation → straight in
+    showScreen('scr-install');                       // first visit: offer add-to-home
   } else {
-    showScreen('scr-login');                         // generic link → pick your name
+    showScreen('scr-login');                         // name + PIN (preset name is pre-selected)
   }
   checkSyncHash();
 });
@@ -2717,12 +2780,7 @@ async function onbRequestNotif() {
   onbGoStep3();
 }
 
-function onbGoStep3() {
-  // Check if already has selfie
-  const uid = window.PRESET_USER || "";
-  if (!uid || localStorage.getItem("hf_selfie_" + uid)) { onbGoSignIn(); return; }
-  showScreen("scr-onb-selfie");
-}
+function onbGoStep3() { showScreen("scr-login"); }
 
 function onbSelfieChosen(input) {
   const file = input.files[0];
@@ -2750,13 +2808,7 @@ function onbSaveSelfie() {
   onbGoSignIn();
 }
 
-function onbGoSignIn() {
-  localStorage.setItem("hf_onboarded","1");
-  if (window.PRESET_USER && !window._pendingSelfie && !localStorage.getItem("hf_selfie_" + window.PRESET_USER))
-    localStorage.setItem("hf_selfie_skip_" + window.PRESET_USER, "1");   // remember "skip"
-  if (window.PRESET_USER) { showScreen("scr-dob"); showDOBScreen(); }
-  else showScreen("scr-login");
-}
+function onbGoSignIn() { localStorage.setItem("hf_onboarded","1"); showScreen("scr-login"); }
 
 // Show toast for FCM foreground messages
 function showToastNotification(msg) {
