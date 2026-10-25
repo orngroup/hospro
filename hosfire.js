@@ -239,9 +239,23 @@ const TABS = [
   ["audit", "Audit readiness"], ["venues", "Venues & events"], ["certs", "Certificates"], ["docs", "Documents"], ["training", "Training"], ["drills", "Drills, PEEPs, permits"],
   ["diary", "Diary"], ["regs", "Regulations"], ["pack", "Inspector pack"], ["settings", "Settings"]
 ];
+/* Side navigation, grouped into sections */
+const NAV = [
+  ["Overview", [["dash", "📊", "Dashboard"], ["procs", "🔥", "Procedures"], ["audit", "✅", "Audit readiness"], ["diary", "📅", "Diary"]]],
+  ["Checks and records", [["checks", "📝", "Record a check"], ["rota", "🔔", "Weekly tests"], ["log", "📖", "Logbook"], ["back", "🗂", "Back-records"], ["drills", "🚪", "Drills, PEEPs, permits"]]],
+  ["Actions and contractors", [["actions", "📋", "Actions"], ["certs", "📜", "Certificates"], ["venues", "💍", "Venues & events"]]],
+  ["People", [["training", "🎓", "Training"]]],
+  ["Library", [["docs", "📁", "Documents"], ["regs", "⚖️", "Regulations"], ["pack", "🖨", "Inspector pack"]]],
+  ["Admin", [["settings", "⚙️", "Settings"]]]
+];
+function placeNav() { const hh = ($("header") || {}).offsetHeight || 66; const nv = $("#nav"); if (!nv) return; nv.style.top = hh + "px"; nv.style.height = window.innerWidth > 900 ? `calc(100vh - ${hh}px)` : ""; }
 function nav() {
-  $("#nav").innerHTML = TABS.map(([k, l]) => `<button data-t="${k}" class="${S.tab === k ? "on" : ""}">${l}</button>`).join("");
-  $$("#nav button").forEach((b) => (b.onclick = () => { S.tab = b.dataset.t; render(); window.scrollTo(0, 0); }));
+  const badge = { actions: S.data.actions.filter((a) => a.status !== "Completed" && a.priority === "High").length,
+    checks: HF_CHECKS.filter((c) => c.freq !== "event" && checkStatus(c).st === "Due").length };
+  $("#nav").innerHTML = NAV.map(([g, items]) => `<div class="ng">${g}</div>` + items.map(([k, i, l]) => `<button data-t="${k}" class="${S.tab === k ? "on" : ""}"><span class="ni">${i}</span>${l}${badge[k] ? `<span class="nb" title="${k === "actions" ? "High-priority actions open" : "Checks due now"}">${badge[k]}</span>` : ""}</button>`).join("")).join("");
+  $$("#nav button").forEach((b) => (b.onclick = () => { S.tab = b.dataset.t; $("#nav").classList.remove("open"); render(); window.scrollTo(0, 0); }));
+  const mb = $("#menu-btn"); if (mb) mb.onclick = () => $("#nav").classList.toggle("open");
+  placeNav(); if (!window._hfNavRs) { window._hfNavRs = 1; window.addEventListener("resize", placeNav); }
 }
 function render() {
   if (!S.user) return;
@@ -968,7 +982,7 @@ VIEWS.training = () => {
   const pc = (a) => (n ? Math.round((a / n) * 100) : 0);
   return `<div class="row"><div class="grow"><h2>Training <span class="fl">matrix</span></h2>
   <p class="lead">Fire training for every member of staff (RRO 2005 Art. 21): induction, annual refresher, fire marshal course, extinguisher use, the Fire Action Procedure briefing and drills. A date shows training was given; <b>✓</b> means the evidence (signed attendance sheet or certificate) has been seen.</p></div>
-  <button class="btn red" id="t-session">+ Record a training session</button></div>
+  <div class="row"><button class="btn ghost" id="t-records">📄 Attendance records (PDF)</button><button class="btn red" id="t-session">+ Record a training session</button></div></div>
   <div class="grid g5" style="margin-bottom:12px">
     <div class="card tile"><div class="n">${n}</div><div class="l">Staff on the matrix</div></div>
     <div class="card tile ${pc(ind) >= 90 ? "g" : "a"}"><div class="n">${pc(ind)}%</div><div class="l">Fire training recorded (${ind})</div></div>
@@ -988,9 +1002,9 @@ VIEWS.training = () => {
   ${rows.map((t) => `<tr><td><a href="#" data-t="${t.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(t.name)}</a>${t.marshal ? ` <span class="pill p-red">Marshal</span>` : ""}${t.note ? `<div class="muted" style="font-size:11px">${h(t.note)}</div>` : ""}</td>
     <td>${h(t.role)}<div class="muted" style="font-size:11px">${h(deptName(t.dept))}</div></td><td>${h(t.shift || "")}</td><td>${t.start ? fds(t.start) : '<span class="muted">—</span>'}</td>
     ${HF_COURSES.map(([k, , mo]) => { const d = (t.courses || {})[k]; const st = courseState(d, mo); const ev = evOf(t, k);
-      return `<td style="background:${bg[st.st]}">${d ? `${fds(d)} ${ev.confirmed ? '<b style="color:var(--ok)" title="Evidence seen">✓</b>' : '<span title="Evidence not yet confirmed" style="color:var(--amber);font-weight:900">?</span>'}` : "—"}${st.exp && st.st !== "ok" ? `<br><small>due ${fds(st.exp)}</small>` : ""}</td>`; }).join("")}</tr>`).join("") || `<tr><td colspan="${4 + HF_COURSES.length}" class="muted">No staff match.</td></tr>`}
+      return `<td class="tcell" data-cell="${t.id}|${k}" title="Click to add or change the date" style="background:${bg[st.st]};cursor:pointer">${d ? `${fds(d)} ${ev.confirmed ? '<b style="color:var(--ok)" title="Evidence seen">✓</b>' : '<span title="Evidence not yet confirmed" style="color:var(--amber);font-weight:900">?</span>'}` : "—"}${st.exp && st.st !== "ok" ? `<br><small>due ${fds(st.exp)}</small>` : ""}</td>`; }).join("")}</tr>`).join("") || `<tr><td colspan="${4 + HF_COURSES.length}" class="muted">No staff match.</td></tr>`}
   </table></div>
-  <p class="muted" style="margin-top:8px">✓ evidence seen · <b style="color:var(--amber)">?</b> date recorded, evidence still to be confirmed · green in date · amber due within 30 days · red overdue · grey no record.</p>`;
+  <p class="muted" style="margin-top:8px">Click any training cell to add or change a date. ✓ evidence seen · <b style="color:var(--amber)">?</b> date recorded, evidence still to be confirmed · green in date · amber due within 30 days · red overdue · grey no record.</p>`;
 };
 BIND.training = (v) => {
   const f = S.f.trn;
@@ -1025,6 +1039,57 @@ BIND.training = (v) => {
     const d = $("#td", m); if (d) d.onclick = async () => { if (!confirmBox(m, "Delete this person from the matrix?")) return; await del("registers", id); m.close(); };
   };
   $("#t-new", v).onclick = () => edit(null);
+  $$("[data-cell]", v).forEach((td) => (td.onclick = () => {
+    const [id, k] = td.dataset.cell.split("|"), t = S.data.registers.find((x) => x.id === id), ev = evOf(t, k), lab = HF_COURSES.find((c) => c[0] === k)[1];
+    const m = modal(`<h3>${h(t.name)} — ${h(lab)}</h3>
+      <div class="f2"><div><label>Date training was given</label><input type="date" id="tc-d" max="${today()}" value="${h((t.courses || {})[k])}"></div><div><label>Trainer</label><input id="tc-t" value="${h(ev.trainer || HF_FIRE_MANAGER.name)}"></div></div>
+      <label>Signed attendance sheet or certificate (optional)</label><input type="file" id="tc-f" accept="image/*,.pdf">
+      <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="tc-c" ${ev.confirmed ? "checked" : ""} style="width:auto"> Evidence seen (signed sheet or certificate)</label>
+      ${ev.note ? `<p class="muted">${h(ev.note)}</p>` : ""}
+      <div class="row" style="margin-top:12px"><button class="btn red" id="tc-s">Save</button><button class="btn ghost" data-close>Cancel</button><div class="grow"></div><button class="btn ghost" id="tc-x" style="color:var(--red)">Clear date</button></div><div class="err" id="tc-e"></div>`);
+    const save = async (clear) => {
+      try {
+        const courses = { ...(t.courses || {}) }, evs = { ...(t.ev || {}) };
+        if (clear) { delete courses[k]; delete evs[k]; }
+        else {
+          const d = $("#tc-d", m).value; if (!d) { $("#tc-e", m).textContent = "Enter the date."; return; }
+          let sheet = (evs[k] || {}).sheet || ""; const fi = $("#tc-f", m).files[0];
+          if (fi) { $("#tc-e", m).textContent = "Uploading…"; const up = await upload("training", fi); sheet = up.path;
+            await add("registers", { kind: "doc", title: `Training evidence — ${t.name} — ${lab} — ${fds(d)}`, cat: "Training", date: d, version: "", author: $("#tc-t", m).value.trim(), file: up }); }
+          courses[k] = d;
+          const conf = $("#tc-c", m).checked;
+          evs[k] = { ...(evs[k] || {}), confirmed: conf, trainer: $("#tc-t", m).value.trim(), sheet, ...(conf && !(evs[k] || {}).confirmed ? { by: S.user.name, at: today() } : {}) };
+        }
+        await put("registers", id, { courses, ev: evs }); audit(`Training ${clear ? "cleared" : "updated"}: ${t.name} — ${lab}`); m.close(); toast("Saved");
+      } catch (e) { $("#tc-e", m).textContent = e.message; }
+    };
+    $("#tc-s", m).onclick = () => save(false); $("#tc-x", m).onclick = () => save(true);
+  }));
+  $("#t-records", v).onclick = () => {
+    const sess = {};
+    reg("training").forEach((t) => Object.entries(t.courses || {}).forEach(([k, d]) => { if (!d) return; const key = k + "|" + d; (sess[key] = sess[key] || []).push(t); }));
+    const keys = Object.keys(sess).sort((a, b) => natRef(b.split("|")[1], a.split("|")[1]));
+    const m = modal(`<h3>Training attendance records</h3><p class="muted">One record for each course and date recorded on the matrix. Download it as a PDF (choose "Save as PDF" in the print window) for the inspector or the staff file.</p>
+      <div class="tw"><table><tr><th>Date</th><th>Course</th><th>Staff</th><th>Evidence seen</th><th></th></tr>
+      ${keys.map((key) => { const [k, d] = key.split("|"), L = sess[key], c = L.filter((t) => evOf(t, k).confirmed).length;
+        return `<tr><td>${fds(d)}</td><td>${h(HF_COURSES.find((x) => x[0] === k)[1])}</td><td>${L.length}</td><td>${c === L.length ? pill("Done") : `${c} of ${L.length}`}</td><td><button class="btn sm" data-pdf="${key}">⬇ PDF</button></td></tr>`; }).join("") || `<tr><td colspan="5" class="muted">No training dates recorded yet.</td></tr>`}</table></div>
+      <div class="row" style="margin-top:12px"><button class="btn ghost" id="t-allpdf">⬇ Full training matrix (PDF)</button><div class="grow"></div><button class="btn" data-close>Close</button></div>`);
+    const head = (title) => `<div style="display:flex;align-items:center;gap:12px;border-bottom:3px solid #B3261E;padding-bottom:6px;margin-bottom:10px"><img src="assets/marketing/logos/logo-blue-transparent.png" style="height:48px" onerror="this.style.display='none'"><div><h1 style="margin:0">${title}</h1><div>${h(HF_HOTEL.name)} · ${h(HF_HOTEL.address)}</div></div></div>`;
+    const foot = `<p style="font-size:10px;color:#555;margin-top:10px">Produced from HosFIRE on ${fdt(Date.now())} by ${h(S.user.name)}. “Evidence seen” means the signed attendance sheet or certificate has been checked; “To confirm” means the training is recorded but the signed sheet has not yet been seen.</p>`;
+    const sign = `<table style="margin-top:14px"><tr><th>Sign-off</th><th>Name</th><th>Signature</th><th>Date</th></tr><tr><td>Trainer</td><td></td><td style="height:34px"></td><td></td></tr><tr><td>Fire Safety Manager</td><td>${h(HF_FIRE_MANAGER.name)}</td><td></td><td></td></tr><tr><td>Manager</td><td>Patrik Vlach</td><td></td><td></td></tr></table>`;
+    $$("[data-pdf]", m).forEach((b) => (b.onclick = () => {
+      const [k, d] = b.dataset.pdf.split("|"), L = sess[b.dataset.pdf].slice().sort((a, b2) => natRef(a.dept, b2.dept) || natRef(a.name, b2.name)), lab = HF_COURSES.find((x) => x[0] === k)[1];
+      const trainers = [...new Set(L.map((t) => evOf(t, k).trainer).filter(Boolean))].join(", ") || "";
+      $("#print").innerHTML = head("Fire training attendance record") + `<table><tr><td style="width:30%"><b>Course</b></td><td>${h(lab)}</td></tr><tr><td><b>Date</b></td><td>${fd(d)}</td></tr><tr><td><b>Trainer</b></td><td>${h(trainers)}</td></tr><tr><td><b>Attendees</b></td><td>${L.length}</td></tr></table>
+        <h2>Attendees</h2><table><tr><th>#</th><th>Name</th><th>Role</th><th>Department</th><th>Shift</th><th>Evidence</th><th style="width:22%">Signature</th></tr>${L.map((t, i) => `<tr><td>${i + 1}</td><td>${h(t.name)}</td><td>${h(t.role)}</td><td>${h(deptName(t.dept))}</td><td>${h(t.shift || "")}</td><td>${evOf(t, k).confirmed ? "Evidence seen" : "To confirm"}</td><td style="height:26px"></td></tr>`).join("")}</table>` + sign + foot;
+      audit(`Attendance record PDF: ${lab} ${d}`); setTimeout(() => window.print(), 300);
+    }));
+    $("#t-allpdf", m).onclick = () => {
+      const all = reg("training").sort((a, b) => natRef(a.dept, b.dept) || natRef(a.name, b.name));
+      $("#print").innerHTML = head("Staff fire training matrix") + `<table><tr><th>Name</th><th>Role</th><th>Dept</th><th>Shift</th>${HF_COURSES.map((c) => `<th>${h(c[1])}</th>`).join("")}</tr>${all.map((t) => `<tr><td>${h(t.name)}${t.marshal ? " (marshal)" : ""}</td><td>${h(t.role)}</td><td>${h(deptName(t.dept))}</td><td>${h(t.shift || "")}</td>${HF_COURSES.map(([k]) => { const d = (t.courses || {})[k]; return `<td>${d ? fds(d) + (evOf(t, k).confirmed ? " ✓" : " (to confirm)") : "—"}</td>`; }).join("")}</tr>`).join("")}</table>` + foot;
+      audit("Training matrix PDF"); setTimeout(() => window.print(), 300);
+    };
+  };
   $$("[data-t]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); edit(a.dataset.t); }));
   $("#t-session", v).onclick = () => {
     const staff = reg("training").sort((a, b) => natRef(a.dept, b.dept) || natRef(a.name, b.name));
