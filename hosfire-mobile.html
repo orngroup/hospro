@@ -318,6 +318,8 @@ function render() {
     $$("[data-sg]", v).forEach((b) => (b.onclick = () => {
       const x = L[+b.dataset.sg];
       v.innerHTML = `<div class="card"><h2>Sign: ${h(x.title)}</h2><div class="muted">${h(x.role)}</div>
+        <div style="margin-top:8px;background:var(--sky);border-radius:9px;padding:9px 11px;font-size:14px"><b>Name:</b> ${h(S.user.name)}<br><b>Date:</b> ${fds(today())} ${today().slice(0, 4)} <span class="muted">(filled in automatically)</span></div>
+        ${x.file ? `<button class="btn ghost" id="pread" style="margin-top:8px">📄 Read the document first</button>` : ""}
         <label>Draw your signature</label><canvas id="pad" style="width:100%;height:180px;border:1.5px dashed var(--line);border-radius:12px;background:#fff;touch-action:none"></canvas>
         <button class="btn ghost" id="pclr" style="margin-top:8px">Clear</button>
         <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-size:15px;color:var(--ink)"><input type="checkbox" id="pok" style="width:24px;height:24px"> I, ${h(S.user.name)}, have read this document and this is my signature.</label>
@@ -327,6 +329,7 @@ function render() {
       const st = (e) => { e.preventDefault(); down = true; const [a, b2] = pos(e); ctx.beginPath(); ctx.moveTo(a, b2); }, mv = (e) => { if (!down) return; e.preventDefault(); const [a, b2] = pos(e); ctx.lineTo(a, b2); ctx.stroke(); drawn = true; };
       c.addEventListener("touchstart", st, { passive: false }); c.addEventListener("touchmove", mv, { passive: false }); c.addEventListener("touchend", () => (down = false));
       c.addEventListener("mousedown", st); c.addEventListener("mousemove", mv); window.addEventListener("mouseup", () => (down = false));
+      const pr = $("#pread"); if (pr) pr.onclick = async () => { try { window.open(await fb.st.ref(x.file.path).getDownloadURL(), "_blank"); } catch (e) { toast("Cannot open: " + e.message); } };
       $("#pclr").onclick = () => { ctx.clearRect(0, 0, c.width, c.height); drawn = false; };
       $("#pgo").onclick = async () => {
         if (!drawn) return toast("Draw your signature"); if (!$("#pok").checked) return toast("Tick the declaration");

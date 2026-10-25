@@ -226,6 +226,7 @@ function gate(k) {
 function enter(k) {
   try { sessionStorage.setItem("hosfire_gate", "1"); } catch (e) {}
   S.key = k; S.user = LOGINS[k];
+  if (location.hash === "#sign") S.tab = "sign";
   $("#login").classList.add("hide"); $("#app").classList.remove("hide");
   $("#who-name").textContent = S.user.name;
   const b = $("#mode-badge"); b.textContent = !S.live ? "DEMO" : k === HF_FIRE_MANAGER.key ? "Fire Safety Manager" : isAdmin() ? "Admin" : "Fire team"; if (!S.live) b.classList.add("demo");
@@ -882,12 +883,16 @@ function sigPad(m) {
 }
 function signModal(item, after) {
   const m = modal(`<h3>Sign: ${h(item.title)}</h3>
-    <p class="muted">${h(item.role)}${item.version ? " · " + h(item.version) : ""}</p>
-    ${item.file ? `<p><a href="#" id="sg-open">📄 Open the document to read it first</a></p>` : ""}
+    <div class="tw" style="margin:6px 0 10px"><table>
+      <tr><td style="width:34%"><b>Signing as</b></td><td>${h(item.role)}</td></tr>
+      <tr><td><b>Name</b></td><td>${h(S.user.name)}</td></tr>
+      <tr><td><b>Date</b></td><td>${fd(today())} <span class="muted">(filled in automatically)</span></td></tr>
+      ${item.version ? `<tr><td><b>Document version</b></td><td>${h(item.version)}</td></tr>` : ""}</table></div>
+    ${item.file ? `<p><button class="btn ghost" id="sg-open">📄 Open the document to read it first</button></p>` : ""}
     <label>Your signature — draw it below with your finger or mouse</label>
     <canvas style="width:100%;height:160px;border:1.5px dashed var(--line);border-radius:10px;background:#fff;touch-action:none"></canvas>
     <div class="row"><button class="btn sm ghost" id="sg-clear">Clear</button></div>
-    <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="sg-ok" style="width:auto"> I, <b>${h(S.user.name)}</b>, have read this document and this is my signature as ${h(item.role)}.</label>
+    <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="sg-ok" style="width:auto"><span>I, <b>${h(S.user.name)}</b>, have read this document and this is my signature as ${h(item.role)}.</span></label>
     <div class="row" style="margin-top:12px"><button class="btn red" id="sg-go">Sign</button><button class="btn ghost" data-close>Cancel</button></div><div class="err" id="sg-e"></div>`);
   const pad = sigPad(m);
   const op = $("#sg-open", m); if (op) op.onclick = (e) => { e.preventDefault(); openFile(item.file); };
@@ -932,10 +937,10 @@ VIEWS.sign = () => {
   ${mine.length ? `<div class="warn"><b>${mine.length} waiting for you:</b> ${mine.map((x) => h(x.title)).join(" · ")}</div>` : ""}
   <div class="tw"><table><tr><th>Document</th><th>Signer</th><th>Role</th><th>Status</th><th></th></tr>
   ${docs.map((id) => { const rows = items.filter((x) => x.docId === id);
-    return rows.map((x, i) => `<tr>${i === 0 ? `<td rowspan="${rows.length}"><b>${h(x.title)}</b><div class="muted">${h(x.version)}</div>${rows.some((y) => y.sig) ? `<button class="btn sm ghost" data-cert="${id}" style="margin-top:6px">⬇ ${x.retro ? "Statement" : "Signature certificate"} (PDF)</button>` : ""}</td>` : ""}
+    return rows.map((x, i) => `<tr>${i === 0 ? `<td rowspan="${rows.length}"><b>${h(x.title)}</b><div class="muted">${h(x.version)}</div>${x.file ? `<button class="btn sm ghost" data-docopen="${id}" style="margin-top:6px">📄 Open document</button> ` : x.retro ? "" : `<div class="muted" style="font-size:11px;margin-top:4px">File not uploaded yet</div>`}${rows.some((y) => y.sig) ? `<button class="btn sm ghost" data-cert="${id}" style="margin-top:6px">⬇ ${x.retro ? "Statement" : "Signature certificate"} (PDF)</button>` : ""}</td>` : ""}
       <td>${h(x.ext || (LOGINS[x.who] || {}).name || x.who)}</td><td class="muted">${h(x.role)}</td>
       <td>${x.sig ? `${pill("Done")} <span class="muted">${fdt(x.sig.createdAt)}</span>` : x.ext ? `<span class="pill p-amb">Paper — upload signed copy</span>` : x.retro && !x.written ? `<span class="pill p-red">Statement not written</span>` : `<span class="pill p-red">Awaiting signature</span>`}</td>
-      <td>${!x.sig && x.who === S.key ? (x.retro ? `<button class="btn sm red" data-retro="${x.who}">${x.written ? "Review and sign" : "Write my statement"}</button>` : `<button class="btn sm red" data-sign="${x.docId}|${i}">✍️ Sign</button>`) : ""}</td></tr>`).join(""); }).join("")}
+      <td>${x.sig || x.ext ? "" : x.who === S.key ? (x.retro ? `<button class="btn sm red" data-retro="${x.who}">${x.written ? "Review and sign" : "Write my statement"}</button>` : `<button class="btn sm red" data-sign="${x.docId}|${i}">✍️ Sign</button>`) : `<button class="btn sm ghost" data-other="${x.who}">✍️ Sign</button>`}</td></tr>`).join(""); }).join("")}
   </table></div>
   <p class="muted" style="margin-top:8px">Signatures are made by each person on their own login only. Nobody can sign for someone else, and signed entries cannot be changed.</p>`;
 };
@@ -944,6 +949,14 @@ BIND.sign = (v) => {
   $$("[data-sign]", v).forEach((b) => (b.onclick = () => { const [id, i] = b.dataset.sign.split("|"); signModal(items.filter((x) => x.docId === id)[+i]); }));
   $$("[data-cert]", v).forEach((b) => (b.onclick = () => { $("#print").innerHTML = sigCertHTML(b.dataset.cert); setTimeout(() => window.print(), 300); }));
   $$("[data-retro]", v).forEach((b) => (b.onclick = () => retroModal(b.dataset.retro)));
+  $$("[data-docopen]", v).forEach((b) => (b.onclick = () => { const d = S.data.registers.find((r) => r.id === b.dataset.docopen); if (d && d.file) openFile(d.file); }));
+  $$("[data-other]", v).forEach((b) => (b.onclick = () => {
+    const nm = (LOGINS[b.dataset.other] || {}).name || b.dataset.other, link = location.href.split("#")[0].replace(/\?.*$/, "") + "#sign";
+    const m = modal(`<h3>${h(nm)} needs to sign this</h3><p>A signature only counts if the person makes it themselves, so ${h(nm)} signs on their own HosFIRE login (computer or the HosFIRE Mobile app). Their name and today's date are filled in for them — they just draw their signature and confirm.</p>
+      <p>Send them this link:</p><div class="row"><input id="ol" value="${h(link)}" readonly class="grow" style="width:auto;flex:1"><button class="btn" id="oc">Copy</button></div>
+      <div class="row" style="margin-top:12px"><button class="btn ghost" data-close>Close</button></div>`);
+    $("#oc", m).onclick = () => { navigator.clipboard && navigator.clipboard.writeText(link); toast("Link copied"); };
+  }));
 };
 function retroModal(k) {
   const id = "retro-" + k, st = S.data.registers.find((r) => r.id === id) || { rows: [] };
