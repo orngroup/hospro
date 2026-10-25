@@ -918,7 +918,7 @@ function paperModal(item) {
   const m = modal(`<h3>Record a paper signature</h3><p class="muted">${h(item.title)} · ${h(item.role)}</p>
     <p>Use this when <b>${h(nm)}</b> has signed the printed document. Upload the scan or photo of the signed page as the evidence.</p>
     <div class="f2"><div><label>Signed by (name as written)</label><input id="pp-n" value="${h(item.ext ? "" : nm)}" placeholder="${h(item.ext ? "e.g. name of the Granite Leisure manager" : "")}"></div>
-    <div><label>Date on the signed page</label><input type="date" id="pp-d" max="${today()}"></div></div>
+    <div><label>Date on the signed page</label><input type="date" id="pp-d" value="${h(item.date || today())}"><div class="muted" style="font-size:11px">${item.date ? "Date typed on the document — change it if they wrote a different date" : "Today's date — change it to the date written on the page"}</div></div></div>
     <label>Scan or photo of the signed page</label><input type="file" id="pp-f" accept="image/*,.pdf">
     <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="pp-ok" style="width:auto"><span>I confirm this is a true copy of the document as signed by ${h(nm)}.</span></label>
     <div class="row" style="margin-top:12px"><button class="btn red" id="pp-go">Save paper signature</button><button class="btn ghost" data-close>Cancel</button></div><div class="err" id="pp-e"></div>`);
