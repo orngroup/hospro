@@ -862,7 +862,7 @@ function signItems() {
   const out = [];
   Object.entries(HF_SIGN_REQ).forEach(([docId, req]) => {
     const d = S.data.registers.find((r) => r.id === docId) || { id: docId, title: docId };
-    req.forEach((q) => out.push({ docId, title: d.title, version: d.version || "", file: d.file, ...q, sig: q.who ? sigOf(docId, q.role, q.who) : null }));
+    req.forEach((q) => out.push({ docId, title: d.title, version: d.version || "", file: d.file, ...q, sig: sigOf(docId, q.role, q.who || "ext:" + q.ext) }));
   });
   HF_RETRO.forEach(([k, n]) => { const st = S.data.registers.find((r) => r.id === "retro-" + k);
     out.push({ docId: "retro-" + k, title: `Retrospective statement — ${n} (BHH-FS-22)`, version: st && st.writtenOn ? "written " + fds(st.writtenOn) : "not written yet", who: k, role: "Fire marshal", retro: true, written: !!(st && st.rows && st.rows.length), sig: sigOf("retro-" + k, "Fire marshal", k) }); });
@@ -881,18 +881,21 @@ function sigPad(m) {
   c.addEventListener("touchstart", start, { passive: false }); c.addEventListener("touchmove", move, { passive: false }); c.addEventListener("touchend", end);
   return { clear: () => { ctx.clearRect(0, 0, c.width, c.height); drawn = false; }, has: () => drawn, png: () => c.toDataURL("image/png") };
 }
-function signModal(item, after) {
+function signModal(item, after, witness) {
+  const signer = witness ? { key: item.who, name: (LOGINS[item.who] || {}).name || item.who } : { key: S.key, name: S.user.name };
   const m = modal(`<h3>Sign: ${h(item.title)}</h3>
+    ${witness ? `<div class="note"><b>Signing in person.</b> ${h(signer.name)} must be with you and draw their own signature on this screen. You confirm that you saw them sign.</div>` : ""}
     <div class="tw" style="margin:6px 0 10px"><table>
       <tr><td style="width:34%"><b>Signing as</b></td><td>${h(item.role)}</td></tr>
-      <tr><td><b>Name</b></td><td>${h(S.user.name)}</td></tr>
+      <tr><td><b>Name</b></td><td>${h(signer.name)}</td></tr>
       <tr><td><b>Date</b></td><td>${fd(today())} <span class="muted">(filled in automatically)</span></td></tr>
       ${item.version ? `<tr><td><b>Document version</b></td><td>${h(item.version)}</td></tr>` : ""}</table></div>
     ${item.file ? `<p><button class="btn ghost" id="sg-open">📄 Open the document to read it first</button></p>` : ""}
     <label>Your signature — draw it below with your finger or mouse</label>
     <canvas style="width:100%;height:160px;border:1.5px dashed var(--line);border-radius:10px;background:#fff;touch-action:none"></canvas>
     <div class="row"><button class="btn sm ghost" id="sg-clear">Clear</button></div>
-    <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="sg-ok" style="width:auto"><span>I, <b>${h(S.user.name)}</b>, have read this document and this is my signature as ${h(item.role)}.</span></label>
+    <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="sg-ok" style="width:auto"><span>I, <b>${h(signer.name)}</b>, have read this document and this is my signature as ${h(item.role)}.</span></label>
+    ${witness ? `<label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="sg-wit" style="width:auto"><span>I, <b>${h(S.user.name)}</b>, saw ${h(signer.name)} sign this in person on ${fd(today())}.</span></label>` : ""}
     <div class="row" style="margin-top:12px"><button class="btn red" id="sg-go">Sign</button><button class="btn ghost" data-close>Cancel</button></div><div class="err" id="sg-e"></div>`);
   const pad = sigPad(m);
   const op = $("#sg-open", m); if (op) op.onclick = (e) => { e.preventDefault(); openFile(item.file); };
@@ -901,11 +904,35 @@ function signModal(item, after) {
     const e = $("#sg-e", m);
     if (!pad.has()) return (e.textContent = "Draw your signature.");
     if (!$("#sg-ok", m).checked) return (e.textContent = "Tick the declaration.");
+    if (witness && !$("#sg-wit", m).checked) return (e.textContent = "Tick the witness confirmation.");
     try {
       $("#sg-go", m).disabled = true;
-      await add("sigs", { docId: item.docId, docTitle: item.title, version: item.version || "", role: item.role, signerKey: S.key, name: S.user.name, sig: pad.png(), signedOn: today(), device: navigator.userAgent.slice(0, 120) });
-      audit(`Signed: ${item.title} — ${item.role}`); m.close(); toast("Signed"); if (after) after();
+      await add("sigs", { docId: item.docId, docTitle: item.title, version: item.version || "", role: item.role, signerKey: signer.key, name: signer.name, sig: pad.png(), signedOn: today(), device: navigator.userAgent.slice(0, 120),
+        method: witness ? "in person" : "own login", ...(witness ? { witness: S.user.name } : {}) });
+      audit(`Signed: ${item.title} — ${item.role} — ${signer.name}${witness ? ` (in person, witnessed by ${S.user.name})` : ""}`); m.close(); toast("Signed"); if (after) after();
     } catch (err) { $("#sg-go", m).disabled = false; e.textContent = "Could not sign: " + err.message; }
+  };
+}
+function paperModal(item) {
+  const nm = item.ext || (LOGINS[item.who] || {}).name || item.who;
+  const m = modal(`<h3>Record a paper signature</h3><p class="muted">${h(item.title)} · ${h(item.role)}</p>
+    <p>Use this when <b>${h(nm)}</b> has signed the printed document. Upload the scan or photo of the signed page as the evidence.</p>
+    <div class="f2"><div><label>Signed by (name as written)</label><input id="pp-n" value="${h(item.ext ? "" : nm)}" placeholder="${h(item.ext ? "e.g. name of the Granite Leisure manager" : "")}"></div>
+    <div><label>Date on the signed page</label><input type="date" id="pp-d" max="${today()}"></div></div>
+    <label>Scan or photo of the signed page</label><input type="file" id="pp-f" accept="image/*,.pdf">
+    <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="pp-ok" style="width:auto"><span>I confirm this is a true copy of the document as signed by ${h(nm)}.</span></label>
+    <div class="row" style="margin-top:12px"><button class="btn red" id="pp-go">Save paper signature</button><button class="btn ghost" data-close>Cancel</button></div><div class="err" id="pp-e"></div>`);
+  $("#pp-go", m).onclick = async () => {
+    const e = $("#pp-e", m), n = $("#pp-n", m).value.trim(), d = $("#pp-d", m).value, f = $("#pp-f", m).files[0];
+    if (!n || !d) return (e.textContent = "Enter the name and the date on the page.");
+    if (!f) return (e.textContent = "Upload the signed page.");
+    if (!$("#pp-ok", m).checked) return (e.textContent = "Tick the confirmation.");
+    try {
+      $("#pp-go", m).disabled = true; e.textContent = "Uploading…";
+      const file = await upload("signed", f);
+      await add("sigs", { docId: item.docId, docTitle: item.title, version: item.version || "", role: item.role, signerKey: item.who || "ext:" + item.ext, name: n, signedOn: d, method: "paper", file, recordedBy: S.user.name });
+      audit(`Paper signature recorded: ${item.title} — ${item.role} — ${n} (${d})`); m.close(); toast("Paper signature saved");
+    } catch (err) { $("#pp-go", m).disabled = false; e.textContent = err.message; }
   };
 }
 function sigCertHTML(docId) {
@@ -918,9 +945,9 @@ function sigCertHTML(docId) {
   return `<div style="display:flex;align-items:center;gap:12px;border-bottom:3px solid #B3261E;padding-bottom:6px;margin-bottom:10px"><img src="assets/marketing/logos/logo-blue-transparent.png" style="height:48px" onerror="this.style.display='none'"><div><h1 style="margin:0">${docId.startsWith("retro-") ? "Fire marshal retrospective statement" : "Signature certificate"}</h1><div>${h(HF_HOTEL.name)}</div></div></div>
     <table><tr><td style="width:28%"><b>Document</b></td><td>${h(first.title || docId)}</td></tr><tr><td><b>Version</b></td><td>${h(first.version || "")}</td></tr></table>
     ${retro}<h2>Signatures</h2><table><tr><th>Role</th><th>Name</th><th>Signature</th><th>Signed</th></tr>
-    ${items.map((x) => x.sig ? `<tr><td>${h(x.role)}</td><td>${h(x.sig.name)}</td><td><img src="${x.sig.sig}" style="height:54px"></td><td>${fdt(x.sig.createdAt)}<br><span style="font-size:9px">signed electronically in HosFIRE (${h(x.sig.byEmail)})</span></td></tr>`
+    ${items.map((x) => x.sig ? `<tr><td>${h(x.role)}</td><td>${h(x.sig.name)}</td><td>${x.sig.sig ? `<img src="${x.sig.sig}" style="height:54px">` : "Signed on paper — scan held in HosFIRE"}</td><td>${x.sig.method === "paper" ? `${fds(x.sig.signedOn)}<br><span style="font-size:9px">paper signature recorded by ${h(x.sig.recordedBy || x.sig.byName)} on ${fdt(x.sig.createdAt)}</span>` : `${fdt(x.sig.createdAt)}<br><span style="font-size:9px">${x.sig.method === "in person" ? `signed in person, witnessed by ${h(x.sig.witness)} (${h(x.sig.byEmail)})` : `signed electronically in HosFIRE (${h(x.sig.byEmail)})`}</span>`}</td></tr>`
       : `<tr><td>${h(x.role)}</td><td>${h(x.ext || (LOGINS[x.who] || {}).name || "")}</td><td style="height:54px">${x.ext ? "Sign on paper" : "Not yet signed"}</td><td></td></tr>`).join("")}</table>
-    <p style="font-size:10px;color:#555;margin-top:10px">Electronic signatures were drawn by each signer on their own HosFIRE login. Each is stored with the signer's account and the time it was made, and cannot be edited or deleted. Produced ${fdt(Date.now())} by ${h(S.user.name)}.</p>`;
+    <p style="font-size:10px;color:#555;margin-top:10px">Electronic signatures were drawn by each signer themselves — on their own HosFIRE login, or in person with the named witness present. Each is stored with the signer's account and the time it was made, and cannot be edited or deleted. Produced ${fdt(Date.now())} by ${h(S.user.name)}.</p>`;
 }
 VIEWS.sign = () => {
   const items = signItems(), mine = myToSign();
@@ -939,8 +966,8 @@ VIEWS.sign = () => {
   ${docs.map((id) => { const rows = items.filter((x) => x.docId === id);
     return rows.map((x, i) => `<tr>${i === 0 ? `<td rowspan="${rows.length}"><b>${h(x.title)}</b><div class="muted">${h(x.version)}</div>${x.file ? `<button class="btn sm ghost" data-docopen="${id}" style="margin-top:6px">📄 Open document</button> ` : x.retro ? "" : `<div class="muted" style="font-size:11px;margin-top:4px">File not uploaded yet</div>`}${rows.some((y) => y.sig) ? `<button class="btn sm ghost" data-cert="${id}" style="margin-top:6px">⬇ ${x.retro ? "Statement" : "Signature certificate"} (PDF)</button>` : ""}</td>` : ""}
       <td>${h(x.ext || (LOGINS[x.who] || {}).name || x.who)}</td><td class="muted">${h(x.role)}</td>
-      <td>${x.sig ? `${pill("Done")} <span class="muted">${fdt(x.sig.createdAt)}</span>` : x.ext ? `<span class="pill p-amb">Paper — upload signed copy</span>` : x.retro && !x.written ? `<span class="pill p-red">Statement not written</span>` : `<span class="pill p-red">Awaiting signature</span>`}</td>
-      <td>${x.sig || x.ext ? "" : x.who === S.key ? (x.retro ? `<button class="btn sm red" data-retro="${x.who}">${x.written ? "Review and sign" : "Write my statement"}</button>` : `<button class="btn sm red" data-sign="${x.docId}|${i}">✍️ Sign</button>`) : `<button class="btn sm ghost" data-other="${x.who}">✍️ Sign</button>`}</td></tr>`).join(""); }).join("")}
+      <td>${x.sig ? `${pill("Done")} <span class="muted">${x.sig.method === "paper" ? "paper · " + fds(x.sig.signedOn) : fdt(x.sig.createdAt)}${x.sig.method === "in person" ? " · in person" : ""}</span>${x.sig.file ? ` <a href="#" data-sfile="${x.sig.id}">scan</a>` : ""}` : x.ext ? `<span class="pill p-amb">Paper — upload signed copy</span>` : x.retro && !x.written ? `<span class="pill p-red">Statement not written</span>` : `<span class="pill p-red">Awaiting signature</span>`}</td>
+      <td>${x.sig ? "" : x.ext ? (isAdmin() ? `<button class="btn sm ghost" data-paper="${x.docId}|${i}">📎 Record paper signature</button>` : "") : x.who === S.key ? (x.retro ? `<button class="btn sm red" data-retro="${x.who}">${x.written ? "Review and sign" : "Write my statement"}</button>` : `<button class="btn sm red" data-sign="${x.docId}|${i}">✍️ Sign</button>`) : (isAdmin() && !x.retro ? `<button class="btn sm red" data-admsign="${x.docId}|${i}">✍️ Sign</button>` : `<button class="btn sm ghost" data-other="${x.who}">✍️ Sign</button>`)}</td></tr>`).join(""); }).join("")}
   </table></div>
   <p class="muted" style="margin-top:8px">Signatures are made by each person on their own login only. Nobody can sign for someone else, and signed entries cannot be changed.</p>`;
 };
@@ -949,6 +976,21 @@ BIND.sign = (v) => {
   $$("[data-sign]", v).forEach((b) => (b.onclick = () => { const [id, i] = b.dataset.sign.split("|"); signModal(items.filter((x) => x.docId === id)[+i]); }));
   $$("[data-cert]", v).forEach((b) => (b.onclick = () => { $("#print").innerHTML = sigCertHTML(b.dataset.cert); setTimeout(() => window.print(), 300); }));
   $$("[data-retro]", v).forEach((b) => (b.onclick = () => retroModal(b.dataset.retro)));
+  $$("[data-paper]", v).forEach((b) => (b.onclick = () => { const [id, i] = b.dataset.paper.split("|"); paperModal(items.filter((x) => x.docId === id)[+i]); }));
+  $$("[data-sfile]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); const sg = S.data.sigs.find((x) => x.id === a.dataset.sfile); if (sg && sg.file) openFile(sg.file); }));
+  $$("[data-admsign]", v).forEach((b) => (b.onclick = () => {
+    const [id, i] = b.dataset.admsign.split("|"), it = items.filter((x) => x.docId === id)[+i], nm = (LOGINS[it.who] || {}).name || it.who;
+    const link = location.href.split("#")[0].replace(/\?.*$/, "") + "#sign";
+    const m = modal(`<h3>${h(it.title)}</h3><p class="muted">${h(it.role)} · <b>${h(nm)}</b></p>
+      <div class="grid g2" style="margin-top:8px">
+        <div class="card"><b>✍️ Sign in person</b><p class="muted">${h(nm)} is with you and draws their signature on this screen. You confirm you saw them sign.</p><button class="btn red" id="ad-in">Sign in person now</button></div>
+        <div class="card"><b>📎 Record a paper signature</b><p class="muted">${h(nm)} has signed the printed copy. Upload the scan of the signed page.</p><button class="btn" id="ad-pp">Upload signed page</button></div>
+        <div class="card"><b>🔗 Send them the link</b><p class="muted">They sign on their own login or phone; name and date are filled in.</p><button class="btn ghost" id="ad-ln">Copy link</button></div>
+      </div><div class="row" style="margin-top:12px"><button class="btn ghost" data-close>Close</button></div>`);
+    $("#ad-in", m).onclick = () => { m.close(); signModal(it, null, true); };
+    $("#ad-pp", m).onclick = () => { m.close(); paperModal(it); };
+    $("#ad-ln", m).onclick = () => { navigator.clipboard && navigator.clipboard.writeText(link); toast("Link copied"); };
+  }));
   $$("[data-docopen]", v).forEach((b) => (b.onclick = () => { const d = S.data.registers.find((r) => r.id === b.dataset.docopen); if (d && d.file) openFile(d.file); }));
   $$("[data-other]", v).forEach((b) => (b.onclick = () => {
     const nm = (LOGINS[b.dataset.other] || {}).name || b.dataset.other, link = location.href.split("#")[0].replace(/\?.*$/, "") + "#sign";
