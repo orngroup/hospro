@@ -165,7 +165,7 @@ function enter(k) {
   if (S.live) {
     unsub = fb.db.collection("hosfire_actions").onSnapshot((snap) => {
       S.actions = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      if (S.view === "list") render();
+      if (S.view === "list" && !document.activeElement?.matches?.("#q")) render();
     }, (e) => toast("Cannot read actions — " + e.message));
   } else {
     try { S.actions = (JSON.parse(localStorage.getItem("hosfire_demo_v1") || "{}").actions) || []; } catch (e) {}
@@ -193,10 +193,18 @@ function list() {
   rows.sort((a, b) => (so[a.status] - so[b.status]) || (pr[a.priority] - pr[b.priority]) || nat(a.ref, b.ref));
   const open = A.filter((a) => a.status !== "Completed");
   const srcs = HF_SOURCES_TAG.filter((t) => open.some((a) => HF_SOURCE_OF(a).key === t.key));
-  return `<div class="stats">
+  const done = A.filter((a) => a.status === "Completed").length;
+  const overall = A.length ? Math.round(A.reduce((t, a) => t + prog(a), 0) / A.length) : 0;
+  const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+  const touched = A.filter((a) => (a.history || []).some((x) => x.at >= t0.getTime() && !/starting data/i.test(x.note || ""))).length;
+  return `<div class="card" style="padding:12px 14px">
+      <div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:22px;color:var(--blue)">${done} of ${A.length}</b><span class="muted">jobs completed</span><span class="grow" style="flex:1"></span><b style="color:var(--blue)">${overall}%</b></div>
+      <div class="bar" style="height:10px"><i style="width:${overall}%;background:var(--ok)"></i></div>
+      <div class="muted" style="margin-top:6px">${touched} job${touched === 1 ? "" : "s"} updated today</div></div>
+    <div class="stats">
       <div class="stat"><b style="color:var(--red)">${A.filter((a) => a.status === "Not started").length}</b><span>Not started</span></div>
       <div class="stat"><b style="color:var(--amb)">${A.filter((a) => a.status === "In progress").length}</b><span>In progress</span></div>
-      <div class="stat"><b style="color:var(--ok)">${A.filter((a) => a.status === "Completed").length}</b><span>Completed</span></div></div>
+      <div class="stat"><b style="color:var(--ok)">${done}</b><span>Completed</span></div></div>
     <div class="chips">${[["open", `All open (${open.length})`], ["high", "High priority"], ["mine", "My tasks"], ...srcs.map((t) => ["src:" + t.key, `<i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${t.color};margin-right:5px"></i>${t.label} (${open.filter((a) => HF_SOURCE_OF(a).key === t.key).length})`]), ["done", "Completed"]].map(([k, l]) => `<button data-f="${k}" class="${S.filter === k ? "on" : ""}">${l}</button>`).join("")}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><button class="btn red" id="newtask">+ New task</button><button class="btn" id="newdoc">📄 Upload document</button></div>
     <input id="q" placeholder="Search actions…" value="${h(S.q)}" style="margin-bottom:10px">
@@ -397,6 +405,8 @@ async function save() {
     }
     const changed = d.status !== a.status || d.pct !== ((typeof a.pct === "number") ? a.pct : null) || JSON.stringify(d.steps) !== JSON.stringify(a.steps || []) || d.note || up;
     if (!changed) { toast("Nothing to save"); btn.disabled = false; btn.textContent = "Save update"; return; }
+    // Any work recorded on a job that was "Not started" moves it to "In progress"
+    if (d.status === "Not started" && (d.note || up || (d.pct != null && d.pct > 0) || d.steps.some((x) => x.done))) d.status = "In progress";
     const pc = d.pct != null ? d.pct : prog({ ...a, status: d.status, steps: d.steps, pct: undefined });
     const noteTxt = [d.note, up ? `${up} photo${up > 1 ? "s" : ""} added${d.caption ? ": " + d.caption : ""}` : "", `Progress ${pc}%`].filter(Boolean).join(" · ") + " (HosFIRE Mobile)";
     const upd = { status: d.status, steps: d.steps, pct: d.pct, photos, updatedBy: S.user.name, updatedAt: Date.now(),
@@ -405,6 +415,7 @@ async function save() {
     if (d.status === "Completed" && a.status !== "Completed") upd.completedOn = today();
     if (S.live) {
       await fb.db.collection("hosfire_actions").doc(a.id).set(upd, { merge: true });
+      Object.assign(a, upd); // update the counters straight away, even before the server confirms
       fb.db.collection("hosfire_audit").add({ what: `Action ${a.ref} updated on HosFIRE Mobile: ${d.status}, ${pc}%${up ? `, ${up} photo(s)` : ""}`, ref: a.ref || "", byName: S.user.name, byEmail: S.user.email, createdAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {});
     } else {
       Object.assign(a, upd);
