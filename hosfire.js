@@ -53,8 +53,8 @@ Object.assign(LOGINS, HF_EXTRA_LOGINS);
 const keyByEmail = (e) => Object.keys(LOGINS).find((k) => LOGINS[k].email === e);
 
 /* ---------- store ---------- */
-const COLS = { records: "hosfire_records", actions: "hosfire_actions", registers: "hosfire_registers", diary: "hosfire_diary", audit: "hosfire_audit", config: "hosfire_config" };
-const S = { live: false, user: null, key: null, tab: "dash", data: { records: [], actions: [], registers: [], diary: [], audit: [], config: [] }, f: {} };
+const COLS = { records: "hosfire_records", actions: "hosfire_actions", registers: "hosfire_registers", diary: "hosfire_diary", audit: "hosfire_audit", config: "hosfire_config", sigs: "hosfire_signatures" };
+const S = { live: false, user: null, key: null, tab: "dash", data: { records: [], actions: [], registers: [], diary: [], audit: [], config: [], sigs: [] }, f: {} };
 let fb = null;
 
 function fbInit() {
@@ -245,13 +245,13 @@ const NAV = [
   ["Checks and records", [["checks", "📝", "Record a check"], ["rota", "🔔", "Weekly tests"], ["log", "📖", "Logbook"], ["back", "🗂", "Back-records"], ["drills", "🚪", "Drills, PEEPs, permits"]]],
   ["Actions and contractors", [["actions", "📋", "Actions"], ["certs", "📜", "Certificates"], ["venues", "💍", "Venues & events"]]],
   ["People", [["training", "🎓", "Training"]]],
-  ["Library", [["docs", "📁", "Documents"], ["regs", "⚖️", "Regulations"], ["pack", "🖨", "Inspector pack"]]],
+  ["Library", [["sign", "✍️", "Signatures"], ["docs", "📁", "Documents"], ["regs", "⚖️", "Regulations"], ["pack", "🖨", "Inspector pack"]]],
   ["Admin", [["settings", "⚙️", "Settings"]]]
 ];
 function placeNav() { const hh = ($("header") || {}).offsetHeight || 66; const nv = $("#nav"); if (!nv) return; nv.style.top = hh + "px"; nv.style.height = window.innerWidth > 900 ? `calc(100vh - ${hh}px)` : ""; }
 function nav() {
   const badge = { actions: S.data.actions.filter((a) => a.status !== "Completed" && a.priority === "High").length,
-    checks: HF_CHECKS.filter((c) => c.freq !== "event" && checkStatus(c).st === "Due").length };
+    checks: HF_CHECKS.filter((c) => c.freq !== "event" && checkStatus(c).st === "Due").length, sign: myToSign().length };
   $("#nav").innerHTML = NAV.map(([g, items]) => `<div class="ng">${g}</div>` + items.map(([k, i, l]) => `<button data-t="${k}" class="${S.tab === k ? "on" : ""}"><span class="ni">${i}</span>${l}${badge[k] ? `<span class="nb" title="${k === "actions" ? "High-priority actions open" : "Checks due now"}">${badge[k]}</span>` : ""}</button>`).join("")).join("");
   $$("#nav button").forEach((b) => (b.onclick = () => { S.tab = b.dataset.t; $("#nav").classList.remove("open"); render(); window.scrollTo(0, 0); }));
   const mb = $("#menu-btn"); if (mb) mb.onclick = () => $("#nav").classList.toggle("open");
@@ -286,6 +286,7 @@ VIEWS.dash = () => {
   return `
   <h2>Fire safety <span class="fl">dashboard</span></h2>
   <p class="lead">${h(HF_HOTEL.name)} · ${fd(today())}</p>
+  ${myToSign().length ? `<div class="warn"><b>✍️ ${myToSign().length} document${myToSign().length > 1 ? "s" : ""} waiting for your signature.</b> <a href="#" data-go="sign">Sign now →</a></div>` : ""}
   ${empty ? `<div class="warn"><b>No starting data loaded yet.</b> ${isAdmin() ? `Go to <a href="#" data-go="settings">Settings</a> and load the HosFIRE starting data file.` : "Ask a fire safety manager to load the starting data."}</div>` : ""}
   ${dIns >= 0 && dIns <= 60 ? `<div class="warn"><b>Fire Safety Order audit: ${fd(insp.date)} at ${h(insp.time)}</b> — ${h(insp.inspector)}, ${h(insp.body)} (ref ${h(insp.ref)}). ${dIns === 0 ? "Today." : dIns + " day" + (dIns > 1 ? "s" : "") + " to go."}</div>` : ""}
   ${(() => { const ar = auditScore(); const overall = A.length ? Math.round(A.reduce((t, a) => t + progressOf(a), 0) / A.length) : 0;
@@ -851,6 +852,134 @@ BIND.venues = (v) => {
   $$("[data-v]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); edit(a.dataset.v); }));
 };
 
+/* ============================================================ SIGNATURES */
+/* Each person signs for themselves, on their own login: a drawn signature, the time,
+   and their account are stored together and can never be edited or deleted. */
+const sigsFor = (docId) => S.data.sigs.filter((x) => x.docId === docId);
+const sigOf = (docId, role, who) => S.data.sigs.find((x) => x.docId === docId && x.role === role && x.signerKey === who);
+function signItems() {
+  const out = [];
+  Object.entries(HF_SIGN_REQ).forEach(([docId, req]) => {
+    const d = S.data.registers.find((r) => r.id === docId) || { id: docId, title: docId };
+    req.forEach((q) => out.push({ docId, title: d.title, version: d.version || "", file: d.file, ...q, sig: q.who ? sigOf(docId, q.role, q.who) : null }));
+  });
+  HF_RETRO.forEach(([k, n]) => { const st = S.data.registers.find((r) => r.id === "retro-" + k);
+    out.push({ docId: "retro-" + k, title: `Retrospective statement — ${n} (BHH-FS-22)`, version: st && st.writtenOn ? "written " + fds(st.writtenOn) : "not written yet", who: k, role: "Fire marshal", retro: true, written: !!(st && st.rows && st.rows.length), sig: sigOf("retro-" + k, "Fire marshal", k) }); });
+  return out;
+}
+const myToSign = () => (S.key ? signItems().filter((x) => x.who === S.key && !x.sig) : []);
+function sigPad(m) {
+  const c = $("canvas", m), ctx = c.getContext("2d"); let down = false, drawn = false;
+  const r = window.devicePixelRatio || 1; c.width = c.clientWidth * r; c.height = c.clientHeight * r; ctx.scale(r, r);
+  ctx.lineWidth = 2.4; ctx.lineCap = "round"; ctx.strokeStyle = "#14243A";
+  const pos = (e) => { const b = c.getBoundingClientRect(), t = e.touches ? e.touches[0] : e; return [t.clientX - b.left, t.clientY - b.top]; };
+  const start = (e) => { e.preventDefault(); down = true; const [x, y] = pos(e); ctx.beginPath(); ctx.moveTo(x, y); };
+  const move = (e) => { if (!down) return; e.preventDefault(); const [x, y] = pos(e); ctx.lineTo(x, y); ctx.stroke(); drawn = true; };
+  const end = () => (down = false);
+  c.addEventListener("mousedown", start); c.addEventListener("mousemove", move); window.addEventListener("mouseup", end);
+  c.addEventListener("touchstart", start, { passive: false }); c.addEventListener("touchmove", move, { passive: false }); c.addEventListener("touchend", end);
+  return { clear: () => { ctx.clearRect(0, 0, c.width, c.height); drawn = false; }, has: () => drawn, png: () => c.toDataURL("image/png") };
+}
+function signModal(item, after) {
+  const m = modal(`<h3>Sign: ${h(item.title)}</h3>
+    <p class="muted">${h(item.role)}${item.version ? " · " + h(item.version) : ""}</p>
+    ${item.file ? `<p><a href="#" id="sg-open">📄 Open the document to read it first</a></p>` : ""}
+    <label>Your signature — draw it below with your finger or mouse</label>
+    <canvas style="width:100%;height:160px;border:1.5px dashed var(--line);border-radius:10px;background:#fff;touch-action:none"></canvas>
+    <div class="row"><button class="btn sm ghost" id="sg-clear">Clear</button></div>
+    <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="sg-ok" style="width:auto"> I, <b>${h(S.user.name)}</b>, have read this document and this is my signature as ${h(item.role)}.</label>
+    <div class="row" style="margin-top:12px"><button class="btn red" id="sg-go">Sign</button><button class="btn ghost" data-close>Cancel</button></div><div class="err" id="sg-e"></div>`);
+  const pad = sigPad(m);
+  const op = $("#sg-open", m); if (op) op.onclick = (e) => { e.preventDefault(); openFile(item.file); };
+  $("#sg-clear", m).onclick = () => pad.clear();
+  $("#sg-go", m).onclick = async () => {
+    const e = $("#sg-e", m);
+    if (!pad.has()) return (e.textContent = "Draw your signature.");
+    if (!$("#sg-ok", m).checked) return (e.textContent = "Tick the declaration.");
+    try {
+      $("#sg-go", m).disabled = true;
+      await add("sigs", { docId: item.docId, docTitle: item.title, version: item.version || "", role: item.role, signerKey: S.key, name: S.user.name, sig: pad.png(), signedOn: today(), device: navigator.userAgent.slice(0, 120) });
+      audit(`Signed: ${item.title} — ${item.role}`); m.close(); toast("Signed"); if (after) after();
+    } catch (err) { $("#sg-go", m).disabled = false; e.textContent = "Could not sign: " + err.message; }
+  };
+}
+function sigCertHTML(docId) {
+  const items = signItems().filter((x) => x.docId === docId); const first = items[0] || {};
+  const st = S.data.registers.find((r) => r.id === docId) || {};
+  const retro = docId.startsWith("retro-") ? `<h2>Statement</h2><p><b>Fire marshal:</b> ${h(st.name || "")} · <b>Period covered:</b> February 2026 to 25 October 2026 · <b>Written on:</b> ${st.writtenOn ? fd(st.writtenOn) : "—"}</p>
+    <p style="font-style:italic">This statement was written on the date shown about tests and drills carried out earlier in 2026. It is not a record made at the time. Each line lists the source that supports it.</p>
+    <table><tr><th>Date</th><th>Test or drill</th><th>Call point / area</th><th>Source</th><th>Certain / probable</th></tr>${(st.rows || []).map((r) => `<tr><td>${r.date ? fds(r.date) : ""}</td><td>${h(r.what)}</td><td>${h(r.area)}</td><td>${h(r.source)}${r.ref ? " — " + h(r.ref) : ""}</td><td>${h(r.cert)}</td></tr>`).join("") || `<tr><td colspan="5">No entries.</td></tr>`}</table>
+    ${st.notes ? `<p>${h(st.notes)}</p>` : ""}<p>I confirm that this statement is true to the best of my knowledge and is based on the sources listed.</p>` : "";
+  return `<div style="display:flex;align-items:center;gap:12px;border-bottom:3px solid #B3261E;padding-bottom:6px;margin-bottom:10px"><img src="assets/marketing/logos/logo-blue-transparent.png" style="height:48px" onerror="this.style.display='none'"><div><h1 style="margin:0">${docId.startsWith("retro-") ? "Fire marshal retrospective statement" : "Signature certificate"}</h1><div>${h(HF_HOTEL.name)}</div></div></div>
+    <table><tr><td style="width:28%"><b>Document</b></td><td>${h(first.title || docId)}</td></tr><tr><td><b>Version</b></td><td>${h(first.version || "")}</td></tr></table>
+    ${retro}<h2>Signatures</h2><table><tr><th>Role</th><th>Name</th><th>Signature</th><th>Signed</th></tr>
+    ${items.map((x) => x.sig ? `<tr><td>${h(x.role)}</td><td>${h(x.sig.name)}</td><td><img src="${x.sig.sig}" style="height:54px"></td><td>${fdt(x.sig.createdAt)}<br><span style="font-size:9px">signed electronically in HosFIRE (${h(x.sig.byEmail)})</span></td></tr>`
+      : `<tr><td>${h(x.role)}</td><td>${h(x.ext || (LOGINS[x.who] || {}).name || "")}</td><td style="height:54px">${x.ext ? "Sign on paper" : "Not yet signed"}</td><td></td></tr>`).join("")}</table>
+    <p style="font-size:10px;color:#555;margin-top:10px">Electronic signatures were drawn by each signer on their own HosFIRE login. Each is stored with the signer's account and the time it was made, and cannot be edited or deleted. Produced ${fdt(Date.now())} by ${h(S.user.name)}.</p>`;
+}
+VIEWS.sign = () => {
+  const items = signItems(), mine = myToSign();
+  const docs = [...new Set(items.map((x) => x.docId))];
+  const signed = items.filter((x) => x.sig).length, internal = items.filter((x) => x.who).length;
+  return `<h2>Signatures</h2>
+  <p class="lead">Every document that needs signing, who signs it and where it stands. People sign on their own HosFIRE login (computer or phone) by drawing their signature; outside parties sign on paper and the signed copy is uploaded to the document.</p>
+  <div class="grid g5" style="margin-bottom:12px">
+    <div class="card tile ${mine.length ? "r" : "g"}"><div class="n">${mine.length}</div><div class="l">Waiting for your signature</div></div>
+    <div class="card tile g"><div class="n">${signed}/${internal}</div><div class="l">Electronic signatures done</div></div>
+    <div class="card tile"><div class="n">${docs.length}</div><div class="l">Documents</div></div>
+    <div class="card tile a"><div class="n">${items.filter((x) => x.ext).length}</div><div class="l">Paper signatures (outside parties)</div></div>
+  </div>
+  ${mine.length ? `<div class="warn"><b>${mine.length} waiting for you:</b> ${mine.map((x) => h(x.title)).join(" · ")}</div>` : ""}
+  <div class="tw"><table><tr><th>Document</th><th>Signer</th><th>Role</th><th>Status</th><th></th></tr>
+  ${docs.map((id) => { const rows = items.filter((x) => x.docId === id);
+    return rows.map((x, i) => `<tr>${i === 0 ? `<td rowspan="${rows.length}"><b>${h(x.title)}</b><div class="muted">${h(x.version)}</div>${rows.some((y) => y.sig) ? `<button class="btn sm ghost" data-cert="${id}" style="margin-top:6px">⬇ ${x.retro ? "Statement" : "Signature certificate"} (PDF)</button>` : ""}</td>` : ""}
+      <td>${h(x.ext || (LOGINS[x.who] || {}).name || x.who)}</td><td class="muted">${h(x.role)}</td>
+      <td>${x.sig ? `${pill("Done")} <span class="muted">${fdt(x.sig.createdAt)}</span>` : x.ext ? `<span class="pill p-amb">Paper — upload signed copy</span>` : x.retro && !x.written ? `<span class="pill p-red">Statement not written</span>` : `<span class="pill p-red">Awaiting signature</span>`}</td>
+      <td>${!x.sig && x.who === S.key ? (x.retro ? `<button class="btn sm red" data-retro="${x.who}">${x.written ? "Review and sign" : "Write my statement"}</button>` : `<button class="btn sm red" data-sign="${x.docId}|${i}">✍️ Sign</button>`) : ""}</td></tr>`).join(""); }).join("")}
+  </table></div>
+  <p class="muted" style="margin-top:8px">Signatures are made by each person on their own login only. Nobody can sign for someone else, and signed entries cannot be changed.</p>`;
+};
+BIND.sign = (v) => {
+  const items = signItems();
+  $$("[data-sign]", v).forEach((b) => (b.onclick = () => { const [id, i] = b.dataset.sign.split("|"); signModal(items.filter((x) => x.docId === id)[+i]); }));
+  $$("[data-cert]", v).forEach((b) => (b.onclick = () => { $("#print").innerHTML = sigCertHTML(b.dataset.cert); setTimeout(() => window.print(), 300); }));
+  $$("[data-retro]", v).forEach((b) => (b.onclick = () => retroModal(b.dataset.retro)));
+};
+function retroModal(k) {
+  const id = "retro-" + k, st = S.data.registers.find((r) => r.id === id) || { rows: [] };
+  const rows = JSON.parse(JSON.stringify(st.rows || []));
+  const m = modal(`<h3>My retrospective statement (BHH-FS-22)</h3>
+    <div class="warn">Write only what you can support from a source, and list the source on each line. Leave out anything you cannot support. This statement is dated today — it is not a record made at the time.</div>
+    <p class="muted">Period covered: February 2026 to 25 October 2026 · Written on: <b>${fd(today())}</b></p>
+    <div id="rt-rows"></div><button class="btn sm ghost" id="rt-add">+ Add a line</button>
+    <label>Anything else to add</label><textarea id="rt-n">${h(st.notes || "")}</textarea>
+    <div class="row" style="margin-top:12px"><button class="btn red" id="rt-save">Save and sign</button><button class="btn ghost" id="rt-draft">Save draft</button><button class="btn ghost" data-close>Cancel</button></div><div class="err" id="rt-e"></div>`);
+  const draw = () => {
+    $("#rt-rows", m).innerHTML = `<div class="tw"><table><tr><th>Date</th><th>Test or drill carried out</th><th>Call point / area</th><th>Source that confirms it</th><th>Source ref</th><th>Certain / probable</th><th></th></tr>${rows.map((r, i) => `<tr>
+      <td><input type="date" data-r="${i}|date" value="${h(r.date)}" max="2026-10-25" min="2026-02-01" style="width:140px"></td>
+      <td><select data-r="${i}|what">${["Weekly fire alarm test", "Fire drill", "Emergency lighting check", "Fire door check", "Extinguisher check", "Other"].map((o) => `<option ${r.what === o ? "selected" : ""}>${o}</option>`).join("")}</select></td>
+      <td><input data-r="${i}|area" value="${h(r.area)}"></td>
+      <td><select data-r="${i}|source">${["Paper testing sheet", ...HF_SOURCES.filter((x) => !/retrospective/i.test(x)), "My diary / phone / photos", "Duty handover notes"].map((o) => `<option ${r.source === o ? "selected" : ""}>${h(o)}</option>`).join("")}</select></td>
+      <td><input data-r="${i}|ref" value="${h(r.ref)}" placeholder="page / task no."></td>
+      <td><select data-r="${i}|cert">${["Certain", "Probable"].map((o) => `<option ${r.cert === o ? "selected" : ""}>${o}</option>`).join("")}</select></td>
+      <td><button class="btn sm ghost" data-rd="${i}">✕</button></td></tr>`).join("") || `<tr><td colspan="7" class="muted">No lines yet.</td></tr>`}</table></div>`;
+    $$("[data-r]", m).forEach((el) => (el.onchange = () => { const [i, f] = el.dataset.r.split("|"); rows[+i][f] = el.value; }));
+    $$("[data-rd]", m).forEach((b) => (b.onclick = () => { rows.splice(+b.dataset.rd, 1); draw(); }));
+  };
+  draw();
+  $("#rt-add", m).onclick = () => { rows.push({ date: "", what: "Weekly fire alarm test", area: "", source: "Paper testing sheet", ref: "", cert: "Certain" }); draw(); };
+  const save = async (sign) => {
+    const e = $("#rt-e", m);
+    if (rows.some((r) => !r.date || !r.source)) return (e.textContent = "Every line needs a date and a source.");
+    if (sign && !rows.length) return (e.textContent = "Add at least one line, or save a draft.");
+    await put("registers", id, { kind: "retro", name: S.user.name, rows, notes: $("#rt-n", m).value.trim(), writtenOn: today() });
+    audit(`Retrospective statement ${sign ? "saved for signing" : "draft saved"}: ${S.user.name}`); m.close();
+    if (sign) setTimeout(() => signModal({ docId: id, title: `Retrospective statement — ${S.user.name} (BHH-FS-22)`, version: "written " + fds(today()), role: "Fire marshal" }), 200);
+    else toast("Draft saved");
+  };
+  $("#rt-save", m).onclick = () => save(true); $("#rt-draft", m).onclick = () => save(false);
+}
+
 /* ============================================================ CERTIFICATES */
 VIEWS.certs = () => {
   const rows = reg("cert").map((c) => ({ ...c, ...certState(c) })).sort((a, b) => natRef(a.ref, b.ref));
@@ -982,7 +1111,7 @@ VIEWS.training = () => {
   const pc = (a) => (n ? Math.round((a / n) * 100) : 0);
   return `<div class="row"><div class="grow"><h2>Training <span class="fl">matrix</span></h2>
   <p class="lead">Fire training for every member of staff (RRO 2005 Art. 21): induction, annual refresher, fire marshal course, extinguisher use, the Fire Action Procedure briefing and drills. A date shows training was given; <b>✓</b> means the evidence (signed attendance sheet or certificate) has been seen.</p></div>
-  <div class="row"><button class="btn ghost" id="t-records">📄 Attendance records (PDF)</button><button class="btn red" id="t-session">+ Record a training session</button></div></div>
+  <div class="row"><button class="btn ghost" id="t-cards">🪪 Training cards (PDF)</button><button class="btn ghost" id="t-records">📄 Attendance records (PDF)</button><button class="btn red" id="t-session">+ Record a training session</button></div></div>
   <div class="grid g5" style="margin-bottom:12px">
     <div class="card tile"><div class="n">${n}</div><div class="l">Staff on the matrix</div></div>
     <div class="card tile ${pc(ind) >= 90 ? "g" : "a"}"><div class="n">${pc(ind)}%</div><div class="l">Fire training recorded (${ind})</div></div>
@@ -999,7 +1128,7 @@ VIEWS.training = () => {
     <button class="btn ghost" id="t-new">+ Add staff member</button>
   </div>
   <div class="tw"><table><tr><th>Name</th><th>Role / department</th><th>Shift</th><th>Started</th>${HF_COURSES.map(([, l, mo]) => `<th>${h(l)}${mo ? `<br><span style="font-weight:400;text-transform:none">every ${mo} months</span>` : ""}</th>`).join("")}</tr>
-  ${rows.map((t) => `<tr><td><a href="#" data-t="${t.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(t.name)}</a>${t.marshal ? ` <span class="pill p-red">Marshal</span>` : ""}${t.note ? `<div class="muted" style="font-size:11px">${h(t.note)}</div>` : ""}</td>
+  ${rows.map((t) => `<tr><td><a href="#" data-t="${t.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(t.name)}</a>${t.marshal ? ` <span class="pill p-red">Marshal</span>` : ""} <a href="#" data-card="${t.id}" title="Download training card" style="text-decoration:none">🪪</a>${t.note ? `<div class="muted" style="font-size:11px">${h(t.note)}</div>` : ""}</td>
     <td>${h(t.role)}<div class="muted" style="font-size:11px">${h(deptName(t.dept))}</div></td><td>${h(t.shift || "")}</td><td>${t.start ? fds(t.start) : '<span class="muted">—</span>'}</td>
     ${HF_COURSES.map(([k, , mo]) => { const d = (t.courses || {})[k]; const st = courseState(d, mo); const ev = evOf(t, k);
       return `<td class="tcell" data-cell="${t.id}|${k}" title="Click to add or change the date" style="background:${bg[st.st]};cursor:pointer">${d ? `${fds(d)} ${ev.confirmed ? '<b style="color:var(--ok)" title="Evidence seen">✓</b>' : '<span title="Evidence not yet confirmed" style="color:var(--amber);font-weight:900">?</span>'}` : "—"}${st.exp && st.st !== "ok" ? `<br><small>due ${fds(st.exp)}</small>` : ""}</td>`; }).join("")}</tr>`).join("") || `<tr><td colspan="${4 + HF_COURSES.length}" class="muted">No staff match.</td></tr>`}
@@ -1065,6 +1194,23 @@ BIND.training = (v) => {
     };
     $("#tc-s", m).onclick = () => save(false); $("#tc-x", m).onclick = () => save(true);
   }));
+  const cardHTML = (t) => { const c = t.courses || {}; const done = HF_COURSES.filter(([k]) => c[k]);
+    return `<div class="tcard"><div class="tch"><img src="assets/marketing/logos/logo-blue-transparent.png" onerror="this.style.display='none'"><div><b>Fire safety training card</b><span>${h(HF_HOTEL.name)}</span></div></div>
+      <div class="tcn">${h(t.name)}${t.marshal ? ' <span class="tcm">FIRE MARSHAL</span>' : ""}</div><div class="tcr">${h(t.role)} · ${h(deptName(t.dept))}${t.shift === "Night" ? " · Night" : ""}</div>
+      <table>${done.map(([k, l, mo]) => { const ev = evOf(t, k), st = courseState(c[k], mo); return `<tr><td>${h(l)}</td><td>${fds(c[k])}</td><td>${mo ? "due " + fds(addMonths(c[k], mo)) : ""}</td><td>${ev.confirmed ? "✓ verified" : "to confirm"}</td></tr>`; }).join("") || `<tr><td colspan="4">No training recorded yet</td></tr>`}</table>
+      <div class="tcf">Fire Safety Manager: ${h(HF_FIRE_MANAGER.name)} · Printed ${fds(today())} from HosFIRE</div></div>`; };
+  const printCards = (list, title) => { $("#print").innerHTML = `<div class="tcards">${list.map(cardHTML).join("")}</div>`; audit(`Training cards printed: ${title}`); setTimeout(() => window.print(), 300); };
+  $$("[data-card]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); const t = S.data.registers.find((x) => x.id === a.dataset.card); printCards([t], t.name); }));
+  $("#t-cards", v).onclick = () => {
+    const all = reg("training");
+    const m = modal(`<h3>Training cards</h3><p class="muted">A small card for each person showing their fire training, dates, when it is due and whether the evidence is verified. Eight cards print on each A4 page — choose "Save as PDF" to download.</p>
+      <div class="f2"><div><label>Who</label><select id="tk-w"><option value="done">Everyone with training recorded (${all.filter((t) => (t.courses || {}).induction).length})</option><option value="verified">Only fully verified (${all.filter((t) => (t.courses || {}).induction && evOf(t, "induction").confirmed).length})</option><option value="all">Everyone (${all.length})</option></select></div>
+      <div><label>Department</label><select id="tk-d">${DEPTS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select></div></div>
+      <div class="row" style="margin-top:12px"><button class="btn red" id="tk-go">⬇ Download cards (PDF)</button><button class="btn ghost" data-close>Close</button></div>`);
+    $("#tk-go", m).onclick = () => { const w = $("#tk-w", m).value, d = $("#tk-d", m).value;
+      let L = all.filter((t) => w === "all" || (t.courses || {}).induction); if (w === "verified") L = L.filter((t) => evOf(t, "induction").confirmed); if (d) L = L.filter((t) => (t.dept || "other") === d);
+      L.sort((a, b) => natRef(a.dept, b.dept) || natRef(a.name, b.name)); m.close(); printCards(L, `${L.length} cards`); };
+  };
   $("#t-records", v).onclick = () => {
     const sess = {};
     reg("training").forEach((t) => Object.entries(t.courses || {}).forEach(([k, d]) => { if (!d) return; const key = k + "|" + d; (sess[key] = sess[key] || []).push(t); }));

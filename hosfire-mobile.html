@@ -127,7 +127,7 @@ Object.entries(typeof FB_LOGINS !== "undefined" ? FB_LOGINS : {}).forEach(([k, v
 Object.assign(LOGINS, typeof HF_EXTRA_LOGINS !== "undefined" ? HF_EXTRA_LOGINS : {});
 const keyByEmail = (e) => Object.keys(LOGINS).find((k) => LOGINS[k].email === e);
 
-const S = { live: false, key: null, user: null, actions: [], view: "list", filter: "open", q: "", openId: null, draft: null };
+const S = { live: false, key: null, user: null, actions: [], sigs: [], regs: [], view: "list", filter: "open", q: "", openId: null, draft: null };
 let fb = null, unsub = null;
 
 function init() {
@@ -169,6 +169,8 @@ function enter(k) {
       S.actions = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       if (S.view === "list" && !document.activeElement?.matches?.("#q")) render();
     }, (e) => toast("Cannot read actions — " + e.message));
+    fb.db.collection("hosfire_signatures").onSnapshot((sn) => { S.sigs = sn.docs.map((d) => ({ id: d.id, ...d.data() })); if (S.view === "list") render(); }, () => {});
+    fb.db.collection("hosfire_registers").where("kind", "==", "doc").onSnapshot((sn) => { S.regs = sn.docs.map((d) => ({ id: d.id, ...d.data() })); }, () => {});
   } else {
     try { S.actions = (JSON.parse(localStorage.getItem("hosfire_demo_v1") || "{}").actions) || []; } catch (e) {}
     render();
@@ -181,6 +183,17 @@ const first = () => S.user.name.split(" ")[0].toLowerCase();
 const mine = (a) => String(a.owner || "").toLowerCase().includes(first()) || String(a.contractor || "").toLowerCase().includes(first());
 const stCls = (s) => s === "Completed" ? "c" : s === "In progress" ? "ip" : "ns";
 
+/* ---------- documents to sign ---------- */
+function toSign() {
+  const out = [];
+  Object.entries(typeof HF_SIGN_REQ !== "undefined" ? HF_SIGN_REQ : {}).forEach(([docId, req]) => req.forEach((q) => {
+    if (q.who !== S.key) return;
+    if (S.sigs.some((x) => x.docId === docId && x.role === q.role && x.signerKey === S.key)) return;
+    const d = S.regs.find((r) => r.id === docId) || { title: docId };
+    out.push({ docId, role: q.role, title: d.title, version: d.version || "", file: d.file });
+  }));
+  return out;
+}
 /* ---------- list ---------- */
 function list() {
   const A = S.actions;
@@ -211,6 +224,7 @@ function list() {
       <button class="stat ${S.filter === "done" ? "on" : ""}" data-f="done" style="--sc:var(--ok)"><b style="color:var(--ok)">${done}</b><span>Completed</span></button></div>
     ${["ns", "ip", "done"].includes(S.filter) ? `<div class="muted" style="margin:-4px 0 8px">Showing <b>${{ ns: "Not started", ip: "In progress", done: "Completed" }[S.filter]}</b> jobs · <a href="#" id="clearf">show all open</a></div>` : ""}
     <div class="chips">${[["open", `All open (${open.length})`], ["high", "High priority"], ["mine", "My tasks"], ...srcs.map((t) => ["src:" + t.key, `<i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${t.color};margin-right:5px"></i>${t.label} (${open.filter((a) => HF_SOURCE_OF(a).key === t.key).length})`]), ["done", "Completed"]].map(([k, l]) => `<button data-f="${k}" class="${S.filter === k ? "on" : ""}">${l}</button>`).join("")}</div>
+    ${toSign().length ? `<button class="btn" id="signbtn" style="margin-bottom:8px;background:#6A3FA0">✍️ ${toSign().length} document${toSign().length > 1 ? "s" : ""} to sign</button>` : ""}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><button class="btn red" id="newtask">+ New task</button><button class="btn" id="newdoc">📄 Upload document</button></div>
     <input id="q" placeholder="Search actions…" value="${h(S.q)}" style="margin-bottom:10px">
     ${rows.map((a) => { const sc = HF_SOURCE_OF(a); return `<button class="item ${stCls(a.status) === "c" ? "done" : ""}" data-id="${a.id}" style="border-left-color:${sc.color}">
@@ -292,7 +306,40 @@ function render() {
     $("#q", v).oninput = (e) => { S.q = e.target.value; clearTimeout(S.qt); S.qt = setTimeout(() => { render(); const q = $("#q"); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }, 350); };
     $$("[data-id]", v).forEach((b) => (b.onclick = () => openAction(b.dataset.id)));
     $("#newtask", v).onclick = () => { S.view = "new"; S.draft = { newPhotos: [] }; render(); window.scrollTo(0, 0); };
+    const sb = $("#signbtn", v); if (sb) sb.onclick = () => { S.view = "sign"; render(); window.scrollTo(0, 0); };
     $("#newdoc", v).onclick = () => { S.view = "doc"; S.draft = { newPhotos: [] }; render(); window.scrollTo(0, 0); };
+  } else if (S.view === "sign") {
+    $("#back").classList.remove("hide"); $("#savebar").classList.add("hide");
+    const L = toSign();
+    v.innerHTML = `<div class="card"><h2>Documents to sign</h2><div class="muted">Open each document, read it, then sign with your finger. Your signature is saved with your name and the time.</div></div>` +
+      (L.map((x, i) => `<div class="card"><b>${h(x.title)}</b><div class="muted">${h(x.role)}${x.version ? " · " + h(x.version) : ""}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">${x.file ? `<button class="btn ghost" data-open="${i}">📄 Read</button>` : `<span class="muted">No file uploaded yet</span>`}<button class="btn red" data-sg="${i}">✍️ Sign</button></div></div>`).join("") || `<div class="card muted">Nothing waiting for your signature.</div>`);
+    $$("[data-open]", v).forEach((b) => (b.onclick = async () => { try { window.open(await fb.st.ref(L[+b.dataset.open].file.path).getDownloadURL(), "_blank"); } catch (e) { toast("Cannot open: " + e.message); } }));
+    $$("[data-sg]", v).forEach((b) => (b.onclick = () => {
+      const x = L[+b.dataset.sg];
+      v.innerHTML = `<div class="card"><h2>Sign: ${h(x.title)}</h2><div class="muted">${h(x.role)}</div>
+        <label>Draw your signature</label><canvas id="pad" style="width:100%;height:180px;border:1.5px dashed var(--line);border-radius:12px;background:#fff;touch-action:none"></canvas>
+        <button class="btn ghost" id="pclr" style="margin-top:8px">Clear</button>
+        <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-size:15px;color:var(--ink)"><input type="checkbox" id="pok" style="width:24px;height:24px"> I, ${h(S.user.name)}, have read this document and this is my signature.</label>
+        <button class="btn red" id="pgo" style="margin-top:12px">Sign</button></div>`;
+      const c = $("#pad"), r = window.devicePixelRatio || 1; c.width = c.clientWidth * r; c.height = c.clientHeight * r; const ctx = c.getContext("2d"); ctx.scale(r, r); ctx.lineWidth = 2.6; ctx.lineCap = "round"; ctx.strokeStyle = "#14243A";
+      let down = false, drawn = false; const pos = (e) => { const bb = c.getBoundingClientRect(), t = e.touches ? e.touches[0] : e; return [t.clientX - bb.left, t.clientY - bb.top]; };
+      const st = (e) => { e.preventDefault(); down = true; const [a, b2] = pos(e); ctx.beginPath(); ctx.moveTo(a, b2); }, mv = (e) => { if (!down) return; e.preventDefault(); const [a, b2] = pos(e); ctx.lineTo(a, b2); ctx.stroke(); drawn = true; };
+      c.addEventListener("touchstart", st, { passive: false }); c.addEventListener("touchmove", mv, { passive: false }); c.addEventListener("touchend", () => (down = false));
+      c.addEventListener("mousedown", st); c.addEventListener("mousemove", mv); window.addEventListener("mouseup", () => (down = false));
+      $("#pclr").onclick = () => { ctx.clearRect(0, 0, c.width, c.height); drawn = false; };
+      $("#pgo").onclick = async () => {
+        if (!drawn) return toast("Draw your signature"); if (!$("#pok").checked) return toast("Tick the declaration");
+        try {
+          $("#pgo").disabled = true;
+          const doc = { docId: x.docId, docTitle: x.title, version: x.version, role: x.role, signerKey: S.key, name: S.user.name, sig: c.toDataURL("image/png"), signedOn: today(), device: navigator.userAgent.slice(0, 120), byName: S.user.name, byEmail: S.user.email };
+          if (S.live) { doc.createdAt = firebase.firestore.FieldValue.serverTimestamp(); await fb.db.collection("hosfire_signatures").add(doc);
+            fb.db.collection("hosfire_audit").add({ what: `Signed on HosFIRE Mobile: ${x.title} — ${x.role}`, ref: "", byName: S.user.name, byEmail: S.user.email, createdAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {}); }
+          else S.sigs.push({ ...doc, createdAt: Date.now() });
+          toast("Signed — " + x.title); S.view = "sign"; render();
+        } catch (e) { $("#pgo").disabled = false; toast("Not signed: " + e.message); }
+      };
+    }));
   } else if (S.view === "doc") {
     $("#back").classList.remove("hide"); $("#savebar").classList.remove("hide"); $("#save").textContent = "Upload document";
     v.innerHTML = `<div class="card"><h2>Upload a document</h2><div class="muted">A certificate, job sheet, report or photo of a paper record. It goes into HosFIRE → Documents.</div>

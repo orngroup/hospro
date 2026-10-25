@@ -138,6 +138,12 @@ tr:hover td{background:#fbfaf7}
 .proles{display:grid;gap:6px} .prole{display:grid;grid-template-columns:120px 1fr;gap:2px 10px;padding:7px 0;border-bottom:1px solid var(--line)}
 .prr{font-weight:900;color:var(--c);font-size:13px} .prw{font-size:12px;color:var(--muted);grid-row:2} .prd{grid-row:1/3;grid-column:2;font-size:13px}
 @media print{.pposter .pgrid{grid-template-columns:1fr 1fr;gap:8px} .pposter .pcard{font-size:11px;padding:8px 10px} .pposter .pkeys div,.pposter .pstrip,.pposter .pcard,.pposter .psteps li::before{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.tcards{display:grid;grid-template-columns:1fr 1fr;gap:6mm}
+.tcard{border:1.5px solid #2C3E50;border-top:5px solid #B3261E;border-radius:8px;padding:8px 10px;font-size:10px;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact;height:62mm;overflow:hidden}
+.tch{display:flex;gap:8px;align-items:center;border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:5px} .tch img{height:26px} .tch b{display:block;color:#B3261E;font-size:11px} .tch span{color:#555;font-size:9px}
+.tcn{font-size:14px;font-weight:900;color:#2C3E50} .tcm{background:#B3261E;color:#fff;font-size:8px;padding:1px 5px;border-radius:6px;vertical-align:middle}
+.tcr{color:#555;margin-bottom:4px} .tcard table{width:100%;border-collapse:collapse} .tcard td{padding:2px 3px;border-bottom:1px solid #eee;font-size:9.5px}
+.tcf{margin-top:4px;font-size:8.5px;color:#555}
 #print{display:none}
 @media print{
   body{background:#fff} header,nav,main,.modal,.toast{display:none!important}

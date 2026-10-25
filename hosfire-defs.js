@@ -279,3 +279,22 @@ const HF_SOURCES_TAG = [
   { key: "hotel",     label: "Brandon Hall",    color: "#1D4E89", test: () => true }
 ];
 function HF_SOURCE_OF(a) { a = a || {}; return HF_SOURCES_TAG.find((s) => s.test({ contractor: a.contractor || "", category: a.category || "", source: a.source || "" })); }
+
+/* ── Documents that need signing, and by whom ──
+   who: a HosFIRE login key (signs electronically in HosFIRE), or ext: an outside party
+   (signs on paper; upload the signed copy to the document). */
+const HF_SIGN_REQ = (() => {
+  const G = { who: "glenn.randell", role: "Prepared by (Fire Safety Manager)" }, P = { who: "patrik.vlach", role: "Approved by (Manager, for 7 Hospitality (UK) Limited)" };
+  const r = {
+    "doc-manual": [G, P],
+    "doc-st-01": [G, P], "doc-st-02": [G, P], "doc-st-04": [G, P], "doc-st-05": [G, P], "doc-st-06": [G, P], "doc-st-08": [G, P],
+    "doc-st-03": [{ ext: "7H Hospitality (owner)", role: "For the owner" }, P, { ext: "Granite Leisure (tenant)", role: "For Granite Leisure" }],
+    "doc-st-07": [G, P, { ext: "Soldorlet — Gareth Jones", role: "Fire risk assessor (agreed)" }],
+    "doc-st-09": [{ who: "patrik.vlach", role: "Signatory, for 7 Hospitality (UK) Limited" }],
+    "doc-st-10": [{ who: "glenn.randell", role: "Signatory (Fire Safety Manager)" }],
+    "doc-st-11": [{ who: "glenn.randell", role: "Checked by (Fire Safety Manager)" }, { ext: "WarmFix Ltd engineer", role: "Confirmed by WarmFix" }, P]
+  };
+  return r;
+})();
+/* Marshal retrospective statements (BHH-FS-22): each marshal writes and signs their own, online. */
+const HF_RETRO = [["patrik.vlach", "Patrik Vlach"], ["veronica.webb", "Veronica Webb"], ["laith.hardy", "Laith Hardy"], ["glenn.randell", "Glenn Randell"]];
