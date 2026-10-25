@@ -948,33 +948,76 @@ function courseState(date, months) {
   const exp = addMonths(date, months), d = daysBetween(today(), exp);
   return { st: d < 0 ? "expired" : d <= 30 ? "soon" : "ok", exp };
 }
+const DEPTS = [["", "All departments"], ["admin", "Management / office"], ["reception", "Reception"], ["nights", "Nights"], ["maintenance", "Maintenance"], ["kitchen", "Kitchen"], ["bar", "Bar"], ["restaurant", "Restaurant / F&B"], ["housekeeping", "Housekeeping"], ["spa", "Spa"], ["other", "Other"]];
+const deptName = (d) => (DEPTS.find((x) => x[0] === d) || [d, d || "—"])[1];
+const evOf = (t, k) => ((t.ev || {})[k]) || {};
 VIEWS.training = () => {
-  const rows = reg("training").sort((a, b) => (b.marshal ? 1 : 0) - (a.marshal ? 1 : 0) || natRef(a.name, b.name));
+  const f = S.f.trn || (S.f.trn = { dept: "", q: "", show: "all" });
+  const all = reg("training");
+  let rows = all.slice();
+  if (f.dept) rows = rows.filter((t) => (t.dept || "other") === f.dept);
+  if (f.q) { const q = f.q.toLowerCase(); rows = rows.filter((t) => `${t.name} ${t.role}`.toLowerCase().includes(q)); }
+  if (f.show === "gaps") rows = rows.filter((t) => !(t.courses || {}).induction || !evOf(t, "induction").confirmed || courseState((t.courses || {}).refresher, 12).st !== "ok");
+  if (f.show === "unconfirmed") rows = rows.filter((t) => (t.courses || {}).induction && !evOf(t, "induction").confirmed);
+  rows.sort((a, b) => (b.marshal ? 1 : 0) - (a.marshal ? 1 : 0) || natRef(a.dept, b.dept) || natRef(a.name, b.name));
+  const n = all.length, ind = all.filter((t) => (t.courses || {}).induction).length, conf = all.filter((t) => evOf(t, "induction").confirmed).length;
+  const ref = all.filter((t) => courseState((t.courses || {}).refresher, 12).st === "ok").length;
+  const proc = all.filter((t) => (t.courses || {}).procedure).length;
+  const night = all.filter((t) => t.shift === "Night"), nightOk = night.filter((t) => (t.courses || {}).induction).length;
   const bg = { missing: "#f4f4f4", ok: "var(--okbg)", soon: "var(--ambbg)", expired: "var(--redbg)" };
-  return `<h2>Training <span class="fl">matrix</span></h2>
-  <p class="lead">Fire training for every member of staff (RRO 2005 Art. 21): induction, annual refresher, fire marshal course and drills. Green = in date, amber = due within 30 days, red = expired, grey = no record.</p>
-  <div class="grid g4" style="margin-bottom:12px">${marshals().map((n) => { const t = rows.find((r) => r.name === n) || { courses: {} }; const c = t.courses || {};
-    return `<div class="card tile ${c.marshal ? "g" : "r"}"><div class="l">Fire marshal</div><div style="font-weight:900;font-size:17px;color:var(--navy)">${h(n)}</div><div class="muted">Marshal course: ${c.marshal ? fds(c.marshal) : "date not recorded"}</div></div>`; }).join("")}</div>
-  <div class="row" style="margin-bottom:10px"><div class="grow"></div><button class="btn red" id="t-new">+ Add staff member</button></div>
-  <div class="tw"><table><tr><th>Name</th><th>Role</th><th>Shift</th>${HF_COURSES.map(([, l, mo]) => `<th>${h(l)}${mo ? `<br><span style="font-weight:400;text-transform:none">every ${mo} months</span>` : ""}</th>`).join("")}</tr>
-  ${rows.map((t) => `<tr><td><a href="#" data-t="${t.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(t.name)}</a>${t.marshal ? ` <span class="pill p-red">Marshal</span>` : ""}</td><td>${h(t.role)}</td><td>${h(t.shift)}</td>
-    ${HF_COURSES.map(([k, , mo]) => { const d = (t.courses || {})[k]; const s = courseState(d, mo); return `<td style="background:${bg[s.st]}">${d ? fds(d) : "—"}${s.exp && s.st !== "ok" ? `<br><small>due ${fds(s.exp)}</small>` : ""}</td>`; }).join("")}</tr>`).join("") || `<tr><td colspan="${3 + HF_COURSES.length}" class="muted">No staff added.</td></tr>`}
-  </table></div>`;
+  const pc = (a) => (n ? Math.round((a / n) * 100) : 0);
+  return `<div class="row"><div class="grow"><h2>Training <span class="fl">matrix</span></h2>
+  <p class="lead">Fire training for every member of staff (RRO 2005 Art. 21): induction, annual refresher, fire marshal course, extinguisher use, the Fire Action Procedure briefing and drills. A date shows training was given; <b>✓</b> means the evidence (signed attendance sheet or certificate) has been seen.</p></div>
+  <button class="btn red" id="t-session">+ Record a training session</button></div>
+  <div class="grid g5" style="margin-bottom:12px">
+    <div class="card tile"><div class="n">${n}</div><div class="l">Staff on the matrix</div></div>
+    <div class="card tile ${pc(ind) >= 90 ? "g" : "a"}"><div class="n">${pc(ind)}%</div><div class="l">Fire training recorded (${ind})</div></div>
+    <div class="card tile ${pc(conf) >= 90 ? "g" : "r"}"><div class="n">${pc(conf)}%</div><div class="l">Evidence confirmed (${conf})</div></div>
+    <div class="card tile ${pc(proc) >= 90 ? "g" : "r"}"><div class="n">${proc}</div><div class="l">Briefed on Fire Action Procedure</div></div>
+    <div class="card tile ${night.length && nightOk === night.length ? "g" : "r"}"><div class="n">${nightOk}/${night.length}</div><div class="l">Night staff trained</div></div>
+  </div>
+  <div class="grid g4" style="margin-bottom:12px">${marshals().map((nm) => { const t = all.find((r) => r.name === nm) || { courses: {} }; const c = t.courses || {};
+    return `<div class="card tile ${c.marshal ? "g" : "r"}"><div class="l">Fire marshal</div><div style="font-weight:900;font-size:17px;color:var(--navy)">${h(nm)}</div><div class="muted">Marshal course: ${c.marshal ? fds(c.marshal) : "date not recorded"}</div></div>`; }).join("")}</div>
+  <div class="row" style="margin-bottom:10px">
+    <select id="tf-dept" style="width:auto">${DEPTS.map(([k, l]) => `<option value="${k}" ${f.dept === k ? "selected" : ""}>${l}${k ? ` (${all.filter((t) => (t.dept || "other") === k).length})` : ""}</option>`).join("")}</select>
+    <select id="tf-show" style="width:auto">${[["all", "Everyone"], ["gaps", "Gaps only"], ["unconfirmed", "Date recorded, evidence not confirmed"]].map(([k, l]) => `<option value="${k}" ${f.show === k ? "selected" : ""}>${l}</option>`).join("")}</select>
+    <input id="tf-q" placeholder="Search name or role" value="${h(f.q)}" style="width:220px"><span class="muted">${rows.length} shown</span><div class="grow"></div>
+    <button class="btn ghost" id="t-new">+ Add staff member</button>
+  </div>
+  <div class="tw"><table><tr><th>Name</th><th>Role / department</th><th>Shift</th><th>Started</th>${HF_COURSES.map(([, l, mo]) => `<th>${h(l)}${mo ? `<br><span style="font-weight:400;text-transform:none">every ${mo} months</span>` : ""}</th>`).join("")}</tr>
+  ${rows.map((t) => `<tr><td><a href="#" data-t="${t.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(t.name)}</a>${t.marshal ? ` <span class="pill p-red">Marshal</span>` : ""}${t.note ? `<div class="muted" style="font-size:11px">${h(t.note)}</div>` : ""}</td>
+    <td>${h(t.role)}<div class="muted" style="font-size:11px">${h(deptName(t.dept))}</div></td><td>${h(t.shift || "")}</td><td>${t.start ? fds(t.start) : '<span class="muted">—</span>'}</td>
+    ${HF_COURSES.map(([k, , mo]) => { const d = (t.courses || {})[k]; const st = courseState(d, mo); const ev = evOf(t, k);
+      return `<td style="background:${bg[st.st]}">${d ? `${fds(d)} ${ev.confirmed ? '<b style="color:var(--ok)" title="Evidence seen">✓</b>' : '<span title="Evidence not yet confirmed" style="color:var(--amber);font-weight:900">?</span>'}` : "—"}${st.exp && st.st !== "ok" ? `<br><small>due ${fds(st.exp)}</small>` : ""}</td>`; }).join("")}</tr>`).join("") || `<tr><td colspan="${4 + HF_COURSES.length}" class="muted">No staff match.</td></tr>`}
+  </table></div>
+  <p class="muted" style="margin-top:8px">✓ evidence seen · <b style="color:var(--amber)">?</b> date recorded, evidence still to be confirmed · green in date · amber due within 30 days · red overdue · grey no record.</p>`;
 };
 BIND.training = (v) => {
+  const f = S.f.trn;
+  $("#tf-dept", v).onchange = (e) => { f.dept = e.target.value; render(); };
+  $("#tf-show", v).onchange = (e) => { f.show = e.target.value; render(); };
+  $("#tf-q", v).onchange = (e) => { f.q = e.target.value; render(); };
   const edit = (id) => {
-    const t = id ? S.data.registers.find((x) => x.id === id) : { kind: "training", courses: {} };
+    const t = id ? S.data.registers.find((x) => x.id === id) : { kind: "training", courses: {}, ev: {} };
     const m = modal(`<h3>${id ? h(t.name) : "Add staff member"}</h3>
       <div class="f2"><div><label>Name</label><input data-k="name" value="${h(t.name)}"></div><div><label>Role</label><input data-k="role" value="${h(t.role)}"></div>
-      <div><label>Shift</label><select data-k="shift">${["Day", "Night", "Both"].map((s) => `<option ${t.shift === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
+      <div><label>Department</label><select data-k="dept">${DEPTS.slice(1).map(([k, l]) => `<option value="${k}" ${t.dept === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+      <div><label>Shift</label><select data-k="shift">${["Day", "Night", "Both"].map((x) => `<option ${t.shift === x ? "selected" : ""}>${x}</option>`).join("")}</select></div>
+      <div><label>Start date</label><input type="date" data-k="start" value="${h(t.start)}"></div>
       <div><label>Fire marshal</label><select data-k="marshal"><option value="">No</option><option value="1" ${t.marshal ? "selected" : ""}>Yes</option></select></div></div>
-      <div class="f2">${HF_COURSES.map(([k, l]) => `<div><label>${h(l)}</label><input type="date" data-c="${k}" value="${h((t.courses || {})[k])}"></div>`).join("")}</div>
-      <p class="muted">Enter the date the training actually took place. Leave blank if there is no record.</p>
+      <label>Training</label>
+      <div class="tw"><table><tr><th>Course</th><th>Date given</th><th>Evidence seen</th></tr>${HF_COURSES.map(([k, l]) => { const ev = evOf(t, k);
+        return `<tr><td>${h(l)}</td><td><input type="date" data-c="${k}" value="${h((t.courses || {})[k])}"></td><td><label class="row" style="text-transform:none;margin:0;font-size:13px;color:var(--ink)"><input type="checkbox" data-e="${k}" ${ev.confirmed ? "checked" : ""} style="width:auto"> ${ev.confirmed ? `by ${h(ev.by || "")} ${ev.at ? fds(ev.at) : ""}` : "Confirm"}</label></td></tr>`; }).join("")}</table></div>
+      <label>Note</label><input data-k="note" value="${h(t.note)}">
+      <p class="muted">Only enter a date when the training was actually given. Tick "Evidence seen" once you have the signed attendance sheet or certificate (upload it with "Record a training session" or in Documents).</p>
       <div class="row" style="margin-top:12px"><button class="btn red" id="ts">Save</button><button class="btn ghost" data-close>Cancel</button><div class="grow"></div>${id && isAdmin() ? `<button class="btn ghost" id="td" style="color:var(--red)">Delete</button>` : ""}</div><div class="err"></div>`);
     $("#ts", m).onclick = async () => {
-      const o = { kind: "training", courses: {} };
+      const o = { kind: "training", courses: {}, ev: JSON.parse(JSON.stringify(t.ev || {})) };
       $$("[data-k]", m).forEach((el) => (o[el.dataset.k] = el.value.trim())); o.marshal = !!o.marshal;
       $$("[data-c]", m).forEach((el) => (o.courses[el.dataset.c] = el.value));
+      $$("[data-e]", m).forEach((el) => { const k = el.dataset.e, was = !!(o.ev[k] || {}).confirmed;
+        if (el.checked && !was) o.ev[k] = { ...(o.ev[k] || {}), confirmed: true, by: S.user.name, at: today() };
+        if (!el.checked && was) o.ev[k] = { ...(o.ev[k] || {}), confirmed: false }; });
       if (!o.name) return;
       if (id) await put("registers", id, o, false); else await add("registers", o);
       audit(`Training record ${id ? "updated" : "added"}: ${o.name}`); m.close(); toast("Saved");
@@ -983,6 +1026,40 @@ BIND.training = (v) => {
   };
   $("#t-new", v).onclick = () => edit(null);
   $$("[data-t]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); edit(a.dataset.t); }));
+  $("#t-session", v).onclick = () => {
+    const staff = reg("training").sort((a, b) => natRef(a.dept, b.dept) || natRef(a.name, b.name));
+    const groups = {}; staff.forEach((t) => (groups[t.dept || "other"] = groups[t.dept || "other"] || []).push(t));
+    const m = modal(`<h3>Record a training session</h3>
+      <p class="muted">Use this for a real session that has taken place. Everyone you tick gets the date on the matrix, and the signed attendance sheet is stored as the evidence.</p>
+      <div class="f2"><div><label>Course</label><select id="ss-c">${HF_COURSES.map(([k, l]) => `<option value="${k}">${h(l)}</option>`).join("")}</select></div>
+      <div><label>Date of the session</label><input type="date" id="ss-d" max="${today()}"></div>
+      <div><label>Trainer</label><input id="ss-t" value="${h(HF_FIRE_MANAGER.name)}"></div><div><label>Signed attendance sheet (photo or PDF)</label><input type="file" id="ss-f" accept="image/*,.pdf"></div></div>
+      <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="ss-conf" checked style="width:auto"> Mark as evidence seen (I have the signed attendance sheet)</label>
+      <label>Who attended</label>
+      ${Object.keys(groups).map((g) => `<div style="margin:6px 0"><label class="row" style="text-transform:none;font-size:13px;color:var(--navy);margin:0"><input type="checkbox" data-g="${g}" style="width:auto"> <b>${h(deptName(g))}</b> (select all)</label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2px 10px;padding-left:22px">${groups[g].map((t) => `<label class="row" style="text-transform:none;font-size:13px;color:var(--ink);margin:0"><input type="checkbox" data-p="${t.id}" data-pg="${g}" style="width:auto"> ${h(t.name)}</label>`).join("")}</div></div>`).join("")}
+      <div class="row" style="margin-top:12px"><button class="btn red" id="ss-go">Save session</button><button class="btn ghost" data-close>Cancel</button></div><div class="err" id="ss-e"></div>`);
+    $$("[data-g]", m).forEach((g) => (g.onchange = () => $$(`[data-pg="${g.dataset.g}"]`, m).forEach((x) => (x.checked = g.checked))));
+    $("#ss-go", m).onclick = async () => {
+      const k = $("#ss-c", m).value, d = $("#ss-d", m).value, tr = $("#ss-t", m).value.trim(), conf = $("#ss-conf", m).checked, e = $("#ss-e", m);
+      const who = $$("[data-p]", m).filter((x) => x.checked).map((x) => x.dataset.p);
+      if (!d) return (e.textContent = "Enter the date of the session.");
+      if (!who.length) return (e.textContent = "Tick who attended.");
+      try {
+        $("#ss-go", m).disabled = true; S.hold = true;
+        let sheet = null; const fi = $("#ss-f", m).files[0];
+        if (fi) { e.textContent = "Uploading the attendance sheet…"; sheet = await upload("training", fi);
+          await add("registers", { kind: "doc", title: `Training attendance — ${HF_COURSES.find((c) => c[0] === k)[1]} — ${fds(d)}`, cat: "Training", date: d, version: "", author: tr, notes: `${who.length} attendees`, file: sheet }); }
+        for (const id of who) {
+          const t = S.data.registers.find((x) => x.id === id); const courses = { ...(t.courses || {}), [k]: d };
+          const ev = { ...(t.ev || {}), [k]: { confirmed: conf, by: S.user.name, at: today(), trainer: tr, sheet: sheet ? sheet.path : (((t.ev || {})[k]) || {}).sheet || "" } };
+          await put("registers", id, { courses, ev });
+        }
+        audit(`Training session recorded: ${HF_COURSES.find((c) => c[0] === k)[1]} on ${d}, ${who.length} staff${sheet ? ", attendance sheet uploaded" : ""}`);
+        S.hold = false; render(); m.close(); toast(`${who.length} staff updated`);
+      } catch (err) { S.hold = false; $("#ss-go", m).disabled = false; e.textContent = err.message; }
+    };
+  };
 };
 
 /* ============================================================ DRILLS, PEEPs, PERMITS */
@@ -1260,6 +1337,14 @@ BIND.settings = (v) => {
           if (ex && k === "registers" && (rest.kind === "doc" || rest.kind === "cert")) {
             const meta = {}; ["kind", "title", "name", "ref", "cat", "date", "version", "author", "contractor", "last", "months", "certRef", "notes"].forEach((f) => { if (rest[f] !== undefined && rest[f] !== "") meta[f] = rest[f]; });
             await put(k, id, meta); n++; continue;
+          }
+          if (ex && k === "registers" && rest.kind === "training") {
+            const patch = {}; ["role", "dept", "start", "shift", "note"].forEach((f) => { if (!ex[f] && rest[f]) patch[f] = rest[f]; });
+            if (rest.marshal && !ex.marshal) patch.marshal = true;
+            const courses = { ...(ex.courses || {}) }, ev = { ...(ex.ev || {}) };
+            Object.entries(rest.courses || {}).forEach(([c, d]) => { if (d && !courses[c]) { courses[c] = d; if ((rest.ev || {})[c] && !ev[c]) ev[c] = rest.ev[c]; } });
+            patch.courses = courses; patch.ev = ev;
+            await put(k, id, patch); n++; continue;
           }
           if (!over && ex) { skip++; continue; }
           await put(k, id, { ...rest, seeded: j.version || true, ...(k === "actions" && !rest.history ? { history: [{ at: Date.now(), by: S.user.name, status: rest.status, note: "Loaded from starting data" }] } : {}) }, false); n++;
