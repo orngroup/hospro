@@ -40,7 +40,9 @@ textarea{min-height:90px}
 .chips button.on{background:var(--blue);border-color:var(--blue);color:#fff}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
-.stat b{display:block;font-size:24px}.stat span{font-size:11px;color:var(--muted);font-weight:700}
+.stat b{display:block;font-size:24px}
+button.stat{font:inherit;color:inherit;cursor:pointer;border:1.5px solid var(--line)}
+button.stat.on{border-color:var(--sc);box-shadow:0 0 0 2px var(--sc) inset;background:#fff}.stat span{font-size:11px;color:var(--muted);font-weight:700}
 .item{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-left:5px solid var(--red);border-radius:12px;padding:12px;margin-bottom:9px;color:var(--ink)}
 .item.ip{border-left-color:var(--amb)}.item.done{border-left-color:var(--ok);opacity:.8}
 .item .r{display:flex;gap:8px;align-items:center}.item .ref{font-weight:900;color:var(--blue);min-width:34px}
@@ -188,6 +190,8 @@ function list() {
   else if (S.filter === "open") rows = rows.filter((a) => a.status !== "Completed");
   else if (S.filter === "high") rows = rows.filter((a) => a.priority === "High" && a.status !== "Completed");
   else if (S.filter === "done") rows = rows.filter((a) => a.status === "Completed");
+  else if (S.filter === "ns") rows = rows.filter((a) => a.status === "Not started");
+  else if (S.filter === "ip") rows = rows.filter((a) => a.status === "In progress");
   if (S.q) { const q = S.q.toLowerCase(); rows = rows.filter((a) => (a.ref + " " + a.title + " " + (a.notes || "")).toLowerCase().includes(q)); }
   const pr = { High: 0, Medium: 1, Low: 2 }, so = { "In progress": 0, "Not started": 1, "Completed": 2 };
   rows.sort((a, b) => (so[a.status] - so[b.status]) || (pr[a.priority] - pr[b.priority]) || nat(a.ref, b.ref));
@@ -202,9 +206,10 @@ function list() {
       <div class="bar" style="height:10px"><i style="width:${overall}%;background:var(--ok)"></i></div>
       <div class="muted" style="margin-top:6px">${touched} job${touched === 1 ? "" : "s"} updated today</div></div>
     <div class="stats">
-      <div class="stat"><b style="color:var(--red)">${A.filter((a) => a.status === "Not started").length}</b><span>Not started</span></div>
-      <div class="stat"><b style="color:var(--amb)">${A.filter((a) => a.status === "In progress").length}</b><span>In progress</span></div>
-      <div class="stat"><b style="color:var(--ok)">${done}</b><span>Completed</span></div></div>
+      <button class="stat ${S.filter === "ns" ? "on" : ""}" data-f="ns" style="--sc:var(--red)"><b style="color:var(--red)">${A.filter((a) => a.status === "Not started").length}</b><span>Not started</span></button>
+      <button class="stat ${S.filter === "ip" ? "on" : ""}" data-f="ip" style="--sc:var(--amb)"><b style="color:var(--amb)">${A.filter((a) => a.status === "In progress").length}</b><span>In progress</span></button>
+      <button class="stat ${S.filter === "done" ? "on" : ""}" data-f="done" style="--sc:var(--ok)"><b style="color:var(--ok)">${done}</b><span>Completed</span></button></div>
+    ${["ns", "ip", "done"].includes(S.filter) ? `<div class="muted" style="margin:-4px 0 8px">Showing <b>${{ ns: "Not started", ip: "In progress", done: "Completed" }[S.filter]}</b> jobs · <a href="#" id="clearf">show all open</a></div>` : ""}
     <div class="chips">${[["open", `All open (${open.length})`], ["high", "High priority"], ["mine", "My tasks"], ...srcs.map((t) => ["src:" + t.key, `<i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${t.color};margin-right:5px"></i>${t.label} (${open.filter((a) => HF_SOURCE_OF(a).key === t.key).length})`]), ["done", "Completed"]].map(([k, l]) => `<button data-f="${k}" class="${S.filter === k ? "on" : ""}">${l}</button>`).join("")}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><button class="btn red" id="newtask">+ New task</button><button class="btn" id="newdoc">📄 Upload document</button></div>
     <input id="q" placeholder="Search actions…" value="${h(S.q)}" style="margin-bottom:10px">
@@ -282,7 +287,8 @@ function render() {
   if (S.view === "list") {
     $("#back").classList.add("hide"); $("#savebar").classList.add("hide");
     v.innerHTML = list();
-    $$("[data-f]", v).forEach((b) => (b.onclick = () => { S.filter = b.dataset.f; render(); }));
+    $$("[data-f]", v).forEach((b) => (b.onclick = () => { S.filter = (S.filter === b.dataset.f && b.classList.contains("stat")) ? "open" : b.dataset.f; render(); }));
+    const cf = $("#clearf", v); if (cf) cf.onclick = (e) => { e.preventDefault(); S.filter = "open"; render(); };
     $("#q", v).oninput = (e) => { S.q = e.target.value; clearTimeout(S.qt); S.qt = setTimeout(() => { render(); const q = $("#q"); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }, 350); };
     $$("[data-id]", v).forEach((b) => (b.onclick = () => openAction(b.dataset.id)));
     $("#newtask", v).onclick = () => { S.view = "new"; S.draft = { newPhotos: [] }; render(); window.scrollTo(0, 0); };
