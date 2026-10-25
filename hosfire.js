@@ -1127,11 +1127,12 @@ VIEWS.training = () => {
     <input id="tf-q" placeholder="Search name or role" value="${h(f.q)}" style="width:220px"><span class="muted">${rows.length} shown</span><div class="grow"></div>
     <button class="btn ghost" id="t-new">+ Add staff member</button>
   </div>
-  <div class="tw"><table><tr><th>Name</th><th>Role / department</th><th>Shift</th><th>Started</th>${HF_COURSES.map(([, l, mo]) => `<th>${h(l)}${mo ? `<br><span style="font-weight:400;text-transform:none">every ${mo} months</span>` : ""}</th>`).join("")}</tr>
-  ${rows.map((t) => `<tr><td><a href="#" data-t="${t.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(t.name)}</a>${t.marshal ? ` <span class="pill p-red">Marshal</span>` : ""} <a href="#" data-card="${t.id}" title="Download training card" style="text-decoration:none">🪪</a>${t.note ? `<div class="muted" style="font-size:11px">${h(t.note)}</div>` : ""}</td>
+  <div class="tw"><table><tr><th>Name</th><th>Role / department</th><th>Shift</th><th>Started</th>${HF_COURSES.map(([, l, mo]) => `<th>${h(l)}${mo ? `<br><span style="font-weight:400;text-transform:none">every ${mo} months</span>` : ""}</th>`).join("")}<th>Card</th></tr>
+  ${rows.map((t) => `<tr><td><a href="#" data-t="${t.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(t.name)}</a>${t.marshal ? ` <span class="pill p-red">Marshal</span>` : ""}${t.note ? `<div class="muted" style="font-size:11px">${h(t.note)}</div>` : ""}</td>
     <td>${h(t.role)}<div class="muted" style="font-size:11px">${h(deptName(t.dept))}</div></td><td>${h(t.shift || "")}</td><td>${t.start ? fds(t.start) : '<span class="muted">—</span>'}</td>
     ${HF_COURSES.map(([k, , mo]) => { const d = (t.courses || {})[k]; const st = courseState(d, mo); const ev = evOf(t, k);
-      return `<td class="tcell" data-cell="${t.id}|${k}" title="Click to add or change the date" style="background:${bg[st.st]};cursor:pointer">${d ? `${fds(d)} ${ev.confirmed ? '<b style="color:var(--ok)" title="Evidence seen">✓</b>' : '<span title="Evidence not yet confirmed" style="color:var(--amber);font-weight:900">?</span>'}` : "—"}${st.exp && st.st !== "ok" ? `<br><small>due ${fds(st.exp)}</small>` : ""}</td>`; }).join("")}</tr>`).join("") || `<tr><td colspan="${4 + HF_COURSES.length}" class="muted">No staff match.</td></tr>`}
+      return `<td class="tcell" data-cell="${t.id}|${k}" title="Click to add or change the date" style="background:${bg[st.st]};cursor:pointer">${d ? `${fds(d)} ${ev.confirmed ? '<b style="color:var(--ok)" title="Evidence seen">✓</b>' : '<span title="Evidence not yet confirmed" style="color:var(--amber);font-weight:900">?</span>'}<br><a href="#" data-ccard="${t.id}|${k}" title="Download the card for this course" style="text-decoration:none;font-size:12px">🪪 card</a>` : "—"}${st.exp && st.st !== "ok" ? `<br><small>due ${fds(st.exp)}</small>` : ""}</td>`; }).join("")}
+    <td>${Object.values(t.courses || {}).some(Boolean) ? `<button class="btn sm ghost" data-card="${t.id}" title="All training on one card">🪪 Card</button>` : '<span class="muted">—</span>'}</td></tr>`).join("") || `<tr><td colspan="${5 + HF_COURSES.length}" class="muted">No staff match.</td></tr>`}
   </table></div>
   <p class="muted" style="margin-top:8px">Click any training cell to add or change a date. ✓ evidence seen · <b style="color:var(--amber)">?</b> date recorded, evidence still to be confirmed · green in date · amber due within 30 days · red overdue · grey no record.</p>`;
 };
@@ -1200,7 +1201,17 @@ BIND.training = (v) => {
       <table>${done.map(([k, l, mo]) => { const ev = evOf(t, k), st = courseState(c[k], mo); return `<tr><td>${h(l)}</td><td>${fds(c[k])}</td><td>${mo ? "due " + fds(addMonths(c[k], mo)) : ""}</td><td>${ev.confirmed ? "✓ verified" : "to confirm"}</td></tr>`; }).join("") || `<tr><td colspan="4">No training recorded yet</td></tr>`}</table>
       <div class="tcf">Fire Safety Manager: ${h(HF_FIRE_MANAGER.name)} · Printed ${fds(today())} from HosFIRE</div></div>`; };
   const printCards = (list, title) => { $("#print").innerHTML = `<div class="tcards">${list.map(cardHTML).join("")}</div>`; audit(`Training cards printed: ${title}`); setTimeout(() => window.print(), 300); };
-  $$("[data-card]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); const t = S.data.registers.find((x) => x.id === a.dataset.card); printCards([t], t.name); }));
+  $$("[data-card]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); const t = S.data.registers.find((x) => x.id === a.dataset.card); printCards([t], t.name); }));
+  const courseCard = (t, k) => { const [, l, mo] = HF_COURSES.find((c) => c[0] === k), d = (t.courses || {})[k], ev = evOf(t, k);
+    return `<div class="tcard"><div class="tch"><img src="assets/marketing/logos/logo-blue-transparent.png" onerror="this.style.display='none'"><div><b>Fire training — completed</b><span>${h(HF_HOTEL.name)}</span></div></div>
+      <div class="tcn">${h(t.name)}${t.marshal ? ' <span class="tcm">FIRE MARSHAL</span>' : ""}</div><div class="tcr">${h(t.role)} · ${h(deptName(t.dept))}</div>
+      <table><tr><td><b>Course</b></td><td>${h(l)}</td></tr><tr><td><b>Completed</b></td><td>${fd(d)}</td></tr>
+      <tr><td><b>Trainer</b></td><td>${h(ev.trainer || "")}</td></tr><tr><td><b>Next due</b></td><td>${mo ? fds(addMonths(d, mo)) : "No renewal"}</td></tr>
+      <tr><td><b>Evidence</b></td><td>${ev.confirmed ? "✓ verified — signed sheet / certificate seen" : "to confirm — signed sheet not yet seen"}</td></tr></table>
+      <div class="tcf">Fire Safety Manager: ${h(HF_FIRE_MANAGER.name)} · Printed ${fds(today())} from HosFIRE</div></div>`; };
+  $$("[data-ccard]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); e.stopPropagation();
+    const [id, k] = a.dataset.ccard.split("|"), t = S.data.registers.find((x) => x.id === id);
+    $("#print").innerHTML = `<div class="tcards">${courseCard(t, k)}</div>`; audit(`Training card printed: ${t.name} — ${k}`); setTimeout(() => window.print(), 300); }));
   $("#t-cards", v).onclick = () => {
     const all = reg("training");
     const m = modal(`<h3>Training cards</h3><p class="muted">A small card for each person showing their fire training, dates, when it is due and whether the evidence is verified. Eight cards print on each A4 page — choose "Save as PDF" to download.</p>
