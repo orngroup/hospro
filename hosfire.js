@@ -75,13 +75,27 @@ let rerenderT = null;
 const rerender = () => { clearTimeout(rerenderT); rerenderT = setTimeout(() => { if (!S.hold) render(); }, 60); };
 const unsub = [];
 function listen() {
-  if (!S.live) { demoLoad(); render(); return; }
+  if (!S.live) { demoLoad(); render(); autoCatchup(); return; }
   Object.entries(COLS).forEach(([k, col]) => {
     unsub.push(fb.db.collection(col).onSnapshot((snap) => {
       S.data[k] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (k === "actions") autoCatchup();
       rerender();
     }, (err) => { console.warn(col, err); if (k === "records") toast("Cannot read HosFIRE data — check the Firestore rules have been published."); }));
   });
+}
+let catchupT = null;
+function autoCatchup() {
+  if (!S.user || S.hold) return;
+  clearTimeout(catchupT);
+  catchupT = setTimeout(async () => {
+    const worked = (a) => a.status === "Not started" && ((a.photos || []).length || (typeof a.pct === "number" && a.pct > 0)
+      || (a.steps || []).some((x) => x.done && !/starting data/i.test(x.by || ""))
+      || (a.history || []).some((x) => x.note && !/starting data|^created$|^edited$/i.test(x.note) && /HosFIRE Mobile|Progress set|Done:/i.test(x.note)));
+    const list = S.data.actions.filter(worked);
+    for (const a of list) await put("actions", a.id, { status: "In progress", history: (a.history || []).concat([{ at: Date.now(), by: "HosFIRE (automatic)", status: "In progress", note: "Status updated — work had been recorded on this job" }]) });
+    if (list.length) audit(`Automatic status update: ${list.map((a) => a.ref).join(", ")} moved to In progress`);
+  }, 1500);
 }
 const stamp = () => ({ byName: S.user.name, byEmail: S.user.email });
 const now = () => (S.live ? firebase.firestore.FieldValue.serverTimestamp() : Date.now());
@@ -293,9 +307,9 @@ VIEWS.dash = () => {
   ${(() => { const ar = auditScore(); const overall = A.length ? Math.round(A.reduce((t, a) => t + progressOf(a), 0) / A.length) : 0;
     return `<div class="grid g5">
     <div class="card tile ${ar.pc >= 80 ? "g" : ar.pc >= 50 ? "a" : "r"}" data-go="audit" style="cursor:pointer"><div class="n">${ar.pc}%</div><div class="l">Audit readiness (${ar.ready} of ${ar.total} ready)</div></div>
-    <div class="card tile r" data-go="actions" style="cursor:pointer"><div class="n">${highOpen.length}</div><div class="l">High-priority actions open</div></div>
-    <div class="card tile a" data-go="actions" style="cursor:pointer"><div class="n">${open.length}</div><div class="l">Actions open (of ${A.length})</div></div>
-    <div class="card tile"><div class="n">${overall}%</div><div class="l">Overall action progress</div></div>
+    <div class="card tile r" data-go="actions" data-goset="open|High" style="cursor:pointer"><div class="n">${highOpen.length}</div><div class="l">High-priority actions open</div></div>
+    <div class="card tile a" data-go="actions" data-goset="open|" style="cursor:pointer"><div class="n">${open.length}</div><div class="l">Actions open (of ${A.length})</div></div>
+    <div class="card tile" data-go="actions" data-goset="|" style="cursor:pointer"><div class="n">${overall}%</div><div class="l">Overall action progress</div></div>
     <div class="card tile ${overdue.length ? "r" : "g"}" data-go="certs" style="cursor:pointer"><div class="n">${overdue.length}</div><div class="l">Certificates overdue${soon.length ? ` · ${soon.length} due soon` : ""}</div></div>
   </div>`; })()}
   ${A.length ? (() => {
@@ -333,7 +347,9 @@ VIEWS.dash = () => {
   ${recent.length ? `<div class="tw"><table><tr><th>Check</th><th>Date</th><th>Result</th><th>By</th><th>Entered</th></tr>
     ${recent.map((r) => `<tr><td>${h((CHECK[r.type] || {}).name || r.type)}${r.imported ? `<span class="imp">PAST RECORD</span>` : ""}</td><td>${fds(r.date)}</td><td>${h(resultOf(r))}</td><td>${h(r.byName)}</td><td class="muted">${fdt(r.createdAt)}</td></tr>`).join("")}</table></div>` : `<p class="muted">Nothing recorded yet.</p>`}`;
 };
-BIND.dash = (v) => { bindRec(v); $$("[data-go]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); S.tab = a.dataset.go; render(); })); };
+BIND.dash = (v) => { bindRec(v); $$("[data-go]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault();
+  if (a.dataset.goset !== undefined) { const [st, pr] = a.dataset.goset.split("|"); S.f.act = { cat: "", st, q: "", pri: pr || "" }; }
+  S.tab = a.dataset.go; render(); window.scrollTo(0, 0); })); };
 function bindRec(v) { $$("[data-rec]", v).forEach((b) => (b.onclick = () => openCheck(b.dataset.rec))); }
 
 /* ============================================================ RECORD A CHECK */
@@ -670,6 +686,7 @@ VIEWS.actions = () => {
   const f = S.f.act || (S.f.act = { cat: "", st: "open", q: "" });
   let rows = S.data.actions.slice();
   if (f.cat) rows = rows.filter((a) => a.category === f.cat);
+  if (f.pri) rows = rows.filter((a) => a.priority === f.pri);
   if (f.st === "open") rows = rows.filter((a) => a.status !== "Completed"); else if (f.st) rows = rows.filter((a) => a.status === f.st);
   if (f.q) { const q = f.q.toLowerCase(); rows = rows.filter((a) => JSON.stringify([a.ref, a.title, a.detail, a.owner, a.notes]).toLowerCase().includes(q)); }
   const pr = { High: 0, Medium: 1, Low: 2 }, so = { "Not started": 0, "In progress": 1, "Completed": 2 };
@@ -678,15 +695,15 @@ VIEWS.actions = () => {
   return `<h2>Action <span class="fl">tracker</span></h2>
   <p class="lead">Every fire safety action in one line: FRA actions A1–A19, Leader Systems work, emergency lighting, gas appliances and anything raised from a failed check. Change the status in the line; each change is logged with your name.</p>
   <div class="grid g4" style="margin-bottom:12px">
-    <div class="card tile"><div class="n">${S.data.actions.length ? Math.round(S.data.actions.reduce((t, a) => t + progressOf(a), 0) / S.data.actions.length) : 0}%</div><div class="l">Overall progress (steps done)</div></div>
-    <div class="card tile r"><div class="n">${cnt("Not started")}</div><div class="l">Not started</div></div>
-    <div class="card tile a"><div class="n">${cnt("In progress")}</div><div class="l">In progress</div></div>
-    <div class="card tile g"><div class="n">${cnt("Completed")}</div><div class="l">Completed</div></div>
+    <div class="card tile ctile ${f.st === "" ? "on" : ""}" data-ast=""><div class="n">${S.data.actions.length ? Math.round(S.data.actions.reduce((t, a) => t + progressOf(a), 0) / S.data.actions.length) : 0}%</div><div class="l">Overall progress — show all ${S.data.actions.length}</div></div>
+    <div class="card tile r ctile ${f.st === "Not started" ? "on" : ""}" data-ast="Not started"><div class="n">${cnt("Not started")}</div><div class="l">Not started</div></div>
+    <div class="card tile a ctile ${f.st === "In progress" ? "on" : ""}" data-ast="In progress"><div class="n">${cnt("In progress")}</div><div class="l">In progress</div></div>
+    <div class="card tile g ctile ${f.st === "Completed" ? "on" : ""}" data-ast="Completed"><div class="n">${cnt("Completed")}</div><div class="l">Completed</div></div>
   </div>
   <div class="tabs2">${["", ...HF_ACTION_CATS].map((c) => `<button data-cat="${h(c)}" class="${f.cat === c ? "on" : ""}">${c || "All"} (${c ? S.data.actions.filter((a) => a.category === c).length : S.data.actions.length})</button>`).join("")}</div>
   <div class="row" style="margin-bottom:10px">
     <select id="af-st" style="width:auto">${[["open", "Open (not completed)"], ["", "All statuses"], ...HF_STATUS.map((s) => [s, s])].map(([v, l]) => `<option value="${v}" ${f.st === v ? "selected" : ""}>${l}</option>`).join("")}</select>
-    <input id="af-q" placeholder="Search…" value="${h(f.q)}" style="width:220px"><div class="grow"></div>
+    <input id="af-q" placeholder="Search…" value="${h(f.q)}" style="width:220px">${f.pri ? `<span class="pill p-red">${h(f.pri)} priority only <a href="#" id="af-pri" style="color:inherit">✕</a></span>` : ""}<div class="grow"></div>
     <button class="btn red" id="a-new">+ Add action</button>
   </div>
   <div class="tw"><table><tr><th style="width:56px">Ref</th><th>Action</th><th>Category</th><th>Priority</th><th>Owner</th><th>Due</th><th style="width:150px">Status</th><th style="width:150px">Progress</th><th>Last update</th></tr>
@@ -703,8 +720,10 @@ VIEWS.actions = () => {
 BIND.actions = (v) => {
   const f = S.f.act;
   $$("[data-cat]", v).forEach((b) => (b.onclick = () => { f.cat = b.dataset.cat; render(); }));
+  $$("[data-ast]", v).forEach((b) => (b.onclick = () => { f.st = b.dataset.ast; f.cat = ""; f.pri = ""; render(); const t = $(".tw", v); if (t) t.scrollIntoView({ behavior: "smooth" }); }));
   $("#af-st", v).onchange = (e) => { f.st = e.target.value; render(); };
   $("#af-q", v).onchange = (e) => { f.q = e.target.value; render(); };
+  const ap = $("#af-pri", v); if (ap) ap.onclick = (e) => { e.preventDefault(); f.pri = ""; render(); };
   $("#a-new", v).onclick = () => editAction(null);
   $$("[data-edit]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); editAction(a.dataset.edit); }));
   $$("[data-pct]", v).forEach((b) => (b.onclick = async () => {
@@ -918,7 +937,7 @@ function paperModal(item) {
   const m = modal(`<h3>Record a paper signature</h3><p class="muted">${h(item.title)} · ${h(item.role)}</p>
     <p>Use this when <b>${h(nm)}</b> has signed the printed document. Upload the scan or photo of the signed page as the evidence.</p>
     <div class="f2"><div><label>Signed by (name as written)</label><input id="pp-n" value="${h(item.ext ? "" : nm)}" placeholder="${h(item.ext ? "e.g. name of the Granite Leisure manager" : "")}"></div>
-    <div><label>Date on the signed page</label><input type="date" id="pp-d" value="${h(item.date || today())}"><div class="muted" style="font-size:11px">${item.date ? "Date typed on the document — change it if they wrote a different date" : "Today's date — change it to the date written on the page"}</div></div></div>
+    <div><label>Date on the signed page</label><input type="date" id="pp-d" value="${h(item.date || (/^Prepared/.test(item.role) ? "2026-10-25" : /^Approved|^Signatory/.test(item.role) ? "2026-10-26" : today()))}"><div class="muted" style="font-size:11px">${item.date ? "Date typed on the document — change it if they wrote a different date" : "Today's date — change it to the date written on the page"}</div></div></div>
     <label>Scan or photo of the signed page</label><input type="file" id="pp-f" accept="image/*,.pdf">
     <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="pp-ok" style="width:auto"><span>I confirm this is a true copy of the document as signed by ${h(nm)}.</span></label>
     <div class="row" style="margin-top:12px"><button class="btn red" id="pp-go">Save paper signature</button><button class="btn ghost" data-close>Cancel</button></div><div class="err" id="pp-e"></div>`);
