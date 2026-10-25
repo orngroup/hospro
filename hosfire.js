@@ -235,8 +235,8 @@ function enter(k) {
 
 /* ============================================================ NAV */
 const TABS = [
-  ["dash", "Dashboard"], ["checks", "Record a check"], ["log", "Logbook"], ["rota", "Weekly tests"], ["back", "Back-records"], ["actions", "Actions"],
-  ["audit", "Audit readiness"], ["venues", "Venues & events"], ["certs", "Certificates"], ["docs", "Documents"], ["forms", "Forms"], ["training", "Training"], ["drills", "Drills, PEEPs, permits"],
+  ["dash", "Dashboard"], ["procs", "Procedures"], ["checks", "Record a check"], ["log", "Logbook"], ["rota", "Weekly tests"], ["back", "Back-records"], ["actions", "Actions"],
+  ["audit", "Audit readiness"], ["venues", "Venues & events"], ["certs", "Certificates"], ["docs", "Documents"], ["training", "Training"], ["drills", "Drills, PEEPs, permits"],
   ["diary", "Diary"], ["regs", "Regulations"], ["pack", "Inspector pack"], ["settings", "Settings"]
 ];
 function nav() {
@@ -311,6 +311,8 @@ VIEWS.dash = () => {
       ${highOpen.length ? highOpen.sort((a, b) => natRef(a.ref, b.ref)).map((a) => `<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><b style="flex:0 0 40px">${h(a.ref)}</b><div style="flex:1">${h(a.title)}</div><div style="flex:0 0 auto">${progBar(progressOf(a), 50)}</div></div>`).join("") : `<p class="muted">None.</p>`}
     </div>
   </div>
+  <h3 class="row"><span class="grow">Our fire procedure at a glance</span><a href="#" data-go="procs" style="font-size:13px;color:var(--red)">All procedures →</a></h3>
+  ${procStrip()}
   <h3>Latest entries</h3>
   ${recent.length ? `<div class="tw"><table><tr><th>Check</th><th>Date</th><th>Result</th><th>By</th><th>Entered</th></tr>
     ${recent.map((r) => `<tr><td>${h((CHECK[r.type] || {}).name || r.type)}${r.imported ? `<span class="imp">PAST RECORD</span>` : ""}</td><td>${fds(r.date)}</td><td>${h(resultOf(r))}</td><td>${h(r.byName)}</td><td class="muted">${fdt(r.createdAt)}</td></tr>`).join("")}</table></div>` : `<p class="muted">Nothing recorded yet.</p>`}`;
@@ -888,13 +890,12 @@ VIEWS.docs = () => {
   let rows = reg("doc"); if (f.cat) rows = rows.filter((d) => d.cat === f.cat);
   rows.sort((a, b) => natRef(a.cat, b.cat) || natRef(b.date, a.date));
   return `<h2>Documents and <span class="fl">policies</span></h2>
-  <p class="lead">Fire risk assessments (Soldorlet), the fire service letter, policies and procedures, contracts, statements and quotes. Files are stored privately in HosFIRE, never in the website code. Click a document (or <b>✎ Edit</b>) to change its details or attach a file; <b>🗑 Delete</b> removes it.</p>
+  <p class="lead">Fire risk assessments (Soldorlet), the fire service letter, policies and procedures, contracts, statements and quotes. Files are stored privately in HosFIRE, never in the website code.</p>
   <div class="tabs2">${["", ...HF_DOC_CATS].map((c) => `<button data-dc="${h(c)}" class="${f.cat === c ? "on" : ""}">${c || "All"} (${c ? reg("doc").filter((d) => d.cat === c).length : reg("doc").length})</button>`).join("")}</div>
   <div class="row" style="margin-bottom:10px"><div class="grow"></div><button class="btn ghost" id="d-bulk">⬆ Upload several files</button><button class="btn red" id="d-new">+ Add document</button></div>
-  <div class="tw"><table><tr><th>Document</th><th>Category</th><th>Date</th><th>Version</th><th>Issued by</th><th>File</th><th></th></tr>
+  <div class="tw"><table><tr><th>Document</th><th>Category</th><th>Date</th><th>Version</th><th>Issued by</th><th>File</th></tr>
   ${rows.map((d) => `<tr><td><a href="#" data-d="${d.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(d.title)}</a>${d.notes ? `<div class="muted">${h(d.notes)}</div>` : ""}</td><td><select data-dcat="${d.id}" style="padding:5px 6px;font-size:13px;width:auto;max-width:170px">${(HF_DOC_CATS.includes(d.cat) ? HF_DOC_CATS : [d.cat, ...HF_DOC_CATS]).map((c) => `<option ${c === d.cat ? "selected" : ""}>${h(c)}</option>`).join("")}</select></td><td>${d.date ? fds(d.date) : ""}</td><td>${h(d.version)}</td><td>${h(d.author)}</td>
-    <td>${d.file ? `<a href="#" data-open="${d.id}">View</a>` : `<span class="pill p-amb">Upload</span>`}</td>
-    <td style="white-space:nowrap;text-align:right"><a href="#" data-d="${d.id}" title="Edit this document" style="color:var(--navy);text-decoration:none;font-weight:700;margin-right:12px">✎ Edit</a>${isAdmin() ? `<a href="#" data-del="${d.id}" title="Delete this document" style="color:var(--red);text-decoration:none;font-weight:700">🗑 Delete</a>` : ""}</td></tr>`).join("") || `<tr><td colspan="7" class="muted">No documents.</td></tr>`}
+    <td>${d.file ? `<a href="#" data-open="${d.id}">View</a>` : `<span class="pill p-amb">Upload</span>`}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">No documents.</td></tr>`}
   </table></div>`;
 };
 BIND.docs = (v) => {
@@ -903,12 +904,6 @@ BIND.docs = (v) => {
   $("#d-bulk", v).onclick = bulkUpload;
   $$("[data-dcat]", v).forEach((sl) => (sl.onchange = async () => { await put("registers", sl.dataset.dcat, { cat: sl.value }); toast("Moved to " + sl.value); }));
   $$("[data-d]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); editReg("doc", a.dataset.d); }));
-  $$("[data-del]", v).forEach((a) => (a.onclick = async (e) => {
-    e.preventDefault();
-    const id = a.dataset.del, d = S.data.registers.find((x) => x.id === id);
-    if (!confirm(`Delete "${(d && d.title) || "this document"}"?\n\nThis removes the entry from HosFIRE. This cannot be undone.`)) return;
-    await del("registers", id); audit(`Deleted doc: ${(d && d.title) || ""}`); toast("Deleted");
-  }));
   $$("[data-open]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); openFile(S.data.registers.find((x) => x.id === a.dataset.open).file); }));
 };
 
@@ -1068,6 +1063,94 @@ BIND.diary = (v) => {
 };
 
 /* ============================================================ REGULATIONS */
+
+/* ============================================================ PROCEDURES (infographics) */
+/* Drawn from the Fire Action Procedure (BHH-ST-02) and the Fire Safety Manual v1.1.
+   Site facts (assembly point, panel locations, contacts) are set in Settings. */
+const siteFact = (k, fallback) => { const v = (cfg().site || {})[k]; return v ? h(v) : `<span class="tbc">${fallback || "to be confirmed"}</span>`; };
+const ADDR = "Brandon Hall Hotel and Spa, Main Street, Brandon, Coventry CV8 3FW";
+function procStrip() {
+  const tile = (n, icon, t, d, col) => `<a href="#" data-go="procs" class="pstrip" style="--c:${col}"><div class="pn">${n}</div><div class="pi">${icon}</div><b>${t}</b><span>${d}</span></a>`;
+  return `<div class="pstrip-row">
+    ${tile(1, "🔥", "Discover a fire", "Break the nearest call point. Leave, closing doors behind you.", "#B3261E")}
+    ${tile(2, "📞", "Call 999 — every time", "Our alarm is <b>not monitored</b>. Reception (or anyone alone) calls 999.", "#C62828")}
+    ${tile(3, "🧭", "Duty manager to the panel", "Identify the zone, take charge, sweep teams go.", "#2C3E50")}
+    ${tile(4, "🚪", "Get everyone out", "Everyone leaves at once. Never use the lift.", "#1D4E89")}
+    ${tile(5, "📋", "Assembly point & roll call", `${siteFact("assembly", "assembly point to be confirmed")}. Nobody goes back in.`, "#1E8A55")}
+  </div>`;
+}
+VIEWS.procs = () => {
+  const card = (icon, title, src, body, col = "var(--red)") => `<div class="pcard" style="--c:${col}"><div class="ph"><span class="pic">${icon}</span><div><h3>${title}</h3><div class="psrc">Source: ${src}</div></div></div>${body}</div>`;
+  const steps = (arr) => `<ol class="psteps">${arr.map(([t, d]) => `<li><b>${t}</b>${d ? `<span>${d}</span>` : ""}</li>`).join("")}</ol>`;
+  const roles = (arr) => `<div class="proles">${arr.map(([r, w, d]) => `<div class="prole"><div class="prr">${r}</div><div class="prw">${w}</div><div class="prd">${d}</div></div>`).join("")}</div>`;
+  return `<div class="row"><div class="grow"><h2>Fire <span class="fl">procedures</span></h2>
+    <p class="lead">What every member of staff does, in pictures. Taken from our Fire Action Procedure (BHH-ST-02) and Fire Safety Manual v1.1 — when those change, update them here too.</p></div>
+    <button class="btn ghost" id="pr-print">🖨 Print as posters</button></div>
+  <div class="pkeys">
+    <div><b>Simultaneous evacuation</b><span>Everyone leaves when the alarm sounds</span></div>
+    <div style="--c:#C62828"><b>Alarm NOT monitored</b><span>Staff call 999 on every activation</span></div>
+    <div style="--c:#1D4E89"><b>Never use the lift</b><span>Stairs and final exits only</span></div>
+    <div style="--c:#1E8A55"><b>Assembly point</b><span>${siteFact("assembly")}</span></div>
+  </div>
+  <div class="pgrid">
+  ${card("🔥", "1. If you discover a fire", "BHH-ST-02 §1 · Manual §8", steps([
+    ["Raise the alarm", "Break the nearest red call point."],
+    ["Get out, close doors", "Leave the area and close doors behind you to hold the fire back."],
+    ["Only tackle it if safe", "Small fire, you are trained, and your way out is behind you — otherwise leave it."],
+    ["Report to the duty manager", "At the fire alarm panel or at the assembly point."]]))}
+  ${card("📞", "2. Calling the fire service", "BHH-ST-02 §2 · Manual §7–8", `<div class="pbig">999</div>
+    <p style="text-align:center;margin:4px 0 10px">on <b>every</b> activation — our alarm does not call the fire service for us.</p>
+    <div class="psay">“Fire at <b>${ADDR}</b>. The panel shows <b>[zone / location]</b>.”</div>
+    <p class="muted" style="margin-top:8px">Reception makes the call in the day. At night, night staff 1 — or anyone working alone calls first.</p>`, "#C62828")}
+  ${card("🏨", "3. When the alarm sounds — day", "BHH-ST-02 §2", roles([
+    ["In charge", "Duty manager", "To the panel at " + siteFact("mainPanel", "main panel — location tbc") + ". Identify zone and device. Take control."],
+    ["999 call", "Reception", "Call 999. Take arrivals list, staff rota and sign-in sheets to the assembly point."],
+    ["Sweep bedrooms", "Allocated staff", "Walk your corridors, direct guests to the nearest exit, close doors. No lift."],
+    ["Sweep public areas", "Allocated staff", "Bar, restaurant, Brandon & Wolston suites, meeting rooms, WCs."],
+    ["Kitchen", "Head / senior chef", "Turn off cooking and gas if safe. Leave by the nearest exit."],
+    ["Guests needing help", "Allocated staff", "Follow each guest's PEEP. Check refuge points."],
+    ["Meet the fire service", "Named person", "At the main entrance with the guest list, panel information and anyone missing."]]), "#2C3E50")}
+  ${card("🌙", "4. When the alarm sounds — night (2 staff)", "BHH-ST-02 §3 · Manual §22", roles([
+    ["Night staff 1", "Night manager / porter", "Panel → identify zone → call 999 → guest list to the assembly point → meet the fire service."],
+    ["Night staff 2", "Second night staff", "Sweep bedroom wings from the affected zone outwards, knocking on doors. Help guests with a PEEP."],
+    ["Working alone", "Anyone", "<b>Call 999 first</b>, then the panel, then wake the affected wing. Tell the fire service what has not been checked."]]) +
+    `<p class="muted" style="margin-top:8px">Night fire patrol after midnight: routes clear, exits unlocked, fire doors shut, panel normal, laundry and kitchen off.</p>`, "#1D4E89")}
+  ${card("📋", "5. Assembly point and roll call", "BHH-ST-02 §4", steps([
+    ["Go to the assembly point", siteFact("assembly")],
+    ["Roll call", "Guest arrivals list, staff rota, visitor and contractor sign-in, spa sign-in sheet."],
+    ["Report anyone missing", "Name and room number to the fire service."],
+    ["Nobody goes back in", "Until the fire service gives the all-clear."]]), "#1E8A55")}
+  ${card("🧖", "6. Spa, pool, gym and Woodlands", "BHH-ST-02 §5 · Manual §26", `${steps([
+    ["Shared alarm", "Granite Leisure staff evacuate their areas under their own procedure."],
+    ["Wet and in robes", "Clear the pool hall, sauna, steam room and changing rooms first. Robes and towels for guests outside."],
+    ["Report in", "Granite Leisure report to the hotel duty manager at the assembly point, with the spa sign-in list."]])}
+    <p class="muted">Granite Leisure contact: ${siteFact("granite")}</p>`, "#00897B")}
+  ${card("💍", "7. Events, weddings and ceremonies", "Manual §24 · pre-event check BHH-FS-25", steps([
+    ["Numbers within the room's fire limit", "See Venues & events. Never exceed it."],
+    ["Exits, signs and gangways clear", "Layouts keep every route to a final exit open."],
+    ["No naked flames", "Candles only in enclosed holders, away from drapes and exits. No pyrotechnics or haze without written agreement."],
+    ["Brief the organiser", "Exits, assembly point, no lift. Suppliers sign in and get the fire information."]]), "#6A3FA0")}
+  ${card("🔁", "8. After every activation", "BHH-ST-02 §6 · Manual §19", steps([
+    ["Do not reset until the cause is found", "Duty manager checks the zone first."],
+    ["Record it", "HosFIRE → Record a check → Fire alarm event (cause, 999 called, fire service attended)."],
+    ["Repeat false alarm or fault?", "Report to Leader Systems the same day: " + (h((cfg().site || {}).leaderPhone || "01788 542 220")) + "."],
+    ["Impairments", "Any isolation is authorised by the duty manager, logged with interim measures, and restored before the contractor leaves."]]), "#B36B00")}
+  ${card("🔔", "9. Weekly fire alarm test", "Manual §7 · BS 5839-1", steps([
+    ["Tell reception and the duty manager", ""],
+    ["Operate one call point", "A different one each week, in rotation. Planned day and marshal are on the Weekly tests tab."],
+    ["Check", "Panel shows the zone · sounders heard everywhere · panel reset · logbook entry."],
+    ["Record it in HosFIRE", "Record a check → Weekly fire alarm test (or HosFIRE Mobile)."]]), "#1D4E89")}
+  </div>`;
+};
+BIND.procs = (v) => {
+  $$("[data-go]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); S.tab = a.dataset.go; render(); }));
+  $("#pr-print", v).onclick = () => {
+    $("#print").innerHTML = `<div class="pposter"><div style="display:flex;align-items:center;gap:12px;border-bottom:3px solid #B3261E;padding-bottom:6px;margin-bottom:10px"><img src="assets/marketing/logos/logo-blue-transparent.png" style="height:48px" onerror="this.style.display='none'"><h1 style="margin:0">Brandon Hall Hotel and Spa — Fire procedures</h1></div>${$(".pkeys", v).outerHTML}<div class="pgrid">${$$(".pcard", v).map((c) => c.outerHTML).join("")}</div><p style="font-size:10px;color:#555">From the Fire Action Procedure (BHH-ST-02) and Fire Safety Manual v1.1. Printed ${fdt(Date.now())}.</p></div>`;
+    setTimeout(() => window.print(), 300);
+  };
+};
+
+
 VIEWS.regs = () => `<h2>Regulations and <span class="fl">standards</span></h2>
   <p class="lead">What the law and the British Standards require, and how HosFIRE records each one. This is a summary for the team, not legal advice.</p>
   ${HF_REGS.map((g) => `<h3>${h(g.t)}</h3><div class="tw"><table>${g.items.map(([a, b]) => `<tr><td style="width:210px"><b>${h(a)}</b></td><td>${h(b)}</td></tr>`).join("")}</table></div>`).join("")}
@@ -1146,6 +1229,12 @@ VIEWS.settings = () => {
   <input type="file" id="seed-file" accept=".json"><label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="seed-over" style="width:auto"> Replace items that already exist (same ID)</label>
   <button class="btn red" id="seed-go">Load</button> <span id="seed-msg" class="muted"></span>
   <p class="muted">Loaded version: ${h(c.seedVersion || "none")}</p></div>
+  <div class="card" style="margin-top:12px"><h3 style="margin-top:0">Catch up job statuses</h3>
+  <p class="muted">Moves any job that has had work recorded on it (a note, photo, ticked step or %) but still says "Not started" to "In progress". Nothing else is changed and nothing is deleted.</p>
+  <button class="btn" id="catchup">Check jobs</button> <span class="muted" id="catchup-msg"></span></div>
+  <div class="card" style="margin-top:12px"><h3 style="margin-top:0">Site facts used on the procedure pages</h3>
+  <div class="f2">${[["assembly", "Assembly point"], ["mainPanel", "Main fire alarm panel location"], ["spaPanel", "Spa panel location"], ["granite", "Granite Leisure contact (name, phone)"], ["leaderPhone", "Leader Systems fault line"]].map(([k, l]) => `<div><label>${l}</label><input data-site="${k}" value="${h((cfg().site || {})[k] || "")}"></div>`).join("")}</div>
+  <button class="btn" id="site-save">Save site facts</button></div>
   <div class="card" style="margin-top:12px"><h3 style="margin-top:0">Fire marshals and rota</h3>
   <div class="f2"><div><label>Marshals, in rota order (one per line)</label><textarea id="st-m" rows="4">${h(marshals().join("\n"))}</textarea></div>
   <div><label>Rota starts (Monday)</label><input type="date" id="st-r" value="${h(rotaStart())}"><p class="muted">Changing these changes the planned rota for every week, past and future. Recorded tests are not affected.</p></div></div>
@@ -1182,6 +1271,18 @@ BIND.settings = (v) => {
       modal(`<h3>Starting data loaded</h3><p>Loaded ${n} items${skip ? `, ${skip} already there (left alone)` : ""}.</p><button class="btn" data-close>OK</button>`);
     } catch (e) { S.hold = false; render(); toast("Could not load: " + e.message); }
   };
+  $("#catchup", v).onclick = async () => {
+    const worked = (a) => a.status === "Not started" && ((a.photos || []).length || (typeof a.pct === "number" && a.pct > 0)
+      || (a.steps || []).some((x) => x.done && !/starting data/i.test(x.by || ""))
+      || (a.history || []).some((x) => !/starting data|^created$/i.test(x.note || "") && x.note));
+    const list = S.data.actions.filter(worked), msg = $("#catchup-msg", v);
+    if (!list.length) { msg.textContent = "All job statuses are up to date."; return; }
+    S.hold = true;
+    for (const a of list) await put("actions", a.id, { status: "In progress", history: (a.history || []).concat([{ at: Date.now(), by: S.user.name, status: "In progress", note: "Status caught up — work had been recorded on this job" }]) });
+    audit(`Status catch-up: ${list.length} job(s) moved to In progress (${list.map((a) => a.ref).join(", ")})`);
+    S.hold = false; render(); toast(`${list.length} job${list.length === 1 ? "" : "s"} moved to In progress: ${list.map((a) => a.ref).join(", ")}`);
+  };
+  $("#site-save", v).onclick = async () => { const site = {}; $$("[data-site]", v).forEach((i) => (site[i.dataset.site] = i.value.trim())); await put("config", "main", { site }); audit("Site facts updated"); toast("Saved"); };
   $("#st-save", v).onclick = async () => {
     const ml = $("#st-m", v).value.split("\n").map((x) => x.trim()).filter(Boolean); const rs = $("#st-r", v).value;
     if (!ml.length || !rs || parse(rs).getDay() !== 1) { toast("Enter marshals and a Monday start date"); return; }
