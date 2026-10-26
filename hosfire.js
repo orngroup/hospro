@@ -107,7 +107,13 @@ async function add(k, obj) {
 }
 async function put(k, id, obj, merge = true) {
   const doc = { ...obj, updatedBy: S.user.name, updatedAt: now() };
-  if (S.live) { await fb.db.collection(COLS[k]).doc(id).set(doc, { merge }); return; }
+  if (S.live) {
+    await fb.db.collection(COLS[k]).doc(id).set(doc, { merge });
+    // show the change straight away; the live listener confirms it a moment later
+    const i = S.data[k].findIndex((x) => x.id === id), loc = { ...obj, updatedBy: S.user.name, updatedAt: Date.now() };
+    if (i >= 0) S.data[k][i] = merge ? { ...S.data[k][i], ...loc } : { id, ...loc }; else S.data[k].push({ id, ...loc });
+    rerender(); return;
+  }
   const i = S.data[k].findIndex((x) => x.id === id);
   if (i >= 0) S.data[k][i] = merge ? { ...S.data[k][i], ...doc } : { id, ...doc }; else S.data[k].push({ id, ...doc });
   demoSave(); rerender();
@@ -240,7 +246,7 @@ function gate(k) {
 function enter(k) {
   try { sessionStorage.setItem("hosfire_gate", "1"); } catch (e) {}
   S.key = k; S.user = LOGINS[k];
-  if (location.hash === "#sign") S.tab = "sign";
+  { const hs = location.hash.slice(1); if (hs && VIEWS[hs]) S.tab = hs; }
   $("#login").classList.add("hide"); $("#app").classList.remove("hide");
   $("#who-name").textContent = S.user.name;
   const b = $("#mode-badge"); b.textContent = !S.live ? "DEMO" : k === HF_FIRE_MANAGER.key ? "Fire Safety Manager" : isAdmin() ? "Admin" : "Fire team"; if (!S.live) b.classList.add("demo");
@@ -268,7 +274,7 @@ function nav() {
   const badge = { actions: S.data.actions.filter((a) => a.status !== "Completed" && a.priority === "High").length,
     checks: HF_CHECKS.filter((c) => c.freq !== "event" && checkStatus(c).st === "Due").length, sign: myToSign().length, focus: focusLists().before.filter((a) => a.status !== "Completed").length };
   $("#nav").innerHTML = NAV.map(([g, items]) => `<div class="ng">${g}</div>` + items.map(([k, i, l]) => `<button data-t="${k}" class="${S.tab === k ? "on" : ""}"><span class="ni">${i}</span>${l}${badge[k] ? `<span class="nb" title="${k === "actions" ? "High-priority actions open" : k === "focus" ? "Jobs to finish before the inspection" : "Checks due now"}">${badge[k]}</span>` : ""}</button>`).join("")).join("");
-  $$("#nav button").forEach((b) => (b.onclick = () => { S.tab = b.dataset.t; $("#nav").classList.remove("open"); render(); window.scrollTo(0, 0); }));
+  $$("#nav button").forEach((b) => (b.onclick = () => { S.hold = false; S.tab = b.dataset.t; $("#nav").classList.remove("open"); render(); window.scrollTo(0, 0); }));
   const mb = $("#menu-btn"); if (mb) mb.onclick = () => $("#nav").classList.toggle("open");
   placeNav(); if (!window._hfNavRs) { window._hfNavRs = 1; window.addEventListener("resize", placeNav); }
 }
@@ -759,26 +765,32 @@ VIEWS.actions = () => {
   let rows = S.data.actions.slice();
   if (f.cat) rows = rows.filter((a) => a.category === f.cat);
   if (f.pri) rows = rows.filter((a) => a.priority === f.pri);
-  if (f.st === "open") rows = rows.filter((a) => a.status !== "Completed"); else if (f.st) rows = rows.filter((a) => a.status === f.st);
+  if (f.st === "open") rows = rows.filter((a) => a.status !== "Completed"); else if (f.st === "overdue") rows = rows.filter((a) => a.status !== "Completed" && a.due && a.due < today()); else if (f.st) rows = rows.filter((a) => a.status === f.st);
   if (f.q) { const q = f.q.toLowerCase(); rows = rows.filter((a) => JSON.stringify([a.ref, a.title, a.detail, a.owner, a.notes]).toLowerCase().includes(q)); }
   const pr = { High: 0, Medium: 1, Low: 2 }, so = { "Not started": 0, "In progress": 1, "Completed": 2 };
   rows.sort((a, b) => (so[a.status] - so[b.status]) || (pr[a.priority] - pr[b.priority]) || natRef(a.ref, b.ref));
-  const cnt = (s) => S.data.actions.filter((a) => a.status === s).length;
+  const scope = f.cat ? S.data.actions.filter((a) => a.category === f.cat) : S.data.actions;
+  const cnt = (s) => scope.filter((a) => a.status === s).length;
+  const overdue = scope.filter((a) => a.status !== "Completed" && a.due && a.due < today()).length, dueWk = scope.filter((a) => a.status !== "Completed" && a.due && a.due >= today() && a.due <= addDays(today(), 7)).length;
+  const catPc = (c) => { const L = S.data.actions.filter((a) => a.category === c); return L.length ? Math.round(L.reduce((t, a) => t + progressOf(a), 0) / L.length) : 0; };
   return `<h2>Action <span class="fl">tracker</span></h2>
   <p class="lead">Every fire safety action in one line: FRA actions A1–A19, Leader Systems work, emergency lighting, gas appliances and anything raised from a failed check. Change the status in the line; each change is logged with your name.</p>
-  <div class="grid g4" style="margin-bottom:12px">
-    <div class="card tile ctile ${f.st === "" ? "on" : ""}" data-ast=""><div class="n">${S.data.actions.length ? Math.round(S.data.actions.reduce((t, a) => t + progressOf(a), 0) / S.data.actions.length) : 0}%</div><div class="l">Overall progress — show all ${S.data.actions.length}</div></div>
+  <div class="grid g5" style="margin-bottom:12px">
+    <div class="card tile ctile ${f.st === "" ? "on" : ""}" data-ast=""><div class="n">${scope.length ? Math.round(scope.reduce((t, a) => t + progressOf(a), 0) / scope.length) : 0}%</div><div class="l">${f.cat ? h(f.cat) + " progress" : "Overall progress"} — show all ${scope.length}</div><div class="fx-bar"><i style="width:${scope.length ? Math.round(scope.reduce((t, a) => t + progressOf(a), 0) / scope.length) : 0}%"></i></div></div>
     <div class="card tile r ctile ${f.st === "Not started" ? "on" : ""}" data-ast="Not started"><div class="n">${cnt("Not started")}</div><div class="l">Not started</div></div>
     <div class="card tile a ctile ${f.st === "In progress" ? "on" : ""}" data-ast="In progress"><div class="n">${cnt("In progress")}</div><div class="l">In progress</div></div>
     <div class="card tile g ctile ${f.st === "Completed" ? "on" : ""}" data-ast="Completed"><div class="n">${cnt("Completed")}</div><div class="l">Completed</div></div>
+    <div class="card tile ${overdue ? "r" : "g"} ctile ${f.st === "overdue" ? "on" : ""}" data-ast="overdue"><div class="n">${overdue}</div><div class="l">Overdue${dueWk ? ` · ${dueWk} due in 7 days` : ""}</div></div>
   </div>
-  <div class="tabs2">${["", ...HF_ACTION_CATS].map((c) => `<button data-cat="${h(c)}" class="${f.cat === c ? "on" : ""}">${c || "All"} (${c ? S.data.actions.filter((a) => a.category === c).length : S.data.actions.length})</button>`).join("")}</div>
+  <div class="catcards">${HF_ACTION_CATS.filter((c) => S.data.actions.some((a) => a.category === c)).map((c) => { const L = S.data.actions.filter((a) => a.category === c), dn = L.filter((a) => a.status === "Completed").length, ip = L.filter((a) => a.status === "In progress").length, pc = catPc(c);
+    return `<button data-cat="${h(c)}" class="catcard ${f.cat === c ? "on" : ""}"><b>${h(c)}</b><span>${dn}/${L.length} done · ${ip} in progress</span><div class="fx-bar"><i style="width:${pc}%"></i></div><small>${pc}%</small></button>`; }).join("")}
+    <button data-cat="" class="catcard ${!f.cat ? "on" : ""}"><b>All sections</b><span>${S.data.actions.filter((a) => a.status === "Completed").length}/${S.data.actions.length} done</span></button></div>
   <div class="row" style="margin-bottom:10px">
     <select id="af-st" style="width:auto">${[["open", "Open (not completed)"], ["", "All statuses"], ...HF_STATUS.map((s) => [s, s])].map(([v, l]) => `<option value="${v}" ${f.st === v ? "selected" : ""}>${l}</option>`).join("")}</select>
     <input id="af-q" placeholder="Search…" value="${h(f.q)}" style="width:220px">${f.pri ? `<span class="pill p-red">${h(f.pri)} priority only <a href="#" id="af-pri" style="color:inherit">✕</a></span>` : ""}<div class="grow"></div>
     <button class="btn red" id="a-new">+ Add action</button>
   </div>
-  <div class="tw"><table><tr><th style="width:56px">Ref</th><th>Action</th><th>Category</th><th>Priority</th><th>Owner</th><th>Due</th><th style="width:150px">Status</th><th style="width:150px">Progress</th><th>Last update</th></tr>
+  <div class="tw"><table><tr><th style="width:56px">Ref</th><th>Action</th><th>Category</th><th>Priority</th><th>Owner</th><th>Due</th><th style="width:150px">Status</th><th style="width:150px">Progress</th><th>Last update</th><th></th></tr>
   ${rows.map((a) => { const late = a.due && a.status !== "Completed" && a.due < today(); const last = (a.history || []).slice(-1)[0];
     const sc = HF_SOURCE_OF(a);
     return `<tr style="box-shadow:inset 4px 0 0 ${sc.color}"><td><b style="color:${sc.color}">${h(a.ref)}</b><div><span class="pill" style="background:${sc.color};color:#fff;font-size:10px">${h(sc.label)}</span></div></td><td><a href="#" data-edit="${a.id}" style="color:var(--navy);font-weight:700;text-decoration:none">${h(a.title)}</a>${(a.photos || []).length ? ` <span class="pill p-navy" title="Photos from HosFIRE Mobile">📷 ${a.photos.length}</span>` : ""}${a.notes ? `<div class="muted">${h(a.notes)}</div>` : ""}</td>
@@ -786,18 +798,19 @@ VIEWS.actions = () => {
     <td><select data-st="${a.id}" style="padding:6px;font-weight:700;color:${a.status === "Completed" ? "var(--ok)" : a.status === "In progress" ? "var(--amber)" : "var(--red)"}">${HF_STATUS.map((s) => `<option ${a.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></td>
     <td><div class="pct">${[0, 25, 50, 75, 100].map((n) => `<button data-pct="${a.id}" data-n="${n}" class="${progressOf(a) === n ? "on" : ""}" title="Set ${n}%">${n}</button>`).join("")}</div>
     <a href="#" data-edit="${a.id}" style="text-decoration:none;color:inherit">${progBar(progressOf(a), 80)}${typeof a.pct === "number" && a.pct !== null && a.status !== "Completed" ? `<span class="muted">set by hand</span>` : (a.steps || []).length ? `<span class="muted">${a.steps.filter((x) => x.done).length} of ${a.steps.length} steps</span>` : ""}</a></td>
-    <td class="muted">${last ? `${fdt(last.at)}<br>${h(last.by)}` : ""}</td></tr>`; }).join("") || `<tr><td colspan="9" class="muted">No actions match.</td></tr>`}
+    <td class="muted">${last ? `${fdt(last.at)}<br>${h(last.by)}` : ""}</td><td><button class="btn sm ${a.status === "Completed" ? "ghost" : ""}" data-upd="${a.id}">✏️ Update</button></td></tr>`; }).join("") || `<tr><td colspan="10" class="muted">No actions match.</td></tr>`}
   </table></div>`;
 };
 BIND.actions = (v) => {
   const f = S.f.act;
   $$("[data-cat]", v).forEach((b) => (b.onclick = () => { f.cat = b.dataset.cat; render(); }));
-  $$("[data-ast]", v).forEach((b) => (b.onclick = () => { f.st = b.dataset.ast; f.cat = ""; f.pri = ""; render(); const t = $(".tw", v); if (t) t.scrollIntoView({ behavior: "smooth" }); }));
+  $$("[data-ast]", v).forEach((b) => (b.onclick = () => { f.st = b.dataset.ast; f.pri = ""; render(); const t = $(".tw", v); if (t) t.scrollIntoView({ behavior: "smooth" }); }));
   $("#af-st", v).onchange = (e) => { f.st = e.target.value; render(); };
   $("#af-q", v).onchange = (e) => { f.q = e.target.value; render(); };
   const ap = $("#af-pri", v); if (ap) ap.onclick = (e) => { e.preventDefault(); f.pri = ""; render(); };
   $("#a-new", v).onclick = () => editAction(null);
   $$("[data-edit]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); editAction(a.dataset.edit); }));
+  $$("[data-upd]", v).forEach((b) => (b.onclick = () => editAction(b.dataset.upd)));
   $$("[data-pct]", v).forEach((b) => (b.onclick = async () => {
     const a = S.data.actions.find((x) => x.id === b.dataset.pct), n = +b.dataset.n;
     const status = n === 100 ? "Completed" : n === 0 ? (a.status === "Completed" ? "In progress" : a.status) : "In progress";
@@ -816,7 +829,7 @@ BIND.actions = (v) => {
       const history = (a.history || []).concat([{ at: Date.now(), by: S.user.name, status, note }]);
       const upd = { status, history }; if (status === "Completed") upd.completedOn = today();
       if (note) upd.notes = note;
-      await put("actions", a.id, upd); audit(`Action ${a.ref} status → ${status}${note ? ": " + note : ""}`, a.ref); m.close(); toast("Updated");
+      await put("actions", a.id, upd); audit(`Action ${a.ref} status → ${status}${note ? ": " + note : ""}`, a.ref); m.close(); render(); toast("Updated");
     };
   }));
 };
@@ -875,7 +888,7 @@ BIND.focus = (v) => {
 function editAction(id) {
   const a = id ? S.data.actions.find((x) => x.id === id) : { ref: nextRef("N"), status: "Not started", priority: "Medium", category: "Other" };
   const sel = (k, opts) => `<select data-k="${k}">${opts.map((o) => `<option ${a[k] === o ? "selected" : ""}>${h(o)}</option>`).join("")}</select>`;
-  const m = modal(`<h3>${id ? "Edit action " + h(a.ref) : "New action"}</h3>
+  const m = modal(`<h3>${id ? "Update action " + h(a.ref) : "New action"}${id ? " " + pill(a.status) : ""}</h3>
     <div class="f2"><div><label>Ref</label><input data-k="ref" value="${h(a.ref)}"></div><div><label>Category</label>${sel("category", HF_ACTION_CATS)}</div></div>
     <label>Action</label><input data-k="title" value="${h(a.title)}">
     <label>Detail</label><textarea data-k="detail">${h(a.detail)}</textarea>
@@ -883,6 +896,8 @@ function editAction(id) {
     <div><label>Owner</label><input data-k="owner" value="${h(a.owner)}"></div><div><label>Contractor</label><input data-k="contractor" value="${h(a.contractor)}"></div>
     <div><label>Due date</label><input type="date" data-k="due" value="${h(a.due)}"></div><div><label>Source</label><input data-k="source" value="${h(a.source)}"></div></div>
     ${(a.photos || []).length ? `<label>Photos from the app (${a.photos.length})</label><div id="ph" style="display:flex;gap:8px;flex-wrap:wrap"></div>` : ""}
+    ${id ? `<label>Add photos or evidence</label><input type="file" id="a-ph" accept="image/*,.pdf" multiple><input id="a-phc" placeholder="Caption (optional), e.g. new fitting in corridor 128" style="margin-top:6px">` : ""}
+    <label>Progress</label><div class="pct" id="a-pct">${[0, 25, 50, 75, 100].map((n) => `<button type="button" data-n="${n}" class="${id && progressOf(a) === n ? "on" : ""}">${n}%</button>`).join("")}</div>
     <label>Progress steps</label><div id="steps"></div>
     <div class="row"><input id="step-new" placeholder="Add a step, e.g. Quote approved" class="grow" style="width:auto;flex:1"><button class="btn sm ghost" id="step-add">Add step</button></div>
     <label>Latest note</label><textarea data-k="notes">${h(a.notes)}</textarea>
@@ -902,6 +917,9 @@ function editAction(id) {
     $$("[data-sd]", m).forEach((b) => (b.onclick = () => { steps.splice(+b.dataset.sd, 1); drawSteps(); }));
   };
   drawSteps();
+  let setPct = null;
+  $$("#a-pct button", m).forEach((b) => (b.onclick = () => { setPct = +b.dataset.n; $$("#a-pct button", m).forEach((x) => x.classList.toggle("on", x === b));
+    const st = $("[data-k=status]", m); if (setPct === 100) st.value = "Completed"; else if (setPct > 0 && st.value !== "In progress") st.value = "In progress"; }));
   $("#step-add", m).onclick = () => { const t = $("#step-new", m).value.trim(); if (!t) return; steps.push({ t, done: false }); $("#step-new", m).value = ""; drawSteps(); };
   $("#as", m).onclick = async () => {
     const o = {}; $$("[data-k]", m).forEach((el) => (o[el.dataset.k] = el.value.trim()));
@@ -914,9 +932,20 @@ function editAction(id) {
       if (!o.notes || o.notes === (a.notes || "")) { const nd = steps.filter((x, i) => x.done && !((a.steps || [])[i] || {}).done).map((x) => x.t); if (nd.length) o.notes = "Done: " + nd.join("; "); }
     }
     if (!id || o.status !== a.status || o.notes !== (a.notes || "")) o.history = (a.history || []).concat([{ at: Date.now(), by: S.user.name, status: o.status, note: id ? (o.notes !== (a.notes || "") ? o.notes : "Edited") : "Created" }]);
+    if (setPct !== null) { o.pct = setPct; if (setPct > 0 && setPct < 100 && o.status === "Not started") o.status = "In progress"; }
     if (o.status === "Completed" && a.status !== "Completed") o.completedOn = today();
+    const phf = $("#a-ph", m), newPh = phf ? Array.from(phf.files) : [];
+    if (newPh.length) {
+      if (!S.live) return ($("#ae", m).textContent = "Photos need the live system (not demo mode).");
+      const photos = (a.photos || []).slice(), cap = ($("#a-phc", m).value || "").trim();
+      for (let i = 0; i < newPh.length; i++) { $("#ae", m).textContent = `Uploading ${i + 1} of ${newPh.length}…`; const fl = await upload("actions", newPh[i]); photos.push({ path: fl.path, name: fl.name, caption: cap, at: Date.now(), by: S.user.name }); }
+      o.photos = photos;
+      const ph = `${newPh.length} photo${newPh.length === 1 ? "" : "s"} added${cap ? ": " + cap : ""}`;
+      o.history = (o.history || (a.history || []).slice()).concat([{ at: Date.now(), by: S.user.name, status: o.status, note: ph }]);
+    }
+    if (setPct !== null && !newPh.length && (!o.history || o.history.length === (a.history || []).length)) o.history = (a.history || []).concat([{ at: Date.now(), by: S.user.name, status: o.status, note: `Progress set to ${setPct}%` }]);
     if (id) await put("actions", id, o); else await add("actions", o);
-    audit(`${id ? "Edited" : "Added"} action ${o.ref}: ${o.title}`, o.ref); m.close(); toast("Saved");
+    audit(`${id ? "Updated" : "Added"} action ${o.ref}: ${o.title}`, o.ref); m.close(); render(); toast("Saved");
   };
   const d = $("#ad", m); if (d) d.onclick = async () => { if (!confirmBox(m, "Delete this action? It will be removed from the tracker.")) return; await del("actions", id); audit(`Deleted action ${a.ref}`, a.ref); m.close(); };
 }
