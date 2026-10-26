@@ -952,6 +952,58 @@ function editAction(id) {
 function confirmBox(m, msg) { const e = $(".err", m); if (e && e.dataset.sure !== "1") { e.textContent = msg + " Press again to confirm."; e.dataset.sure = "1"; return false; } return true; }
 
 /* ============================================================ AUDIT READINESS */
+/* ---------- audit readiness: what the records show ---------- */
+function auditSuggest(id) {
+  const A = S.data.actions, byRef = (r) => A.filter((a) => a.ref === r), done = (refs) => refs.every((r) => byRef(r).length && byRef(r).every((a) => a.status === "Completed"));
+  const started = (refs) => refs.some((r) => byRef(r).some((a) => a.status !== "Not started"));
+  const cat = (c) => { const L = A.filter((a) => a.category === c); return L.length ? Math.round(L.reduce((t, a) => t + progressOf(a), 0) / L.length) : 0; };
+  const doc = (d) => S.data.registers.find((r) => r.id === d), held = (d) => !!(doc(d) && doc(d).file);
+  const signed = (d) => { const L = signItems().filter((x) => x.docId === d); return L.length && L.every((x) => x.sig); };
+  const cert = (c) => certState(S.data.registers.find((r) => r.id === c) || {}).st, inDate = (c) => ["OK", "Due soon"].includes(cert(c));
+  const within = (t, days) => recs(t).filter((r) => r.date >= addDays(today(), -days)).length;
+  const R = (st, why) => ({ st, why });
+  const actWhy = (refs) => refs.map((r) => `${r}: ${(byRef(r)[0] || {}).status || "—"}`).join(" · ");
+  const TR = reg("training"), pcInd = TR.length ? TR.filter((t) => (t.courses || {}).induction).length / TR.length : 0, pcConf = TR.length ? TR.filter((t) => evOf(t, "induction").confirmed).length / TR.length : 0;
+  switch (id) {
+    case "fra": return held("doc-fra-rev1") || held("doc-fra-2026") ? (inDate("cert-11") && (held("doc-fra-rev1")) ? R(done(["S2"]) ? "Ready" : "Partly ready", `FRA held (Rev 1 ${held("doc-fra-rev1") ? "uploaded" : "not uploaded"}); spa / Woodlands / function rooms coverage (S2): ${(byRef("S2")[0] || {}).status || "—"}`) : R("Partly ready", "FRA held but Rev 1 not uploaded or review date passed")) : R("Not ready", "No FRA file uploaded");
+    case "fraplan": { const c = cat("FRA action"); return R(c >= 80 ? "Ready" : c >= 30 ? "Partly ready" : "Not ready", `FRA actions ${c}% complete on average`); }
+    case "rp": return signed("doc-st-03") ? R("Ready", "Responsibilities statement signed") : R("Partly ready", "Glenn Randell named as Fire Safety Manager; responsibilities statement (BHH-ST-03) not fully signed");
+    case "coop": return done(["A16", "O1"]) ? R("Ready", actWhy(["A16", "O1"])) : started(["A16", "O1"]) ? R("Partly ready", actWhy(["A16", "O1"])) : R("Not ready", actWhy(["A16", "O1"]));
+    case "policy": return (signed("doc-st-02") && held("doc-manual")) ? R("Ready", "Fire action procedure signed and manual held") : (held("doc-manual") || held("doc-st-02")) ? R("Partly ready", "Procedure / manual held but not all signatures done") : R("Not ready", "Procedure and manual not uploaded");
+    case "weekly": { const W = backWeeks(), dn = W.filter((wc) => inRange("weekly_alarm", wc, addDays(wc, 6)).length).length, rec = within("weekly_alarm", 14);
+      return R(rec && dn >= W.length * 0.75 ? "Ready" : rec || dn ? "Partly ready" : "Not ready", `${dn} of ${W.length} weeks since Feb evidenced; ${rec} test(s) in the last 2 weeks`); }
+    case "service": return inDate("cert-01") ? R("Ready", "Fire alarm service certificate in date") : held("cert-01") || held("doc-ldr-fas-250226") ? R("Partly ready", `Certificates held (latest 25 Feb 2026) but quarterly visits missed — ${cert("cert-01")}`) : R("Not ready", "No current fire alarm certificate");
+    case "faults": return done(["A1", "A2", "L1", "L2"]) ? R("Ready", actWhy(["A1", "A2", "L1", "L2"])) : R("Partly ready", actWhy(["A1", "A2", "L1", "L2"]) + " — explain interim measures");
+    case "false": return done(["A6"]) ? R("Ready", actWhy(["A6"])) : (recs("alarm_event").length || started(["A6", "A5"])) ? R("Partly ready", `${recs("alarm_event").length} alarm events logged; ${actWhy(["A5", "A6"])}`) : R("Not ready", "No alarm events logged; " + actWhy(["A6"]));
+    case "zones": return done(["A4"]) || done(["L3"]) ? R("Ready", actWhy(["A4", "L3"])) : R(started(["A4", "L3"]) ? "Partly ready" : "Not ready", actWhy(["A4", "L3"]));
+    case "999": return held("doc-proc-reception") || held("doc-st-02") ? R(done(["I14"]) ? "Ready" : "Partly ready", `Reception procedure / fire action procedure held; monitoring confirmed with Leader (I14): ${(byRef("I14")[0] || {}).status || "—"}`) : R("Not ready", "Procedure not uploaded");
+    case "routes": { const n = within("daily", 7); return R(n >= 5 ? "Ready" : n || done(["I5"]) ? "Partly ready" : "Not ready", `${n} daily check(s) in the last 7 days; walk-round I5: ${(byRef("I5")[0] || {}).status || "—"}`); }
+    case "doors": return inDate("cert-08") ? R("Ready", "Fire door inspection certificate in date") : (within("doors_weekly", 31) || started(["A12"])) ? R("Partly ready", `${within("doors_weekly", 31)} fire door check(s) this month; annual inspection A12: ${(byRef("A12")[0] || {}).status || "—"}`) : R("Not ready", "No fire door inspection or checks recorded");
+    case "el": { const c = cat("Emergency lighting"); return inDate("cert-02") && c >= 80 ? R("Ready", `3-hour certificate in date; EL actions ${c}%`) : R(c >= 50 || within("el_monthly", 45) ? "Partly ready" : "Not ready", `EL actions ${c}% complete; 3-hour certificate: ${cert("cert-02")}`); }
+    case "notices": return done(["I6"]) ? R("Ready", actWhy(["I6"])) : R(started(["I6"]) ? "Partly ready" : "Not ready", actWhy(["I6"]));
+    case "ext": { const ok = inDate("cert-03"), open = A.filter((a) => a.category === "Extinguishers" && a.status !== "Completed" && a.priority === "High").length, mon = within("extinguishers", 31) || reg("ext").some((e) => e.check && e.check >= addDays(today(), -31));
+      return R(ok && !open && mon ? "Ready" : ok ? "Partly ready" : "Not ready", `Annual service ${cert("cert-03")}; ${open} high-priority extinguisher job(s) open; monthly check ${mon ? "recorded" : "not recorded"}`); }
+    case "kitchen": return inDate("cert-04") && done(["A10", "A18"]) ? R("Ready", actWhy(["A10", "A18"])) : R(inDate("cert-04") ? "Partly ready" : "Not ready", `Ansul service ${cert("cert-04")}; ${actWhy(["A10", "A18"])}`);
+    case "gas": { const c = cat("Gas appliances"); return inDate("cert-05") && c >= 90 ? R("Ready", `Gas safety record in date; gas actions ${c}%`) : R(c >= 50 ? "Partly ready" : "Not ready", `Gas actions ${c}% complete; gas safety record ${cert("cert-05")}`); }
+    case "elec": return inDate("cert-06") && inDate("cert-07") ? R("Ready", "EICR and PAT in date") : R("Partly ready", `EICR ${cert("cert-06")}; PAT ${cert("cert-07")}`);
+    case "laundry": return done(["A19"]) || within("laundry", 7) >= 3 ? R("Ready", `${within("laundry", 7)} laundry check(s) this week`) : R(within("laundry", 31) || started(["A19"]) ? "Partly ready" : "Not ready", `${within("laundry", 31)} laundry check(s) this month; ${actWhy(["A19"])}`);
+    case "hotwork": return held("doc-hotwork-form") ? R(done(["R2"]) ? "Ready" : "Partly ready", `Hot work permit form held; ${actWhy(["R2"])}`) : R("Not ready", "No hot work permit form");
+    case "spa_fra": return done(["S2"]) ? R("Ready", actWhy(["S2"])) : R("Partly ready", "FRA covers the spa in part; " + actWhy(["S2"]));
+    case "spa_evac": return done(["I12"]) ? R("Ready", actWhy(["I12"])) : R(started(["I12"]) ? "Partly ready" : "Not ready", actWhy(["I12"]));
+    case "spa_alarm": case "spa_chem": case "spa_heat": { const n = within("spa", 14); return n ? R("Ready", `${n} spa check(s) in the last 2 weeks`) : within("spa", 60) ? R("Partly ready", "Spa checks recorded but not in the last 2 weeks") : null; }
+    case "spa_panel": return done(["A4"]) ? R("Ready", actWhy(["A4"])) : R(started(["A4", "L3"]) ? "Partly ready" : "Not ready", actWhy(["A4", "L3"]));
+    case "occ": { const V = reg("venue"), withLim = V.filter((v) => Object.values(v.fire || {}).some(Boolean)).length; return done(["I11"]) || (V.length && withLim === V.length) ? R("Ready", `${withLim} of ${V.length} rooms have a fire limit`) : R(withLim ? "Partly ready" : "Not ready", `${withLim} of ${V.length} rooms have a fire limit; ${actWhy(["I11"])}`); }
+    case "layout": case "decor": { const n = within("event", 90); return n ? R(done(["I13"]) ? "Ready" : "Partly ready", `${n} pre-event check(s) in the last 3 months`) : R(started(["I13"]) ? "Partly ready" : "Not ready", "No pre-event checks recorded; " + actWhy(["I13"])); }
+    case "ceremony": return done(["I10"]) ? R("Ready", actWhy(["I10"])) : R(started(["I10"]) ? "Partly ready" : "Not ready", actWhy(["I10"]));
+    case "bedrooms": return reg("peep").length ? R("Partly ready", `${reg("peep").length} PEEP(s) recorded — check-in question in use`) : null;
+    case "train": return R(pcConf >= 0.9 ? "Ready" : pcInd >= 0.5 ? "Partly ready" : "Not ready", `${Math.round(pcInd * 100)}% of staff have a training date; ${Math.round(pcConf * 100)}% evidenced`);
+    case "marshals": { const M = marshals(), n = M.filter((m) => { const t = TR.find((x) => x.name === m); return t && (t.courses || {}).marshal; }).length; return R(n === M.length ? "Ready" : n ? "Partly ready" : "Not ready", `${n} of ${M.length} marshals have a course date`); }
+    case "drills": { const D = recs("drill").filter((d) => d.date >= addMonths(today(), -12)), night = D.some((d) => (d.fields || {}).shift === "Night"); return R(D.length >= 2 && night ? "Ready" : D.length ? "Partly ready" : "Not ready", `${D.length} drill(s) in 12 months${night ? " incl. night" : ""}`); }
+    case "night": return done(["I9"]) ? R("Ready", actWhy(["I9"])) : R(started(["I9", "R8"]) ? "Partly ready" : "Not ready", actWhy(["I9", "R8"]));
+    case "peeps": return done(["A13"]) ? R(reg("peep").length ? "Ready" : "Partly ready", actWhy(["A13"])) : R(started(["A13"]) || reg("peep").length ? "Partly ready" : "Not ready", actWhy(["A13"]));
+  }
+  return null;
+}
 function auditScore(group) {
   const items = group ? group.items : HF_AUDIT.flatMap((g) => g.items);
   const st = (id) => (S.data.registers.find((r) => r.id === "audit-" + id) || {}).status || "Not ready";
@@ -962,19 +1014,26 @@ VIEWS.audit = () => {
   const get = (id) => S.data.registers.find((r) => r.id === "audit-" + id) || {};
   const sc = auditScore();
   return `<h2>Audit <span class="fl">readiness</span></h2>
-  <p class="lead">What the fire safety officer will look at during the Fire Safety Order audit — including the spa and the function / ceremony rooms. Mark each one and note where the evidence is.</p>
+  <p class="lead">What the fire safety officer will look at during the Fire Safety Order audit — including the spa and the function / ceremony rooms. Mark each one and note where the evidence is. "What the records show" is worked out from the live actions, certificates, documents, signatures, training and checks.</p>
+  ${(() => { const diff = HF_AUDIT.flatMap((g) => g.items).filter(([id]) => { const sg = auditSuggest(id); return sg && sg.st !== (get(id).status || "Not ready"); }); const ev = (() => { const its = HF_AUDIT.flatMap((g) => g.items); const pts = its.reduce((t, [id]) => { const sg = auditSuggest(id); const st = sg ? sg.st : (get(id).status || "Not ready"); return t + ({ "Ready": 1, "Partly ready": 0.5 }[st] || 0); }, 0); return Math.round(100 * pts / its.length); })();
+    return diff.length ? `<div class="warn"><b>${diff.length} item${diff.length === 1 ? "" : "s"}</b> marked differently from what the records show (records suggest <b>${ev}%</b> overall). <button class="btn sm red" id="au-all">Update all ${diff.length} to match the records</button> <span class="muted">or use the "Use" button on each line. You can still change any item by hand afterwards.</span></div>` : `<div class="note">Every item matches what the records show.</div>`; })()}
   <div class="grid g5" style="margin-bottom:12px">
     <div class="card tile ${sc.pc >= 80 ? "g" : sc.pc >= 50 ? "a" : "r"}"><div class="n">${sc.pc}%</div><div class="l">Overall readiness</div></div>
     ${["Ready", "Partly ready", "Not ready"].map((x, i) => `<div class="card tile ${["g", "a", "r"][i]}"><div class="n">${HF_AUDIT.flatMap((g) => g.items).filter(([id]) => (get(id).status || "Not ready") === x).length}</div><div class="l">${x}</div></div>`).join("")}
   </div>
   ${HF_AUDIT.map((g) => { const gs = auditScore(g); return `<h3 class="row"><span class="grow">${h(g.t)}</span><span style="font-size:13px">${progBar(gs.pc, 120)}</span></h3>
-  <div class="tw"><table><tr><th>What he will look at</th><th style="width:170px">Where the evidence is</th><th style="width:260px">Status</th><th style="width:28%">Notes</th></tr>
-  ${g.items.map(([id, t, ev]) => { const r = get(id), st = r.status || "Not ready"; return `<tr><td>${h(t)}</td><td class="muted">${h(ev)}</td>
+  <div class="tw"><table><tr><th>What he will look at</th><th style="width:150px">Where the evidence is</th><th style="width:250px">Status</th><th style="width:22%">What the records show</th><th style="width:20%">Notes</th></tr>
+  ${g.items.map(([id, t, ev]) => { const r = get(id), st = r.status || "Not ready", sg = auditSuggest(id); return `<tr><td>${h(t)}</td><td class="muted">${h(ev)}</td>
     <td><div class="seg">${HF_READY.map((x) => `<button data-au="${id}" data-v="${x}" class="${st === x ? "on " + (x === "Ready" ? "pass" : x === "Not ready" ? "fail" : "na") : ""}" style="font-size:12px">${x}</button>`).join("")}</div>
     ${r.updatedBy ? `<div class="muted" style="font-size:11px;margin-top:3px">${h(r.updatedBy)} · ${fdt(r.updatedAt)}</div>` : ""}</td>
+    <td style="font-size:12px">${sg ? `${pill(sg.st === "Ready" ? "Done" : sg.st === "Partly ready" ? "Due" : "Missed").replace(/>(Done|Due|Missed)</, ">" + h(sg.st) + "<")}${sg.st !== st ? ` <button class="btn sm ghost" data-aus="${id}" data-v="${sg.st}">Use</button>` : ' <span class="muted">✓ matches</span>'}<div class="muted">${h(sg.why)}</div>` : '<span class="muted">Check by eye</span>'}</td>
     <td><input data-aun="${id}" value="${h(r.note)}" placeholder="e.g. in the red folder, tab 3"></td></tr>`; }).join("")}</table></div>`; }).join("")}`;
 };
 BIND.audit = (v) => {
+  $$("[data-aus]", v).forEach((b) => (b.onclick = async () => { const sg = auditSuggest(b.dataset.aus); await put("registers", "audit-" + b.dataset.aus, { kind: "audit", status: b.dataset.v, basis: sg ? sg.why : "" }); audit(`Audit readiness: ${b.dataset.aus} → ${b.dataset.v} (from the records)`); }));
+  const all = $("#au-all", v); if (all) all.onclick = async () => { all.disabled = true; S.hold = true; let n = 0;
+    for (const [id] of HF_AUDIT.flatMap((g) => g.items)) { const sg = auditSuggest(id), cur = (S.data.registers.find((r) => r.id === "audit-" + id) || {}).status || "Not ready"; if (sg && sg.st !== cur) { await put("registers", "audit-" + id, { kind: "audit", status: sg.st, basis: sg.why }); n++; } }
+    audit(`Audit readiness updated from the records: ${n} item(s)`); S.hold = false; render(); toast(`${n} item${n === 1 ? "" : "s"} updated`); };
   $$("[data-au]", v).forEach((b) => (b.onclick = async () => { await put("registers", "audit-" + b.dataset.au, { kind: "audit", status: b.dataset.v }); audit(`Audit readiness: ${b.dataset.au} → ${b.dataset.v}`); }));
   $$("[data-aun]", v).forEach((i) => (i.onchange = async () => { await put("registers", "audit-" + i.dataset.aun, { kind: "audit", note: i.value.trim() }); }));
 };
@@ -1859,7 +1918,7 @@ function packHTML(from, to, on) {
   if (on.records) out += sec("records") + tbl(["Date", "Check", "Result", "Done by", "Saved", "Notes"], R.filter((r) => r.type !== "weekly_alarm").map((r) => [fds(r.date), h((CHECK[r.type] || {}).name || r.type) + src(r), h(resultOf(effective(r))), h(r.imported ? r.doneBy : r.byName), fdt(r.createdAt), h(r.notes) + (S.data.records.find((x) => x.correctionOf === r.id) ? " <i>(corrected)</i>" : "")])) + end;
   if (on.scans) out += sec("scans", `<p>Original paper testing sheets, scanned and held in HosFIRE exactly as found. "Records made" shows how many HosFIRE records were entered from each sheet.</p>`) + tbl(["Sheet", "Check", "Month", "Records made", "Points noted"], reg("scan").sort((a, b) => natRef(a.title, b.title)).map((x) => [h(x.title), h((CHECK[x.checkType] || {}).name || "—"), x.period ? MON[+x.period.slice(5) - 1] + " " + x.period.slice(0, 4) : "", String(S.data.records.filter((r) => r.scanId === x.id).length), (x.flags || []).map(h).join("<br>")])) + end;
   if (on.certs) out += sec("certs") + tbl(["Ref", "Certificate", "Contractor", "Last done", "Next due", "Status", "Cert no."], reg("cert").sort((a, b) => natRef(a.ref, b.ref)).map((c) => { const s = certState(c); return [h(c.ref), h(c.name) + (c.notes ? `<br><i>${h(c.notes)}</i>` : ""), h(c.contractor), c.last ? fds(c.last) : "—", s.next ? fds(s.next) : "", s.st, h(c.certRef)]; })) + end;
-  if (on.certs && extRows().length) out += `<div class="pk-sec" style="page-break-before:always">` + `<h3>Fire extinguishers and blankets — locations and condition</h3><p>From Leader Systems' service reports. ${extRows().filter((e) => extState(e) !== "OK").length} position(s) need action — see actions X1–X6.</p>` + extTable(extRows(), false).replace(/<th style="width:12%">Monthly check ✓ \/ date<\/th>/g, "").replace(/<td>&nbsp;<\/td><\/tr>/g, "</tr>") + end;
+  if (on.certs && extRows().length) out += `<div class="pk-sec" style="page-break-before:always">` + `<h3>Fire extinguishers and blankets — locations and condition</h3><p>From Leader Systems' service reports. ${extRows().filter((e) => extState(e) !== "OK").length} position(s) need action — see actions EX1–EX6.</p>` + extTable(extRows(), false).replace(/<th style="width:12%">Monthly check ✓ \/ date<\/th>/g, "").replace(/<td>&nbsp;<\/td><\/tr>/g, "</tr>") + end;
   if (on.drills) out += sec("drills") + tbl(["Date", "Day / night", "Evacuation time", "Staff", "Issues"], R.filter((r) => r.type === "drill").map((r) => { const f = r.fields || {}; return [fd(r.date) + src(r), h(f.shift), h(f.evac) + " min", h(f.staff), h(f.issues)]; })) + end;
   if (on.training) out += sec("training", `<p>✓ = signed attendance sheet or certificate seen. "to confirm" = date recorded, evidence not yet seen. n/a = course does not apply to that role.</p>`) + tbl(["Name", "Role", "Shift", ...HF_COURSES.map((c) => c[1])], reg("training").sort((a, b) => natRef(a.dept, b.dept) || natRef(a.name, b.name)).map((t) => [h(t.name) + (t.marshal ? " (marshal)" : ""), h(t.role), h(t.shift), ...HF_COURSES.map((cc) => { const k = cc[0]; if (!courseApplies(t, cc)) return "n/a"; const d = (t.courses || {})[k]; return d ? fds(d) + (evOf(t, k).confirmed ? " ✓" : " <i>to confirm</i>") : "—"; })])) + end;
   if (on.docs) out += sec("docs") + tbl(["Document", "Category", "Date", "Version", "Issued by", "Held"], reg("doc").filter((d) => d.cat !== "Training").sort((a, b) => natRef(a.cat, b.cat) || natRef(a.title, b.title)).map((d) => [h(d.title), h(d.cat), d.date ? fds(d.date) : "", h(d.version), h(d.author), d.file ? "Yes (HosFIRE)" : "Paper / to upload"]))
@@ -1898,7 +1957,7 @@ VIEWS.ext = () => {
   </div>
   <div class="row" style="margin-bottom:8px"><button class="btn sm ${f.show === "all" ? "" : "ghost"}" data-exs="all">All (${L.length})</button><button class="btn sm ${f.show === "prob" ? "" : "ghost"}" data-exs="prob">Need action (${prob.length})</button></div>
   ${L.length ? `<div class="tw">${extTable(shown, true)}</div>` : `<p class="muted">No extinguisher list loaded yet — load the latest starting data in Settings.</p>`}
-  <p class="muted" style="margin-top:8px">Next annual service by a competent person: by 13 Nov 2026 (Leader Systems). Actions X1–X6 in the Action tracker cover the problems found.</p>`;
+  <p class="muted" style="margin-top:8px">Next annual service by a competent person: by 13 Nov 2026 (Leader Systems). Actions EX1–EX6 in the Action tracker cover the problems found.</p>`;
 };
 BIND.ext = (v) => {
   $$("[data-exs]", v).forEach((b) => (b.onclick = () => { S.f.ext.show = b.dataset.exs; render(); }));
@@ -1917,7 +1976,7 @@ BIND.ext = (v) => {
       const upd = { check: $("#xe-d", m).value, checkBy: S.user.name, checkNote: ok ? note : r + (note ? " — " + note : "") };
       if ($("#xe-l", m)) Object.assign(upd, { loc: $("#xe-l", m).value.trim(), type: $("#xe-t", m).value.trim(), tdr: $("#xe-y", m).value.trim(), result: $("#xe-s", m).value, notes: $("#xe-sn", m).value.trim() });
       await put("registers", e.id, upd); audit(`Extinguisher ${e.no} (${e.loc}): ${upd.checkNote || "visual check OK"}`);
-      if (!ok) await add("actions", { ref: nextRef("X"), title: `Extinguisher ${e.no} — ${e.loc} (${e.type}): ${r}`, detail: note, category: "Extinguishers", priority: "High", owner: HF_FIRE_MANAGER.name, due: addDays(today(), 7), status: "Not started", source: `Visual check ${fds(upd.check)}`, history: [{ at: Date.now(), by: S.user.name, status: "Not started", note: "Raised from an extinguisher check" }] });
+      if (!ok) await add("actions", { ref: nextRef("EX"), title: `Extinguisher ${e.no} — ${e.loc} (${e.type}): ${r}`, detail: note, category: "Extinguishers", priority: "High", owner: HF_FIRE_MANAGER.name, due: addDays(today(), 7), status: "Not started", source: `Visual check ${fds(upd.check)}`, history: [{ at: Date.now(), by: S.user.name, status: "Not started", note: "Raised from an extinguisher check" }] });
       m.close(); render(); toast(ok ? "Check recorded" : "Recorded — action raised");
     };
   }));
@@ -2080,6 +2139,7 @@ BIND.settings = (v) => {
           await put(k, id, { ...rest, seeded: j.version || true, ...(k === "actions" && !rest.history ? { history: [{ at: Date.now(), by: S.user.name, status: rest.status, note: "Loaded from starting data" }] } : {}) }, false); n++;
         }
       }
+      for (const fx of j.fixups || []) { const ex = (S.data[fx.col] || []).find((x) => x.id === fx.id); if (ex && Object.keys(fx.set).some((k) => ex[k] !== fx.set[k])) { await put(fx.col, fx.id, fx.set); n++; } }
       await put("config", "main", { seedVersion: j.version || "", marshals: (j.config && j.config.marshals) || marshals(), rotaStart: (j.config && j.config.rotaStart) || rotaStart() });
       audit(`Starting data ${j.version || ""} loaded: ${n} items${skip ? `, ${skip} already there` : ""}`);
       S.hold = false; render();
