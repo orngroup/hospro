@@ -165,8 +165,10 @@ const HF_COURSES = [
   ["marshal", "Fire marshal course", 36],
   ["extinguisher", "Extinguisher use", 12],
   ["procedure", "Fire procedure briefing signed", 12],
-  ["drill", "Last drill taken part in", 12]
+  ["drill", "Last drill taken part in", 12],
+  ["reception", "Reception alarm procedure briefing", 12, ["reception", "nights"]]   // reception and night staff only
 ];
+const courseApplies = (t, c) => !c[3] || c[3].includes((t && t.dept) || "other");
 
 /* ── Regulations and standards ─────────────────────────────── */
 const HF_REGS = [
@@ -299,3 +301,16 @@ const HF_SIGN_REQ = (() => {
 })();
 /* Marshal retrospective statements (BHH-FS-22): each marshal writes and signs their own, online. */
 const HF_RETRO = [["patrik.vlach", "Patrik Vlach"], ["veronica.webb", "Veronica Webb"], ["laith.hardy", "Laith Hardy"], ["glenn.randell", "Glenn Randell"]];
+
+/* ── Reception Fire Alarm Activation Procedure (from Front Office, Oct 2026) ── */
+const HF_RECEPTION_STEPS = [
+  ["Treat every activation as genuine", "Stop normal duties. If safe and trained, note the zone on the panel — never delay evacuation to investigate. Do not silence, reset or isolate unless authorised."],
+  ["Tell the duty manager and marshals", "Using the hotel's emergency communication arrangements."],
+  ["Call 999 — Fire and Rescue", "Every time. Do not assume a monitoring service has called. Give hotel name, address, zone, any smoke or fire, people at risk and a callback number."],
+  ["Warn and direct guests", "Calmly to the safe exits and assembly point. Never the lifts."],
+  ["Take the records — only if safe", "Occupancy report, staff sign-in register, contractor and visitor records. Never delay leaving to fetch paperwork."],
+  ["Leave by a safe route", "Do not stay at reception for calls or go to check rooms. Never enter smoke."],
+  ["At the assembly point", "Give the duty manager the records, panel details and anyone needing help. Report anyone missing and their last location to the fire service — nobody goes back in."],
+  ["Re-entry and recording", "Only when authorised with the fire service's agreement. Record the activation, actions, defects and follow-up."],
+  ["Night shift", "Same principles. At handover confirm panel status, known defects, staff register and who calls 999, warns guests, assists and briefs the fire service."]
+];
