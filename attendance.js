@@ -20,6 +20,7 @@
     grace: GRACE_DEFAULT,
     allScans: [],                 // cumulative history: [{name, d, t, type}]
     clockLabel: "",               // label of the most recent upload
+    rotaVersion: "",              // which bundled-rota version has been merged in
     range: { mode:"all", from:null, to:null },
     view: "report",               // "report" (attendance) | "rota" (rota analysis)
     results: null,
@@ -32,6 +33,7 @@
       if(s.clockLabel) ATT.clockLabel=s.clockLabel;
       if(s.range) ATT.range=Object.assign({mode:"all",from:null,to:null}, s.range);
       if(s.view) ATT.view=s.view;
+      if(s.rotaVersion) ATT.rotaVersion=s.rotaVersion;
       if(s.grace) ATT.grace=s.grace;
       // migrate older saves / the bundled seed into the cumulative store
       if((!ATT.allScans||!ATT.allScans.length) && Array.isArray(s.clockRows)) mergeScans(s.clockRows);
@@ -40,8 +42,17 @@
       mergeScans(ATTEND_CLOCK_SEED);
       if(typeof ATTEND_CLOCK_LABEL!=="undefined" && !ATT.clockLabel) ATT.clockLabel=ATTEND_CLOCK_LABEL;
     }
+    // Bundled-rota updates: merge the shipped rota into the stored one whenever the version changes,
+    // so a new month of rota appears on every device without wiping uploaded clock data.
+    try{
+      if(typeof ATTEND_ROTA_VERSION!=="undefined" && ATTEND_ROTA_VERSION && ATT.rotaVersion!==ATTEND_ROTA_VERSION && typeof ATTEND_ROTA_SEED!=="undefined"){
+        mergeRota(ATTEND_ROTA_SEED); ATT.rotaVersion=ATTEND_ROTA_VERSION;
+        if(typeof ATTEND_ROTA_LABEL!=="undefined" && ATTEND_ROTA_LABEL) ATT.rotaLabel=ATTEND_ROTA_LABEL;
+        attSave();
+      }
+    }catch(e){}
   }
-  function attSave(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({ rota:ATT.rota, rotaLabel:ATT.rotaLabel, allScans:ATT.allScans, clockLabel:ATT.clockLabel, range:ATT.range, view:ATT.view, grace:ATT.grace })); }catch(e){} }
+  function attSave(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({ rota:ATT.rota, rotaLabel:ATT.rotaLabel, allScans:ATT.allScans, clockLabel:ATT.clockLabel, range:ATT.range, view:ATT.view, rotaVersion:ATT.rotaVersion, grace:ATT.grace })); }catch(e){} }
 
   // Add scans to the history, skipping any already stored (dedup by person+date+time+direction).
   function mergeScans(rows){
@@ -106,10 +117,20 @@
   function hdrDate(cell){ const m=String(cell||"").match(/(\d{1,2})\s+([A-Za-z]{3})/); if(!m) return null;
     const mo=MONTHS[m[2].toLowerCase().slice(0,3)]; if(mo==null) return null;
     return "2026-"+String(mo+1).padStart(2,"0")+"-"+String(+m[1]).padStart(2,"0"); }   // build directly — no toISOString (timezone-safe)
-  function parseShift(s){ if(s==null) return null; s=String(s).trim();
-    if(!s || /^(off|holiday|hol|sick|in lieu|on call)$/i.test(s)) return null;
-    const m=s.match(/(\d{1,2}):(\d{2})\s*[-:to ]+\s*(\d{1,2}):(\d{2})/); if(!m) return null;
-    let a=(+m[1])*60+(+m[2]), b=(+m[3])*60+(+m[4]); if(b<a) b+=1440; return [a,b]; }
+  function hhmm(x){ x=String(x); if(x.length===4) return (+x.slice(0,2))*60+(+x.slice(2)); if(x.length===3) return (+x.slice(0,1))*60+(+x.slice(1)); return null; }
+  function parseShift(s){ if(s==null) return null; s=String(s).replace(/[‒-―−]/g,"-").trim();   // normalise en/em dashes
+    if(!s || /^(off|holiday|hol|sick|in ?lieu|on ?call|leave|al|day ?off|n\/?a|0)$/i.test(s)) return null;
+    // HH:MM (-|:|to) HH:MM  — also tolerates the "09:00:17:30" colon typo
+    let m=s.match(/(\d{1,2})[:.](\d{2})\s*(?:[-]|:|to)+\s*(\d{1,2})[:.](\d{2})/i);
+    if(m){ let a=(+m[1])*60+(+m[2]), b=(+m[3])*60+(+m[4]); if(b<a) b+=1440; return [a,b]; }
+    // HHMM-HHMM (e.g. 0900-1700)
+    m=s.match(/^(\d{3,4})\s*-\s*(\d{3,4})$/);
+    if(m){ let a=hhmm(m[1]), b=hhmm(m[2]); if(a!=null&&b!=null){ if(b<a) b+=1440; return [a,b]; } }
+    // hour-only (e.g. 9-5, 9-17) — 9-5 reads as 09:00-17:00
+    m=s.match(/^(\d{1,2})(?::(\d{2}))?\s*-\s*(\d{1,2})(?::(\d{2}))?$/);
+    if(m){ let a=(+m[1])*60+(+(m[2]||0)), eh=+m[3], b=eh*60+(+(m[4]||0));
+      if(b<a){ if(a<720 && eh<=12){ b=(eh+12)*60+(+(m[4]||0)); } if(b<a) b+=1440; } return [a,b]; }
+    return null; }
   function rotaFromAOA(aoa){
     let hr=-1; for(let r=0;r<Math.min(aoa.length,8);r++){ if(String(aoa[r][0]||"").toUpperCase().startsWith("TEAM MEMBER")){ hr=r; break; } }
     if(hr<0) throw new Error("Couldn't find the 'TEAM MEMBER' header row in the rota.");
