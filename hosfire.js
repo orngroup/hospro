@@ -585,7 +585,10 @@ VIEWS.back = () => {
     ${reg("scan").length ? `<div class="tw" style="margin-top:10px"><table><tr><th>Scan</th><th>Check</th><th>Month</th><th>Entries made from it</th><th></th></tr>
     ${reg("scan").sort((a, b) => natRef(a.period, b.period)).map((x) => { const n = S.data.records.filter((r) => r.scanId === x.id).length;
       return `<tr><td>${h(x.title)}</td><td>${h((CHECK[x.checkType] || {}).name || "Several")}</td><td>${x.period ? MON[+x.period.slice(5) - 1] + " " + x.period.slice(0, 4) : ""}</td><td>${n ? n : pill("None yet")}</td><td>${x.file ? `<a href="#" data-scan="${x.id}">View</a>` : ""}</td></tr>`; }).join("")}</table></div>` : ""}
-  </div>` : ""}
+  </div>
+  <div class="card" style="margin-bottom:14px"><h3 style="margin-top:0">Import transcribed paper sheets</h3>
+    <p class="muted">For a batch of scanned sheets that has been typed up into a HosFIRE paper-sheets file (.json). Choose the .json file <b>and</b> all the single-page PDFs together. Every sheet is uploaded as a scan; a past record is created only for the rows you tick. Rows with an overwritten date or no name are left unticked — the person who did the check confirms the date and name before you tick them.</p>
+    <input type="file" id="pi-files" multiple accept=".json,application/json,.pdf,application/pdf"><div id="pi-box"></div></div>` : ""}
   <h3>Weekly checks</h3>
   <div class="tw"><table><tr><th>Week commencing</th>${BACK_WEEKLY.map((t) => `<th>${h(CHECK[t].short)}</th>`).join("")}</tr>
   ${W.map((wc) => `<tr><td><b>${fds(wc)}</b></td>${BACK_WEEKLY.map((t) => cell(t, wc, addDays(wc, 6))).join("")}</tr>`).join("")}</table></div>
@@ -593,6 +596,71 @@ VIEWS.back = () => {
   <div class="tw"><table><tr><th>Month</th>${BACK_MONTHLY.map((t) => `<th>${h(CHECK[t].short)}</th>`).join("")}</tr>
   ${M.map((m) => `<tr><td><b>${MON[+m.slice(5, 7) - 1]} ${m.slice(0, 4)}</b></td>${BACK_MONTHLY.map((t) => cell(t, m, addDays(addMonths(m, 1), -1))).join("")}</tr>`).join("")}</table></div>`;
 };
+/* Import a typed-up batch of paper sheets (hosfire-paper-sheets JSON + one PDF per sheet) */
+function bindPaperImport(v) {
+  const inp = $("#pi-files", v), box = $("#pi-box", v); if (!inp) return;
+  inp.onchange = async () => {
+    const files = Array.from(inp.files), jf = files.find((f) => /\.json$/i.test(f.name));
+    if (!jf) { box.innerHTML = `<p class="err">Include the .json file with the PDFs.</p>`; return; }
+    let man; try { man = JSON.parse(await jf.text()); } catch (e) { box.innerHTML = `<p class="err">The .json file could not be read.</p>`; return; }
+    if (man.kind !== "hosfire-paper-sheets" || !Array.isArray(man.entries)) { box.innerHTML = `<p class="err">This is not a HosFIRE paper-sheets file.</p>`; return; }
+    S.hold = true;
+    const pdf = {}; files.forEach((f) => (pdf[f.name] = f));
+    const E = man.entries.map((e, i) => {
+      const scan = reg("scan").find((x) => x.sourceFile === e.file);
+      const rec = S.data.records.find((r) => r.imported && r.sourceRef === e.sourceRef);
+      return { ...e, i, f: pdf[e.file], scan, rec };
+    });
+    const missing = E.filter((e) => !e.f && !e.scan).length;
+    box.innerHTML = `<p class="muted">${E.length} sheets in ${h(jf.name)} · ${E.filter((e) => e.ready).length} ready to import · ${E.filter((e) => e.type && !e.ready).length} need a date or name confirmed · ${E.filter((e) => !e.type).length} scan only${missing ? ` · <b style="color:var(--red)">${missing} PDF${missing === 1 ? "" : "s"} not chosen</b>` : ""}</p>
+    <div class="tw"><table><tr><th>Import</th><th>Sheet</th><th>Check</th><th>Date on sheet</th><th>Date</th><th>Done by</th><th>Points to check</th></tr>
+    ${E.map((e) => `<tr ${e.rec ? 'style="opacity:.55"' : ""}><td>${!e.type ? "Scan only" : e.rec ? pill("Done") : `<input type="checkbox" data-pp="${e.i}" style="width:auto" ${e.ready ? "checked" : ""}>`}</td>
+      <td>${h(e.sourceRef)}${e.f ? ` <a href="#" data-ppv="${e.i}">view</a>` : e.scan ? " (held)" : ' <span style="color:var(--red)">PDF missing</span>'}</td>
+      <td>${h(e.type ? CHECK[e.type].short : e.title)}${e.fields && e.fields.callpoint ? `<br><span class="muted">${h(e.fields.callpoint)}</span>` : ""}</td>
+      <td>${h(e.dateRead)}</td>
+      <td>${e.type && !e.rec ? `<input type="date" data-ppd="${e.i}" value="${h(e.date || "")}" max="${addDays(today(), -1)}" style="min-width:130px">` : fds(e.date || "") || "—"}</td>
+      <td>${e.type && !e.rec ? `<input data-ppn="${e.i}" value="${h(e.doneBy || "")}" placeholder="${e.signed ? "Signed — name not printed" : "Not signed"}" style="min-width:130px">` : h(e.doneBy || (e.rec && e.rec.doneBy) || "—")}</td>
+      <td style="font-size:12px">${e.flags.length ? e.flags.map((x) => `• ${h(x)}`).join("<br>") : '<span class="muted">Clear, named and signed</span>'}</td></tr>`).join("")}</table></div>
+    <label class="row" style="text-transform:none;font-size:14px;color:var(--ink);margin-top:10px"><input type="checkbox" id="pi-ok" style="width:auto">
+      I have compared each ticked row with its scan. Any date or name not clear on the sheet has been confirmed by the person who did the check.</label>
+    <button class="btn red" id="pi-go" style="margin-top:8px">Upload scans and create ticked records</button> <button class="btn ghost" id="pi-x">Cancel</button> <span class="muted" id="pi-msg"></span>`;
+    $$("[data-ppv]", box).forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); window.open(URL.createObjectURL(E[+a.dataset.ppv].f), "_blank"); }));
+    $("#pi-x", box).onclick = () => { S.hold = false; inp.value = ""; render(); };
+    $("#pi-go", box).onclick = async () => {
+      const msg = $("#pi-msg", box);
+      const pick = E.filter((e) => e.type && !e.rec && $(`[data-pp="${e.i}"]`, box) && $(`[data-pp="${e.i}"]`, box).checked);
+      for (const e of pick) {
+        e.useDate = $(`[data-ppd="${e.i}"]`, box).value; e.useBy = $(`[data-ppn="${e.i}"]`, box).value.trim();
+        if (!e.useDate || e.useDate >= today()) { msg.textContent = `${e.sourceRef}: enter a past date, or untick it.`; return; }
+        if (!e.useBy) { msg.textContent = `${e.sourceRef}: enter who did the check, or untick it.`; return; }
+      }
+      if (pick.length && !$("#pi-ok", box).checked) { msg.textContent = "Tick the confirmation box."; return; }
+      $("#pi-go", box).disabled = true; let ns = 0, nr = 0;
+      try {
+        for (const e of E) {
+          if (!e.scan && e.f) {
+            msg.textContent = `Uploading scan ${ns + 1}…`;
+            const file = S.live ? await upload("scans", e.f) : null;
+            const sid = await add("registers", { kind: "scan", title: `${e.title} — ${e.sourceRef} (sheet date ${e.dateRead})`, checkType: e.type || "", period: (e.date || "2026-08").slice(0, 7),
+              file, sourceFile: e.file, flags: e.flags || [] });
+            e.scan = { id: sid, file }; ns++;
+          }
+        }
+        for (const e of pick) {
+          if (!e.scan) continue;
+          const extra = [];
+          if (!e.dateClear || e.useDate !== e.date) extra.push(`Date ${fds(e.useDate)} confirmed on import by ${S.user.name}; the sheet reads "${e.dateRead}".`);
+          if (e.useBy !== (e.doneBy || "")) extra.push(`Name "${e.useBy}" confirmed on import by ${S.user.name}; ${e.doneBy ? `the sheet reads "${e.doneBy}"` : e.signed ? "the sheet is signed but no name is printed" : "the sheet has no name or signature"}.`);
+          await add("records", { type: e.type, ref: CHECK[e.type].ref, date: e.useDate, fields: e.fields || {}, items: e.items || {}, notes: [e.notes, ...extra].join(" "),
+            imported: true, source: man.source || HF_SOURCES.find((x) => /paper/i.test(x)), sourceRef: e.sourceRef, doneBy: e.useBy, scanId: e.scan.id, scanFile: e.scan.file || null });
+          nr++; msg.textContent = `Created ${nr} of ${pick.length} records…`;
+        }
+        audit(`Paper sheets imported from ${jf.name}: ${ns} scan(s) uploaded, ${nr} past record(s) created`);
+        S.hold = false; inp.value = ""; render(); toast(`${ns} scans uploaded · ${nr} records created`);
+      } catch (err) { $("#pi-go", box).disabled = false; msg.textContent = "Stopped: " + err.message + " — run it again; anything already done is skipped."; }
+    };
+  };
+}
 function parseCSV(text) {
   const rows = []; let row = [], f = "", q = false;
   for (let i = 0; i < text.length; i++) {
@@ -627,6 +695,7 @@ BIND.back = (v) => {
       S.hold = false; render(); toast(`${n} scan${n === 1 ? "" : "s"} uploaded`);
     } catch (e) { S.hold = false; render(); toast("Upload stopped: " + e.message); }
   };
+  bindPaperImport(v);
   const fi = $("#sk-file", v); if (!fi) return;
   fi.onchange = async () => {
     const file = fi.files[0]; if (!file) return;
