@@ -623,8 +623,11 @@ function bindPaperImport(v) {
       <td style="font-size:12px">${e.flags.length ? e.flags.map((x) => `• ${h(x)}`).join("<br>") : '<span class="muted">Clear, named and signed</span>'}</td></tr>`).join("")}</table></div>
     <label class="row" style="text-transform:none;font-size:14px;color:var(--ink);margin-top:10px"><input type="checkbox" id="pi-ok" style="width:auto">
       I have compared each ticked row with its scan. Any date or name not clear on the sheet has been confirmed by the person who did the check.</label>
+    <button class="btn ghost sm" id="pi-all" style="margin-top:8px">Tick all rows</button> <button class="btn ghost sm" id="pi-none" style="margin-top:8px">Untick all</button><br>
     <button class="btn red" id="pi-go" style="margin-top:8px">Upload scans and create ticked records</button> <button class="btn ghost" id="pi-x">Cancel</button> <span class="muted" id="pi-msg"></span>`;
     $$("[data-ppv]", box).forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); window.open(URL.createObjectURL(E[+a.dataset.ppv].f), "_blank"); }));
+    $("#pi-all", box).onclick = () => $$("[data-pp]", box).forEach((c) => (c.checked = true));
+    $("#pi-none", box).onclick = () => $$("[data-pp]", box).forEach((c) => (c.checked = false));
     $("#pi-x", box).onclick = () => { S.hold = false; inp.value = ""; render(); };
     $("#pi-go", box).onclick = async () => {
       const msg = $("#pi-msg", box);
@@ -1034,6 +1037,7 @@ function signModal(item, after, witness) {
     <label>Your signature — draw it below with your finger or mouse</label>
     <canvas style="width:100%;height:160px;border:1.5px dashed var(--line);border-radius:10px;background:#fff;touch-action:none"></canvas>
     <div class="row"><button class="btn sm ghost" id="sg-clear">Clear</button></div>
+    <label>${h(signer.name)}'s personal code <span class="muted" style="text-transform:none">(not 999 — only the signer should know it)</span></label><input id="sg-code" type="password" autocomplete="off" style="max-width:200px">
     <label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="sg-ok" style="width:auto"><span>I, <b>${h(signer.name)}</b>, have read this document and this is my signature as ${h(item.role)}.</span></label>
     ${witness ? `<label class="row" style="text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="sg-wit" style="width:auto"><span>I, <b>${h(S.user.name)}</b>, saw ${h(signer.name)} sign this in person on ${fd(today())}.</span></label>` : ""}
     <div class="row" style="margin-top:12px"><button class="btn red" id="sg-go">Sign</button><button class="btn ghost" data-close>Cancel</button></div><div class="err" id="sg-e"></div>`);
@@ -1043,6 +1047,8 @@ function signModal(item, after, witness) {
   $("#sg-go", m).onclick = async () => {
     const e = $("#sg-e", m);
     if (!pad.has()) return (e.textContent = "Draw your signature.");
+    const pc = String((LOGINS[signer.key] || {}).code || "").toUpperCase();
+    if (pc && $("#sg-code", m).value.trim().toUpperCase() !== pc) return (e.textContent = `Enter ${signer.name}'s personal code.`);
     if (!$("#sg-ok", m).checked) return (e.textContent = "Tick the declaration.");
     if (witness && !$("#sg-wit", m).checked) return (e.textContent = "Tick the witness confirmation.");
     try {
