@@ -100,7 +100,7 @@ h2{margin:2px 0 4px;font-size:19px}.muted{color:var(--muted);font-size:13px}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="hosfire-defs.js?v=20261025c"></script>
+<script src="hosfire-defs.js?v=20261026j"></script>
 <script>
 /* ============================================================
    HosFIRE Mobile — phone app for updating fire safety actions.
@@ -276,7 +276,8 @@ async function drawPhotos() {
   for (const f of S.draft.newPhotos) { const d = document.createElement("div"); d.className = "new"; d.innerHTML = `<img src="${f.preview}"><small>New — saves with the update</small>`; box.appendChild(d); }
   for (const p of (a.photos || []).slice().reverse()) {
     const d = document.createElement("div"); d.innerHTML = `<small>${h(p.by.split(" ")[0])} · ${fdt(p.at)}</small>`; box.appendChild(d);
-    if (S.live) fb.st.ref(p.path).getDownloadURL().then((u) => { d.insertAdjacentHTML("afterbegin", `<a href="${u}" target="_blank"><img src="${u}"></a>`); }).catch(() => {});
+    const isImg = !/\.(pdf|docx?|xlsx?)$/i.test(p.name || p.path || "");
+    if (S.live) fb.st.ref(p.path).getDownloadURL().then((u) => { d.insertAdjacentHTML("afterbegin", isImg ? `<a href="${u}" target="_blank"><img src="${u}"></a>` : `<a href="${u}" target="_blank" style="display:flex;align-items:center;justify-content:center;height:100%;font-size:32px;text-decoration:none">📄</a>`); }).catch(() => {});
   }
   if (!box.children.length) box.innerHTML = `<div style="grid-column:1/-1;aspect-ratio:auto;background:none" class="muted">No photos yet.</div>`;
 }
