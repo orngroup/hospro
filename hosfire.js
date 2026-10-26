@@ -1813,9 +1813,15 @@ BIND.pack = (v) => {
   };
 };
 /* ---------- shared print helpers (landscape packs) ---------- */
+/* Margins are built into the page itself (spacer rows that repeat on every printed page, plus side padding),
+   so the layout is the same whatever "Margins" setting is chosen in the print window. */
+function pageWrap(kind) {
+  const pr = $("#print"); if (!pr || pr.querySelector(":scope > table.pg-wrap")) return;
+  pr.innerHTML = `<table class="pg-wrap pg-${kind}"><thead><tr><td><div class="pg-sp"></div></td></tr></thead><tfoot><tr><td><div class="pg-sp"></div></td></tr></tfoot><tbody><tr><td class="pg-body">${pr.innerHTML}</td></tr></tbody></table>`;
+}
 function printLandscape() {
   let st = document.getElementById("pg-land"); if (!st) { st = document.createElement("style"); st.id = "pg-land"; document.head.appendChild(st); }
-  st.textContent = "@page{size:A4 landscape;margin:12mm 14mm}";
+  st.textContent = "@page{size:A4 landscape;margin:0}"; pageWrap("land");
   const off = () => { st.textContent = ""; window.removeEventListener("afterprint", off); }; window.addEventListener("afterprint", off);
   setTimeout(() => window.print(), 300);
 }
@@ -1983,7 +1989,7 @@ BIND.ext = (v) => {
 };
 function printPortrait() {
   let st = document.getElementById("pg-land"); if (!st) { st = document.createElement("style"); st.id = "pg-land"; document.head.appendChild(st); }
-  st.textContent = "@page{size:A4 portrait;margin:14mm 12mm 14mm 14mm}";
+  st.textContent = "@page{size:A4 portrait;margin:0}"; pageWrap("port");
   const off = () => { st.textContent = ""; window.removeEventListener("afterprint", off); }; window.addEventListener("afterprint", off);
   setTimeout(() => window.print(), 300);
 }
@@ -2139,6 +2145,7 @@ BIND.settings = (v) => {
           await put(k, id, { ...rest, seeded: j.version || true, ...(k === "actions" && !rest.history ? { history: [{ at: Date.now(), by: S.user.name, status: rest.status, note: "Loaded from starting data" }] } : {}) }, false); n++;
         }
       }
+      if (j.site) { const cur = (cfg().site || {}), add = {}; Object.entries(j.site).forEach(([k, v]) => { if (v && !cur[k]) add[k] = v; }); if (Object.keys(add).length) { await put("config", "main", { site: { ...cur, ...add } }); n++; } }
       for (const fx of j.fixups || []) { const ex = (S.data[fx.col] || []).find((x) => x.id === fx.id); if (ex && Object.keys(fx.set).some((k) => ex[k] !== fx.set[k])) { await put(fx.col, fx.id, fx.set); n++; } }
       await put("config", "main", { seedVersion: j.version || "", marshals: (j.config && j.config.marshals) || marshals(), rotaStart: (j.config && j.config.rotaStart) || rotaStart() });
       audit(`Starting data ${j.version || ""} loaded: ${n} items${skip ? `, ${skip} already there` : ""}`);

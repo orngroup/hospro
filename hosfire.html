@@ -216,7 +216,11 @@ tr:hover td{background:#fbfaf7}
 .pk.port .pposter .pgrid{display:block!important;columns:2;column-gap:5mm} .pk.port .pposter .pcard{display:inline-block;width:100%;margin:0 0 5mm;break-inside:avoid;page-break-inside:avoid}
 .pk.port .pk-log{font-size:10px} .pk.port .pk-log th{font-size:9.5px;padding:4px} .pk.port .pk-log td{padding:3px 4px;height:22px}
 .pk.port .pk-plan{max-height:250mm}
-.pk thead{display:table-header-group} .pk h3{break-after:avoid;page-break-after:avoid}
+.pk thead{display:table-header-group}
+table.pg-wrap{width:100%;border-collapse:collapse;border:none;margin:0} table.pg-wrap>thead>tr>td,table.pg-wrap>tfoot>tr>td,table.pg-wrap>tbody>tr>td.pg-body{padding:0;border:none;background:none}
+table.pg-wrap>thead,table.pg-wrap>tfoot{display:table-header-group} table.pg-wrap>tfoot{display:table-footer-group}
+.pg-port .pg-sp{height:13mm} .pg-land .pg-sp{height:11mm}
+.pg-port td.pg-body{padding:0 12mm 0 15mm!important} .pg-land td.pg-body{padding:0 13mm!important} .pk h3{break-after:avoid;page-break-after:avoid}
 .pk.port .pk-run{margin-top:0}
 .pk-rot{position:relative;height:225mm;overflow:hidden} .pk-rot img{position:absolute;left:0;top:0;width:225mm;height:178mm;object-fit:contain;transform-origin:top left;transform:translateX(178mm) rotate(90deg);border:1px solid #ccc}
 .pk.port .pkeys{grid-template-columns:1fr 1fr!important}
@@ -256,7 +260,7 @@ tr:hover td{background:#fbfaf7}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="hosfire-defs.js?v=20261026m"></script>
-<script src="hosfire.js?v=20261026m"></script>
+<script src="hosfire-defs.js?v=20261026o"></script>
+<script src="hosfire.js?v=20261026o"></script>
 </body>
 </html>
