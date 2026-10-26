@@ -21,6 +21,7 @@
     allScans: [],                 // cumulative history: [{name, d, t, type}]
     clockLabel: "",               // label of the most recent upload
     range: { mode:"all", from:null, to:null },
+    view: "report",               // "report" (attendance) | "rota" (rota analysis)
     results: null,
     sort: "cost"
   };
@@ -30,6 +31,7 @@
       if(Array.isArray(s.allScans)) ATT.allScans=s.allScans;
       if(s.clockLabel) ATT.clockLabel=s.clockLabel;
       if(s.range) ATT.range=Object.assign({mode:"all",from:null,to:null}, s.range);
+      if(s.view) ATT.view=s.view;
       if(s.grace) ATT.grace=s.grace;
       // migrate older saves / the bundled seed into the cumulative store
       if((!ATT.allScans||!ATT.allScans.length) && Array.isArray(s.clockRows)) mergeScans(s.clockRows);
@@ -39,7 +41,7 @@
       if(typeof ATTEND_CLOCK_LABEL!=="undefined" && !ATT.clockLabel) ATT.clockLabel=ATTEND_CLOCK_LABEL;
     }
   }
-  function attSave(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({ rota:ATT.rota, rotaLabel:ATT.rotaLabel, allScans:ATT.allScans, clockLabel:ATT.clockLabel, range:ATT.range, grace:ATT.grace })); }catch(e){} }
+  function attSave(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({ rota:ATT.rota, rotaLabel:ATT.rotaLabel, allScans:ATT.allScans, clockLabel:ATT.clockLabel, range:ATT.range, view:ATT.view, grace:ATT.grace })); }catch(e){} }
 
   // Add scans to the history, skipping any already stored (dedup by person+date+time+direction).
   function mergeScans(rows){
@@ -103,7 +105,7 @@
   }
   function hdrDate(cell){ const m=String(cell||"").match(/(\d{1,2})\s+([A-Za-z]{3})/); if(!m) return null;
     const mo=MONTHS[m[2].toLowerCase().slice(0,3)]; if(mo==null) return null;
-    const d=new Date(2026,mo,+m[1]); return d.toISOString().slice(0,10); }
+    return "2026-"+String(mo+1).padStart(2,"0")+"-"+String(+m[1]).padStart(2,"0"); }   // build directly — no toISOString (timezone-safe)
   function parseShift(s){ if(s==null) return null; s=String(s).trim();
     if(!s || /^(off|holiday|hol|sick|in lieu|on call)$/i.test(s)) return null;
     const m=s.match(/(\d{1,2}):(\d{2})\s*[-:to ]+\s*(\d{1,2}):(\d{2})/); if(!m) return null;
@@ -239,15 +241,20 @@
         ${customRow}
       </div>
 
-      <div id="att-out">${ (ATT.allScans&&ATT.allScans.length)?'':'<div style="padding:24px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:14px">Add a clock-log CSV above to start building the attendance history.</div>'}</div>`;
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button onclick="window._attView('report')" style="padding:8px 16px;border:1px solid ${ATT.view==='report'?'#1a2b3a':'#d7dde4'};background:${ATT.view==='report'?'#1a2b3a':'#fff'};color:${ATT.view==='report'?'#fff':'#45586b'};border-radius:9px;font:800 12.5px Lato;cursor:pointer">📊 Attendance report</button>
+        <button onclick="window._attView('rota')" style="padding:8px 16px;border:1px solid ${ATT.view==='rota'?'#1a2b3a':'#d7dde4'};background:${ATT.view==='rota'?'#1a2b3a':'#fff'};color:${ATT.view==='rota'?'#fff':'#45586b'};border-radius:9px;font:800 12.5px Lato;cursor:pointer">📅 Rota analysis</button>
+      </div>
+
+      <div id="att-out"></div>`;
 
     const out=()=>document.getElementById("att-out");
-    document.getElementById("att-grace").onchange=e=>{ ATT.grace=+e.target.value||0; attSave(); if(ATT.allScans.length){ analyse(); renderResults(out()); } };
+    document.getElementById("att-grace").onchange=e=>{ ATT.grace=+e.target.value||0; attSave(); renderView(out()); };
     document.getElementById("att-clock").onchange=e=>{ const f=e.target.files[0]; if(!f) return;
       const fr=new FileReader(); fr.onload=()=>{ try{
         const parsed=parseClockCSV(fr.result); const res=mergeScans(parsed);
         ATT.clockLabel=f.name+" ("+parsed.length+" scans)"; attSave();
-        analyse(); renderResults(out());
+        ATT.view="report"; renderView(out());
         const banner=document.createElement('div'); banner.style.cssText="padding:12px 14px;margin-bottom:12px;background:#eaf4ee;border:1px solid #bfe0cd;border-radius:12px;color:#1e6b2f;font-weight:700";
         banner.innerHTML=`✓ Added ${res.added.toLocaleString("en-GB")} new scan${res.added===1?'':'s'}${res.dup?` (${res.dup.toLocaleString("en-GB")} already stored)`:''}. History now ${ATT.allScans.length.toLocaleString("en-GB")} scans.`;
         out().insertBefore(banner, out().firstChild);
@@ -256,16 +263,24 @@
     document.getElementById("att-rota").onchange=e=>{ const f=e.target.files[0]; if(!f) return;
       readRotaFile(f,(err,rota)=>{ if(err){ out().innerHTML='<div style="padding:16px;background:#fdecea;border:1px solid #f3c0ba;border-radius:12px;color:#b3261e">⚠ '+err.message+'</div>'; return; }
         const m=mergeRota(rota); ATT.rotaLabel="Rota incl. "+f.name; attSave();
-        analyse(); renderResults(out());
+        renderView(out());
         const banner=document.createElement('div'); banner.style.cssText="padding:12px 14px;margin-bottom:12px;background:#eaf4ee;border:1px solid #bfe0cd;border-radius:12px;color:#1e6b2f;font-weight:700";
         banner.innerHTML=`✓ Rota merged — ${m.people} people, ${m.days} shift-days added. Now ${Object.keys(ATT.rota).length} people on file.`;
         out().insertBefore(banner, out().firstChild);
       }); e.target.value=""; };
-    document.getElementById("att-run").onclick=()=>{ if(!ATT.allScans||!ATT.allScans.length){ out().innerHTML='<div style="padding:16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;color:#9a3412">Add a clock-log CSV first.</div>'; return; } analyse(); renderResults(out()); };
+    document.getElementById("att-run").onclick=()=>{ renderView(out()); };
     document.getElementById("att-csv").onclick=exportCSV;
 
-    if(ATT.allScans&&ATT.allScans.length) renderResults(out());
+    renderView(out());
   };
+
+  // Dispatch the output area to the active view.
+  function renderView(box){
+    if(!box) return;
+    if(ATT.view==="rota"){ renderRota(box); return; }
+    if(ATT.allScans&&ATT.allScans.length){ analyse(); renderResults(box); }
+    else box.innerHTML='<div style="padding:24px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:14px">Add a clock-log CSV above to start building the attendance history.</div>';
+  }
 
   function renderResults(box){
     const R=ATT.results; if(!R||!box) return;
@@ -318,12 +333,80 @@
   window._attRange=function(mode){ ATT.range.mode=mode; attSave(); const v=document.getElementById("view"); if(v && typeof renderAttendance==="function") renderAttendance(v); };
   window._attCustom=function(){ const f=document.getElementById("att-from"), t=document.getElementById("att-to");
     ATT.range.mode="custom"; ATT.range.from=f&&f.value||null; ATT.range.to=t&&t.value||null; attSave();
-    if(ATT.allScans.length){ analyse(); renderResults(document.getElementById("att-out")); } };
+    renderView(document.getElementById("att-out")); };
   window._attClear=function(){ if(!confirm("Clear all stored clock scans? The rota and settings are kept. This cannot be undone.")) return;
     ATT.allScans=[]; ATT.clockLabel=""; ATT.results=null; attSave();
     const v=document.getElementById("view"); if(v) renderAttendance(v); };
+  window._attView=function(mode){ ATT.view=mode; attSave(); const v=document.getElementById("view"); if(v) renderAttendance(v); };
+
+  // ---------- rota analysis (staffing pattern by day of week) ----------
+  function fmtTime(m){ if(m==null) return "—"; m=((Math.round(m)%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
+  function analyseRota(){
+    const rb=rangeBounds(); const rota=ATT.rota||{};
+    const WD=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    const wdIdx=d=>{ const g=new Date(d+"T12:00").getDay(); return (g+6)%7; };
+    const deptOf={}; Object.keys(rota).forEach(p=>{ const st=matchStaff(p); deptOf[p]=(st&&st.dept)||"unassigned"; });
+    const dateMap={}; const activePeople=new Set(); const depts=new Set();
+    Object.keys(rota).forEach(p=>{ Object.keys(rota[p]).forEach(d=>{
+      if(rb.from&&d<rb.from) return; if(rb.to&&d>rb.to) return;
+      const sh=rota[p][d]; if(!sh) return;
+      activePeople.add(p); const de=deptOf[p]; depts.add(de);
+      const dm=dateMap[d]||(dateMap[d]={count:0,hours:0,starts:[],dept:{}});
+      dm.count++; dm.hours+=(sh[1]-sh[0])/60; dm.starts.push(sh[0]); dm.dept[de]=(dm.dept[de]||0)+1;
+    }); });
+    const dates=Object.keys(dateMap).sort(); const totalPeople=activePeople.size;
+    const rowsWD=WD.map((lab,wi)=>{
+      const dd=dates.filter(d=>wdIdx(d)===wi); const n=dd.length;
+      let work=0,hours=0,startSum=0,startN=0; const deptSum={};
+      dd.forEach(d=>{ const dm=dateMap[d]; work+=dm.count; hours+=dm.hours; dm.starts.forEach(s=>{startSum+=s;startN++;}); Object.keys(dm.dept).forEach(k=>deptSum[k]=(deptSum[k]||0)+dm.dept[k]); });
+      const avgWork=n?work/n:0; const deptAvg={}; Object.keys(deptSum).forEach(k=>deptAvg[k]=n?deptSum[k]/n:0);
+      return { wd:lab, weeks:n, avgWork:Math.round(avgWork*10)/10, avgOff:Math.round(Math.max(0,totalPeople-avgWork)*10)/10, avgHours:n?Math.round(hours/n):0, avgStart:startN?Math.round(startSum/startN):null, deptAvg };
+    });
+    return { rowsWD, totalPeople, depts:[...depts].sort(), from:dates[0]||null, to:dates[dates.length-1]||null, daysAnalysed:dates.length };
+  }
+  function renderRota(box){
+    if(!box) return;
+    const rmode=(ATT.range&&ATT.range.mode)||"all";
+    const A=analyseRota();
+    if(!A.totalPeople){ box.innerHTML='<div style="padding:24px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:14px">No rota data for this period. Upload a rota (.xlsx/.csv) above, or widen the date range.</div>'; return; }
+    const worked=A.rowsWD.filter(r=>r.weeks>0);
+    const busiest=worked.slice().sort((a,b)=>b.avgWork-a.avgWork)[0];
+    const quietest=worked.slice().sort((a,b)=>a.avgWork-b.avgWork)[0];
+    const maxWork=Math.max(1,...worked.map(r=>r.avgWork));
+    const tile=(val,lab,col)=>`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:13px 15px"><div style="font:800 24px Lato;color:${col||'#1a2b3a'}">${val}</div><div style="font-size:10.5px;color:#8296a8;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">${lab}</div></div>`;
+    const tiles=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:6px">
+      ${tile(A.totalPeople,'People on rota')}${tile(busiest?busiest.wd:'—','Busiest day')}${tile(quietest?quietest.wd:'—','Quietest day','#b3261e')}${tile(A.daysAnalysed,'Days analysed')}</div>`;
+    const bar=v=>{ const pct=Math.round(v/maxWork*100); return `<div style="background:#eef1f4;border-radius:5px;height:9px;min-width:60px"><div style="width:${pct}%;height:100%;border-radius:5px;background:${quietest&&v<=quietest.avgWork+0.001?'#e07a5f':'#2B726A'}"></div></div>`; };
+    const wdTbl=`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:14px 16px;margin:14px 0">
+      <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:10px">By day of week</div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead><tr style="color:#6b7280;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px"><th style="padding:6px 9px;text-align:left">Day</th><th style="padding:6px 9px;text-align:center">Avg on</th><th style="padding:6px 9px;text-align:center">Avg off</th><th style="padding:6px 9px;text-align:center">Avg hours</th><th style="padding:6px 9px;text-align:center">Avg start</th><th style="padding:6px 9px;width:34%">Coverage</th></tr></thead>
+        <tbody>${A.rowsWD.map(r=>`<tr style="border-top:1px solid #eef1f4"><td style="padding:7px 9px;font-weight:700">${r.wd}</td><td style="padding:7px 9px;text-align:center;font-weight:700">${r.weeks?r.avgWork:'—'}</td><td style="padding:7px 9px;text-align:center;color:#9a3412">${r.weeks?r.avgOff:'—'}</td><td style="padding:7px 9px;text-align:center">${r.weeks?r.avgHours:'—'}</td><td style="padding:7px 9px;text-align:center">${fmtTime(r.avgStart)}</td><td style="padding:7px 9px">${r.weeks?bar(r.avgWork):''}</td></tr>`).join('')}</tbody>
+      </table></div>
+      <div style="font-size:11px;color:#8296a8;margin-top:9px">“Avg on” is the average staff scheduled that weekday across the period; “Avg off” is the rest of the ${A.totalPeople} people on the rota. Red bars mark the quietest day.</div></div>`;
+    let gridMax=0; A.depts.forEach(de=>A.rowsWD.forEach(r=>{ gridMax=Math.max(gridMax, r.deptAvg[de]||0); }));
+    const heat=v=>{ if(!v) return '#f7f9fb'; const p=Math.min(1,v/(gridMax||1)); const r=Math.round(224-(224-43)*p), g=Math.round(231-(231-114)*p), b=Math.round(239-(239-106)*p); return `rgb(${r},${g},${b})`; };
+    const deptGrid=A.depts.length?`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:14px 16px">
+      <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:10px">Cover by department &amp; day <span style="font-weight:400;color:#8296a8;font-size:11.5px">(avg staff on)</span></div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="color:#6b7280;font-size:10.5px;text-transform:uppercase"><th style="padding:6px 9px;text-align:left">Department</th>${A.rowsWD.map(r=>`<th style="padding:6px 6px;text-align:center">${r.wd}</th>`).join('')}</tr></thead>
+        <tbody>${A.depts.map(de=>`<tr style="border-top:1px solid #eef1f4"><td style="padding:6px 9px;font-weight:700;text-transform:capitalize">${esc(de)}</td>${A.rowsWD.map(r=>{const v=Math.round((r.deptAvg[de]||0)*10)/10;return `<td style="padding:6px 6px;text-align:center;background:${heat(v)};color:${v/(gridMax||1)>0.55?'#fff':'#1f2a37'};font-weight:${v?'700':'400'}">${v||'·'}</td>`;}).join('')}</tr>`).join('')}</tbody>
+      </table></div></div>`:'';
+    const insight=(quietest&&busiest&&quietest.wd!==busiest.wd)?`<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:11px 14px;margin:14px 0;font-size:12.5px;color:#9a3412"><b>${quietest.wd}</b> is the quietest day (avg ${quietest.avgWork} on) and <b>${busiest.wd}</b> the busiest (avg ${busiest.avgWork}). If cover is tight on the busy days, moving a day off from a quiet day could even it out.</div>`:'';
+    box.innerHTML=`<div style="font-size:12.5px;color:#5b6b7b;margin-bottom:10px"><b>${RANGE_LABELS[rmode]||'Rota'}</b> · ${fmtD(A.from)} – ${fmtD(A.to)} · ${A.totalPeople} people · ${ATT.rotaLabel}</div>${tiles}${insight}${wdTbl}${deptGrid}`;
+  }
 
   function exportCSV(){
+    if(ATT.view==="rota"){
+      const A=analyseRota(); if(!A.totalPeople){ alert("No rota data for this period."); return; }
+      const esc=s=>`"${String(s==null?'':s).replace(/"/g,'""')}"`;
+      const head=["Day","Avg staff on","Avg off","Avg hours","Avg start",...A.depts];
+      const lines=[head.join(",")];
+      A.rowsWD.forEach(r=>lines.push([r.wd,r.weeks?r.avgWork:'',r.weeks?r.avgOff:'',r.weeks?r.avgHours:'',fmtTime(r.avgStart),...A.depts.map(de=>Math.round((r.deptAvg[de]||0)*10)/10)].join(",")));
+      const blob=new Blob([lines.join("\n")],{type:"text/csv"}); const a=document.createElement("a");
+      a.href=URL.createObjectURL(blob); a.download="rota-analysis-"+(A.from||"all")+"_to_"+(A.to||"")+".csv";
+      document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); return;
+    }
     const R=ATT.results; if(!R||!R.rows||!R.rows.length){ alert("No data for this period."); return; }
     const esc=s=>`"${String(s==null?'':s).replace(/"/g,'""')}"`;
     const head=["Name","Department","Scheduled days","Clocked days","No-scan days","Times late","Avg late (min)","Total late (min)","Time lost (hrs)","Hourly rate","Est. cost"];
