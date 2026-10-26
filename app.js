@@ -11824,7 +11824,11 @@ function spCmpRun(){
     else if(c && c.odd){ status='diff'; note='Missing clock-out (odd number of punches)'; }
     else if(Math.abs(diff)>tol){ status='diff'; note=diff>0?'Worked more than rota':'Worked less than rota'; }
     const fmt=m=>m==null?'':String(Math.floor((m%1440)/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
-    lines.push({s,date,shift:spCell(v).shift,rh,ch,diff,status,note,times:c&&c.first!=null?fmt(c.first)+'–'+fmt(c.last):'',cost:diff*spRate(s)});
+    const sm=spCell(v).shift.match(/(\d{1,2})[:\.](\d{2})/);
+    const rotaStart=(spKind(v)==='work'&&sm)?(+sm[1]*60+ +sm[2]):null;
+    const clockIn=c&&c.first!=null?c.first:null;
+    const lateMin=(rotaStart!=null&&clockIn!=null&&clockIn>rotaStart)?(clockIn-rotaStart):0;
+    lines.push({s,date,shift:spCell(v).shift,rh,ch,diff,status,note,times:c&&c.first!=null?fmt(c.first)+'–'+fmt(c.last):'',cost:diff*spRate(s),rotaStart,clockIn,lateMin});
   });
   lines.sort((a,b)=>a.s.name.localeCompare(b.s.name)||a.date.localeCompare(b.date));
   C.result={from,to,lines,unknown:Object.values(unknown).map(u=>({label:u.label,code:u.code,days:u.days.size,hrs:u.hrs}))};
@@ -11856,6 +11860,7 @@ function spCmpRender(){
     <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 8px;flex-wrap:wrap;gap:8px">
       <div style="font-size:14px;font-weight:800;color:#1a2b3a">${issues.length?issues.length+' mismatch'+(issues.length>1?'es':''):'✅ Everything matches the rota'}</div>
       <div style="display:flex;gap:6px"><label style="font-size:12px;color:#374151;display:flex;gap:5px;align-items:center"><input type="checkbox" id="sp-cmp-all" onchange="document.querySelectorAll('.sp-cmp-ok').forEach(r=>r.style.display=this.checked?'':'none')"> Show matching shifts too</label>
+      <button onclick="spCmpReport()" style="padding:7px 12px;border:none;border-radius:8px;background:#1a2b3a;color:#fff;font:700 12px Lato;cursor:pointer">📋 Period report</button>
       <button onclick="spCmpExport()" style="padding:7px 12px;border:1px solid #2B726A;border-radius:8px;background:#fff;color:#2B726A;font:700 12px Lato;cursor:pointer">⬇ Export comparison</button></div>
     </div>
     <div style="overflow:auto;max-height:60vh;border:1px solid #eef1f4;border-radius:10px">
@@ -11883,6 +11888,54 @@ function spCmpExport(){
   const rows=R.lines.map(l=>[l.s.staffCode||'',l.s.name,l.date,l.shift,l.times,l.rh,Math.round(l.ch*100)/100,l.diff,Math.round(l.cost*100)/100,st[l.status],l.note]);
   R.unknown.forEach(u=>rows.push([u.code||'',u.label,'','','','',Math.round(u.hrs*100)/100,'','','Not matched','No staff profile matched']));
   spDownload('rota-vs-fingerprint-'+R.from+'-to-'+R.to+'.csv','﻿'+[head,...rows].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
+}
+/* Period report — lateness, missed clock-ins and the monetary value, for the uploaded range */
+function spCmpSummary(){
+  const R=spCmp&&spCmp.result; if(!R||!R.lines) return null;
+  const grace=Math.round((spPaySettings().tolerance||0)*60); // grace minutes
+  const by={};
+  R.lines.forEach(l=>{ const t=by[l.s.id]||(by[l.s.id]={s:l.s,late:0,lateMin:0,worst:0,noclock:0,noclockDates:[],rh:0,ch:0,cost:0,shifts:0});
+    t.rh+=l.rh; t.ch+=l.ch; t.cost+=l.cost; if(l.rh>0) t.shifts++;
+    if(l.status==='noclock'){ t.noclock++; t.noclockDates.push(l.date); }
+    if(l.lateMin>grace){ t.late++; t.lateMin+=l.lateMin; if(l.lateMin>t.worst) t.worst=l.lateMin; }
+  });
+  return {R,grace,arr:Object.values(by)};
+}
+function spCmpReport(){
+  if(spCmp && !spCmp.result) spCmpRun();
+  const S=spCmpSummary();
+  if(!S){ showModal('Period report','','<div style="padding:6px;color:#b3261e;font-size:13px">Upload a clock file and press <b>Compare with rota</b> first.</div>'); return; }
+  const {R,grace,arr}=S;
+  const dfmt=d=>new Date(d+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const hm=m=>{m=Math.round(m); return Math.floor(m/60)?Math.floor(m/60)+'h '+(m%60)+'m':(m+'m');};
+  const totLate=arr.reduce((a,b)=>a+b.late,0), totLateMin=arr.reduce((a,b)=>a+b.lateMin,0);
+  const totNo=arr.reduce((a,b)=>a+b.noclock,0);
+  const totCost=R.lines.reduce((a,l)=>a+l.cost,0);
+  const lateCost=arr.reduce((a,b)=>a+(b.lateMin/60)*spRate(b.s),0);
+  const card=(l,n,warn)=>`<div style="background:${warn?'#fef2f2':'#f5f7f9'};border-radius:10px;padding:10px 12px"><div style="font-size:10.5px;font-weight:700;color:#4b5563;text-transform:uppercase">${l}</div><div style="font-size:17px;font-weight:800;color:#1a2b3a">${n}</div></div>`;
+  const cards=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:14px">
+    ${card('Late starts',totLate,totLate>0)}${card('Total lateness',hm(totLateMin),totLateMin>0)}${card('Missed clock-ins',totNo,totNo>0)}${card('Cost of lateness',spGBP(lateCost),lateCost>0)}${card('Net vs rota',spGBP(totCost),Math.abs(totCost)>0.5)}</div>`;
+  const th=h=>`<th style="padding:7px 8px;font-size:10.5px;text-transform:uppercase;color:#1a2b3a;text-align:left">${h}</th>`;
+  const wrap=(title,inner)=>`<div style="font-size:13.5px;font-weight:800;color:#1a2b3a;margin:14px 0 7px">${title}</div><div style="overflow:auto;border:1px solid #eef1f4;border-radius:10px">${inner}</div>`;
+  // Lateness
+  const lateRows=arr.filter(b=>b.late>0).sort((a,b)=>b.lateMin-a.lateMin);
+  const lateTbl = lateRows.length ? wrap('⏰ Lateness',`<table style="width:100%;border-collapse:collapse;min-width:520px;font-size:12.5px"><thead><tr style="background:#f5f7f9">${['Staff','Late starts','Total late','Worst','Avg'].map(th).join('')}</tr></thead><tbody>${lateRows.map(b=>`<tr style="border-top:1px solid #eef1f4"><td style="padding:6px 8px;font-weight:700">${spEsc(b.s.name)}</td><td style="padding:6px 8px">${b.late}</td><td style="padding:6px 8px;font-weight:800;color:#b45309">${hm(b.lateMin)}</td><td style="padding:6px 8px">${hm(b.worst)}</td><td style="padding:6px 8px">${hm(b.lateMin/b.late)}</td></tr>`).join('')}</tbody></table>`) : `<div style="font-size:12.5px;color:#166534;margin:8px 0">✅ No late starts beyond the ${grace}-minute grace.</div>`;
+  // Missed clock-ins
+  const noRows=arr.filter(b=>b.noclock>0).sort((a,b)=>b.noclock-a.noclock);
+  const noTbl = noRows.length ? wrap('🚫 Rostered but no clock-in',`<table style="width:100%;border-collapse:collapse;min-width:520px;font-size:12.5px"><thead><tr style="background:#f5f7f9">${['Staff','Shifts rostered','No clock-in','Dates'].map(th).join('')}</tr></thead><tbody>${noRows.map(b=>`<tr style="border-top:1px solid #eef1f4"><td style="padding:6px 8px;font-weight:700">${spEsc(b.s.name)}</td><td style="padding:6px 8px">${b.shifts}</td><td style="padding:6px 8px;font-weight:800;color:#b3261e">${b.noclock}</td><td style="padding:6px 8px;color:#4b5563">${b.noclockDates.map(dfmt).join(', ')}</td></tr>`).join('')}</tbody></table>`) : `<div style="font-size:12.5px;color:#166534;margin:8px 0">✅ Everyone rostered clocked in.</div>`;
+  // Monetary
+  const costRows=arr.slice().sort((a,b)=>Math.abs(b.cost)-Math.abs(a.cost));
+  const costTbl = wrap('💷 Monetary value (clocked vs rota)',`<table style="width:100%;border-collapse:collapse;min-width:560px;font-size:12.5px"><thead><tr style="background:#f5f7f9">${['Staff','Rota h','Clocked h','Difference','Cost impact'].map(th).join('')}</tr></thead><tbody>${costRows.map(b=>{const d=b.ch-b.rh;return `<tr style="border-top:1px solid #eef1f4"><td style="padding:6px 8px;font-weight:700">${spEsc(b.s.name)}</td><td style="padding:6px 8px">${spH(b.rh)}</td><td style="padding:6px 8px">${spH(b.ch)}</td><td style="padding:6px 8px;font-weight:800;color:${Math.abs(d)<0.01?'#166534':d>0?'#b45309':'#b3261e'}">${d>0?'+':''}${spH(d)}h</td><td style="padding:6px 8px">${Math.abs(b.cost)<0.005?'—':(b.cost>0?'+':'−')+spGBP(Math.abs(b.cost))}</td></tr>`;}).join('')}<tr style="border-top:2px solid #d1d5db;background:#fafbfc"><td style="padding:7px 8px;font-weight:800">Total</td><td style="padding:7px 8px">${spH(arr.reduce((a,b)=>a+b.rh,0))}</td><td style="padding:7px 8px">${spH(arr.reduce((a,b)=>a+b.ch,0))}</td><td style="padding:7px 8px"></td><td style="padding:7px 8px;font-weight:800">${(totCost>0?'+':totCost<0?'−':'')}${spGBP(Math.abs(totCost))}</td></tr></tbody></table>`);
+  const note=`<div style="font-size:11.5px;color:#6b7280;margin-top:12px;line-height:1.5">“Cost impact” is paid-vs-rostered hours at each person’s rate (+ = worked/would be paid more than rota, − = less). “Cost of lateness” values the late minutes at their hourly rate. Night shifts that cross midnight may need a manual check.</div>`;
+  const exportBtn=`<div style="margin-top:12px"><button onclick="spCmpReportExport()" style="padding:8px 14px;border:1px solid #2B726A;border-radius:8px;background:#fff;color:#2B726A;font:700 12px Lato;cursor:pointer">⬇ Download report (CSV)</button></div>`;
+  showModal('Clock report · '+dfmt(R.from)+' – '+dfmt(R.to), R.lines.length+' shifts checked · '+grace+'-min grace', cards+lateTbl+noTbl+costTbl+note+exportBtn);
+}
+function spCmpReportExport(){
+  const S=spCmpSummary(); if(!S) return; const {R,arr}=S;
+  const hm=m=>Math.round(m);
+  const head=['Staff','Staff code','Shifts rostered','Late starts','Total late (mins)','Worst late (mins)','Missed clock-ins','Missed dates','Rota hours','Clocked hours','Difference (h)','Cost impact (£)','Cost of lateness (£)'];
+  const rows=arr.sort((a,b)=>a.s.name.localeCompare(b.s.name)).map(b=>[b.s.name,b.s.staffCode||'',b.shifts,b.late,hm(b.lateMin),hm(b.worst),b.noclock,b.noclockDates.join(' '),Math.round(b.rh*100)/100,Math.round(b.ch*100)/100,Math.round((b.ch-b.rh)*100)/100,Math.round(b.cost*100)/100,Math.round((b.lateMin/60)*spRate(b.s)*100)/100]);
+  spDownload('clock-report-'+R.from+'-to-'+R.to+'.csv','﻿'+[head,...rows].map(r=>r.map(spCsvCell).join(',')).join('\r\n'));
 }
 
 /* ══════════════════════════════════════════════════════════════
