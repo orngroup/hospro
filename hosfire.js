@@ -260,7 +260,7 @@ const NAV = [
   ["Checks and records", [["checks", "📝", "Record a check"], ["rota", "🔔", "Weekly tests"], ["log", "📖", "Logbook"], ["back", "🗂", "Back-records"], ["drills", "🚪", "Drills, PEEPs, permits"]]],
   ["Actions and contractors", [["actions", "📋", "Actions"], ["certs", "📜", "Certificates"], ["venues", "💍", "Venues & events"]]],
   ["People", [["training", "🎓", "Training"]]],
-  ["Library", [["sign", "✍️", "Signatures"], ["docs", "📁", "Documents"], ["regs", "⚖️", "Regulations"], ["pack", "🖨", "Inspector pack"]]],
+  ["Library", [["sign", "✍️", "Documents to Sign"], ["docs", "📁", "Documents"], ["regs", "⚖️", "Regulations"], ["pack", "🖨", "Inspector pack"]]],
   ["Admin", [["settings", "⚙️", "Settings"]]]
 ];
 function placeNav() { const hh = ($("header") || {}).offsetHeight || 66; const nv = $("#nav"); if (!nv) return; nv.style.top = hh + "px"; nv.style.height = window.innerWidth > 900 ? `calc(100vh - ${hh}px)` : ""; }
@@ -852,7 +852,7 @@ VIEWS.focus = () => {
     [!miss.length, "Site facts on the procedure pages", miss.length ? `Still blank: ${miss.join(", ")}` : "All filled in", "settings"],
     [!flagged, "Paper sheets confirmed and entered", flagged ? `${flagged} sheet${flagged === 1 ? "" : "s"} waiting for a confirmed date or name` : "All entered or none waiting", "back"],
     [rc.length && rcOk === rc.length, "Reception and night staff briefed on the alarm procedure", `${rcOk} of ${rc.length} recorded`, "training"],
-    [!sg, "Signatures", sg ? `${sg} still to sign` : "All signed", "sign"],
+    [!sg, "Documents to Sign", sg ? `${sg} still to sign` : "All signed", "sign"],
     [!notReady, "Audit readiness checklist", notReady ? `${notReady} item${notReady === 1 ? "" : "s"} not marked Ready` : "All ready", "audit"],
     [packed, "Inspector pack printed and in the binder", packed ? "Printed since yesterday" : "Print it last, after today's updates", "pack"]];
   return `<div class="row"><div class="grow"><h2>Inspection <span class="fl">focus</span></h2>
@@ -1031,7 +1031,8 @@ function signModal(item, after, witness) {
     <div class="tw" style="margin:6px 0 10px"><table>
       <tr><td style="width:34%"><b>Signing as</b></td><td>${h(item.role)}</td></tr>
       <tr><td><b>Name</b></td><td>${h(signer.name)}</td></tr>
-      <tr><td><b>Date</b></td><td>${fd(today())} <span class="muted">(filled in automatically)</span></td></tr>
+      ${item.date ? `<tr><td><b>Document dated</b></td><td>${fd(item.date)}</td></tr>` : ""}
+      <tr><td><b>Date of signature</b></td><td>${fd(today())} <span class="muted">(today — filled in automatically)</span></td></tr>
       ${item.version ? `<tr><td><b>Document version</b></td><td>${h(item.version)}</td></tr>` : ""}</table></div>
     ${item.file ? `<p><button class="btn ghost" id="sg-open">📄 Open the document to read it first</button></p>` : ""}
     <label>Your signature — draw it below with your finger or mouse</label>
@@ -1096,30 +1097,58 @@ function sigCertHTML(docId) {
     <p style="font-size:10px;color:#555;margin-top:10px">Electronic signatures were drawn by each signer themselves — on their own HosFIRE login, or in person with the named witness present. Each is stored with the signer's account and the time it was made, and cannot be edited or deleted. Produced ${fdt(Date.now())} by ${h(S.user.name)}.</p>`;
 }
 VIEWS.sign = () => {
-  const items = signItems(), mine = myToSign();
-  const docs = [...new Set(items.map((x) => x.docId))];
-  const signed = items.filter((x) => x.sig).length, internal = items.filter((x) => x.who).length;
-  return `<h2>Signatures</h2>
-  <p class="lead">Every document that needs signing, who signs it and where it stands. People sign on their own HosFIRE login (computer or phone) by drawing their signature; outside parties sign on paper and the signed copy is uploaded to the document.</p>
-  <div class="grid g5" style="margin-bottom:12px">
+  const items = signItems(), mine = myToSign(), f = S.f.sign || (S.f.sign = { show: mine.length ? "mine" : "open" });
+  const docs = [...new Set(items.map((x) => x.docId))].map((id) => { const rows = items.filter((x) => x.docId === id); return { id, rows, done: rows.every((x) => x.sig), mine: rows.some((x) => x.who === S.key && !x.sig) }; });
+  const signed = items.filter((x) => x.sig).length;
+  const shown = docs.filter((d) => f.show === "all" || (f.show === "mine" ? d.mine : f.show === "open" ? !d.done : d.done));
+  const chip = (k, l, n) => `<button class="btn sm ${f.show === k ? "" : "ghost"}" data-sf="${k}">${l} (${n})</button>`;
+  const status = (x) => x.sig ? `${pill("Signed")} <span class="muted">${x.sig.method === "paper" ? "on paper · " + fds(x.sig.signedOn) : fdt(x.sig.createdAt)}${x.sig.method === "in person" ? " · in person" : ""}</span>${x.sig.file ? ` <a href="#" data-sfile="${x.sig.id}">scan</a>` : ""}`
+    : x.ext ? `<span class="pill p-amb">Signs on paper</span>` : x.retro && !x.written ? `<span class="pill p-red">Statement not written</span>` : `<span class="pill p-red">Waiting</span>`;
+  const act = (x, i) => x.sig ? "" : x.ext ? (isAdmin() ? `<button class="btn sm ghost" data-paper="${x.docId}|${i}">📎 Record paper signature</button>` : "")
+    : x.who === S.key ? (x.retro ? `<button class="btn sm red" data-retro="${x.who}">${x.written ? "✍️ Review and sign" : "✍️ Write my statement"}</button>` : `<button class="btn sm red" data-sign="${x.docId}|${i}">✍️ Sign now</button>`)
+    : (isAdmin() && !x.retro ? `<button class="btn sm ghost" data-admsign="${x.docId}|${i}">Options</button>` : `<button class="btn sm ghost" data-other="${x.who}">Send link</button>`);
+  return `<h2>Documents <span class="fl">to Sign</span></h2>
+  <p class="lead">Open the document, read it, sign it, then download the signed copy. Each document shows the date it is dated (prepared or approved); your signature is stamped with the day you actually sign. Outside parties sign on paper and the signed page is uploaded.</p>
+  <div class="grid g4" style="margin-bottom:12px">
     <div class="card tile ${mine.length ? "r" : "g"}"><div class="n">${mine.length}</div><div class="l">Waiting for your signature</div></div>
-    <div class="card tile g"><div class="n">${signed}/${internal}</div><div class="l">Electronic signatures done</div></div>
-    <div class="card tile"><div class="n">${docs.length}</div><div class="l">Documents</div></div>
-    <div class="card tile a"><div class="n">${items.filter((x) => x.ext).length}</div><div class="l">Paper signatures (outside parties)</div></div>
+    <div class="card tile ${signed === items.length ? "g" : "a"}"><div class="n">${signed} / ${items.length}</div><div class="l">Signatures done</div></div>
+    <div class="card tile g"><div class="n">${docs.filter((d) => d.done).length} / ${docs.length}</div><div class="l">Documents fully signed</div></div>
+    <div class="card tile a"><div class="n">${items.filter((x) => x.ext && !x.sig).length}</div><div class="l">Paper signatures still to collect</div></div>
   </div>
-  ${mine.length ? `<div class="warn"><b>${mine.length} waiting for you:</b> ${mine.map((x) => h(x.title)).join(" · ")}</div>` : ""}
-  <div class="tw"><table><tr><th>Document</th><th>Signer</th><th>Role</th><th>Status</th><th></th></tr>
-  ${docs.map((id) => { const rows = items.filter((x) => x.docId === id);
-    return rows.map((x, i) => `<tr>${i === 0 ? `<td rowspan="${rows.length}"><b>${h(x.title)}</b><div class="muted">${h(x.version)}</div>${x.file ? `<button class="btn sm ghost" data-docopen="${id}" style="margin-top:6px">📄 Open document</button> ` : x.retro ? "" : `<div class="muted" style="font-size:11px;margin-top:4px">File not uploaded yet</div>`}${rows.some((y) => y.sig) ? `<button class="btn sm ghost" data-cert="${id}" style="margin-top:6px">⬇ ${x.retro ? "Statement" : "Signature certificate"} (PDF)</button>` : ""}</td>` : ""}
-      <td>${h(x.ext || (LOGINS[x.who] || {}).name || x.who)}</td><td class="muted">${h(x.role)}</td>
-      <td>${x.sig ? `${pill("Done")} <span class="muted">${x.sig.method === "paper" ? "paper · " + fds(x.sig.signedOn) : fdt(x.sig.createdAt)}${x.sig.method === "in person" ? " · in person" : ""}</span>${x.sig.file ? ` <a href="#" data-sfile="${x.sig.id}">scan</a>` : ""}` : x.ext ? `<span class="pill p-amb">Paper — upload signed copy</span>` : x.retro && !x.written ? `<span class="pill p-red">Statement not written</span>` : `<span class="pill p-red">Awaiting signature</span>`}</td>
-      <td>${x.sig ? "" : x.ext ? (isAdmin() ? `<button class="btn sm ghost" data-paper="${x.docId}|${i}">📎 Record paper signature</button>` : "") : x.who === S.key ? (x.retro ? `<button class="btn sm red" data-retro="${x.who}">${x.written ? "Review and sign" : "Write my statement"}</button>` : `<button class="btn sm red" data-sign="${x.docId}|${i}">✍️ Sign</button>`) : (isAdmin() && !x.retro ? `<button class="btn sm red" data-admsign="${x.docId}|${i}">✍️ Sign</button>` : `<button class="btn sm ghost" data-other="${x.who}">✍️ Sign</button>`)}</td></tr>`).join(""); }).join("")}
-  </table></div>
-  <p class="muted" style="margin-top:8px">Signatures are made by each person on their own login only. Nobody can sign for someone else, and signed entries cannot be changed.</p>`;
+  <div class="row" style="margin-bottom:10px">${chip("mine", "Waiting for me", docs.filter((d) => d.mine).length)}${chip("open", "Not fully signed", docs.filter((d) => !d.done).length)}${chip("done", "Fully signed", docs.filter((d) => d.done).length)}${chip("all", "All", docs.length)}</div>
+  <div class="dts">${shown.map((d) => { const x0 = d.rows[0], reg0 = S.data.registers.find((r) => r.id === d.id) || {};
+    return `<div class="card dts-card ${d.done ? "dts-done" : d.mine ? "dts-mine" : ""}">
+      <div class="row" style="align-items:flex-start"><div class="grow"><div class="dts-t">${d.done ? "✅ " : ""}${h(x0.title)}</div>
+        <div class="muted" style="font-size:12px">${[x0.version, reg0.date ? "Dated " + fds(reg0.date) : ""].filter(Boolean).map(h).join(" · ")}</div></div>
+        <div class="row" style="gap:6px">${x0.file ? `<button class="btn sm ghost" data-docopen="${d.id}">📄 Open</button>` : x0.retro ? "" : `<span class="muted" style="font-size:11px">File not uploaded yet</span>`}
+        ${d.rows.some((y) => y.sig) ? `<button class="btn sm ${d.done ? "red" : "ghost"}" data-dl="${d.id}">⬇ ${d.done ? "Download signed copy" : "Download (part signed)"}</button>` : ""}</div></div>
+      <table class="dts-tb"><tr><th>Signer</th><th>Role</th><th>Document date</th><th>Status</th><th></th></tr>
+      ${d.rows.map((x, i) => `<tr><td><b>${h(x.ext || (LOGINS[x.who] || {}).name || x.who)}</b></td><td class="muted">${h(x.role)}</td><td>${x.date ? fds(x.date) : '<span class="muted">—</span>'}</td><td>${status(x)}</td><td style="text-align:right">${act(x, i)}</td></tr>`).join("")}</table></div>`; }).join("") || `<p class="muted">Nothing in this list.</p>`}</div>
+  <p class="muted" style="margin-top:8px">Signatures are made by each person on their own login with their personal code, or in person with a witness. Nobody can sign for someone else, and signed entries cannot be changed.</p>`;
 };
+/* Signed copy: the document itself (Word files are converted in the browser) followed by the signature page */
+async function downloadSigned(docId) {
+  const d = S.data.registers.find((r) => r.id === docId) || {}, f = d.file;
+  let body = "", note = "";
+  if (f && f.path && /\.docx$/i.test(f.name || f.path) && S.live) {
+    toast("Preparing the signed copy…");
+    try {
+      if (!window.mammoth) await new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+      const url = await fb.st.ref(f.path).getDownloadURL(); const buf = await (await fetch(url)).arrayBuffer();
+      body = `<div class="sd-doc">${(await mammoth.convertToHtml({ arrayBuffer: buf })).value}</div><div style="page-break-before:always"></div>`;
+    } catch (e) { note = "The document text could not be added automatically — print it from Documents and attach this signature page."; }
+  } else if (f && f.path) note = "The document is a " + ((f.name || "").split(".").pop() || "file") + " — print it from Documents and attach this signature page.";
+  $("#print").innerHTML = `<div class="sd">${body}${sigCertHTML(docId)}${note ? `<p style="font-size:10px;color:#B3261E">${h(note)}</p>` : ""}</div>`;
+  audit(`Signed copy downloaded: ${d.title || docId}`);
+  const imgs = $$("#print img"); await Promise.all(imgs.map((i) => (i.complete ? 1 : new Promise((r) => { i.onload = i.onerror = r; setTimeout(r, 5000); }))));
+  setTimeout(() => window.print(), 300);
+}
 BIND.sign = (v) => {
   const items = signItems();
-  $$("[data-sign]", v).forEach((b) => (b.onclick = () => { const [id, i] = b.dataset.sign.split("|"); signModal(items.filter((x) => x.docId === id)[+i]); }));
+  $$("[data-sf]", v).forEach((b) => (b.onclick = () => { S.f.sign.show = b.dataset.sf; render(); }));
+  $$("[data-dl]", v).forEach((b) => (b.onclick = () => downloadSigned(b.dataset.dl)));
+  $$("[data-sign]", v).forEach((b) => (b.onclick = () => { const [id, i] = b.dataset.sign.split("|"); const it = items.filter((x) => x.docId === id)[+i];
+    signModal(it, () => { const m = modal(`<h3>✅ Signed</h3><p>${h(it.title)} is signed and saved in HosFIRE.</p><div class="row"><button class="btn red" id="ds-dl">⬇ Download signed copy</button><button class="btn ghost" data-close>Close</button></div>`); $("#ds-dl", m).onclick = () => { m.close(); downloadSigned(id); }; }); }));
   $$("[data-cert]", v).forEach((b) => (b.onclick = () => { $("#print").innerHTML = sigCertHTML(b.dataset.cert); setTimeout(() => window.print(), 300); }));
   $$("[data-retro]", v).forEach((b) => (b.onclick = () => retroModal(b.dataset.retro)));
   $$("[data-paper]", v).forEach((b) => (b.onclick = () => { const [id, i] = b.dataset.paper.split("|"); paperModal(items.filter((x) => x.docId === id)[+i]); }));
