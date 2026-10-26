@@ -1815,7 +1815,7 @@ BIND.pack = (v) => {
 /* ---------- shared print helpers (landscape packs) ---------- */
 function printLandscape() {
   let st = document.getElementById("pg-land"); if (!st) { st = document.createElement("style"); st.id = "pg-land"; document.head.appendChild(st); }
-  st.textContent = "@page{size:A4 landscape;margin:10mm 12mm}";
+  st.textContent = "@page{size:A4 landscape;margin:12mm 14mm}";
   const off = () => { st.textContent = ""; window.removeEventListener("afterprint", off); }; window.addEventListener("afterprint", off);
   setTimeout(() => window.print(), 300);
 }
@@ -1832,7 +1832,7 @@ function pkSec(list, k, runTitle, extra = "") {
   return `<div class="pk-sec"><div class="pk-run"><img src="${PK_LOGO}" onerror="this.style.display='none'"><span>${h(HF_HOTEL.name)} · ${h(runTitle)}</span><span>Section ${m ? m[1] : ""}</span></div>
     <h2 class="pk-h"><span class="pk-tab">${m ? m[1] : ""}</span>${h(m ? m[2] : l)}</h2>${extra}`;
 }
-const pkTbl = (heads, rows, empty = "None recorded.") => `<table><tr>${heads.map((x) => `<th>${h(x)}</th>`).join("")}</tr>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${heads.length}">${empty}</td></tr>`}</table>`;
+const pkTbl = (heads, rows, empty = "None recorded.") => `<table><thead><tr>${heads.map((x) => `<th>${h(x)}</th>`).join("")}</tr></thead>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${heads.length}">${empty}</td></tr>`}</table>`;
 const pkTiles = (T) => `<div class="pk-tiles">${T.map(([n, l, c]) => `<div class="pk-tile ${c || ""}"><b>${n}</b><span>${h(l)}</span></div>`).join("")}</div>`;
 function keyDocsRows() {
   const sigs = signItems();
@@ -1846,7 +1846,7 @@ function packHTML(from, to, on) {
   const ins = HF_HOTEL.inspection, LOGO = "assets/marketing/logos/logo-blue-transparent.png";
   const A = S.data.actions.slice().sort((a, b) => natRef(a.category, b.category) || natRef(a.ref, b.ref));
   const R = S.data.records.filter((r) => !r.correctionOf && r.date >= from && r.date <= to).sort((a, b) => natRef(a.date, b.date));
-  const tbl = (heads, rows) => `<table><tr>${heads.map((x) => `<th>${h(x)}</th>`).join("")}</tr>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${heads.length}">None in this period.</td></tr>`}</table>`;
+  const tbl = (heads, rows) => `<table><thead><tr>${heads.map((x) => `<th>${h(x)}</th>`).join("")}</tr></thead>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${heads.length}">None in this period.</td></tr>`}</table>`;
   const src = (r) => (r.imported ? ` <i>(past record entered ${fdt(r.createdAt)} from: ${h(r.source)} — ${h(r.sourceRef)}${r.scanFile ? "; scanned sheet held in HosFIRE" : ""})</i>` : "");
   const secs = PACK_SECS.filter(([k]) => on[k] && k !== "cover");
   const sec = (k, extra = "") => pkSec(PACK_SECS, k, "Fire safety records — inspector pack", extra);
@@ -1939,7 +1939,7 @@ const extRows = () => reg("ext").sort((a, b) => (a.no || 0) - (b.no || 0));
 const extState = (e) => (e.result === "PASS" ? (e.tdr && /^\d{4}$/.test(e.tdr) && +e.tdr <= +today().slice(0, 4) ? "Test due" : "OK") : e.result === "NOT INSPECTED" ? "Not inspected" : "Action needed");
 function extTable(L, edit) {
   const areas = [...new Set(L.map((e) => e.area))];
-  return areas.map((ar) => `<h3>${h(ar)}</h3><table${edit ? "" : ' class="pk-log"'}><tr><th style="width:5%">No.</th><th>Location</th><th style="width:13%">Type</th><th style="width:9%">Test due (TD/R)</th><th style="width:12%">Last service (12/01/26)</th><th>Notes</th>${edit ? "<th></th>" : '<th style="width:12%">Monthly check ✓ / date</th>'}</tr>
+  return areas.map((ar) => `<h3>${h(ar)}</h3><table${edit ? "" : ' class="pk-log"'}><thead><tr><th style="width:5%">No.</th><th>Location</th><th style="width:13%">Type</th><th style="width:9%">Test due (TD/R)</th><th style="width:12%">Last service (12/01/26)</th><th>Notes</th>${edit ? "<th></th>" : '<th style="width:12%">Monthly check ✓ / date</th>'}</tr></thead>
     ${L.filter((e) => e.area === ar).map((e) => { const st = extState(e); return `<tr><td>${e.no}</td><td><b>${h(e.loc)}</b></td><td>${h(e.type)}</td><td>${h(e.tdr)}</td><td>${st === "OK" ? "Pass" : `<b style="color:#B3261E">${h(st === "Test due" ? "Pass — test due " + e.tdr : e.result === "NOT INSPECTED" ? "Not inspected" : "Fail")}</b>`}</td><td>${h(e.notes || "")}${e.check ? `<div style="font-size:11px;color:#1E8A55">Visual check ${fds(e.check)} · ${h(e.checkBy || "")}${e.checkNote ? " — " + h(e.checkNote) : ""}</div>` : ""}</td>${edit ? `<td><button class="btn sm ghost" data-ext="${e.id}">✏️ Update</button></td>` : "<td>&nbsp;</td>"}</tr>`; }).join("")}</table>`).join("");
 }
 VIEWS.ext = () => {
@@ -1983,7 +1983,7 @@ BIND.ext = (v) => {
 };
 function printPortrait() {
   let st = document.getElementById("pg-land"); if (!st) { st = document.createElement("style"); st.id = "pg-land"; document.head.appendChild(st); }
-  st.textContent = "@page{size:A4 portrait;margin:10mm 10mm}";
+  st.textContent = "@page{size:A4 portrait;margin:14mm 12mm 14mm 14mm}";
   const off = () => { st.textContent = ""; window.removeEventListener("afterprint", off); }; window.addEventListener("afterprint", off);
   setTimeout(() => window.print(), 300);
 }
@@ -2024,7 +2024,7 @@ function folderHTML(on, opt) {
   const fact = (k, fb2) => (site[k] ? h(site[k]) : `<span class="pk-blank">${fb2 || ""}&nbsp;</span>`);
   const from = addMonths(today(), -12), recsIn = (t) => (opt.recs ? recs(t).filter((r) => r.date >= from).sort((a, b) => natRef(a.date, b.date)) : []);
   const blanks = (n, cols) => Array.from({ length: n }, () => Array(cols).fill("&nbsp;"));
-  const logTbl = (heads, rows, widths) => `<table class="pk-log"><tr>${heads.map((x, i) => `<th style="${widths && widths[i] ? "width:" + widths[i] : ""}">${h(x)}</th>`).join("")}</tr>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</table>`;
+  const logTbl = (heads, rows, widths) => `<table class="pk-log"><thead><tr>${heads.map((x, i) => `<th style="${widths && widths[i] ? "width:" + widths[i] : ""}">${h(x)}</th>`).join("")}</tr></thead>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</table>`;
   const who = (r) => h(r.imported ? r.doneBy : r.byName);
   const secs = FOLDER_SECS.filter(([k]) => on[k] && k !== "cover");
   let out = "";
@@ -2044,7 +2044,7 @@ function folderHTML(on, opt) {
   if (on.recep) out += sec("recep", `<p>From the Reception Fire Alarm Activation Procedure (Front Office). Reception and night staff are briefed on it and sign the briefing record.</p>`)
     + `<ol class="pk-steps">${HF_RECEPTION_STEPS.map(([t, d]) => `<li><b>${h(t)}</b><span>${h(d)}</span></li>`).join("")}</ol>` + end;
   if (on.plans) { const P = reg("doc").filter((x) => x.cat === "Floor plan").sort((a, b) => natRef(b.title, a.title));
-    out += P.map((d, i) => sec("plans", `<h3>${h(d.title)}</h3>${(S.planUrls || {})[d.id] ? `<img src="${S.planUrls[d.id]}" class="pk-plan">` : `<p class="muted">Held in HosFIRE → Documents. Print it from there if it does not show here.</p>`}`) + end).join("") || sec("plans", "<p>No floor plans uploaded yet.</p>") + end; }
+    out += P.map((d, i) => sec("plans", `<h3>${h(d.title)}</h3>${(S.planUrls || {})[d.id] ? `<div class="pk-rot"><img src="${S.planUrls[d.id]}"></div>` : `<p class="muted">Held in HosFIRE → Documents. Print it from there if it does not show here.</p>`}`) + end).join("") || sec("plans", "<p>No floor plans uploaded yet.</p>") + end; }
   if (on.extl) out += sec("extl", `<p>From Leader Systems' service reports (13/11/25 and 12/01/26). Check each one monthly: in place, sign visible, gauge in the green, pin and tamper tag intact. Report anything missing or used straight away.</p>`) + extTable(extRows(), false) + end;
   if (on.people) { const TR = reg("training");
     out += sec("people") + `<h3>Fire safety team</h3>` + pkTbl(["Role", "Name", "Marshal course", "Notes"], [[ "Fire Safety Manager", h(HF_FIRE_MANAGER.name), "", "Day-to-day fire safety, checks, contractors, records"], ["Management approval", "Patrik Vlach", "", "Front Office Manager"],
