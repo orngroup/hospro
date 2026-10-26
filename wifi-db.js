@@ -28,8 +28,8 @@
     const m = new Map();
     [...W.rows].sort((a,b)=>(a.created||"").localeCompare(b.created||"")).forEach(r=>{
       const k = (r.email||"").toLowerCase(); if(!k) return;
-      const p = m.get(k) || { email:k, visits:0, first:r.created, name:r.name, purpose:r.purpose, marketing:false, consentAt:"" };
-      p.visits++; p.last = r.created; p.name = r.name||p.name; p.purpose = r.purpose||p.purpose;
+      const p = m.get(k) || { email:k, visits:0, first:r.created, name:r.name, firstName:r.firstName||"", lastName:r.lastName||"", purpose:r.purpose, staying:r.staying||"", marketing:false, consentAt:"" };
+      p.visits++; p.last = r.created; p.name = r.name||p.name; p.firstName = r.firstName||p.firstName; p.lastName = r.lastName||p.lastName; p.purpose = r.purpose||p.purpose; p.staying = r.staying||p.staying;
       if(r.marketing){ p.marketing = true; p.consentAt = r.consentAt||r.created; }
       m.set(k,p);
     });
@@ -42,7 +42,7 @@
     return people().filter(p =>
       (!q || p.name.toLowerCase().includes(q) || p.email.includes(q)) &&
       (W.purpose==="all" || p.purpose===W.purpose) &&
-      (W.consent==="all" || (W.consent==="yes" ? p.marketing : !p.marketing)) &&
+      (W.consent==="all" || (W.consent==="yes" ? p.marketing : W.consent==="no" ? !p.marketing : W.consent==="res" ? p.staying==="Staying" : p.staying==="Visiting")) &&
       (!since || new Date(p.last).getTime() >= since));
   }
 
@@ -57,7 +57,7 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0 12px">
         <input id="wf-q" placeholder="Search name or email…" style="flex:1 1 220px;padding:9px 12px;border:1px solid #d9e0e7;border-radius:9px;font:13px Lato">
         <select id="wf-purpose" style="padding:9px 10px;border:1px solid #d9e0e7;border-radius:9px;font:13px Lato;background:#fff"><option value="all">Leisure &amp; business</option><option value="Leisure">Leisure only</option><option value="Business">Business only</option></select>
-        <select id="wf-consent" style="padding:9px 10px;border:1px solid #d9e0e7;border-radius:9px;font:13px Lato;background:#fff"><option value="all">All guests</option><option value="yes">Newsletter opt-in only</option><option value="no">No marketing consent</option></select>
+        <select id="wf-consent" style="padding:9px 10px;border:1px solid #d9e0e7;border-radius:9px;font:13px Lato;background:#fff"><option value="all">All guests</option><option value="res">Residents only</option><option value="vis">Visitors only</option><option value="yes">Newsletter opt-in only</option><option value="no">No marketing consent</option></select>
         <select id="wf-period" style="padding:9px 10px;border:1px solid #d9e0e7;border-radius:9px;font:13px Lato;background:#fff"><option value="all">All time</option><option value="month">This month</option><option value="30">Last 30 days</option></select>
         <button id="wf-csv" class="btn sm">⬇ Export CSV</button>
         <button id="wf-xlsx" class="btn sm ghost">⬇ Export Excel</button>
@@ -99,10 +99,11 @@
       box.innerHTML = `<div class="qs-sub" style="padding:18px 4px">${all.length ? "No guests match those filters." : "No sign-ups yet. Once the Wi-Fi provider points the guest Wi-Fi at the welcome page below, every connection appears here automatically."}</div>`; return;
     }
     box.innerHTML = `<div style="overflow-x:auto"><table class="data-table">
-      <tr><th>Name</th><th>Email</th><th>Visit</th><th>Newsletter</th><th>Visits</th><th>Last seen</th><th>First seen</th></tr>
+      <tr><th>Name</th><th>Email</th><th>Staying</th><th>Visit</th><th>Newsletter</th><th>Visits</th><th>Last seen</th><th>First seen</th></tr>
       ${rows.slice(0,500).map(p=>`<tr>
         <td style="font-weight:700;color:#1a2b3a">${esc(p.name)}</td>
         <td><a href="mailto:${esc(p.email)}" style="color:#2F7A72">${esc(p.email)}</a></td>
+        <td>${p.staying==="Staying"?"Resident":p.staying==="Visiting"?"Visitor":"—"}</td>
         <td>${esc(p.purpose||"—")}</td>
         <td>${p.marketing ? `<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:11.5px;font-weight:700">Yes</span>` : `<span style="background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:11.5px">No</span>`}</td>
         <td>${p.visits}</td>
@@ -114,12 +115,12 @@
 
   function exportRows(kind){
     const rows = filtered();
-    const head = ["Name","Email","Purpose","Newsletter opt-in","Consent date","Visits","First seen","Last seen"];
-    const data = rows.map(p=>[p.name, p.email, p.purpose||"", p.marketing?"Yes":"No", p.marketing?fmt(p.consentAt):"", p.visits, fmt(p.first), fmt(p.last)]);
+    const head = ["First name","Last name","Email","Staying","Purpose","Newsletter opt-in","Consent date","Visits","First seen","Last seen"];
+    const data = rows.map(p=>[p.firstName||p.name.split(" ")[0], p.lastName||p.name.split(" ").slice(1).join(" "), p.email, p.staying==="Staying"?"Resident":p.staying==="Visiting"?"Visitor":"", p.purpose||"", p.marketing?"Yes":"No", p.marketing?fmt(p.consentAt):"", p.visits, fmt(p.first), fmt(p.last)]);
     const stamp = new Date().toISOString().slice(0,10);
     if(kind==="xlsx" && typeof XLSX!=="undefined"){
       const ws = XLSX.utils.aoa_to_sheet([head, ...data]);
-      ws["!cols"] = [{wch:26},{wch:34},{wch:10},{wch:16},{wch:20},{wch:7},{wch:20},{wch:20}];
+      ws["!cols"] = [{wch:16},{wch:18},{wch:34},{wch:10},{wch:10},{wch:16},{wch:20},{wch:7},{wch:20},{wch:20}];
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Wi-Fi guests");
       XLSX.writeFile(wb, `brandon-hall-wifi-guests-${stamp}.xlsx`); return;
     }
