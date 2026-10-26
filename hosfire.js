@@ -256,7 +256,7 @@ const TABS = [
 ];
 /* Side navigation, grouped into sections */
 const NAV = [
-  ["Overview", [["dash", "📊", "Dashboard"], ["procs", "🔥", "Procedures"], ["audit", "✅", "Audit readiness"], ["diary", "📅", "Diary"]]],
+  ["Overview", [["focus", "🎯", "Inspection focus"], ["dash", "📊", "Dashboard"], ["procs", "🔥", "Procedures"], ["audit", "✅", "Audit readiness"], ["diary", "📅", "Diary"]]],
   ["Checks and records", [["checks", "📝", "Record a check"], ["rota", "🔔", "Weekly tests"], ["log", "📖", "Logbook"], ["back", "🗂", "Back-records"], ["drills", "🚪", "Drills, PEEPs, permits"]]],
   ["Actions and contractors", [["actions", "📋", "Actions"], ["certs", "📜", "Certificates"], ["venues", "💍", "Venues & events"]]],
   ["People", [["training", "🎓", "Training"]]],
@@ -266,8 +266,8 @@ const NAV = [
 function placeNav() { const hh = ($("header") || {}).offsetHeight || 66; const nv = $("#nav"); if (!nv) return; nv.style.top = hh + "px"; nv.style.height = window.innerWidth > 900 ? `calc(100vh - ${hh}px)` : ""; }
 function nav() {
   const badge = { actions: S.data.actions.filter((a) => a.status !== "Completed" && a.priority === "High").length,
-    checks: HF_CHECKS.filter((c) => c.freq !== "event" && checkStatus(c).st === "Due").length, sign: myToSign().length };
-  $("#nav").innerHTML = NAV.map(([g, items]) => `<div class="ng">${g}</div>` + items.map(([k, i, l]) => `<button data-t="${k}" class="${S.tab === k ? "on" : ""}"><span class="ni">${i}</span>${l}${badge[k] ? `<span class="nb" title="${k === "actions" ? "High-priority actions open" : "Checks due now"}">${badge[k]}</span>` : ""}</button>`).join("")).join("");
+    checks: HF_CHECKS.filter((c) => c.freq !== "event" && checkStatus(c).st === "Due").length, sign: myToSign().length, focus: focusLists().before.filter((a) => a.status !== "Completed").length };
+  $("#nav").innerHTML = NAV.map(([g, items]) => `<div class="ng">${g}</div>` + items.map(([k, i, l]) => `<button data-t="${k}" class="${S.tab === k ? "on" : ""}"><span class="ni">${i}</span>${l}${badge[k] ? `<span class="nb" title="${k === "actions" ? "High-priority actions open" : k === "focus" ? "Jobs to finish before the inspection" : "Checks due now"}">${badge[k]}</span>` : ""}</button>`).join("")).join("");
   $$("#nav button").forEach((b) => (b.onclick = () => { S.tab = b.dataset.t; $("#nav").classList.remove("open"); render(); window.scrollTo(0, 0); }));
   const mb = $("#menu-btn"); if (mb) mb.onclick = () => $("#nav").classList.toggle("open");
   placeNav(); if (!window._hfNavRs) { window._hfNavRs = 1; window.addEventListener("resize", placeNav); }
@@ -816,6 +816,58 @@ BIND.actions = (v) => {
       await put("actions", a.id, upd); audit(`Action ${a.ref} status → ${status}${note ? ": " + note : ""}`, a.ref); m.close(); toast("Updated");
     };
   }));
+};
+/* ============================================================ INSPECTION FOCUS */
+function focusLists() {
+  const ins = HF_HOTEL.inspection.date, open = (a) => a.status !== "Completed";
+  const isBefore = (a) => ["Inspection", "Records"].includes(a.category) || (a.due && a.due <= ins);
+  const before = S.data.actions.filter((a) => isBefore(a) && (open(a) || (a.completedOn || "") >= addDays(ins, -14)));
+  const high = S.data.actions.filter((a) => open(a) && !isBefore(a) && a.priority === "High");
+  return { before, high };
+}
+VIEWS.focus = () => {
+  const ins = HF_HOTEL.inspection, { before, high } = focusLists();
+  const at = parse(ins.date); const [hh, mm] = ins.time.split(":"); at.setHours(+hh, +mm, 0, 0);
+  const hrs = Math.round((at - Date.now()) / 36e5), when = hrs > 48 ? `in ${Math.round(hrs / 24)} days` : hrs > 0 ? `in ${hrs} hour${hrs === 1 ? "" : "s"}` : "today";
+  const done = before.filter((a) => a.status === "Completed").length, pc = before.length ? Math.round((done / before.length) * 100) : 100;
+  const ord = (a, b) => (a.status === "Completed") - (b.status === "Completed") || natRef(a.due || "9999", b.due || "9999") || ({ High: 0, Medium: 1, Low: 2 }[a.priority] - { High: 0, Medium: 1, Low: 2 }[b.priority]) || natRef(a.ref, b.ref);
+  const late = (a) => a.status !== "Completed" && a.due && a.due < today();
+  const row = (a) => { const last = (a.history || []).filter((x) => x.note && !/starting data/i.test(x.note)).slice(-1)[0];
+    return `<tr class="fx-row ${a.status === "Completed" ? "fx-done" : ""}" data-edit="${a.id}" title="Open this job">
+      <td style="width:34px;font-size:18px;text-align:center">${a.status === "Completed" ? "✅" : a.status === "In progress" ? "🟠" : "⭕"}</td>
+      <td><b>${h(a.ref)}</b> ${h(a.title)}${a.notes ? `<div class="muted" style="font-size:12px">${h(a.notes)}</div>` : ""}${last && last.note ? `<div style="font-size:12px;color:var(--navy)">Latest: ${h(last.note)} <span class="muted">(${h(last.by || "")}${last.at ? ", " + fdt(last.at) : ""})</span></div>` : ""}</td>
+      <td>${h(a.owner || "—")}</td><td>${a.due ? `<span style="${late(a) ? "color:var(--red);font-weight:800" : ""}">${fds(a.due)}${late(a) ? " · late" : ""}</span>` : '<span class="muted">—</span>'}</td>
+      <td>${pill(a.priority)}</td><td>${pill(a.status)}<div class="muted" style="font-size:11px">${progressOf(a)}%</div></td></tr>`; };
+  const tbl = (L) => `<div class="tw"><table><tr><th></th><th>Job</th><th>Owner</th><th>Due</th><th>Priority</th><th>Status</th></tr>${L.sort(ord).map(row).join("") || `<tr><td colspan="6" class="muted">Nothing here.</td></tr>`}</table></div>`;
+  // readiness checks (not jobs)
+  const site = cfg().site || {}, miss = [["assembly", "assembly point"], ["mainPanel", "main panel location"], ["spaPanel", "spa panel location"], ["granite", "Granite Leisure contact"]].filter(([k]) => !site[k]).map(([, l]) => l);
+  const flagged = reg("scan").filter((x) => (x.flags || []).length && x.checkType && !S.data.records.some((r) => r.scanId === x.id)).length;
+  const RC = HF_COURSES.find((c) => c[0] === "reception"), TR = reg("training"), rc = TR.filter((t) => courseApplies(t, RC)), rcOk = rc.filter((t) => (t.courses || {}).reception).length;
+  const sg = signItems().filter((x) => !x.sig).length, notReady = HF_AUDIT.flatMap((g) => g.items).filter(([id]) => ((S.data.registers.find((r) => r.id === "audit-" + id) || {}).status || "Not ready") !== "Ready").length;
+  const packed = S.data.audit.some((x) => /Inspector pack/.test(x.what || "") && ms(x.createdAt) >= parse(addDays(ins.date, -1)).getTime());
+  const chk = [
+    [!miss.length, "Site facts on the procedure pages", miss.length ? `Still blank: ${miss.join(", ")}` : "All filled in", "settings"],
+    [!flagged, "Paper sheets confirmed and entered", flagged ? `${flagged} sheet${flagged === 1 ? "" : "s"} waiting for a confirmed date or name` : "All entered or none waiting", "back"],
+    [rc.length && rcOk === rc.length, "Reception and night staff briefed on the alarm procedure", `${rcOk} of ${rc.length} recorded`, "training"],
+    [!sg, "Signatures", sg ? `${sg} still to sign` : "All signed", "sign"],
+    [!notReady, "Audit readiness checklist", notReady ? `${notReady} item${notReady === 1 ? "" : "s"} not marked Ready` : "All ready", "audit"],
+    [packed, "Inspector pack printed and in the binder", packed ? "Printed since yesterday" : "Print it last, after today's updates", "pack"]];
+  return `<div class="row"><div class="grow"><h2>Inspection <span class="fl">focus</span></h2>
+    <p class="lead"><b>${fd(ins.date)} at ${h(ins.time)}</b> (${when}) — ${h(ins.inspector)}, ${h(ins.body)}. Everything to finish or have ready, in one place. Click any job to open it and update it.</p></div></div>
+  <div class="grid g4" style="margin-bottom:12px">
+    <div class="card tile ${pc === 100 ? "g" : "a"}"><div class="n">${done} / ${before.length}</div><div class="l">Jobs for the inspection done</div><div class="fx-bar"><i style="width:${pc}%"></i></div></div>
+    <div class="card tile ${before.filter(late).length ? "r" : "g"}"><div class="n">${before.filter(late).length}</div><div class="l">Past their due date</div></div>
+    <div class="card tile ${high.length ? "r" : "g"}"><div class="n">${high.length}</div><div class="l">Other high-priority jobs open</div></div>
+    <div class="card tile ${chk.every((c) => c[0]) ? "g" : "a"}"><div class="n">${chk.filter((c) => c[0]).length} / ${chk.length}</div><div class="l">Readiness checks done</div></div>
+  </div>
+  <h3>1. Finish before the inspection</h3><p class="muted">Inspection and records jobs, and anything due by ${fds(ins.date)}. Completed ones stay listed (ticked) so you can see progress.</p>${tbl(before)}
+  <h3>2. Have ready for the inspector</h3>
+  <div class="tw"><table>${chk.map(([ok, t, d, tab]) => `<tr class="fx-row" data-gotab="${tab}" title="Open"><td style="width:34px;font-size:18px;text-align:center">${ok ? "✅" : "⭕"}</td><td><b>${h(t)}</b><div class="muted" style="font-size:12px">${h(d)}</div></td><td style="text-align:right;color:var(--navy);font-weight:700">Open →</td></tr>`).join("")}</table></div>
+  <h3>3. Other high-priority jobs — be ready to explain</h3><p class="muted">These will not all be finished by tomorrow. What matters is that each one has an owner, a due date and an up-to-date note of where it stands.</p>${tbl(high)}`;
+};
+BIND.focus = (v) => {
+  $$("[data-edit]", v).forEach((r) => (r.onclick = () => editAction(r.dataset.edit)));
+  $$("[data-gotab]", v).forEach((r) => (r.onclick = () => { S.tab = r.dataset.gotab; render(); window.scrollTo(0, 0); }));
 };
 function editAction(id) {
   const a = id ? S.data.actions.find((x) => x.id === id) : { ref: nextRef("N"), status: "Not started", priority: "Medium", category: "Other" };
@@ -1606,10 +1658,10 @@ VIEWS.regs = () => `<h2>Regulations and <span class="fl">standards</span></h2>
   <div class="tw"><table>${HF_CALENDAR.map((c) => `<tr><td>${h(c.what)}</td><td>Every ${c.every} months</td></tr>`).join("")}</table></div>`;
 
 /* ============================================================ INSPECTOR PACK */
-const PACK_SECS = [["cover", "Cover and contents"], ["summary", "1. Summary, people and contacts"], ["gaps", "2. Known gaps and what we are doing"], ["actions", "3. Fire risk assessment action tracker"],
-  ["procs", "4. Fire procedures (incl. reception procedure)"], ["weekly", "5. Weekly fire alarm tests"], ["records", "6. Daily, monthly and other check records"], ["scans", "7. Scanned paper sheets held"],
-  ["certs", "8. Certificates and contractor servicing"], ["drills", "9. Fire drills"], ["training", "10. Training matrix"], ["docs", "11. Documents and signatures"],
-  ["venues", "12. Function rooms and event checks"], ["audit", "13. Audit readiness checklist"], ["regs", "14. Regulations summary"], ["visit", "15. Inspection visit record (for the inspector)"]];
+const PACK_SECS = [["cover", "Cover and contents"], ["summary", "1. Summary, people and contacts"], ["gaps", "2. Known gaps and what we are doing"], ["actions", "3. Fire risk assessment and action tracker"],
+  ["procs", "4. Fire procedures (incl. reception procedure)"], ["plans", "5. Floor plans and escape routes"], ["weekly", "6. Weekly fire alarm tests"], ["records", "7. Daily, monthly and other check records"], ["scans", "8. Scanned paper sheets held"],
+  ["certs", "9. Certificates and contractor servicing"], ["drills", "10. Fire drills"], ["training", "11. Training matrix"], ["docs", "12. Documents and signatures"],
+  ["venues", "13. Function rooms and event checks"], ["audit", "14. Audit readiness checklist"], ["regs", "15. Regulations summary"], ["visit", "16. Inspection visit record (for the inspector)"]];
 VIEWS.pack = () => {
   const f = S.f.pack || (S.f.pack = { from: HF_BACKFILL_FROM, to: today() });
   return `<h2>Inspector <span class="fl">pack</span></h2>
@@ -1623,7 +1675,14 @@ VIEWS.pack = () => {
   <button class="btn" id="pk-go" style="margin-top:10px">Print selected sections</button></details>`;
 };
 BIND.pack = (v) => {
-  const go = (from, to, on) => { $("#print").innerHTML = packHTML(from, to, on); audit(`Inspector pack printed (${from} to ${to})`); setTimeout(() => window.print(), 600); };
+  const go = async (from, to, on) => {
+    S.planUrls = {};
+    if (on.plans && S.live && fb.st) { toast("Preparing floor plans…");
+      for (const d of reg("doc").filter((x) => x.cat === "Floor plan" && x.file && x.file.path)) { try { S.planUrls[d.id] = await fb.st.ref(d.file.path).getDownloadURL(); } catch (e) {} } }
+    $("#print").innerHTML = packHTML(from, to, on); audit(`Inspector pack printed (${from} to ${to})`);
+    const imgs = $$("#print img"); await Promise.all(imgs.map((i) => (i.complete ? 1 : new Promise((r) => { i.onload = i.onerror = r; setTimeout(r, 8000); }))));
+    setTimeout(() => window.print(), 300);
+  };
   $("#pk-all", v).onclick = () => go(HF_BACKFILL_FROM, today(), Object.fromEntries(PACK_SECS.map(([k]) => [k, true])));
   $("#pk-go", v).onclick = () => {
     const from = $("#pk-from", v).value, to = $("#pk-to", v).value; S.f.pack = { from, to };
@@ -1670,6 +1729,7 @@ function packHTML(from, to, on) {
       ["Evacuation strategy", "Simultaneous evacuation. The alarm is <b>not monitored</b>: staff call 999 on every activation."],
       ["Assembly point", tbc("assembly")], ["Main fire alarm panel", tbc("mainPanel")], ["Spa panel", tbc("spaPanel")],
       ["Fire alarm contractor", `Leader Systems — fault line ${tbc("leaderPhone")}`], ["Spa and leisure operator", `Granite Leisure — ${tbc("granite")}`],
+      ["Fire risk assessment", (() => { const F = HF_HOTEL.fra; return `${fd(F.date)} by ${h(F.assessor)} — ${h(F.standard)}, ref ${h(F.ref)}, signed ${fds(F.signed)}. Risk rating: <b>${h(F.rating)}</b>. Review due ${fds(F.review)}. ${h(F.rev1)} also held.`; })()],
       ["Audit readiness (self-assessed)", auditScore().pc + "%"],
       ["Actions", `${A.length} total · ${A.filter((a) => a.status === "Completed").length} completed · ${A.filter((a) => a.status === "In progress").length} in progress · ${A.filter((a) => a.status === "Not started").length} not started · ${open.filter((a) => a.priority === "High").length} high-priority open`],
       ["Weekly alarm tests in period", String(R.filter((r) => r.type === "weekly_alarm").length)],
@@ -1684,20 +1744,23 @@ function packHTML(from, to, on) {
     const W = backWeeks().filter((wc) => wc >= from && !inRange("weekly_alarm", wc, addDays(wc, 6)).length);
     if (W.length) G.push(["Weekly fire alarm tests with no record", `${W.length} week${W.length === 1 ? "" : "s"} between ${fds(W[0])} and ${fds(W[W.length - 1])} have no test record we can evidence.`, "Testing on a fixed weekly rota with named marshals from 26 Oct 2026, recorded in HosFIRE on the day. Panel event log to be obtained from Leader Systems to evidence earlier tests."]);
     const certs = reg("cert").filter((c) => certState(c).st !== "OK");
-    if (certs.length) G.push(["Certificates overdue, due or without a date", certs.map((c) => `${h(c.ref)} ${h(c.name)} — ${h(certState(c).st)}`).join("<br>"), "Contractor visits being booked; see tabs 3 and 8."]);
+    if (certs.length) G.push(["Certificates overdue, due or without a date", certs.map((c) => `${h(c.ref)} ${h(c.name)} — ${h(certState(c).st)}`).join("<br>"), "Contractor visits being booked; see tabs 3 and 9."]);
     const TR = reg("training"), noT = TR.filter((t) => !(t.courses || {}).induction), unc = TR.filter((t) => (t.courses || {}).induction && !evOf(t, "induction").confirmed);
     const RC = HF_COURSES.find((c) => c[0] === "reception"), rc = TR.filter((t) => courseApplies(t, RC) && !(t.courses || {}).reception);
-    if (noT.length || unc.length || rc.length) G.push(["Training records", [noT.length ? `${noT.length} staff with no fire training date recorded (mostly joined after the 1 Mar 2026 session).` : "", unc.length ? `${unc.length} staff with a training date but the signed attendance sheet not yet seen.` : "", rc.length ? `${rc.length} reception / night staff not yet briefed on the Reception Fire Alarm Activation Procedure.` : ""].filter(Boolean).join("<br>"), "Induction for new starters and reception briefing being given and recorded with signed attendance sheets (tab 10)."]);
+    if (noT.length || unc.length || rc.length) G.push(["Training records", [noT.length ? `${noT.length} staff with no fire training date recorded (mostly joined after the 1 Mar 2026 session).` : "", unc.length ? `${unc.length} staff with a training date but the signed attendance sheet not yet seen.` : "", rc.length ? `${rc.length} reception / night staff not yet briefed on the Reception Fire Alarm Activation Procedure.` : ""].filter(Boolean).join("<br>"), "Induction for new starters and reception briefing being given and recorded with signed attendance sheets (tab 11)."]);
     const os = sigs.filter((x) => !x.sig);
-    if (os.length) G.push(["Documents awaiting signature", `${os.length} signature${os.length === 1 ? "" : "s"} outstanding: ` + [...new Set(os.map((x) => x.title))].map(h).join("; "), "Being signed by the named people (tab 11)."]);
+    if (os.length) G.push(["Documents awaiting signature", `${os.length} signature${os.length === 1 ? "" : "s"} outstanding: ` + [...new Set(os.map((x) => x.title))].map(h).join("; "), "Being signed by the named people (tab 12)."]);
     const fl = reg("scan").filter((x) => (x.flags || []).length && !S.data.records.some((r) => r.scanId === x.id));
     const fc = (re) => fl.filter((x) => (x.flags || []).some((f) => re.test(f))).length;
-    if (fl.length) G.push(["Paper sheets not entered as records", `${fl.length} scanned sheet${fl.length === 1 ? "" : "s"} held but not entered: ${[[/overwritten/i, "date overwritten"], [/not signed/i, "not signed or no name"], [/no printed/i, "signed but no printed name"], [/do not follow the order/i, "call-point test dates out of rotation order"], [/competent person/i, "contractor/competent person not named"]].map(([re, l]) => { const n = fc(re); return n ? `${n} ${l}` : ""; }).filter(Boolean).join(" · ")}. Each sheet and its points are listed in tab 7.`, "The scans are held as found (tab 7). They are entered as records only where the person who did the check confirms the date and name. Paper checks are replaced by HosFIRE from 26 Oct 2026."]);
+    if (fl.length) G.push(["Paper sheets not entered as records", `${fl.length} scanned sheet${fl.length === 1 ? "" : "s"} held but not entered: ${[[/overwritten/i, "date overwritten"], [/not signed/i, "not signed or no name"], [/no printed/i, "signed but no printed name"], [/do not follow the order/i, "call-point test dates out of rotation order"], [/competent person/i, "contractor/competent person not named"]].map(([re, l]) => { const n = fc(re); return n ? `${n} ${l}` : ""; }).filter(Boolean).join(" · ")}. Each sheet and its points are listed in tab 8.`, "The scans are held as found (tab 8). They are entered as records only where the person who did the check confirms the date and name. Paper checks are replaced by HosFIRE from 26 Oct 2026."]);
     const nr = HF_AUDIT.flatMap((g) => g.items).filter(([id]) => ((S.data.registers.find((r) => r.id === "audit-" + id) || {}).status || "Not ready") !== "Ready");
-    if (nr.length) G.push(["Audit checklist items not yet fully ready", `${nr.length} of ${HF_AUDIT.flatMap((g) => g.items).length} — listed in tab 13.`, "Being worked through by the Fire Safety Manager."]);
+    if (nr.length) G.push(["Audit checklist items not yet fully ready", `${nr.length} of ${HF_AUDIT.flatMap((g) => g.items).length} — listed in tab 14.`, "Being worked through by the Fire Safety Manager."]);
     out += sec("gaps", `<p>Where our records are incomplete, we say so here rather than leave it to be found. Each gap has an action.</p>`) + tbl(["Gap", "Detail", "What we are doing"], G) + end;
   }
 
+  if (on.plans) { const P = reg("doc").filter((x) => x.cat === "Floor plan").sort((a, b) => natRef(b.title, a.title));
+    out += sec("plans", `<p>Escape routes and final exits as shown on the plans in the fire risk assessment (${fd(HF_HOTEL.fra.date)}). Main fire alarm panel: ${(cfg().site || {}).mainPanel ? h(cfg().site.mainPanel) : "<i>to be confirmed</i>"}. Assembly point: ${(cfg().site || {}).assembly ? h(cfg().site.assembly) : "<i>to be confirmed</i>"}.</p>`)
+      + (P.length ? P.map((d) => `<div style="break-inside:avoid;margin-bottom:6mm"><h3>${h(d.title)}</h3>${(S.planUrls || {})[d.id] ? `<img src="${S.planUrls[d.id]}" style="width:100%;max-height:235mm;object-fit:contain;border:1px solid #ccc">` : `<p class="muted">Held in HosFIRE → Documents${d.file ? "" : " (file to upload)"}. Print it from there if it does not show here.</p>`}</div>`).join("") : "<p>No floor plans uploaded yet (HosFIRE → Documents, category Floor plan).</p>") + end; }
   if (on.actions) out += sec("actions") + tbl(["Ref", "Action", "Category", "Priority", "Owner", "Due", "Status", "Progress", "Latest note"], A.map((a) => [`<b>${h(a.ref)}</b>`, h(a.title), h(a.category), h(a.priority), h(a.owner), a.due ? fds(a.due) : "", `<b>${h(a.status)}</b>${a.completedOn ? "<br>" + fds(a.completedOn) : ""}`, `${progressOf(a)}%${(a.steps || []).length ? `<br>${a.steps.filter((x) => x.done).length}/${a.steps.length} steps` : ""}`, h(a.notes)])) + end;
 
   if (on.procs) { const pv = VIEWS.procs(); out += sec("procs") + `<div class="pposter">${pv.slice(pv.indexOf('<div class="pkeys">'))}</div>` + end; }

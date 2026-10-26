@@ -38,6 +38,7 @@ const HF_ROTA_DAYS = ["Monday", "Tuesday", "Wednesday"];
 const HF_HOTEL = {
   name: "Brandon Hall Hotel and Spa",
   address: "Main Street, Brandon, Coventry CV8 3FW",
+  fra: { date: "2026-02-27", signed: "2026-03-16", assessor: "Gareth Jones (MIFSM, BS 8674), Soldorlet", ref: "FRA-858B0F2E", rating: "Medium – At Risk (likelihood medium, consequence moderate harm, score 4)", review: "2027-02-27", standard: "BS 9792:2025 Type 3", rev1: "Revision 1 dated 16 Oct 2026" },
   inspection: { date: "2026-10-27", time: "10:30", inspector: "Ranjit Bahi", body: "Warwickshire Fire and Rescue Service", ref: "01/018384/RB0093/CF" }
 };
 
@@ -157,7 +158,7 @@ const HF_STATUS = ["Not started", "In progress", "Completed"];
 const HF_PRIORITY = ["High", "Medium", "Low"];
 const HF_ACTION_CATS = ["FRA action", "Leader Systems", "Emergency lighting", "Electrical and lighting", "Gas appliances", "Saeker", "Inspection", "Records", "Other"];
 
-const HF_DOC_CATS = ["Fire risk assessment", "Inspection / enforcement", "Policy and procedure", "Contract", "Certificate / report", "Quote", "Correspondence", "Statement", "Form", "Manual (equipment)", "Training", "Photo / evidence", "Other"];
+const HF_DOC_CATS = ["Fire risk assessment", "Inspection / enforcement", "Policy and procedure", "Contract", "Certificate / report", "Quote", "Correspondence", "Statement", "Form", "Manual (equipment)", "Training", "Photo / evidence", "Floor plan", "Other"];
 
 const HF_COURSES = [
   ["induction", "Fire induction", 0],
