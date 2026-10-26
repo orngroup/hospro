@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a2b3a">
+<meta name="robots" content="noindex">
+<title>Brandon Hall Guest Wi-Fi</title>
+<link rel="icon" href="../assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{ --navy:#1a2b3a; --panel:#22374d; --gold:#c9a978; --gold-lt:#d8bb8e; --ink:#fff; --muted:#b8c6d6; --err:#ff8e8e; }
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Lato',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--ink);background:var(--navy);
+  -webkit-text-size-adjust:100%;}
+.bg{min-height:100dvh;background:linear-gradient(rgba(15,31,48,.80),rgba(15,31,48,.92)),
+  url('../assets/hotel/exterior-dusk.png') center/cover no-repeat;display:flex;align-items:center;justify-content:center;
+  padding:20px 16px;padding-top:max(20px,env(safe-area-inset-top));padding-bottom:max(20px,env(safe-area-inset-bottom))}
+.card{width:100%;max-width:460px;background:var(--panel);border-radius:18px;padding:28px 22px 24px;
+  box-shadow:0 20px 60px rgba(0,0,0,.45);border:1px solid rgba(201,169,120,.28);animation:fade .5s ease}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.logo{width:112px;display:block;margin:0 auto 12px}
+.eyebrow{font-size:11px;letter-spacing:4px;color:var(--gold);font-weight:700;text-align:center}
+h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:600;line-height:1.1;text-align:center;margin:8px 0 6px}
+.sub{font-size:14px;color:var(--muted);text-align:center;line-height:1.5;margin-bottom:20px}
+.field{margin-bottom:14px}
+label.lbl{display:block;font-size:12.5px;font-weight:700;color:var(--gold);margin-bottom:6px}
+input[type=text],input[type=email]{width:100%;padding:13px 14px;border-radius:10px;font-size:16px;font-family:inherit;
+  background:rgba(255,255,255,.07);border:1px solid rgba(201,169,120,.32);color:#fff;-webkit-appearance:none}
+input::placeholder{color:#8ea0b3}
+input:focus{outline:none;border-color:var(--gold);background:rgba(255,255,255,.11)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{padding:13px 10px;border-radius:10px;border:1px solid rgba(201,169,120,.32);background:rgba(255,255,255,.07);
+  color:#fff;font:600 15px/1 'Lato',sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:.15s}
+.seg button.on{background:var(--gold);color:var(--navy);border-color:var(--gold)}
+.chk{display:flex;gap:11px;align-items:flex-start;font-size:13px;line-height:1.45;color:#dbe3ec;cursor:pointer;margin-bottom:11px}
+.chk input{width:20px;height:20px;flex:0 0 20px;margin-top:1px;accent-color:var(--gold)}
+.chk a{color:var(--gold);text-decoration:underline}
+.connect{width:100%;margin-top:8px;background:var(--gold);color:var(--navy);border:none;padding:16px;border-radius:12px;
+  font:700 17px/1 'Lato',sans-serif;cursor:pointer;transition:.18s;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.connect:hover{background:var(--gold-lt)}
+.connect:disabled{opacity:.6;cursor:default}
+.err{display:none;margin:4px 0 10px;font-size:13px;color:var(--err);text-align:center}
+.foot{margin-top:16px;font-size:11.5px;color:#8ea0b3;text-align:center;line-height:1.5}
+details{margin-top:10px;font-size:12px;color:#b8c6d6;line-height:1.5}
+summary{cursor:pointer;color:var(--gold);font-weight:600;list-style:none;text-align:center}
+summary::-webkit-details-marker{display:none}
+details p{margin-top:8px}
+/* done screen */
+.done{text-align:center;display:none}
+.tick{width:66px;height:66px;border-radius:50%;background:var(--gold);color:var(--navy);display:grid;place-items:center;
+  margin:4px auto 16px;font-size:34px;font-weight:700}
+.done h1{font-size:28px}
+.done .sub{margin-bottom:18px}
+.secondary{display:inline-block;margin-top:10px;color:var(--gold);font-size:13px;text-decoration:underline;cursor:pointer}
+@media(min-width:700px){ .card{padding:36px 36px 30px;max-width:520px} h1{font-size:36px} }
+</style>
+</head>
+<body>
+<div class="bg">
+  <div class="card">
+
+    <!-- ===== FORM ===== -->
+    <div id="form">
+      <img class="logo" src="../assets/logos/logo---gold-transparent.png" alt="Brandon Hall Hotel and Spa" onerror="this.src='../assets/bh-logo.svg'">
+      <div class="eyebrow">GUEST WI-FI</div>
+      <h1>Welcome to Brandon Hall</h1>
+      <p class="sub" id="intro">Enjoy complimentary Wi-Fi during your visit. A few quick details and you're online.</p>
+
+      <div class="field"><label class="lbl" for="f-name">Your name</label>
+        <input id="f-name" type="text" autocomplete="name" placeholder="e.g. Sarah Jones" autocapitalize="words"></div>
+
+      <div class="field"><label class="lbl" for="f-email">Email address</label>
+        <input id="f-email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" autocapitalize="none" spellcheck="false"></div>
+
+      <div class="field"><label class="lbl">Purpose of your visit</label>
+        <div class="seg"><button type="button" id="p-leisure" data-v="Leisure">Leisure</button><button type="button" id="p-business" data-v="Business">Business</button></div></div>
+
+      <label class="chk"><input id="f-terms" type="checkbox"><span>I accept the <a href="#" id="terms-link">terms of use</a> for the guest Wi-Fi. *</span></label>
+      <label class="chk"><input id="f-marketing" type="checkbox"><span>Yes please — send me news, offers and events from Brandon Hall Hotel and Spa by email. You can unsubscribe at any time.</span></label>
+
+      <div class="err" id="err"></div>
+      <button class="connect" id="connect">Connect to Wi-Fi</button>
+
+      <details id="terms">
+        <summary>Terms of use &amp; privacy</summary>
+        <p><b>Terms of use.</b> This free Wi-Fi is provided for guests and visitors of Brandon Hall Hotel and Spa. Please use it lawfully and considerately; it is not secured, so avoid sending sensitive information over it. We may suspend access for misuse. The service is provided "as is" without guarantee of availability or speed.</p>
+        <p><b>Privacy.</b> Brandon Hall Hotel and Spa stores your name, email address, purpose of visit and the date and time you connected so we can provide the Wi-Fi service and understand who visits us. If you tick the marketing box we will also email you news and offers until you unsubscribe. We don't sell your details. You can ask us to see or delete them at any time by contacting the hotel.</p>
+      </details>
+    </div>
+
+    <!-- ===== DONE ===== -->
+    <div id="done" class="done">
+      <div class="tick">✓</div>
+      <h1 id="done-title">You're connected</h1>
+      <p class="sub" id="done-sub">Enjoy your time at Brandon Hall. You can close this window and browse as normal.</p>
+      <button class="connect" id="continue">Start browsing</button>
+      <span class="secondary" id="not-me" style="display:none">Not you? Sign in with different details</span>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ============================================================
+   BRANDON HALL GUEST WI-FI — captive portal welcome page
+   Live URL: https://brandon.hospro.co.uk/wifi/
+   Sign-ups are saved to Firestore collection "wifi_signups"
+   and appear in HosPRO → HosSTUDIO → Wi-Fi Guest Database.
+   ============================================================ */
+
+/* ---- Firebase (same project as the HosPRO portal) ---- */
+const firebaseConfig = {
+  apiKey: "AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",
+  authDomain: "brandonhall-7bdef.firebaseapp.com",
+  projectId: "brandonhall-7bdef",
+  storageBucket: "brandonhall-7bdef.firebasestorage.app",
+  messagingSenderId: "391317900568",
+  appId: "1:391317900568:web:643c9d6691f7f16d65226d"
+};
+
+/* ---- Wi-Fi provider settings — fill in from what the provider tells you ----
+   vendor:      "none"    → just show "You're connected" (use until the provider confirms their system)
+                "meraki"  → Cisco Meraki "click-through / external splash" (uses base_grant_url + user_continue_url)
+                "unifi"   → Ubiquiti UniFi external portal (posts back to the controller's /guest/s/<site>/login)
+                "generic" → any system that gives us a URL to send the guest to once approved (grantUrl)
+   grantUrl:    the approval URL the provider gives us (UniFi controller login URL, or the generic "authorise" URL)
+   grantMethod: "GET" or "POST" for generic/unifi
+   extraFields: anything the provider needs posted with every approval, e.g. {username:"guest", password:"guest"}
+   continueUrl: where the guest lands after connecting (hotel website)
+   ------------------------------------------------------------------------- */
+const WIFI = {
+  vendor: "none",
+  grantUrl: "",
+  grantMethod: "POST",
+  extraFields: {},
+  continueUrl: "https://www.brandonhallhotelandspa.com",
+  rememberDays: 180          // returning guests on the same device skip the form for this long
+};
+
+/* ---- helpers ---- */
+const $ = s => document.querySelector(s);
+const qs = Object.fromEntries(new URLSearchParams(location.search).entries());  // whatever the gateway appended
+let db = null;
+try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); } catch(e){ console.warn("Firebase:", e.message); }
+
+let purpose = "";
+["#p-leisure","#p-business"].forEach(id=>{ $(id).onclick = ()=>{
+  purpose = $(id).dataset.v;
+  $("#p-leisure").classList.toggle("on", purpose==="Leisure");
+  $("#p-business").classList.toggle("on", purpose==="Business");
+}; });
+$("#terms-link").onclick = e=>{ e.preventDefault(); $("#terms").open = true; $("#terms").scrollIntoView({behavior:"smooth",block:"nearest"}); };
+
+function showErr(msg){ const e=$("#err"); e.textContent=msg; e.style.display="block"; }
+function emailOk(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
+
+/* ---- returning device? ---- */
+let remembered = null;
+try {
+  const r = JSON.parse(localStorage.getItem("bh_wifi")||"null");
+  if (r && r.email && (Date.now()-new Date(r.at).getTime()) < WIFI.rememberDays*864e5) remembered = r;
+} catch(e){}
+
+if (remembered) {
+  $("#form").style.display = "none";
+  $("#done").style.display = "block";
+  $("#done-title").textContent = "Welcome back, " + remembered.name.split(" ")[0];
+  $("#done-sub").textContent = "Good to see you again. Tap below to connect.";
+  $("#continue").textContent = "Connect to Wi-Fi";
+  $("#not-me").style.display = "inline-block";
+  $("#not-me").onclick = ()=>{ localStorage.removeItem("bh_wifi"); location.reload(); };
+  $("#continue").onclick = async ()=>{
+    $("#continue").disabled = true; $("#continue").textContent = "Connecting…";
+    await save({ ...remembered, returning:true });
+    grant();
+  };
+} else {
+  $("#connect").onclick = submit;
+  $("#continue").onclick = grant;
+}
+
+/* ---- submit ---- */
+async function submit(){
+  const name = $("#f-name").value.trim();
+  const email = $("#f-email").value.trim().toLowerCase();
+  $("#err").style.display = "none";
+  if (name.length < 2)            return showErr("Please enter your name.");
+  if (!emailOk(email))            return showErr("Please enter a valid email address.");
+  if (!purpose)                   return showErr("Please tell us whether your visit is leisure or business.");
+  if (!$("#f-terms").checked)     return showErr("Please accept the terms of use to connect.");
+
+  const btn = $("#connect"); btn.disabled = true; btn.textContent = "Connecting…";
+  const rec = { name, email, purpose, marketing: $("#f-marketing").checked };
+  await save(rec);
+  try { localStorage.setItem("bh_wifi", JSON.stringify({ ...rec, at:new Date().toISOString() })); } catch(e){}
+
+  $("#form").style.display = "none";
+  $("#done").style.display = "block";
+  $("#done-title").textContent = "You're connected, " + name.split(" ")[0];
+  // Give the guest a beat to see the confirmation, then hand over to the gateway.
+  setTimeout(grant, 1400);
+}
+
+/* ---- save to Firestore (never blocks the guest if it fails) ---- */
+async function save(rec){
+  const doc = {
+    name: rec.name, email: rec.email, purpose: rec.purpose,
+    marketing: !!rec.marketing,
+    termsAccepted: true,
+    consentAt: new Date().toISOString(),
+    created: new Date().toISOString(),
+    returning: !!rec.returning,
+    ssid: qs.ssid || "",
+    deviceId: qs.id || qs.client_mac || qs.mac || "",      // MAC if the gateway passes it
+    ap: qs.ap || qs.ap_mac || "",
+    gatewayParams: qs,
+    userAgent: navigator.userAgent.slice(0,200),
+    source: "wifi-portal"
+  };
+  if (!db || qs.preview) return;          // ?preview=1 = look only, don't record
+  try { await Promise.race([ db.collection("wifi_signups").add(doc), new Promise(r=>setTimeout(r,6000)) ]); }
+  catch(e){ console.warn("save:", e.message); }
+}
+
+/* ---- tell the Wi-Fi gateway this device is approved ---- */
+function grant(){
+  const go = url => { location.href = url; };
+  const post = (url, fields) => {
+    const f = document.createElement("form"); f.method = "POST"; f.action = url;
+    Object.entries(fields).forEach(([k,v])=>{ const i=document.createElement("input"); i.type="hidden"; i.name=k; i.value=v; f.appendChild(i); });
+    document.body.appendChild(f); f.submit();
+  };
+
+  switch (WIFI.vendor) {
+    case "meraki": {
+      // Meraki appends base_grant_url and user_continue_url to our page.
+      if (qs.base_grant_url) return go(qs.base_grant_url + "?continue_url=" + encodeURIComponent(qs.user_continue_url || WIFI.continueUrl));
+      break;
+    }
+    case "unifi": {
+      // UniFi appends id (client MAC), ap, t, url, ssid. We post them back to the controller's login URL.
+      if (WIFI.grantUrl) return post(WIFI.grantUrl, { id:qs.id||"", ap:qs.ap||"", t:qs.t||"", url:qs.url||WIFI.continueUrl, ssid:qs.ssid||"", ...WIFI.extraFields });
+      break;
+    }
+    case "generic": {
+      // Pass through everything the gateway sent us, plus any fixed fields the provider needs.
+      if (WIFI.grantUrl) {
+        const fields = { ...qs, ...WIFI.extraFields };
+        if (WIFI.grantMethod === "GET") return go(WIFI.grantUrl + (WIFI.grantUrl.includes("?")?"&":"?") + new URLSearchParams(fields).toString());
+        return post(WIFI.grantUrl, fields);
+      }
+      break;
+    }
+  }
+  // "none", or the gateway didn't send what we expected: just send them on.
+  go(qs.user_continue_url || qs.url || WIFI.continueUrl);
+}
+</script>
+</body>
+</html>

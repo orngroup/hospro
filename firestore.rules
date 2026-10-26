@@ -75,6 +75,14 @@ service cloud.firestore {
       allow read: if isStaff();
       allow create: if true;
     }
+    // Guest Wi-Fi welcome page (brandon.hospro.co.uk/wifi): guests can add
+    // their own sign-up; only staff can read, edit or delete.
+    match /wifi_signups/{doc} {
+      allow read, update, delete: if isStaff();
+      allow create: if request.resource.data.size() <= 20
+        && request.resource.data.name is string && request.resource.data.name.size() <= 120
+        && request.resource.data.email is string && request.resource.data.email.size() <= 200;
+    }
 
     // Quotes and contracts: opened by clients from a link; clients may only
     // update the acceptance / signature fields.

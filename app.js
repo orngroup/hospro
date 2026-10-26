@@ -318,6 +318,8 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
   .forEach(([t,fn])=>{ if(typeof window[fn]==="function") RENDER_MAP[t]=window[fn]; });
 /* HosPEOPLE Attendance (attendance.js) */
 if(typeof window.renderAttendance==="function") RENDER_MAP.rotaAttend=window.renderAttendance;
+/* Wi-Fi guest database (wifi-db.js) */
+if(typeof window.renderWifiDb==="function") RENDER_MAP.wifiDb=window.renderWifiDb;
 /* HosVENUE Show Round Ready (showround.js) */
 if(typeof window.renderShowRound==="function") RENDER_MAP.showround=window.renderShowRound;
 /* HosSTUDIO Social Requests (socialreq.js) */
@@ -11372,7 +11374,7 @@ const HP_RELATED = {
   hoscom:    [["fixAllJobs","Maintenance jobs","Jobs raised from compliance actions"],["hubHR","HR documents","Policies, training and certificates"],["staffDocs","Staff documents","Right to work and certificates"],["suppliers","Suppliers","Contractor details and insurance"]],
   hossales:  [["rooms","Meeting rooms","Capacities and layouts to quote from"],["packages","Packages & pricing","Delegate rates and event packages"],["brochure","Brochure Builder","Send a branded brochure with the quote"],["corpdb","Corporate database","Account history and contacts"]],
   hosvenue:  [["rotaForecast","Occupancy forecast","Rooms sold drive staffing levels"],["pipeline","Sales pipeline","Upcoming events and enquiries"],["dining","Dining & Banqueting","Restaurant plan and covers"],["brandPhotography","Photography","Approved venue images"]],
-  hosstudio: [["brandLogos","Logos & brand assets","Official marks and colour palette"],["brandPhotography","Photography","Approved hotel images"],["brandDocs","Menus & wine lists","Current Clarendon menus"],["quotes","Quotes & proposals","Quotes now live in HosSALES"]],
+  hosstudio: [["wifiDb","Wi-Fi guest database","Newsletter sign-ups from the guest Wi-Fi"],["brandLogos","Logos & brand assets","Official marks and colour palette"],["brandPhotography","Photography","Approved hotel images"],["brandDocs","Menus & wine lists","Current Clarendon menus"],["quotes","Quotes & proposals","Quotes now live in HosSALES"]],
   hosbrand:  [["brochure","Brochure Builder","Build collateral from these assets"],["menu","Menu Builder","Menus in the house style"],["social","Social Media","Post with approved images"],["marketing","Campaigns","Marketing library and campaigns"]],
   hospeople: [["rotaForecast","Occupancy forecast","Plan shifts from rooms and covers"],["hubHR","HR documents","Policies and handbooks"],["fixTeam","Maintenance team","Trades, hours and rates"],["staffDocs","Staff documents","Right to work, contracts, certificates"]],
   hoshub:    [["contracts","Event agreements","E-signed client agreements in HosSALES"],["suppliers","Supplier database","162 suppliers and contacts"],["staffProfiles","Staff profiles","HR records for each team member"],["brandCollateral","Collateral & brochures","Downloadable sales material"]],
