@@ -139,6 +139,7 @@ async function openFile(f) {
 const isAdmin = () => HF_ADMINS.includes(S.key) || (DEMO && S.key);
 const reg = (kind) => S.data.registers.filter((r) => r.kind === kind);
 const cfg = () => S.data.config.find((c) => c.id === "main") || {};
+const siteOf = () => { const c = cfg().site || {}, d = typeof HF_SITE_DEFAULT !== "undefined" ? HF_SITE_DEFAULT : {}, o = { ...d }; Object.entries(c).forEach(([k, v]) => { if (v) o[k] = v; }); return o; };
 const marshals = () => (cfg().marshals && cfg().marshals.length ? cfg().marshals : HF_MARSHALS);
 const rotaStart = () => cfg().rotaStart || HF_ROTA_START;
 
@@ -856,14 +857,17 @@ VIEWS.focus = () => {
       <td>${pill(a.priority)}</td><td>${pill(a.status)}<div class="muted" style="font-size:11px">${progressOf(a)}%</div></td></tr>`; };
   const tbl = (L) => `<div class="tw"><table><tr><th></th><th>Job</th><th>Owner</th><th>Due</th><th>Priority</th><th>Status</th></tr>${L.sort(ord).map(row).join("") || `<tr><td colspan="6" class="muted">Nothing here.</td></tr>`}</table></div>`;
   // readiness checks (not jobs)
-  const site = cfg().site || {}, miss = [["assembly", "assembly point"], ["mainPanel", "main panel location"], ["spaPanel", "spa panel location"], ["granite", "Granite Leisure contact"]].filter(([k]) => !site[k]).map(([, l]) => l);
-  const flagged = reg("scan").filter((x) => (x.flags || []).length && x.checkType && !S.data.records.some((r) => r.scanId === x.id)).length;
+  const site = siteOf(), miss = [["assembly", "assembly point"], ["mainPanel", "main panel location"], ["spaPanel", "spa panel location"], ["granite", "Granite Leisure contact"]].filter(([k]) => !site[k]).map(([, l]) => l);
+  const pend = reg("scan").filter((x) => (x.flags || []).length && x.checkType && !S.data.records.some((r) => r.scanId === x.id));
+  const dup = pend.filter((x) => (x.flags || []).some((f) => /not a separate check/i.test(f))).length, unconf = pend.length - dup;
+  const gapDone = S.data.actions.some((a) => a.ref === "R5" && a.status === "Completed") || !!((S.data.registers.find((r) => r.id === "doc-st-06") || {}).file && /1\.1/.test((S.data.registers.find((r) => r.id === "doc-st-06") || {}).version || ""));
+  const flagged = gapDone ? 0 : unconf;
   const RC = HF_COURSES.find((c) => c[0] === "reception"), TR = reg("training"), rc = TR.filter((t) => courseApplies(t, RC)), rcOk = rc.filter((t) => (t.courses || {}).reception).length;
   const sg = signItems().filter((x) => !x.sig).length, notReady = HF_AUDIT.flatMap((g) => g.items).filter(([id]) => ((S.data.registers.find((r) => r.id === "audit-" + id) || {}).status || "Not ready") !== "Ready").length;
   const packed = S.data.audit.some((x) => /Inspector pack/.test(x.what || "") && ms(x.createdAt) >= parse(addDays(ins.date, -1)).getTime());
   const chk = [
     [!miss.length, "Site facts on the procedure pages", miss.length ? `Still blank: ${miss.join(", ")}` : "All filled in", "settings"],
-    [!flagged, "Paper sheets confirmed and entered", flagged ? `${flagged} sheet${flagged === 1 ? "" : "s"} waiting for a confirmed date or name` : "All entered or none waiting", "back"],
+    [!flagged, "Paper sheets entered, or explained in the Records Gap Statement", flagged ? `${unconf} unconfirmed sheet${unconf === 1 ? "" : "s"} — enter them, or complete R5 (gap statement) to explain them${dup ? ` · ${dup} second sheets kept as scans (not separate checks)` : ""}` : `All confirmed sheets entered${unconf ? ` · ${unconf} unconfirmed sheet${unconf === 1 ? "" : "s"} explained in the Records Gap Statement` : ""}${dup ? ` · ${dup} second sheets kept as scans` : ""}`, "back"],
     [rc.length && rcOk === rc.length, "Reception and night staff briefed on the alarm procedure", `${rcOk} of ${rc.length} recorded`, "training"],
     [!sg, "Documents to Sign", sg ? `${sg} still to sign` : "All signed", "sign"],
     [!notReady, "Audit readiness checklist", notReady ? `${notReady} item${notReady === 1 ? "" : "s"} not marked Ready` : "All ready", "audit"],
@@ -1686,7 +1690,7 @@ BIND.diary = (v) => {
 /* ============================================================ PROCEDURES (infographics) */
 /* Drawn from the Fire Action Procedure (BHH-ST-02) and the Fire Safety Manual v1.1.
    Site facts (assembly point, panel locations, contacts) are set in Settings. */
-const siteFact = (k, fallback) => { const v = (cfg().site || {})[k]; return v ? h(v) : `<span class="tbc">${fallback || "to be confirmed"}</span>`; };
+const siteFact = (k, fallback) => { const v = siteOf()[k]; return v ? h(v) : `<span class="tbc">${fallback || "to be confirmed"}</span>`; };
 const ADDR = "Brandon Hall Hotel and Spa, Main Street, Brandon, Coventry CV8 3FW";
 function procStrip() {
   const tile = (n, icon, t, d, col) => `<a href="#" data-go="procs" class="pstrip" style="--c:${col}"><div class="pn">${n}</div><div class="pi">${icon}</div><b>${t}</b><span>${d}</span></a>`;
@@ -1752,7 +1756,7 @@ VIEWS.procs = () => {
   ${card("🔁", "8. After every activation", "BHH-ST-02 §6 · Manual §19", steps([
     ["Do not reset until the cause is found", "Duty manager checks the zone first."],
     ["Record it", "HosFIRE → Record a check → Fire alarm event (cause, 999 called, fire service attended)."],
-    ["Repeat false alarm or fault?", "Report to Leader Systems the same day: " + (h((cfg().site || {}).leaderPhone || "01788 542 220")) + "."],
+    ["Repeat false alarm or fault?", "Report to Leader Systems the same day: " + (h(siteOf().leaderPhone || "01788 542 220")) + "."],
     ["Impairments", "Any isolation is authorised by the duty manager, logged with interim measures, and restored before the contractor leaves."]]), "#B36B00")}
   ${card("🔔", "9. Weekly fire alarm test", "Manual §7 · BS 5839-1", steps([
     ["Tell reception and the duty manager", ""],
@@ -1857,7 +1861,7 @@ function packHTML(from, to, on) {
   const secs = PACK_SECS.filter(([k]) => on[k] && k !== "cover");
   const sec = (k, extra = "") => pkSec(PACK_SECS, k, "Fire safety records — inspector pack", extra);
   const end = "</div>";
-  const tbc = (k) => { const v = (cfg().site || {})[k]; return v ? h(v) : "<i>to be confirmed</i>"; };
+  const tbc = (k) => { const v = siteOf()[k]; return v ? h(v) : "<i>to be confirmed</i>"; };
   const sigs = signItems();
   let out = "";
 
@@ -1910,7 +1914,7 @@ function packHTML(from, to, on) {
   }
 
   if (on.plans) { const P = reg("doc").filter((x) => x.cat === "Floor plan").sort((a, b) => natRef(b.title, a.title));
-    out += sec("plans", `<p>Escape routes and final exits as shown on the plans in the fire risk assessment (${fd(HF_HOTEL.fra.date)}). Main fire alarm panel: ${(cfg().site || {}).mainPanel ? h(cfg().site.mainPanel) : "<i>to be confirmed</i>"}. Assembly point: ${(cfg().site || {}).assembly ? h(cfg().site.assembly) : "<i>to be confirmed</i>"}.</p>`)
+    out += sec("plans", `<p>Escape routes and final exits as shown on the plans in the fire risk assessment (${fd(HF_HOTEL.fra.date)}). Main fire alarm panel: ${siteOf().mainPanel ? h(siteOf().mainPanel) : "<i>to be confirmed</i>"}. Assembly point: ${siteOf().assembly ? h(siteOf().assembly) : "<i>to be confirmed</i>"}.</p>`)
       + (P.length ? P.map((d, i) => `<div style="break-inside:avoid;margin-bottom:6mm;${i ? "page-break-before:always" : ""}"><h3>${h(d.title)}</h3>${(S.planUrls || {})[d.id] ? `<img src="${S.planUrls[d.id]}" class="pk-plan">` : `<p class="muted">Held in HosFIRE → Documents${d.file ? "" : " (file to upload)"}. Print it from there if it does not show here.</p>`}</div>`).join("") : "<p>No floor plans uploaded yet (HosFIRE → Documents, category Floor plan).</p>") + end; }
   if (on.actions) out += sec("actions") + tbl(["Ref", "Action", "Category", "Priority", "Owner", "Due", "Status", "Progress", "Latest note"], A.map((a) => [`<b>${h(a.ref)}</b>`, h(a.title), h(a.category), h(a.priority), h(a.owner), a.due ? fds(a.due) : "", `<b>${h(a.status)}</b>${a.completedOn ? "<br>" + fds(a.completedOn) : ""}`, `${progressOf(a)}%${(a.steps || []).length ? `<br>${a.steps.filter((x) => x.done).length}/${a.steps.length} steps` : ""}`, h(a.notes)])) + end;
 
@@ -2026,7 +2030,7 @@ BIND.folder = (v) => {
   $("#fo-go", v).onclick = () => go(Object.fromEntries($$("[data-fsec]", v).map((c) => [c.dataset.fsec, c.checked])));
 };
 function folderHTML(on, opt) {
-  const RT = "Hotel fire folder", sec = (k, x) => pkSec(FOLDER_SECS, k, RT, x), end = "</div>", site = cfg().site || {};
+  const RT = "Hotel fire folder", sec = (k, x) => pkSec(FOLDER_SECS, k, RT, x), end = "</div>", site = siteOf();
   const fact = (k, fb2) => (site[k] ? h(site[k]) : `<span class="pk-blank">${fb2 || ""}&nbsp;</span>`);
   const from = addMonths(today(), -12), recsIn = (t) => (opt.recs ? recs(t).filter((r) => r.date >= from).sort((a, b) => natRef(a.date, b.date)) : []);
   const blanks = (n, cols) => Array.from({ length: n }, () => Array(cols).fill("&nbsp;"));
@@ -2105,7 +2109,7 @@ VIEWS.settings = () => {
   <p class="muted">Moves any job that has had work recorded on it (a note, photo, ticked step or %) but still says "Not started" to "In progress". Nothing else is changed and nothing is deleted.</p>
   <button class="btn" id="catchup">Check jobs</button> <span class="muted" id="catchup-msg"></span></div>
   <div class="card" style="margin-top:12px"><h3 style="margin-top:0">Site facts used on the procedure pages</h3>
-  <div class="f2">${[["assembly", "Assembly point"], ["mainPanel", "Main fire alarm panel location"], ["spaPanel", "Spa panel location"], ["granite", "Granite Leisure contact (name, phone)"], ["leaderPhone", "Leader Systems fault line"]].map(([k, l]) => `<div><label>${l}</label><input data-site="${k}" value="${h((cfg().site || {})[k] || "")}"></div>`).join("")}</div>
+  <div class="f2">${[["assembly", "Assembly point"], ["mainPanel", "Main fire alarm panel location"], ["spaPanel", "Spa panel location"], ["granite", "Granite Leisure contact (name, phone)"], ["leaderPhone", "Leader Systems fault line"]].map(([k, l]) => `<div><label>${l}</label><input data-site="${k}" value="${h(siteOf()[k] || "")}"></div>`).join("")}</div>
   <button class="btn" id="site-save">Save site facts</button></div>
   <div class="card" style="margin-top:12px"><h3 style="margin-top:0">Fire marshals and rota</h3>
   <div class="f2"><div><label>Marshals, in rota order (one per line)</label><textarea id="st-m" rows="4">${h(marshals().join("\n"))}</textarea></div>

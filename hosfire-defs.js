@@ -315,3 +315,12 @@ const HF_RECEPTION_STEPS = [
   ["Re-entry and recording", "Only when authorised with the fire service's agreement. Record the activation, actions, defects and follow-up."],
   ["Night shift", "Same principles. At handover confirm panel status, known defects, staff register and who calls 999, warns guests, assists and briefs the fire service."]
 ];
+
+/* Site facts confirmed by Glenn Randell, 26 Oct 2026 (used when Settings → Site facts is blank) */
+const HF_SITE_DEFAULT = {
+  assembly: "Out of the front door, turn right, across the car park (moving this week — drop-kerb works)",
+  mainPanel: "Main entrance, down the disabled ramp",
+  spaPanel: "Spa (Granite Leisure — their team leaders maintain it and keep its logs)",
+  granite: "Aiden — 07301 067739",
+  leaderPhone: "01788 542 220"
+};
