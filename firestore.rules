@@ -2,8 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Staff = the HOSPRO staff logins (Email/Password accounts in Firebase Auth).
-    // Add a new staff email here when you add someone to USERS / FB_LOGINS.
     function isStaff() {
       return request.auth != null
         && request.auth.token.firebase.sign_in_provider == 'password'
@@ -16,9 +14,6 @@ service cloud.firestore {
           'patrik.vlach@brandonhall.portal',
           'veronica.webb@brandonhall.portal',
           'laith.hardy@brandonhall.portal',
-          // Spare login slots — pre-approved so new people can be added in
-          // Admin → Users without editing these rules. Create the matching
-          // Auth account when you assign the slot to a person.
           'staff1@brandonhall.portal',
           'staff2@brandonhall.portal',
           'staff3@brandonhall.portal',
@@ -30,7 +25,6 @@ service cloud.firestore {
         ];
     }
 
-    // Payroll = the people who can open HosPEOPLE (staff, rota, payroll).
     function isPayroll() {
       return isStaff() && request.auth.token.email in [
           'ajay.kawa@brandonhall.portal',
@@ -40,9 +34,6 @@ service cloud.firestore {
         ];
     }
 
-    // Enquiries: staff have full access. The website planner, contact form
-    // and Events Concierge chat (anonymous) may only CREATE new enquiries,
-    // and the planner may complete the lead it started.
     match /enquiries/{doc} {
       allow read, delete: if isStaff();
       allow create: if isStaff()
@@ -55,8 +46,6 @@ service cloud.firestore {
     match /meta/{doc}      { allow read, write: if isStaff(); }
     match /marketing/{doc} { allow read, write: if isStaff(); }
 
-    // Device access log: a person who has just verified their email may add
-    // ONE record for their own email. Only staff can read it.
     match /access_log/{doc} {
       allow read: if isStaff();
       allow create: if request.auth != null
@@ -66,7 +55,6 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Guests (not logged in) can submit; only staff can read.
     match /precheckin/{doc} {
       allow read: if isStaff();
       allow create: if true;
@@ -75,6 +63,7 @@ service cloud.firestore {
       allow read: if isStaff();
       allow create: if true;
     }
+
     // Guest Wi-Fi welcome page (brandon.hospro.co.uk/wifi): guests can add
     // their own sign-up; only staff can read, edit or delete.
     match /wifi_signups/{doc} {
@@ -84,8 +73,6 @@ service cloud.firestore {
         && request.resource.data.email is string && request.resource.data.email.size() <= 200;
     }
 
-    // Quotes and contracts: opened by clients from a link; clients may only
-    // update the acceptance / signature fields.
     match /quotes/{doc} {
       allow read: if true;
       allow create, delete: if isStaff();
@@ -101,43 +88,31 @@ service cloud.firestore {
              .hasOnly(['clientSig','clientDate','clientSignedAt','status']));
     }
 
-    // Beverage iPad app (PIN-protected in the app itself)
     match /beverage/{doc} {
       allow read: if true;
       allow write: if true;
       match /log/{entry} { allow read, write: if true; }
     }
 
-    // HosFIX maintenance app: jobs shared between staff phones and the portal.
-    // The phones don't sign in to Firebase, so access is open for this collection
-    // only (same approach as the beverage iPad app). Delete is blocked so a job
-    // can never be wiped from a phone.
     match /hosfix_jobs/{jobId} {
       allow read, create, update: if true;
       allow delete: if false;
     }
 
-    // Staff rota links (my-rota.html) + HosPRO Pocket summary.
-    // rota = staff rota links; summary = HosPRO Pocket mobile app (totals only)
     match /hospro_public/{docId} {
       allow read: if docId in ['rota', 'summary'];
       allow create, update: if docId == 'rota' || (docId == 'summary' && isStaff());
       allow delete: if false;
     }
 
-    // Payroll & HR records: one encrypted document (hr_private/vault).
     match /hr_private/{docId} {
       allow read, write: if isPayroll() && docId == 'vault';
     }
 
-    // F&B tracker: daily outlet sales, purchase invoices and settings.
-    // One document per month (fb_tracker/2026-10) plus fb_tracker/settings.
     match /fb_tracker/{docId} {
       allow read, write: if isStaff();
     }
 
-    // Daily F&B form (fb-entry.html): anyone with the link can SUBMIT figures;
-    // only staff can read them back.
     match /fb_submissions/{id} {
       allow create: if request.resource.data.keys().hasOnly(['date','by','sales','invoices','notes','submittedAt','status'])
         && request.resource.data.status == 'new'
@@ -145,8 +120,6 @@ service cloud.firestore {
       allow read, update, delete: if isStaff();
     }
 
-    // Social media request form (/mktrequest): anyone with the link can SUBMIT
-    // a request (no login); only staff can read, action or delete them.
     match /mkt_requests/{id} {
       allow create: if request.resource.data.status == 'new'
         && request.resource.data.ref is string
@@ -154,28 +127,19 @@ service cloud.firestore {
       allow read, update, delete: if isStaff();
     }
 
-    // ── HosHUB (document hub) — staff only ──
-    // Config = custom categories + extra folders (hoshub/config).
     match /hoshub/{doc}       { allow read, write: if isStaff(); }
-    // Document records (metadata + Firebase Storage download URL).
     match /hoshub_docs/{doc}  { allow read, write: if isStaff(); }
 
-    // ── HosREV (revenue management) — staff only ──
     match /hosrev_settings/{doc}  { allow read, write: if isStaff(); }
     match /hosrev_books/{doc}     { allow read, write: if isStaff(); }
     match /hosrev_comp/{doc}      { allow read, write: if isStaff(); }
     match /hosrev_events/{doc}    { allow read, write: if isStaff(); }
     match /hosrev_decisions/{doc} { allow read, write: if isStaff(); }
 
-    // ── QR clock-in ──
-    // Roster (names, codes, HASHED pins, geofence) is published by staff and
-    // read by the public clock page so it can show names and check PINs.
     match /clock_roster/{doc} {
       allow read: if true;
       allow write: if isStaff();
     }
-    // Punches are created from the public clock page (must carry the core
-    // fields and stay small); only staff can read, edit or delete them.
     match /clock_punches/{doc} {
       allow read: if isStaff();
       allow create: if request.resource.data.size() <= 20
@@ -183,29 +147,19 @@ service cloud.firestore {
       allow update, delete: if isStaff();
     }
 
-    // ── HosHouse (housekeeping) — reception form, housekeeper phones and the
-    // manager dashboard share these. The phones sign in with a PIN in the app,
-    // not Firebase, so access is open for these two collections (same approach
-    // as HosFIX and the beverage iPad app).
     match /hoshouse_rooms/{doc}  { allow read, write: if true; }
     match /hoshouse_config/{doc} { allow read, write: if true; }
-    // Room photos (completion shots + cannot-start door photos). The housekeeper
-    // phones sign in with a PIN in the app, not Firebase, so this is open like
-    // the two collections above. Delete is blocked so evidence can't be wiped.
     match /hoshouse_photos/{doc} { allow read, create, update: if true; allow delete: if isStaff(); }
 
-    // ── HosFIRE (fire safety records) — hosfire.html only ──
-    // Staff logins plus Glenn's HosFIRE-only login. Check records can be
-    // created but never edited or deleted (mistakes are corrected with a new
-    // record), and each one must carry the signed-in person's email and the
-    // server time.
+    // ── HosFIRE ──
     function isFire() {
       return isStaff() || (request.auth != null
         && request.auth.token.firebase.sign_in_provider == 'password'
         && request.auth.token.email in ['glenn.randell@brandonhall.portal']);
     }
     function isFireAdmin() {
-      return isStaff() && request.auth.token.email in [
+      return isFire() && request.auth.token.email in [
+          'glenn.randell@brandonhall.portal',
           'ajay.kawa@brandonhall.portal',
           'raj.kumar@brandonhall.portal',
           'alia.taub@brandonhall.portal',
@@ -223,6 +177,13 @@ service cloud.firestore {
     match /hosfire_registers/{doc} { allow read, create, update: if isFire(); allow delete: if isFireAdmin(); }
     match /hosfire_diary/{doc}     { allow read, create, update: if isFire(); allow delete: if isFireAdmin(); }
     match /hosfire_config/{doc}    { allow read: if isFire(); allow write: if isFireAdmin(); }
+    match /hosfire_signatures/{doc} {
+      allow read: if isFire();
+      allow create: if isFire()
+        && request.resource.data.byEmail == request.auth.token.email
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
     match /hosfire_audit/{doc} {
       allow read: if isFire();
       allow create: if isFire() && request.resource.data.byEmail == request.auth.token.email;

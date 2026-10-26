@@ -1,13 +1,13 @@
 /* ============================================================
    HosSTUDIO — Wi-Fi Guest Database
    Guests who sign in to the free guest Wi-Fi at
-   https://brandon.hospro.co.uk/wifi/ land in Firestore
+   https://www.brandonhallhotelandspa.com/wifi/ land in Firestore
    collection "wifi_signups". This tab lists them, shows the
    newsletter opt-ins and exports to CSV / Excel.
    Loaded before app.js; app.js registers window.renderWifiDb.
    ============================================================ */
 (function(){
-  const WIFI_URL = "https://brandon.hospro.co.uk/wifi/";
+  const WIFI_URL = "https://www.brandonhallhotelandspa.com/wifi/";
   const W = { rows:[], live:false, q:"", purpose:"all", consent:"all", period:"all" };
   const HOST_COL = "#9C4F63";   // HosSTUDIO colour
 
@@ -70,7 +70,7 @@
         <div class="dual-btn" style="margin-top:10px">
           <a class="btn sm ghost" href="${WIFI_URL}?preview=1" target="_blank" rel="noopener">Preview the page ↗</a>
         </div>
-        <div class="admin-note" style="margin-top:12px"><b>What to send the Wi-Fi provider:</b> set the Brandon Hall Guest Wi-Fi splash / captive portal to the external URL above, and allow these domains through before login: <b>brandon.hospro.co.uk</b>, <b>www.gstatic.com</b>, <b>firestore.googleapis.com</b>, <b>fonts.googleapis.com</b>, <b>fonts.gstatic.com</b>. Ask which system they run (UniFi, Meraki, Aruba, Ruckus…) and for the "approve / grant" URL — that goes into the WIFI settings at the top of <code>wifi/index.html</code>. Until then the page works and records every guest; it simply shows "You're connected" and sends them to the hotel website.</div>
+        <div class="admin-note" style="margin-top:12px"><b>What to send the Wi-Fi provider:</b> set the Brandon Hall Guest Wi-Fi splash / captive portal to the external URL above, and allow these domains through before login: <b>www.brandonhallhotelandspa.com</b>, <b>www.gstatic.com</b>, <b>firestore.googleapis.com</b>. Ask which system they run (UniFi, Meraki, Aruba, Ruckus…) and for the "approve / grant" URL — that goes into the WIFI settings at the top of <code>wifi/index.html</code>. Until then the page works and records every guest; it simply shows "You're connected" and sends them to the hotel website.</div>
       </div>`;
     document.getElementById("wf-q").oninput = e => { W.q=e.target.value; paint(); };
     ["purpose","consent","period"].forEach(k => document.getElementById("wf-"+k).onchange = e => { W[k]=e.target.value; paint(); });
