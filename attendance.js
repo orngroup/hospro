@@ -21,6 +21,7 @@
     allScans: [],                 // cumulative history: [{name, d, t, type}]
     clockLabel: "",               // label of the most recent upload
     rotaVersion: "",              // which bundled-rota version has been merged in
+    clockVersion: "",             // which bundled-clock version has been merged in
     range: { mode:"all", from:null, to:null },
     view: "report",               // "report" (attendance) | "rota" (rota analysis)
     results: null,
@@ -34,6 +35,7 @@
       if(s.range) ATT.range=Object.assign({mode:"all",from:null,to:null}, s.range);
       if(s.view) ATT.view=s.view;
       if(s.rotaVersion) ATT.rotaVersion=s.rotaVersion;
+      if(s.clockVersion) ATT.clockVersion=s.clockVersion;
       if(s.grace) ATT.grace=s.grace;
       // migrate older saves / the bundled seed into the cumulative store
       if((!ATT.allScans||!ATT.allScans.length) && Array.isArray(s.clockRows)) mergeScans(s.clockRows);
@@ -42,6 +44,15 @@
       mergeScans(ATTEND_CLOCK_SEED);
       if(typeof ATTEND_CLOCK_LABEL!=="undefined" && !ATT.clockLabel) ATT.clockLabel=ATTEND_CLOCK_LABEL;
     }
+    // Bundled-clock updates: merge the shipped clock scans into the stored history whenever the
+    // version changes (deduped), so new clock data reaches every device without re-uploading.
+    try{
+      if(typeof ATTEND_CLOCK_VERSION!=="undefined" && ATTEND_CLOCK_VERSION && ATT.clockVersion!==ATTEND_CLOCK_VERSION && typeof ATTEND_CLOCK_SEED!=="undefined" && Array.isArray(ATTEND_CLOCK_SEED)){
+        mergeScans(ATTEND_CLOCK_SEED); ATT.clockVersion=ATTEND_CLOCK_VERSION;
+        if(typeof ATTEND_CLOCK_LABEL!=="undefined" && ATTEND_CLOCK_LABEL) ATT.clockLabel=ATTEND_CLOCK_LABEL;
+        attSave();
+      }
+    }catch(e){}
     // Bundled-rota updates: merge the shipped rota into the stored one whenever the version changes,
     // so a new month of rota appears on every device without wiping uploaded clock data.
     try{
@@ -52,7 +63,7 @@
       }
     }catch(e){}
   }
-  function attSave(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({ rota:ATT.rota, rotaLabel:ATT.rotaLabel, allScans:ATT.allScans, clockLabel:ATT.clockLabel, range:ATT.range, view:ATT.view, rotaVersion:ATT.rotaVersion, grace:ATT.grace })); }catch(e){} }
+  function attSave(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({ rota:ATT.rota, rotaLabel:ATT.rotaLabel, allScans:ATT.allScans, clockLabel:ATT.clockLabel, range:ATT.range, view:ATT.view, rotaVersion:ATT.rotaVersion, clockVersion:ATT.clockVersion, grace:ATT.grace })); }catch(e){} }
 
   // Add scans to the history, skipping any already stored (dedup by person+date+time+direction).
   function mergeScans(rows){
