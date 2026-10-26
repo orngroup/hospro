@@ -1696,7 +1696,7 @@ function procStrip() {
   const tile = (n, icon, t, d, col) => `<a href="#" data-go="procs" class="pstrip" style="--c:${col}"><div class="pn">${n}</div><div class="pi">${icon}</div><b>${t}</b><span>${d}</span></a>`;
   return `<div class="pstrip-row">
     ${tile(1, "🔥", "Discover a fire", "Break the nearest call point. Leave, closing doors behind you.", "#B3261E")}
-    ${tile(2, "📞", "Call 999 — every time", "Our alarm is <b>not monitored</b>. Reception (or anyone alone) calls 999.", "#C62828")}
+    ${tile(2, "📞", "Call 999 — every time", "Reception (or anyone alone) calls 999 on every activation — never assume anyone else has.", "#C62828")}
     ${tile(3, "🧭", "Duty manager to the panel", "Identify the zone, take charge, sweep teams go.", "#2C3E50")}
     ${tile(4, "🚪", "Get everyone out", "Everyone leaves at once. Never use the lift.", "#1D4E89")}
     ${tile(5, "📋", "Assembly point & roll call", `${siteFact("assembly", "assembly point to be confirmed")}. Nobody goes back in.`, "#1E8A55")}
@@ -1711,7 +1711,7 @@ VIEWS.procs = () => {
     <button class="btn ghost" id="pr-print">🖨 Print as posters</button></div>
   <div class="pkeys">
     <div><b>Simultaneous evacuation</b><span>Everyone leaves when the alarm sounds</span></div>
-    <div style="--c:#C62828"><b>Alarm NOT monitored</b><span>Staff call 999 on every activation</span></div>
+    <div style="--c:#C62828"><b>Always call 999</b><span>On every activation — never assume a monitoring service has called</span></div>
     <div style="--c:#1D4E89"><b>Never use the lift</b><span>Stairs and final exits only</span></div>
     <div style="--c:#1E8A55"><b>Assembly point</b><span>${siteFact("assembly")}</span></div>
   </div>
@@ -1722,7 +1722,7 @@ VIEWS.procs = () => {
     ["Only tackle it if safe", "Small fire, you are trained, and your way out is behind you — otherwise leave it."],
     ["Report to the duty manager", "At the fire alarm panel or at the assembly point."]]))}
   ${card("📞", "2. Calling the fire service", "BHH-ST-02 §2 · Manual §7–8", `<div class="pbig">999</div>
-    <p style="text-align:center;margin:4px 0 10px">on <b>every</b> activation — our alarm does not call the fire service for us.</p>
+    <p style="text-align:center;margin:4px 0 10px">on <b>every</b> activation — never assume the alarm or anyone else has called the fire service.</p>
     <div class="psay">“Fire at <b>${ADDR}</b>. The panel shows <b>[zone / location]</b>.”</div>
     <p class="muted" style="margin-top:8px">Reception makes the call in the day. At night, night staff 1 — or anyone working alone calls first.</p>`, "#C62828")}
   ${card("🏨", "3. When the alarm sounds — day", "BHH-ST-02 §2", roles([
@@ -1844,6 +1844,14 @@ function pkSec(list, k, runTitle, extra = "") {
 }
 const pkTbl = (heads, rows, empty = "None recorded.") => `<table><thead><tr>${heads.map((x) => `<th>${h(x)}</th>`).join("")}</tr></thead>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${heads.length}">${empty}</td></tr>`}</table>`;
 const pkTiles = (T) => `<div class="pk-tiles">${T.map(([n, l, c]) => `<div class="pk-tile ${c || ""}"><b>${n}</b><span>${h(l)}</span></div>`).join("")}</div>`;
+const trunc = (t, n) => { t = String(t || ""); return t.length > n ? t.slice(0, n - 1).replace(/\s+\S*$/, "") + "…" : t; };
+function actEvidence(a) {
+  const ph = (a.photos || []).length, st = a.steps || [], sd = st.filter((x) => x.done).length;
+  const note = (a.history || []).some((x) => x.note && !/HosFIRE \(automatic\)/.test(x.by || "") && !/^(Progress set to \d+%|Edited|Created|Loaded from starting data|Raised from|Status (updated|caught up))/i.test(x.note.trim()));
+  const parts = []; if (ph) parts.push(`📷 ${ph}`); if (st.length) parts.push(`${sd}/${st.length} steps`); if (note) parts.push("note");
+  const closed = a.status === "Completed", ok = !closed || ph || (st.length && sd === st.length) || note;
+  return { ok, html: (parts.join(" · ") || "—") + (closed && !ok ? '<br><i style="color:#B3261E">No closing note or photo attached yet</i>' : "") };
+}
 function keyDocsRows() {
   const sigs = signItems();
   return reg("doc").filter((d) => /^doc-(st-|fra|manual|proc-)/.test(d.id)).sort((a, b) => natRef(a.title, b.title)).map((d) => {
@@ -1876,12 +1884,12 @@ function packHTML(from, to, on) {
       ["Premises", `${h(HF_HOTEL.name)}, ${h(HF_HOTEL.address)}`],
       ["Fire Safety Manager", h(HF_FIRE_MANAGER.name) + " (" + h(HF_FIRE_MANAGER.role) + ")"],
       ["Fire marshals", h(marshals().join(", "))],
-      ["Evacuation strategy", "Simultaneous evacuation. The alarm is <b>not monitored</b>: staff call 999 on every activation."],
+      ["Evacuation strategy", "Simultaneous evacuation. Staff call 999 on <b>every</b> activation and do not assume a monitoring service has called (whether the alarm is also remotely monitored is being confirmed with Leader Systems — action I14)."],
       ["Assembly point", tbc("assembly")], ["Main fire alarm panel", tbc("mainPanel")], ["Spa panel", tbc("spaPanel")],
       ["Fire alarm contractor", `Leader Systems — fault line ${tbc("leaderPhone")}`], ["Spa and leisure operator", `Granite Leisure — ${tbc("granite")}`],
       ["Fire risk assessment", (() => { const F = HF_HOTEL.fra; return `${fd(F.date)} by ${h(F.assessor)} — ${h(F.standard)}, ref ${h(F.ref)}, signed ${fds(F.signed)}. Risk rating: <b>${h(F.rating)}</b>. Review due ${fds(F.review)}. ${h(F.rev1)} also held.`; })()],
       ["Audit readiness (self-assessed)", auditScore().pc + "%"],
-      ["Actions", `${A.length} total · ${A.filter((a) => a.status === "Completed").length} completed · ${A.filter((a) => a.status === "In progress").length} in progress · ${A.filter((a) => a.status === "Not started").length} not started · ${open.filter((a) => a.priority === "High").length} high-priority open`],
+      ["Actions", (() => { const C = A.filter((a) => a.status === "Completed"), ne = C.filter((a) => !actEvidence(a).ok).length; return `${A.length} total · ${C.length} marked completed${ne ? ` (${ne} without closing evidence attached yet — shown in tab 3)` : ""} · ${A.filter((a) => a.status === "In progress").length} in progress · ${A.filter((a) => a.status === "Not started").length} not started · ${open.filter((a) => a.priority === "High").length} high-priority open`; })()],
       ["Weekly alarm tests in period", String(R.filter((r) => r.type === "weekly_alarm").length)],
       ["Check records in period", String(R.length) + ` (of which ${R.filter((r) => r.imported).length} past records entered from a source)`],
       ["Drills in period", String(R.filter((r) => r.type === "drill").length)]])
@@ -1905,7 +1913,7 @@ function packHTML(from, to, on) {
     if (noT.length || unc.length || rc.length) G.push(["Training records", [noT.length ? `${noT.length} staff with no fire training date recorded (mostly joined after the 1 Mar 2026 session).` : "", unc.length ? `${unc.length} staff with a training date but the signed attendance sheet not yet seen.` : "", rc.length ? `${rc.length} reception / night staff not yet briefed on the Reception Fire Alarm Activation Procedure.` : ""].filter(Boolean).join("<br>"), "Induction for new starters and reception briefing being given and recorded with signed attendance sheets (tab 11)."]);
     const os = sigs.filter((x) => !x.sig);
     if (os.length) G.push(["Documents awaiting signature", `${os.length} signature${os.length === 1 ? "" : "s"} outstanding: ` + [...new Set(os.map((x) => x.title))].map(h).join("; "), "Being signed by the named people (tab 12)."]);
-    const fl = reg("scan").filter((x) => (x.flags || []).length && !S.data.records.some((r) => r.scanId === x.id));
+    const fl = reg("scan").filter((x) => (x.flags || []).length && x.checkType && !S.data.records.some((r) => r.scanId === x.id) && !/not a separate check/i.test((x.flags || []).join(" ")));
     const fc = (re) => fl.filter((x) => (x.flags || []).some((f) => re.test(f))).length;
     if (fl.length) G.push(["Paper sheets not entered as records", `${fl.length} scanned sheet${fl.length === 1 ? "" : "s"} held but not entered: ${[[/overwritten/i, "date overwritten"], [/not signed/i, "not signed or no name"], [/no printed/i, "signed but no printed name"], [/do not follow the order/i, "call-point test dates out of rotation order"], [/competent person/i, "contractor/competent person not named"]].map(([re, l]) => { const n = fc(re); return n ? `${n} ${l}` : ""; }).filter(Boolean).join(" · ")}. Each sheet and its points are listed in tab 8.`, "The scans are held as found (tab 8). They are entered as records only where the person who did the check confirms the date and name. Paper checks are replaced by HosFIRE from 26 Oct 2026."]);
     const nr = HF_AUDIT.flatMap((g) => g.items).filter(([id]) => ((S.data.registers.find((r) => r.id === "audit-" + id) || {}).status || "Not ready") !== "Ready");
@@ -1916,7 +1924,12 @@ function packHTML(from, to, on) {
   if (on.plans) { const P = reg("doc").filter((x) => x.cat === "Floor plan").sort((a, b) => natRef(b.title, a.title));
     out += sec("plans", `<p>Escape routes and final exits as shown on the plans in the fire risk assessment (${fd(HF_HOTEL.fra.date)}). Main fire alarm panel: ${siteOf().mainPanel ? h(siteOf().mainPanel) : "<i>to be confirmed</i>"}. Assembly point: ${siteOf().assembly ? h(siteOf().assembly) : "<i>to be confirmed</i>"}.</p>`)
       + (P.length ? P.map((d, i) => `<div style="break-inside:avoid;margin-bottom:6mm;${i ? "page-break-before:always" : ""}"><h3>${h(d.title)}</h3>${(S.planUrls || {})[d.id] ? `<img src="${S.planUrls[d.id]}" class="pk-plan">` : `<p class="muted">Held in HosFIRE → Documents${d.file ? "" : " (file to upload)"}. Print it from there if it does not show here.</p>`}</div>`).join("") : "<p>No floor plans uploaded yet (HosFIRE → Documents, category Floor plan).</p>") + end; }
-  if (on.actions) out += sec("actions") + tbl(["Ref", "Action", "Category", "Priority", "Owner", "Due", "Status", "Progress", "Latest note"], A.map((a) => [`<b>${h(a.ref)}</b>`, h(a.title), h(a.category), h(a.priority), h(a.owner), a.due ? fds(a.due) : "", `<b>${h(a.status)}</b>${a.completedOn ? "<br>" + fds(a.completedOn) : ""}`, `${progressOf(a)}%${(a.steps || []).length ? `<br>${a.steps.filter((x) => x.done).length}/${a.steps.length} steps` : ""}`, h(a.notes)])) + end;
+  if (on.actions) { const ord = { "Not started": 0, "In progress": 1, "Completed": 2 }, pri = { High: 0, Medium: 1, Low: 2 };
+    const AA = A.slice().sort((a, b) => ord[a.status] - ord[b.status] || pri[a.priority] - pri[b.priority] || natRef(a.ref, b.ref));
+    out += sec("actions", `<p>Open actions first, then completed. "Evidence" shows what is attached to each action in HosFIRE (photos, ticked steps, a completion note). Where an action is marked complete without evidence attached yet, we say so.</p>`)
+      + `<table class="pk-act"><thead><tr><th style="width:5%">Ref</th><th style="width:31%">Action</th><th style="width:9%">Owner</th><th style="width:7%">Due</th><th style="width:9%">Status</th><th style="width:12%">Evidence</th><th>Latest note</th></tr></thead>`
+      + AA.map((a) => { const ev = actEvidence(a), late = a.status !== "Completed" && a.due && a.due < today();
+        return `<tr${a.status === "Completed" ? ' class="pk-done"' : ""}><td><b>${h(a.ref)}</b><div class="pk-sm">${h(a.priority)}</div></td><td>${h(a.title)}<div class="pk-sm">${h(a.category)}</div></td><td>${h(a.owner || "—")}</td><td${late ? ' style="color:#B3261E;font-weight:700"' : ""}>${a.due ? fds(a.due) : "—"}</td><td><b>${h(a.status)}</b><div class="pk-sm">${progressOf(a)}%${a.completedOn ? " · " + fds(a.completedOn) : ""}</div></td><td class="pk-sm">${ev.html}</td><td class="pk-sm">${h(trunc(a.notes, 230))}</td></tr>`; }).join("") + "</table>" + end; }
 
   if (on.procs) { const pv = VIEWS.procs(); out += sec("procs") + `<div class="pposter">${pv.slice(pv.indexOf('<div class="pkeys">'))}</div>` + end; }
 
@@ -1925,18 +1938,41 @@ function packHTML(from, to, on) {
     out += sec("weekly", `<p>BS 5839-1 cl. 45.2 — one manual call point each week, in rotation.</p>`) + tbl(["Date", "Time", "Call point", "Zone", "Panel", "Sounders", "Reset", "Logbook", "Done by", "Planned (rota)"], W.map((r) => { const f = r.fields || {}, i = r.items || {}; const t = (k) => ({ pass: "✓", fail: "✗", na: "N/A" }[i[k]] || "");
       return [fd(r.date) + src(r), h(f.time), h(f.callpoint), h(f.zone), t("panel"), t("sounders"), t("reset"), t("logbook"), h(r.imported ? r.doneBy : r.byName), r.rota ? `${fds(r.rota.plannedDay)} · ${h(r.rota.plannedMarshal)}` : ""]; })) + end;
   }
-  if (on.records) out += sec("records") + tbl(["Date", "Check", "Result", "Done by", "Saved", "Notes"], R.filter((r) => r.type !== "weekly_alarm").map((r) => [fds(r.date), h((CHECK[r.type] || {}).name || r.type) + src(r), h(resultOf(effective(r))), h(r.imported ? r.doneBy : r.byName), fdt(r.createdAt), h(r.notes) + (S.data.records.find((x) => x.correctionOf === r.id) ? " <i>(corrected)</i>" : "")])) + end;
-  if (on.scans) out += sec("scans", `<p>Original paper testing sheets, scanned and held in HosFIRE exactly as found. "Records made" shows how many HosFIRE records were entered from each sheet.</p>`) + tbl(["Sheet", "Check", "Month", "Records made", "Points noted"], reg("scan").sort((a, b) => natRef(a.title, b.title)).map((x) => [h(x.title), h((CHECK[x.checkType] || {}).name || "—"), x.period ? MON[+x.period.slice(5) - 1] + " " + x.period.slice(0, 4) : "", String(S.data.records.filter((r) => r.scanId === x.id).length), (x.flags || []).map(h).join("<br>")])) + end;
+  if (on.records) { const issue = (r) => { const n = r.notes || "", out = [], it = r.items || {};
+      if (it.panel === "fail") out.push("Panel fault (earth)");
+      if (it.routes === "fail") out.push("Escape route obstructed");
+      if (it.signs === "fail") out.push("Emergency light issue (1 light)");
+      const q = (re) => { const m = n.match(re); return m ? m[1] : ""; };
+      const ex = [q(/explanation: "([^"]+)"/), q(/Location of the obstruction[^"]*"([^"]+)"/), q(/Further explanation[^"]*"([^"]+)"/), q(/Earth fault \(Glenn[^"]*"([^"]+)"/)].filter(Boolean);
+      if (ex.length) out.push("Explanation (G. Randell, 26/10/26): " + ex.join("; "));
+      if (/second sheet records the panel in fault/i.test(n)) out.push("Second sheet for this date shows a panel earth fault");
+      return out.join(" · "); };
+    const srcS = (r) => (r.imported ? `Past record — ${h(String(r.sourceRef || r.source || "").replace(/\.pdf/, ""))}${r.scanFile ? " (scan held)" : ""}` : `HosFIRE, ${fdt(r.createdAt)}`);
+    out += sec("records", `<p>Each line shows who did the check and where the record comes from. Past records were entered on ${fds("2026-10-26")} from the paper sheet named, which is held as a scan (tab 8).</p>`)
+      + `<table class="pk-act"><thead><tr><th style="width:9%">Date</th><th style="width:14%">Check</th><th style="width:9%">Result</th><th style="width:11%">Done by</th><th style="width:20%">Source</th><th>Faults / notes</th></tr></thead>`
+      + R.filter((r) => r.type !== "weekly_alarm").map((r) => `<tr><td>${fds(r.date)}</td><td>${h((CHECK[r.type] || {}).short || r.type)}</td><td>${h(resultOf(effective(r)))}</td><td>${h(r.imported ? r.doneBy : r.byName)}</td><td class="pk-sm">${srcS(r)}</td><td class="pk-sm">${h(trunc(issue(r), 260))}${S.data.records.find((x) => x.correctionOf === r.id) ? " <i>(corrected)</i>" : ""}</td></tr>`).join("") + "</table>" + end; }
+  if (on.scans) { const SC = reg("scan").sort((a, b) => natRef(a.sourceFile || a.title, b.sourceFile || b.title));
+    const stOf = (x) => { const n = S.data.records.filter((r) => r.scanId === x.id).length, f = (x.flags || []).join(" ");
+      if (n) return `<b>Entered</b> (${n} record${n === 1 ? "" : "s"})`; if (/not a separate check/i.test(f)) return "Second sheet for the same day — not a separate check; kept as scan";
+      if (!x.checkType) return "Held as evidence"; return "Not entered — " + h(trunc((x.flags || [])[0] || "unconfirmed", 120)); };
+    const cnt = { e: SC.filter((x) => S.data.records.some((r) => r.scanId === x.id)).length, d: SC.filter((x) => /not a separate check/i.test((x.flags || []).join(" "))).length };
+    out += sec("scans", `<p>Original paper sheets, scanned and held in HosFIRE exactly as found: ${SC.length} sheets · ${cnt.e} entered as records · ${cnt.d} second sheets for the same day (not separate checks) · ${SC.length - cnt.e - cnt.d} not entered because the date, name or tester could not be confirmed (explained in the Records Gap Statement).</p>`)
+      + `<table class="pk-act pk-2c"><thead><tr><th style="width:14%">Sheet</th><th style="width:16%">Check</th><th style="width:16%">Date on sheet</th><th>Status</th></tr></thead>`
+      + SC.map((x) => { const id = (x.sourceFile || "").split("__")[0] || trunc(x.title, 30), dt = (x.title.match(/sheet date ([^)]+)\)/) || [])[1] || (x.period || "");
+        return `<tr><td>${h(id)}</td><td>${h((CHECK[x.checkType] || {}).short || "—")}</td><td class="pk-sm">${h(dt)}</td><td class="pk-sm">${stOf(x)}</td></tr>`; }).join("") + "</table>" + end; }
   if (on.certs) out += sec("certs") + tbl(["Ref", "Certificate", "Contractor", "Last done", "Next due", "Status", "Cert no."], reg("cert").sort((a, b) => natRef(a.ref, b.ref)).map((c) => { const s = certState(c); return [h(c.ref), h(c.name) + (c.notes ? `<br><i>${h(c.notes)}</i>` : ""), h(c.contractor), c.last ? fds(c.last) : "—", s.next ? fds(s.next) : "", s.st, h(c.certRef)]; })) + end;
   if (on.certs && extRows().length) out += `<div class="pk-sec" style="page-break-before:always">` + `<h3>Fire extinguishers and blankets — locations and condition</h3><p>From Leader Systems' service reports. ${extRows().filter((e) => extState(e) !== "OK").length} position(s) need action — see actions EX1–EX6.</p>` + extTable(extRows(), false).replace(/<th style="width:12%">Monthly check ✓ \/ date<\/th>/g, "").replace(/<td>&nbsp;<\/td><\/tr>/g, "</tr>") + end;
   if (on.drills) out += sec("drills") + tbl(["Date", "Day / night", "Evacuation time", "Staff", "Issues"], R.filter((r) => r.type === "drill").map((r) => { const f = r.fields || {}; return [fd(r.date) + src(r), h(f.shift), h(f.evac) + " min", h(f.staff), h(f.issues)]; })) + end;
-  if (on.training) out += sec("training", `<p>✓ = signed attendance sheet or certificate seen. "to confirm" = date recorded, evidence not yet seen. n/a = course does not apply to that role.</p>`) + tbl(["Name", "Role", "Shift", ...HF_COURSES.map((c) => c[1])], reg("training").sort((a, b) => natRef(a.dept, b.dept) || natRef(a.name, b.name)).map((t) => [h(t.name) + (t.marshal ? " (marshal)" : ""), h(t.role), h(t.shift), ...HF_COURSES.map((cc) => { const k = cc[0]; if (!courseApplies(t, cc)) return "n/a"; const d = (t.courses || {})[k]; return d ? fds(d) + (evOf(t, k).confirmed ? " ✓" : " <i>to confirm</i>") : "—"; })])) + end;
-  if (on.docs) out += sec("docs") + tbl(["Document", "Category", "Date", "Version", "Issued by", "Held"], reg("doc").filter((d) => d.cat !== "Training").sort((a, b) => natRef(a.cat, b.cat) || natRef(a.title, b.title)).map((d) => [h(d.title), h(d.cat), d.date ? fds(d.date) : "", h(d.version), h(d.author), d.file ? "Yes (HosFIRE)" : "Paper / to upload"]))
-    + `<h3>Signatures</h3>` + tbl(["Document", "Role", "Signed by", "Status"], sigs.map((x) => [h(x.title), h(x.role), h(x.sig ? x.sig.name : (LOGINS[x.who] || {}).name || x.ext || x.who || ""), x.sig ? (x.sig.method === "paper" ? `Signed on paper ${fds(x.sig.signedOn)}` : `Signed ${fdt(x.sig.createdAt)}${x.sig.method === "in person" ? " (in person, witnessed)" : ""}`) : "<b>Awaiting signature</b>"])) + end;
+  if (on.training) out += sec("training", `<p>✓ = signed attendance sheet or certificate seen. "to confirm" = date recorded, evidence not yet seen. n/a = course does not apply to that role.</p>`) + `<div class="pk-small">` + tbl(["Name", "Role", "Shift", ...HF_COURSES.map((c) => c[1])], reg("training").sort((a, b) => natRef(a.dept, b.dept) || natRef(a.name, b.name)).map((t) => [h(t.name) + (t.marshal ? " (marshal)" : ""), h(t.role), h(t.shift), ...HF_COURSES.map((cc) => { const k = cc[0]; if (!courseApplies(t, cc)) return "n/a"; const d = (t.courses || {})[k]; return d ? fds(d) + (evOf(t, k).confirmed ? " ✓" : " <i>to confirm</i>") : "—"; })])) + `</div>` + end;
+  if (on.docs) { const D = reg("doc").filter((d) => !["Training", "Photo / evidence"].includes(d.cat)).sort((a, b) => natRef(a.cat, b.cat) || natRef(a.title, b.title));
+    const byDoc = {}; sigs.forEach((x) => (byDoc[x.title] = byDoc[x.title] || []).push(x));
+    out += sec("docs", `<p>${D.length} documents held in HosFIRE → Documents. Signatures are made by each person on their own login with a personal code, in person with a witness, or on paper (scan uploaded).</p>`)
+      + `<h3>Signatures</h3><table class="pk-act"><thead><tr><th style="width:38%">Document</th><th>Signers</th></tr></thead>` + Object.entries(byDoc).map(([t, L]) => `<tr><td>${h(t)}</td><td class="pk-sm">${L.map((x) => `${x.sig ? "✓" : "○"} <b>${h(x.sig ? x.sig.name : (LOGINS[x.who] || {}).name || x.ext || x.who || "")}</b> — ${h(x.role)}${x.sig ? ` · ${x.sig.method === "paper" ? "paper, " + fds(x.sig.signedOn) : fds(ymd(new Date(ms(x.sig.createdAt))))}` : " · <b>awaiting</b>"}`).join("<br>")}</td></tr>`).join("") + "</table>"
+      + `<h3>Document list</h3><table class="pk-act pk-2c"><thead><tr><th style="width:52%">Document</th><th style="width:18%">Category</th><th style="width:15%">Dated</th><th>File</th></tr></thead>` + D.map((d) => `<tr><td>${h(d.title)}${d.version ? `<span class="pk-sm"> · ${h(d.version)}</span>` : ""}</td><td class="pk-sm">${h(d.cat)}</td><td class="pk-sm">${d.date ? fds(d.date) : "—"}</td><td class="pk-sm">${d.file ? "Held" : "<i>Paper / to upload</i>"}</td></tr>`).join("") + "</table>" + end; }
   if (on.venues) out += sec("venues") + tbl(["Room", "Ceremony licence", "Exits", "Zone", "Fire limit by layout (sales capacity)"], reg("venue").sort((a, b) => natRef(a.name, b.name)).map((x) => [h(x.name), h(x.ceremony || ""), h(x.exits || ""), h(x.zone || ""), LAYOUTS.map(([k, l]) => ((x.sales || {})[k] || (x.fire || {})[k]) ? `${l}: ${(x.fire || {})[k] || "to confirm"} (${(x.sales || {})[k] || "–"})` : "").filter(Boolean).join("; ")]))
     + `<h3>Pre-event checks in period</h3>` + tbl(["Date", "Room", "Booking", "Guests", "Result", "By"], R.filter((r) => r.type === "event").map((r) => { const f = r.fields || {}; return [fds(r.date), h(f.venue), h(f.bookingRef), h(f.guests) + " " + h(f.layout), h(resultOf(r)), h(r.byName)]; })) + end;
   if (on.audit) out += sec("audit") + HF_AUDIT.map((g) => `<h3>${h(g.t)} — ${auditScore(g).pc}%</h3>${tbl(["Item", "Evidence", "Status", "Notes"], g.items.map(([id, t, ev]) => { const r = S.data.registers.find((x) => x.id === "audit-" + id) || {}; return [h(t), h(ev), `<b>${h(r.status || "Not ready")}</b>`, h(r.note)]; }))}`).join("") + end;
-  if (on.regs) out += sec("regs") + HF_REGS.map((g) => `<h3>${h(g.t)}</h3>${tbl(["", ""], g.items.map(([a, b]) => [`<b>${h(a)}</b>`, h(b)]))}`).join("") + end;
+  if (on.regs) out += sec("regs") + `<div class="pk-cols">` + HF_REGS.map((g) => `<div class="pk-colblk"><h3>${h(g.t)}</h3>${g.items.map(([a, b]) => `<p class="pk-reg"><b>${h(a)}</b> — ${h(b)}</p>`).join("")}</div>`).join("") + `</div>` + end;
   if (on.visit) {
     const line = (l, n = 1) => `<tr><td style="width:32%"><b>${l}</b></td><td>${"<div class='pk-line'></div>".repeat(n)}</td></tr>`;
     out += sec("visit", `<p>For the inspecting officer's use.</p>`) + `<table class="pk-form">${line("Date and time of visit")}${line("Inspecting officer")}${line("Hotel representatives present", 2)}${line("Areas inspected", 3)}${line("Records reviewed", 3)}${line("Observations", 5)}${line("Actions required and timescales", 5)}${line("Inspecting officer signature")}${line("Hotel representative name and signature")}</table>` + end;
@@ -2044,7 +2080,7 @@ function folderHTML(on, opt) {
     "Keep this folder at reception. Take it to the assembly point in an evacuation. Write paper log entries in pen and put each one into HosFIRE the same day.");
   if (on.emerg) out += sec("emerg") + `<div class="pk-2col"><div>
       <div class="pk-big">🔥 FIRE OR ALARM — CALL <b>999</b></div>
-      <p style="font-size:14px">Our alarm is <b>not</b> monitored. Reception (or whoever is free first at night) calls 999 on <b>every</b> activation.</p>
+      <p style="font-size:14px">Reception (or whoever is free first at night) calls 999 on <b>every</b> activation. Never assume a monitoring service or anyone else has called.</p>
       <div class="pk-say">“Fire and Rescue please. <b>${h(ADDR)}</b>. The fire alarm is sounding in <b>[zone / area from the panel]</b>. <b>[Smoke / fire seen, or not]</b>. People at risk: <b>[number, anyone needing help]</b>. Call back on <b>${fact("phone", "hotel number")}</b>.”</div>
       ${pkTbl(["", ""], [["Evacuation", "Simultaneous — everyone out by the nearest safe exit. Never the lifts."], ["Assembly point", fact("assembly")], ["Main fire alarm panel", fact("mainPanel")], ["Spa panel", fact("spaPanel")], ["Take with you", "This folder · guest arrivals / in-house list · staff rota and sign-in · contractor and visitor sign-in · PEEP list"]])}
     </div><div>${pkTbl(["Who", "Contact"], [["Fire Safety Manager", h(HF_FIRE_MANAGER.name)], ["Duty manager", '<span class="pk-blank">&nbsp;</span>'], ["Fire marshals", h(marshals().join(", "))],

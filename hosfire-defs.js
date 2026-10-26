@@ -200,7 +200,7 @@ const HF_REGS = [
   ]},
   { t: "Our evacuation strategy", items: [
     ["Strategy", "Simultaneous evacuation on the sounding of the alarm."],
-    ["Calling the fire service", "The alarm is NOT monitored by a receiving centre. Staff must call 999 on every activation unless the duty manager has confirmed it is a false alarm."],
+    ["Calling the fire service", "Staff must call 999 on every activation and never assume a monitoring service has called (whether the alarm is also remotely monitored is being confirmed with Leader Systems)."],
     ["Assembly point", "As shown on the fire action notices."],
     ["Guests needing assistance", "Personal or general emergency evacuation plans (PEEPs / GEEPs) made at check-in; night staff told."],
     ["Lifts", "Not used for evacuation."]
@@ -234,7 +234,7 @@ const HF_AUDIT = [
     ["faults", "Open faults (sounders, detectors, Chair Room) and what is being done in the meantime", "Actions (A1, A2, L1, L2)"],
     ["false", "False alarm log with causes, and the investigation (reception, bar, restaurant)", "Logbook (alarm events), A6"],
     ["zones", "Zone charts at the panels", "Actions (A4, L3)"],
-    ["999", "How the fire service is called (alarm not monitored — staff call 999)", "Regulations / procedure"]]},
+    ["999", "How the fire service is called (staff call 999 on every activation; monitoring position being confirmed)", "Regulations / procedure"]]},
   { t: "Escape routes, doors and lighting", items: [
     ["routes", "Escape routes and final exits clear, unlocked and signed — he will walk them", "Daily checks"],
     ["doors", "Fire doors closing and latching, not wedged; bedroom doors; annual inspection", "Fire door checks, A12"],

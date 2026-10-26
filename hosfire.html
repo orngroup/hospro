@@ -181,7 +181,7 @@ tr:hover td{background:#fbfaf7}
 .pk-toc2{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px}
 .pk-toc2 div{display:flex;align-items:center;gap:8px;border-bottom:1px solid #e6e6e6;padding:3px 0}
 .pk-toc2 .pk-tn{display:inline-block;min-width:22px;padding:2px 0;border-radius:4px}
-.pk .pposter .pgrid{grid-template-columns:repeat(3,1fr)!important;gap:6px} .pk .pcard{break-inside:avoid;page-break-inside:avoid}
+.pk .pposter .pgrid{display:block!important;columns:3;column-gap:5mm} .pk .pposter .pcard{display:inline-block;width:100%;margin:0 0 5mm} .pk .pcard{break-inside:avoid;page-break-inside:avoid}
 .pk-cover{page-break-after:always;break-after:page}
 .pk-tn{width:11mm;font-weight:900;color:#fff;background:#2C3E50;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .pk-note{font-size:11px;color:#555;text-align:left;margin-top:6mm;line-height:1.5}
@@ -224,6 +224,10 @@ table.pg-wrap>thead,table.pg-wrap>tfoot{display:table-header-group} table.pg-wra
 .pk.port .pk-run{margin-top:0}
 .pk-rot{position:relative;height:225mm;overflow:hidden} .pk-rot img{position:absolute;left:0;top:0;width:225mm;height:178mm;object-fit:contain;transform-origin:top left;transform:translateX(178mm) rotate(90deg);border:1px solid #ccc}
 .pk.port .pkeys{grid-template-columns:1fr 1fr!important}
+.pk-act{font-size:10.5px!important} .pk-act td{padding:4px 6px!important} .pk-sm{font-size:9.5px;color:#555;line-height:1.3}
+.pk-act tr.pk-done td{background:#f7f9f7;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pk-small table{font-size:9.5px!important} .pk-small td,.pk-small th{padding:3px 4px!important}
+.pk-cols{columns:2;column-gap:9mm} .pk-colblk{break-inside:avoid-column} .pk-reg{margin:0 0 5px;font-size:10.5px;break-inside:avoid}
 .pk-form td{padding:9px 6px!important} .pk-line{border-bottom:1px solid #999;height:24px}
 </style>
 </head>
@@ -260,7 +264,7 @@ table.pg-wrap>thead,table.pg-wrap>tfoot{display:table-header-group} table.pg-wra
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="hosfire-defs.js?v=20261026p"></script>
-<script src="hosfire.js?v=20261026p"></script>
+<script src="hosfire-defs.js?v=20261026q"></script>
+<script src="hosfire.js?v=20261026q"></script>
 </body>
 </html>
