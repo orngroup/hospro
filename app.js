@@ -151,7 +151,7 @@ function hpAccessSave(){
   try{ if(typeof FB!=="undefined" && FB.ready && FB.db){ FB.db.collection('meta').doc('access_config').set(payload).catch(()=>{}); } }catch(e){}
 }
 $("#lg-pw").addEventListener("keydown",e=>{ if(e.key==="Enter")$("#lg-btn").click(); });
-$("#tb-logout").onclick=async ()=>{ if(typeof hrLock==='function') hrLock(true); try{ sessionStorage.removeItem("hosrev_ok"); }catch(e){} await fbSignOut(); SESSION=null; $("#app").classList.add("hidden");
+$("#tb-logout").onclick=async ()=>{ if(typeof hrLock==='function') hrLock(true); try{ sessionStorage.removeItem("hosrev_ok"); sessionStorage.removeItem("hosmkt_ok"); }catch(e){} await fbSignOut(); SESSION=null; $("#app").classList.add("hidden");
   $("#login").classList.remove("hidden"); $("#lg-pw").value=""; };
 
 /* ============================================================ ROUTING */
@@ -465,6 +465,35 @@ async function hpRevTry(){
   else { m.textContent="Incorrect password."; i.value=""; i.focus(); }
 }
 
+/* ── HosMARKETING lock (temporary, while the guest database is checked) ───────
+   Only Ajay can open HosMARKETING, after entering the PIN. Stored as a SHA-256
+   fingerprint; unlock lasts until the tab is closed or he signs out. */
+const HP_MKT_LOCK = true;
+const HP_MKT_OWNER = "ajay.kawa";
+const HP_MKT_PW_HASH = "656d5be9b84397105deefd04cb2e83f4f3d448bccfaa953d6f62021b50f6488a";
+function hpMktUnlocked(){ try{ return !!(SESSION && SESSION._key===HP_MKT_OWNER && sessionStorage.getItem("hosmkt_ok")===HP_MKT_PW_HASH); }catch(e){ return false; } }
+function hpRenderMktLock(v){
+  hpSetBreadcrumb({id:"hosstudio",name:"HosMARKETING"}, null);
+  v.classList.add("hp-canvas");
+  const owner = !!(SESSION && SESSION._key===HP_MKT_OWNER);
+  v.innerHTML=`<div style="max-width:420px;margin:60px auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.25);font-family:Lato,sans-serif">
+    <div style="font-size:30px">📣🔒</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a;margin:6px 0 4px">HosMARKETING is locked</div>
+    <div style="font-size:13.5px;color:#4b5563;margin-bottom:16px">${owner?"Enter the HosMARKETING PIN to continue.":"This area is being set up and isn't open to the team yet. Ask Ajay if you need something from it."}</div>
+    ${owner?`<input id="mkt-pw" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" style="width:100%;padding:12px;border:1.5px solid #d1d5db;border-radius:10px;font:15px Lato;box-sizing:border-box">
+    <div id="mkt-msg" style="color:#b91c1c;font-size:12.5px;min-height:18px;margin-top:6px"></div>`:""}
+    <div style="display:flex;gap:8px;margin-top:6px">
+      ${owner?`<button onclick="hpMktTry()" style="flex:1;padding:12px;border:none;border-radius:10px;background:#9C4F63;color:#fff;font:800 14px Lato;cursor:pointer">Unlock</button>`:""}
+      <button onclick="switchTab('home')" style="padding:12px 16px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font:700 14px Lato;cursor:pointer">Back</button></div></div>`;
+  const i=document.getElementById("mkt-pw"); if(i){ i.focus(); i.addEventListener("keydown",e=>{ if(e.key==="Enter") hpMktTry(); }); }
+}
+async function hpMktTry(){
+  const i=document.getElementById("mkt-pw"), m=document.getElementById("mkt-msg"); if(!i) return;
+  const h=await hpRevSha(i.value.trim());
+  if(h===HP_MKT_PW_HASH){ try{ sessionStorage.setItem("hosmkt_ok",h); }catch(e){} toast("✓ HosMARKETING unlocked"); render(); }
+  else { m.textContent="Incorrect PIN."; i.value=""; i.focus(); }
+}
+
 /* ── TEMPORARY LOCKDOWN during access setup ──────────────────────────────────
    Only Ajay can use the HosPRO portal for now; everyone else sees a notice when
    they log in. The standalone staff apps (HosHouse, HosFIX, clock-in, F&B form,
@@ -505,6 +534,9 @@ function render(){
   // HosREV: Ajay only, plus its own password while it is being checked
   { const isRev = CURRENT_TAB==="mod:hosrev" || /^rev[A-Z]/.test(String(CURRENT_TAB)) || (hpModuleFor(CURRENT_TAB)||{}).id==="hosrev";
     if(isRev && !hpRevUnlocked()){ hpRenderRevLock(v); return; } }
+  // HosMARKETING: temporarily Ajay only, behind its own PIN (set HP_MKT_LOCK=false to lift)
+  { const isMkt = CURRENT_TAB==="mod:hosstudio" || (hpModuleFor(CURRENT_TAB)||{}).id==="hosstudio";
+    if(isMkt && HP_MKT_LOCK && !hpMktUnlocked()){ hpRenderMktLock(v); return; } }
   if(String(CURRENT_TAB).indexOf("mod:")===0){ renderModuleLanding(CURRENT_TAB.slice(4)); return; }
 
   const fn = RENDER_MAP[CURRENT_TAB];

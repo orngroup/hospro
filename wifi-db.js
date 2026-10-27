@@ -11,7 +11,7 @@
 (function(){
   const WIFI_URL = "https://www.brandonhallhotelandspa.com/wifi/";
   const COL = { brand:"#9C4F63", navy:"#1a2b3a", teal:"#2B726A", blue:"#3B6585", gold:"#7A6538", grey:"#8296a8", line:"#e4e9ef" };
-  const W = { rows:[], live:false, q:"", reason:"all", staying:"all", consent:"all", period:"30", from:"", to:"", town:"all", listeners:[], apNames:{}, apLoaded:false };
+  const W = { rows:[], live:false, q:"", reason:"all", staying:"all", consent:"all", period:"30", from:"", to:"", town:"all", listeners:[], apNames:{}, apLoaded:false, page:0, per:25 };
   const REASONS = ["Hotel stay","Spa","Restaurant or bar","Wedding or party","Meeting or conference"];
   const device = ua => /iPhone|iPad|iPod/i.test(ua||"") ? "iPhone / iPad" : /Android/i.test(ua||"") ? "Android" : /Macintosh/i.test(ua||"") ? "Mac" : /Windows/i.test(ua||"") ? "Windows laptop" : ua ? "Other" : "";
   const apName = mac => W.apNames[(mac||"").toLowerCase()] || "";
@@ -142,10 +142,10 @@
           <div class="admin-note" style="margin-top:12px">Full technical notes are in the project document <i>guest-wifi-portal</i>. Relay: Google Cloud VM "wifi-portal" (35.246.122.196). If guests report they can't get online, check UniFi with Quest first; the sign-in page and this database are independent of the hand-back.</div>
         </div></details>`;
     const on=(id,ev,fn)=>{ const e=document.getElementById(id); if(e) e[ev]=fn; };
-    on("wf-q","oninput",e=>{ W.q=e.target.value; paint(); });
-    ["reason","staying","consent","town"].forEach(k=>on("wf-"+k,"onchange",e=>{ W[k]=e.target.value; paint(); }));
-    on("wf-period","onchange",e=>{ W.period=e.target.value; document.getElementById("wf-custom").style.display=W.period==="custom"?"inline-flex":"none"; paint(); });
-    on("wf-from","onchange",e=>{ W.from=e.target.value; paint(); }); on("wf-to","onchange",e=>{ W.to=e.target.value; paint(); });
+    on("wf-q","oninput",e=>{ W.q=e.target.value; W.page=0; paint(); });
+    ["reason","staying","consent","town"].forEach(k=>on("wf-"+k,"onchange",e=>{ W[k]=e.target.value; W.page=0; paint(); }));
+    on("wf-period","onchange",e=>{ W.period=e.target.value; W.page=0; document.getElementById("wf-custom").style.display=W.period==="custom"?"inline-flex":"none"; paint(); });
+    on("wf-from","onchange",e=>{ W.from=e.target.value; W.page=0; paint(); }); on("wf-to","onchange",e=>{ W.to=e.target.value; W.page=0; paint(); });
     on("wf-copy","onclick",function(){ navigator.clipboard?.writeText(WIFI_URL); this.textContent="Copied"; });
     on("wf-csv","onclick",()=>exportRows("csv")); on("wf-xlsx","onclick",()=>exportRows("xlsx"));
     document.getElementById("wf-period").value=W.period;
@@ -206,9 +206,16 @@
     const cnt=document.getElementById("wf-count"); if(cnt) cnt.textContent = `${rows.length} guest${rows.length===1?"":"s"} match`;
     if(!W.live && (typeof FB==="undefined" || !FB.ready || !FB.user)){ box.innerHTML = `<div class="admin-note">Sign in to the portal to see live sign-ups.</div>`; return; }
     if(!rows.length){ box.innerHTML = `<div class="qs-sub" style="padding:18px 4px">${all.length ? "No guests match those filters." : "No sign-ups yet."}</div>`; return; }
-    box.innerHTML = `<div style="overflow-x:auto"><table class="data-table">
+    const pages = Math.max(1, Math.ceil(rows.length / W.per)); if(W.page >= pages) W.page = pages-1;
+    const start = W.page*W.per, slice = rows.slice(start, start+W.per);
+    const pager = () => pages<=1 ? "" : `<div style="display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin:10px 0;font-size:12.5px;color:#5b6b7b">
+      <span style="margin-right:6px">Showing ${start+1}–${Math.min(start+W.per,rows.length)} of ${rows.length}</span>
+      <button class="btn sm ghost wf-pg" data-pg="${W.page-1}" ${W.page===0?"disabled":""}>‹ Prev</button>
+      ${Array.from({length:pages},(_,i)=>i).filter(i=>i===0||i===pages-1||Math.abs(i-W.page)<=2).reduce((acc,i,idx,arr)=>{ if(idx && i-arr[idx-1]>1) acc.push(`<span>…</span>`); acc.push(`<button class="btn sm ${i===W.page?"":"ghost"} wf-pg" data-pg="${i}">${i+1}</button>`); return acc; },[]).join("")}
+      <button class="btn sm ghost wf-pg" data-pg="${W.page+1}" ${W.page>=pages-1?"disabled":""}>Next ›</button></div>`;
+    box.innerHTML = pager() + `<div style="overflow-x:auto"><table class="data-table">
       <tr><th>Name</th><th>Email</th><th>Town</th><th>Reason</th><th>Staying</th><th>Newsletter</th><th>Visits</th><th>Last seen</th><th>First seen</th></tr>
-      ${rows.slice(0,500).map(p=>`<tr data-email="${esc(p.email)}" style="cursor:pointer" title="Click to edit">
+      ${slice.map(p=>`<tr data-email="${esc(p.email)}" style="cursor:pointer" title="Click to edit">
         <td style="font-weight:700;color:#1a2b3a">${p.title?esc(p.title)+" ":""}${esc(p.name)} <span style="color:#c9a978;font-size:11px">✎</span></td>
         <td><a href="mailto:${esc(p.email)}" style="color:#2F7A72" onclick="event.stopPropagation()">${esc(p.email)}</a></td>
         <td>${esc(p.town||"—")}</td>
@@ -219,8 +226,9 @@
         <td style="white-space:nowrap">${fmt(p.last)}</td>
         <td style="white-space:nowrap;color:#8296a8">${fmt(p.first)}</td>
       </tr>`).join("")}
-    </table></div>${rows.length>500?`<p class="qs-sub">Showing the first 500 of ${rows.length} — narrow the filters or export for the full list.</p>`:""}`;
+    </table></div>` + pager();
     box.querySelectorAll("tr[data-email]").forEach(tr=>tr.onclick=()=>openGuest(tr.dataset.email));
+    box.querySelectorAll(".wf-pg").forEach(b=>b.onclick=()=>{ W.page=+b.dataset.pg; paint(); box.scrollIntoView({behavior:"smooth",block:"start"}); });
   }
 
   /* ---------- edit / delete a guest (applies to every sign-in record for that email) ---------- */
