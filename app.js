@@ -472,6 +472,15 @@ const HP_MKT_LOCK = true;
 const HP_MKT_OWNER = "ajay.kawa";
 const HP_MKT_PW_HASH = "656d5be9b84397105deefd04cb2e83f4f3d448bccfaa953d6f62021b50f6488a";
 function hpMktUnlocked(){ try{ return !!(SESSION && SESSION._key===HP_MKT_OWNER && sessionStorage.getItem("hosmkt_ok")===HP_MKT_PW_HASH); }catch(e){ return false; } }
+function hpMktPrompt(){
+  const owner = !!(SESSION && SESSION._key===HP_MKT_OWNER);
+  showModal("📣 HosMARKETING", owner ? "Enter the PIN to open HosMARKETING." : "This area is being set up and isn't open to the team yet.",
+    owner ? `<input id="mkt-pw" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" style="width:100%;padding:12px;border:1.5px solid #d1d5db;border-radius:10px;font:16px Lato;box-sizing:border-box">
+      <div id="mkt-msg" style="color:#b91c1c;font-size:12.5px;min-height:18px;margin-top:6px"></div>
+      <button onclick="hpMktTry()" class="btn block" style="margin-top:4px;background:#9C4F63">Unlock</button>`
+    : `<p class="qs-sub">Ask Ajay if you need something from it.</p>`);
+  const i=document.getElementById("mkt-pw"); if(i){ i.focus(); i.addEventListener("keydown",e=>{ if(e.key==="Enter") hpMktTry(); }); }
+}
 function hpRenderMktLock(v){
   hpSetBreadcrumb({id:"hosstudio",name:"HosMARKETING"}, null);
   v.classList.add("hp-canvas");
@@ -490,7 +499,8 @@ function hpRenderMktLock(v){
 async function hpMktTry(){
   const i=document.getElementById("mkt-pw"), m=document.getElementById("mkt-msg"); if(!i) return;
   const h=await hpRevSha(i.value.trim());
-  if(h===HP_MKT_PW_HASH){ try{ sessionStorage.setItem("hosmkt_ok",h); }catch(e){} toast("✓ HosMARKETING unlocked"); render(); }
+  if(h===HP_MKT_PW_HASH){ try{ sessionStorage.setItem("hosmkt_ok",h); }catch(e){} try{ closeModal(); }catch(e){} toast("✓ HosMARKETING unlocked");
+    if(CURRENT_TAB==="home" || !((hpModuleFor(CURRENT_TAB)||{}).id==="hosstudio" || CURRENT_TAB==="mod:hosstudio")) renderModuleLanding("hosstudio"); else render(); }
   else { m.textContent="Incorrect PIN."; i.value=""; i.focus(); }
 }
 
@@ -5137,7 +5147,7 @@ function renderHome(v){
       card.onmouseover = () => { card.style.borderColor=m.colour; card.style.boxShadow='0 4px 14px rgba(0,0,0,.10)'; card.style.transform='translateY(-2px)'; };
       card.onmouseout  = () => { card.style.borderColor='transparent'; card.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'; card.style.transform=''; };
       // HosREV opens straight on its dashboard (the sub-nav still shows its other screens)
-      card.onclick = () => (m.id==='hosrev' && RENDER_MAP.revDash) ? switchTab('revDash') : (m.id==='hoshouse' ? switchTab('hhHub') : m.id==='hosfire' ? (location.href='hosfire.html') : renderModuleLanding(m.id));
+      card.onclick = () => (m.id==='hosrev' && RENDER_MAP.revDash) ? switchTab('revDash') : (m.id==='hoshouse' ? switchTab('hhHub') : m.id==='hosfire' ? (location.href='hosfire.html') : (m.id==='hosstudio' && HP_MKT_LOCK && !hpMktUnlocked()) ? hpMktPrompt() : renderModuleLanding(m.id));
       if(!hpCanAccess(m.id)){
         card.style.cssText += ';opacity:.45;filter:grayscale(1);cursor:not-allowed;box-shadow:none';
         card.title = m.name+' is restricted';
