@@ -53,8 +53,8 @@ Object.assign(LOGINS, HF_EXTRA_LOGINS);
 const keyByEmail = (e) => Object.keys(LOGINS).find((k) => LOGINS[k].email === e);
 
 /* ---------- store ---------- */
-const COLS = { records: "hosfire_records", actions: "hosfire_actions", registers: "hosfire_registers", diary: "hosfire_diary", audit: "hosfire_audit", config: "hosfire_config", sigs: "hosfire_signatures" };
-const S = { live: false, user: null, key: null, tab: "dash", data: { records: [], actions: [], registers: [], diary: [], audit: [], config: [], sigs: [] }, f: {} };
+const COLS = { records: "hosfire_records", actions: "hosfire_actions", registers: "hosfire_registers", diary: "hosfire_diary", audit: "hosfire_audit", config: "hosfire_config", sigs: "hosfire_signatures", tlog: "hosfire_training" };
+const S = { live: false, user: null, key: null, tab: "dash", data: { records: [], actions: [], registers: [], diary: [], audit: [], config: [], sigs: [], tlog: [] }, f: {} };
 let fb = null;
 
 function fbInit() {
@@ -1435,6 +1435,13 @@ VIEWS.training = () => {
   return `<div class="row"><div class="grow"><h2>Training <span class="fl">matrix</span></h2>
   <p class="lead">Fire training for every member of staff (RRO 2005 Art. 21): induction, annual refresher, fire marshal course, extinguisher use, the Fire Action Procedure briefing and drills. A date shows training was given; <b>✓</b> means the evidence (signed attendance sheet or certificate) has been seen.</p></div>
   <div class="row"><button class="btn ghost" id="t-cards">🪪 Training cards (PDF)</button><button class="btn ghost" id="t-records">📄 Attendance records (PDF)</button><button class="btn red" id="t-session">+ Record a training session</button></div></div>
+  ${(() => { const base = location.href.split("#")[0].replace(/[^/]*$/, ""), m1 = today().slice(0, 8) + "01", T = S.data.tlog || [], ind = T.filter((x) => x.module === "induction"), mon = T.filter((x) => x.module === "monthly" && (x.date || "") >= m1), staffN = all.length;
+    return `<div class="card" style="margin-bottom:12px;border-left:6px solid var(--red)"><div class="row" style="align-items:flex-start"><div class="grow"><h3 style="margin-top:0">🎓 HosFIRE Training — online for all staff</h3>
+      <p class="muted" style="margin:0 0 6px">Every member of staff completes the <b>fire safety induction</b> (new starters before their first shift) and the <b>monthly refresher</b>. Each completion is signed and updates this matrix automatically. Staff code: <b>${h(HF_KIOSK_CODE)}</b>.</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap"><input readonly value="${h(base)}hosfire-training.html" style="flex:1;min-width:260px" onclick="this.select()"><button class="btn sm" id="t-qr">🖨 QR posters (training and checks)</button></div></div>
+      <div style="min-width:220px"><div class="n" style="font-size:26px;font-weight:900;color:var(--navy)">${new Set(ind.map((x) => x.name)).size} / ${staffN}</div><div class="muted">completed the online induction</div>
+      <div class="n" style="font-size:26px;font-weight:900;color:var(--navy);margin-top:6px">${new Set(mon.map((x) => x.name)).size} / ${staffN}</div><div class="muted">this month's refresher (${h(hfMonthlyTopic()[0])})</div></div></div>
+      ${T.length ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700">Recent online completions (${T.length})</summary><div class="tw"><table><tr><th>Date</th><th>Name</th><th>Training</th><th>Score</th><th>Signature</th></tr>${T.slice().sort((a, b) => ms(b.createdAt) - ms(a.createdAt)).slice(0, 40).map((x) => `<tr><td>${fds(x.date)}</td><td>${h(x.name)}</td><td>${h(x.title)}</td><td>${x.score}/${x.total}</td><td>${x.sig ? `<img src="${x.sig}" style="height:28px">` : ""}</td></tr>`).join("")}</table></div></details>` : ""}</div>`; })()}
   <div class="grid g6" style="margin-bottom:12px">
     <div class="card tile"><div class="n">${n}</div><div class="l">Staff on the matrix</div></div>
     <div class="card tile ${pc(ind) >= 90 ? "g" : "a"}"><div class="n">${pc(ind)}%</div><div class="l">Fire training recorded (${ind})</div></div>
@@ -1461,6 +1468,15 @@ VIEWS.training = () => {
   <p class="muted" style="margin-top:8px">Click any training cell to add or change a date. ✓ evidence seen · <b style="color:var(--amber)">?</b> date recorded, evidence still to be confirmed · green in date · amber due within 30 days · red overdue · grey no record.</p>`;
 };
 BIND.training = (v) => {
+  const qb = $("#t-qr", v); if (qb) qb.onclick = async () => {
+    const base = location.href.split("#")[0].replace(/[^/]*$/, "");
+    if (!window.QRCode) await new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+    const P = [["HosFIRE Training", "Fire safety training for every member of staff", "New staff: complete the fire safety induction before your first shift. Everyone: the monthly refresher, every month. Scan, enter the staff code, choose your name and follow the steps — about 15 minutes for the induction, 3 for the refresher.", base + "hosfire-training.html"],
+      ["HosFIRE Checks", "Front desk fire safety checks", "Daily, weekly and monthly fire checks, extinguisher checks and fire alarm activations. Scan, enter the staff code and your name, pick the check and record it. Anything wrong goes straight to the Fire Safety Manager.", base + "hosfire-checks.html"]];
+    $("#print").innerHTML = P.map(([t, s2, d, u], i) => `<div style="${i ? "page-break-before:always;" : ""}text-align:center;padding:14mm 10mm;font-family:inherit"><img src="assets/marketing/logos/logo-blue-transparent.png" style="height:34mm"><h1 style="font-size:34px;color:#2C3E50;margin:8mm 0 2mm">${t}</h1><div style="font-size:18px;color:#B3261E;font-weight:800">${s2}</div><div id="qr${i}" style="display:inline-block;margin:10mm 0;padding:5mm;border:3px solid #2C3E50;border-radius:10px"></div><p style="font-size:15px;max-width:150mm;margin:0 auto 4mm">${d}</p><p style="font-size:13px;color:#555">${u}</p><p style="font-size:18px;margin-top:6mm">Staff code: <b>ask your manager</b></p></div>`).join("");
+    P.forEach(([, , , u], i) => new QRCode($("#qr" + i), { text: u, width: 260, height: 260 }));
+    setTimeout(() => printPortrait(), 600);
+  };
   const f = S.f.trn;
   $("#tf-dept", v).onchange = (e) => { f.dept = e.target.value; render(); };
   $("#tf-show", v).onchange = (e) => { f.show = e.target.value; render(); };

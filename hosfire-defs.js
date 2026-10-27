@@ -156,7 +156,7 @@ const HF_SOURCES = [
 
 const HF_STATUS = ["Not started", "In progress", "Completed"];
 const HF_PRIORITY = ["High", "Medium", "Low"];
-const HF_ACTION_CATS = ["FRA action", "Leader Systems", "Emergency lighting", "Electrical and lighting", "Gas appliances", "Extinguishers", "Saeker", "Inspection", "Records", "Other"];
+const HF_ACTION_CATS = ["FRA action", "Training", "Leader Systems", "Emergency lighting", "Electrical and lighting", "Gas appliances", "Extinguishers", "Saeker", "Inspection", "Records", "Other"];
 
 const HF_DOC_CATS = ["Fire risk assessment", "Inspection / enforcement", "Policy and procedure", "Contract", "Certificate / report", "Quote", "Correspondence", "Statement", "Form", "Manual (equipment)", "Training", "Photo / evidence", "Floor plan", "Other"];
 
@@ -167,7 +167,8 @@ const HF_COURSES = [
   ["extinguisher", "Extinguisher use", 12],
   ["procedure", "Fire procedure briefing signed", 12],
   ["drill", "Last drill taken part in", 12],
-  ["reception", "Reception alarm procedure briefing", 12, ["reception", "nights"]]   // reception and night staff only
+  ["reception", "Reception alarm procedure briefing", 12, ["reception", "nights"]],   // reception and night staff only
+  ["monthly", "Monthly fire refresher", 1]
 ];
 const courseApplies = (t, c) => !c[3] || c[3].includes((t && t.dept) || "other");
 
@@ -324,3 +325,60 @@ const HF_SITE_DEFAULT = {
   granite: "Aiden — 07301 067739",
   leaderPhone: "01788 542 220"
 };
+
+/* ── Shared front-desk / training login (kiosk) ─────────────────────
+   Used by hosfire-checks.html and hosfire-training.html so front desk and
+   all staff can record checks and training without their own login.
+   Create ONCE in Firebase Console → Authentication → Add user (email and
+   password below); the email is allowed in firestore.rules (isFire). Each
+   record still carries the name of the person who did it. */
+const HF_KIOSK = { email: "fire.kiosk@brandonhall.portal", pw: "BHFK-Kiosk-2026!", name: "HosFIRE kiosk" };
+const HF_KIOSK_CODE = "999";
+
+/* ── Staff fire safety training (HosFIRE Training) ────────────────────
+   Based on the Regulatory Reform (Fire Safety) Order 2005 (Art. 21 —
+   training at induction and repeated periodically), HM Government
+   "Fire safety risk assessment: sleeping accommodation" and fire and
+   rescue service guidance. Hotel details come from Site facts. */
+const HF_TRAIN_INDUCTION = {
+  key: "induction", title: "Fire safety induction", mins: 15, pass: 8,
+  slides: [
+    ["Why fire safety matters", ["Hotels are high risk: guests are asleep, don't know the building and may need help to get out.", "The law (Regulatory Reform (Fire Safety) Order 2005) says every member of staff must be trained when they start and regularly after that.", "You must follow the hotel's fire procedures, take care of your own safety and others', and report anything unsafe straight away."]],
+    ["How fires start", ["Fire needs three things: heat, fuel and oxygen. Take one away and the fire goes out.", "Common causes in hotels: cooking, faulty or overloaded electrics, tumble-dryer lint, smoking, candles, and deliberate fire-setting (arson).", "Most fires can be prevented by good housekeeping and reporting faults early."]],
+    ["Preventing fire — every day", ["Never wedge or prop open a fire door. Fire doors hold back fire and smoke.", "Keep corridors, stairs and fire exits clear — no trolleys, linen or boxes.", "Don't overload sockets; report damaged plugs, cables and appliances.", "Clean dryer lint filters after every load. Keep bins and rubbish away from the building.", "No smoking except in the designated area. Candles only in approved enclosed holders."]],
+    ["If you discover a fire", ["Raise the alarm: break the nearest red fire alarm call point.", "Get out and close doors behind you to hold the fire back.", "Only use an extinguisher if the fire is small, you are trained, and your way out is behind you. If in doubt, get out.", "Tell the duty manager or reception where the fire is."]],
+    ["When the alarm sounds", ["Brandon Hall uses SIMULTANEOUS evacuation: everyone leaves as soon as the alarm sounds.", "Leave by the nearest safe exit. Never use the lift.", "Help guests out of your area; close doors as you go. Don't stop to collect belongings.", "Go to the assembly point: {assembly}. Report to the duty manager for the roll call.", "Never go back in until the fire service says it is safe."]],
+    ["Calling 999", ["Reception (or whoever is free first at night) calls 999 on EVERY activation. Never assume someone else has called.", "Say: “Fire and Rescue please. Brandon Hall Hotel and Spa, Main Street, Brandon, Coventry CV8 3FW. The fire alarm is sounding in [zone / area]. [Smoke or fire seen or not]. People at risk: [number / anyone needing help].”", "Stay on the line if it is safe and answer their questions."]],
+    ["Helping guests", ["Some guests need help to get out — wheelchair users, people with sight or hearing loss, children, guests who may have been drinking.", "Guests who need help are identified at check-in and have a plan (PEEP). Reception and night staff know who they are.", "Knock on doors and call out as you leave your area. Tell the duty manager about anyone you could not reach — never put yourself at risk."]],
+    ["Escape routes, signs and lighting", ["Green running-man signs show the way out. Emergency lights come on if the power fails.", "Final exit doors must open easily from inside and never be locked or blocked while the building is in use.", "Report any exit that is blocked, a sign that is not lit, or an emergency light that is out."]],
+    ["Fire extinguishers", ["Red label — water: paper, wood, fabric. Cream — foam: as water plus flammable liquids. Black — CO₂: electrical equipment. Blue — powder (plant rooms). Yellow — wet chemical: cooking oil fires. Fire blanket: small pan fires.", "Never use water on electrical equipment or cooking oil.", "P-A-S-S: Pull the pin, Aim at the base of the fire, Squeeze the handle, Sweep side to side.", "Your safety comes first. If the fire is not out in a few seconds, leave and close the door."]],
+    ["Your area", ["Kitchen: never leave cooking unattended; know the gas shut-off and the fire blanket; keep filters clean.", "Housekeeping and laundry: clean lint filters, don't overload dryers, keep linen away from heaters and lights.", "Reception: keep the guest list and sign-in sheets ready, call 999, meet the fire service.", "Spa: clear the pool, sauna and treatment rooms; guests leave as they are; robes and towels at the exit.", "Fire Safety Manager: {manager}. Fire marshals: {marshals}."]]
+  ],
+  quiz: [
+    ["The fire alarm sounds. What do you do?", ["Leave by the nearest safe exit and go to the assembly point", "Wait to see if it stops", "Finish what you are doing, then go"], 0],
+    ["Who calls 999 when the fire alarm goes off?", ["Reception (or whoever is free first at night) — on every activation", "Nobody — the alarm calls the fire service", "Only the manager, once the fire is confirmed"], 0],
+    ["A fire door is wedged open with a door stop. What should you do?", ["Remove the wedge and let the door close; report it", "Leave it — it helps with deliveries", "Only close it at night"], 0],
+    ["Can you use the lift during a fire alarm?", ["No — use the stairs and fire exits", "Yes, if it is working", "Only to help guests"], 0],
+    ["Which extinguisher should be used on an electrical fire?", ["CO₂ (black label)", "Water (red label)", "Foam (cream label)"], 0],
+    ["What should you never use on a cooking oil (chip pan) fire?", ["Water", "A fire blanket", "A wet chemical extinguisher"], 0],
+    ["When should you try to put out a fire yourself?", ["Only if it is small, you are trained and your way out is behind you", "Always — to protect the hotel", "Never — even if it is tiny"], 0],
+    ["Where is the assembly point?", ["{assembly}", "In the hotel reception", "In the car park at the back of the spa"], 0],
+    ["A guest uses a wheelchair and is staying on the first floor. What should you know?", ["They should have an evacuation plan (PEEP); tell the duty manager where they are", "Nothing — they will use the lift", "They should stay in their room"], 0],
+    ["You find a fire exit blocked with boxes. What do you do?", ["Clear it if safe and report it straight away", "Leave it for maintenance", "Use a different exit and say nothing"], 0]
+  ]
+};
+const HF_TRAIN_MONTHLY = [
+  ["Fire doors", ["Fire doors hold back fire and smoke for at least 30 minutes — but only when closed.", "Never wedge or prop them open. Report doors that don't close fully, damaged seals or missing signs."], [["Why must fire doors be kept closed?", ["They hold back fire and smoke", "To keep the heat in", "For guest privacy"], 0], ["A fire door won't close on its own. What do you do?", ["Report it to maintenance straight away", "Wedge it closed", "Ignore it"], 0], ["Can fire doors be propped open with a fire extinguisher?", ["Never", "Yes, during busy times", "Only in the daytime"], 0]]],
+  ["Escape routes and exits", ["Corridors, stairs and fire exits must be clear at all times.", "Final exit doors must open from inside without a key while the hotel is in use."], [["Where can trolleys be left?", ["Never on escape routes or in front of exits", "In stairwells", "In front of fire doors"], 0], ["A final exit is locked while guests are in. What do you do?", ["Unlock it if allowed and report it immediately", "Leave it", "Put a sign on it"], 0], ["What does the green running-man sign show?", ["The way out", "The lift", "A staff area"], 0]]],
+  ["Raising the alarm and calling 999", ["Break the nearest red call point if you see a fire.", "Reception calls 999 on every activation — never assume someone else has."], [["How do you raise the alarm?", ["Break the nearest red call point", "Phone housekeeping", "Shout and wait"], 0], ["Who calls 999?", ["Reception — on every activation", "The guest", "Nobody"], 0], ["What address do you give?", ["Brandon Hall Hotel and Spa, Main Street, Brandon, Coventry CV8 3FW", "Just 'the hotel'", "The postcode only"], 0]]],
+  ["Fire extinguishers and blankets", ["Red = water, cream = foam, black = CO₂, blue = powder, yellow = wet chemical.", "Only tackle a small fire if trained and your exit is behind you. P-A-S-S."], [["Which extinguisher for a computer fire?", ["CO₂ (black)", "Water (red)", "Foam (cream)"], 0], ["What does P-A-S-S stand for?", ["Pull, Aim, Squeeze, Sweep", "Point, Ask, Spray, Stop", "Push, Aim, Shoot, Start"], 0], ["Used an extinguisher? What next?", ["Report it so it can be replaced", "Put it back", "Nothing"], 0]]],
+  ["Kitchen fire safety", ["Never leave cooking unattended. Keep extract filters clean.", "Know where the gas shut-off and fire blanket are. Never use water on oil."], [["Chip pan fire — what do you do?", ["Turn off the heat if safe, use the fire blanket or wet chemical, raise the alarm", "Throw water on it", "Carry the pan outside"], 0], ["How often are grease filters cleaned?", ["At least weekly", "Once a year", "Never"], 0], ["Where is the kitchen fire blanket?", ["Next to the cooking range — know where it is", "In the office", "There isn't one"], 0]]],
+  ["Electrical safety", ["Don't overload sockets or daisy-chain extension leads.", "Report damaged plugs, cables or appliances and stop using them."], [["You see a scorched plug. What do you do?", ["Stop using it and report it", "Use it carefully", "Tape it up"], 0], ["Is it OK to plug an extension lead into another?", ["No", "Yes", "Only in bedrooms"], 0], ["Which extinguisher for electrical fires?", ["CO₂", "Water", "Foam"], 0]]],
+  ["Housekeeping, laundry and storage", ["Clean dryer lint filters after every load; don't leave dryers running unattended at the end of a shift.", "Keep linen and chemicals away from heaters, lights and electrical panels."], [["When should dryer lint filters be cleaned?", ["After every load", "Once a week", "When full"], 0], ["Can linen be stored in a plant room?", ["No", "Yes", "Only overnight"], 0], ["A trolley is blocking a corridor. What do you do?", ["Move it out of the escape route", "Leave it", "Cover it"], 0]]],
+  ["Helping guests and night time", ["Guests needing help to evacuate are identified at check-in (PEEP); night staff know who they are.", "At night there are fewer staff — knock on doors and call out as you leave."], [["Who needs a PEEP?", ["Anyone who may need help to get out", "Every guest", "Only staff"], 0], ["At night, who calls 999?", ["Whoever is free first — on every activation", "The guest", "Nobody until morning"], 0], ["You cannot reach a guest. What do you do?", ["Tell the duty manager and the fire service where they are", "Go back in for them", "Wait outside their door"], 0]]],
+  ["Evacuation and the assembly point", ["Simultaneous evacuation — everyone leaves when the alarm sounds. Never use the lift.", "Go to the assembly point: {assembly}. Never go back in."], [["When do you leave the building?", ["As soon as the alarm sounds", "When told by a guest", "After 5 minutes"], 0], ["Where is the assembly point?", ["{assembly}", "Reception", "The bar"], 0], ["When can you go back in?", ["Only when the fire service says it is safe", "When the alarm stops", "After 10 minutes"], 0]]],
+  ["Smoking, candles and events", ["Smoking only in the designated area; bins for cigarette ends.", "Candles only in enclosed holders, away from drapes and exits. Check event numbers against the room's limit."], [["Are naked flames allowed on tables at events?", ["Only in enclosed holders, away from drapes", "Yes, anywhere", "Only on the bar"], 0], ["Where can staff smoke?", ["Only in the designated area", "Anywhere outside", "In the plant room"], 0], ["An event has more guests than the room limit. What do you do?", ["Tell the duty manager straight away", "Nothing", "Open more doors"], 0]]],
+  ["Arson prevention", ["Keep bins and rubbish away from the building and lock bin stores.", "Report anyone acting suspiciously and any small fires or burn marks."], [["Where should large bins be kept?", ["Away from the building, secured", "Against the wall by a door", "In a corridor"], 0], ["You find burn marks in a toilet. What do you do?", ["Report it to the duty manager", "Clean it up", "Ignore it"], 0], ["Why keep combustible rubbish away from doors?", ["It could be set alight and block the exit", "It looks untidy", "No reason"], 0]]],
+  ["Contractors and hot work", ["Contractors sign in, are told the fire procedure and sign out.", "Hot work (welding, grinding, blow-torches) needs a hot work permit from the hotel before it starts."], [["What does hot work need before it starts?", ["A hot work permit from the hotel", "Nothing", "A phone call"], 0], ["Who tells contractors the fire procedure?", ["The person signing them in", "Nobody", "The guest"], 0], ["A contractor is grinding without a permit. What do you do?", ["Ask them to stop and tell the duty manager", "Let them carry on", "Open a window"], 0]]]
+];
+const hfMonthlyTopic = (d) => HF_TRAIN_MONTHLY[(new Date(d || Date.now())).getMonth() % 12];

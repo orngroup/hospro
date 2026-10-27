@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HosFIRE Checks — Brandon Hall</title>
+<meta name="theme-color" content="#1D4E89">
+<link rel="icon" href="assets/favicon.png">
+<style>
+:root{--blue:#1D4E89;--blue2:#163C6A;--red:#C62828;--redbg:#FDECEA;--ink:#14243A;--muted:#5E6E82;--line:#DCE4EE;--ok:#1E8A55;--okbg:#E5F4EC;--amb:#B36B00;--ambbg:#FFF3DF;--bg:#F3F6FA}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit}.hide{display:none!important}
+.top{position:sticky;top:0;z-index:5;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:4px solid var(--red);display:flex;align-items:center;gap:10px}
+.top img{height:34px;background:#fff;border-radius:6px;padding:3px}.top b{font-size:19px}.top b span{color:#FF8A80}.top small{display:block;color:#C9D8EC;font-size:12px}.top .g{flex:1}
+.top button{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:9px;padding:7px 11px;font-weight:700}
+.wrap{max-width:760px;margin:0 auto;padding:14px 14px 110px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:10px}
+h2{font-size:20px;margin:0 0 8px;color:var(--blue2)}h3{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 4px 8px}
+.muted{color:var(--muted);font-size:14px}
+label{display:block;font-weight:700;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 5px}
+input,select,textarea{width:100%;padding:11px;border:1.5px solid var(--line);border-radius:10px;background:#fff}textarea{min-height:70px}
+.btn{display:block;width:100%;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:17px;background:var(--red);color:#fff;margin-top:12px;cursor:pointer}.btn.ghost{background:#fff;color:var(--blue2);border:1.5px solid var(--line)}.btn:disabled{opacity:.5}
+.chk{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:13px;margin-bottom:8px;cursor:pointer}
+.chk .t{flex:1}.chk b{display:block;color:var(--blue2)}
+.st{font-size:12px;font-weight:800;border-radius:20px;padding:3px 10px;white-space:nowrap}.st.ok{background:var(--okbg);color:var(--ok)}.st.due{background:var(--redbg);color:var(--red)}
+.item{border-bottom:1px solid var(--line);padding:10px 0}.item .q{margin-bottom:7px}.item .q i{color:var(--red);font-style:normal;font-weight:800}
+.seg{display:flex;gap:6px}.seg button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:9px;font-weight:800;cursor:pointer}
+.seg .on.pass{background:var(--ok);border-color:var(--ok);color:#fff}.seg .on.fail{background:var(--red);border-color:var(--red);color:#fff}.seg .on.na{background:#7a8899;border-color:#7a8899;color:#fff}
+.ext{display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:8px 0}.ext .t{flex:1;font-size:14px}.ext input[type=checkbox]{width:26px;height:26px}
+.err{color:var(--red);font-weight:700;margin-top:8px}
+.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px calc(env(safe-area-inset-bottom) + 10px)}.nav .btn{margin:0;max-width:760px;margin:0 auto}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-weight:700;z-index:20}
+</style>
+</head>
+<body>
+<div class="top"><img src="assets/marketing/logos/logo-blue-transparent.png" alt=""><div class="g"><b>Hos<span>FIRE</span> Checks</b><small>Front desk — daily, weekly and monthly fire checks</small></div><button id="who" class="hide"></button></div>
+<div class="wrap" id="app"></div>
+<div class="nav hide" id="nav"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="hosfire-defs.js?v=20261027a"></script>
+<script>
+(() => {
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const h = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pad = (n) => String(n).padStart(2, "0"), ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, today = () => ymd(new Date());
+const monday = () => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return ymd(d); }, month1 = () => today().slice(0, 8) + "01";
+const DEMO = /[?&]demo=1/.test(location.search), DK = "hosfire_demo_v1";
+const FRONT = ["daily", "weekly_alarm", "el_weekly", "doors_weekly", "el_monthly", "doors_monthly", "extinguishers", "co_alarm", "laundry", "kitchen", "spa", "alarm_event"];
+const CHECKS = FRONT.map((id) => HF_CHECKS.find((c) => c.id === id)).filter(Boolean);
+const st = { name: "", recs: [], ext: [], regs: [], actions: [] };
+let fb = null;
+const app = $("#app"), nav = $("#nav");
+const setNav = (html) => { nav.innerHTML = html; nav.classList.toggle("hide", !html); };
+const toast = (t) => { const e = document.createElement("div"); e.className = "toast"; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); };
+
+async function connect() {
+  if (DEMO) { const j = JSON.parse(localStorage.getItem(DK) || "{}"); st.recs = (j.records || []).filter((r) => r.date >= (monday() < month1() ? monday() : month1())); st.ext = (j.registers || []).filter((r) => r.kind === "ext"); st.regs = (j.registers || []).filter((r) => r.kind === "training"); st.actions = j.actions || []; return; }
+  firebase.apps.length || firebase.initializeApp(firebaseConfig);
+  fb = { auth: firebase.auth(), db: firebase.firestore() };
+  if (!fb.auth.currentUser || fb.auth.currentUser.email !== HF_KIOSK.email) await fb.auth.signInWithEmailAndPassword(HF_KIOSK.email, HF_KIOSK.pw);
+  const [r, e, t, a] = await Promise.all([fb.db.collection("hosfire_records").where("date", ">=", monday() < month1() ? monday() : month1()).get(), fb.db.collection("hosfire_registers").where("kind", "==", "ext").get(),
+    fb.db.collection("hosfire_registers").where("kind", "==", "training").get(), fb.db.collection("hosfire_actions").get()]);
+  st.recs = r.docs.map((d) => ({ id: d.id, ...d.data() })); st.ext = e.docs.map((d) => ({ id: d.id, ...d.data() })); st.regs = t.docs.map((d) => ({ id: d.id, ...d.data() })); st.actions = a.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+const statusOf = (c) => { if (c.freq === "event") return null; const from = c.freq === "daily" ? today() : c.freq === "weekly" ? monday() : month1(); const r = st.recs.filter((x) => x.type === c.id && x.date >= from); return r.length ? { ok: true, by: r[r.length - 1].byName || r[r.length - 1].doneBy } : { ok: false }; };
+const per = { daily: "Today", weekly: "This week", monthly: "This month" };
+
+function viewCode() {
+  app.innerHTML = `<div class="card"><h2>Fire safety checks</h2><p>Record the hotel's daily, weekly and monthly fire checks. Every check is saved with your name and the time, straight into HosFIRE.</p>
+    <label>Staff code</label><input id="code" type="password" inputmode="numeric" autocomplete="off"><button class="btn" id="go">Start</button><div class="err" id="e"></div></div>`;
+  $("#code").onkeydown = (e) => { if (e.key === "Enter") $("#go").click(); };
+  $("#go").onclick = async () => { if ($("#code").value.trim() !== HF_KIOSK_CODE) { $("#e").textContent = "That code is not right."; return; }
+    $("#go").disabled = true; $("#go").textContent = "Connecting…"; try { await connect(); viewName(); } catch (err) { $("#go").disabled = false; $("#go").textContent = "Start"; $("#e").textContent = "Could not connect: " + err.message; } };
+}
+function viewName() {
+  const names = st.regs.map((r) => r.name).sort();
+  app.innerHTML = `<div class="card"><h2>Who is doing the checks?</h2><label>Your full name</label><input id="nm" list="nl" value="${h(st.name)}" placeholder="Start typing your name"><datalist id="nl">${names.map((n) => `<option value="${h(n)}">`).join("")}</datalist><button class="btn" id="go">Continue</button><div class="err" id="e"></div></div>`;
+  $("#go").onclick = () => { const n = $("#nm").value.trim().replace(/\s+/g, " "); if (n.split(" ").length < 2) { $("#e").textContent = "Please enter your first and last name."; return; } st.name = n; $("#who").textContent = n.split(" ")[0] + " · change"; $("#who").classList.remove("hide"); viewList(); };
+}
+$("#who").onclick = () => viewName();
+
+function viewList() {
+  setNav("");
+  const grp = (f, title) => { const L = CHECKS.filter((c) => c.freq === f); return L.length ? `<h3>${title}</h3>` + L.map((c) => { const s = statusOf(c);
+    return `<button class="chk" data-c="${c.id}"><div class="t"><b>${h(c.name)}</b><span class="muted">${h(c.owner)}</span></div>${s ? `<span class="st ${s.ok ? "ok" : "due"}">${s.ok ? "✓ Done" + (s.by ? " · " + h(s.by.split(" ")[0]) : "") : per[f] + " — due"}</span>` : ""}</button>`; }).join("") : ""; };
+  app.innerHTML = grp("daily", "Every day") + grp("weekly", "Every week") + grp("monthly", "Every month") + grp("event", "When it happens") +
+    `<p class="muted" style="margin-top:14px">Anything wrong? Record it as a Fail with a note — it goes straight to the Fire Safety Manager (${h(HF_FIRE_MANAGER.name)}) as an action. Fire alarm activation: call 999 first, record it afterwards.</p>`;
+  $$("[data-c]").forEach((b) => (b.onclick = () => viewForm(HF_CHECKS.find((c) => c.id === b.dataset.c))));
+}
+
+function viewForm(c) {
+  const isExt = c.id === "extinguishers" && st.ext.length;
+  const field = ([k, l, t, req]) => { const lab = `<label>${h(l)}${req ? ' <span style="color:var(--red)">*</span>' : ""}</label>`;
+    if (t.startsWith("select:")) return lab + `<select data-f="${k}"><option value="">Choose…</option>${t.slice(7).split("|").map((o) => `<option>${h(o)}</option>`).join("")}</select>`;
+    if (t === "textarea") return lab + `<textarea data-f="${k}"></textarea>`; if (t === "venue") return lab + `<input data-f="${k}">`;
+    return lab + `<input type="${t === "number" ? "number" : t === "time" ? "time" : t === "date" ? "date" : "text"}" data-f="${k}">`; };
+  const rota = c.id === "weekly_alarm" && typeof HF_MARSHALS !== "undefined" ? `<p class="muted">Use a different call point each week, in rotation. Tell reception and the duty manager before you start.</p>` : "";
+  app.innerHTML = `<div class="card"><h2>${h(c.name)}</h2><p class="muted">${h(c.intro || "")}</p>${rota}
+    ${c.fields.filter(([k]) => !(isExt && (k === "checked" || k === "issues"))).map(field).join("")}
+    ${c.items.length ? `<label>Checks</label>` + c.items.map(([k, l, must]) => `<div class="item"><div class="q">${must ? "<i>★</i> " : ""}${h(l)}</div><div class="seg" data-i="${k}"><button data-v="pass" class="pass">Pass</button><button data-v="fail" class="fail">Fail</button><button data-v="na" class="na">N/A</button></div></div>`).join("") : ""}
+    ${isExt ? `<label>Each extinguisher and fire blanket — untick any with a problem</label><p class="muted">In place · sign visible · gauge in the green · pin and tag intact.</p>${st.ext.sort((a, b) => (a.no || 0) - (b.no || 0)).map((e) => `<div class="ext"><input type="checkbox" checked data-x="${e.id}"><div class="t"><b>${e.no}.</b> ${h(e.loc)} — ${h(e.type)}<input class="hide" data-xn="${e.id}" placeholder="What is wrong?" style="margin-top:6px"></div></div>`).join("")}` : ""}
+    <label>Notes ${c.items.length ? "(required for any Fail or N/A)" : ""}</label><textarea id="notes"></textarea>
+    <label style="text-transform:none;font-size:15px;color:var(--ink);display:flex;gap:10px;align-items:flex-start"><input type="checkbox" id="conf" style="width:auto;margin-top:3px">I, ${h(st.name)}, carried out this check myself today.</label><div class="err" id="e"></div></div>`;
+  $$(".seg").forEach((sg) => $$("button", sg).forEach((b) => (b.onclick = () => { $$("button", sg).forEach((x) => x.classList.remove("on")); b.classList.add("on"); })));
+  $$("[data-x]").forEach((cb) => (cb.onchange = () => $(`[data-xn="${cb.dataset.x}"]`).classList.toggle("hide", cb.checked)));
+  setNav(`<div style="display:flex;gap:10px;max-width:760px;margin:0 auto"><button class="btn ghost" id="bk">Back</button><button class="btn" id="sv">Save check</button></div>`);
+  $("#bk").onclick = viewList;
+  $("#sv").onclick = async () => {
+    const e = $("#e"), fields = {}, items = {}; $$("[data-f]").forEach((x) => (fields[x.dataset.f] = x.value.trim())); $$(".seg").forEach((sg) => { const on = $("button.on", sg); items[sg.dataset.i] = on ? on.dataset.v : ""; });
+    const miss = c.fields.filter(([k, , , req]) => req && !(isExt && (k === "checked" || k === "issues")) && !fields[k]); if (miss.length) { e.textContent = "Please complete: " + miss.map((m) => m[1]).join(", "); return; }
+    if (c.items.some(([k]) => !items[k])) { e.textContent = "Please answer every check."; return; }
+    const notes = $("#notes").value.trim(); if (Object.values(items).some((v) => v === "fail" || v === "na") && !notes) { e.textContent = "Add a note explaining each Fail or N/A."; return; }
+    const bad = $$("[data-x]").filter((x) => !x.checked).map((x) => ({ e: st.ext.find((z) => z.id === x.dataset.x), note: $(`[data-xn="${x.dataset.x}"]`).value.trim() }));
+    if (bad.some((b) => !b.note)) { e.textContent = "Say what is wrong with each unticked extinguisher."; return; }
+    if (!$("#conf").checked) { e.textContent = "Tick the confirmation box."; return; }
+    if (isExt) { fields.checked = String(st.ext.length); fields.issues = bad.map((b) => `${b.e.no} ${b.e.loc}: ${b.note}`).join("; "); if (bad.length) items.place = "fail"; }
+    $("#sv").disabled = true; $("#sv").textContent = "Saving…";
+    try { await saveCheck(c, fields, items, notes, bad); toast("Saved — thank you"); await connect(); viewList(); window.scrollTo(0, 0); }
+    catch (err) { $("#sv").disabled = false; $("#sv").textContent = "Save check"; e.textContent = "Could not save: " + err.message; }
+  };
+}
+
+async function saveCheck(c, fields, items, notes, bad) {
+  const d = today(), rec = { type: c.id, ref: c.ref, date: d, fields, items, notes, byName: st.name, byEmail: DEMO ? "demo" : HF_KIOSK.email, source: "HosFIRE Checks (front desk)" };
+  const nums = st.actions.map((a) => String(a.ref || "")).filter((r) => /^C\d+$/.test(r)).map((r) => +r.slice(1)); let n = Math.max(0, ...nums);
+  const due = ymd(new Date(Date.now() + 7 * 864e5));
+  const acts = c.items.filter(([k]) => items[k] === "fail").map(([, l]) => ({ ref: "C" + ++n, title: `${c.short}: ${l} — failed`, detail: notes, category: "Other", priority: "High", owner: HF_FIRE_MANAGER.name, due, status: "Not started", source: `${c.ref} on ${d} (${st.name})`,
+    history: [{ at: Date.now(), by: st.name, status: "Not started", note: "Raised from a failed check (HosFIRE Checks)" }] }));
+  bad.forEach((b) => acts.push({ ref: "EX" + (Math.max(6, ...st.actions.map((a) => String(a.ref || "")).filter((r) => /^EX\d+$/.test(r)).map((r) => +r.slice(2))) + 1 + acts.filter((a) => a.ref.startsWith("EX")).length), title: `Extinguisher ${b.e.no} — ${b.e.loc} (${b.e.type}): ${b.note}`, detail: "", category: "Extinguishers", priority: "High", owner: HF_FIRE_MANAGER.name, due, status: "Not started", source: `Monthly check ${d} (${st.name})`, history: [{ at: Date.now(), by: st.name, status: "Not started", note: "Raised from the monthly extinguisher check" }] }));
+  if (DEMO) { const j = JSON.parse(localStorage.getItem(DK) || "{}"); j.records = j.records || []; j.records.push({ id: "r" + Date.now(), ...rec, createdAt: Date.now() }); j.actions = (j.actions || []).concat(acts.map((a, i) => ({ id: "a" + Date.now() + i, ...a })));
+    if (c.id === "extinguishers") (j.registers || []).forEach((r) => { if (r.kind === "ext") { const b = bad.find((x) => x.e.id === r.id); r.check = d; r.checkBy = st.name; r.checkNote = b ? b.note : ""; } }); localStorage.setItem(DK, JSON.stringify(j)); return; }
+  const ts = firebase.firestore.FieldValue.serverTimestamp();
+  await fb.db.collection("hosfire_records").add({ ...rec, createdAt: ts });
+  for (const a of acts) await fb.db.collection("hosfire_actions").add({ ...a, byName: st.name, byEmail: HF_KIOSK.email, createdAt: ts });
+  if (c.id === "extinguishers") { const B = fb.db.batch(); st.ext.forEach((r) => { const b = bad.find((x) => x.e.id === r.id); B.set(fb.db.collection("hosfire_registers").doc(r.id), { check: d, checkBy: st.name, checkNote: b ? b.note : "" }, { merge: true }); }); await B.commit(); }
+  fb.db.collection("hosfire_audit").add({ what: `${c.name} recorded on HosFIRE Checks by ${st.name}${acts.length ? ` — ${acts.length} action(s) raised` : ""}`, ref: "", byName: st.name, byEmail: HF_KIOSK.email, createdAt: ts }).catch(() => {});
+}
+viewCode();
+})();
+</script>
+</body>
+</html>
