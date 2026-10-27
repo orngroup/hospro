@@ -45,6 +45,7 @@ service cloud.firestore {
     }
     match /meta/{doc}      { allow read, write: if isStaff(); }
     match /marketing/{doc} { allow read, write: if isStaff(); }
+    match /newsletters/{doc} { allow read, write: if isStaff(); }
 
     match /access_log/{doc} {
       allow read: if isStaff();

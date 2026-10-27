@@ -206,7 +206,13 @@ const HELP_CONTENT = {
   hubFinance: { t:"Finance Documents", w:"Finance paperwork — restricted.", h:["Find and open finance documents."], see:"", tip:["Finance-authorised staff only."] },
   hubHR: { t:"HR Documents", w:"HR paperwork — restricted.", h:["Find and open HR documents."], see:"", tip:["HR-authorised staff only."] },
 
-  /* ---------- HosSTUDIO ---------- */
+  /* ---------- HosMARKETING ---------- */
+  wifiDb: { t:"Guest Database", w:"Every individual who signs in to the free guest Wi-Fi — residents and visitors — with a dashboard and your newsletter list.",
+    h:["Use the cards and charts for a quick read: sign-ups per day, residents vs visitors, where guests come from.","Filter by date, resident/visitor, leisure/business, newsletter consent or town.","Export CSV or Excel and import into Mailchimp (newsletter opt-ins only)."],
+    see:"Dashboard cards and charts above a searchable guest table.", tip:["Only email guests who ticked the newsletter box — the export respects the filter."] },
+  newsletters: { t:"Newsletter Templates", w:"Branded email templates you edit on screen, then copy the HTML into Mailchimp (or any email tool).",
+    h:["Pick a template, change the words and picture, watch the preview.","Save it for the team, then Copy HTML and paste into a Mailchimp code block.","*|FNAME|* becomes the guest's first name in Mailchimp."],
+    see:"Editor on the left, live email preview on the right.", tip:["Keep it short: one picture, one message, one button."] },
   marketing: { t:"Marketing Library", w:"Marketing assets — logos, posters, rate cards, photos, videos, templates.", h:["Browse by section.","Open or download."], see:"", tip:[] },
   social: { t:"Social Studio", w:"Social media assets and captions.", h:["Browse ready posts and captions.","Use them in your scheduling."], see:"", tip:[] },
   brochure: { t:"Brochure Builder", w:"Build printable brochures.", h:["Pick a brochure type and edit it.","Preview, then produce the artwork."], see:"", tip:[] },
