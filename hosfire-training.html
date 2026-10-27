@@ -46,7 +46,7 @@ canvas{width:100%;height:170px;border:1.5px dashed var(--line);border-radius:10p
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="hosfire-defs.js?v=20261027a"></script>
+<script src="hosfire-defs.js?v=20261027b"></script>
 <script>
 (() => {
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -56,6 +56,8 @@ const MON = ["January","February","March","April","May","June","July","August","
 const fd = (s) => { const [y, m, d] = s.split("-"); return `${+d} ${MON[+m - 1]} ${y}`; };
 const DEMO = /[?&]demo=1/.test(location.search), DK = "hosfire_demo_v1";
 const DEPTS = [["reception", "Reception"], ["nights", "Nights"], ["restaurant", "Restaurant / F&B"], ["bar", "Bar"], ["kitchen", "Kitchen"], ["housekeeping", "Housekeeping"], ["maintenance", "Maintenance"], ["spa", "Spa"], ["admin", "Management / office"], ["other", "Other"]];
+const QS = new URLSearchParams(location.search), QDEPT = (QS.get("dept") || "").toLowerCase(), HOD = QS.get("hod") === "1";
+const deptLabel = (k) => (DEPTS.find((d) => d[0] === k) || [k, k])[1];
 const st = { mod: null, step: 0, name: "", dept: "", start: "", regs: [], site: {}, answers: {}, order: {} };
 let fb = null;
 const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -91,13 +93,14 @@ function viewWho() {
   setNav("");
   const names = st.regs.map((r) => r.name).sort();
   const topic = hfMonthlyTopic();
-  app.innerHTML = `<div class="card"><h2>Who are you?</h2>
+  app.innerHTML = `${DEPTS.some((d) => d[0] === QDEPT) ? `<div class="card" style="border-left:6px solid var(--red);padding:12px 16px"><b>${h(deptLabel(QDEPT))} team</b> <span class="muted">— fire safety training</span></div>` : ""}<div class="card"><h2>Who are you?</h2>
     <label>Your full name</label><input id="nm" list="names" placeholder="Start typing your name" value="${h(st.name)}"><datalist id="names">${names.map((n) => `<option value="${h(n)}">`).join("")}</datalist>
     <div id="newp" class="hide"><p class="muted">You're not on the training list yet — that's fine, you'll be added.</p>
-      <label>Department</label><select id="dp"><option value="">Choose…</option>${DEPTS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select>
+      <label>Department</label><select id="dp"><option value="">Choose…</option>${DEPTS.map(([k, l]) => `<option value="${k}" ${k === QDEPT ? "selected" : ""}>${l}</option>`).join("")}</select>
       <label>Date you started at Brandon Hall</label><input id="sd" type="date" max="${today()}"></div></div>
     <div class="card"><h2>Choose your training</h2>
     <button class="mod req" data-m="induction"><b>Fire safety induction <span class="pill">Required for everyone</span></b><span class="muted">10 short sections and a 10-question check · about 15 minutes. New staff: complete before your first shift.</span></button>
+    ${HOD ? `<button class="mod req" data-m="hod"><b>Head of department — confirm the fire safety manual <span class="pill">Heads of department</span></b><span class="muted">Confirm you have read the ${h(deptLabel(QDEPT) || "department")} fire safety manual and will make sure your team completes the induction and monthly refresher.</span></button>` : ""}
     <button class="mod" data-m="monthly"><b>Monthly refresher — ${h(MON[new Date().getMonth()])}: ${h(topic[0])}</b><span class="muted">A short reminder and 3 questions · about 3 minutes. Every member of staff, every month.</span></button>
     <div class="err" id="e"></div></div>`;
   const chk = () => { const v = $("#nm").value.trim().toLowerCase(); $("#newp").classList.toggle("hide", !v || st.regs.some((r) => r.name.toLowerCase() === v)); };
@@ -106,10 +109,11 @@ function viewWho() {
     const nm = $("#nm").value.trim().replace(/\s+/g, " ");
     if (nm.split(" ").length < 2) { $("#e").textContent = "Please enter your first and last name."; return; }
     const known = st.regs.find((r) => r.name.toLowerCase() === nm.toLowerCase());
+    if (b.dataset.m === "hod" && !QDEPT) { $("#e").textContent = "Please open this from the QR code in your department manual."; return; }
     if (!known && !$("#dp").value) { $("#e").textContent = "Please choose your department."; return; }
     st.name = known ? known.name : nm; st.dept = known ? known.dept || "" : $("#dp").value; st.start = known ? known.start || "" : $("#sd").value; st.reg = known || null;
     st.mod = b.dataset.m; st.step = 0; st.answers = {}; st.order = {};
-    if (st.mod === "induction") viewSlide(); else viewMonthly();
+    if (st.mod === "induction") viewSlide(); else if (st.mod === "hod") viewHod(); else viewMonthly();
   }));
 }
 
@@ -120,6 +124,23 @@ function viewSlide() {
   setNav(`<button class="btn ghost" id="bk">Back</button><button class="btn" id="nx">${i === S.length - 1 ? "Start the check" : "Next"}</button>`);
   $("#bk").onclick = () => { if (i === 0) viewWho(); else { st.step--; viewSlide(); } window.scrollTo(0, 0); };
   $("#nx").onclick = () => { if (i === S.length - 1) viewQuiz(HF_TRAIN_INDUCTION.quiz, HF_TRAIN_INDUCTION.pass, "Fire safety induction"); else { st.step++; viewSlide(); } window.scrollTo(0, 0); };
+}
+
+const HOD_DECL = [
+  "I have read the fire safety manual for my department.",
+  "Every member of my team (including casual and agency staff) will complete the online fire safety induction before their first shift; current staff by the date set by the Training Coordinator.",
+  "Every member of my team will complete the monthly refresher by the 20th of each month, and I will chase anyone outstanding.",
+  "I will show every new starter the fire exits, call points, extinguishers and fire action notices in our area on their first shift, and sign the new starter checklist.",
+  "I will make sure my department's fire checks are done and recorded on time, and report anything unsafe straight away.",
+  "I will tell the Training Coordinator about new starters, leavers and anyone who needs help to evacuate (PEEP)."];
+function viewHod() {
+  st.hodDept = QDEPT;
+  app.innerHTML = `<div class="muted">Head of department confirmation · ${h(deptLabel(QDEPT))}</div><div class="prog"><i style="width:50%"></i></div>
+    <div class="card"><h2>${h(deptLabel(QDEPT))} — fire safety manual</h2><p>Please read and tick each statement.</p>
+    ${HOD_DECL.map((t, i) => `<label style="text-transform:none;font-size:16px;color:var(--ink);display:flex;gap:10px;align-items:flex-start;font-weight:600"><input type="checkbox" class="hd" style="width:auto;margin-top:5px">${h(t)}</label>`).join("")}<div class="err" id="e"></div></div>`;
+  setNav(`<button class="btn ghost" id="bk">Back</button><button class="btn" id="nx">Sign</button>`);
+  $("#bk").onclick = viewWho;
+  $("#nx").onclick = () => { if ($$(".hd").some((x) => !x.checked)) { $("#e").textContent = "Please tick every statement."; return; } st.score = HOD_DECL.length; st.total = HOD_DECL.length; st.label = "Head of department confirmation — " + deptLabel(QDEPT) + " fire safety manual"; viewSign(); window.scrollTo(0, 0); };
 }
 
 function viewMonthly() {
@@ -150,11 +171,11 @@ function alertBox(t) { let e = $("#qerr"); if (!e) { e = document.createElement(
 
 function viewSign() {
   app.innerHTML = `<div class="muted">${h(st.label)}</div><div class="prog"><i style="width:95%"></i></div>
-    <div class="card"><h2>Well done — ${st.score} out of ${st.total}</h2>
-    <p>Please confirm and sign to record your training.</p>
+    <div class="card"><h2>${st.mod === "hod" ? "Confirm and sign" : `Well done — ${st.score} out of ${st.total}`}</h2>
+    <p>${st.mod === "hod" ? "Please sign to record your confirmation." : "Please confirm and sign to record your training."}</p>
     <label>Name</label><input value="${h(st.name)}" disabled><label>Date</label><input value="${fd(today())}" disabled>
     <label>Your signature — draw it with your finger</label><canvas id="cv"></canvas><button class="btn ghost" id="clr" style="margin-top:6px;padding:8px">Clear</button>
-    <label style="text-transform:none;font-size:15px;color:var(--ink);display:flex;gap:10px;align-items:flex-start;margin-top:14px"><input type="checkbox" id="ok" style="width:auto;margin-top:4px">I, ${h(st.name)}, have completed this fire safety training myself and understand the hotel's fire procedures.</label>
+    <label style="text-transform:none;font-size:15px;color:var(--ink);display:flex;gap:10px;align-items:flex-start;margin-top:14px"><input type="checkbox" id="ok" style="width:auto;margin-top:4px">I, ${h(st.name)}, ${st.mod === "hod" ? `confirm the statements above as head of the ${h(deptLabel(QDEPT))} department.` : "have completed this fire safety training myself and understand the hotel's fire procedures."}</label>
     <div class="err" id="e"></div></div>`;
   const c = $("#cv"), ctx = c.getContext("2d"); let down = false, drawn = false; const r = window.devicePixelRatio || 1; c.width = c.clientWidth * r; c.height = c.clientHeight * r; ctx.scale(r, r); ctx.lineWidth = 2.4; ctx.lineCap = "round"; ctx.strokeStyle = "#14243A";
   const pos = (e) => { const b = c.getBoundingClientRect(), t = e.touches ? e.touches[0] : e; return [t.clientX - b.left, t.clientY - b.top]; };
@@ -173,30 +194,31 @@ function viewSign() {
 
 async function save(sig) {
   const d = today(), k = st.mod, topic = k === "monthly" ? hfMonthlyTopic()[0] : "";
-  const note = `${k === "induction" ? "HosFIRE online fire safety induction" : "HosFIRE monthly refresher — " + topic}: ${st.score}/${st.total}, signed online ${fd(d)}`;
+  const note = `${k === "hod" ? "HOD manual confirmation" : k === "induction" ? "HosFIRE online fire safety induction" : "HosFIRE monthly refresher — " + topic}: ${st.score}/${st.total}, signed online ${fd(d)}`;
   const log = { module: k, topic, title: st.label, name: st.name, dept: st.dept, start: st.start || "", date: d, score: st.score, total: st.total, passed: true, sig, device: navigator.userAgent.slice(0, 120), byName: st.name, byEmail: DEMO ? "demo" : HF_KIOSK.email };
-  const keys = k === "induction" ? ["induction", "refresher", "procedure"] : ["monthly"];
+  if (k === "hod") { log.dept = st.hodDept; log.title = st.label; }
+  const keys = k === "induction" ? ["induction", "refresher", "procedure"] : k === "hod" ? [] : ["monthly"];
   const reg = st.reg, courses = Object.assign({}, (reg && reg.courses) || {}), ev = Object.assign({}, (reg && reg.ev) || {});
   keys.forEach((c) => { courses[c] = d; ev[c] = { confirmed: true, note, by: "HosFIRE Training" }; });
   const id = reg ? reg.id : "trn-web-" + st.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   const upd = reg ? { courses, ev, updatedBy: st.name + " (HosFIRE Training)", updatedAt: Date.now() } : { kind: "training", name: st.name, role: "", dept: st.dept || "other", shift: st.dept === "nights" ? "Night" : "Day", start: st.start || "", marshal: false, courses, ev, note: "Added from HosFIRE Training", updatedBy: st.name + " (HosFIRE Training)", updatedAt: Date.now() };
   if (DEMO) {
     const j = JSON.parse(localStorage.getItem(DK) || "{}"); j.tlog = j.tlog || []; j.tlog.push({ id: "t" + Date.now(), ...log, createdAt: Date.now() });
-    j.registers = j.registers || []; const i = j.registers.findIndex((x) => x.id === id); if (i >= 0) j.registers[i] = { ...j.registers[i], ...upd }; else j.registers.push({ id, ...upd });
+    if (k !== "hod") { j.registers = j.registers || []; const i = j.registers.findIndex((x) => x.id === id); if (i >= 0) j.registers[i] = { ...j.registers[i], ...upd }; else j.registers.push({ id, ...upd }); }
     localStorage.setItem(DK, JSON.stringify(j)); return;
   }
   const ts = firebase.firestore.FieldValue.serverTimestamp();
   await fb.db.collection("hosfire_training").add({ ...log, createdAt: ts });
-  await fb.db.collection("hosfire_registers").doc(id).set(upd, { merge: true });
+  if (k !== "hod") await fb.db.collection("hosfire_registers").doc(id).set(upd, { merge: true });
   fb.db.collection("hosfire_audit").add({ what: `Training completed online: ${st.label} — ${st.name} (${st.score}/${st.total})`, ref: "", byName: st.name, byEmail: HF_KIOSK.email, createdAt: ts }).catch(() => {});
 }
 
 function viewDone() {
   setNav(`<button class="btn ghost" id="pr">Print certificate</button><button class="btn" id="again">Finish</button>`);
   app.innerHTML = `<div class="card cert"><img src="assets/marketing/logos/logo-blue-transparent.png" alt=""><div class="muted" style="letter-spacing:.15em;text-transform:uppercase;color:var(--red);font-weight:800">Certificate of completion</div>
-    <h1>${h(st.label)}</h1><p style="font-size:20px"><b>${h(st.name)}</b></p><p>completed this fire safety training on <b>${fd(today())}</b><br>Score ${st.score} out of ${st.total}</p>
+    <h1>${h(st.label)}</h1><p style="font-size:20px"><b>${h(st.name)}</b></p><p>${st.mod === "hod" ? `confirmed as head of department on <b>${fd(today())}</b>` : `completed this fire safety training on <b>${fd(today())}</b><br>Score ${st.score} out of ${st.total}`}</p>
     <p class="muted">Brandon Hall Hotel and Spa · recorded in HosFIRE · Fire Safety Manager: ${h(HF_FIRE_MANAGER.name)}</p></div>
-    <div class="card noprint"><b>Thank you — your training is recorded.</b><p class="muted">${st.mod === "induction" ? "Next: the monthly refresher, every month. Ask your manager where the fire exits, call points and extinguishers are in your area, and where to find the fire action notice." : "See you next month."}</p></div>`;
+    <div class="card noprint"><b>Thank you — your training is recorded.</b><p class="muted">${st.mod === "hod" ? "Thank you. Now share the training QR code in your manual with your team and check the Training Coordinator's list of who is outstanding." : st.mod === "induction" ? "Next: the monthly refresher, every month. Ask your manager where the fire exits, call points and extinguishers are in your area, and where to find the fire action notice." : "See you next month."}</p></div>`;
   $("#pr").onclick = () => window.print();
   $("#again").onclick = () => { st.name = ""; st.reg = null; viewWho(); window.scrollTo(0, 0); };
 }

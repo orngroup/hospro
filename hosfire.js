@@ -1416,6 +1416,22 @@ function courseState(date, months) {
 const DEPTS = [["", "All departments"], ["admin", "Management / office"], ["reception", "Reception"], ["nights", "Nights"], ["maintenance", "Maintenance"], ["kitchen", "Kitchen"], ["bar", "Bar"], ["restaurant", "Restaurant / F&B"], ["housekeeping", "Housekeeping"], ["spa", "Spa"], ["other", "Other"]];
 const deptName = (d) => (DEPTS.find((x) => x[0] === d) || [d, d || "—"])[1];
 const evOf = (t, k) => ((t.ev || {})[k]) || {};
+/* Department view of online training: induction, this month's refresher and HOD confirmation */
+function deptTrainTable(all, T) {
+  const m1 = today().slice(0, 8) + "01", day = +today().slice(8, 10);
+  const done = (t, mod) => T.some((x) => x.module === mod && x.name.toLowerCase() === t.name.toLowerCase() && (mod !== "monthly" || (x.date || "") >= m1));
+  const hasInd = (t) => done(t, "induction") || !!(t.courses || {}).induction;
+  const rows = DEPTS.filter(([k]) => k).map(([k, l]) => {
+    const ppl = all.filter((t) => (t.dept || "other") === k); if (!ppl.length && !T.some((x) => x.module === "hod" && x.dept === k)) return "";
+    const noInd = ppl.filter((t) => !hasInd(t)), noMon = ppl.filter((t) => !done(t, "monthly"));
+    const hod = T.filter((x) => x.module === "hod" && x.dept === k).sort((a, b) => ms(b.createdAt) - ms(a.createdAt))[0];
+    const c = (n, of) => `<b style="color:${n === of ? "var(--ok)" : day > 20 ? "var(--red)" : "var(--amber)"}">${n}/${of}</b>`;
+    return `<tr><td><b>${h(l)}</b></td><td>${c(ppl.length - noInd.length, ppl.length)}</td><td>${c(ppl.length - noMon.length, ppl.length)}</td>
+      <td style="font-size:12px">${noInd.length ? `<b>Induction:</b> ${noInd.map((t) => h(t.name)).join(", ")}<br>` : ""}${noMon.length ? `<b>Refresher:</b> ${noMon.map((t) => h(t.name)).join(", ")}` : '<span class="muted">Nobody outstanding</span>'}</td>
+      <td>${hod ? `${h(hod.name)}<br><span class="muted">${fds(hod.date)}</span>` : '<span style="color:var(--red);font-weight:700">Not yet</span>'}</td></tr>`; }).join("");
+  return `<details style="margin-top:8px" open><summary style="cursor:pointer;font-weight:700">By department — who is outstanding (refresher deadline: 20th)</summary>
+    <div class="tw"><table><tr><th>Department</th><th>Induction</th><th>${h(MON[+today().slice(5, 7) - 1])} refresher</th><th>Outstanding</th><th>HOD manual confirmed</th></tr>${rows}</table></div></details>`;
+}
 VIEWS.training = () => {
   const f = S.f.trn || (S.f.trn = { dept: "", q: "", show: "all" });
   const all = reg("training");
@@ -1441,7 +1457,8 @@ VIEWS.training = () => {
       <div class="row" style="gap:8px;flex-wrap:wrap"><input readonly value="${h(base)}hosfire-training.html" style="flex:1;min-width:260px" onclick="this.select()"><button class="btn sm" id="t-qr">🖨 QR posters (training and checks)</button></div></div>
       <div style="min-width:220px"><div class="n" style="font-size:26px;font-weight:900;color:var(--navy)">${new Set(ind.map((x) => x.name)).size} / ${staffN}</div><div class="muted">completed the online induction</div>
       <div class="n" style="font-size:26px;font-weight:900;color:var(--navy);margin-top:6px">${new Set(mon.map((x) => x.name)).size} / ${staffN}</div><div class="muted">this month's refresher (${h(hfMonthlyTopic()[0])})</div></div></div>
-      ${T.length ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700">Recent online completions (${T.length})</summary><div class="tw"><table><tr><th>Date</th><th>Name</th><th>Training</th><th>Score</th><th>Signature</th></tr>${T.slice().sort((a, b) => ms(b.createdAt) - ms(a.createdAt)).slice(0, 40).map((x) => `<tr><td>${fds(x.date)}</td><td>${h(x.name)}</td><td>${h(x.title)}</td><td>${x.score}/${x.total}</td><td>${x.sig ? `<img src="${x.sig}" style="height:28px">` : ""}</td></tr>`).join("")}</table></div></details>` : ""}</div>`; })()}
+      ${deptTrainTable(all, T)}
+      ${T.length ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700">Recent online completions (${T.length})</summary><div class="tw"><table><tr><th>Date</th><th>Name</th><th>Training</th><th>Score</th><th>Signature</th></tr>${T.slice().sort((a, b) => ms(b.createdAt) - ms(a.createdAt)).slice(0, 40).map((x) => `<tr><td>${fds(x.date)}</td><td>${h(x.name)}</td><td>${h(x.title)}</td><td>${x.module === "hod" ? "—" : `${x.score}/${x.total}`}</td><td>${x.sig ? `<img src="${x.sig}" style="height:28px">` : ""}</td></tr>`).join("")}</table></div></details>` : ""}</div>`; })()}
   <div class="grid g6" style="margin-bottom:12px">
     <div class="card tile"><div class="n">${n}</div><div class="l">Staff on the matrix</div></div>
     <div class="card tile ${pc(ind) >= 90 ? "g" : "a"}"><div class="n">${pc(ind)}%</div><div class="l">Fire training recorded (${ind})</div></div>
@@ -1667,6 +1684,19 @@ function diaryItems(from, to) {
   while (mo <= to) {
     let d = mo; while (parse(d).getDay() !== 1) d = addDays(d, 1);
     HF_CHECKS.filter((c) => c.freq === "monthly").forEach((c) => { const done = recs(c.id).some((r) => r.date.slice(0, 7) === mo.slice(0, 7)); push(d, `${c.name} (during ${MON[+mo.slice(5, 7) - 1]})`, "Monthly check", { st: done ? "Done" : (today() > addMonths(mo, 1) ? "Missed" : "Due") }); });
+    mo = addMonths(mo, 1);
+  }
+  // monthly training cycle (Training Coordinator) — see the Fire Training Coordinator manual
+  mo = from.slice(0, 8) + "01";
+  const wday = (d, back) => { while ([0, 6].includes(parse(d).getDay())) d = addDays(d, back ? -1 : 1); return d; };
+  while (mo <= to) {
+    const ym = mo.slice(0, 7), T = (S.data.tlog || []).filter((x) => x.module === "monthly" && (x.date || "").slice(0, 7) === ym), n = reg("training").length, k = new Set(T.map((x) => x.name.toLowerCase())).size;
+    if (mo < "2026-11-01") { mo = addMonths(mo, 1); continue; }   // monthly refresher cycle starts November 2026
+    const topic = hfMonthlyTopic(parse(mo))[0], past = (d) => today() > d, last = wday(addDays(addMonths(mo, 1), -1), true);
+    push(wday(mo), `Launch monthly refresher — ${topic} (message heads of department)`, "Training", { who: "Training Coordinator", st: "" });
+    push(wday(ym + "-10"), `Refresher progress — send each department its outstanding list (${k}/${n} done)`, "Training", { who: "Training Coordinator", st: "" });
+    push(wday(ym + "-20", true), `Refresher deadline — ${k}/${n} completed`, "Training", { who: "Heads of department", st: past(ym + "-20") ? (k >= n && n ? "Done" : "Missed") : "Due" });
+    push(last, `Monthly training report to management and the Fire Safety Manager`, "Training", { who: "Training Coordinator", st: "" });
     mo = addMonths(mo, 1);
   }
   // certificates next due
