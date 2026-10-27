@@ -41,6 +41,7 @@
       const p = m.get(k) || { email:k, visits:0, first:r.created, name:r.name||"", title:"", firstName:r.firstName||"", lastName:r.lastName||"", reason:"", purpose:r.purpose||"", staying:r.staying||"", town:"", device:"", marketing:false, consentAt:"", reasons:{} };
       p.visits++; p.last = r.created; p.name = r.name||p.name; p.firstName = r.firstName||p.firstName; p.lastName = r.lastName||p.lastName;
       if(r.title && r.title!=="n/a") p.title = r.title;
+      p.gender = ({Mr:"Male",Mrs:"Female",Ms:"Female",Miss:"Female"})[p.title] || "Not known";
       if(r.reason){ p.reason = r.reason; p.reasons[r.reason]=(p.reasons[r.reason]||0)+1; }
       p.purpose = r.purpose||p.purpose; p.staying = r.staying||p.staying; p.town = niceTown(r.town)||p.town; p.device = device(r.userAgent)||p.device;
       if(r.marketing){ p.marketing = true; p.consentAt = r.consentAt||r.created; }
@@ -88,6 +89,19 @@
         ((i%opts.every===0||series.length<=14)?`<text x="${x+bw/2}" y="${h-8}" font-size="9" text-anchor="middle" fill="#8296a8">${esc(s.label)}</text>`:""); }).join("");
     return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block">${bars}</svg>`;
   }
+  function lineChart(series, labels, opts){  // series: [{name,values[],colour,fill}] sharing x labels
+    const w=opts.w||900, h=opts.h||200, pl=36, pr=16, pt=14, pb=28;
+    const max=Math.max(1,...series.flatMap(s=>s.values)); const n=labels.length;
+    const x=i=>pl+(n<=1?0:i*(w-pl-pr)/(n-1)), y=v=>pt+(h-pt-pb)*(1-v/max);
+    const grid=[0,.25,.5,.75,1].map(f=>`<line x1="${pl}" x2="${w-pr}" y1="${y(max*f)}" y2="${y(max*f)}" stroke="#eef1f4"/><text x="${pl-6}" y="${y(max*f)+3}" font-size="9" text-anchor="end" fill="#8296a8">${Math.round(max*f)}</text>`).join("");
+    const paths=series.map(s=>{ const pts=s.values.map((v,i)=>`${x(i)},${y(v)}`); const d="M"+pts.join(" L");
+      return (s.fill?`<path d="${d} L${x(n-1)},${y(0)} L${x(0)},${y(0)} Z" fill="${s.colour}" opacity=".12"/>`:"")+`<path d="${d}" fill="none" stroke="${s.colour}" stroke-width="2.2" stroke-linejoin="round"/>`+
+        s.values.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="2.6" fill="${s.colour}"><title>${esc(labels[i])}: ${v} ${esc(s.name)}</title></circle>`).join(""); }).join("");
+    const every=Math.ceil(n/12);
+    const xl=labels.map((l,i)=>(i%every===0||i===n-1)?`<text x="${x(i)}" y="${h-8}" font-size="9" text-anchor="middle" fill="#8296a8">${esc(l)}</text>`:"").join("");
+    const leg=series.map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;margin-right:14px;font-size:12px;color:#374151"><i style="width:14px;height:3px;background:${s.colour};display:inline-block;border-radius:2px"></i>${esc(s.name)}</span>`).join("");
+    return `<div style="margin-bottom:4px">${leg}</div><svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block">${grid}${paths}${xl}</svg>`;
+  }
   function splitBar(parts){   // parts: [{label,value,colour}] → one stacked horizontal bar + legend
     const total=parts.reduce((s,p)=>s+p.value,0)||1; let x=0;
     const segs=parts.map(p=>{ const w=(p.value/total)*100; const s=`<div title="${esc(p.label)}: ${p.value}" style="width:${w}%;background:${p.colour};height:100%"></div>`; x+=w; return s; }).join("");
@@ -121,7 +135,7 @@
         <select id="wf-town" style="padding:9px 10px;border:1px solid #d9e0e7;border-radius:9px;font:13px Lato;background:#fff"><option value="all">All towns</option></select>
       </div>
       <div id="wf-tiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin:0 0 12px"></div>
-      <div id="wf-charts" style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:14px"></div>
+      <div id="wf-charts" style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:14px"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0 10px">
         <input id="wf-q" placeholder="Search name, email or town…" style="flex:1 1 240px;padding:9px 12px;border:1px solid #d9e0e7;border-radius:9px;font:13px Lato">
         <span id="wf-count" style="font-size:12.5px;color:#8296a8"></span>
@@ -178,19 +192,28 @@
       series.push({ label:d.toLocaleDateString("en-GB",{day:"numeric",month:"short"}), title:d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}), value:days[k]||0 }); }
     const towns = {}; pr.forEach(p=>{ if(p.town) towns[p.town]=(towns[p.town]||0)+1; });
     const topTowns = Object.entries(towns).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([label,value])=>({label,value}));
+    // growth lines: new guests per day + cumulative (all guests, by first visit) over the same span
+    const firstDays={}; all.forEach(p=>{ const k=dayKey(p.first); if(k) firstDays[k]=(firstDays[k]||0)+1; });
+    const labels=series.map(s=>s.label), newPerDay=[], cum=[]; let run=0;
+    const spanStart=(t===Infinity?Date.now():t)-(span-1)*864e5;
+    Object.keys(firstDays).forEach(k=>{ if(new Date(k).getTime()<spanStart) run+=firstDays[k]; });
+    for(let i=span-1;i>=0;i--){ const d=new Date((t===Infinity?Date.now():t)-i*864e5); const k=dayKey(d.toISOString()); newPerDay.push(firstDays[k]||0); run+=firstDays[k]||0; cum.push(run); }
+    const g = (l,c) => ({label:l, value:pr.filter(p=>p.gender===l).length, colour:c});
+    const C6 = "grid-column:span 6", C3 = "grid-column:span 3", C2 = "grid-column:span 2";
     document.getElementById("wf-charts").innerHTML =
-      card(`Connections per day <span style="font-weight:400;color:#8296a8">— includes guests reconnecting · ${W.period==="today"?"today":W.period==="all"?"last 30 days":"selected period"}</span>`, barChart(series,{every:Math.ceil(series.length/10)})) +
-      `<div style="display:grid;gap:12px">
-        ${card("Residents vs visitors", splitBar([{label:"Residents",value:pr.filter(p=>p.staying==="Staying").length,colour:COL.blue},{label:"Visitors",value:pr.filter(p=>p.staying==="Visiting").length,colour:COL.gold},{label:"Not asked",value:pr.filter(p=>!p.staying).length,colour:"#cfd6de"}].filter(x=>x.value)))}
-        ${card("Device", splitBar([["iPhone / iPad","#1a2b3a"],["Android","#2B726A"],["Mac","#3B6585"],["Windows laptop","#7A6538"],["Other","#cfd6de"]].map(([l,c])=>({label:l,value:pr.filter(p=>p.device===l).length,colour:c})).filter(x=>x.value)))}
-      </div>` +
-      card("What brings guests here", hBars(REASONS.map(r=>({label:r,value:pr.filter(p=>p.reason===r).length})).filter(x=>x.value).sort((a,b)=>b.value-a.value), COL.teal) + (pr.filter(p=>!p.reason).length?`<div class="qs-sub" style="margin-top:6px">${pr.filter(p=>!p.reason).length} older sign-ups were asked leisure/business instead.</div>`:"")) +
+      card(`Guest growth <span style="font-weight:400;color:#8296a8">— new guests per day and total on file</span>`,
+        lineChart([{name:"New guests",values:newPerDay,colour:COL.brand,fill:true},{name:"Total guests on file",values:cum,colour:COL.navy}], labels, {h:210}), C6) +
+      card("Residents vs visitors", splitBar([{label:"Residents",value:pr.filter(p=>p.staying==="Staying").length,colour:COL.blue},{label:"Visitors",value:pr.filter(p=>p.staying==="Visiting").length,colour:COL.gold},{label:"Not asked",value:pr.filter(p=>!p.staying).length,colour:"#cfd6de"}].filter(x=>x.value)), C2) +
+      card("Gender <span style='font-weight:400;color:#8296a8'>— from title</span>", splitBar([g("Female","#9C4F63"),g("Male","#3B6585"),g("Not known","#cfd6de")].filter(x=>x.value)), C2) +
+      card("Device", splitBar([["iPhone / iPad","#1a2b3a"],["Android","#2B726A"],["Mac","#3B6585"],["Windows laptop","#7A6538"],["Other","#cfd6de"]].map(([l,c])=>({label:l,value:pr.filter(p=>p.device===l).length,colour:c})).filter(x=>x.value)), C2) +
+      card("What brings guests here", hBars(REASONS.map(r=>({label:r,value:pr.filter(p=>p.reason===r).length})).filter(x=>x.value).sort((a,b)=>b.value-a.value), COL.teal) + (pr.filter(p=>!p.reason).length?`<div class="qs-sub" style="margin-top:6px">${pr.filter(p=>!p.reason).length} older sign-ups were asked leisure/business instead.</div>`:""), C3) +
       card("Where in the hotel <span style='font-weight:400;color:#8296a8'>— by access point</span>", (()=>{ const c={}; inRange.forEach(r=>{ const k=(r.ap||"").toLowerCase(); if(k) c[k]=(c[k]||0)+1; });
           const items=Object.entries(c).sort((a,b)=>b[1]-a[1]).map(([mac,n])=>({label:apName(mac)||mac, value:n}));
-          return items.length ? hBars(items.slice(0,10), COL.blue) + (Object.keys(c).some(k=>!apName(k))?`<div class="qs-sub" style="margin-top:6px">Unnamed access points show as codes — name them in <b>Access points</b> below.</div>`:"") : `<div class="qs-sub">No access-point data in this period.</div>`; })()) +
-      card("Busiest days", barChart(["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>({label:d,value:inRange.filter(r=>((new Date(r.created).getDay()+6)%7)===i).length})),{h:120,every:1,colour:COL.navy})) +
-      card("Busiest times of day", barChart(Array.from({length:12},(_,i)=>({label:(i*2)+":00",value:inRange.filter(r=>Math.floor(new Date(r.created).getHours()/2)===i).length})),{h:120,every:1,colour:COL.gold})) +
-      card("Where guests come from <span style='font-weight:400;color:#8296a8'>— top towns</span>", hBars(topTowns, COL.brand), "grid-column:1/-1");
+          return items.length ? hBars(items.slice(0,10), COL.blue) + (Object.keys(c).some(k=>!apName(k))?`<div class="qs-sub" style="margin-top:6px">Unnamed access points show as codes — name them in <b>Access points</b> below.</div>`:"") : `<div class="qs-sub">No access-point data in this period.</div>`; })(), C3) +
+      card(`Connections per day <span style="font-weight:400;color:#8296a8">— includes guests reconnecting</span>`, barChart(series,{every:Math.ceil(series.length/10),h:140}), C2) +
+      card("Busiest days", barChart(["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>({label:d,value:inRange.filter(r=>((new Date(r.created).getDay()+6)%7)===i).length})),{h:140,every:1,colour:COL.navy}), C2) +
+      card("Busiest times of day", barChart(Array.from({length:12},(_,i)=>({label:(i*2)+":00",value:inRange.filter(r=>Math.floor(new Date(r.created).getHours()/2)===i).length})),{h:140,every:1,colour:COL.gold}), C2) +
+      card("Where guests come from <span style='font-weight:400;color:#8296a8'>— top towns</span>", hBars(topTowns, COL.brand), C6);
 
     /* town filter options */
     const ts=document.getElementById("wf-town"); if(ts){ const cur=ts.value; const allTowns=[...new Set(all.map(p=>p.town).filter(Boolean))].sort();
@@ -278,12 +301,12 @@
 
   function exportRows(kind){
     const rows = filtered();
-    const head = ["Title","First name","Last name","Email","Town","Reason","Staying","Purpose","Device","Newsletter opt-in","Consent date","Visits","First seen","Last seen"];
-    const data = rows.map(p=>[p.title||"", p.firstName||p.name.split(" ")[0], p.lastName||p.name.split(" ").slice(1).join(" "), p.email, p.town||"", p.reason||"", p.staying==="Staying"?"Resident":p.staying==="Visiting"?"Visitor":"", p.purpose||"", p.device||"", p.marketing?"Yes":"No", p.marketing?fmt(p.consentAt):"", p.visits, fmt(p.first), fmt(p.last)]);
+    const head = ["Title","Gender (from title)","First name","Last name","Email","Town","Reason","Staying","Purpose","Device","Newsletter opt-in","Consent date","Visits","First seen","Last seen"];
+    const data = rows.map(p=>[p.title||"", p.title?p.gender:"", p.firstName||p.name.split(" ")[0], p.lastName||p.name.split(" ").slice(1).join(" "), p.email, p.town||"", p.reason||"", p.staying==="Staying"?"Resident":p.staying==="Visiting"?"Visitor":"", p.purpose||"", p.device||"", p.marketing?"Yes":"No", p.marketing?fmt(p.consentAt):"", p.visits, fmt(p.first), fmt(p.last)]);
     const stamp = new Date().toISOString().slice(0,10);
     if(kind==="xlsx" && typeof XLSX!=="undefined"){
       const ws = XLSX.utils.aoa_to_sheet([head, ...data]);
-      ws["!cols"] = [{wch:6},{wch:16},{wch:18},{wch:34},{wch:16},{wch:20},{wch:10},{wch:10},{wch:14},{wch:16},{wch:20},{wch:7},{wch:20},{wch:20}];
+      ws["!cols"] = [{wch:6},{wch:10},{wch:16},{wch:18},{wch:34},{wch:16},{wch:20},{wch:10},{wch:10},{wch:14},{wch:16},{wch:20},{wch:7},{wch:20},{wch:20}];
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Guests");
       XLSX.writeFile(wb, `brandon-hall-guests-${stamp}.xlsx`); return;
     }
