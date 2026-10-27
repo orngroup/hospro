@@ -12,7 +12,8 @@
   const WIFI_URL = "https://www.brandonhallhotelandspa.com/wifi/";
   const COL = { brand:"#9C4F63", navy:"#1a2b3a", teal:"#2B726A", blue:"#3B6585", gold:"#7A6538", grey:"#8296a8", line:"#e4e9ef" };
   const W = { rows:[], live:false, q:"", reason:"all", staying:"all", consent:"all", period:"30", from:"", to:"", town:"all", listeners:[], apNames:{}, apLoaded:false, page:0, per:25 };
-  const REASONS = ["Hotel stay","Spa","Restaurant or bar","Wedding or party","Meeting or conference"];
+  const REASONS = ["Hotel stay","Spa","Restaurant or bar","Wedding or party","Conference or event","Work"];
+  const REASON_ALIAS = { "Meeting or conference":"Conference or event" };
   const device = ua => /iPhone|iPad|iPod/i.test(ua||"") ? "iPhone / iPad" : /Android/i.test(ua||"") ? "Android" : /Macintosh/i.test(ua||"") ? "Mac" : /Windows/i.test(ua||"") ? "Windows laptop" : ua ? "Other" : "";
   const apName = mac => W.apNames[(mac||"").toLowerCase()] || "";
   function loadApNames(){ if(W.apLoaded || typeof FB==="undefined" || !FB.ready || !FB.user) return; W.apLoaded=true;
@@ -42,7 +43,7 @@
       p.visits++; p.last = r.created; p.name = r.name||p.name; p.firstName = r.firstName||p.firstName; p.lastName = r.lastName||p.lastName;
       if(r.title && r.title!=="n/a") p.title = r.title;
       p.gender = ({Mr:"Male",Mrs:"Female",Ms:"Female",Miss:"Female"})[p.title] || "Not known";
-      if(r.reason){ p.reason = r.reason; p.reasons[r.reason]=(p.reasons[r.reason]||0)+1; }
+      if(r.reason){ const rs=REASON_ALIAS[r.reason]||r.reason; p.reason = rs; p.reasons[rs]=(p.reasons[rs]||0)+1; }
       p.purpose = r.purpose||p.purpose; p.staying = r.staying||p.staying; p.town = niceTown(r.town)||p.town; p.device = device(r.userAgent)||p.device;
       if(r.marketing){ p.marketing = true; p.consentAt = r.consentAt||r.created; }
       m.set(k,p);
