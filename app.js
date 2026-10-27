@@ -11338,7 +11338,7 @@ function hpModuleStats(id){
     case "hosstudio": {
       const wg=hpSafe(()=> (typeof WifiGuests!=="undefined") ? WifiGuests.stats() : null, null);
       return [
-        [wg?wg.today:"—", "Wi-Fi sign-ups today", "wifiDb", "#9C4F63"],
+        [wg?wg.today:"—", "New Wi-Fi guests today", "wifiDb", "#9C4F63"],
         [wg?wg.optins:"—", "Newsletter opt-ins", "wifiDb", "#2B726A"],
         [hpSafe(()=>BrochureStore.all().length,0), "Brochures saved", "brochure", "#c85c6b"],
         [hpSafe(()=> (typeof QuoteStore!=="undefined") ? QuoteStore.all().length : "—","—"), "Quotes created", "quotes", "#8b5c8f"],

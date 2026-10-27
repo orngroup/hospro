@@ -134,13 +134,13 @@
     function statsHtml(){
       const all = window.WifiGuests ? WifiGuests.people() : [], rows = window.WifiGuests ? WifiGuests.rows() : [];
       const tk = window.WifiGuests ? WifiGuests.dayKey(new Date().toISOString()) : "";
-      const today = rows.filter(r=>WifiGuests.dayKey(r.created)===tk).length;
-      const wk = rows.filter(r=>new Date(r.created).getTime()>Date.now()-7*864e5).length;
+      const today = all.filter(p=>WifiGuests.dayKey(p.first)===tk).length;
+      const wk = all.filter(p=>new Date(p.first).getTime()>Date.now()-7*864e5).length;
       const opt = all.filter(p=>p.marketing).length, res=all.filter(p=>p.staying==="Staying").length, vis=all.filter(p=>p.staying==="Visiting").length;
       const towns = new Set(all.map(p=>p.town).filter(Boolean)).size;
       const st = (v,l,tab,c) => `<button class="hp-stat" onclick="switchTab('${tab}')" style="--acc:${c}"><span class="hp-stat-v">${v}</span><span class="hp-stat-l">${l}</span><span class="hp-stat-go">Open →</span></button>`;
       return st(all.length,"Guests on file","wifiDb","#9C4F63") + st(opt,`Newsletter opt-ins${all.length?" · "+Math.round(opt/all.length*100)+"%":""}`,"wifiDb","#2B726A") +
-        st(today,"Sign-ups today","wifiDb","#1a2b3a") + st(wk,"Sign-ins last 7 days","wifiDb","#3B6585") +
+        st(today,"New guests today","wifiDb","#1a2b3a") + st(wk,"New guests last 7 days","wifiDb","#3B6585") +
         st(`${res} / ${vis}`,"Residents / visitors","wifiDb","#7A6538") + st(towns,"Towns on the map","guestMap","#9C4F63");
     }
   };
