@@ -11,7 +11,7 @@
 (function(){
   const WIFI_URL = "https://www.brandonhallhotelandspa.com/wifi/";
   const COL = { brand:"#9C4F63", navy:"#1a2b3a", teal:"#2B726A", blue:"#3B6585", gold:"#7A6538", grey:"#8296a8", line:"#e4e9ef" };
-  const W = { rows:[], live:false, q:"", purpose:"all", staying:"all", consent:"all", period:"30", from:"", to:"", town:"all" };
+  const W = { rows:[], live:false, q:"", purpose:"all", staying:"all", consent:"all", period:"30", from:"", to:"", town:"all", listeners:[] };
 
   const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const fmt = iso => { try{ return new Date(iso).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}); }catch(e){ return iso||"—"; } };
@@ -24,7 +24,7 @@
     if(typeof FB==="undefined" || !FB.ready || !FB.user){ return; }
     W.live = true;
     FB.db.collection("wifi_signups").orderBy("created","desc").limit(10000)
-      .onSnapshot(snap=>{ W.rows = snap.docs.map(d=>({id:d.id, ...d.data()})); paint(); },
+      .onSnapshot(snap=>{ W.rows = snap.docs.map(d=>({id:d.id, ...d.data()})); paint(); W.listeners.forEach(fn=>{ try{ fn(); }catch(e){} }); },
         err=>{ console.warn("wifi_signups:", err.message); const b=document.getElementById("wf-list"); if(b) b.innerHTML=`<div class="admin-note">Could not load sign-ups: ${esc(err.message)}. Check the Firestore rules for <b>wifi_signups</b> have been published.</div>`; });
   }
 
@@ -66,7 +66,7 @@
   }
 
   window.WifiGuests = {
-    rows:()=>W.rows, people:()=>people(),
+    rows:()=>W.rows, people:()=>people(), load:startLive, onChange:fn=>W.listeners.push(fn), dayKey, people7:()=>people(W.rows.filter(r=>new Date(r.created).getTime()>Date.now()-7*864e5)),
     stats(){ const all=people(); const tk=todayKey();
       return { guests:all.length, optins:all.filter(p=>p.marketing).length, today:W.rows.filter(r=>dayKey(r.created)===tk).length }; }
   };
@@ -181,9 +181,9 @@
     if(!rows.length){ box.innerHTML = `<div class="qs-sub" style="padding:18px 4px">${all.length ? "No guests match those filters." : "No sign-ups yet."}</div>`; return; }
     box.innerHTML = `<div style="overflow-x:auto"><table class="data-table">
       <tr><th>Name</th><th>Email</th><th>Town</th><th>Staying</th><th>Visit</th><th>Newsletter</th><th>Visits</th><th>Last seen</th><th>First seen</th></tr>
-      ${rows.slice(0,500).map(p=>`<tr>
-        <td style="font-weight:700;color:#1a2b3a">${esc(p.name)}</td>
-        <td><a href="mailto:${esc(p.email)}" style="color:#2F7A72">${esc(p.email)}</a></td>
+      ${rows.slice(0,500).map(p=>`<tr data-email="${esc(p.email)}" style="cursor:pointer" title="Click to edit">
+        <td style="font-weight:700;color:#1a2b3a">${esc(p.name)} <span style="color:#c9a978;font-size:11px">✎</span></td>
+        <td><a href="mailto:${esc(p.email)}" style="color:#2F7A72" onclick="event.stopPropagation()">${esc(p.email)}</a></td>
         <td>${esc(p.town||"—")}</td>
         <td>${p.staying==="Staying"?"Resident":p.staying==="Visiting"?"Visitor":"—"}</td>
         <td>${esc(p.purpose||"—")}</td>
@@ -193,7 +193,51 @@
         <td style="white-space:nowrap;color:#8296a8">${fmt(p.first)}</td>
       </tr>`).join("")}
     </table></div>${rows.length>500?`<p class="qs-sub">Showing the first 500 of ${rows.length} — narrow the filters or export for the full list.</p>`:""}`;
+    box.querySelectorAll("tr[data-email]").forEach(tr=>tr.onclick=()=>openGuest(tr.dataset.email));
   }
+
+  /* ---------- edit / delete a guest (applies to every sign-in record for that email) ---------- */
+  function openGuest(email){
+    const p = people().find(x=>x.email===email); if(!p || typeof showModal!=="function") return;
+    const recs = W.rows.filter(r=>(r.email||"").toLowerCase()===email);
+    const f = (id,label,val,type="text") => `<label style="display:block;font-size:11.5px;font-weight:700;color:#8296a8;text-transform:uppercase;letter-spacing:.3px;margin:10px 0 4px">${label}</label><input id="${id}" type="${type}" value="${esc(val)}" style="width:100%;padding:9px 11px;border:1px solid #d9e0e7;border-radius:9px;font:13.5px Lato">`;
+    const selx = (id,label,val,opts) => `<label style="display:block;font-size:11.5px;font-weight:700;color:#8296a8;text-transform:uppercase;letter-spacing:.3px;margin:10px 0 4px">${label}</label><select id="${id}" style="width:100%;padding:9px 11px;border:1px solid #d9e0e7;border-radius:9px;font:13.5px Lato;background:#fff">${opts.map(([v,l])=>`<option value="${v}" ${v===val?"selected":""}>${l}</option>`).join("")}</select>`;
+    showModal(esc(p.name||p.email), `${p.visits} visit${p.visits===1?"":"s"} · first seen ${fmt(p.first)} · last seen ${fmt(p.last)}`, `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+        <div>${f("gd-first","First name",p.firstName||p.name.split(" ")[0]||"")}</div>
+        <div>${f("gd-last","Last name",p.lastName||p.name.split(" ").slice(1).join(" "))}</div>
+        <div style="grid-column:1/-1">${f("gd-email","Email",p.email,"email")}</div>
+        <div>${f("gd-town","Town / city",p.town||"")}</div>
+        <div>${selx("gd-staying","Staying",p.staying||"",[["","Not asked"],["Staying","Resident"],["Visiting","Visitor"]])}</div>
+        <div>${selx("gd-purpose","Purpose",p.purpose||"",[["","—"],["Leisure","Leisure"],["Business","Business"]])}</div>
+        <div>${selx("gd-mkt","Newsletter",p.marketing?"1":"0",[["1","Opted in"],["0","Not opted in / unsubscribed"]])}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px">
+        <button id="gd-save" class="btn sm">💾 Save changes</button>
+        <button id="gd-unsub" class="btn sm ghost">✉️ Unsubscribe</button>
+        <span style="flex:1"></span>
+        <button id="gd-del" class="btn sm ghost" style="color:#991b1b;border-color:#f3c5c5">🗑 Delete guest</button>
+      </div>
+      <div class="admin-note" style="margin-top:12px">Changes apply to all ${recs.length} sign-in record${recs.length===1?"":"s"} for this email. Delete removes them permanently — use it for test entries or a guest who asks to be forgotten.</div>`);
+    const g = id => document.getElementById(id);
+    const batchUpdate = async (patch) => {
+      const b = FB.db.batch(); recs.forEach(r=>b.update(FB.db.collection("wifi_signups").doc(r.id), patch)); await b.commit();
+    };
+    g("gd-save").onclick = async ()=>{
+      const first=g("gd-first").value.trim(), last=g("gd-last").value.trim(), em=g("gd-email").value.trim().toLowerCase();
+      if(!em.includes("@")) return toastMsg("Please enter a valid email");
+      const mk = g("gd-mkt").value==="1";
+      const patch = { firstName:first, lastName:last, name:(first+" "+last).trim(), email:em, town:g("gd-town").value.trim(), staying:g("gd-staying").value, purpose:g("gd-purpose").value, marketing:mk, editedAt:new Date().toISOString(), editedBy:(FB.user&&FB.user.name)||"" };
+      if(mk && !p.marketing) patch.consentAt = new Date().toISOString();
+      try{ await batchUpdate(patch); closeModal(); toastMsg("Guest updated"); }catch(e){ toastMsg("Could not save: "+e.message); }
+    };
+    g("gd-unsub").onclick = async ()=>{ try{ await batchUpdate({ marketing:false, unsubscribedAt:new Date().toISOString(), editedBy:(FB.user&&FB.user.name)||"" }); closeModal(); toastMsg("Removed from the newsletter list"); }catch(e){ toastMsg("Could not update: "+e.message); } };
+    g("gd-del").onclick = async ()=>{
+      if(!confirm(`Delete ${p.name||p.email} and all ${recs.length} sign-in record(s)? This cannot be undone.`)) return;
+      try{ const b=FB.db.batch(); recs.forEach(r=>b.delete(FB.db.collection("wifi_signups").doc(r.id))); await b.commit(); closeModal(); toastMsg("Guest deleted"); }catch(e){ toastMsg("Could not delete: "+e.message); }
+    };
+  }
+  function toastMsg(m){ if(typeof toast==="function") toast(m); else alert(m); }
 
   function exportRows(kind){
     const rows = filtered();

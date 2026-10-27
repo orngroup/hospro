@@ -210,6 +210,7 @@ const HELP_CONTENT = {
   wifiDb: { t:"Guest Database", w:"Every individual who signs in to the free guest Wi-Fi — residents and visitors — with a dashboard and your newsletter list.",
     h:["Use the cards and charts for a quick read: sign-ups per day, residents vs visitors, where guests come from.","Filter by date, resident/visitor, leisure/business, newsletter consent or town.","Export CSV or Excel and import into Mailchimp (newsletter opt-ins only)."],
     see:"Dashboard cards and charts above a searchable guest table.", tip:["Only email guests who ticked the newsletter box — the export respects the filter."] },
+  guestMap: { t:"Guest Map", w:"A heatmap of where guests come from, built from the town they give on the Wi-Fi sign-in.", h:["Switch between Heatmap and Towns & counts.","Click a town in the list to zoom to it."], see:"A map centred on the hotel with warm areas where most guests live.", tip:["Towns are looked up once and remembered."] },
   newsletters: { t:"Newsletter Templates", w:"Branded email templates you edit on screen, then copy the HTML into Mailchimp (or any email tool).",
     h:["Pick a template, change the words and picture, watch the preview.","Save it for the team, then Copy HTML and paste into a Mailchimp code block.","*|FNAME|* becomes the guest's first name in Mailchimp."],
     see:"Editor on the left, live email preview on the right.", tip:["Keep it short: one picture, one message, one button."] },

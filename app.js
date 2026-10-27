@@ -321,6 +321,7 @@ if(typeof window.renderAttendance==="function") RENDER_MAP.rotaAttend=window.ren
 /* HosMARKETING: guest database (wifi-db.js) + newsletter templates (newsletters.js) */
 if(typeof window.renderWifiDb==="function") RENDER_MAP.wifiDb=window.renderWifiDb;
 if(typeof window.renderNewsletters==="function") RENDER_MAP.newsletters=window.renderNewsletters;
+if(typeof window.renderGuestMap==="function") RENDER_MAP.guestMap=window.renderGuestMap;
 /* HosVENUE Show Round Ready (showround.js) */
 if(typeof window.renderShowRound==="function") RENDER_MAP.showround=window.renderShowRound;
 /* HosMARKETING Social Requests (socialreq.js) */
@@ -11399,6 +11400,8 @@ function hpLandingExtras(m){
     }
     return box;
   }
+  // ── HosMARKETING has its own landing (guest-map.js) ──
+  if(m.id==="hosstudio" && typeof window.renderMarketingLanding==="function"){ window.renderMarketingLanding(box, m); return box; }
   // ── At a glance ──
   if(m.id==="hosbrand"){
     box.innerHTML+=`<div class="hp-sec-h">Brandon Hall photography</div>
