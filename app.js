@@ -62,6 +62,19 @@ const Store = {
 
 let SESSION=null, CURRENT_TAB="home";
 
+/* HosHOUSE-only lock: open brandon.hospro.co.uk/?app=hoshouse and, after a normal
+   sign-in, the portal stays locked to HosHOUSE housekeeping — no other modules,
+   no Home. Used for the housekeeping managers' dedicated desktop link (Laith, Ruth).
+   A normal login (no ?app=hoshouse) is unaffected and still sees everything. */
+const HH_KIOSK = (function(){ try{ return /[?&]app=hoshouse(?:\b|&|$)/i.test(location.search); }catch(e){ return false; } })();
+function hhKioskStyle(){
+  if(!HH_KIOSK || document.getElementById('hh-kiosk-style')) return;
+  const s=document.createElement('style'); s.id='hh-kiosk-style';
+  s.textContent='.hh-kiosk .sf-search,.hh-kiosk #tb-help,.hh-kiosk #sf-breadcrumb,.hh-kiosk #sf-subnav{display:none!important}'
+    +'.hh-kiosk #sf-logo-home{pointer-events:none}';
+  document.head.appendChild(s);
+}
+
 /* ACCESS — open to all authenticated staff */
 localStorage.setItem('bh_hospro_approved','1');
 
@@ -111,6 +124,7 @@ function enterApp(user){
   const rl=$("#tb-role"); if(rl && user.title) rl.textContent=user.title;
   const av=$("#sf-avatar"); if(av) av.textContent=(user.name||"").split(" ").map(w=>w[0]).join("").slice(0,2);
   const badge=$("#tb-mode"); if(badge) badge.textContent = FB.ready? "Live" : "Demo";
+  if(HH_KIOSK){ try{ document.body.classList.add('hh-kiosk'); hhKioskStyle(); }catch(e){} }
   try{ hpAccessLoad(); }catch(e){}
   boot();
 }
@@ -183,6 +197,7 @@ async function boot(){
     Store.seed();
   }
   buildSidebar();
+  if(HH_KIOSK) CURRENT_TAB='hhHub';   // land straight on HosHOUSE, locked
   render();
   if(DB.live()){
     // one-off: remove the five earlier sample enquiries now the Rezlynx report is the master
@@ -400,7 +415,8 @@ function hpPushHistory(){
 }
 window.addEventListener("popstate",e=>{
   if(!SESSION) return;
-  const t=(e.state&&e.state.tab)||(location.hash||"#home").slice(1)||"home";
+  let t=(e.state&&e.state.tab)||(location.hash||"#home").slice(1)||"home";
+  if(HH_KIOSK) t='hhHub';   // can't navigate away from HosHOUSE in locked mode
   HP_NAV_FROM_HISTORY=true;
   try{ if(t.indexOf("mod:")===0) renderModuleLanding(t.slice(4)); else { CURRENT_TAB=t; render(); } }
   finally{ HP_NAV_FROM_HISTORY=false; }
@@ -480,6 +496,7 @@ function hpRenderLockdown(v){
 }
 
 function render(){
+  if(HH_KIOSK && CURRENT_TAB!=='hhHub') CURRENT_TAB='hhHub';   // locked to HosHOUSE
   const v=$("#view");
   v.innerHTML="";
   v.removeAttribute("style");          // clear inline padding left behind by home/landing screens
@@ -495,7 +512,7 @@ function render(){
 
   // Module landing pages are routed as "mod:<id>"
   // Restricted modules (e.g. HosPEOPLE: payroll and HR) — block both the landing page and every tab in it
-  { const rid=String(CURRENT_TAB).indexOf("mod:")===0 ? CURRENT_TAB.slice(4) : (hpModuleFor(CURRENT_TAB)||{}).id;
+  if(!HH_KIOSK){ const rid=String(CURRENT_TAB).indexOf("mod:")===0 ? CURRENT_TAB.slice(4) : (hpModuleFor(CURRENT_TAB)||{}).id;
     if((rid && !hpCanAccess(rid)) || (String(CURRENT_TAB).indexOf("mod:")!==0 && !hpCanTab(CURRENT_TAB))){ CURRENT_TAB="home"; toast('🔒 That area is restricted. Ask Raj or Ajay if you need access.'); }
   }
   // HosREV: Ajay only, plus its own password while it is being checked
@@ -656,7 +673,7 @@ function openRoom(r){
   $("#rm-quote").onclick=()=>{ closeModal(); alert("To build a quote, start from an enquiry in the Sales Pipeline."); switchTab("pipeline"); };
   $("#rm-enq").onclick=()=>{ closeModal(); startNewEnquiry({room:r.id,event:evId}); };
 }
-function switchTab(t){ CURRENT_TAB=t; render(); }
+function switchTab(t){ if(HH_KIOSK && t!=='hhHub') t='hhHub'; CURRENT_TAB=t; render(); }
 
 /* ============================================================ PACKAGES */
 /* Packages are editable and persist to localStorage + Firebase (meta/packages).
@@ -5388,6 +5405,7 @@ const MOD_BG = {
 };
 
 function renderModuleLanding(moduleId){
+  if(HH_KIOSK && moduleId!=='hoshouse'){ CURRENT_TAB='hhHub'; render(); return; }   // locked to HosHOUSE
   // HosREV opens straight to its dashboard (the password lock in render() still applies)
   if(moduleId==='hosrev'){ CURRENT_TAB='revDash'; render(); return; }
   // HosHOUSE opens straight to its hub of links
@@ -9936,7 +9954,7 @@ async function hhRenderLinks(){
   await hhLoadStaff();
   const base=hhOrigin();
   const mobile=id=>base+'hoshouse.html?u='+id;
-  const desktop=base+'#hhHub';
+  const desktop=base+'?app=hoshouse';   // locked HosHOUSE-only link (no other modules)
   const staff=hhStaffList();
   const leads=staff.filter(s=>s.lead), crew=staff.filter(s=>!s.lead);
   const copyBtn=(url)=>`<button onclick="hhCopy('${url}',this)" style="padding:3px 9px;border:1px solid #cfd8e0;background:#f6f8fa;border-radius:6px;font:600 11px Lato;cursor:pointer;color:#1a2b3a">Copy</button>`;
@@ -9962,7 +9980,7 @@ async function hhRenderLinks(){
       <a href="${base}hoshouse.html" target="_blank" style="padding:8px 14px;border:1px solid #d7dde4;background:#fff;color:#1a2b3a;border-radius:8px;font:700 12px Lato;text-decoration:none">Open housekeeper app ↗</a>
     </div>
     <div style="font:800 12px Lato;color:#1F3864;margin:4px 0 6px">👔 Managers — two ways in</div>
-    <div style="font-size:11.5px;color:#5b6b7b;margin-bottom:8px">Desktop link opens this allocation & management screen; mobile link opens the housekeeper app on their phone. Both use their PIN.</div>
+    <div style="font-size:11.5px;color:#5b6b7b;margin-bottom:8px">Desktop link opens straight into HosHOUSE (this screen) and nothing else — they sign in with their portal login and stay locked to housekeeping. Mobile link opens the housekeeper app on their phone.</div>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
       <tr style="background:#1F3864;color:#fff"><th style="padding:7px 10px;text-align:left">Manager</th><th style="padding:7px 10px;text-align:left">PIN</th><th style="padding:7px 10px;text-align:left">Desktop</th><th style="padding:7px 10px;text-align:left">Mobile</th></tr>
       ${mgrRows}
@@ -9977,7 +9995,7 @@ async function hhRenderLinks(){
 function hhLinkRows(){
   const base=hhOrigin(); const staff=hhStaffList();
   return staff.map(s=>({ name:s.name, pin:String(s.pin||''), lead:!!s.lead, status:s.status||'active',
-    mobile:base+'hoshouse.html?u='+s.id, desktop:s.lead?(base+'#hhHub'):'' }));
+    mobile:base+'hoshouse.html?u='+s.id, desktop:s.lead?(base+'?app=hoshouse'):'' }));
 }
 function hhPrintLinks(){
   const rows=hhLinkRows();
