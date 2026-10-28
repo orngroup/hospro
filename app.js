@@ -151,7 +151,7 @@ function hpAccessSave(){
   try{ if(typeof FB!=="undefined" && FB.ready && FB.db){ FB.db.collection('meta').doc('access_config').set(payload).catch(()=>{}); } }catch(e){}
 }
 $("#lg-pw").addEventListener("keydown",e=>{ if(e.key==="Enter")$("#lg-btn").click(); });
-$("#tb-logout").onclick=async ()=>{ if(typeof hrLock==='function') hrLock(true); try{ sessionStorage.removeItem("hosrev_ok"); sessionStorage.removeItem("hosmkt_ok"); }catch(e){} await fbSignOut(); SESSION=null; $("#app").classList.add("hidden");
+$("#tb-logout").onclick=async ()=>{ if(typeof hrLock==='function') hrLock(true); try{ sessionStorage.removeItem("hosrev_ok"); }catch(e){} await fbSignOut(); SESSION=null; $("#app").classList.add("hidden");
   $("#login").classList.remove("hidden"); $("#lg-pw").value=""; };
 
 /* ============================================================ ROUTING */
@@ -318,13 +318,9 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
   .forEach(([t,fn])=>{ if(typeof window[fn]==="function") RENDER_MAP[t]=window[fn]; });
 /* HosPEOPLE Attendance (attendance.js) */
 if(typeof window.renderAttendance==="function") RENDER_MAP.rotaAttend=window.renderAttendance;
-/* HosMARKETING: guest database (wifi-db.js) + newsletter templates (newsletters.js) */
-if(typeof window.renderWifiDb==="function") RENDER_MAP.wifiDb=window.renderWifiDb;
-if(typeof window.renderNewsletters==="function") RENDER_MAP.newsletters=window.renderNewsletters;
-if(typeof window.renderGuestMap==="function") RENDER_MAP.guestMap=window.renderGuestMap;
 /* HosVENUE Show Round Ready (showround.js) */
 if(typeof window.renderShowRound==="function") RENDER_MAP.showround=window.renderShowRound;
-/* HosMARKETING Social Requests (socialreq.js) */
+/* HosSTUDIO Social Requests (socialreq.js) */
 if(typeof window.renderSocialReq==="function") RENDER_MAP.socialReq=window.renderSocialReq;
 
 /* Tabs whose render functions were designed for the dark navy canvas
@@ -465,45 +461,6 @@ async function hpRevTry(){
   else { m.textContent="Incorrect password."; i.value=""; i.focus(); }
 }
 
-/* ── HosMARKETING lock (temporary, while the guest database is checked) ───────
-   Only Ajay can open HosMARKETING, after entering the PIN. Stored as a SHA-256
-   fingerprint; unlock lasts until the tab is closed or he signs out. */
-const HP_MKT_LOCK = true;
-const HP_MKT_OWNER = "ajay.kawa";
-const HP_MKT_PW_HASH = "656d5be9b84397105deefd04cb2e83f4f3d448bccfaa953d6f62021b50f6488a";
-function hpMktUnlocked(){ try{ return !!(SESSION && SESSION._key===HP_MKT_OWNER && sessionStorage.getItem("hosmkt_ok")===HP_MKT_PW_HASH); }catch(e){ return false; } }
-function hpMktPrompt(){
-  const owner = !!(SESSION && SESSION._key===HP_MKT_OWNER);
-  showModal("📣 HosMARKETING", owner ? "Enter the PIN to open HosMARKETING." : "This area is being set up and isn't open to the team yet.",
-    owner ? `<input id="mkt-pw" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" style="width:100%;padding:12px;border:1.5px solid #d1d5db;border-radius:10px;font:16px Lato;box-sizing:border-box">
-      <div id="mkt-msg" style="color:#b91c1c;font-size:12.5px;min-height:18px;margin-top:6px"></div>
-      <button onclick="hpMktTry()" class="btn block" style="margin-top:4px;background:#9C4F63">Unlock</button>`
-    : `<p class="qs-sub">Ask Ajay if you need something from it.</p>`);
-  const i=document.getElementById("mkt-pw"); if(i){ i.focus(); i.addEventListener("keydown",e=>{ if(e.key==="Enter") hpMktTry(); }); }
-}
-function hpRenderMktLock(v){
-  hpSetBreadcrumb({id:"hosstudio",name:"HosMARKETING"}, null);
-  v.classList.add("hp-canvas");
-  const owner = !!(SESSION && SESSION._key===HP_MKT_OWNER);
-  v.innerHTML=`<div style="max-width:420px;margin:60px auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.25);font-family:Lato,sans-serif">
-    <div style="font-size:30px">📣🔒</div>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a;margin:6px 0 4px">HosMARKETING is locked</div>
-    <div style="font-size:13.5px;color:#4b5563;margin-bottom:16px">${owner?"Enter the HosMARKETING PIN to continue.":"This area is being set up and isn't open to the team yet. Ask Ajay if you need something from it."}</div>
-    ${owner?`<input id="mkt-pw" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" style="width:100%;padding:12px;border:1.5px solid #d1d5db;border-radius:10px;font:15px Lato;box-sizing:border-box">
-    <div id="mkt-msg" style="color:#b91c1c;font-size:12.5px;min-height:18px;margin-top:6px"></div>`:""}
-    <div style="display:flex;gap:8px;margin-top:6px">
-      ${owner?`<button onclick="hpMktTry()" style="flex:1;padding:12px;border:none;border-radius:10px;background:#9C4F63;color:#fff;font:800 14px Lato;cursor:pointer">Unlock</button>`:""}
-      <button onclick="switchTab('home')" style="padding:12px 16px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font:700 14px Lato;cursor:pointer">Back</button></div></div>`;
-  const i=document.getElementById("mkt-pw"); if(i){ i.focus(); i.addEventListener("keydown",e=>{ if(e.key==="Enter") hpMktTry(); }); }
-}
-async function hpMktTry(){
-  const i=document.getElementById("mkt-pw"), m=document.getElementById("mkt-msg"); if(!i) return;
-  const h=await hpRevSha(i.value.trim());
-  if(h===HP_MKT_PW_HASH){ try{ sessionStorage.setItem("hosmkt_ok",h); }catch(e){} try{ closeModal(); }catch(e){} toast("✓ HosMARKETING unlocked");
-    if(CURRENT_TAB==="home" || !((hpModuleFor(CURRENT_TAB)||{}).id==="hosstudio" || CURRENT_TAB==="mod:hosstudio")) renderModuleLanding("hosstudio"); else render(); }
-  else { m.textContent="Incorrect PIN."; i.value=""; i.focus(); }
-}
-
 /* ── TEMPORARY LOCKDOWN during access setup ──────────────────────────────────
    Only Ajay can use the HosPRO portal for now; everyone else sees a notice when
    they log in. The standalone staff apps (HosHouse, HosFIX, clock-in, F&B form,
@@ -544,9 +501,6 @@ function render(){
   // HosREV: Ajay only, plus its own password while it is being checked
   { const isRev = CURRENT_TAB==="mod:hosrev" || /^rev[A-Z]/.test(String(CURRENT_TAB)) || (hpModuleFor(CURRENT_TAB)||{}).id==="hosrev";
     if(isRev && !hpRevUnlocked()){ hpRenderRevLock(v); return; } }
-  // HosMARKETING: temporarily Ajay only, behind its own PIN (set HP_MKT_LOCK=false to lift)
-  { const isMkt = CURRENT_TAB==="mod:hosstudio" || (hpModuleFor(CURRENT_TAB)||{}).id==="hosstudio";
-    if(isMkt && HP_MKT_LOCK && !hpMktUnlocked()){ hpRenderMktLock(v); return; } }
   if(String(CURRENT_TAB).indexOf("mod:")===0){ renderModuleLanding(CURRENT_TAB.slice(4)); return; }
 
   const fn = RENDER_MAP[CURRENT_TAB];
@@ -5147,7 +5101,7 @@ function renderHome(v){
       card.onmouseover = () => { card.style.borderColor=m.colour; card.style.boxShadow='0 4px 14px rgba(0,0,0,.10)'; card.style.transform='translateY(-2px)'; };
       card.onmouseout  = () => { card.style.borderColor='transparent'; card.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'; card.style.transform=''; };
       // HosREV opens straight on its dashboard (the sub-nav still shows its other screens)
-      card.onclick = () => (m.id==='hosrev' && RENDER_MAP.revDash) ? switchTab('revDash') : (m.id==='hoshouse' ? switchTab('hhHub') : m.id==='hosfire' ? (location.href='hosfire.html') : (m.id==='hosstudio' && HP_MKT_LOCK && !hpMktUnlocked()) ? hpMktPrompt() : renderModuleLanding(m.id));
+      card.onclick = () => (m.id==='hosrev' && RENDER_MAP.revDash) ? switchTab('revDash') : (m.id==='hoshouse' ? switchTab('hhHub') : m.id==='hosfire' ? (location.href='hosfire.html') : renderModuleLanding(m.id));
       if(!hpCanAccess(m.id)){
         card.style.cssText += ';opacity:.45;filter:grayscale(1);cursor:not-allowed;box-shadow:none';
         card.title = m.name+' is restricted';
@@ -9521,8 +9475,54 @@ const HH_HUB_STAFF = [
   ["Tushar Ambekar","tushar","1007"],["Allen","allen","1008"],["Hassen","hassen","1009"],
   ["Satya","satya","1010"],["Ayomidipupo","ayomide","1011"],["Yaya","yaya","1012"],
   ["Edwin","edwin","1013"],["Dushyanth","dushyanth","1014"],["Anisha","anisha","1015"],
-  ["Laith Hardy (cover)","laith","1016"]
+  ["Laith Hardy (cover)","laith","1016"],["Ajay Kawa","ajay","1017"]
 ];
+/* ---- Shared staff model (same hoshouse_config/current doc the housekeeper
+   app uses): skills, cleaning rating and status live here so editing in one
+   place flows everywhere. ---- */
+const HH_SKILLS   = ["Departure","Stayover","Arrival-ready"];
+const HH_STATUSES = ["active","holiday","left"];
+const HH_LEADS    = ["ruth","laith","ajay"];
+function hhStatusLabel(s){ return {active:"Active",holiday:"On holiday",left:"Left"}[s||"active"]||"Active"; }
+function hhNormStaff(s){
+  if(!s) return s;
+  if(!Array.isArray(s.skills) || !s.skills.length) s.skills = HH_SKILLS.slice();
+  else s.skills = s.skills.filter(x=>HH_SKILLS.indexOf(x)>=0);
+  if(typeof s.rating!=='number' || s.rating<1 || s.rating>5) s.rating = 3;
+  if(HH_STATUSES.indexOf(s.status)<0) s.status = 'active';
+  if(HH_LEADS.indexOf(s.id)>=0) s.lead = true;
+  return s;
+}
+function hhSeedStaff(){
+  return HH_HUB_STAFF.map(([name,id,pin])=>hhNormStaff({ id, name:name.replace(/ \(.*\)/,''), pin,
+    lead:HH_LEADS.indexOf(id)>=0 }));
+}
+function hhCanDo(skills, type){ if(!skills||!skills.length) return true; return skills.indexOf(type||'Departure')>=0; }
+/* Load the shared staff list (cached on window._hhStaff). */
+async function hhLoadStaff(){
+  let staff=null;
+  if(typeof FB!=='undefined' && FB.db){ try{ const d=await FB.db.collection('hoshouse_config').doc('current').get();
+    if(d.exists && Array.isArray(d.data().staff) && d.data().staff.length) staff=d.data().staff; }catch(e){ console.warn('hhLoadStaff',e&&e.code); } }
+  if(!staff){ try{ const c=JSON.parse(localStorage.getItem('hoshouse_cfg')||'{}'); if(Array.isArray(c.staff)&&c.staff.length) staff=c.staff; }catch(e){} }
+  if(!staff) staff=hhSeedStaff();
+  // make sure the leads always exist (incl. Ajay) and every record is complete
+  hhSeedStaff().filter(s=>s.lead).forEach(core=>{ if(!staff.some(s=>s.id===core.id)) staff.push(core); });
+  staff.forEach(hhNormStaff);
+  window._hhStaff=staff; return staff;
+}
+function hhStaffList(){ return window._hhStaff || hhSeedStaff(); }
+function hhStaffById(id){ return hhStaffList().find(s=>s.id===id)||null; }
+async function hhSaveStaff(staff){
+  window._hhStaff=staff;
+  // merge into the shared config doc, and keep the localStorage cfg in step
+  try{ const c=JSON.parse(localStorage.getItem('hoshouse_cfg')||'{}'); c.staff=staff; localStorage.setItem('hoshouse_cfg', JSON.stringify(c)); }catch(e){}
+  if(typeof FB!=='undefined' && FB.db){ try{ await FB.db.collection('hoshouse_config').doc('current').set({staff, updatedAt:Date.now()},{merge:true}); }catch(e){ console.warn('hhSaveStaff',e&&e.code); } }
+}
+async function hhUpdateStaff(id, patch){ const staff=hhStaffList().slice(); const s=staff.find(x=>x.id===id); if(!s) return null; Object.assign(s,patch); hhNormStaff(s); await hhSaveStaff(staff); return s; }
+function hhSlugId(name){ let base=(name||'staff').toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,12)||'staff'; let id=base,n=1; const have=hhStaffList(); while(have.some(s=>s.id===id)){ id=base+(++n); } return id; }
+function hhNextPin(){ const used=new Set(hhStaffList().map(s=>String(s.pin))); let p=1001; while(used.has(String(p))) p++; return String(p); }
+async function hhAddStaffRec(name){ const staff=hhStaffList().slice(); const rec=hhNormStaff({ id:hhSlugId(name), name:name.trim(), pin:hhNextPin(), lead:false }); staff.push(rec); await hhSaveStaff(staff); return rec; }
+async function hhRemoveStaffRec(id){ const staff=hhStaffList().filter(s=>s.id!==id); await hhSaveStaff(staff); return true; }
 /* Map a rota staff id (HosPEOPLE) → housekeeper-app id, so allocation knows who's who */
 const ROTA_TO_HH = {
   ruth_addison_30:'ruth', aryan_31:'aryan', lara_jervis_32:'lara', rahul_reghunath_33:'rahul',
@@ -9557,15 +9557,21 @@ function hhAllocatePlan(dateISO){
   });
   return workers;
 }
-/* Balanced distribution: fill to capacity first, then spread any overflow evenly */
-function hhDistribute(rooms, workers){
+/* Skill-, rating- and capacity-aware distribution.
+   items = array of {room, type} (bare room numbers are treated as Departure).
+   A room only goes to someone whose skills include that clean type; among
+   eligible people we fill the lightest-loaded first, higher-rated breaking ties. */
+function hhDistribute(items, workers){
   const plan=workers.map(w=>Object.assign({},w,{rooms:[]}));
-  rooms.forEach(rm=>{
-    let pool=plan.filter(w=>w.rooms.length<w.cap);
+  const norm=items.map(it=>(it&&typeof it==='object')?it:{room:it,type:'Departure'});
+  norm.forEach(it=>{
+    const elig=plan.filter(w=>hhCanDo(w.skills, it.type));
     let pick;
-    if(pool.length){ pool.sort((a,b)=>(b.cap-b.rooms.length)-(a.cap-a.rooms.length) || a.rooms.length-b.rooms.length); pick=pool[0]; }
-    else if(plan.length){ pick=plan.slice().sort((a,b)=>a.rooms.length-b.rooms.length)[0]; }
-    if(pick) pick.rooms.push(rm);
+    const under=elig.filter(w=>w.rooms.length<w.cap);
+    if(under.length){ under.sort((a,b)=>(b.cap-b.rooms.length)-(a.cap-a.rooms.length) || (b.rating||3)-(a.rating||3) || a.rooms.length-b.rooms.length); pick=under[0]; }
+    else if(elig.length){ pick=elig.slice().sort((a,b)=>a.rooms.length-b.rooms.length || (b.rating||3)-(a.rating||3))[0]; }
+    else if(plan.length){ pick=plan.slice().sort((a,b)=>a.rooms.length-b.rooms.length)[0]; }  // nobody skilled → lightest, so it isn't dropped
+    if(pick) pick.rooms.push(it.room);
   });
   return plan;
 }
@@ -9589,9 +9595,14 @@ async function hhAllocateAll(){
   if(!rooms.length){ toast('No rooms waiting to allocate for '+date+' — add the day\'s rooms first.'); return; }
   if(!crew.length){ toast('Tick who\'s working today before you allocate.'); return; }
   // rooms first (by number), then public areas
-  const ordered=rooms.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0) || (+a.room||0)-(+b.room||0)).map(r=>r.room);
-  const workers=crew.map(c=>({hkId:c.hkId, name:c.name, shift:c.shift||'', cap:c.cap||HH_DEFAULT_CAP, net:(c.cap||HH_DEFAULT_CAP)*45}));
-  const plan=hhDistribute(ordered, workers);
+  const ordered=rooms.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0) || (+a.room||0)-(+b.room||0));
+  await hhLoadStaff();
+  const workers=crew.map(c=>{ const s=hhStaffById(c.hkId);
+    return {hkId:c.hkId, name:c.name, shift:c.shift||'', cap:c.cap||HH_DEFAULT_CAP, net:(c.cap||HH_DEFAULT_CAP)*45,
+            skills:(s&&s.skills)||HH_SKILLS.slice(), rating:(s&&typeof s.rating==='number')?s.rating:3, status:(s&&s.status)||'active'}; })
+    .filter(w=>w.status==='active');
+  if(!workers.length){ toast('Everyone ticked is marked On holiday or Left — set someone Active in Manage staff.'); return; }
+  const plan=hhDistribute(ordered.map(r=>({room:r.room, type:r.type})), workers);
   const totalCap=workers.reduce((t,w)=>t+w.cap,0);
   const over=ordered.length>totalCap;
   const rowsHtml=plan.map(w=>`<tr style="border-top:1px solid #eef1f4">
@@ -9828,8 +9839,8 @@ async function hhToggleCrew(hkId){
   const crew=(window._hhCrew||await hhLoadCrew(date)).slice();
   const i=crew.findIndex(c=>c.hkId===hkId);
   if(i>=0){ crew.splice(i,1); }
-  else { const m=HH_HUB_STAFF.find(s=>s[1]===hkId); const plan=hhAllocatePlan(date).find(w=>w.hkId===hkId);
-    crew.push({ hkId, name:m?m[0]:hkId, shift:plan?plan.shift:'', cap:plan?plan.cap:HH_DEFAULT_CAP }); }
+  else { const sInfo=(typeof hhStaffById==='function'&&hhStaffById(hkId)); const m=HH_HUB_STAFF.find(s=>s[1]===hkId); const plan=hhAllocatePlan(date).find(w=>w.hkId===hkId);
+    crew.push({ hkId, name:(sInfo&&sInfo.name)||(m?m[0]:hkId), shift:plan?plan.shift:'', cap:plan?plan.cap:HH_DEFAULT_CAP }); }
   await hhSaveCrew(date, crew); hhRenderManage();
 }
 
@@ -9837,10 +9848,16 @@ async function hhToggleCrew(hkId){
 function hhCurrentLoad(rooms){ // remaining (not-done) rooms per housekeeper id
   const load={}; rooms.forEach(r=>{ if(!r.housekeeper) return; if(r.status==='done') return; load[r.housekeeper]=(load[r.housekeeper]||0)+1; }); return load;
 }
-function hhToLightest(newRooms, workers, baseLoad){
-  const load={}; workers.forEach(w=>load[w.hkId]=baseLoad[w.hkId]||0);
+function hhToLightest(newRooms, workers, baseLoad, type){
+  const enriched=workers.map(w=>{ const s=hhStaffById(w.hkId);
+    return Object.assign({}, w, {skills:(s&&s.skills)||HH_SKILLS.slice(), rating:(s&&typeof s.rating==='number')?s.rating:3, status:(s&&s.status)||'active'}); })
+    .filter(w=>w.status==='active');
+  const pool=enriched.length?enriched:workers;
+  const load={}; pool.forEach(w=>load[w.hkId]=baseLoad[w.hkId]||0);
   const assigns=[];
-  newRooms.forEach(room=>{ const w=workers.slice().sort((a,b)=>(load[a.hkId]-load[b.hkId]) || (b.cap||0)-(a.cap||0))[0];
+  newRooms.forEach(room=>{
+    const elig=pool.filter(w=>hhCanDo(w.skills, type));
+    const w=(elig.length?elig:pool).slice().sort((a,b)=>(load[a.hkId]-load[b.hkId]) || (b.rating||3)-(a.rating||3) || (b.cap||0)-(a.cap||0))[0];
     if(w){ assigns.push({room, hkId:w.hkId, hkName:w.name}); load[w.hkId]++; } });
   return assigns;
 }
@@ -9876,28 +9893,15 @@ function renderHosHouseHub(v){
   const chip = (icon,colour,title,href)=>`
     <a href="${href}" target="_blank" title="${title}" style="display:inline-flex;gap:7px;align-items:center;text-decoration:none;background:#fff;border:1px solid #e4e9ef;border-left:3px solid ${colour};border-radius:9px;padding:8px 12px;font:700 12.5px Lato;color:#1a2b3a">
       <span style="font-size:15px">${icon}</span>${title} <span style="color:${colour}">↗</span></a>`;
-  const staffRows = HH_HUB_STAFF.map(([name,id,pin])=>`
-    <tr style="border-bottom:1px solid #eef2f6">
-      <td style="padding:6px 10px;font-weight:600;color:#1a2b3a">${name}</td>
-      <td style="padding:6px 10px"><a href="${base}hoshouse.html?u=${id}" target="_blank" style="color:#2E6B5E;text-decoration:none">?u=${id}</a></td>
-      <td style="padding:6px 10px;font-weight:700;color:#1a2b3a">${pin}</td>
-      <td style="padding:6px 10px"><button onclick="hhCopy('${base}hoshouse.html?u=${id}',this)" style="padding:3px 9px;border:1px solid #cfd8e0;background:#f6f8fa;border-radius:6px;font:600 11px Lato;cursor:pointer;color:#1a2b3a">Copy</button></td>
-    </tr>`).join('');
-
   const view = window._hhView || 'today';
   const tab=(id,label)=>`<button onclick="hhSetView('${id}')" style="padding:7px 15px;border:none;background:${view===id?'#1F3864':'transparent'};color:${view===id?'#fff':'#45586b'};font:700 12.5px Lato;cursor:pointer">${label}</button>`;
   const todayHTML=`
     <div id="hh-manage"></div>
     <div style="font:800 15px Lato;color:#1a2b3a;margin:22px 0 10px">📊 Live progress</div>
     <div id="hh-body"></div>
-    <details style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-top:16px">
-      <summary style="cursor:pointer;font:800 13px Lato;color:#1a2b3a">📱 Housekeeper app links &amp; PINs</summary>
-      <div style="font-size:11.5px;color:#5b6b7b;margin:8px 0 10px">Send each person their own link on WhatsApp — they open it on their phone and type their PIN. This is the only outside link; everything else is on this page.</div>
-      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
-        <tr style="background:#1F3864;color:#fff"><th style="padding:7px 10px;text-align:left">Housekeeper</th><th style="padding:7px 10px;text-align:left">Link</th><th style="padding:7px 10px;text-align:left">PIN</th><th></th></tr>
-        ${staffRows}
-      </table></div>
-      <div style="margin-top:10px"><a href="${base}hoshouse.html" target="_blank" style="font:700 12px Lato;color:#2E6B5E;text-decoration:none">Open the housekeeper app ↗</a></div>
+    <details style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-top:16px" open>
+      <summary style="cursor:pointer;font:800 13px Lato;color:#1a2b3a">🔗 Links &amp; PINs — managers and housekeepers</summary>
+      <div id="hh-links"><div style="padding:14px;color:#8296a8;font-size:12px">Loading…</div></div>
     </details>`;
 
   v.innerHTML = `
@@ -9907,6 +9911,7 @@ function renderHosHouseHub(v){
         <div style="font-size:12.5px;color:#5b6b7b">${view==='reports'?'Productivity, average times and missed rooms over any date range.':"Pick the day's rooms, confirm who's in, allocate — all on this page."}</div></div>
       <div style="display:flex;gap:8px;align-items:center">
         ${view==='today'?`<input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderManage();hhRenderDash()" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
+        <button onclick="hhManageStaff()" title="Edit staff — skills, rating, status, PINs" style="padding:7px 12px;border:1px solid #1F3864;background:#eef2f8;color:#1F3864;border-radius:8px;font:700 12px Lato;cursor:pointer">👥 Manage staff</button>
         <button onclick="hhEodReport()" title="Compile the end-of-day housekeeping report" style="padding:7px 12px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12px Lato;cursor:pointer">📄 End-of-day report</button>
         <button onclick="hhClearDay()" title="Delete all rooms & areas for this date — use to reset after testing" style="padding:7px 12px;border:1px solid #e4b6b6;background:#fff;color:#b3261e;border-radius:8px;font:700 12px Lato;cursor:pointer">🗑 Clear test data</button>
         <button onclick="hhRenderManage();hhRenderDash()" style="padding:7px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">↻ Refresh</button>`:''}
@@ -9921,9 +9926,168 @@ function renderHosHouseHub(v){
   </div>`;
   if(view==='reports'){ renderHosHouseReports(); }
   else if(view==='history'){ /* search form is ready; results load on demand */ }
-  else { hhRenderManage(); hhRenderDash(); }
+  else { hhRenderManage(); hhRenderDash(); hhRenderLinks(); }
 }
 function hhSetView(x){ window._hhView=x; switchTab('hhHub'); }
+
+/* ---- Links & PINs panel: managers (desktop + mobile link) and housekeepers ---- */
+async function hhRenderLinks(){
+  const box=document.getElementById('hh-links'); if(!box) return;
+  await hhLoadStaff();
+  const base=hhOrigin();
+  const mobile=id=>base+'hoshouse.html?u='+id;
+  const desktop=base+'#hhHub';
+  const staff=hhStaffList();
+  const leads=staff.filter(s=>s.lead), crew=staff.filter(s=>!s.lead);
+  const copyBtn=(url)=>`<button onclick="hhCopy('${url}',this)" style="padding:3px 9px;border:1px solid #cfd8e0;background:#f6f8fa;border-radius:6px;font:600 11px Lato;cursor:pointer;color:#1a2b3a">Copy</button>`;
+  const mgrRows=leads.map(s=>`<tr style="border-bottom:1px solid #eef2f6">
+      <td style="padding:6px 10px;font-weight:700;color:#1a2b3a">${hhEsc(s.name)}</td>
+      <td style="padding:6px 10px;font-weight:700;color:#1a2b3a">${hhEsc(String(s.pin))}</td>
+      <td style="padding:6px 10px">🖥 ${copyBtn(desktop)} <span style="color:#8296a8;font-size:11px">this screen</span></td>
+      <td style="padding:6px 10px">📱 ${copyBtn(mobile(s.id))} <a href="${mobile(s.id)}" target="_blank" style="color:#2E6B5E;text-decoration:none;font-size:11px">?u=${s.id}</a></td>
+    </tr>`).join('');
+  const crewRows=crew.map(s=>{
+    const st=s.status||'active';
+    const stTag=st!=='active'?` <span style="font-size:10px;color:#b3261e">(${hhStatusLabel(st)})</span>`:'';
+    return `<tr style="border-bottom:1px solid #eef2f6">
+      <td style="padding:6px 10px;font-weight:600;color:#1a2b3a">${hhEsc(s.name)}${stTag}</td>
+      <td style="padding:6px 10px"><a href="${mobile(s.id)}" target="_blank" style="color:#2E6B5E;text-decoration:none">?u=${s.id}</a></td>
+      <td style="padding:6px 10px;font-weight:700;color:#1a2b3a">${hhEsc(String(s.pin))}</td>
+      <td style="padding:6px 10px">${copyBtn(mobile(s.id))}</td>
+    </tr>`;}).join('');
+  box.innerHTML=`
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 12px">
+      <button onclick="hhPrintLinks()" style="padding:8px 14px;border:none;background:#2E6B5E;color:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer">🖨 Print all</button>
+      <button onclick="hhDownloadLinks()" style="padding:8px 14px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12px Lato;cursor:pointer">⬇ Download (CSV)</button>
+      <a href="${base}hoshouse.html" target="_blank" style="padding:8px 14px;border:1px solid #d7dde4;background:#fff;color:#1a2b3a;border-radius:8px;font:700 12px Lato;text-decoration:none">Open housekeeper app ↗</a>
+    </div>
+    <div style="font:800 12px Lato;color:#1F3864;margin:4px 0 6px">👔 Managers — two ways in</div>
+    <div style="font-size:11.5px;color:#5b6b7b;margin-bottom:8px">Desktop link opens this allocation & management screen; mobile link opens the housekeeper app on their phone. Both use their PIN.</div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+      <tr style="background:#1F3864;color:#fff"><th style="padding:7px 10px;text-align:left">Manager</th><th style="padding:7px 10px;text-align:left">PIN</th><th style="padding:7px 10px;text-align:left">Desktop</th><th style="padding:7px 10px;text-align:left">Mobile</th></tr>
+      ${mgrRows}
+    </table></div>
+    <div style="font:800 12px Lato;color:#1F3864;margin:16px 0 6px">📱 Housekeepers — mobile app</div>
+    <div style="font-size:11.5px;color:#5b6b7b;margin-bottom:8px">Send each person their own link on WhatsApp — they open it on their phone and type their PIN.</div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+      <tr style="background:#1F3864;color:#fff"><th style="padding:7px 10px;text-align:left">Housekeeper</th><th style="padding:7px 10px;text-align:left">Link</th><th style="padding:7px 10px;text-align:left">PIN</th><th></th></tr>
+      ${crewRows}
+    </table></div>`;
+}
+function hhLinkRows(){
+  const base=hhOrigin(); const staff=hhStaffList();
+  return staff.map(s=>({ name:s.name, pin:String(s.pin||''), lead:!!s.lead, status:s.status||'active',
+    mobile:base+'hoshouse.html?u='+s.id, desktop:s.lead?(base+'#hhHub'):'' }));
+}
+function hhPrintLinks(){
+  const rows=hhLinkRows();
+  const date=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const tr=r=>`<tr><td><strong>${hhEsc(r.name)}</strong>${r.lead?' (Manager)':''}${r.status!=='active'?' — '+hhStatusLabel(r.status):''}</td><td style="font-weight:700;letter-spacing:2px">${hhEsc(r.pin)}</td><td style="font-size:11px;word-break:break-all">${hhEsc(r.mobile)}${r.desktop?'<br><span style="color:#1F3864">Desktop: '+hhEsc(r.desktop)+'</span>':''}</td></tr>`;
+  const html='<!doctype html><html><head><meta charset="utf-8"><title>HosHOUSE logins</title>'+
+    '<style>body{font:13px/1.4 Arial,sans-serif;color:#1f2a37;padding:24px}h1{color:#1F3864;font-size:20px;margin:0 0 2px}p{color:#666;margin:0 0 16px}'+
+    'table{width:100%;border-collapse:collapse}th{background:#1F3864;color:#fff;text-align:left;padding:8px 10px;font-size:12px}'+
+    'td{padding:8px 10px;border-bottom:1px solid #ddd;vertical-align:top}tr:nth-child(even) td{background:#f6f8fa}</style></head>'+
+    '<body><h1>HosHOUSE — logins &amp; codes</h1><p>Brandon Hall Hotel &amp; Spa · '+date+' · keep private</p>'+
+    '<table><thead><tr><th>Name</th><th>PIN</th><th>Link(s)</th></tr></thead><tbody>'+rows.map(tr).join('')+'</tbody></table>'+
+    '<script>window.onload=function(){setTimeout(function(){window.print();},250);}<\/script></body></html>';
+  const w=window.open('','_blank'); if(w){ w.document.open(); w.document.write(html); w.document.close(); }
+  else { toast('Allow pop-ups to print, or use Download.'); }
+}
+function hhDownloadLinks(){
+  const rows=hhLinkRows();
+  const csv=[['Name','PIN','Role','Status','Mobile link','Desktop link']].concat(
+    rows.map(r=>[r.name, r.pin, r.lead?'Manager':'Housekeeper', hhStatusLabel(r.status), r.mobile, r.desktop]))
+    .map(line=>line.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const u=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=u; a.download='hoshouse-logins.csv'; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(u); a.remove(); },2000);
+}
+
+/* ---- Manage staff: list + edit skills / rating / status / PIN ---- */
+async function hhManageStaff(){
+  await hhLoadStaff();
+  showModal('👥 Manage staff', 'Set each person\'s cleans, rating and status — this feeds automatic allocation',
+    `<div id="hh-staff-list" style="max-height:62vh;overflow:auto"></div>
+     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+       <button onclick="hhAddStaffPrompt()" style="padding:9px 14px;border:none;background:#2E6B5E;color:#fff;border-radius:8px;font:700 12.5px Lato;cursor:pointer">＋ Add staff</button>
+       <button onclick="closeModal()" style="padding:9px 14px;border:1px solid #d1d5db;background:#fff;border-radius:8px;font:700 12.5px Lato;cursor:pointer">Done</button>
+     </div>`);
+  hhRenderStaffList();
+}
+function hhSkillPill(on,label){ const col=on?{Departure:'#1f7a8c',Stayover:'#4a86c7','Arrival-ready':'#2a6a4a'}[label]:'#c3cad3'; return `<span style="display:inline-block;font:800 10.5px Lato;color:#fff;background:${col};padding:2px 8px;border-radius:20px;margin:2px 3px 0 0">${({Departure:'Dep',Stayover:'Stay','Arrival-ready':'Arr'})[label]}</span>`; }
+function hhStars(n){ n=n||0; let s=''; for(let i=1;i<=5;i++) s+=`<span style="color:${i<=n?'#f0a500':'#cfd6de'}">★</span>`; return s; }
+function hhRenderStaffList(){
+  const box=document.getElementById('hh-staff-list'); if(!box) return;
+  const staff=hhStaffList();
+  box.innerHTML=staff.map(s=>{
+    const st=s.status||'active';
+    const stCol={active:'#2a6a4a',holiday:'#9c5a00',left:'#b3261e'}[st];
+    const stBg={active:'#ecf6f0',holiday:'#fff3df',left:'#fdecea'}[st];
+    return `<div onclick="hhEditStaff('${s.id}')" style="border:1px solid #e4e9ef;border-radius:10px;padding:11px 13px;margin-bottom:8px;cursor:pointer;background:#fff">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <span style="font:800 14px Lato;color:#1a2b3a">${hhEsc(s.name)}${s.lead?' <span style="font-size:10px;color:#b89056;font-weight:800">LEAD</span>':''}</span>
+        <span style="font:800 10.5px Lato;color:${stCol};background:${stBg};padding:2px 9px;border-radius:20px">${hhStatusLabel(st)}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px">
+        <div>${HH_SKILLS.map(t=>hhSkillPill(s.skills.indexOf(t)>=0,t)).join('')}</div>
+        <div style="text-align:right"><div style="font-size:10px;color:#8296a8;text-transform:uppercase;letter-spacing:.4px">Rating</div><div style="font-size:14px">${hhStars(s.rating)}</div></div></div>
+    </div>`;
+  }).join('')+`<div style="font-size:11.5px;color:#8296a8;margin-top:4px">Tap anyone to edit. Only <b>Active</b> staff get rooms auto-allocated.</div>`;
+}
+function hhEditStaff(id){
+  const s=hhStaffById(id); if(!s) return;
+  const sk=(s.skills&&s.skills.length)?s.skills.slice():HH_SKILLS.slice();
+  const segb=(on,attr,val,label)=>`<button type="button" class="hh-seg${on?' on':''}" data-${attr}="${val}" onclick="hhToggleSeg(this)" style="flex:1;min-width:90px;padding:10px;border:1.5px solid ${on?'#1F3864':'#d7dde4'};background:${on?'#1F3864':'#fff'};color:${on?'#fff':'#1a2b3a'};border-radius:9px;font:700 13px Lato;cursor:pointer">${label}</button>`;
+  const single=(group,on,attr,val,label)=>`<button type="button" data-${attr}="${val}" onclick="hhPickOne(this,'${group}')" style="flex:1;min-width:70px;padding:10px;border:1.5px solid ${on?'#1F3864':'#d7dde4'};background:${on?'#1F3864':'#fff'};color:${on?'#fff':'#1a2b3a'};border-radius:9px;font:700 13px Lato;cursor:pointer" class="hh-seg${on?' on':''}">${label}</button>`;
+  showModal('Edit '+hhEsc(s.name), '',
+    `<div style="font-size:13px">
+      <label style="font:700 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">Name</label>
+      <input id="hh-es-name" value="${hhEsc(s.name)}" style="width:100%;padding:9px;border:1px solid #d7dde4;border-radius:8px;font:14px Lato;margin:3px 0 12px">
+      <label style="font:700 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">PIN</label>
+      <input id="hh-es-pin" inputmode="numeric" maxlength="4" value="${hhEsc(String(s.pin||''))}" style="width:100%;padding:9px;border:1px solid #d7dde4;border-radius:8px;font:14px Lato;margin:3px 0 12px">
+      <label style="font:700 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">Cleans they do</label>
+      <div id="hh-es-skills" style="display:flex;gap:7px;flex-wrap:wrap;margin:5px 0 12px">${HH_SKILLS.map(t=>segb(sk.indexOf(t)>=0,'sk',t,t)).join('')}</div>
+      <label style="font:700 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">Cleaning rating</label>
+      <div id="hh-es-rating" style="display:flex;gap:7px;margin:5px 0 12px">${[1,2,3,4,5].map(n=>single('hh-es-rating',(s.rating||3)===n,'r',n,n+'★')).join('')}</div>
+      <label style="font:700 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">Status</label>
+      <div id="hh-es-status" style="display:flex;gap:7px;margin:5px 0 12px">${HH_STATUSES.map(st=>single('hh-es-status',(s.status||'active')===st,'st',st,hhStatusLabel(st))).join('')}</div>
+      <label style="font:700 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">Management access</label>
+      <div id="hh-es-lead" style="display:flex;gap:7px;margin:5px 0 14px">${single('hh-es-lead',!!s.lead,'ld','1','Lead / manager')}${single('hh-es-lead',!s.lead,'ld','0','Housekeeper')}</div>
+      <div style="display:flex;justify-content:space-between;gap:8px">
+        <button onclick="hhRemoveStaffPrompt('${s.id}')" style="padding:10px 14px;border:1px solid #e4b6b6;background:#fff;color:#b3261e;border-radius:9px;font:700 13px Lato;cursor:pointer">Remove</button>
+        <div style="display:flex;gap:8px">
+          <button onclick="hhManageStaff()" style="padding:10px 14px;border:1px solid #d1d5db;background:#fff;border-radius:9px;font:700 13px Lato;cursor:pointer">Back</button>
+          <button onclick="hhSaveStaffEdit('${s.id}')" style="padding:10px 18px;border:none;background:#2E6B5E;color:#fff;border-radius:9px;font:700 13px Lato;cursor:pointer">Save</button>
+        </div>
+      </div>
+    </div>`);
+}
+function hhToggleSeg(btn){ const on=btn.classList.toggle('on'); btn.style.background=on?'#1F3864':'#fff'; btn.style.color=on?'#fff':'#1a2b3a'; btn.style.borderColor=on?'#1F3864':'#d7dde4'; }
+function hhPickOne(btn, groupId){ const w=document.getElementById(groupId); if(!w) return;
+  w.querySelectorAll('button').forEach(b=>{ b.classList.remove('on'); b.style.background='#fff'; b.style.color='#1a2b3a'; b.style.borderColor='#d7dde4'; });
+  btn.classList.add('on'); btn.style.background='#1F3864'; btn.style.color='#fff'; btn.style.borderColor='#1F3864'; }
+async function hhSaveStaffEdit(id){
+  const name=(document.getElementById('hh-es-name').value||'').trim();
+  const pin=(document.getElementById('hh-es-pin').value||'').replace(/\D/g,'').slice(0,4);
+  const skills=[...document.querySelectorAll('#hh-es-skills .hh-seg.on')].map(b=>b.dataset.sk);
+  const rEl=document.querySelector('#hh-es-rating .hh-seg.on'); const rating=rEl?+rEl.dataset.r:3;
+  const stEl=document.querySelector('#hh-es-status .hh-seg.on'); const status=stEl?stEl.dataset.st:'active';
+  const ldEl=document.querySelector('#hh-es-lead .hh-seg.on'); const lead=ldEl?ldEl.dataset.ld==='1':false;
+  if(!name){ toast('Name can\'t be blank.'); return; }
+  if(pin.length<4){ toast('PIN must be 4 digits.'); return; }
+  if(!skills.length){ toast('Pick at least one clean type.'); return; }
+  await hhUpdateStaff(id, {name, pin, skills, rating, status, lead});
+  toast('✓ Saved '+name); hhManageStaff(); hhRenderManage(); hhRenderLinks();
+}
+async function hhAddStaffPrompt(){
+  const name=prompt('New staff member\'s name:'); if(!name||!name.trim()) return;
+  const rec=await hhAddStaffRec(name); if(rec){ hhEditStaff(rec.id); }
+}
+async function hhRemoveStaffPrompt(id){
+  const s=hhStaffById(id); if(!s) return;
+  if(s.lead && hhStaffList().filter(x=>x.lead).length<=1){ toast('You can\'t remove the last manager.'); return; }
+  if(!confirm('Remove '+s.name+'? Their login will stop working.')) return;
+  await hhRemoveStaffRec(id); toast('Removed '+s.name); hhManageStaff(); hhRenderManage(); hhRenderLinks();
+}
 
 /* ---- The manage console: staff-working row + room selection + allocate ---- */
 async function hhRenderManage(){
@@ -9931,20 +10095,22 @@ async function hhRenderManage(){
   const date=window._hhDate||hhTodayISO();
   box.innerHTML=`<div style="padding:20px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:14px">Loading…</div>`;
   const [crew, rooms] = [await hhLoadCrew(date), await hhFetchDay(date)];
+  await hhLoadStaff();
   const crewIds=new Set(crew.map(c=>c.hkId));
   const bedrooms=rooms.filter(r=>!r.area);
   const areas=rooms.filter(r=>r.area);
   const pend=bedrooms.filter(r=>r.status==='pending');
   const unalloc=bedrooms.filter(r=>!r.housekeeper && r.status!=='done');
 
-  // ---- staff chips (every house member; tick = working today) ----
-  const chips=HH_HUB_STAFF.map(([name,id])=>{
-    const on=crewIds.has(id);
+  // ---- staff chips (every active house member; tick = working today) ----
+  const chips=hhStaffList().filter(s=>(s.status||'active')!=='left').map(s=>{
+    const id=s.id, on=crewIds.has(id);
     const plan=hhAllocatePlan(date).find(w=>w.hkId===id);
-    const sub=plan?plan.shift:'';
-    return `<button onclick="hhToggleCrew('${id}')" title="${on?'Working — tap to remove':'Tap to add to today'}" style="display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 11px;border-radius:9px;border:1.5px solid ${on?'#2E6B5E':'#d7dde4'};background:${on?'#eaf4f0':'#fff'};cursor:pointer;font:700 12px Lato;color:${on?'#1f5a4e':'#6b7b8a'}">
-      <span>${on?'✓ ':''}${hhEsc(name.replace(/ \(.*\)/,''))}</span>
-      ${sub?`<span style="font-weight:500;font-size:10px;color:#8296a8">${hhEsc(sub)}</span>`:(on?'<span style="font-weight:500;font-size:10px;color:#b07a2e">added / extra</span>':'')}
+    const onHol=(s.status==='holiday');
+    const sub=onHol?'on holiday':(plan?plan.shift:'');
+    return `<button onclick="hhToggleCrew('${id}')" title="${on?'Working — tap to remove':'Tap to add to today'}" style="display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 11px;border-radius:9px;border:1.5px solid ${on?'#2E6B5E':'#d7dde4'};background:${on?'#eaf4f0':'#fff'};cursor:pointer;font:700 12px Lato;color:${on?'#1f5a4e':(onHol?'#b07a2e':'#6b7b8a')};opacity:${onHol&&!on?'.7':'1'}">
+      <span>${on?'✓ ':''}${hhEsc(s.name)}${s.lead?' ·L':''}</span>
+      ${sub?`<span style="font-weight:500;font-size:10px;color:${onHol?'#b07a2e':'#8296a8'}">${hhEsc(sub)}</span>`:(on?'<span style="font-weight:500;font-size:10px;color:#b07a2e">added / extra</span>':'')}
     </button>`;
   }).join('');
 
@@ -10035,9 +10201,10 @@ async function hhAddRooms(distribute){
     const crew=window._hhCrew||await hhLoadCrew(date);
     if(!crew.length){ toast('Added — but tick who\'s working before distributing.'); }
     else {
+      await hhLoadStaff();
       const after=await hhFetchDay(date);
       const load=hhCurrentLoad(after);
-      const assigns=hhToLightest(newOnes.map(String), crew, load);
+      const assigns=hhToLightest(newOnes.map(String), crew, load, type);
       await hhWriteAssign(date, assigns);
       toast('✓ Added '+newOnes.length+' room'+(newOnes.length>1?'s':'')+' and gave them to the lightest-loaded staff');
     }
@@ -11137,7 +11304,7 @@ function renderQuotes(v){
     <div style="background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center">
       <div style="font-size:48px;margin-bottom:12px">📄</div>
       <div style="font-size:16px;font-weight:700;color:#1a2b3a;margin-bottom:8px">Quote Builder</div>
-      <div style="font-size:13px;color:#374151;margin-bottom:20px">Build event and meeting quotes directly from the HosSALES module.<br>Use the Quote Builder in HosMARKETING for instant PDF quotes.</div>
+      <div style="font-size:13px;color:#374151;margin-bottom:20px">Build event and meeting quotes directly from the HosSALES module.<br>Use the Quote Builder in HosSTUDIO for instant PDF quotes.</div>
       <button onclick="switchTab('quote')" style="padding:10px 22px;background:#1a2b3a;color:#fff;border:none;border-radius:9px;font:700 14px Lato;cursor:pointer">Open Quote Builder →</button>
     </div>`;
   v.appendChild(wrap);
@@ -11378,10 +11545,7 @@ function hpModuleStats(id){
       ];
     }
     case "hosstudio": {
-      const wg=hpSafe(()=> (typeof WifiGuests!=="undefined") ? WifiGuests.stats() : null, null);
       return [
-        [wg?wg.today:"—", "New Wi-Fi guests today", "wifiDb", "#9C4F63"],
-        [wg?wg.optins:"—", "Newsletter opt-ins", "wifiDb", "#2B726A"],
         [hpSafe(()=>BrochureStore.all().length,0), "Brochures saved", "brochure", "#c85c6b"],
         [hpSafe(()=> (typeof QuoteStore!=="undefined") ? QuoteStore.all().length : "—","—"), "Quotes created", "quotes", "#8b5c8f"],
         [hpSafe(()=>PACKAGES.length,"—"), "Packages to promote", "packages", "#2f6f9e"],
@@ -11421,7 +11585,7 @@ const HP_RELATED = {
   hoscom:    [["fixAllJobs","Maintenance jobs","Jobs raised from compliance actions"],["hubHR","HR documents","Policies, training and certificates"],["staffDocs","Staff documents","Right to work and certificates"],["suppliers","Suppliers","Contractor details and insurance"]],
   hossales:  [["rooms","Meeting rooms","Capacities and layouts to quote from"],["packages","Packages & pricing","Delegate rates and event packages"],["brochure","Brochure Builder","Send a branded brochure with the quote"],["corpdb","Corporate database","Account history and contacts"]],
   hosvenue:  [["rotaForecast","Occupancy forecast","Rooms sold drive staffing levels"],["pipeline","Sales pipeline","Upcoming events and enquiries"],["dining","Dining & Banqueting","Restaurant plan and covers"],["brandPhotography","Photography","Approved venue images"]],
-  hosstudio: [["wifiDb","Guest database","Individual guests from the free Wi-Fi"],["newsletters","Newsletter templates","Branded emails for Mailchimp"],["brandLogos","Logos & brand assets","Official marks and colour palette"],["brandPhotography","Photography","Approved hotel images"],["brandDocs","Menus & wine lists","Current Clarendon menus"],["quotes","Quotes & proposals","Quotes now live in HosSALES"]],
+  hosstudio: [["brandLogos","Logos & brand assets","Official marks and colour palette"],["brandPhotography","Photography","Approved hotel images"],["brandDocs","Menus & wine lists","Current Clarendon menus"],["quotes","Quotes & proposals","Quotes now live in HosSALES"]],
   hosbrand:  [["brochure","Brochure Builder","Build collateral from these assets"],["menu","Menu Builder","Menus in the house style"],["social","Social Media","Post with approved images"],["marketing","Campaigns","Marketing library and campaigns"]],
   hospeople: [["rotaForecast","Occupancy forecast","Plan shifts from rooms and covers"],["hubHR","HR documents","Policies and handbooks"],["fixTeam","Maintenance team","Trades, hours and rates"],["staffDocs","Staff documents","Right to work, contracts, certificates"]],
   hoshub:    [["contracts","Event agreements","E-signed client agreements in HosSALES"],["suppliers","Supplier database","162 suppliers and contacts"],["staffProfiles","Staff profiles","HR records for each team member"],["brandCollateral","Collateral & brochures","Downloadable sales material"]],
@@ -11442,8 +11606,6 @@ function hpLandingExtras(m){
     }
     return box;
   }
-  // ── HosMARKETING has its own landing (guest-map.js) ──
-  if(m.id==="hosstudio" && typeof window.renderMarketingLanding==="function"){ window.renderMarketingLanding(box, m); return box; }
   // ── At a glance ──
   if(m.id==="hosbrand"){
     box.innerHTML+=`<div class="hp-sec-h">Brandon Hall photography</div>
