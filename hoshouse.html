@@ -424,7 +424,9 @@
     const r=day.find(x=>String(x.room)===String(room));
     if(!r){ out.innerHTML='<div class="empty">Room '+esc(room)+' wasn\'t on the list for '+esc(date)+'.</div>'; return; }
     let photos=[]; try{ photos=await HH.getRoomPhotos(date, room); }catch(e){}
-    const comps=photos.filter(p=>p.kind!=='cannotstart'); const doors=photos.filter(p=>p.kind==='cannotstart');
+    const comps=photos.filter(p=>p.kind==='complete' || (!p.kind && p.slot!=='door' && p.slot!=='lostproperty'));
+    const doors=photos.filter(p=>p.kind==='cannotstart' || p.slot==='door');
+    const lost=photos.filter(p=>p.kind==='lostproperty' || p.slot==='lostproperty');
     const comp=comps.length;
     const tfmt=ms=>ms?new Date(ms).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
     const pfig=p=>{ const src=p.dataUrl||p.url||''; const tt=p.takenAt?new Date(p.takenAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';
@@ -433,6 +435,7 @@
     const photoBlock = comps.length?`<div class="sect" style="margin:8px 0 2px">📷 Completion photos (${comps.length}/4)</div>${grid(comps)}`
       : (r.status==='done'?'<div class="rnote" style="background:#fdecea;border-color:#f3c0ba;color:#b3261e">⚠ Marked done but no completion photos found.</div>':'');
     const doorBlock = doors.length?`<div class="sect" style="margin:10px 0 2px">🚪 Do Not Disturb — door photo</div>${grid(doors)}`:'';
+    const lostBlock = lost.length?`<div class="sect" style="margin:10px 0 2px">🎒 Lost property photo</div>${grid(lost)}`:'';
     const stCol=r.status==='done'?'var(--ok)':r.status==='in_progress'?'var(--amber)':r.status==='blocked'?'var(--red)':'var(--muted)';
     const stTxt=r.status==='blocked'?("Can't start — "+(r.blockReason==='dnd'?'Do Not Disturb':'Guest refused')):((r.status||'pending').replace('_',' '));
     const line=(ic,lab,val)=> val&&String(val).trim()?`<div style="font-size:13px;margin-top:5px">${ic} <b>${lab}:</b> ${esc(val)}</div>`:'';
@@ -449,6 +452,7 @@
       ${line('🎒','Lost property',r.lostProperty)}
       ${photoBlock}
       ${doorBlock}
+      ${lostBlock}
       ${(r.status!=='done' && date===today)?`<button class="go ghost" style="margin-top:8px" onclick="reassignRoom('${esc(r.room)}')">Reallocate ⇄</button>`:''}
     </div>`;
   }
@@ -683,7 +687,7 @@
     const doneMine=mine.filter(r=>r.status==='done');
     const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const note=r=> r.notes&&r.notes.trim() ? `<div class="rnote">📝 ${esc(r.notes)}</div>` : '';
-    const plus=r=>`<button class="go" style="background:#eef1f5;color:var(--navy);padding:11px 13px" title="Add a note (cot, extra towels…)" onclick="event.stopPropagation();addNote('${r.room}')">＋</button>`;
+    const plus=r=>`<button class="go" style="background:#eef1f5;color:var(--navy);padding:11px 13px" title="Add a note (cot, extra towels…)" onclick="event.stopPropagation();addNote('${r.room}')">📝 Note${r.notes&&r.notes.trim()?' ✓':''}</button>`;
     const blockedNote=r=> r.status==='blocked' ? `<div class="rnote" style="background:#fdecea;border-color:#f3c0ba;color:#b3261e">⛔ ${r.blockReason==='dnd'?'Do Not Disturb':'Guest refused'} · ${r.blockedAt?new Date(r.blockedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):''}${r.blockReason==='dnd'?' · door photo saved':''}</div>` : '';
     const urgBadge=r=> (r.urgent && r.status!=='done') ? '<span class="urg">🚨 URGENT</span>' : '';
     const row=r=>{
@@ -842,7 +846,17 @@
       <input class="loginp" placeholder="e.g. 2 bulbs, 1 TV remote" value="${esc(active.replaced)}" onchange="saveLog('replaced',this.value)">
       <label class="loglbl">🎒 Lost property found</label>
       <input class="loginp" placeholder="e.g. phone charger, under bed" value="${esc(active.lostProperty)}" onchange="saveLog('lostProperty',this.value)">
+      <button class="go ghost" style="background:#fff;border:1.5px solid var(--line);color:var(--navy);margin-top:7px;padding:11px" onclick="lostPropPhoto()">📷 ${active.lostPhoto?'Lost property photo saved ✓ — retake':'Take a photo of the lost property'}</button>
     </div>`;
+  }
+  async function lostPropPhoto(){
+    if(!active) return;
+    const du=await capturePhoto('Room '+active.room+' · Lost property');
+    if(!du) return;
+    const ts=Date.now();
+    await HH.addPhoto({date:today, room:active.room, slot:'lostproperty', label:'Lost property', dataUrl:du, by:ME.id, byName:ME.name, kind:'lostproperty', takenAt:ts});
+    active.lostPhoto=true; await HH.updateRoom(today, active.room, {lostPhoto:true});
+    hhToast('✓ Lost property photo saved'); renderLogs();
   }
   async function saveLog(field,val){ active[field]=val; const p={}; p[field]=val; await HH.updateRoom(today, active.room, p); }
   async function toggleChk(item,val){ const cl=Object.assign({},active.checklist||{}); cl[item]=val; active.checklist=cl; await HH.updateRoom(today, active.room, {checklist:cl}); renderActive(); }
@@ -860,8 +874,10 @@
     if(missed.length && !confirm('Not ticked: '+missed.join(', ')+'. Finish anyway?')) return;
     const g=await HH.checkGeo();
     const dur=active.startAt? Math.floor((Date.now()-active.startAt)/1000):0;
-    await HH.updateRoom(today, active.room, { status:'done', finishAt:Date.now(), durationSec:dur, geoFinishOk:g.ok===true, geoFinishDist:g.distance||null });
+    await HH.updateRoom(today, active.room, { status:'done', finishAt:Date.now(), durationSec:dur, geoFinishOk:g.ok===true, geoFinishDist:g.distance||null, urgent:false });
+    const doneRoom=active.room;
     if(tmr) clearInterval(tmr); active=null; backToList();
+    hhToast('✓ Room '+doneRoom+' done & signed off');
   }
   function backToList(){ if(tmr) clearInterval(tmr); showScreen('scr-list'); renderList(); }
 

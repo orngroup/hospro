@@ -181,9 +181,13 @@ const SEED_SAMPLES=[];   // earlier sample enquiries removed 8 Oct 2026 — the 
 
 
 async function boot(){
+  // HosHOUSE-only kiosk (Laith/Ruth): skip the whole-portal data init (pipeline,
+  // marketing, etc.) — those reads fail for housekeeping users and would blank the
+  // page before HosHOUSE renders. The hub loads its own hoshouse_* data.
+  if(HH_KIOSK){ try{ if(typeof buildSidebar==='function') buildSidebar(); }catch(e){} CURRENT_TAB='hhHub'; render(); return; }
   if(DB.live()){
     FBStore.start();                       // begin live Firestore sync
-    await FBStore.seedOnce(SEED_SAMPLES);   // seed only if empty
+    try{ await FBStore.seedOnce(SEED_SAMPLES); }catch(e){ console.warn('seedOnce', e&&e.code); }   // never let a failed seed blank the app
     FBStore.onChange(()=>{ if(CURRENT_TAB==="pipeline") render(); });
     if(typeof MktStore!=="undefined"){ MktStore.start();
       MktStore.onChange(()=>{ if(CURRENT_TAB==="marketing") render(); }); }
