@@ -10651,6 +10651,7 @@ async function hhRenderDash(){
       </div>
     </div>
     ${byTypeCard}
+    ${hhDashByStaffType(rooms)}
     ${hhDashStaffGrid(rooms)}
     <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
       <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:8px">Staff efficiency</div>
@@ -10672,6 +10673,30 @@ async function hhClearDay(){
   try{ if(typeof FB!=='undefined' && FB.db){ const snap=await FB.db.collection('hoshouse_rooms').where('date','==',date).get(); const batch=FB.db.batch(); snap.forEach(d=>batch.delete(d.ref)); await batch.commit(); } }catch(e){ console.warn('clear',e&&e.code); }
   try{ localStorage.removeItem('hoshouse_day_'+date); }catch(e){}
   toast('✓ Cleared housekeeping data for '+date); hhRenderDash();
+}
+/* Compact "By staff" overview: name + three coloured boxes = rooms per clean type */
+function hhDashByStaffType(rooms){
+  if(!rooms.length) return '';
+  const TORD=['Departure','Stayover','Arrival-ready'], TCOL={Departure:'#1f7a8c',Stayover:'#4a86c7','Arrival-ready':'#2a6a4a'};
+  const stf={}; const un={Departure:0,Stayover:0,'Arrival-ready':0,total:0};
+  rooms.forEach(r=>{ if(r.area) return; const t=TORD.indexOf(r.type)>=0?r.type:'Departure';
+    if(!r.housekeeper){ un[t]++; un.total++; return; }
+    const k=r.housekeeper; (stf[k]=stf[k]||{name:r.housekeeperName||hhNameFor(r)||k,Departure:0,Stayover:0,'Arrival-ready':0,total:0}); stf[k][t]++; stf[k].total++; });
+  const list=Object.values(stf).sort((a,b)=>b.total-a.total);
+  if(!list.length && !un.total) return '';
+  const boxes=o=>TORD.map(t=>`<div title="${t==='Arrival-ready'?'Arrivals':t+'s'}: ${o[t]}" style="flex:0 0 auto;min-width:38px;text-align:center;padding:7px 0;border-radius:9px;font:800 15px Lato;color:#fff;background:${TCOL[t]};opacity:${o[t]?1:.28}">${o[t]}</div>`).join('');
+  const row=o=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #eef1f4">
+    <div style="flex:1;min-width:0;font:700 13.5px Lato;color:#1a2b3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${hhEsc(o.name)}</div>${boxes(o)}</div>`;
+  const key=`<div style="display:flex;flex-wrap:wrap;gap:14px;margin:2px 0 6px">
+    ${[['Departures','#1f7a8c'],['Stayover','#4a86c7'],['Arrivals','#2a6a4a']].map(([l,c])=>`<span style="display:inline-flex;align-items:center;gap:6px;font:700 11.5px Lato;color:#6b7280"><i style="width:11px;height:11px;border-radius:3px;background:${c};display:inline-block"></i>${l}</span>`).join('')}
+  </div>`;
+  return `<div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:14px">
+    <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:6px">👥 By staff — rooms &amp; type</div>
+    ${key}
+    ${list.map(row).join('')}
+    ${un.total?`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #eef1f4">
+      <div style="flex:1;min-width:0;font:700 13.5px Lato;color:#8296a8;font-style:italic">Unassigned</div>${boxes(un)}</div>`:''}
+  </div>`;
 }
 /* At-a-glance grid: every housekeeper, their allocated rooms + public areas, and progress */
 function hhDashStaffGrid(rooms){
