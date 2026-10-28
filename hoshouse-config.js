@@ -194,6 +194,7 @@
   function defaultRooms(){
     const out=[]; let n=1;
     ROOM_CATS.forEach(c=>{ for(let i=0;i<c.n;i++){ out.push({ room:String(n++), cat:c.code }); } });
+    while(n<=140){ out.push({ room:String(n++), cat:"" }); }   // extend numbering up to room 140
     return out;
   }
 

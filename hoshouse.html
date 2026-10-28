@@ -424,8 +424,15 @@
     const r=day.find(x=>String(x.room)===String(room));
     if(!r){ out.innerHTML='<div class="empty">Room '+esc(room)+' wasn\'t on the list for '+esc(date)+'.</div>'; return; }
     let photos=[]; try{ photos=await HH.getRoomPhotos(date, room); }catch(e){}
-    const comp=photos.filter(p=>p.kind!=='cannotstart').length;
+    const comps=photos.filter(p=>p.kind!=='cannotstart'); const doors=photos.filter(p=>p.kind==='cannotstart');
+    const comp=comps.length;
     const tfmt=ms=>ms?new Date(ms).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+    const pfig=p=>{ const src=p.dataUrl||p.url||''; const tt=p.takenAt?new Date(p.takenAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';
+      return src?`<figure style="margin:0"><a href="${src}" target="_blank" rel="noopener"><img src="${src}" alt="${esc(p.label||'')}" style="width:100%;height:94px;object-fit:cover;border-radius:9px;border:1px solid var(--line)"></a><figcaption style="font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.25">${esc(p.label||p.slot||'')}${tt?' · '+tt:''}</figcaption></figure>`:''; };
+    const grid=(arr)=>`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">${arr.map(pfig).join('')}</div>`;
+    const photoBlock = comps.length?`<div class="sect" style="margin:8px 0 2px">📷 Completion photos (${comps.length}/4)</div>${grid(comps)}`
+      : (r.status==='done'?'<div class="rnote" style="background:#fdecea;border-color:#f3c0ba;color:#b3261e">⚠ Marked done but no completion photos found.</div>':'');
+    const doorBlock = doors.length?`<div class="sect" style="margin:10px 0 2px">🚪 Do Not Disturb — door photo</div>${grid(doors)}`:'';
     const stCol=r.status==='done'?'var(--ok)':r.status==='in_progress'?'var(--amber)':r.status==='blocked'?'var(--red)':'var(--muted)';
     const stTxt=r.status==='blocked'?("Can't start — "+(r.blockReason==='dnd'?'Do Not Disturb':'Guest refused')):((r.status||'pending').replace('_',' '));
     const line=(ic,lab,val)=> val&&String(val).trim()?`<div style="font-size:13px;margin-top:5px">${ic} <b>${lab}:</b> ${esc(val)}</div>`:'';
@@ -436,13 +443,13 @@
       <div style="font-size:13px">👤 <b>Housekeeper:</b> ${r.housekeeperName?esc(r.housekeeperName):'<em style="color:var(--red)">Unallocated</em>'}</div>
       ${r.startAt?`<div style="font-size:13px">▶ <b>Started:</b> ${tfmt(r.startAt)}</div>`:''}
       ${r.finishAt?`<div style="font-size:13px">✓ <b>Finished:</b> ${tfmt(r.finishAt)}${dur?(' · '+dur):''}</div>`:''}
-      <div style="font-size:13px">📷 <b>Completion photos:</b> ${comp}/4</div>
-      ${r.blockReason==='dnd'?'<div style="font-size:13px">🚪 Door photo saved (Do Not Disturb)</div>':''}
       ${line('📝','Note',r.notes)}
       ${line('🔧','To maintenance',r.maintenance)}
       ${line('♻','Items replaced',r.replaced)}
       ${line('🎒','Lost property',r.lostProperty)}
-      ${(r.status!=='done' && date===today)?`<button class="go ghost" style="margin-top:6px" onclick="reassignRoom('${esc(r.room)}')">Reallocate ⇄</button>`:''}
+      ${photoBlock}
+      ${doorBlock}
+      ${(r.status!=='done' && date===today)?`<button class="go ghost" style="margin-top:8px" onclick="reassignRoom('${esc(r.room)}')">Reallocate ⇄</button>`:''}
     </div>`;
   }
 

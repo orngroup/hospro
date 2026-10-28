@@ -10300,7 +10300,7 @@ const HH_ROOM_CATS=[
   {code:"PRE_DBL",label:"Premier Double",n:8}
 ];
 function hhCatLabel(code){ const c=HH_ROOM_CATS.find(x=>x.code===code); return c?c.label:(code||''); }
-function hhDefaultRooms(){ const out=[]; let n=1; HH_ROOM_CATS.forEach(c=>{ for(let i=0;i<c.n;i++) out.push({room:String(n++),cat:c.code}); }); return out; }
+function hhDefaultRooms(){ const out=[]; let n=1; HH_ROOM_CATS.forEach(c=>{ for(let i=0;i<c.n;i++) out.push({room:String(n++),cat:c.code}); }); while(n<=140){ out.push({room:String(n++),cat:""}); } return out; }
 async function hhRoomCatalogue(){
   if(typeof FB!=='undefined' && FB.db){ try{ const d=await FB.db.collection('hoshouse_config').doc('current').get();
     if(d.exists){ const r=d.data().rooms; if(Array.isArray(r)&&r.length) return r.map(x=>({room:String(x.room),cat:x.cat||''})); } }catch(e){} }
