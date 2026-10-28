@@ -121,16 +121,23 @@
   }
   /* sign-in records inside the chosen date range (for the charts) */
   function rowsInRange(){ const [f,t]=range(); return W.rows.filter(r=>{ const ts=new Date(r.created).getTime(); return ts>=f && ts<=t; }); }
-  /* people whose LAST visit is in range and who match the other filters (for the table/export) */
+  /* does a person match the segment filters (staying / reason / consent / town)? — date & search excluded */
+  function matchSeg(p){
+    return (W.reason==="all" || p.reason===W.reason || (W.reason==="none" && !p.reason)) &&
+           (W.staying==="all" || p.staying===W.staying) &&
+           (W.consent==="all" || (W.consent==="yes" ? p.marketing : !p.marketing)) &&
+           (W.town==="all" || p.town===W.town);
+  }
+  function inRangeLast(p){ const [f,t]=range(); const ts=new Date(p.last).getTime(); return ts>=f && ts<=t; }
+  /* people matching the segment filters (ignores date) */
+  function segPeople(){ return people().filter(matchSeg); }
+  /* people whose LAST visit is in range AND who match the segment filters (the working "in period" set) */
+  function scopedPeople(){ return segPeople().filter(inRangeLast); }
+  /* scoped set + free-text search — drives the table/export */
   function filtered(){
-    const q = W.q.toLowerCase(); const [f,t]=range();
-    return people().filter(p =>
-      (!q || p.name.toLowerCase().includes(q) || p.email.includes(q) || p.town.toLowerCase().includes(q)) &&
-      (W.reason==="all" || p.reason===W.reason || (W.reason==="none" && !p.reason)) &&
-      (W.staying==="all" || p.staying===W.staying) &&
-      (W.consent==="all" || (W.consent==="yes" ? p.marketing : !p.marketing)) &&
-      (W.town==="all" || p.town===W.town) &&
-      (()=>{ const ts=new Date(p.last).getTime(); return ts>=f && ts<=t; })());
+    const q = W.q.toLowerCase();
+    return scopedPeople().filter(p =>
+      !q || p.name.toLowerCase().includes(q) || p.email.includes(q) || p.town.toLowerCase().includes(q));
   }
 
   window.WifiGuests = {
@@ -228,16 +235,21 @@
 
   function paint(){
     const box = document.getElementById("wf-list"); if(!box) return;
-    const all = people(), inRange = rowsInRange(), pr = people(inRange), rows = filtered();
+    const all = people();                         // whole database (for the "on file" total + town list)
+    const seg = segPeople();                      // people matching the segment filters (any date)
+    const segEmails = new Set(seg.map(p=>p.email));
+    const inRange = rowsInRange().filter(r=>segEmails.has((r.email||"").toLowerCase())); // sign-ins in range matching filters
+    const pr = scopedPeople();                    // people in range AND matching filters — drives tiles & charts
+    const rows = filtered();                      // + search — drives the table
     const tk = todayKey();
-    const todayN = W.rows.filter(r=>dayKey(r.created)===tk).length;
+    const todayN = W.rows.filter(r=>dayKey(r.created)===tk && segEmails.has((r.email||"").toLowerCase())).length;
     const days = {}; inRange.forEach(r=>{ const k=dayKey(r.created); if(k) days[k]=(days[k]||0)+1; });
     const nDays = Math.max(1, Object.keys(days).length);
     const optins = pr.filter(p=>p.marketing).length;
 
     const tile = (n,l,c,sub) => `<div style="background:#fff;border:1px solid ${COL.line};border-radius:12px;padding:12px 14px"><div style="font:800 23px Lato;color:${c||COL.brand}">${n}</div><div style="font-size:10.5px;color:#8296a8;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">${l}</div>${sub?`<div style="font-size:11px;color:#5b6b7b;margin-top:3px">${sub}</div>`:""}</div>`;
-    const newToday = all.filter(p=>dayKey(p.first)===tk).length;
-    const newInRange = (()=>{ const [f,t]=range(); return all.filter(p=>{ const ts=new Date(p.first).getTime(); return ts>=f && ts<=t; }).length; })();
+    const newToday = seg.filter(p=>dayKey(p.first)===tk).length;
+    const newInRange = (()=>{ const [f,t]=range(); return seg.filter(p=>{ const ts=new Date(p.first).getTime(); return ts>=f && ts<=t; }).length; })();
     document.getElementById("wf-tiles").innerHTML =
       tile(newToday,"New guests today",COL.brand, `${todayN} connection${todayN===1?"":"s"} incl. repeats`) +
       tile(pr.length,"Guests in period",COL.navy, `${newInRange} new · ${(pr.length/nDays).toFixed(1)} per day`) +
@@ -253,7 +265,7 @@
     const towns = {}; pr.forEach(p=>{ if(p.town) towns[p.town]=(towns[p.town]||0)+1; });
     const topTowns = Object.entries(towns).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([label,value])=>({label,value}));
     // growth lines: new guests per day + cumulative (all guests, by first visit) over the same span
-    const firstDays={}; all.forEach(p=>{ const k=dayKey(p.first); if(k) firstDays[k]=(firstDays[k]||0)+1; });
+    const firstDays={}; seg.forEach(p=>{ const k=dayKey(p.first); if(k) firstDays[k]=(firstDays[k]||0)+1; });
     const labels=series.map(s=>s.label), newPerDay=[], cum=[]; let run=0;
     const spanStart=(t===Infinity?Date.now():t)-(span-1)*864e5;
     Object.keys(firstDays).forEach(k=>{ if(new Date(k).getTime()<spanStart) run+=firstDays[k]; });

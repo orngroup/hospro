@@ -723,7 +723,7 @@ function openRoom(r){
   $("#rm-quote").onclick=()=>{ closeModal(); alert("To build a quote, start from an enquiry in the Sales Pipeline."); switchTab("pipeline"); };
   $("#rm-enq").onclick=()=>{ closeModal(); startNewEnquiry({room:r.id,event:evId}); };
 }
-function switchTab(t){ if(HH_KIOSK && t!=='hhHub') t='hhHub'; CURRENT_TAB=t; render(); }
+function switchTab(t){ if(HH_KIOSK && t!=='hhHub') t='hhHub'; if(t!=='hhHub'){ try{ hhStopLive(); }catch(e){} } CURRENT_TAB=t; render(); }
 
 /* ============================================================ PACKAGES */
 /* Packages are editable and persist to localStorage + Firebase (meta/packages).
@@ -9852,6 +9852,35 @@ async function hhFetchDay(dateISO){
   }
   try{ const m=JSON.parse(localStorage.getItem('hoshouse_day_'+dateISO)||'{}'); return Object.values(m); }catch(e){ return []; }
 }
+/* ---- Live hub: keep dashboard + tables in sync as rooms are reallocated/updated
+       (fires for changes from any device — mobile app, another manager, etc.) ---- */
+let _hhLiveUnsub=null, _hhLivePoll=null, _hhLiveDate=null;
+function hhStopLive(){ try{ if(_hhLiveUnsub) _hhLiveUnsub(); }catch(e){} _hhLiveUnsub=null;
+  if(_hhLivePoll){ clearInterval(_hhLivePoll); _hhLivePoll=null; } _hhLiveDate=null; }
+function hhLiveRefresh(){
+  if(typeof CURRENT_TAB!=='undefined' && CURRENT_TAB!=='hhHub'){ hhStopLive(); return; }
+  if((window._hhView||'today')!=='today') return;
+  try{ hhRenderDash(); }catch(e){}
+  // don't redraw the manage panel while a modal is open or the user is mid-selection — it would wipe their choices
+  const mr=document.getElementById('modal-root'); const modalOpen=mr && mr.innerHTML.trim().length>0;
+  const selecting=document.querySelectorAll('#hh-manage input[type="checkbox"]:checked').length>0;
+  if(!modalOpen && !selecting){ try{ hhRenderManage(); }catch(e){} }
+}
+function hhStartLive(date){
+  date=date||hhTodayISO();
+  if(_hhLiveDate===date && (_hhLiveUnsub||_hhLivePoll)) return;   // already live on this date
+  hhStopLive(); _hhLiveDate=date;
+  if(typeof FB!=='undefined' && FB.db){
+    try{ let first=true;
+      _hhLiveUnsub=FB.db.collection('hoshouse_rooms').where('date','==',date)
+        .onSnapshot(()=>{ if(first){ first=false; return; } hhLiveRefresh(); }, e=>console.warn('hh live', e&&e.code));
+      return;
+    }catch(e){ console.warn('hh live start', e); }
+  }
+  // local / demo fallback: poll the day store so changes from another tab show
+  let last=localStorage.getItem('hoshouse_day_'+date)||'';
+  _hhLivePoll=setInterval(()=>{ const now=localStorage.getItem('hoshouse_day_'+date)||''; if(now!==last){ last=now; hhLiveRefresh(); } }, 4000);
+}
 function hhDonut(segs,center){
   const tot=segs.reduce((s,x)=>s+x.value,0)||1, R=54, C=2*Math.PI*R; let off=0;
   const rings=segs.filter(s=>s.value>0).map(s=>{ const len=C*(s.value/tot); const el=`<circle r="${R}" cx="70" cy="70" fill="none" stroke="${s.color}" stroke-width="18" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${hhEsc(s.label)}: ${s.value}</title></circle>`; off+=len; return el; }).join('');
@@ -10023,7 +10052,7 @@ function renderHosHouseHub(v){
       <div><div style="font:800 20px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping</div>
         <div style="font-size:12.5px;color:#5b6b7b">${view==='reports'?'Productivity, average times and missed rooms over any date range.':"Pick the day's rooms, confirm who's in, allocate — all on this page."}</div></div>
       <div style="display:flex;gap:8px;align-items:center">
-        ${view==='today'?`<input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderManage();hhRenderDash()" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
+        ${view==='today'?`<input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderManage();hhRenderDash();hhStartLive(this.value)" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
         <button onclick="hhManageStaff()" title="Edit staff — skills, rating, status, PINs" style="padding:7px 12px;border:1px solid #1F3864;background:#eef2f8;color:#1F3864;border-radius:8px;font:700 12px Lato;cursor:pointer">👥 Manage staff</button>
         <button onclick="hhFloorPlan()" title="Hotel floor plans — plan rooms near each other" style="padding:7px 12px;border:1px solid #1F3864;background:#fff;color:#1F3864;border-radius:8px;font:700 12px Lato;cursor:pointer">🗺 Floor plan</button>
         <button onclick="hhEodReport()" title="Compile the end-of-day housekeeping report" style="padding:7px 12px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12px Lato;cursor:pointer">📄 End-of-day report</button>
@@ -10038,9 +10067,9 @@ function renderHosHouseHub(v){
 
     ${view==='reports'?`<div id="hh-reports"></div>`:(view==='history'?hhHistoryHTML():todayHTML)}
   </div>`;
-  if(view==='reports'){ renderHosHouseReports(); }
-  else if(view==='history'){ /* search form is ready; results load on demand */ }
-  else { hhRenderManage(); hhRenderDash(); hhRenderLinks(); }
+  if(view==='reports'){ hhStopLive(); renderHosHouseReports(); }
+  else if(view==='history'){ hhStopLive(); /* search form is ready; results load on demand */ }
+  else { hhRenderManage(); hhRenderDash(); hhRenderLinks(); hhStartLive(window._hhDate||hhTodayISO()); }
 }
 function hhSetView(x){ window._hhView=x; switchTab('hhHub'); }
 

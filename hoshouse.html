@@ -325,7 +325,7 @@
     unwatch=HH.watchDay(today, list=>{ rooms=list; hhNotifyDiff(list);
       if($('scr-list').classList.contains('on')) renderList();
       if($('scr-team').classList.contains('on')) renderTeam();
-      if($('scr-admin').classList.contains('on') && adminTab==='rooms') renderAdminRooms();
+      if($('scr-admin').classList.contains('on')){ if(adminTab==='rooms') renderAdminRooms(); else if(adminTab==='perf') renderAdminPerf(); }
       if(active) refreshActive(); });
     // Managers (Laith / Ruth) land on the team view — they rarely clean rooms.
     if(ME.lead){ showTeam(); } else { showScreen('scr-list'); }
