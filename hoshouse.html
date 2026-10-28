@@ -33,6 +33,11 @@
   .rmno{font:800 22px inherit;color:var(--navy);min-width:52px}
   .pill{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;color:#fff}
   .pill.dep{background:var(--dep)} .pill.stay{background:var(--stay)} .pill.arr{background:var(--arr)}
+  .urg{display:inline-block;font:800 10px inherit;color:#fff;background:var(--red);padding:2px 7px;border-radius:20px;letter-spacing:.3px;margin-left:4px;vertical-align:middle}
+  .card.urgent{border-color:#f3b0a8;box-shadow:0 0 0 2px #fdecea}
+  .qchip{display:inline-flex;align-items:center;gap:5px;font:800 12px inherit;padding:8px 12px;border-radius:20px;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+  .qchip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+  .qchip b{font-weight:800}
   .grow{flex:1} .sub{font-size:12px;color:var(--muted);margin-top:2px}
   .go{padding:11px 16px;border:none;border-radius:10px;background:var(--ok);color:#fff;font:800 14px inherit;cursor:pointer}
   .ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
@@ -141,8 +146,9 @@
     <div class="u" onclick="showTeam()" style="cursor:pointer">← Team</div></header>
   <div class="adtabs">
     <button class="adtab on" data-tab="rooms" onclick="setAdminTab('rooms')">🛏 Rooms</button>
+    <button class="adtab" data-tab="find" onclick="setAdminTab('find')">🔎 Find</button>
     <button class="adtab" data-tab="staff" onclick="setAdminTab('staff')">👥 Staff</button>
-    <button class="adtab" data-tab="links" onclick="setAdminTab('links')">🔗 Links &amp; codes</button>
+    <button class="adtab" data-tab="links" onclick="setAdminTab('links')">🔗 Links</button>
   </div>
   <div class="wrap" id="adminWrap"></div>
 </div>
@@ -222,15 +228,18 @@
   function requestNotifyPerm(){ try{ if('Notification' in window && Notification.permission==='default'){ Notification.requestPermission(); } }catch(e){} }
   // compare each live update to the last snapshot and raise notifications
   function hhNotifyDiff(list){
-    const snap={}; list.forEach(r=>{ snap[r.room]={hk:r.housekeeper||'', status:r.status||'pending', name:r.housekeeperName||''}; });
+    const snap={}; list.forEach(r=>{ snap[r.room]={hk:r.housekeeper||'', status:r.status||'pending', name:r.housekeeperName||'', urgent:!!r.urgent}; });
     if(prevSnap && ME){
-      const mine=[], done=[];
+      const mine=[], done=[], urgent=[];
       list.forEach(r=>{ const p=prevSnap[r.room];
         if(r.housekeeper===ME.id && r.status!=='done' && (!p || p.hk!==ME.id)) mine.push(r);         // newly allocated to me
+        if(r.housekeeper===ME.id && r.status!=='done' && r.urgent && (!p || !p.urgent || p.hk!==ME.id)) urgent.push(r); // newly urgent for me
         if(ME.lead && r.status==='done' && r.housekeeper!==ME.id && (!p || p.status!=='done')) done.push(r); // newly completed → leads
       });
-      if(mine.length) hhNotify(mine.length===1?'New room for you':(mine.length+' new rooms'),
-        mine.length===1?('Room '+mine[0].room+' · '+(mine[0].type||'')):('Rooms '+mine.map(x=>x.room).join(', ')));
+      if(urgent.length) hhNotify('🚨 URGENT room'+(urgent.length>1?'s':''),
+        'Please do '+(urgent.length===1?('Room '+urgent[0].room+' · '+(urgent[0].type||'')):('Rooms '+urgent.map(x=>x.room).join(', ')))+' next');
+      if(mine.filter(r=>!r.urgent).length){ const m=mine.filter(r=>!r.urgent); hhNotify(m.length===1?'New room for you':(m.length+' new rooms'),
+        m.length===1?('Room '+m[0].room+' · '+(m[0].type||'')):('Rooms '+m.map(x=>x.room).join(', '))); }
       if(done.length) hhNotify(done.length===1?'Room completed':(done.length+' rooms completed'),
         done.map(x=>'Room '+x.room+(x.housekeeperName?(' · '+x.housekeeperName):'')).join('  ·  '));
     }
@@ -364,8 +373,10 @@
       const chips=g.rooms.sort((a,b)=>(+a.room||0)-(+b.room||0)).map(r=>{
         const col=r.status==='done'?'#ecf6f0;color:#2a6a4a':r.status==='in_progress'?'#fff3df;color:#9c5a00':'#eef1f5;color:#6b7280';
         const mins=r.status==='done'?' '+Math.round((r.durationSec||0)/60)+'m':(r.status==='in_progress'&&r.startAt?' '+Math.round((Date.now()-r.startAt)/60000)+'m':'');
-        const move=(canMove && r.status!=='done')?` onclick="reassignRoom('${esc(r.room)}')" style="cursor:pointer;background:${col}" title="Tap to move to another housekeeper"`:` style="background:${col}"`;
-        return `<span class="tvroom"${move}>${esc(r.room)}${mins}${(canMove&&r.status!=='done')?' ⇄':''}</span>`; }).join('');
+        const urg=(r.urgent&&r.status!=='done');
+        const bg=urg?'#fdecea;color:#b3261e':col;
+        const move=(canMove && r.status!=='done')?` onclick="reassignRoom('${esc(r.room)}')" style="cursor:pointer;background:${bg}${urg?';box-shadow:0 0 0 1.5px #f3b0a8':''}" title="Tap to move to another housekeeper"`:` style="background:${bg}"`;
+        return `<span class="tvroom"${move}>${urg?'🚨':''}${esc(r.room)}${mins}${(canMove&&r.status!=='done')?' ⇄':''}</span>`; }).join('');
       const stars = k==='_un' ? '' : `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px"><span style="font-size:11.5px;color:var(--muted)">Rating</span>${starsHTML(k, !!(ME&&ME.lead))}</div>`;
       return `<div class="tvrow"><div style="display:flex;justify-content:space-between;align-items:center">
           <span class="tvname">${esc(g.name)}</span>
@@ -386,31 +397,96 @@
 
   function showAdmin(){ if(!(ME&&ME.lead)) return; $('ad-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); showScreen('scr-admin'); renderAdmin(); }
   function setAdminTab(t){ adminTab=t; document.querySelectorAll('.adtab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t)); renderAdmin(); }
-  function renderAdmin(){ if(adminTab==='staff') renderAdminStaff(); else if(adminTab==='links') renderAdminLinks(); else renderAdminRooms(); }
+  function renderAdmin(){ if(adminTab==='staff') renderAdminStaff(); else if(adminTab==='links') renderAdminLinks(); else if(adminTab==='find') renderAdminFind(); else renderAdminRooms(); }
+
+  // ---- Find / room status lookup (any date) ----
+  function renderAdminFind(){
+    const todayStr=HH.todayISO();
+    $('adminWrap').innerHTML=
+      `<div class="sect" style="margin-top:2px">Find a room</div>
+       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+         <div style="flex:1;min-width:120px"><div class="sub" style="margin-bottom:3px">Room number</div>
+           <input id="find-room" inputmode="numeric" placeholder="e.g. 211" style="margin:0"></div>
+         <div style="flex:1;min-width:120px"><div class="sub" style="margin-bottom:3px">Date</div>
+           <input id="find-date" type="date" value="${todayStr}" style="margin:0"></div>
+         <button class="go" style="padding:13px 16px" onclick="findRoom()">Search</button>
+       </div>
+       <div id="findOut"><div class="sub">Type a room number and tap Search — see who's on it, its status, times and photos. Works for any date.</div></div>`;
+    const inp=$('find-room'); if(inp){ inp.onkeydown=e=>{ if(e.key==='Enter') findRoom(); }; inp.focus(); }
+  }
+  async function findRoom(){
+    const room=($('find-room')&&$('find-room').value||'').trim();
+    const date=($('find-date')&&$('find-date').value)||HH.todayISO();
+    const out=$('findOut'); if(!out) return;
+    if(!room){ out.innerHTML='<div class="empty">Enter a room number first.</div>'; return; }
+    out.innerHTML='<div class="empty">Searching…</div>';
+    const day=await HH.getDayRooms(date);
+    const r=day.find(x=>String(x.room)===String(room));
+    if(!r){ out.innerHTML='<div class="empty">Room '+esc(room)+' wasn\'t on the list for '+esc(date)+'.</div>'; return; }
+    let photos=[]; try{ photos=await HH.getRoomPhotos(date, room); }catch(e){}
+    const comp=photos.filter(p=>p.kind!=='cannotstart').length;
+    const tfmt=ms=>ms?new Date(ms).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+    const stCol=r.status==='done'?'var(--ok)':r.status==='in_progress'?'var(--amber)':r.status==='blocked'?'var(--red)':'var(--muted)';
+    const stTxt=r.status==='blocked'?("Can't start — "+(r.blockReason==='dnd'?'Do Not Disturb':'Guest refused')):((r.status||'pending').replace('_',' '));
+    const line=(ic,lab,val)=> val&&String(val).trim()?`<div style="font-size:13px;margin-top:5px">${ic} <b>${lab}:</b> ${esc(val)}</div>`:'';
+    const dur=r.durationSec?Math.round(r.durationSec/60)+' min':'';
+    out.innerHTML=`<div class="card" style="flex-direction:column;align-items:stretch;gap:8px;${(r.urgent&&r.status!=='done')?'border-color:#f3b0a8;box-shadow:0 0 0 2px #fdecea':''}">
+      <div style="display:flex;align-items:center;gap:10px"><div class="rmno">${esc(r.room)}</div><span class="pill ${DEFT[r.type]||'dep'}">${esc(r.type)}</span>${(r.urgent&&r.status!=='done')?'<span class="urg">🚨 URGENT</span>':''}
+        <span style="margin-left:auto;font-weight:800;color:${stCol};text-transform:capitalize">${esc(stTxt)}</span></div>
+      <div style="font-size:13px">👤 <b>Housekeeper:</b> ${r.housekeeperName?esc(r.housekeeperName):'<em style="color:var(--red)">Unallocated</em>'}</div>
+      ${r.startAt?`<div style="font-size:13px">▶ <b>Started:</b> ${tfmt(r.startAt)}</div>`:''}
+      ${r.finishAt?`<div style="font-size:13px">✓ <b>Finished:</b> ${tfmt(r.finishAt)}${dur?(' · '+dur):''}</div>`:''}
+      <div style="font-size:13px">📷 <b>Completion photos:</b> ${comp}/4</div>
+      ${r.blockReason==='dnd'?'<div style="font-size:13px">🚪 Door photo saved (Do Not Disturb)</div>':''}
+      ${line('📝','Note',r.notes)}
+      ${line('🔧','To maintenance',r.maintenance)}
+      ${line('♻','Items replaced',r.replaced)}
+      ${line('🎒','Lost property',r.lostProperty)}
+      ${(r.status!=='done' && date===today)?`<button class="go ghost" style="margin-top:6px" onclick="reassignRoom('${esc(r.room)}')">Reallocate ⇄</button>`:''}
+    </div>`;
+  }
 
   // ---- Rooms overview (all rooms today, by status; tap to reassign) ----
+  let adminRoomFilter='all';
+  function setRoomFilter(f){ adminRoomFilter=f; renderAdminRooms(); }
   function renderAdminRooms(){
     const done=rooms.filter(r=>r.status==='done'), prog=rooms.filter(r=>r.status==='in_progress');
     const pend=rooms.filter(r=>r.status==='pending'||r.status==='blocked');
+    const urgent=rooms.filter(r=>r.urgent && r.status!=='done');
+    const unalloc=rooms.filter(r=>!r.housekeeper && r.status!=='done');
     const pct=rooms.length?Math.round(done.length/rooms.length*100):0;
-    const tiles=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+    const tiles=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
       <div class="tvtile"><b style="color:var(--navy)">${rooms.length}</b><span>Rooms</span></div>
-      <div class="tvtile"><b style="color:var(--ok)">${done.length}</b><span>Done</span></div>
+      <div class="tvtile"><b style="color:var(--ok)">${done.length}</b><span>Ready</span></div>
       <div class="tvtile"><b style="color:var(--amber)">${prog.length}</b><span>In prog</span></div>
-      <div class="tvtile"><b style="color:var(--muted)">${pend.length}</b><span>To do</span></div>
+      <div class="tvtile"><b style="color:${urgent.length?'var(--red)':'var(--muted)'}">${urgent.length}</b><span>Urgent</span></div>
     </div>
-    <div class="tvrow"><div style="display:flex;justify-content:space-between;font-weight:700"><span>Overall progress</span><span>${pct}%</span></div>
+    <div class="tvrow" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-weight:700"><span>Overall progress</span><span>${pct}% · ${done.length}/${rooms.length}</span></div>
       <div class="tvbar"><div style="width:${pct}%;height:100%;background:var(--ok)"></div></div></div>`;
+    const f=adminRoomFilter;
+    const chip=(id,label,n,col)=>`<button class="qchip ${f===id?'on':''}" onclick="setRoomFilter('${id}')">${label} <b style="color:${f===id?'#fff':(col||'var(--navy)')}">${n}</b></button>`;
+    const chips=`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">
+      ${chip('all','All',rooms.length)}
+      ${chip('urgent','🚨 Urgent',urgent.length,'var(--red)')}
+      ${chip('waiting','Waiting',pend.length)}
+      ${chip('prog','In progress',prog.length,'var(--amber)')}
+      ${chip('ready','✓ Ready',done.length,'var(--ok)')}
+      ${chip('unalloc','Unallocated',unalloc.length,'var(--red)')}
+    </div>`;
+    let list = f==='urgent'?urgent : f==='waiting'?pend : f==='prog'?prog : f==='ready'?done : f==='unalloc'?unalloc : rooms.slice();
+    list = list.slice().sort((a,b)=>((b.urgent&&b.status!=='done')?1:0)-((a.urgent&&a.status!=='done')?1:0)||(a.area?1:0)-(b.area?1:0)||(+a.room||0)-(+b.room||0));
     const rowHtml=r=>{
-      const pc=DEFT[r.type]||'dep';
-      const st=r.status==='done'?'<span class="done">✓ Done</span>':r.status==='in_progress'?'<span style="color:var(--amber);font-weight:800;font-size:13px">● In progress</span>':r.status==='blocked'?'<span style="color:var(--red);font-weight:800;font-size:13px">⛔ '+(r.blockReason==='dnd'?'DND':'Refused')+'</span>':'<span style="color:var(--muted);font-weight:700;font-size:13px">Waiting</span>';
+      const pc=DEFT[r.type]||'dep'; const u=(r.urgent&&r.status!=='done');
+      const st=r.status==='done'?'<span class="done">✓ Ready</span>':r.status==='in_progress'?'<span style="color:var(--amber);font-weight:800;font-size:13px">● In progress</span>':r.status==='blocked'?'<span style="color:var(--red);font-weight:800;font-size:13px">⛔ '+(r.blockReason==='dnd'?'DND':'Refused')+'</span>':'<span style="color:var(--muted);font-weight:700;font-size:13px">Waiting</span>';
       const who=r.housekeeperName?esc(r.housekeeperName):'<em style="color:var(--red)">Unallocated</em>';
       const move=r.status!=='done'?`<button class="go ghost" style="padding:8px 12px" onclick="reassignRoom('${esc(r.room)}')">Move ⇄</button>`:'';
-      return `<div class="card"><div class="rmno">${esc(r.room)}</div><span class="pill ${pc}">${esc(r.type)}</span>
+      return `<div class="card${u?' urgent':''}"><div class="rmno">${esc(r.room)}</div><span class="pill ${pc}">${esc(r.type)}</span>${u?'<span class="urg">🚨</span>':''}
         <div class="grow"><div style="font-weight:700">${who}</div><div class="sub">${st}</div></div>${move}</div>`;
     };
-    const ordered=rooms.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0)||(+a.room||0)-(+b.room||0));
-    $('adminWrap').innerHTML = rooms.length ? (tiles+'<div class="sect">All rooms today</div>'+ordered.map(rowHtml).join('')) : '<div class="empty">No rooms set for today yet.</div>';
+    const label={all:'All rooms today',urgent:'Urgent rooms',waiting:'Waiting to start',prog:'In progress',ready:'Ready rooms',unalloc:'Unallocated'}[f]||'Rooms';
+    $('adminWrap').innerHTML = rooms.length
+      ? (tiles+chips+'<div class="sect">'+label+' ('+list.length+')</div>'+(list.length?list.map(rowHtml).join(''):'<div class="empty">None in this view.</div>'))
+      : '<div class="empty">No rooms set for today yet.</div>';
   }
 
   // ---- Staff management (tap a card to edit skills / rating / status) ----
@@ -528,16 +604,22 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <div style="font:800 18px inherit;color:var(--navy)">Move Room ${esc(r.room)}</div>
           <div onclick="closeSheet()" style="font-size:22px;color:var(--muted);cursor:pointer;line-height:1">×</div></div>
-        <div class="sub" style="margin-bottom:12px">${esc(r.type)} · give this room to…</div>
+        <div class="sub" style="margin-bottom:10px">${esc(r.type)} · give this room to…</div>
+        <label style="display:flex;align-items:center;gap:9px;background:#fdecea;border:1.5px solid #f3c0ba;border-radius:11px;padding:11px 13px;margin-bottom:12px;cursor:pointer">
+          <input type="checkbox" id="rs-urgent" ${r.urgent?'checked':''} style="width:20px;height:20px;margin:0;flex:0 0 auto">
+          <span style="font-weight:800;color:var(--red)">🚨 Mark as URGENT</span>
+          <span style="font-size:12px;color:var(--muted);margin-left:auto">jumps to top of their list</span>
+        </label>
         ${actives.map(btn).join('')}
         <button class="btn ghost" style="background:#fff;border:1.5px solid var(--line);color:var(--ink);margin-top:4px" onclick="doReassign('${esc(r.room)}','')">Unallocate (put back in the pool)</button>
       </div>`;
   }
   async function doReassign(room, hkId){
     const s=hkId?HH.staffById(hkId):null;
-    await HH.updateRoom(today, room, {housekeeper:hkId||'', housekeeperName:s?s.name:''});
+    const urgent = !!($('rs-urgent') && $('rs-urgent').checked);
+    await HH.updateRoom(today, room, {housekeeper:hkId||'', housekeeperName:s?s.name:'', urgent});
     closeSheet();
-    hhToast(s?('Room '+room+' → '+s.name.split(' ')[0]):('Room '+room+' unallocated'));
+    hhToast(s?((urgent?'🚨 URGENT · ':'')+'Room '+room+' → '+s.name.split(' ')[0]):('Room '+room+' unallocated'));
     renderTeam(); if($('scr-admin').classList.contains('on')) renderAdmin();
   }
 
@@ -596,15 +678,18 @@
     const note=r=> r.notes&&r.notes.trim() ? `<div class="rnote">📝 ${esc(r.notes)}</div>` : '';
     const plus=r=>`<button class="go" style="background:#eef1f5;color:var(--navy);padding:11px 13px" title="Add a note (cot, extra towels…)" onclick="event.stopPropagation();addNote('${r.room}')">＋</button>`;
     const blockedNote=r=> r.status==='blocked' ? `<div class="rnote" style="background:#fdecea;border-color:#f3c0ba;color:#b3261e">⛔ ${r.blockReason==='dnd'?'Do Not Disturb':'Guest refused'} · ${r.blockedAt?new Date(r.blockedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):''}${r.blockReason==='dnd'?' · door photo saved':''}</div>` : '';
+    const urgBadge=r=> (r.urgent && r.status!=='done') ? '<span class="urg">🚨 URGENT</span>' : '';
     const row=r=>{
-      const pc=DEFT[r.type]||'dep';
-      if(r.status==='in_progress') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${plus(r)}${note(r)}</div>`;
+      const pc=DEFT[r.type]||'dep'; const u=(r.urgent && r.status!=='done')?' urgent':'';
+      if(r.status==='in_progress') return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${plus(r)}${note(r)}</div>`;
       if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min · 📷4</div></div>${plus(r)}${note(r)}</div>`;
-      return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"></div>
+      return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"></div>
         <button class="go" onclick="startRoom('${r.room}')">Start</button>
         <button class="go" style="background:var(--red)" title="Can't clean this room right now" onclick="cannotStart('${r.room}')">Can't start</button>
         ${plus(r)}${blockedNote(r)}${note(r)}</div>`;
     };
+    const urgentFirst=(a,b)=>((b.urgent?1:0)-(a.urgent?1:0))||((+a.room||0)-(+b.room||0));
+    pending.sort(urgentFirst); inprog.sort(urgentFirst);
     const myAvg=doneMine.length?Math.round(doneMine.reduce((a,r)=>a+(r.durationSec||0)/60,0)/doneMine.length):0;
     const left=pending.length+inprog.length;
     const rated=starsFor(ME.id);
