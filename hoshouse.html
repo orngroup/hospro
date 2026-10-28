@@ -65,7 +65,7 @@
   .tvtile span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
   /* admin */
   .adtabs{display:flex;gap:0;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:4}
-  .adtab{flex:1;padding:12px 6px;border:none;background:none;font:800 13px inherit;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent}
+  .adtab{flex:1;padding:11px 2px;border:none;background:none;font:800 12px inherit;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
   .adtab.on{color:var(--navy);border-bottom-color:var(--gold)}
   .stcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:10px;cursor:pointer}
   .stcard:active{background:#f7f9fb}
@@ -84,6 +84,41 @@
   .lktbl td{padding:9px 10px;border-top:1px solid var(--line);vertical-align:top}
   .lktbl .lk{color:#1f5fb0;word-break:break-all;font-size:12px}
   .lktbl .pin{font-weight:800;letter-spacing:2px}
+  /* Housekeeping Overview dashboard */
+  .ovhero{background:linear-gradient(135deg,#1F3864,#2a4a80);color:#fff;border-radius:18px;padding:18px 18px 16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(31,56,100,.25)}
+  .ovhero .big{font:800 42px inherit;line-height:1;margin-top:10px}
+  .ovhero .hbar{height:9px;border-radius:5px;background:rgba(255,255,255,.22);overflow:hidden;margin-top:12px}
+  .ovstats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+  .ovstat{border-radius:14px;padding:14px;border:1px solid var(--line);background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .ovstat b{display:block;font:800 26px inherit;line-height:1}
+  .ovstat span{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800;margin-top:3px;display:block}
+  .ql{display:flex;align-items:center;gap:13px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .ql:active{background:#f7f9fb}
+  .ql .ic{font-size:22px;width:30px;text-align:center}
+  .ql .tt{font:800 15px inherit;color:var(--navy)}
+  .ql .ds{font-size:12.5px;color:var(--muted);margin-top:1px}
+  .ql .ar{margin-left:auto;color:var(--gold);font-weight:800;font-size:18px}
+  .perf{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--line)}
+  .perf:first-of-type{border-top:none}
+  .perf .rk{font:800 16px inherit;width:24px;text-align:center}
+  .perf .pn{font:800 14px inherit;color:var(--navy)}
+  .perf .pm{font-size:12px;color:var(--muted)}
+  /* room board */
+  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px}
+  .bd{border-radius:11px;padding:9px 6px;text-align:center;cursor:pointer;border:1.5px solid transparent;line-height:1.2}
+  .bd .rn{font:800 17px inherit}
+  .bd .ty{font-size:9.5px;font-weight:800;opacity:.85;text-transform:uppercase;letter-spacing:.3px}
+  .bd .wh{font-size:9.5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
+  .bd.done{background:#ecf6f0;color:#2a6a4a} .bd.prog{background:#fff3df;color:#9c5a00}
+  .bd.todo{background:#eef1f5;color:#56606c} .bd.blocked{background:#fdecea;color:#b3261e}
+  .bd.urgent{box-shadow:0 0 0 2px #e0564a inset}
+  .vtog{display:inline-flex;border:1.5px solid var(--line);border-radius:9px;overflow:hidden}
+  .vtog button{border:none;background:#fff;padding:7px 13px;font:800 12px inherit;color:var(--muted);cursor:pointer}
+  .vtog button.on{background:var(--navy);color:#fff}
+  .pbar{height:8px;border-radius:5px;background:#eef1f5;overflow:hidden;margin-top:5px;flex:1}
+  .segtog{display:flex;gap:6px;margin-bottom:12px}
+  .segtog button{flex:1;padding:9px;border:1.5px solid var(--line);background:#fff;border-radius:10px;font:800 12.5px inherit;color:var(--ink);cursor:pointer}
+  .segtog button.on{background:var(--navy);border-color:var(--navy);color:#fff}
 </style>
 </head>
 <body>
@@ -112,41 +147,26 @@
   <div class="wrap" id="listWrap"></div>
 </div>
 
-<!-- TEAM VIEW (leads only) -->
+<!-- HOUSEKEEPING OVERVIEW (leads only) -->
 <div class="screen" id="scr-team">
-  <header><div><div class="t">👁 Manager view</div><div class="u" id="tm-date"></div></div>
+  <header><div><div class="t">🏨 Housekeeping Overview</div><div class="u" id="tm-date"></div></div>
     <div style="display:flex;gap:14px;align-items:center">
       <div class="u" onclick="showAdmin()" style="cursor:pointer">⚙ Manage</div>
       <div class="u" onclick="showScreen('scr-list');renderList()" style="cursor:pointer">← My rooms</div>
     </div></header>
   <div class="wrap">
-    <div id="lead-tools" style="display:none;background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 13px;margin-bottom:12px">
-      <div style="font-weight:800;color:#1F3864;margin-bottom:9px">🛠 Manager tools</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-        <input id="lead-add" inputmode="numeric" placeholder="Room numbers e.g. 101 102" style="flex:1;min-width:150px;padding:10px;border:1px solid #d7dde4;border-radius:9px;font-size:15px">
-        <select id="lead-type" style="padding:10px;border:1px solid #d7dde4;border-radius:9px;font-size:15px"><option>Departure</option><option>Stayover</option><option>Arrival-ready</option></select>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button onclick="leadAddRooms(false)" style="flex:1;min-width:120px;padding:10px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:9px;font-weight:700;font-size:13px">+ Add</button>
-        <button onclick="leadAddRooms(true)" style="flex:1;min-width:150px;padding:10px;border:none;background:#2E6B5E;color:#fff;border-radius:9px;font-weight:700;font-size:13px">+ Add &amp; give to lightest</button>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
-        <button onclick="leadAllocateAll()" style="flex:1;min-width:140px;padding:10px;border:none;background:#1F3864;color:#fff;border-radius:9px;font-weight:800;font-size:13px">⚖️ Allocate all</button>
-        <button onclick="leadAddAreas()" style="flex:1;min-width:120px;padding:10px;border:1px solid #d7dde4;background:#fff;color:#1a2b3a;border-radius:9px;font-weight:700;font-size:13px">🧼 Public areas</button>
-      </div>
-      <div id="lead-msg" style="font-size:12.5px;color:#2a6a4a;font-weight:700;margin-top:7px;min-height:16px"></div>
-    </div>
     <div id="teamWrap"></div>
   </div>
 </div>
 
-<!-- ADMIN DASHBOARD (leads only) -->
+<!-- MANAGE (leads only) -->
 <div class="screen" id="scr-admin">
-  <header><div><div class="t">⚙ Management</div><div class="u" id="ad-date"></div></div>
-    <div class="u" onclick="showTeam()" style="cursor:pointer">← Team</div></header>
+  <header><div><div class="t">⚙ Manage</div><div class="u" id="ad-date"></div></div>
+    <div class="u" onclick="showTeam()" style="cursor:pointer">← Overview</div></header>
   <div class="adtabs">
     <button class="adtab on" data-tab="rooms" onclick="setAdminTab('rooms')">🛏 Rooms</button>
     <button class="adtab" data-tab="find" onclick="setAdminTab('find')">🔎 Find</button>
+    <button class="adtab" data-tab="perf" onclick="setAdminTab('perf')">🏆 Top</button>
     <button class="adtab" data-tab="staff" onclick="setAdminTab('staff')">👥 Staff</button>
     <button class="adtab" data-tab="links" onclick="setAdminTab('links')">🔗 Links</button>
   </div>
@@ -178,6 +198,9 @@
 <script>
   const $=id=>document.getElementById(id);
   const DEFT={Departure:'dep',Stayover:'stay','Arrival-ready':'arr'}, LET={Departure:'Departure',Stayover:'Stayover','Arrival-ready':'Arrival-ready'};
+  // room category + floor label (from the Guestline inventory), e.g. "Classic Twin · Ground floor"
+  function roomMeta(r){ const inf=(HH.roomInfo?HH.roomInfo(r.room):{}); const cat=HH.catLabel(r.cat||inf.cat||''); const fl=(HH.floorLabel?HH.floorLabel(r.floor||inf.floor||''):''); return [cat, fl?(fl+' floor'):''].filter(Boolean).join(' · '); }
+  function roomFloor(r){ const inf=(HH.roomInfo?HH.roomInfo(r.room):{}); return HH.floorLabel?HH.floorLabel(r.floor||inf.floor||''):''; }
   let ME=null, rooms=[], unwatch=null, active=null, tmr=null, pinBuf='', prevSnap=null, STARS={}, starUnwatch=null;
   const today=HH.todayISO();
   const PHOTO_SLOTS=[{k:'bath',label:'Bathtub interior'},{k:'mirror',label:'Mirror'},{k:'wc',label:'WC / toilet'},{k:'bed',label:'Bedroom incl. bed'}];
@@ -288,7 +311,25 @@
     if(ME.lead){ showTeam(); } else { showScreen('scr-list'); }
   }
   // ---- team view (leads: Laith / Ruth) ----
-  function showTeam(){ $('tm-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); const lt=$('lead-tools'); if(lt) lt.style.display = (ME&&ME.lead)?'block':'none'; showScreen('scr-team'); renderTeam(); }
+  function showTeam(){ $('tm-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); showScreen('scr-team'); renderTeam(); }
+  // ---- Floor plans (for planning room distribution by area) ----
+  function showPlan(){
+    const pf=window._planFloor||'ground';
+    const img='assets/hoshouse/'+(pf==='ground'?'floor-ground.jpg':'floor-first.jpg');
+    const o=$('hhOverlay'); o.style.display='block';
+    o.innerHTML=`<div class="shback" onclick="closeSheet()"></div>
+      <div class="shsheet" style="max-height:94vh">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font:800 18px inherit;color:var(--navy)">🗺 Floor plan</div>
+          <div onclick="closeSheet()" style="font-size:22px;color:var(--muted);cursor:pointer;line-height:1">×</div></div>
+        <div class="segtog" style="margin-bottom:10px">
+          <button class="${pf==='ground'?'on':''}" onclick="setPlanFloor('ground')">Ground floor</button>
+          <button class="${pf==='first'?'on':''}" onclick="setPlanFloor('first')">First floor</button></div>
+        <a href="${img}" target="_blank" rel="noopener"><img src="${img}" alt="Floor plan" style="width:100%;border:1px solid var(--line);border-radius:10px;background:#fff" onerror="this.insertAdjacentHTML('afterend','<div class=empty>Upload the floor-plan images to assets/hoshouse/ to see them here.</div>');this.style.display='none'"></a>
+        <div class="sub" style="margin-top:6px">Tap the plan to open it full-size. Use it to allocate rooms that are near each other.</div>
+      </div>`;
+  }
+  function setPlanFloor(f){ window._planFloor=f; showPlan(); }
   // ---- manager tools (leads: add rooms ad-hoc, allocate) ----
   function leadMsg(t){ const e=$('lead-msg'); if(!e)return; e.textContent=t; clearTimeout(window._leadMsgT); window._leadMsgT=setTimeout(()=>{ if($('lead-msg')) $('lead-msg').textContent=''; },4500); }
   // Active workers for allocation, enriched with skills / rating / capacity.
@@ -329,7 +370,7 @@
     const newOnes=nums.filter(nn=>!existing.has(String(nn)));
     if(distribute && newOnes.length){ const n=await leadDistribute(newOnes.map(String), type); leadMsg('✓ Added '+newOnes.length+' · shared '+n+' by skill to the lightest-loaded.'); }
     else { leadMsg('✓ Added '+newOnes.length+' room'+(newOnes.length===1?'':'s')+'.'); }
-    $('lead-add').value=''; renderTeam();
+    $('lead-add').value=''; if($('scr-admin').classList.contains('on')) renderAdmin(); else renderTeam();
   }
   async function leadAllocateAll(){
     if(!(ME&&ME.lead)) return;
@@ -338,53 +379,77 @@
     const todo=day.filter(r=>r.status!=='done' && r.status!=='in_progress');
     if(!todo.length){ leadMsg('Nothing waiting to allocate.'); return; }
     const ordered=todo.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0)||(+a.room||0)-(+b.room||0));
-    const plan=HH.distribute(ordered.map(r=>({room:r.room, type:r.type})), pool);
+    const plan=HH.distribute(ordered.map(r=>({room:r.room, type:r.type, floor:r.floor||HH.floorOf(r.room)})), pool);
     let n=0;
     for(const w of plan){ for(const it of w.items){ await HH.updateRoom(today, it.room, {housekeeper:w.hkId, housekeeperName:w.name}); n++; } }
-    leadMsg('✓ Allocated '+n+' room'+(n===1?'':'s')+' across '+pool.length+' staff — by skill & rating.'); renderTeam();
+    leadMsg('✓ Allocated '+n+' room'+(n===1?'':'s')+' across '+pool.length+' staff — by skill & rating.'); if($('scr-admin').classList.contains('on')) renderAdmin(); else renderTeam();
   }
   async function leadAddAreas(){
     if(!(ME&&ME.lead)) return;
-    const n=await HH.addPublicAreas(today); leadMsg(n?('✓ Added '+n+' public-area task'+(n>1?'s':'')):'Public areas already on the list.'); renderTeam();
+    const n=await HH.addPublicAreas(today); leadMsg(n?('✓ Added '+n+' public-area task'+(n>1?'s':'')):'Public areas already on the list.'); if($('scr-admin').classList.contains('on')) renderAdmin(); else renderTeam();
   }
+  // ---- Housekeeping Overview — the lead's landing dashboard ----
   function renderTeam(){
     const esc=s=>String(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-    const done=rooms.filter(r=>r.status==='done'), prog=rooms.filter(r=>r.status==='in_progress'), pend=rooms.filter(r=>r.status==='pending');
+    const today2=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+    const done=rooms.filter(r=>r.status==='done'), prog=rooms.filter(r=>r.status==='in_progress');
+    const pend=rooms.filter(r=>r.status==='pending'||r.status==='blocked');
+    const urgent=rooms.filter(r=>r.urgent && r.status!=='done');
     const pct=rooms.length?Math.round(done.length/rooms.length*100):0;
-    const over=r=> (r.status==='in_progress'&&r.startAt&&(Date.now()-r.startAt)/1000>(HH.targetMin(r.type)*60)) || (r.status==='done'&&(r.durationSec||0)>HH.targetMin(r.type)*60);
-    const overs=rooms.filter(over).length;
     const avg=done.length?Math.round(done.reduce((a,r)=>a+(r.durationSec||0)/60,0)/done.length):0;
-    // group by housekeeper
-    const by={}; rooms.forEach(r=>{ const k=r.housekeeper||'_un'; (by[k]=by[k]||{name:r.housekeeperName||(k==='_un'?'Unallocated':k),rooms:[]}).rooms.push(r); });
-    const order=Object.keys(by).sort((a,b)=> a==='_un'?1:b==='_un'?-1:0);
-    const tiles=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-      <div class="tvtile"><b style="color:var(--navy)">${rooms.length}</b><span>Rooms</span></div>
-      <div class="tvtile"><b style="color:var(--ok)">${done.length}</b><span>Done</span></div>
-      <div class="tvtile"><b style="color:var(--amber)">${prog.length}</b><span>In prog</span></div>
-      <div class="tvtile"><b style="color:${overs?'var(--red)':'var(--navy)'}">${overs}</b><span>Over time</span></div>
-    </div>
-    <div class="tvrow"><div style="display:flex;justify-content:space-between;font-weight:700"><span>Overall progress</span><span>${pct}% · avg ${avg||'–'} min</span></div>
-      <div class="tvbar"><div style="width:${pct}%;height:100%;background:var(--ok)"></div></div></div>`;
-    const rows=order.map(k=>{ const g=by[k];
-      const d=g.rooms.filter(r=>r.status==='done').length, ip=g.rooms.filter(r=>r.status==='in_progress').length, pd=g.rooms.filter(r=>r.status==='pending').length;
-      const dmins=g.rooms.filter(r=>r.status==='done'); const gAvg=dmins.length?Math.round(dmins.reduce((a,r)=>a+(r.durationSec||0)/60,0)/dmins.length):0;
-      const gp=g.rooms.length?Math.round(d/g.rooms.length*100):0;
-      const canMove=!!(ME&&ME.lead);
-      const chips=g.rooms.sort((a,b)=>(+a.room||0)-(+b.room||0)).map(r=>{
-        const col=r.status==='done'?'#ecf6f0;color:#2a6a4a':r.status==='in_progress'?'#fff3df;color:#9c5a00':'#eef1f5;color:#6b7280';
-        const mins=r.status==='done'?' '+Math.round((r.durationSec||0)/60)+'m':(r.status==='in_progress'&&r.startAt?' '+Math.round((Date.now()-r.startAt)/60000)+'m':'');
-        const urg=(r.urgent&&r.status!=='done');
-        const bg=urg?'#fdecea;color:#b3261e':col;
-        const move=(canMove && r.status!=='done')?` onclick="reassignRoom('${esc(r.room)}')" style="cursor:pointer;background:${bg}${urg?';box-shadow:0 0 0 1.5px #f3b0a8':''}" title="Tap to move to another housekeeper"`:` style="background:${bg}"`;
-        return `<span class="tvroom"${move}>${urg?'🚨':''}${esc(r.room)}${mins}${(canMove&&r.status!=='done')?' ⇄':''}</span>`; }).join('');
-      const stars = k==='_un' ? '' : `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px"><span style="font-size:11.5px;color:var(--muted)">Rating</span>${starsHTML(k, !!(ME&&ME.lead))}</div>`;
-      return `<div class="tvrow"><div style="display:flex;justify-content:space-between;align-items:center">
-          <span class="tvname">${esc(g.name)}</span>
-          <span style="font-size:12px;color:var(--muted)">${d} done · ${ip} now · ${pd} to go${gAvg?' · '+gAvg+'m avg':''}</span></div>
-        <div class="tvbar"><div style="width:${gp}%;height:100%;background:${k==='_un'?'#9aa7b5':'var(--ok)'}"></div></div>
-        <div style="margin-top:2px">${chips||'<span style="font-size:12px;color:var(--muted)">No rooms</span>'}</div>${stars}</div>`;
-    }).join('');
-    $('teamWrap').innerHTML = rooms.length ? (tiles+rows) : '<div class="empty">No rooms set yet today. Add them with the Manager tools above (or reception sends them over), then Allocate.</div>';
+    // per-housekeeper stats for top performers
+    const by={}; rooms.forEach(r=>{ if(!r.housekeeper) return; const k=r.housekeeper;
+      (by[k]=by[k]||{name:r.housekeeperName||k, done:0, mins:0, total:0}); by[k].total++;
+      if(r.status==='done'){ by[k].done++; by[k].mins+=(r.durationSec||0)/60; } });
+    const performers=Object.values(by).filter(p=>p.done>0).sort((a,b)=> b.done-a.done || (a.mins/a.done)-(b.mins/b.done)).slice(0,3);
+    const medal=['🥇','🥈','🥉'];
+
+    const C=2*Math.PI*34, off=C*(1-pct/100);
+    const donut=`<svg width="96" height="96" viewBox="0 0 96 96" style="flex:0 0 auto">
+      <circle cx="48" cy="48" r="34" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="11"/>
+      <circle cx="48" cy="48" r="34" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 48 48)"/>
+      <text x="48" y="48" text-anchor="middle" dominant-baseline="central" font-size="21" font-weight="800" fill="#fff">${pct}%</text></svg>`;
+    const hero=`<div class="ovhero" style="display:flex;align-items:center;gap:16px">
+      ${donut}
+      <div style="flex:1;min-width:0">
+        <div style="font:800 15px inherit;opacity:.95">Today · ${today2}</div>
+        <div style="font-size:13.5px;opacity:.92;margin-top:4px">${done.length} of ${rooms.length} room${rooms.length===1?'':'s'} done${avg?` · avg ${avg} min/room`:''}</div>
+        <div style="font-size:12.5px;opacity:.82;margin-top:4px">${prog.length} in progress · ${pend.length} to do${urgent.length?` · <b style="color:#ffd9d4">${urgent.length} urgent</b>`:''}</div>
+      </div>
+    </div>`;
+    const stats=`<div class="ovstats">
+      <div class="ovstat"><b style="color:var(--ok)">${done.length}</b><span>Ready</span></div>
+      <div class="ovstat"><b style="color:var(--amber)">${prog.length}</b><span>In progress</span></div>
+      <div class="ovstat"><b style="color:var(--muted)">${pend.length}</b><span>To do</span></div>
+      <div class="ovstat" ${urgent.length?'onclick="showAdmin();setTimeout(()=>setRoomFilter(\'urgent\'),60)" style="cursor:pointer"':''}><b style="color:${urgent.length?'var(--red)':'var(--muted)'}">${urgent.length}</b><span>Urgent${urgent.length?' →':''}</span></div>
+    </div>`;
+    // rooms by type + by floor (from the Guestline inventory)
+    const tc={}; const fc={};
+    rooms.forEach(r=>{ const inf=HH.roomInfo?HH.roomInfo(r.room):{}; const lbl=HH.catLabel(r.cat||inf.cat)||'Other'; tc[lbl]=(tc[lbl]||0)+1;
+      const fl=(HH.floorLabel?HH.floorLabel(r.floor||inf.floor):'')||'—'; fc[fl]=(fc[fl]||0)+1; });
+    const floorLine=Object.keys(fc).length?Object.entries(fc).sort().map(([f,n])=>`${f}: <b>${n}</b>`).join(' &nbsp;·&nbsp; '):'';
+    const typeRows=Object.entries(tc).sort((a,b)=>b[1]-a[1]).map(([lbl,n])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line);font-size:13px"><span>${esc(lbl)}</span><b>${n}</b></div>`).join('');
+    const byType = rooms.length?`<div class="card" style="flex-direction:column;align-items:stretch;gap:0;padding:14px 16px;margin-bottom:14px">
+      <div class="sect" style="margin:0 0 6px">🛏 Rooms by type today</div>
+      ${floorLine?`<div style="font-size:12.5px;color:var(--muted);margin-bottom:2px">By floor — ${floorLine}</div>`:''}
+      ${typeRows}</div>`:'';
+    const perf = performers.length ? `<div class="card" style="flex-direction:column;align-items:stretch;gap:0;padding:14px 16px">
+      <div class="sect" style="margin:0 0 6px">⭐ Top performers today</div>
+      ${performers.map((p,i)=>`<div class="perf"><span class="rk">${medal[i]}</span>
+        <div style="flex:1"><div class="pn">${esc(p.name)}</div><div class="pm">${p.done} room${p.done===1?'':'s'} · ${Math.round(p.mins/p.done)}m avg</div></div></div>`).join('')}
+    </div>` : '';
+    const links=`
+      <div class="ql" onclick="showAdmin()"><span class="ic">🛏</span><div><div class="tt">Manage rooms & staff</div><div class="ds">Add rooms, allocate, reassign, edit staff</div></div><span class="ar">›</span></div>
+      <div class="ql" onclick="showAdmin();setTimeout(()=>setAdminTab('find'),60)"><span class="ic">🔎</span><div><div class="tt">Find a room</div><div class="ds">Status, who, times & photos — any date</div></div><span class="ar">›</span></div>
+      <div class="ql" onclick="showAdmin();setTimeout(()=>setAdminTab('links'),60)"><span class="ic">🔗</span><div><div class="tt">Staff links & codes</div><div class="ds">Print or share sign-in links & PINs</div></div><span class="ar">›</span></div>
+      <div class="ql" onclick="showPlan()"><span class="ic">🗺</span><div><div class="tt">Floor plans</div><div class="ds">Ground & First layouts — plan rooms near each other</div></div><span class="ar">›</span></div>`;
+
+    if(!rooms.length){
+      $('teamWrap').innerHTML = hero + stats + links +
+        '<div class="empty" style="margin-top:6px">No rooms set yet today. Tap <b>Manage rooms & staff</b> to add them and allocate.</div>';
+      return;
+    }
+    $('teamWrap').innerHTML = hero + stats + byType + perf + '<div class="sect">Quick actions</div>' + links;
   }
   // ============================================================
   //  ADMIN / MANAGEMENT DASHBOARD  (leads: Laith, Ruth, Ajay)
@@ -397,7 +462,7 @@
 
   function showAdmin(){ if(!(ME&&ME.lead)) return; $('ad-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); showScreen('scr-admin'); renderAdmin(); }
   function setAdminTab(t){ adminTab=t; document.querySelectorAll('.adtab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t)); renderAdmin(); }
-  function renderAdmin(){ if(adminTab==='staff') renderAdminStaff(); else if(adminTab==='links') renderAdminLinks(); else if(adminTab==='find') renderAdminFind(); else renderAdminRooms(); }
+  function renderAdmin(){ if(adminTab==='staff') renderAdminStaff(); else if(adminTab==='links') renderAdminLinks(); else if(adminTab==='find') renderAdminFind(); else if(adminTab==='perf') renderAdminPerf(); else renderAdminRooms(); }
 
   // ---- Find / room status lookup (any date) ----
   function renderAdminFind(){
@@ -458,8 +523,9 @@
   }
 
   // ---- Rooms overview (all rooms today, by status; tap to reassign) ----
-  let adminRoomFilter='all';
+  let adminRoomFilter='all', adminRoomView='list';
   function setRoomFilter(f){ adminRoomFilter=f; renderAdminRooms(); }
+  function setRoomView(v){ adminRoomView=v; renderAdminRooms(); }
   function renderAdminRooms(){
     const done=rooms.filter(r=>r.status==='done'), prog=rooms.filter(r=>r.status==='in_progress');
     const pend=rooms.filter(r=>r.status==='pending'||r.status==='blocked');
@@ -492,12 +558,74 @@
       const who=r.housekeeperName?esc(r.housekeeperName):'<em style="color:var(--red)">Unallocated</em>';
       const move=r.status!=='done'?`<button class="go ghost" style="padding:8px 12px" onclick="reassignRoom('${esc(r.room)}')">Move ⇄</button>`:'';
       return `<div class="card${u?' urgent':''}"><div class="rmno">${esc(r.room)}</div><span class="pill ${pc}">${esc(r.type)}</span>${u?'<span class="urg">🚨</span>':''}
-        <div class="grow"><div style="font-weight:700">${who}</div><div class="sub">${st}</div></div>${move}</div>`;
+        <div class="grow"><div style="font-weight:700">${who}</div><div class="sub">${roomMeta(r)} · ${st}</div></div>${move}</div>`;
     };
     const label={all:'All rooms today',urgent:'Urgent rooms',waiting:'Waiting to start',prog:'In progress',ready:'Ready rooms',unalloc:'Unallocated'}[f]||'Rooms';
-    $('adminWrap').innerHTML = rooms.length
-      ? (tiles+chips+'<div class="sect">'+label+' ('+list.length+')</div>'+(list.length?list.map(rowHtml).join(''):'<div class="empty">None in this view.</div>'))
-      : '<div class="empty">No rooms set for today yet.</div>';
+    const bdCard=r=>{ const cls=r.status==='done'?'done':r.status==='in_progress'?'prog':r.status==='blocked'?'blocked':'todo';
+      const u=(r.urgent&&r.status!=='done')?' urgent':'';
+      const who=r.housekeeperName?esc(r.housekeeperName.split(' ')[0]):'—';
+      const fl=roomFloor(r);
+      return `<div class="bd ${cls}${u}" onclick="${r.status!=='done'?`reassignRoom('${esc(r.room)}')`:`findShow('${esc(r.room)}')`}">
+        <div class="rn">${(r.urgent&&r.status!=='done')?'🚨':''}${esc(r.room)}</div>
+        <div class="ty">${esc((SKILL_ABBR[r.type]||r.type||'').slice(0,4))}${fl?' · '+esc(fl[0]):''}</div>
+        <div class="wh">${who}</div></div>`; };
+    const vtog=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><div class="vtog">
+      <button class="${adminRoomView==='list'?'on':''}" onclick="setRoomView('list')">☰ List</button>
+      <button class="${adminRoomView==='board'?'on':''}" onclick="setRoomView('board')">▦ Board</button></div></div>`;
+    const bodyHtml = adminRoomView==='board'
+      ? (list.length?`<div class="board">${list.map(bdCard).join('')}</div>`:'<div class="empty">None in this view.</div>')
+      : (list.length?list.map(rowHtml).join(''):'<div class="empty">None in this view.</div>');
+    const tools=`<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:12px">
+      <div style="font-weight:800;color:var(--navy);margin-bottom:9px">🛠 Add &amp; allocate rooms</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+        <input id="lead-add" inputmode="numeric" placeholder="Room numbers e.g. 101 102" style="flex:1;min-width:150px;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:15px;margin:0">
+        <select id="lead-type" style="padding:10px;border:1px solid var(--line);border-radius:9px;font-size:15px;margin:0;width:auto"><option>Departure</option><option>Stayover</option><option>Arrival-ready</option></select>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button onclick="leadAddRooms(false)" style="flex:1;min-width:110px;padding:10px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:9px;font-weight:700;font-size:13px">+ Add</button>
+        <button onclick="leadAddRooms(true)" style="flex:1;min-width:150px;padding:10px;border:none;background:#2E6B5E;color:#fff;border-radius:9px;font-weight:700;font-size:13px">+ Add &amp; give to lightest</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        <button onclick="leadAllocateAll()" style="flex:1;min-width:140px;padding:10px;border:none;background:var(--navy);color:#fff;border-radius:9px;font-weight:800;font-size:13px">⚖️ Allocate all</button>
+        <button onclick="leadAddAreas()" style="flex:1;min-width:120px;padding:10px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;font-weight:700;font-size:13px">🧼 Public areas</button>
+      </div>
+      <div id="lead-msg" style="font-size:12.5px;color:#2a6a4a;font-weight:700;margin-top:7px;min-height:16px"></div>
+    </div>`;
+    $('adminWrap').innerHTML = tools + (rooms.length
+      ? (tiles+chips+vtog+'<div class="sect">'+label+' ('+list.length+')</div>'+bodyHtml)
+      : '<div class="empty">No rooms yet — add them above, then Allocate.</div>');
+  }
+  // open Find for a specific room (used by the board for done rooms)
+  function findShow(room){ setAdminTab('find'); setTimeout(()=>{ const i=$('find-room'); if(i){ i.value=room; } findRoom(); }, 60); }
+
+  // ---- Top performers (today / this week / all time) ----
+  let perfPeriod='today';
+  function setPerfPeriod(p){ perfPeriod=p; renderAdminPerf(); }
+  async function renderAdminPerf(){
+    const box=$('adminWrap'); if(!box) return;
+    const tog=`<div class="segtog">
+      <button class="${perfPeriod==='today'?'on':''}" onclick="setPerfPeriod('today')">Today</button>
+      <button class="${perfPeriod==='week'?'on':''}" onclick="setPerfPeriod('week')">This week</button>
+      <button class="${perfPeriod==='all'?'on':''}" onclick="setPerfPeriod('all')">All time</button></div>`;
+    box.innerHTML = tog + '<div class="empty">Loading…</div>';
+    let data;
+    if(perfPeriod==='today'){ data=rooms; }
+    else if(perfPeriod==='week'){ const d=new Date(); d.setDate(d.getDate()-6); data=await HH.getRoomsRange(d.toLocaleDateString('en-CA'), today); }
+    else { data=await HH.getRoomsRange(null,null); }
+    if(adminTab!=='perf') return;   // user switched tab while loading
+    const by={}; data.forEach(r=>{ if(r.status!=='done'||!r.housekeeper) return; const k=r.housekeeper;
+      (by[k]=by[k]||{name:r.housekeeperName||k, done:0, mins:0}); by[k].done++; by[k].mins+=(r.durationSec||0)/60; });
+    const list=Object.values(by).sort((a,b)=> b.done-a.done || (a.mins/a.done)-(b.mins/b.done));
+    const maxDone=list.length?list[0].done:1; const medal=['🥇','🥈','🥉'];
+    const rows=list.map((p,i)=>{ const avg=p.done?Math.round(p.mins/p.done):0; const w=Math.round(p.done/maxDone*100);
+      return `<div class="card" style="align-items:center;gap:11px">
+        <span style="font:800 16px inherit;width:26px;text-align:center;color:${i<3?'var(--gold)':'var(--muted)'}">${i<3?medal[i]:(i+1)}</span>
+        <div style="flex:1;min-width:0"><div style="font:800 14px inherit;color:var(--navy)">${esc(p.name)}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="pbar"><div style="width:${w}%;height:100%;background:var(--ok)"></div></div><span style="font-size:11.5px;color:var(--muted);white-space:nowrap">${p.done} rm · ${avg}m</span></div></div></div>`; }).join('');
+    const totDone=list.reduce((a,p)=>a+p.done,0);
+    const periodLbl=perfPeriod==='today'?'today':perfPeriod==='week'?'this week':'all time';
+    const head=`<div class="sub" style="margin-bottom:10px">Ranked by rooms completed, then average time. <b>${totDone}</b> room${totDone===1?'':'s'} cleaned ${periodLbl}.</div>`;
+    box.innerHTML = tog + head + (list.length?rows:'<div class="empty">No completed rooms '+periodLbl+' yet.</div>');
   }
 
   // ---- Staff management (tap a card to edit skills / rating / status) ----
@@ -692,9 +820,9 @@
     const urgBadge=r=> (r.urgent && r.status!=='done') ? '<span class="urg">🚨 URGENT</span>' : '';
     const row=r=>{
       const pc=DEFT[r.type]||'dep'; const u=(r.urgent && r.status!=='done')?' urgent':'';
-      if(r.status==='in_progress') return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${plus(r)}${note(r)}</div>`;
-      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min · 📷4</div></div>${plus(r)}${note(r)}</div>`;
-      return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"></div>
+      if(r.status==='in_progress') return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${plus(r)}${note(r)}</div>`;
+      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min · 📷4</div></div>${plus(r)}${note(r)}</div>`;
+      return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div></div>
         <button class="go" onclick="startRoom('${r.room}')">Start</button>
         <button class="go" style="background:var(--red)" title="Can't clean this room right now" onclick="cannotStart('${r.room}')">Can't start</button>
         ${plus(r)}${blockedNote(r)}${note(r)}</div>`;
@@ -793,7 +921,7 @@
   }
   function openRoom(room){
     active=rooms.find(r=>r.room===room) || {room, type:'Departure', checklist:{}};
-    $('rm-title').textContent='Room '+room; $('rm-type').textContent=active.type||'';
+    $('rm-title').textContent='Room '+room; $('rm-type').textContent=(active.type||'')+(roomMeta(active)?(' · '+roomMeta(active)):'');
     renderActive(); showScreen('scr-room');
     if(tmr) clearInterval(tmr); tmr=setInterval(tickTimer,1000); tickTimer();
   }

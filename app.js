@@ -9631,16 +9631,41 @@ function hhAllocatePlan(dateISO){
    items = array of {room, type} (bare room numbers are treated as Departure).
    A room only goes to someone whose skills include that clean type; among
    eligible people we fill the lightest-loaded first, higher-rated breaking ties. */
+/* Real room inventory (Guestline, 28 Oct 2026): room -> [category code, floor]. Floor G=Ground, 1=First. */
+const HH_ROOM_META = {
+  1:["CLA_TWN","G"],2:["CLA_DBL","G"],3:["CLA_TWN","G"],4:["CLA_TWN","G"],5:["CLA_DBL","G"],6:["CLA_TWN","G"],7:["CLA_DBL","G"],8:["CLA_TWN","G"],
+  9:["CLA_DBL","G"],10:["CLA_TWN","G"],11:["CLA_DBL","G"],12:["CLA_TWN","G"],13:["CLA_DBL","G"],14:["CLA_TWN","G"],15:["CLA_DBL","G"],16:["CLA_TWN","G"],
+  17:["CLA_DBL","G"],18:["CLA_TWN","G"],19:["CLA_DBL","G"],20:["CLA_TWN","G"],21:["CLA_DBL","1"],22:["CLA_TWN","1"],23:["CLA_DBL","1"],24:["CLA_TWN","1"],
+  25:["CLA_DBL","1"],26:["CLA_TWN","1"],27:["CLA_DBL","1"],28:["CLA_TWN","1"],29:["CLA_DBL","1"],30:["CLA_TWN","1"],31:["CLA_DBL","1"],32:["CLA_TWN","1"],
+  33:["CLA_DBL","1"],34:["CLA_TWN","1"],35:["CLA_DBL","1"],36:["CLA_TWN","1"],37:["CLA_DBL","1"],38:["CLA_TWN","1"],39:["CLA_DBL","1"],40:["CLA_TWN","1"],
+  41:["JSUI","G"],42:["JSUI","G"],43:["PRE_DBL","G"],44:["PRE_DBL","G"],45:["CLA_DBL","G"],46:["CLA_DBL","G"],47:["CLA_DBL","G"],48:["CLA_DBL","G"],
+  49:["PRE_DBL","G"],50:["JSUI","1"],51:["CLA_DBL","1"],52:["PRE_DBL","1"],53:["PRE_DBL","1"],54:["PRE_DBL","1"],61:["CLA_DBL","1"],62:["JSUI","1"],
+  101:["PRE_DBL","G"],102:["EXE_DBL","G"],103:["EXE_DBL_ACC","G"],104:["EXE_TWN_ACC","G"],105:["EXE_TWN","G"],106:["EXE_TWN","G"],107:["EXE_DBL","G"],108:["EXE_TWN","G"],
+  109:["EXE_DBL","G"],110:["EXE_TRP","G"],111:["EXE_DBL","G"],112:["EXE_TRP","G"],113:["EXE_DBL","G"],114:["EXE_DBL","G"],115:["EXE_DBL","G"],116:["EXE_DBL","1"],
+  117:["EXE_DBL","1"],118:["EXE_DBL","1"],119:["EXE_DBL","1"],120:["EXE_DBL","1"],121:["EXE_DBL","1"],122:["EXE_DBL","1"],123:["EXE_DBL","1"],124:["EXE_DBL","1"],
+  125:["EXE_DBL","1"],126:["EXE_DBL","1"],127:["EXE_DBL","1"],128:["EXE_DBL","1"],129:["EXE_DBL","1"],130:["PRE_DBL","1"],131:["EXE_DBL","G"],132:["EXE_DBL","G"],
+  133:["EXE_DBL_ACC","G"],134:["EXE_DBL","G"],135:["EXE_DBL","G"],136:["EXE_DBL","G"],137:["EXE_DBL_ACC","G"],138:["EXE_DBL","G"],139:["EXE_DBL","G"],140:["EXE_DBL","G"],
+  141:["EXE_DBL","G"],142:["EXE_DBL","G"],143:["EXE_DBL","G"],144:["EXE_DBL","G"],145:["EXE_DBL","G"],146:["EXE_DBL","G"],147:["EXE_DBL","G"],148:["EXE_DBL","G"],
+  149:["EXE_DBL","1"],150:["EXE_DBL","1"],151:["EXE_TWN","1"],152:["EXE_DBL","1"],153:["EXE_TWN","1"],154:["EXE_DBL","1"],155:["EXE_DBL","1"],156:["EXE_DBL","1"],
+  157:["EXE_DBL","1"],158:["EXE_DBL","1"],159:["EXE_DBL","1"],160:["EXE_DBL","1"],161:["EXE_DBL","1"],162:["EXE_TRP","1"],163:["EXE_TRP","1"],164:["EXE_TRP","1"]
+};
+const HH_FLOOR_LABEL = { G:"Ground", "1":"First" };
+function hhFloorOf(room){ const m=HH_ROOM_META[String(room)]; return m?m[1]:""; }
+function hhCatOf(room){ const m=HH_ROOM_META[String(room)]; return m?m[0]:""; }
+function hhFloorLabel(f){ return HH_FLOOR_LABEL[f]||(f||""); }
 function hhDistribute(items, workers){
   const plan=workers.map(w=>Object.assign({},w,{rooms:[]}));
   const norm=items.map(it=>(it&&typeof it==='object')?it:{room:it,type:'Departure'});
+  norm.forEach(it=>{ if(!it.floor) it.floor=hhFloorOf(it.room); });
+  norm.sort((a,b)=>String(a.floor||'').localeCompare(String(b.floor||'')) || (+a.room||0)-(+b.room||0));
+  const onFloor=(w,f)=>w.rooms.filter(rm=>String(hhFloorOf(rm))===String(f||'')).length;
   norm.forEach(it=>{
     const elig=plan.filter(w=>hhCanDo(w.skills, it.type));
     let pick;
     const under=elig.filter(w=>w.rooms.length<w.cap);
-    if(under.length){ under.sort((a,b)=>(b.cap-b.rooms.length)-(a.cap-a.rooms.length) || (b.rating||3)-(a.rating||3) || a.rooms.length-b.rooms.length); pick=under[0]; }
-    else if(elig.length){ pick=elig.slice().sort((a,b)=>a.rooms.length-b.rooms.length || (b.rating||3)-(a.rating||3))[0]; }
-    else if(plan.length){ pick=plan.slice().sort((a,b)=>a.rooms.length-b.rooms.length)[0]; }  // nobody skilled → lightest, so it isn't dropped
+    if(under.length){ under.sort((a,b)=>onFloor(b,it.floor)-onFloor(a,it.floor) || (b.cap-b.rooms.length)-(a.cap-a.rooms.length) || (b.rating||3)-(a.rating||3) || a.rooms.length-b.rooms.length); pick=under[0]; }
+    else if(elig.length){ pick=elig.slice().sort((a,b)=>onFloor(b,it.floor)-onFloor(a,it.floor) || a.rooms.length-b.rooms.length)[0]; }
+    else if(plan.length){ pick=plan.slice().sort((a,b)=>a.rooms.length-b.rooms.length)[0]; }  // nobody skilled → lightest
     if(pick) pick.rooms.push(it.room);
   });
   return plan;
@@ -9853,7 +9878,7 @@ const HH_PUBLIC_AREAS = [
 ];
 function hhDocId(date,room){ return date+"__"+room; }
 function hhBlankRoom(date,room,type,note){
-  return { date, room:String(room), type:type||"Departure", cat:"", status:"pending",
+  return { date, room:String(room), type:type||"Departure", cat:hhCatOf(room), floor:hhFloorOf(room), status:"pending",
     housekeeper:"", housekeeperName:"", startAt:null, finishAt:null, durationSec:0,
     checklist:{}, geoStartOk:null, geoFinishOk:null, notes:note||"",
     area:false, slot:"", replaced:"", maintenance:"", lostProperty:"", updatedAt:Date.now() };
@@ -10000,6 +10025,7 @@ function renderHosHouseHub(v){
       <div style="display:flex;gap:8px;align-items:center">
         ${view==='today'?`<input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderManage();hhRenderDash()" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
         <button onclick="hhManageStaff()" title="Edit staff — skills, rating, status, PINs" style="padding:7px 12px;border:1px solid #1F3864;background:#eef2f8;color:#1F3864;border-radius:8px;font:700 12px Lato;cursor:pointer">👥 Manage staff</button>
+        <button onclick="hhFloorPlan()" title="Hotel floor plans — plan rooms near each other" style="padding:7px 12px;border:1px solid #1F3864;background:#fff;color:#1F3864;border-radius:8px;font:700 12px Lato;cursor:pointer">🗺 Floor plan</button>
         <button onclick="hhEodReport()" title="Compile the end-of-day housekeeping report" style="padding:7px 12px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12px Lato;cursor:pointer">📄 End-of-day report</button>
         <button onclick="hhClearDay()" title="Delete all rooms & areas for this date — use to reset after testing" style="padding:7px 12px;border:1px solid #e4b6b6;background:#fff;color:#b3261e;border-radius:8px;font:700 12px Lato;cursor:pointer">🗑 Clear test data</button>
         <button onclick="hhRenderManage();hhRenderDash()" style="padding:7px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">↻ Refresh</button>`:''}
@@ -10017,6 +10043,27 @@ function renderHosHouseHub(v){
   else { hhRenderManage(); hhRenderDash(); hhRenderLinks(); }
 }
 function hhSetView(x){ window._hhView=x; switchTab('hhHub'); }
+
+/* ---- Floor plans: Ground / First layouts for planning room distribution ---- */
+function hhFloorPlan(){
+  showModal('🗺 Hotel floor plan','Plan allocations so each cleaner stays in one area. Click a plan to open it full-size.',
+    `<div id="hh-plan-wrap"></div>`);
+  window._hhPlanFloor=window._hhPlanFloor||'ground';
+  hhSetPlan(window._hhPlanFloor);
+}
+function hhSetPlan(f){
+  window._hhPlanFloor=f;
+  const wrap=document.getElementById('hh-plan-wrap'); if(!wrap) return;
+  const base=hhOrigin();
+  const img=base+'assets/hoshouse/'+(f==='ground'?'floor-ground.jpg':'floor-first.jpg');
+  const seg=(k,lbl)=>`<button onclick="hhSetPlan('${k}')" style="flex:1;padding:9px;border:1.5px solid ${f===k?'#1F3864':'#d7dde4'};background:${f===k?'#1F3864':'#fff'};color:${f===k?'#fff':'#1a2b3a'};border-radius:9px;font:800 13px Lato;cursor:pointer">${lbl}</button>`;
+  wrap.innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:12px">${seg('ground','Ground floor')}${seg('first','First floor')}</div>
+    <a href="${img}" target="_blank" rel="noopener" style="display:block">
+      <img src="${img}" alt="Floor plan" style="width:100%;border:1px solid #d7dde4;border-radius:10px;background:#fff" onerror="this.insertAdjacentHTML('afterend','<div style=&quot;padding:24px;text-align:center;color:#8296a8;font:600 13px Lato&quot;>Upload the floor-plan images to assets/hoshouse/ to see them here.</div>');this.style.display='none'">
+    </a>
+    <div style="margin-top:8px;color:#8296a8;font-size:12px">Use the plan to group each cleaner's rooms by area — the allocator already keeps people on one floor.</div>`;
+}
 
 /* ---- Links & PINs panel: managers (desktop + mobile link) and housekeepers ---- */
 async function hhRenderLinks(){
@@ -10210,8 +10257,9 @@ async function hhRenderManage(){
     const stText=r.status==='blocked'?('⛔ '+(r.blockReason==='dnd'?'DND':'Refused')):(r.status||'pending').replace('_',' ');
     const cam=((r.photos&&Object.keys(r.photos).length)||r.blockReason==='dnd')?' 📷':'';
     const who=r.housekeeperName||(r.housekeeper?r.housekeeper:'—');
+    const rcat=hhCatLabel(r.cat||hhCatOf(r.room)); const rfl=hhFloorLabel(r.floor||hhFloorOf(r.room));
     return `<tr onclick="hhOpenRoom('${hhEsc(r.room)}')" style="border-top:1px solid #eef1f4;cursor:pointer">
-      <td style="padding:6px 8px;font-weight:700;color:#1a2b3a">${hhEsc(r.room)}</td>
+      <td style="padding:6px 8px;font-weight:700;color:#1a2b3a">${hhEsc(r.room)}<div style="font-weight:500;font-size:10px;color:#8296a8">${hhEsc([rcat,rfl?rfl+' flr':''].filter(Boolean).join(' · '))}</div></td>
       <td style="padding:6px 8px" onclick="event.stopPropagation()">${locked
         ? r.type
         : `<select onchange="hhChangeType('${hhEsc(r.room)}',this.value)" style="padding:4px 6px;border:1px solid #d7dde4;border-radius:6px;font:12px Lato">${typeOpt(r.type)}</select>`}</td>
@@ -10324,7 +10372,7 @@ const HH_ROOM_CATS=[
   {code:"PRE_DBL",label:"Premier Double",n:8}
 ];
 function hhCatLabel(code){ const c=HH_ROOM_CATS.find(x=>x.code===code); return c?c.label:(code||''); }
-function hhDefaultRooms(){ const out=[]; let n=1; HH_ROOM_CATS.forEach(c=>{ for(let i=0;i<c.n;i++) out.push({room:String(n++),cat:c.code}); }); while(n<=140){ out.push({room:String(n++),cat:""}); } return out; }
+function hhDefaultRooms(){ return Object.keys(HH_ROOM_META).map(r=>({room:String(r), cat:HH_ROOM_META[r][0], floor:HH_ROOM_META[r][1]})).sort((a,b)=>(+a.room||0)-(+b.room||0)); }
 async function hhRoomCatalogue(){
   if(typeof FB!=='undefined' && FB.db){ try{ const d=await FB.db.collection('hoshouse_config').doc('current').get();
     if(d.exists){ const r=d.data().rooms; if(Array.isArray(r)&&r.length) return r.map(x=>({room:String(x.room),cat:x.cat||''})); } }catch(e){} }
@@ -10556,15 +10604,16 @@ async function hhRenderDash(){
   const eff=Object.values(byHk).sort((a,b)=>b.done-a.done);
 
   const tiles=[
-    ['Rooms today',rooms.length,'#1a2b3a','All rooms reception set for cleaning'],
-    ['Completed',done.length,'#2E6B5E','Rooms finished and checked'],
-    ['In progress',prog.length,'#d9930a','Rooms a housekeeper has started'],
-    ['Not done yet',pend.length,'#8296a8','Rooms not started'],
-    ['Over 30 min',overs.length,overs.length?'#b3261e':'#1a2b3a','Rooms taking longer than allowed'],
-    ['Avg min / room',avg,'#1a2b3a','Average time to clean a finished room'],
+    ['🛏','Rooms today',rooms.length,'#1F3864','#eef2f8','All rooms reception set for cleaning'],
+    ['✅','Completed',done.length,'#2E6B5E','#e8f5ef','Rooms finished and checked'],
+    ['🧹','In progress',prog.length,'#b9780a','#fff4e1','Rooms a housekeeper has started'],
+    ['⏳','Not done yet',pend.length,'#5b6b7b','#eef1f5','Rooms not started'],
+    ['⏱','Over 30 min',overs.length,overs.length?'#b3261e':'#5b6b7b',overs.length?'#fdecea':'#eef1f5','Rooms taking longer than allowed'],
+    ['📊','Avg min / room',avg,'#1F3864','#eef2f8','Average time to clean a finished room'],
   ];
-  const tileHtml=tiles.map(([k,vv,c,tip])=>`<div title="${hhEsc(tip)}" style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
-    <div style="font:800 24px Lato;color:${c}">${vv}</div><div style="font-size:10.5px;color:#8296a8;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">${k}</div></div>`).join('');
+  const tileHtml=tiles.map(([ic,k,vv,c,bg,tip])=>`<div title="${hhEsc(tip)}" style="background:${bg};border:1px solid rgba(31,56,100,.06);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+    <div style="display:flex;align-items:center;justify-content:space-between"><div style="font:800 27px Lato;color:${c};line-height:1">${vv}</div><div style="font-size:19px;opacity:.55">${ic}</div></div>
+    <div style="font-size:10.5px;color:#5b6b7b;text-transform:uppercase;letter-spacing:.4px;margin-top:5px;font-weight:800">${k}</div></div>`).join('');
 
   const segs=[{label:'Completed',value:done.length,color:HH_CH.done},{label:'In progress',value:prog.length,color:HH_CH.prog},{label:'Not done',value:pend.length,color:HH_CH.todo},{label:'Over 30 min',value:overs.length,color:HH_CH.over}];
   const legend=segs.map(s=>`<div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0"><span style="width:12px;height:12px;border-radius:3px;background:${s.color};display:inline-block"></span>${s.label}<b style="margin-left:auto;color:#1a2b3a">${s.value}</b></div>`).join('');
@@ -10575,6 +10624,20 @@ async function hhRenderDash(){
     return `<tr style="border-top:1px solid #eef1f4"><td style="padding:8px 10px"><b>${hhEsc(r.name)}</b></td><td style="padding:8px 10px">${r.done}</td><td style="padding:8px 10px">${r.prog}</td><td style="padding:8px 10px">${r.done?Math.round(r.mins/r.done):'—'}</td><td style="padding:8px 10px;color:${r.over?'#b3261e':'#1f2a37'}">${r.over||0}</td><td style="padding:8px 10px">${r.done?bar:'<span style="color:#8296a8">—</span>'}</td></tr>`;
   }).join('') : '<tr><td colspan="6" style="padding:14px;color:#8296a8">No rooms started yet.</td></tr>';
 
+  // rooms by type + by floor (from the Guestline inventory)
+  const _tc={}, _fc={};
+  rooms.forEach(r=>{ if(r.area) return; const lbl=hhCatLabel(r.cat||hhCatOf(r.room))||'Other'; _tc[lbl]=(_tc[lbl]||0)+1;
+    const fl=hhFloorLabel(r.floor||hhFloorOf(r.room))||'—'; _fc[fl]=(_fc[fl]||0)+1; });
+  const _floorLine=Object.entries(_fc).sort().map(([f,n])=>`${f}: <b>${n}</b>`).join(' &nbsp;·&nbsp; ');
+  const _PAL=['#1F3864','#2E6B5E','#4a86c7','#b89056','#b9780a','#7c3aed','#2a9d8f','#e76f51','#6b7280'];
+  const _tEnt=Object.entries(_tc).sort((a,b)=>b[1]-a[1]); const _maxT=Math.max(1,...Object.values(_tc));
+  const _typeRows=_tEnt.map(([l,n],i)=>`<div style="display:flex;align-items:center;gap:10px;padding:5px 2px;font-size:13px">
+    <span style="flex:0 0 150px;color:#1f2a37">${hhEsc(l)}</span>
+    <div style="flex:1;height:11px;border-radius:6px;background:#eef1f5;overflow:hidden"><div style="width:${Math.round(n/_maxT*100)}%;height:100%;background:${_PAL[i%_PAL.length]}"></div></div>
+    <b style="flex:0 0 26px;text-align:right;color:#1a2b3a">${n}</b></div>`).join('');
+  const byTypeCard = rooms.length?`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font:800 14px Lato;color:#1a2b3a">🛏 Rooms by type today</div>${_floorLine?`<div style="font-size:12px;color:#5b6b7b">${_floorLine}</div>`:''}</div>
+    ${_typeRows}</div>`:'';
   body.innerHTML=`
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px">${tileHtml}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="hh-dg">
@@ -10587,6 +10650,7 @@ async function hhRenderDash(){
         ${eff.length?hhBars(eff.map(e=>({label:e.name,value:e.done,sub:e.done?Math.round(e.mins/e.done)+'m avg':''}))):'<div style="color:#8296a8;font-size:13px">No rooms completed yet.</div>'}
       </div>
     </div>
+    ${byTypeCard}
     ${hhDashStaffGrid(rooms)}
     <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
       <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:8px">Staff efficiency</div>

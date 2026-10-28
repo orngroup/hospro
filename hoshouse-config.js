@@ -152,18 +152,23 @@
   // A room only goes to someone whose skills include that room's clean type.
   // Among eligible people we fill the lightest-loaded first; higher-rated
   // cleaners break ties (and are reached first once everyone is level).
+  // Skill-, rating-, capacity- AND floor-aware allocation. Items carry {room,type,floor};
+  // rooms are processed floor by floor and kept together, so each cleaner gets a
+  // contiguous run on one floor/area rather than rooms scattered across the hotel.
   function distribute(items, workers){
     const plan=workers.map(w=>Object.assign({},w,{items:[]}));
-    const norm=items.map(it=> (it && typeof it==='object') ? it : {room:it, type:'Departure'});
+    const norm=items.map(it=> (it && typeof it==='object') ? it : {room:it, type:'Departure', floor:''});
+    norm.sort((a,b)=> String(a.floor||'').localeCompare(String(b.floor||'')) || (+a.room||0)-(+b.room||0));
+    const onFloor=(w,f)=> w.items.filter(x=>String(x.floor||'')===String(f||'')).length;
     norm.forEach(it=>{
       const eligible=plan.filter(w=>canDoType(w, it.type));
       let pick;
       const under=eligible.filter(w=>w.items.length<w.cap);
       if(under.length){
-        under.sort((a,b)=> (b.cap-b.items.length)-(a.cap-a.items.length) || (b.rating||3)-(a.rating||3) || a.items.length-b.items.length);
+        under.sort((a,b)=> onFloor(b,it.floor)-onFloor(a,it.floor) || (b.cap-b.items.length)-(a.cap-a.items.length) || (b.rating||3)-(a.rating||3) || a.items.length-b.items.length);
         pick=under[0];
       } else if(eligible.length){
-        pick=eligible.slice().sort((a,b)=> a.items.length-b.items.length || (b.rating||3)-(a.rating||3))[0];
+        pick=eligible.slice().sort((a,b)=> onFloor(b,it.floor)-onFloor(a,it.floor) || a.items.length-b.items.length)[0];
       } else if(plan.length){ // nobody is skilled for this type → give to the lightest so it isn't dropped
         pick=plan.slice().sort((a,b)=>a.items.length-b.items.length)[0];
       }
@@ -187,14 +192,33 @@
     { code:"PRE_DBL",     label:"Premier Double",             n:8  }
   ];
 
-  // ---- Default room list — PLACEHOLDER numbers with the REAL category mix
-  //      (120 rooms). Replace the numbers with the real Guestline list in
-  //      Admin → Room list (one "number,CATEGORY" per line). Reception sets the
-  //      daily clean type (Departure/Stayover/Arrival-ready) each morning. ----
+  // ---- Real room inventory (from Guestline, 28 Oct 2026): [room, category code, floor].
+  //      Floor: "G" = Ground, "1" = First. 120 bedrooms. ----
+  const FLOOR_LABEL = { G:"Ground", "1":"First" };
+  const REAL_ROOMS = [
+    [1,"CLA_TWN","G"],[2,"CLA_DBL","G"],[3,"CLA_TWN","G"],[4,"CLA_TWN","G"],[5,"CLA_DBL","G"],[6,"CLA_TWN","G"],[7,"CLA_DBL","G"],[8,"CLA_TWN","G"],
+    [9,"CLA_DBL","G"],[10,"CLA_TWN","G"],[11,"CLA_DBL","G"],[12,"CLA_TWN","G"],[13,"CLA_DBL","G"],[14,"CLA_TWN","G"],[15,"CLA_DBL","G"],[16,"CLA_TWN","G"],
+    [17,"CLA_DBL","G"],[18,"CLA_TWN","G"],[19,"CLA_DBL","G"],[20,"CLA_TWN","G"],[21,"CLA_DBL","1"],[22,"CLA_TWN","1"],[23,"CLA_DBL","1"],[24,"CLA_TWN","1"],
+    [25,"CLA_DBL","1"],[26,"CLA_TWN","1"],[27,"CLA_DBL","1"],[28,"CLA_TWN","1"],[29,"CLA_DBL","1"],[30,"CLA_TWN","1"],[31,"CLA_DBL","1"],[32,"CLA_TWN","1"],
+    [33,"CLA_DBL","1"],[34,"CLA_TWN","1"],[35,"CLA_DBL","1"],[36,"CLA_TWN","1"],[37,"CLA_DBL","1"],[38,"CLA_TWN","1"],[39,"CLA_DBL","1"],[40,"CLA_TWN","1"],
+    [41,"JSUI","G"],[42,"JSUI","G"],[43,"PRE_DBL","G"],[44,"PRE_DBL","G"],[45,"CLA_DBL","G"],[46,"CLA_DBL","G"],[47,"CLA_DBL","G"],[48,"CLA_DBL","G"],
+    [49,"PRE_DBL","G"],[50,"JSUI","1"],[51,"CLA_DBL","1"],[52,"PRE_DBL","1"],[53,"PRE_DBL","1"],[54,"PRE_DBL","1"],[61,"CLA_DBL","1"],[62,"JSUI","1"],
+    [101,"PRE_DBL","G"],[102,"EXE_DBL","G"],[103,"EXE_DBL_ACC","G"],[104,"EXE_TWN_ACC","G"],[105,"EXE_TWN","G"],[106,"EXE_TWN","G"],[107,"EXE_DBL","G"],[108,"EXE_TWN","G"],
+    [109,"EXE_DBL","G"],[110,"EXE_TRP","G"],[111,"EXE_DBL","G"],[112,"EXE_TRP","G"],[113,"EXE_DBL","G"],[114,"EXE_DBL","G"],[115,"EXE_DBL","G"],[116,"EXE_DBL","1"],
+    [117,"EXE_DBL","1"],[118,"EXE_DBL","1"],[119,"EXE_DBL","1"],[120,"EXE_DBL","1"],[121,"EXE_DBL","1"],[122,"EXE_DBL","1"],[123,"EXE_DBL","1"],[124,"EXE_DBL","1"],
+    [125,"EXE_DBL","1"],[126,"EXE_DBL","1"],[127,"EXE_DBL","1"],[128,"EXE_DBL","1"],[129,"EXE_DBL","1"],[130,"PRE_DBL","1"],[131,"EXE_DBL","G"],[132,"EXE_DBL","G"],
+    [133,"EXE_DBL_ACC","G"],[134,"EXE_DBL","G"],[135,"EXE_DBL","G"],[136,"EXE_DBL","G"],[137,"EXE_DBL_ACC","G"],[138,"EXE_DBL","G"],[139,"EXE_DBL","G"],[140,"EXE_DBL","G"],
+    [141,"EXE_DBL","G"],[142,"EXE_DBL","G"],[143,"EXE_DBL","G"],[144,"EXE_DBL","G"],[145,"EXE_DBL","G"],[146,"EXE_DBL","G"],[147,"EXE_DBL","G"],[148,"EXE_DBL","G"],
+    [149,"EXE_DBL","1"],[150,"EXE_DBL","1"],[151,"EXE_TWN","1"],[152,"EXE_DBL","1"],[153,"EXE_TWN","1"],[154,"EXE_DBL","1"],[155,"EXE_DBL","1"],[156,"EXE_DBL","1"],
+    [157,"EXE_DBL","1"],[158,"EXE_DBL","1"],[159,"EXE_DBL","1"],[160,"EXE_DBL","1"],[161,"EXE_DBL","1"],[162,"EXE_TRP","1"],[163,"EXE_TRP","1"],[164,"EXE_TRP","1"]
+  ];
+  const ROOM_INFO = {}; REAL_ROOMS.forEach(a=>{ ROOM_INFO[String(a[0])]={cat:a[1], floor:a[2]}; });
+  function roomInfo(room){ return ROOM_INFO[String(room)] || {cat:"", floor:""}; }
+  function floorLabel(f){ return FLOOR_LABEL[f] || (f||""); }
+
+  // ---- Default room list — the real Guestline inventory (room, category, floor) ----
   function defaultRooms(){
-    const out=[]; let n=1;
-    ROOM_CATS.forEach(c=>{ for(let i=0;i<c.n;i++){ out.push({ room:String(n++), cat:c.code }); } });
-    while(n<=140){ out.push({ room:String(n++), cat:"" }); }   // extend numbering up to room 140
+    const out=REAL_ROOMS.map(a=>({ room:String(a[0]), cat:a[1], floor:a[2] }));
     return out;
   }
 
@@ -277,8 +301,11 @@
 
     // ----- the day's rooms (one doc per room: hoshouse_rooms/<date>__<room>) -----
     docId(date,room){ return date+"__"+room; },
+    roomInfo, floorLabel,
+    floorOf(room){ return roomInfo(room).floor||""; },
     blankRoom(date,room,type,cat,note){
-      return { date, room:String(room), type:type||"Departure", cat:cat||"", status:"pending",
+      const inf=roomInfo(room);
+      return { date, room:String(room), type:type||"Departure", cat:cat||inf.cat||"", floor:inf.floor||"", status:"pending",
                housekeeper:"", housekeeperName:"", startAt:null, finishAt:null, durationSec:0,
                checklist:{}, geoStartOk:null, geoFinishOk:null, notes:note||"",
                area:false, slot:"", replaced:"", maintenance:"", lostProperty:"", updatedAt:Date.now() };
@@ -318,6 +345,17 @@
       if(ready){ try{ const snap=await db.collection("hoshouse_rooms").where("date","==",date).get();
         return snap.docs.map(d=>d.data()).sort((a,b)=>(+a.room||0)-(+b.room||0)); }catch(e){ console.warn("getDayRooms",e&&e.code); } }
       const map=lsGet("hoshouse_day_"+date,{}); return Object.values(map).sort((a,b)=>(+a.room||0)-(+b.room||0));
+    },
+    // rooms across a date range (inclusive). start/end are "YYYY-MM-DD"; both null = all time.
+    async getRoomsRange(start, end){
+      if(ready){ try{ let q=db.collection("hoshouse_rooms");
+        if(start) q=q.where("date",">=",start);
+        if(end)   q=q.where("date","<=",end);
+        const snap=await q.get(); return snap.docs.map(d=>d.data()); }catch(e){ console.warn("getRoomsRange",e&&e.code); } }
+      const out=[]; try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i);
+        if(k && k.indexOf("hoshouse_day_")===0){ const d=k.slice(13);
+          if((!start||d>=start) && (!end||d<=end)){ try{ Object.values(JSON.parse(localStorage.getItem(k)||"{}")).forEach(r=>out.push(r)); }catch(e){} } } } }catch(e){}
+      return out;
     },
     watchDay(date, cb){
       if(ready){ try{ return db.collection("hoshouse_rooms").where("date","==",date)
@@ -390,7 +428,7 @@
       if(!rooms.length) return { ok:false, reason:'no-rooms' };
       // rooms first (by number), then areas
       const ordered=rooms.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0) || (+a.room||0)-(+b.room||0));
-      const plan=distribute(ordered.map(r=>({room:r.room, type:r.type})), workers);
+      const plan=distribute(ordered.map(r=>({room:r.room, type:r.type, floor:r.floor||roomInfo(r.room).floor})), workers);
       const map={}; plan.forEach(w=>w.items.forEach(it=>{ map[it.room]={hkId:w.hkId, name:w.name}; }));
       const assigns=Object.keys(map).map(room=>({room, hkId:map[room].hkId, hkName:map[room].name}));
       if(ready){ try{ const batch=db.batch(); assigns.forEach(a=>batch.set(db.collection("hoshouse_rooms").doc(this.docId(date,a.room)),{housekeeper:a.hkId, housekeeperName:a.hkName, updatedAt:Date.now()},{merge:true})); await batch.commit(); }
