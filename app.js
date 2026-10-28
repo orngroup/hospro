@@ -9580,7 +9580,9 @@ async function hhSaveStaff(staff){
   window._hhStaff=staff;
   // merge into the shared config doc, and keep the localStorage cfg in step
   try{ const c=JSON.parse(localStorage.getItem('hoshouse_cfg')||'{}'); c.staff=staff; localStorage.setItem('hoshouse_cfg', JSON.stringify(c)); }catch(e){}
-  if(typeof FB!=='undefined' && FB.db){ try{ await FB.db.collection('hoshouse_config').doc('current').set({staff, updatedAt:Date.now()},{merge:true}); }catch(e){ console.warn('hhSaveStaff',e&&e.code); } }
+  // local cache is already updated above, so write to Firebase in the background —
+  // never let a slow/blocked write hang the Save button (fixes the "jam on save").
+  if(typeof FB!=='undefined' && FB.db){ try{ FB.db.collection('hoshouse_config').doc('current').set({staff, updatedAt:Date.now()},{merge:true}).catch(e=>console.warn('hhSaveStaff',e&&e.code)); }catch(e){ console.warn('hhSaveStaff',e&&e.code); } }
 }
 async function hhUpdateStaff(id, patch){ const staff=hhStaffList().slice(); const s=staff.find(x=>x.id===id); if(!s) return null; Object.assign(s,patch); hhNormStaff(s); await hhSaveStaff(staff); return s; }
 function hhSlugId(name){ let base=(name||'staff').toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,12)||'staff'; let id=base,n=1; const have=hhStaffList(); while(have.some(s=>s.id===id)){ id=base+(++n); } return id; }
@@ -9654,49 +9656,67 @@ async function hhWriteAssign(dateISO, assigns){
 }
 async function hhAllocateAll(){
   const date=window._hhDate||hhTodayISO();
-  const crew=(window._hhCrew||await hhLoadCrew(date)).map(c=>Object.assign({cap:HH_DEFAULT_CAP}, c));
-  const rooms=(await hhFetchDay(date)).filter(r=>r.status!=='done' && r.status!=='in_progress'); // allocate the not-yet-started rooms + areas
+  const rooms=(await hhFetchDay(date)).filter(r=>r.status!=='done' && r.status!=='in_progress'); // not-yet-started rooms + areas
   if(!rooms.length){ toast('No rooms waiting to allocate for '+date+' — add the day\'s rooms first.'); return; }
-  if(!crew.length){ toast('Tick who\'s working today before you allocate.'); return; }
-  // rooms first (by number), then public areas
-  const ordered=rooms.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0) || (+a.room||0)-(+b.room||0));
   await hhLoadStaff();
-  const workers=crew.map(c=>{ const s=hhStaffById(c.hkId);
-    return {hkId:c.hkId, name:c.name, shift:c.shift||'', cap:c.cap||HH_DEFAULT_CAP, net:(c.cap||HH_DEFAULT_CAP)*45,
-            skills:(s&&s.skills)||HH_SKILLS.slice(), rating:(s&&typeof s.rating==='number')?s.rating:3, status:(s&&s.status)||'active'}; })
-    .filter(w=>w.status==='active');
-  if(!workers.length){ toast('Everyone ticked is marked On holiday or Left — set someone Active in Manage staff.'); return; }
-  const plan=hhDistribute(ordered.map(r=>({room:r.room, type:r.type})), workers);
-  const totalCap=workers.reduce((t,w)=>t+w.cap,0);
-  const over=ordered.length>totalCap;
-  const rowsHtml=plan.map(w=>`<tr style="border-top:1px solid #eef1f4">
-    <td style="padding:7px 10px;font-weight:600">${hhEsc(w.name)}</td>
-    <td style="padding:7px 10px;color:#5b6b7b">${hhEsc(w.shift||'added / extra')}</td>
-    <td style="padding:7px 10px;text-align:center">${w.cap}</td>
-    <td style="padding:7px 10px;text-align:center;font-weight:700;color:${w.rooms.length>w.cap?'#b3261e':'#2E6B5E'}">${w.rooms.length}</td>
-    <td style="padding:7px 10px;font-size:11.5px;color:#5b6b7b">${w.rooms.join(', ')||'—'}</td></tr>`).join('');
-  showModal('Allocate &amp; distribute — '+date, ordered.length+' rooms across '+workers.length+' confirmed housekeepers',
+  const crew=(window._hhCrew||await hhLoadCrew(date)); const crewIds=new Set(crew.map(c=>c.hkId));
+  const actives=hhStaffList().filter(s=>(s.status||'active')==='active');
+  // default selection = active, non-manager people who are on today's crew (or everyone active if no crew ticked)
+  const anyCrewNonLead=actives.some(s=>!s.lead && crewIds.has(s.id));
+  window._hhAllocSel=actives.filter(s=>!s.lead && (anyCrewNonLead? crewIds.has(s.id): true)).map(s=>s.id);
+  window._hhAllocRooms=rooms; window._hhAllocDate=date;
+  const chk=s=>{ const on=window._hhAllocSel.indexOf(s.id)>=0;
+    return `<label style="display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1.5px solid ${on?'#2E6B5E':'#d7dde4'};background:${on?'#eaf4f0':'#fff'};border-radius:9px;cursor:pointer;font:700 12px Lato;color:${on?'#1f5a4e':'#45586b'}">
+      <input type="checkbox" data-hk="${s.id}" ${on?'checked':''} onchange="hhAllocToggle('${s.id}')" style="width:15px;height:15px;margin:0">
+      ${hhEsc(s.name)}${s.lead?' <span style="color:#b89056;font-weight:800;font-size:10px">MGR</span>':''}</label>`; };
+  showModal('Allocate rooms — '+date, rooms.length+' room'+(rooms.length===1?'':'s')+' to share',
     `<div style="font-size:13px;color:#1a2b3a">
-      ${over?`<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:9px;padding:9px 12px;margin-bottom:10px;font-size:12.5px">⚠ ${ordered.length} rooms is more than the team's rough capacity of ${totalCap} today — the extra are spread evenly, so some people get more. Add cover or move rooms if needed.</div>`:''}
-      <div style="overflow:auto;border:1px solid #e4e9ef;border-radius:10px;max-height:52vh">
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-        <thead><tr style="background:#1F3864;color:#fff;position:sticky;top:0"><th style="padding:7px 10px;text-align:left">Housekeeper</th><th style="padding:7px 10px;text-align:left">Shift</th><th style="padding:7px 10px">Can do</th><th style="padding:7px 10px">Rooms</th><th style="padding:7px 10px;text-align:left">Room numbers</th></tr></thead>
-        <tbody>${rowsHtml}</tbody>
-      </table></div>
+      <div style="font:800 12px Lato;color:#1F3864;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Give these rooms to…</div>
+      <div style="font-size:11.5px;color:#5b6b7b;margin-bottom:8px">Tick the staff who should get these rooms — rooms only go to who you tick. Managers (MGR) are off by default.</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${actives.map(chk).join('')}</div>
+      <div id="hh-alloc-preview"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
         <button onclick="closeModal()" style="padding:9px 15px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:600 13px Lato;cursor:pointer">Cancel</button>
-        <button id="hh-alloc-go" style="padding:9px 18px;border:none;border-radius:8px;background:#2E6B5E;color:#fff;font:700 13px Lato;cursor:pointer">Allocate &amp; save</button>
+        <button id="hh-alloc-go" onclick="hhAllocSave()" style="padding:9px 18px;border:none;border-radius:8px;background:#2E6B5E;color:#fff;font:700 13px Lato;cursor:pointer">Allocate &amp; save</button>
       </div>
-      <div style="font-size:11px;color:#8296a8;margin-top:8px">Each housekeeper then sees only their own rooms in the app — no picking. Rooms already started or done aren't moved. Re-run any time.</div>
+      <div style="font-size:11px;color:#8296a8;margin-top:8px">Each person then sees only their own rooms. Rooms already started or done aren't moved. Re-run any time.</div>
     </div>`);
-  const btn=document.getElementById('hh-alloc-go');
-  btn.onclick=async ()=>{
-    btn.disabled=true; btn.textContent='Saving…';
-    const assigns=[]; plan.forEach(w=>w.rooms.forEach(rm=>assigns.push({room:rm, hkId:w.hkId, hkName:w.name})));
-    const ok=await hhWriteAssign(date, assigns);
-    closeModal(); toast(ok?('✓ '+assigns.length+' rooms allocated'):'Could not save — check connection'); hhRenderManage(); hhRenderDash();
-  };
+  hhAllocRecalc();
 }
+function hhAllocToggle(id){
+  const sel=window._hhAllocSel||[]; const i=sel.indexOf(id); if(i>=0) sel.splice(i,1); else sel.push(id); window._hhAllocSel=sel;
+  const cb=document.querySelector('#modal-root input[data-hk="'+id+'"]'); if(cb){ const lab=cb.closest('label'); const on=cb.checked; if(lab){ lab.style.borderColor=on?'#2E6B5E':'#d7dde4'; lab.style.background=on?'#eaf4f0':'#fff'; lab.style.color=on?'#1f5a4e':'#45586b'; } }
+  hhAllocRecalc();
+}
+function hhAllocPlanNow(){
+  const rooms=window._hhAllocRooms||[]; const sel=new Set(window._hhAllocSel||[]);
+  const workers=hhStaffList().filter(s=>sel.has(s.id)).map(s=>({hkId:s.id, name:s.name, cap:HH_DEFAULT_CAP, skills:(s.skills&&s.skills.length)?s.skills:HH_SKILLS.slice(), rating:(typeof s.rating==='number'?s.rating:3)}));
+  const ordered=rooms.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0)||(+a.room||0)-(+b.room||0));
+  const plan=workers.length?hhDistribute(ordered.map(r=>({room:r.room,type:r.type})), workers):[];
+  return {plan, ordered, workers};
+}
+function hhAllocRecalc(){
+  const box=document.getElementById('hh-alloc-preview'); if(!box) return;
+  const {plan, ordered, workers}=hhAllocPlanNow();
+  if(!workers.length){ box.innerHTML='<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:9px;padding:9px 12px;font-size:12.5px">Tick at least one person to give these rooms to.</div>'; return; }
+  const rows=plan.map(w=>`<tr style="border-top:1px solid #eef1f4"><td style="padding:6px 10px;font-weight:600">${hhEsc(w.name)}</td><td style="padding:6px 10px;text-align:center;font-weight:700;color:${w.rooms.length>w.cap?'#b3261e':'#2E6B5E'}">${w.rooms.length}</td><td style="padding:6px 10px;font-size:11.5px;color:#5b6b7b">${w.rooms.join(', ')||'—'}</td></tr>`).join('');
+  box.innerHTML=`<div style="overflow:auto;border:1px solid #e4e9ef;border-radius:10px;max-height:38vh">
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead><tr style="background:#1F3864;color:#fff;position:sticky;top:0"><th style="padding:6px 10px;text-align:left">Housekeeper</th><th style="padding:6px 10px">Rooms</th><th style="padding:6px 10px;text-align:left">Room numbers</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <div style="font-size:11.5px;color:#5b6b7b;margin-top:6px">${ordered.length} room${ordered.length===1?'':'s'} across ${workers.length} ${workers.length===1?'person':'people'}, by skill &amp; rating.</div>`;
+}
+async function hhAllocSave(){
+  const btn=document.getElementById('hh-alloc-go'); if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  const date=window._hhAllocDate; const {plan, workers}=hhAllocPlanNow();
+  if(!workers.length){ if(btn){btn.disabled=false;btn.textContent='Allocate & save';} toast('Tick at least one person first.'); return; }
+  const assigns=[]; plan.forEach(w=>w.rooms.forEach(rm=>assigns.push({room:rm, hkId:w.hkId, hkName:w.name})));
+  let ok=false; try{ ok=await hhWriteAssign(date, assigns); }catch(e){ ok=false; }
+  try{ const crew=(window._hhCrew||await hhLoadCrew(date)).slice(); const have=new Set(crew.map(c=>c.hkId));
+    workers.forEach(w=>{ if(!have.has(w.hkId)) crew.push({hkId:w.hkId, name:w.name, shift:'', cap:HH_DEFAULT_CAP}); }); await hhSaveCrew(date, crew); }catch(e){}
+  closeModal(); toast(ok?('✓ '+assigns.length+' room'+(assigns.length===1?'':'s')+' allocated'):'Could not save — check connection'); hhRenderManage(); hhRenderDash();
+}
+
 /* back-compat alias */
 function hhAutoAllocate(){ return hhAllocateAll(); }
 function hhOrigin(){ try{ return location.origin + location.pathname.replace(/[^/]*$/,''); }catch(e){ return ''; } }
@@ -9887,9 +9907,9 @@ async function hhLoadCrew(date){
   let crew=null;
   if(typeof FB!=='undefined' && FB.db){ try{ const d=await FB.db.collection('hoshouse_config').doc('crew__'+date).get(); if(d.exists && Array.isArray(d.data().crew)) crew=d.data().crew; }catch(e){} }
   if(!crew){ try{ const raw=localStorage.getItem(hhCrewKey(date)); if(raw) crew=JSON.parse(raw); }catch(e){} }
-  if(!crew){ // seed from the published rota
+  if(!crew){ // seed from the published rota — managers (leads) are NOT auto-added
     const w=hhAllocatePlan(date);
-    crew=w.map(x=>({ hkId:x.hkId, name:x.name, shift:x.shift||'', cap:x.cap||HH_DEFAULT_CAP }));
+    crew=w.filter(x=>HH_LEADS.indexOf(x.hkId)<0).map(x=>({ hkId:x.hkId, name:x.name, shift:x.shift||'', cap:x.cap||HH_DEFAULT_CAP }));
   }
   window._hhCrew=crew; return crew;
 }
