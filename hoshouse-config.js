@@ -12,7 +12,16 @@
 (function(){
   "use strict";
 
-  // ---- 15 housekeeping staff (from the rota). PIN is editable in Admin. ----
+  // ---- Skills a housekeeper can be assigned, and their working status. ----
+  const SKILL_TYPES    = ["Departure","Stayover","Arrival-ready"];
+  const STAFF_STATUSES = ["active","holiday","left"];
+
+  // ---- housekeeping staff (from the rota). PIN, skills, rating & status
+  //      are all editable in the app's Manage area.
+  //      skills  = which clean types this person is allocated (any of the 3)
+  //      rating  = baseline cleaning rating 1–5 (used to prioritise allocation)
+  //      status  = active | holiday | left  (only "active" gets rooms)
+  //      lead    = management access (admin dashboard, allocation, ratings) ----
   const HK_STAFF = [
     { id:"ruth",       name:"Ruth Addison",     pin:"1001", lead:true },
     { id:"aryan",      name:"Aryan",            pin:"1002" },
@@ -29,8 +38,32 @@
     { id:"edwin",      name:"Edwin",            pin:"1013" },
     { id:"dushyanth",  name:"Dushyanth",        pin:"1014" },
     { id:"anisha",     name:"Anisha",           pin:"1015" },
-    { id:"laith",      name:"Laith Hardy",      pin:"1016", lead:true }
+    { id:"laith",      name:"Laith Hardy",      pin:"1016", lead:true },
+    { id:"ajay",       name:"Ajay Kawa",        pin:"1017", lead:true }
   ];
+
+  // Fill in defaults for any staff record missing the newer fields, so older
+  // saved configs pick up skills/rating/status without a reset.
+  function normStaff(s){
+    if(!s) return s;
+    if(!Array.isArray(s.skills) || !s.skills.length) s.skills = SKILL_TYPES.slice();
+    else s.skills = s.skills.filter(x=>SKILL_TYPES.indexOf(x)>=0);
+    if(typeof s.rating !== 'number' || s.rating<1 || s.rating>5) s.rating = 3;
+    if(STAFF_STATUSES.indexOf(s.status)<0) s.status = 'active';
+    return s;
+  }
+  // Make sure the management leads always exist (owners / managers shouldn't
+  // be accidentally removed). Adds any missing lead from the seed list.
+  function ensureCoreStaff(staff){
+    HK_STAFF.filter(s=>s.lead).forEach(core=>{
+      if(!staff.some(s=>s.id===core.id)) staff.push(Object.assign({}, core));
+    });
+    return staff;
+  }
+  function canDoType(w, type){
+    const sk=w && w.skills; if(!sk || !sk.length) return true;
+    return sk.indexOf(type||'Departure')>=0;
+  }
 
   // ---- Summarised checklists (from the Housekeeping Room Standard).
   //      Each item: key, short label, and a one-line "what this means" so the
@@ -38,6 +71,7 @@
   const CHECKLISTS = {
     Departure: [
       {k:"bedroom",   t:"Bedroom",            d:"Rubbish out, bed stripped & made with fresh linen, dusted high-to-low, mirrors smear-free."},
+      {k:"dusting",   t:"Dusting",            d:"Wardrobes, tables, window sills, furniture and television — all dusted and wiped down."},
       {k:"tray",      t:"Tea tray & kettle",  d:"Cups & spoons clean, tray refilled (tea, coffee, sugar, milk, biscuits), kettle rinsed."},
       {k:"bathroom",  t:"Bathroom",           d:"Toilet (red cloth only), sink & tap, shower/bath, chrome shiny, mirror & 2 glasses."},
       {k:"towels",    t:"Towels & toiletries",d:"Fresh towels + bath mat, 2 toilet rolls, shower gel / shampoo / soap refilled."},
@@ -112,12 +146,29 @@
     let t=0,m; const rg=/(\d+):(\d+)\s*-\s*(\d+):(\d+)/g;
     while((m=rg.exec(sh))){ let d=(+m[3]*60+ +m[4])-(+m[1]*60+ +m[2]); if(d<0)d+=1440; t+=d; } return t;
   }
+  // Skill-, rating- and capacity-aware allocation.
+  //   items   = array of {room, type}  (plain strings are treated as Departure)
+  //   workers = [{hkId, name, cap, skills, rating}]
+  // A room only goes to someone whose skills include that room's clean type.
+  // Among eligible people we fill the lightest-loaded first; higher-rated
+  // cleaners break ties (and are reached first once everyone is level).
   function distribute(items, workers){
     const plan=workers.map(w=>Object.assign({},w,{items:[]}));
-    items.forEach(it=>{ let pool=plan.filter(w=>w.items.length<w.cap); let pick;
-      if(pool.length){ pool.sort((a,b)=>(b.cap-b.items.length)-(a.cap-a.items.length)||a.items.length-b.items.length); pick=pool[0]; }
-      else if(plan.length){ pick=plan.slice().sort((a,b)=>a.items.length-b.items.length)[0]; }
-      if(pick) pick.items.push(it); });
+    const norm=items.map(it=> (it && typeof it==='object') ? it : {room:it, type:'Departure'});
+    norm.forEach(it=>{
+      const eligible=plan.filter(w=>canDoType(w, it.type));
+      let pick;
+      const under=eligible.filter(w=>w.items.length<w.cap);
+      if(under.length){
+        under.sort((a,b)=> (b.cap-b.items.length)-(a.cap-a.items.length) || (b.rating||3)-(a.rating||3) || a.items.length-b.items.length);
+        pick=under[0];
+      } else if(eligible.length){
+        pick=eligible.slice().sort((a,b)=> a.items.length-b.items.length || (b.rating||3)-(a.rating||3))[0];
+      } else if(plan.length){ // nobody is skilled for this type → give to the lightest so it isn't dropped
+        pick=plan.slice().sort((a,b)=>a.items.length-b.items.length)[0];
+      }
+      if(pick) pick.items.push(it);
+    });
     return plan;
   }
 
@@ -181,6 +232,10 @@
     targetMin(type){ return TARGET_MIN[type] || TARGET_MIN[checklistKeyFor(type)] || this.cfg().windowMin || 30; },
     publicAreas: PUBLIC_AREAS,
     roomTypes: ROOM_TYPES,
+    skillTypes: SKILL_TYPES,
+    staffStatuses: STAFF_STATUSES,
+    distribute,              // skill/rating/capacity-aware allocator (shared with the app)
+    canDoType,
     roomCats: ROOM_CATS,
     catLabel(code){ const c=ROOM_CATS.find(x=>x.code===code); return c?c.label:(code||''); },
     ready, db,
@@ -205,6 +260,8 @@
            this._cfg.geo = Object.assign({}, DEFAULTS.geo, this._cfg.geo||{});
            if(!Array.isArray(this._cfg.rooms) || !this._cfg.rooms.length) this._cfg.rooms = DEFAULTS.rooms;
            if(!Array.isArray(this._cfg.staff) || !this._cfg.staff.length) this._cfg.staff = HK_STAFF.map(s=>Object.assign({},s));
+           ensureCoreStaff(this._cfg.staff);          // leads (Ruth, Laith, Ajay) always present
+           this._cfg.staff.forEach(normStaff);        // backfill skills / rating / status
            return this._cfg; },
     async loadCfg(){
       if(ready){ try{ const d=await db.collection("hoshouse_config").doc("current").get();
@@ -316,7 +373,10 @@
         const mins=shiftMins(sh); if(mins<=0) return;
         const cap=Math.max(1, Math.floor((mins-30)/45));
         const hk=hhStaff.find(x=>x.id===hkId);
-        out.push({ hkId, name:hk?hk.name:s.name, shift:sh, mins, cap });
+        if(hk && hk.status && hk.status!=='active') return;   // on holiday / left → skip
+        out.push({ hkId, name:hk?hk.name:s.name, shift:sh, mins, cap,
+                   skills:(hk&&hk.skills)||SKILL_TYPES.slice(),
+                   rating:(hk&&typeof hk.rating==='number')?hk.rating:3 });
       });
       return out;
     },
@@ -329,8 +389,8 @@
       if(!rooms.length) return { ok:false, reason:'no-rooms' };
       // rooms first (by number), then areas
       const ordered=rooms.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0) || (+a.room||0)-(+b.room||0));
-      const plan=distribute(ordered.map(r=>r.room), workers);
-      const map={}; plan.forEach(w=>w.items.forEach(room=>{ map[room]={hkId:w.hkId, name:w.name}; }));
+      const plan=distribute(ordered.map(r=>({room:r.room, type:r.type})), workers);
+      const map={}; plan.forEach(w=>w.items.forEach(it=>{ map[it.room]={hkId:w.hkId, name:w.name}; }));
       const assigns=Object.keys(map).map(room=>({room, hkId:map[room].hkId, hkName:map[room].name}));
       if(ready){ try{ const batch=db.batch(); assigns.forEach(a=>batch.set(db.collection("hoshouse_rooms").doc(this.docId(date,a.room)),{housekeeper:a.hkId, housekeeperName:a.hkName, updatedAt:Date.now()},{merge:true})); await batch.commit(); }
         catch(e){ console.warn("allocate",e&&e.code); return {ok:false, reason:'save', error:e&&e.code}; } }

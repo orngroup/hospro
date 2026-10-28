@@ -58,6 +58,27 @@
   .tvtile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
   .tvtile b{display:block;font:800 22px inherit}
   .tvtile span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  /* admin */
+  .adtabs{display:flex;gap:0;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:4}
+  .adtab{flex:1;padding:12px 6px;border:none;background:none;font:800 13px inherit;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent}
+  .adtab.on{color:var(--navy);border-bottom-color:var(--gold)}
+  .stcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:10px;cursor:pointer}
+  .stcard:active{background:#f7f9fb}
+  .stname{font:800 15px inherit;color:var(--navy)}
+  .skl{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;margin:3px 4px 0 0;color:#fff}
+  .skl.dep{background:var(--dep)} .skl.stay{background:var(--stay)} .skl.arr{background:var(--arr)} .skl.off{background:#c3cad3}
+  .stat{font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px}
+  .stat.active{background:#ecf6f0;color:#2a6a4a} .stat.holiday{background:#fff3df;color:#9c5a00} .stat.left{background:#fdecea;color:#b3261e}
+  .shsheet{position:fixed;left:0;right:0;bottom:0;z-index:1001;background:#fff;border-radius:18px 18px 0 0;padding:18px;max-width:720px;margin:0 auto;max-height:90vh;overflow:auto}
+  .shback{position:fixed;inset:0;background:rgba(10,20,35,.55);z-index:1000}
+  .seg{display:flex;gap:7px;flex-wrap:wrap;margin:4px 0 14px}
+  .segb{flex:1;min-width:92px;padding:11px;border:1.5px solid var(--line);border-radius:11px;background:#fff;font:700 14px inherit;cursor:pointer;text-align:center}
+  .segb.on{border-color:var(--navy);background:#1F3864;color:#fff}
+  .lktbl{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+  .lktbl th{background:#f4f6f9;text-align:left;padding:9px 10px;font-weight:800;color:var(--navy);font-size:12px}
+  .lktbl td{padding:9px 10px;border-top:1px solid var(--line);vertical-align:top}
+  .lktbl .lk{color:#1f5fb0;word-break:break-all;font-size:12px}
+  .lktbl .pin{font-weight:800;letter-spacing:2px}
 </style>
 </head>
 <body>
@@ -89,7 +110,10 @@
 <!-- TEAM VIEW (leads only) -->
 <div class="screen" id="scr-team">
   <header><div><div class="t">👁 Manager view</div><div class="u" id="tm-date"></div></div>
-    <div class="u" onclick="showScreen('scr-list');renderList()" style="cursor:pointer">← My rooms</div></header>
+    <div style="display:flex;gap:14px;align-items:center">
+      <div class="u" onclick="showAdmin()" style="cursor:pointer">⚙ Manage</div>
+      <div class="u" onclick="showScreen('scr-list');renderList()" style="cursor:pointer">← My rooms</div>
+    </div></header>
   <div class="wrap">
     <div id="lead-tools" style="display:none;background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 13px;margin-bottom:12px">
       <div style="font-weight:800;color:#1F3864;margin-bottom:9px">🛠 Manager tools</div>
@@ -109,6 +133,18 @@
     </div>
     <div id="teamWrap"></div>
   </div>
+</div>
+
+<!-- ADMIN DASHBOARD (leads only) -->
+<div class="screen" id="scr-admin">
+  <header><div><div class="t">⚙ Management</div><div class="u" id="ad-date"></div></div>
+    <div class="u" onclick="showTeam()" style="cursor:pointer">← Team</div></header>
+  <div class="adtabs">
+    <button class="adtab on" data-tab="rooms" onclick="setAdminTab('rooms')">🛏 Rooms</button>
+    <button class="adtab" data-tab="staff" onclick="setAdminTab('staff')">👥 Staff</button>
+    <button class="adtab" data-tab="links" onclick="setAdminTab('links')">🔗 Links &amp; codes</button>
+  </div>
+  <div class="wrap" id="adminWrap"></div>
 </div>
 
 <!-- ACTIVE ROOM -->
@@ -237,6 +273,7 @@
     unwatch=HH.watchDay(today, list=>{ rooms=list; hhNotifyDiff(list);
       if($('scr-list').classList.contains('on')) renderList();
       if($('scr-team').classList.contains('on')) renderTeam();
+      if($('scr-admin').classList.contains('on') && adminTab==='rooms') renderAdminRooms();
       if(active) refreshActive(); });
     // Managers (Laith / Ruth) land on the team view — they rarely clean rooms.
     if(ME.lead){ showTeam(); } else { showScreen('scr-list'); }
@@ -245,20 +282,29 @@
   function showTeam(){ $('tm-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); const lt=$('lead-tools'); if(lt) lt.style.display = (ME&&ME.lead)?'block':'none'; showScreen('scr-team'); renderTeam(); }
   // ---- manager tools (leads: add rooms ad-hoc, allocate) ----
   function leadMsg(t){ const e=$('lead-msg'); if(!e)return; e.textContent=t; clearTimeout(window._leadMsgT); window._leadMsgT=setTimeout(()=>{ if($('lead-msg')) $('lead-msg').textContent=''; },4500); }
+  // Active workers for allocation, enriched with skills / rating / capacity.
   async function leadWorkerPool(){
-    try{ const w=await HH.rotaWorkers(today); if(w&&w.length) return w.map(x=>({hkId:x.hkId,name:x.name})); }catch(e){}
-    const have={}; rooms.forEach(r=>{ if(r.housekeeper) have[r.housekeeper]=r.housekeeperName||r.housekeeper; });
-    const pool=Object.keys(have).map(id=>({hkId:id,name:have[id]}));
-    if(pool.length) return pool;
-    return HH.staff.filter(s=>!s.lead).map(s=>({hkId:s.id,name:s.name}));
+    try{ const w=await HH.rotaWorkers(today); if(w&&w.length) return w; }catch(e){}
+    const isActive=s=>(s.status||'active')==='active';
+    const enrich=s=>({hkId:s.id, name:s.name, cap:12, skills:(s.skills&&s.skills.length)?s.skills:HH.skillTypes.slice(), rating:(typeof s.rating==='number'?s.rating:3)});
+    // whoever already has rooms today (and is still active)
+    const have={}; rooms.forEach(r=>{ if(r.housekeeper){ const s=HH.staffById(r.housekeeper); if(s&&isActive(s)) have[r.housekeeper]=s; } });
+    const onDuty=Object.values(have);
+    if(onDuty.length) return onDuty.map(enrich);
+    const actives=HH.staff.filter(isActive);
+    const workers=actives.filter(s=>!s.lead);
+    return (workers.length?workers:actives).map(enrich);
   }
-  async function leadDistribute(newRooms){
+  async function leadDistribute(newRooms, type){
     const pool=await leadWorkerPool(); if(!pool.length) return 0;
     const after=await HH.getDayRooms(today);
     const load={}; pool.forEach(w=>load[w.hkId]=0);
     after.forEach(r=>{ if(r.housekeeper && r.status!=='done' && load[r.housekeeper]!=null) load[r.housekeeper]++; });
     let n=0;
-    for(const room of newRooms){ const w=pool.slice().sort((a,b)=>load[a.hkId]-load[b.hkId])[0]; if(!w) break;
+    for(const room of newRooms){
+      const elig=pool.filter(w=>HH.canDoType(w, type));
+      const w=(elig.length?elig:pool).slice().sort((a,b)=>load[a.hkId]-load[b.hkId] || (b.rating||3)-(a.rating||3))[0];
+      if(!w) break;
       await HH.updateRoom(today, room, {housekeeper:w.hkId, housekeeperName:w.name}); load[w.hkId]++; n++; }
     return n;
   }
@@ -272,21 +318,21 @@
     nums.forEach(nn=>{ if(!existing.has(String(nn))) picks.push({room:nn,type,note:''}); });
     await HH.setDayRooms(today, picks);
     const newOnes=nums.filter(nn=>!existing.has(String(nn)));
-    if(distribute && newOnes.length){ const n=await leadDistribute(newOnes.map(String)); leadMsg('✓ Added '+newOnes.length+' · shared '+n+' to the lightest-loaded.'); }
+    if(distribute && newOnes.length){ const n=await leadDistribute(newOnes.map(String), type); leadMsg('✓ Added '+newOnes.length+' · shared '+n+' by skill to the lightest-loaded.'); }
     else { leadMsg('✓ Added '+newOnes.length+' room'+(newOnes.length===1?'':'s')+'.'); }
     $('lead-add').value=''; renderTeam();
   }
   async function leadAllocateAll(){
     if(!(ME&&ME.lead)) return;
-    const pool=await leadWorkerPool(); if(!pool.length){ leadMsg('No housekeepers to allocate to yet.'); return; }
+    const pool=await leadWorkerPool(); if(!pool.length){ leadMsg('No active housekeepers to allocate to yet.'); return; }
     const day=await HH.getDayRooms(today);
     const todo=day.filter(r=>r.status!=='done' && r.status!=='in_progress');
     if(!todo.length){ leadMsg('Nothing waiting to allocate.'); return; }
-    const load={}; pool.forEach(w=>load[w.hkId]=0);
     const ordered=todo.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0)||(+a.room||0)-(+b.room||0));
-    for(const r of ordered){ const w=pool.slice().sort((a,b)=>load[a.hkId]-load[b.hkId])[0];
-      await HH.updateRoom(today, r.room, {housekeeper:w.hkId, housekeeperName:w.name}); load[w.hkId]++; }
-    leadMsg('✓ Allocated '+ordered.length+' room'+(ordered.length===1?'':'s')+' across '+pool.length+' staff.'); renderTeam();
+    const plan=HH.distribute(ordered.map(r=>({room:r.room, type:r.type})), pool);
+    let n=0;
+    for(const w of plan){ for(const it of w.items){ await HH.updateRoom(today, it.room, {housekeeper:w.hkId, housekeeperName:w.name}); n++; } }
+    leadMsg('✓ Allocated '+n+' room'+(n===1?'':'s')+' across '+pool.length+' staff — by skill & rating.'); renderTeam();
   }
   async function leadAddAreas(){
     if(!(ME&&ME.lead)) return;
@@ -314,10 +360,12 @@
       const d=g.rooms.filter(r=>r.status==='done').length, ip=g.rooms.filter(r=>r.status==='in_progress').length, pd=g.rooms.filter(r=>r.status==='pending').length;
       const dmins=g.rooms.filter(r=>r.status==='done'); const gAvg=dmins.length?Math.round(dmins.reduce((a,r)=>a+(r.durationSec||0)/60,0)/dmins.length):0;
       const gp=g.rooms.length?Math.round(d/g.rooms.length*100):0;
+      const canMove=!!(ME&&ME.lead);
       const chips=g.rooms.sort((a,b)=>(+a.room||0)-(+b.room||0)).map(r=>{
         const col=r.status==='done'?'#ecf6f0;color:#2a6a4a':r.status==='in_progress'?'#fff3df;color:#9c5a00':'#eef1f5;color:#6b7280';
         const mins=r.status==='done'?' '+Math.round((r.durationSec||0)/60)+'m':(r.status==='in_progress'&&r.startAt?' '+Math.round((Date.now()-r.startAt)/60000)+'m':'');
-        return `<span class="tvroom" style="background:${col}">${esc(r.room)}${mins}</span>`; }).join('');
+        const move=(canMove && r.status!=='done')?` onclick="reassignRoom('${esc(r.room)}')" style="cursor:pointer;background:${col}" title="Tap to move to another housekeeper"`:` style="background:${col}"`;
+        return `<span class="tvroom"${move}>${esc(r.room)}${mins}${(canMove&&r.status!=='done')?' ⇄':''}</span>`; }).join('');
       const stars = k==='_un' ? '' : `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px"><span style="font-size:11.5px;color:var(--muted)">Rating</span>${starsHTML(k, !!(ME&&ME.lead))}</div>`;
       return `<div class="tvrow"><div style="display:flex;justify-content:space-between;align-items:center">
           <span class="tvname">${esc(g.name)}</span>
@@ -327,6 +375,215 @@
     }).join('');
     $('teamWrap').innerHTML = rooms.length ? (tiles+rows) : '<div class="empty">No rooms set yet today. Add them with the Manager tools above (or reception sends them over), then Allocate.</div>';
   }
+  // ============================================================
+  //  ADMIN / MANAGEMENT DASHBOARD  (leads: Laith, Ruth, Ajay)
+  // ============================================================
+  const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const SKILL_ABBR={Departure:'Dep',Stayover:'Stay','Arrival-ready':'Arr'};
+  const SKILL_CLS={Departure:'dep',Stayover:'stay','Arrival-ready':'arr'};
+  let adminTab='rooms';
+  function personalLink(id){ return location.href.split('#')[0].split('?')[0]+'?u='+id; }
+
+  function showAdmin(){ if(!(ME&&ME.lead)) return; $('ad-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); showScreen('scr-admin'); renderAdmin(); }
+  function setAdminTab(t){ adminTab=t; document.querySelectorAll('.adtab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t)); renderAdmin(); }
+  function renderAdmin(){ if(adminTab==='staff') renderAdminStaff(); else if(adminTab==='links') renderAdminLinks(); else renderAdminRooms(); }
+
+  // ---- Rooms overview (all rooms today, by status; tap to reassign) ----
+  function renderAdminRooms(){
+    const done=rooms.filter(r=>r.status==='done'), prog=rooms.filter(r=>r.status==='in_progress');
+    const pend=rooms.filter(r=>r.status==='pending'||r.status==='blocked');
+    const pct=rooms.length?Math.round(done.length/rooms.length*100):0;
+    const tiles=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+      <div class="tvtile"><b style="color:var(--navy)">${rooms.length}</b><span>Rooms</span></div>
+      <div class="tvtile"><b style="color:var(--ok)">${done.length}</b><span>Done</span></div>
+      <div class="tvtile"><b style="color:var(--amber)">${prog.length}</b><span>In prog</span></div>
+      <div class="tvtile"><b style="color:var(--muted)">${pend.length}</b><span>To do</span></div>
+    </div>
+    <div class="tvrow"><div style="display:flex;justify-content:space-between;font-weight:700"><span>Overall progress</span><span>${pct}%</span></div>
+      <div class="tvbar"><div style="width:${pct}%;height:100%;background:var(--ok)"></div></div></div>`;
+    const rowHtml=r=>{
+      const pc=DEFT[r.type]||'dep';
+      const st=r.status==='done'?'<span class="done">✓ Done</span>':r.status==='in_progress'?'<span style="color:var(--amber);font-weight:800;font-size:13px">● In progress</span>':r.status==='blocked'?'<span style="color:var(--red);font-weight:800;font-size:13px">⛔ '+(r.blockReason==='dnd'?'DND':'Refused')+'</span>':'<span style="color:var(--muted);font-weight:700;font-size:13px">Waiting</span>';
+      const who=r.housekeeperName?esc(r.housekeeperName):'<em style="color:var(--red)">Unallocated</em>';
+      const move=r.status!=='done'?`<button class="go ghost" style="padding:8px 12px" onclick="reassignRoom('${esc(r.room)}')">Move ⇄</button>`:'';
+      return `<div class="card"><div class="rmno">${esc(r.room)}</div><span class="pill ${pc}">${esc(r.type)}</span>
+        <div class="grow"><div style="font-weight:700">${who}</div><div class="sub">${st}</div></div>${move}</div>`;
+    };
+    const ordered=rooms.slice().sort((a,b)=>(a.area?1:0)-(b.area?1:0)||(+a.room||0)-(+b.room||0));
+    $('adminWrap').innerHTML = rooms.length ? (tiles+'<div class="sect">All rooms today</div>'+ordered.map(rowHtml).join('')) : '<div class="empty">No rooms set for today yet.</div>';
+  }
+
+  // ---- Staff management (tap a card to edit skills / rating / status) ----
+  function statusLabel(s){ return {active:'Active',holiday:'On holiday',left:'Left'}[s||'active']||'Active'; }
+  function skillChips(sk){ sk=(sk&&sk.length)?sk:HH.skillTypes;
+    return HH.skillTypes.map(t=>`<span class="skl ${sk.indexOf(t)>=0?SKILL_CLS[t]:'off'}">${SKILL_ABBR[t]}</span>`).join(''); }
+  function ratingStars(n){ n=n||0; let s=''; for(let i=1;i<=5;i++) s+=`<span style="color:${i<=n?'#f0a500':'#cfd6de'};font-size:15px">★</span>`; return s; }
+  function renderAdminStaff(){
+    const list=HH.staff.slice();
+    const cards=list.map(s=>{
+      const st=s.status||'active';
+      return `<div class="stcard" onclick="editStaff('${s.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <span class="stname">${esc(s.name)}${s.lead?' <span style="font-size:11px;color:var(--gold);font-weight:800">LEAD</span>':''}</span>
+          <span class="stat ${st}">${statusLabel(st)}</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px">
+          <div>${skillChips(s.skills)}</div>
+          <div style="text-align:right"><div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Rating</div>${ratingStars(s.rating)}</div></div>
+      </div>`;
+    }).join('');
+    $('adminWrap').innerHTML =
+      `<div style="display:flex;justify-content:space-between;align-items:center;margin:2px 0 10px">
+         <div class="sect" style="margin:0">Staff (${list.length})</div>
+         <button class="go" style="padding:9px 14px" onclick="addStaffFlow()">＋ Add staff</button></div>`
+      + cards
+      + `<div class="sub" style="margin-top:10px">Tap anyone to set which cleans they do (Departures / Stayovers / Arrivals), their cleaning rating and their status. Only <b>Active</b> staff get rooms auto-allocated.</div>`;
+  }
+
+  function closeSheet(){ const o=$('hhOverlay'); o.style.display='none'; o.innerHTML=''; }
+  function editStaff(id){
+    const s=HH.staffById(id); if(!s) return;
+    const sk=(s.skills&&s.skills.length)?s.skills.slice():HH.skillTypes.slice();
+    const o=$('hhOverlay'); o.style.display='block';
+    o.innerHTML=`<div class="shback" onclick="closeSheet()"></div>
+      <div class="shsheet">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font:800 18px inherit;color:var(--navy)">Edit ${esc(s.name)}</div>
+          <div onclick="closeSheet()" style="font-size:22px;color:var(--muted);cursor:pointer;line-height:1">×</div></div>
+
+        <label class="loglbl" style="margin-top:0">Name</label>
+        <input id="es-name" class="loginp" value="${esc(s.name)}">
+        <label class="loglbl">PIN (4 digits)</label>
+        <input id="es-pin" class="loginp" inputmode="numeric" maxlength="4" value="${esc(String(s.pin||''))}">
+
+        <label class="loglbl">Cleans they do</label>
+        <div class="seg" id="es-skills">
+          ${HH.skillTypes.map(t=>`<button type="button" class="segb ${sk.indexOf(t)>=0?'on':''}" data-sk="${t}" onclick="this.classList.toggle('on')">${t}</button>`).join('')}
+        </div>
+
+        <label class="loglbl">Cleaning rating</label>
+        <div class="seg" id="es-rating">
+          ${[1,2,3,4,5].map(n=>`<button type="button" class="segb ${((s.rating||3)===n)?'on':''}" data-r="${n}" onclick="pickSeg(this,'es-rating')">${n}★</button>`).join('')}
+        </div>
+
+        <label class="loglbl">Status</label>
+        <div class="seg" id="es-status">
+          ${HH.staffStatuses.map(st=>`<button type="button" class="segb ${((s.status||'active')===st)?'on':''}" data-st="${st}" onclick="pickSeg(this,'es-status')">${statusLabel(st)}</button>`).join('')}
+        </div>
+
+        <label class="loglbl">Management access</label>
+        <div class="seg" id="es-lead">
+          <button type="button" class="segb ${s.lead?'on':''}" data-lead="1" onclick="pickSeg(this,'es-lead')">Lead / manager</button>
+          <button type="button" class="segb ${s.lead?'':'on'}" data-lead="0" onclick="pickSeg(this,'es-lead')">Housekeeper</button>
+        </div>
+
+        <button class="btn" style="margin-top:6px" onclick="saveStaffEdit('${s.id}')">Save</button>
+        <button class="btn ghost" style="background:#fff;border:1.5px solid var(--line);color:var(--red);margin-top:9px" onclick="removeStaffFlow('${s.id}')">Remove staff member</button>
+      </div>`;
+  }
+  // single-choice segmented control: light the tapped one, clear its siblings
+  function pickSeg(btn, wrapId){ const w=$(wrapId); if(!w) return; w.querySelectorAll('.segb').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
+
+  async function saveStaffEdit(id){
+    const name=($('es-name').value||'').trim();
+    const pin=($('es-pin').value||'').replace(/\D/g,'').slice(0,4);
+    const skills=[...document.querySelectorAll('#es-skills .segb.on')].map(b=>b.dataset.sk);
+    const rEl=document.querySelector('#es-rating .segb.on'); const rating=rEl?+rEl.dataset.r:3;
+    const stEl=document.querySelector('#es-status .segb.on'); const status=stEl?stEl.dataset.st:'active';
+    const leadEl=document.querySelector('#es-lead .segb.on'); const lead=leadEl?leadEl.dataset.lead==='1':false;
+    if(!name){ alert('Name can’t be blank.'); return; }
+    if(pin.length<4){ alert('PIN must be 4 digits.'); return; }
+    if(!skills.length){ alert('Pick at least one clean type (Departures, Stayovers or Arrivals).'); return; }
+    await HH.updateStaff(id, {name, pin, skills, rating, status, lead});
+    closeSheet(); renderAdminStaff();
+    if(ME&&ME.id===id){ ME=HH.staffById(id)||ME; }   // keep own session in sync
+    hhToast('Saved '+name);
+  }
+  async function addStaffFlow(){
+    const name=prompt('New staff member’s name:'); if(!name||!name.trim()) return;
+    const rec=await HH.addStaff(name.trim());
+    if(rec){ await HH.updateStaff(rec.id, {skills:HH.skillTypes.slice(), rating:3, status:'active'});
+      renderAdminStaff(); editStaff(rec.id); }
+  }
+  async function removeStaffFlow(id){
+    const s=HH.staffById(id); if(!s) return;
+    if(s.lead && HH.staff.filter(x=>x.lead).length<=1){ alert('You can’t remove the last manager.'); return; }
+    if(!confirm('Remove '+s.name+'? Their personal login will stop working. Rooms already done stay on record.')) return;
+    await HH.removeStaff(id); closeSheet(); renderAdminStaff();
+  }
+
+  // ---- move a room to another housekeeper (reallocate) ----
+  function reassignRoom(room){
+    const r=rooms.find(x=>String(x.room)===String(room)); if(!r) return;
+    const cur=r.housekeeper||'';
+    const actives=HH.staff.filter(s=>(s.status||'active')==='active');
+    const btn=s=>{ const skilled=HH.canDoType({skills:s.skills}, r.type);
+      return `<button class="btn ${s.id===cur?'':'ghost'}" style="${s.id===cur?'':'background:#fff;border:1.5px solid var(--line);color:var(--ink);'}margin-bottom:9px;display:flex;justify-content:space-between;align-items:center"
+        onclick="doReassign('${esc(r.room)}','${s.id}')">
+        <span>${esc(s.name)}${s.id===cur?'  ·  current':''}</span>
+        <span style="font-size:12px;${skilled?'opacity:.7':'color:#ffd9d4'}">${skilled?'✓ does '+(SKILL_ABBR[r.type]||r.type):'✗ not set for '+(SKILL_ABBR[r.type]||r.type)}</span>
+      </button>`; };
+    const o=$('hhOverlay'); o.style.display='block';
+    o.innerHTML=`<div class="shback" onclick="closeSheet()"></div>
+      <div class="shsheet">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font:800 18px inherit;color:var(--navy)">Move Room ${esc(r.room)}</div>
+          <div onclick="closeSheet()" style="font-size:22px;color:var(--muted);cursor:pointer;line-height:1">×</div></div>
+        <div class="sub" style="margin-bottom:12px">${esc(r.type)} · give this room to…</div>
+        ${actives.map(btn).join('')}
+        <button class="btn ghost" style="background:#fff;border:1.5px solid var(--line);color:var(--ink);margin-top:4px" onclick="doReassign('${esc(r.room)}','')">Unallocate (put back in the pool)</button>
+      </div>`;
+  }
+  async function doReassign(room, hkId){
+    const s=hkId?HH.staffById(hkId):null;
+    await HH.updateRoom(today, room, {housekeeper:hkId||'', housekeeperName:s?s.name:''});
+    closeSheet();
+    hhToast(s?('Room '+room+' → '+s.name.split(' ')[0]):('Room '+room+' unallocated'));
+    renderTeam(); if($('scr-admin').classList.contains('on')) renderAdmin();
+  }
+
+  // ---- print / download staff links & codes ----
+  function linkRows(){ return HH.staff.map(s=>({name:s.name, pin:String(s.pin||''), link:personalLink(s.id), lead:!!s.lead, status:s.status||'active'})); }
+  function renderAdminLinks(){
+    const rows=linkRows();
+    const tr=r=>`<tr><td><b>${esc(r.name)}</b>${r.lead?' <span style="color:var(--gold);font-weight:800;font-size:10px">LEAD</span>':''}${r.status!=='active'?' <span style="color:var(--red);font-size:10px">('+statusLabel(r.status)+')</span>':''}</td>
+      <td class="pin">${esc(r.pin)}</td>
+      <td><a class="lk" href="${esc(r.link)}">${esc(r.link)}</a></td></tr>`;
+    $('adminWrap').innerHTML=
+      `<div style="display:flex;gap:8px;margin:2px 0 12px">
+         <button class="go" style="flex:1" onclick="printLinks()">🖨 Print</button>
+         <button class="go ghost" style="flex:1;background:#fff;border:1.5px solid var(--line);color:var(--navy)" onclick="downloadLinks()">⬇ Download (CSV)</button>
+       </div>
+       <table class="lktbl"><thead><tr><th>Name</th><th>PIN</th><th>Personal link</th></tr></thead>
+       <tbody>${rows.map(tr).join('')}</tbody></table>
+       <div class="sub" style="margin-top:10px">Each person opens their own link, picks their name and taps their 4-digit PIN. Share privately — these codes are how they sign in.</div>`;
+  }
+  function printLinks(){
+    const rows=linkRows();
+    const date=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    const tr=r=>`<tr><td><strong>${esc(r.name)}</strong>${r.lead?' (Lead)':''}</td><td style="font-weight:700;letter-spacing:2px">${esc(r.pin)}</td><td style="font-size:11px;word-break:break-all">${esc(r.link)}</td></tr>`;
+    const html=`<!doctype html><html><head><meta charset="utf-8"><title>HosHouse logins</title>
+      <style>body{font:13px/1.4 Arial,sans-serif;color:#1f2a37;padding:24px}h1{color:#1F3864;font-size:20px;margin:0 0 2px}p{color:#666;margin:0 0 16px}
+      table{width:100%;border-collapse:collapse}th{background:#1F3864;color:#fff;text-align:left;padding:8px 10px;font-size:12px}
+      td{padding:8px 10px;border-bottom:1px solid #ddd;vertical-align:top}tr:nth-child(even) td{background:#f6f8fa}</style></head>
+      <body><h1>HosHouse — staff logins &amp; codes</h1><p>Brandon Hall Hotel &amp; Spa · ${date} · keep private</p>
+      <table><thead><tr><th>Name</th><th>PIN</th><th>Personal link</th></tr></thead><tbody>${rows.map(tr).join('')}</tbody></table>
+      <script>window.onload=function(){setTimeout(function(){window.print();},250);}<\/script></body></html>`;
+    const w=window.open('','_blank');
+    if(w){ w.document.open(); w.document.write(html); w.document.close(); }
+    else { // popup blocked (common on mobile standalone) → download an HTML file instead
+      const blob=new Blob([html],{type:'text/html'}); const u=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=u; a.download='hoshouse-logins.html'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000);
+      hhToast('Pop-ups blocked — downloaded the printable sheet instead.');
+    }
+  }
+  function downloadLinks(){
+    const rows=linkRows();
+    const csv=[['Name','PIN','Status','Personal link']].concat(rows.map(r=>[r.name, r.pin, statusLabel(r.status), r.link]))
+      .map(line=>line.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+    const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const u=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=u; a.download='hoshouse-logins.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000);
+  }
+
   function renderList(){
     const mine=rooms.filter(r=>r.housekeeper===ME.id);
     const inprog=mine.filter(r=>r.status==='in_progress');
