@@ -15,7 +15,66 @@
   const REASONS = ["Hotel stay","Spa","Restaurant or bar","Wedding or party","Conference or event","Work"];
   const REASON_ALIAS = { "Meeting or conference":"Conference or event" };
   const device = ua => /iPhone|iPad|iPod/i.test(ua||"") ? "iPhone / iPad" : /Android/i.test(ua||"") ? "Android" : /Macintosh/i.test(ua||"") ? "Mac" : /Windows/i.test(ua||"") ? "Windows laptop" : ua ? "Other" : "";
-  const apName = mac => W.apNames[(mac||"").toLowerCase()] || "";
+  const AP_DEFAULT = {
+    "e0:63:da:33:45:f3":"Beech Room Corridor",
+    "e0:63:da:33:45:fe":"Boiler Room",
+    "e0:63:da:39:09:74":"Brandon Suite",
+    "e0:63:da:39:09:48":"Gym Downstairs",
+    "e0:63:da:39:0d:07":"Gym Reception",
+    "e0:63:da:39:08:df":"Gym Upstairs",
+    "e0:63:da:39:09:8d":"Office",
+    "e0:63:da:33:45:b7":"Reception",
+    "e0:63:da:33:45:83":"Restaurant Entrance",
+    "e0:63:da:33:46:12":"Restaurant Left",
+    "e0:63:da:33:45:ee":"Restaurant Right",
+    "e0:63:da:39:0c:1b":"Rooms 103-104 hallway",
+    "e0:63:da:33:45:82":"Rooms 107-108 hallway",
+    "e0:63:da:33:64:b4":"Rooms 109-110 hallway",
+    "e0:63:da:39:09:aa":"Rooms 113-114 hallway",
+    "e0:63:da:39:0c:e6":"Rooms 116-118 cupboard",
+    "e0:63:da:33:66:35":"Rooms 120-122 cupboard",
+    "e0:63:da:33:66:d8":"Rooms 124-126 cupboard",
+    "74:ac:b9:20:0b:80":"Rooms 128-130 cupboard",
+    "e0:63:da:33:45:f5":"Rooms 13-14 hallway",
+    "e0:63:da:33:3a:02":"Rooms 131-132 hallway, B Block",
+    "e0:63:da:33:3a:06":"Room 136 hallway, B Block",
+    "e0:63:da:33:44:ac":"Room 140 hallway, B Block",
+    "e0:63:da:33:43:09":"Rooms 142-144 hallway, B Block",
+    "e0:63:da:33:3d:90":"Room 146 hallway, B Block",
+    "e0:63:da:33:45:e0":"Rooms 149-151 cupboard, B Block",
+    "e0:63:da:33:45:ff":"Room 154 cupboard, B Block",
+    "e0:63:da:33:46:73":"Room 158 cupboard, B Block",
+    "e0:63:da:33:45:d2":"Rooms 161-162 cupboard, B Block",
+    "e0:63:da:33:46:83":"Room 163 cupboard, B Block",
+    "e0:63:da:33:62:c6":"Rooms 17-18 hallway",
+    "e0:63:da:39:0c:d6":"Rooms 25-27 hallway",
+    "e0:63:da:33:45:f1":"Rooms 3-4 hallway",
+    "e0:63:da:39:0a:2a":"Rooms 33-35 hallway",
+    "e0:63:da:33:63:2b":"Rooms 37-39 hallway",
+    "e0:63:da:33:62:c2":"Room 41 above stairs",
+    "e0:63:da:33:46:61":"Room 41 cleaning cupboard",
+    "e0:63:da:33:62:8d":"Rooms 43-44 hallway",
+    "e0:63:da:33:68:44":"Room 48 ceiling panel",
+    "e0:63:da:33:64:0c":"Room 49 hallway",
+    "e0:63:da:33:63:2d":"Rooms 51-52 hallway",
+    "e0:63:da:33:62:b4":"Room 61 hallway",
+    "e0:63:da:33:63:fd":"Room 62 hallway",
+    "e0:63:da:33:45:f9":"Rooms 7-8 hallway",
+    "e0:63:da:33:65:e6":"Spa Alkins Suite",
+    "e0:63:da:33:6d:c0":"Spa Suites Hallway",
+    "e0:63:da:39:09:68":"Spa Suites Lobby",
+    "e0:63:da:33:62:bc":"Warwick Room hallway",
+    "e0:63:da:33:46:16":"Wolfston Suite 1",
+    "e0:63:da:33:45:b3":"Wolfston Suite 3"
+  };
+  const apName = mac => { const k=(mac||"").toLowerCase(); return W.apNames[k] || AP_DEFAULT[k] || ""; };
+  const apArea = name => { const n=(name||"").toLowerCase(); if(!n) return "";
+    if(/b block/.test(n)) return "Bedrooms – B Block";
+    if(/^rooms? \d/.test(n)) return "Bedrooms – main house";
+    if(/^gym/.test(n)) return "Gym"; if(/^spa/.test(n)) return "Spa"; if(/^restaurant/.test(n)) return "Restaurant";
+    if(/^reception/.test(n)) return "Reception"; if(/^office/.test(n)) return "Office";
+    if(/brandon suite|wolfston|warwick|beech/.test(n)) return "Function suites";
+    if(/boiler/.test(n)) return "Back of house"; return "Other"; };
   function loadApNames(){ if(W.apLoaded || typeof FB==="undefined" || !FB.ready || !FB.user) return; W.apLoaded=true;
     FB.db.collection("meta").doc("ap_names").onSnapshot(d=>{ W.apNames = (d.exists && d.data().names) || {}; paint(); }, ()=>{}); }
 
@@ -146,7 +205,7 @@
       <div id="wf-list"></div>
       <details style="margin-top:18px"><summary style="cursor:pointer;font:700 13px Lato;color:#1a2b3a">Access points — name the areas of the hotel</summary>
         <div class="quote-panel" style="margin-top:8px">
-          <p class="qs-sub">Each sign-in records which Wi-Fi access point served the guest. Give each one a name (Spa, Clarendon, East Wing…) and the "Where in the hotel" chart uses it. Quest IT can supply the list of access points and their MAC addresses.</p>
+          <p class="qs-sub">Each sign-in records which Wi-Fi access point served the guest. Quest IT's list of all 50 access points is built in; edit a name here if one moves or is renamed.</p>
           <div id="wf-aps"></div>
         </div></details>
       <details style="margin-top:10px"><summary style="cursor:pointer;font:700 13px Lato;color:#1a2b3a">Welcome page &amp; set-up</summary>
@@ -208,9 +267,10 @@
       card("Gender <span style='font-weight:400;color:#8296a8'>— from title</span>", splitBar([g("Female","#9C4F63"),g("Male","#3B6585"),g("Not known","#cfd6de")].filter(x=>x.value)), C2) +
       card("Device", splitBar([["iPhone / iPad","#1a2b3a"],["Android","#2B726A"],["Mac","#3B6585"],["Windows laptop","#7A6538"],["Other","#cfd6de"]].map(([l,c])=>({label:l,value:pr.filter(p=>p.device===l).length,colour:c})).filter(x=>x.value)), C2) +
       card("What brings guests here", hBars(REASONS.map(r=>({label:r,value:pr.filter(p=>p.reason===r).length})).filter(x=>x.value).sort((a,b)=>b.value-a.value), COL.teal) + (pr.filter(p=>!p.reason).length?`<div class="qs-sub" style="margin-top:6px">${pr.filter(p=>!p.reason).length} older sign-ups were asked leisure/business instead.</div>`:""), C3) +
-      card("Where in the hotel <span style='font-weight:400;color:#8296a8'>— by access point</span>", (()=>{ const c={}; inRange.forEach(r=>{ const k=(r.ap||"").toLowerCase(); if(k) c[k]=(c[k]||0)+1; });
+      card("Where in the hotel <span style='font-weight:400;color:#8296a8'>— by area, then access point</span>", (()=>{ const c={}, ar={}; inRange.forEach(r=>{ const k=(r.ap||"").toLowerCase(); if(k){ c[k]=(c[k]||0)+1; const a=apArea(apName(k))||"Unnamed"; ar[a]=(ar[a]||0)+1; } });
+          const areas=Object.entries(ar).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value}));
           const items=Object.entries(c).sort((a,b)=>b[1]-a[1]).map(([mac,n])=>({label:apName(mac)||mac, value:n}));
-          return items.length ? hBars(items.slice(0,10), COL.blue) + (Object.keys(c).some(k=>!apName(k))?`<div class="qs-sub" style="margin-top:6px">Unnamed access points show as codes — name them in <b>Access points</b> below.</div>`:"") : `<div class="qs-sub">No access-point data in this period.</div>`; })(), C3) +
+          return items.length ? hBars(areas, COL.blue) + `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12px;color:#2F7A72">By access point (top 12)</summary><div style="margin-top:6px">${hBars(items.slice(0,12), "#8fb0c9")}</div></details>` + (Object.keys(c).some(k=>!apName(k))?`<div class="qs-sub" style="margin-top:6px">Unnamed access points show as codes — name them in <b>Access points</b> below.</div>`:"") : `<div class="qs-sub">No access-point data in this period.</div>`; })(), C3) +
       card(`Connections per day <span style="font-weight:400;color:#8296a8">— includes guests reconnecting</span>`, barChart(series,{every:Math.ceil(series.length/10),h:140}), C2) +
       card("Busiest days", barChart(["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>({label:d,value:inRange.filter(r=>((new Date(r.created).getDay()+6)%7)===i).length})),{h:140,every:1,colour:COL.navy}), C2) +
       card("Busiest times of day", barChart(Array.from({length:12},(_,i)=>({label:(i*2)+":00",value:inRange.filter(r=>Math.floor(new Date(r.created).getHours()/2)===i).length})),{h:140,every:1,colour:COL.gold}), C2) +
@@ -224,7 +284,7 @@
     if(apBox && !apBox.contains(document.activeElement)){ const seen={}; W.rows.forEach(r=>{ const k=(r.ap||"").toLowerCase(); if(k){ seen[k]=seen[k]||{n:0,last:""}; seen[k].n++; if(r.created>seen[k].last) seen[k].last=r.created; } });
       const macs=Object.keys(seen).sort((a,b)=>seen[b].n-seen[a].n);
       const sig=macs.join("|")+"#"+JSON.stringify(W.apNames); if(apBox.dataset.sig!==sig){ apBox.dataset.sig=sig;
-      apBox.innerHTML = macs.length ? `<table class="data-table"><tr><th>Access point</th><th>Name / area</th><th>Sign-ins</th><th>Last used</th></tr>${macs.map(mac=>`<tr><td style="font-family:monospace">${esc(mac)}</td><td><input data-ap="${esc(mac)}" value="${esc(W.apNames[mac]||"")}" placeholder="e.g. Spa reception" style="width:100%;padding:6px 9px;border:1px solid #d9e0e7;border-radius:7px;font:13px Lato"></td><td>${seen[mac].n}</td><td>${fmt(seen[mac].last)}</td></tr>`).join("")}</table><button id="wf-apsave" class="btn sm" style="margin-top:8px">Save names</button>` : `<div class="qs-sub">No access-point identifiers received yet.</div>`;
+      apBox.innerHTML = macs.length ? `<table class="data-table"><tr><th>Access point</th><th>Name / area</th><th>Sign-ins</th><th>Last used</th></tr>${macs.map(mac=>`<tr><td style="font-family:monospace">${esc(mac)}</td><td><input data-ap="${esc(mac)}" value="${esc(W.apNames[mac]||AP_DEFAULT[mac]||"")}" placeholder="e.g. Spa reception" style="width:100%;padding:6px 9px;border:1px solid #d9e0e7;border-radius:7px;font:13px Lato"></td><td>${seen[mac].n}</td><td>${fmt(seen[mac].last)}</td></tr>`).join("")}</table><button id="wf-apsave" class="btn sm" style="margin-top:8px">Save names</button>` : `<div class="qs-sub">No access-point identifiers received yet.</div>`;
       const sv=document.getElementById("wf-apsave"); if(sv) sv.onclick=async()=>{ const names={}; apBox.querySelectorAll("[data-ap]").forEach(i=>{ if(i.value.trim()) names[i.dataset.ap]=i.value.trim(); });
         try{ await FB.db.collection("meta").doc("ap_names").set({names},{merge:false}); toastMsg("Access point names saved"); }catch(e){ toastMsg("Could not save: "+e.message); } }; } }
     const cnt=document.getElementById("wf-count"); if(cnt) cnt.textContent = `${rows.length} guest${rows.length===1?"":"s"} match`;
