@@ -10548,7 +10548,7 @@ function hhDashStaffGrid(rooms){
     const mins=r.status==='done'?' '+Math.round((r.durationSec||0)/60)+'m':(r.status==='in_progress'&&r.startAt?' '+Math.round((Date.now()-r.startAt)/60000)+'m':'');
     const label=(r.status==='blocked'?'⛔ ':(r.area?'🧼 ':''))+r.room;
     const cam=((r.photos&&Object.keys(r.photos).length)||r.blockReason==='dnd')?' 📷':'';
-    return `<span onclick="hhOpenRoom('${hhEsc(r.room)}')" title="View room, status & photos" style="display:inline-block;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:7px;margin:3px 4px 0 0;cursor:pointer;background:${col}">${hhEsc(label)}${mins}${cam}</span>`; };
+    return `<span onclick="hhOpenRoom('${hhEsc(r.room)}')" title="Open room — view status, photos & reallocate" style="display:inline-block;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:7px;margin:3px 4px 0 0;cursor:pointer;background:${col}">${hhEsc(label)}${mins}${cam}</span>`; };
   const cards=order.map(k=>{ const g=by[k];
     const d=g.rooms.filter(r=>r.status==='done').length, ip=g.rooms.filter(r=>r.status==='in_progress').length, pd=g.rooms.filter(r=>r.status==='pending').length;
     const pct=g.rooms.length?Math.round(d/g.rooms.length*100):0;
@@ -10591,6 +10591,7 @@ async function hhOpenRoom(room){
   if(typeof FB!=='undefined' && FB.db){ try{ const d=await FB.db.collection('hoshouse_rooms').doc(hhDocId(date,room)).get(); if(d.exists) r=d.data(); }catch(e){} }
   if(!r){ const day=await hhFetchDay(date); r=day.find(x=>String(x.room)===String(room))||{room,status:'pending'}; }
   const photos=await hhLoadPhotos(date, room);
+  await hhLoadStaff();
   hhModal(hhRoomDetailHTML(r, photos, date));
 }
 function hhRoomDetailHTML(r, photos, date){
@@ -10613,6 +10614,7 @@ function hhRoomDetailHTML(r, photos, date){
         ${r.startAt?`<span style="font-size:12px;color:#5b6b7b">Started ${t(r.startAt)}</span>`:''}
         ${r.finishAt?`<span style="font-size:12px;color:#5b6b7b">· Finished ${t(r.finishAt)}${dur?(' · '+dur):''}</span>`:''}
       </div>
+      ${r.status!=='done'?hhReassignControlHTML(r):''}
       ${r.status==='blocked'?`<div style="background:#fdecea;border:1px solid #f3c0ba;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#b3261e;margin-bottom:12px">
         ⛔ Could not be cleaned — ${r.blockReason==='dnd'?'Do Not Disturb sign on the door':'guest refused service'}. Logged by ${esc(r.blockedBy||r.housekeeperName||'housekeeper')} at ${t(r.blockedAt)}.</div>`:''}
       ${r.notes&&r.notes.trim()?`<div style="background:#fff7e8;border:1px solid #f0d9ad;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#7a5a1e;margin-bottom:12px">📝 ${esc(r.notes)}</div>`:''}
@@ -10630,6 +10632,33 @@ function hhRoomDetailHTML(r, photos, date){
         ${logLine('🎒','Lost property',r.lostProperty)}
       </div>
     </div>`;
+}
+
+/* ---- reallocate a room to another housekeeper (from the room pop-up) ---- */
+function hhReassignControlHTML(r){
+  const cur=r.housekeeper||'';
+  const actives=(typeof hhStaffList==='function'?hhStaffList():[]).filter(s=>(s.status||'active')==='active');
+  const opt=s=>{ const skilled=hhCanDo(s.skills, r.type); return `<option value="${s.id}" ${s.id===cur?'selected':''}>${hhEsc(s.name)}${skilled?'':' — not set for '+hhEsc(r.type||'')}</option>`; };
+  return `<div style="background:#eef2f8;border:1px solid #d7e0ee;border-radius:10px;padding:10px 12px;margin-bottom:12px">
+    <div style="font:800 11px Lato;color:#1F3864;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Reallocate this room</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select id="hh-reassign-sel" style="flex:1;min-width:170px;padding:8px 10px;border:1px solid #c7d2e0;border-radius:8px;font:13px Lato">
+        <option value="">— Unallocated (put back in the pool) —</option>
+        ${actives.map(opt).join('')}
+      </select>
+      <button onclick="hhReassignFromModal('${hhEsc(r.room)}')" style="padding:9px 18px;border:none;background:#1F3864;color:#fff;border-radius:8px;font:800 12.5px Lato;cursor:pointer">Move</button>
+    </div>
+    <div style="font-size:11px;color:#5b6b7b;margin-top:6px">Only active staff are listed. They see the change on their phone straight away.</div>
+  </div>`;
+}
+async function hhReassignFromModal(room){
+  const date=window._hhDate||hhTodayISO();
+  const sel=document.getElementById('hh-reassign-sel'); if(!sel) return;
+  const hkId=sel.value; const s=hkId?hhStaffById(hkId):null;
+  await hhWriteAssign(date, [{room, hkId:hkId||'', hkName:s?s.name:''}]);
+  hhCloseModal();
+  toast(s?('✓ Room '+room+' → '+s.name.split(' ')[0]):('Room '+room+' unallocated'));
+  hhRenderDash(); hhRenderManage();
 }
 
 /* ---- room cleaning history search (date + room) ---- */
