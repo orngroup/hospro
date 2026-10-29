@@ -370,6 +370,11 @@
       if(ready){ try{ await db.collection("hoshouse_rooms").doc(this.docId(date,room)).set(patch,{merge:true}); return true; }catch(e){ console.warn("updateRoom",e&&e.code); } }
       const key="hoshouse_day_"+date; const map=lsGet(key,{}); map[String(room)]=Object.assign(map[String(room)]||this.blankRoom(date,room),patch); lsSet(key,map); return true;
     },
+    // Remove a room from the day entirely (management correction — works at any status)
+    async removeRoom(date, room){
+      if(ready){ try{ await db.collection("hoshouse_rooms").doc(this.docId(date,room)).delete(); return true; }catch(e){ console.warn("removeRoom",e&&e.code); } }
+      const key="hoshouse_day_"+date; const map=lsGet(key,{}); delete map[String(room)]; lsSet(key,map); return true;
+    },
 
     // ----- room photos (completion shots + cannot-start door photos) -----
     // rec: { date, room, slot, label, dataUrl, by, byName, kind }

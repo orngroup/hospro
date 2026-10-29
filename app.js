@@ -10253,6 +10253,12 @@ async function hhRemoveStaffPrompt(id){
   await hhRemoveStaffRec(id); toast('Removed '+s.name); hhManageStaff(); hhRenderManage(); hhRenderLinks();
 }
 
+/* Dashboard tiles / chips → filter the rooms table and scroll to it */
+function hhFilterRooms(f){ window._hhRoomFilter=f; window._hhStaffFilter=''; hhRenderManage();
+  setTimeout(()=>{ const el=document.getElementById('hh-manage'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }, 60); }
+/* By-staff panel → show just that person's rooms */
+function hhFilterByStaff(id){ window._hhStaffFilter=id; window._hhRoomFilter='all'; hhRenderManage();
+  setTimeout(()=>{ const el=document.getElementById('hh-manage'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }, 60); }
 /* ---- The manage console: staff-working row + room selection + allocate ---- */
 async function hhRenderManage(){
   const box=document.getElementById('hh-manage'); if(!box) return;
@@ -10279,8 +10285,22 @@ async function hhRenderManage(){
   }).join('');
 
   // ---- room list (pending rooms editable; started/done locked) ----
+  const WIN=HH_WIN_MIN;
+  const isOver=r=> (r.status==='in_progress' && r.startAt && (Date.now()-r.startAt)/1000>WIN*60) || (r.status==='done' && (r.durationSec||0)>WIN*60);
+  const flt=window._hhRoomFilter||'all';
+  const fmatch=r=> flt==='all'?true : flt==='done'?r.status==='done' : flt==='in_progress'?r.status==='in_progress'
+    : flt==='pending'?(r.status==='pending'||r.status==='blocked') : flt==='unalloc'?(!r.housekeeper&&r.status!=='done') : flt==='over'?isOver(r) : true;
+  const fcount={ all:bedrooms.length, done:bedrooms.filter(r=>r.status==='done').length, in_progress:bedrooms.filter(r=>r.status==='in_progress').length,
+    pending:bedrooms.filter(r=>r.status==='pending'||r.status==='blocked').length, unalloc:unalloc.length, over:bedrooms.filter(isOver).length };
+  const fchip=(id,label,col)=>`<button onclick="hhFilterRooms('${id}')" style="padding:5px 11px;border:1.5px solid ${flt===id?'#1F3864':'#d7dde4'};border-radius:16px;font:700 11.5px Lato;cursor:pointer;background:${flt===id?'#1F3864':'#fff'};color:${flt===id?'#fff':(col||'#1a2b3a')}">${label} <b style="color:${flt===id?'#fff':(col||'#1a2b3a')}">${fcount[id]}</b></button>`;
+  const roomChips=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+    ${fchip('all','All')}${fchip('pending','Waiting')}${fchip('in_progress','In progress','#9c5a00')}${fchip('done','Ready','#2a6a4a')}${fchip('unalloc','Unallocated','#b3261e')}${fchip('over','Over '+WIN+'m','#b3261e')}</div>`;
+  const staffFlt=window._hhStaffFilter||'';
+  const staffBanner=staffFlt?(()=>{ const nm=(bedrooms.find(r=>r.housekeeper===staffFlt)||{}).housekeeperName||staffFlt;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#eef2f8;border:1px solid #d7dde4;border-radius:10px;padding:7px 12px;margin-bottom:10px"><span style="font:800 12.5px Lato;color:#1F3864">👤 ${hhEsc(nm)}'s rooms</span><button onclick="hhFilterRooms('all')" style="padding:4px 11px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 11.5px Lato;cursor:pointer;color:#1a2b3a">✕ Clear</button></div>`; })():'';
+  const shownRooms=bedrooms.filter(fmatch).filter(r=>!staffFlt || r.housekeeper===staffFlt);
   const typeOpt=(sel)=>HH_ROOM_TYPES.map(t=>`<option value="${t}" ${t===sel?'selected':''}>${t}</option>`).join('');
-  const roomRows=bedrooms.sort((a,b)=>(+a.room||0)-(+b.room||0)).map(r=>{
+  const roomRows=shownRooms.sort((a,b)=>(+a.room||0)-(+b.room||0)).map(r=>{
     const locked=r.status!=='pending';
     const stCol=r.status==='done'?'#2a6a4a':r.status==='in_progress'?'#9c5a00':r.status==='blocked'?'#b3261e':'#6b7280';
     const stText=r.status==='blocked'?('⛔ '+(r.blockReason==='dnd'?'DND':'Refused')):(r.status||'pending').replace('_',' ');
@@ -10294,10 +10314,12 @@ async function hhRenderManage(){
         : `<select onchange="hhChangeType('${hhEsc(r.room)}',this.value)" style="padding:4px 6px;border:1px solid #d7dde4;border-radius:6px;font:12px Lato">${typeOpt(r.type)}</select>`}</td>
       <td style="padding:6px 8px;color:#5b6b7b">${hhEsc(who)}</td>
       <td style="padding:6px 8px;font-size:11px;font-weight:700;color:${stCol};text-transform:capitalize">${stText}${cam}</td>
-      <td style="padding:6px 8px;color:#5b6b7b;font-size:11.5px">${hhEsc(r.notes||'')}</td>
-      <td style="padding:6px 8px;text-align:right" onclick="event.stopPropagation()">${locked?'':`<button onclick="hhRemoveRoom('${hhEsc(r.room)}')" title="Remove this room" style="border:none;background:none;color:#b3261e;cursor:pointer;font-size:14px">✕</button>`}</td>
+      <td style="padding:6px 8px;color:#5b6b7b;font-size:11.5px">${r.voiceNote?'<span title="Has a voice note from management">🔊 </span>':''}${hhEsc(r.notes||'')}</td>
+      <td style="padding:6px 8px;text-align:right" onclick="event.stopPropagation()">${locked
+        ? `<button onclick="hhRemoveRoomConfirm('${hhEsc(r.room)}')" title="Remove this room (added by mistake) — asks to confirm" style="border:none;background:none;color:#c98b86;cursor:pointer;font-size:14px">✕</button>`
+        : `<button onclick="hhRemoveRoom('${hhEsc(r.room)}')" title="Remove this room" style="border:none;background:none;color:#b3261e;cursor:pointer;font-size:14px">✕</button>`}</td>
     </tr>`;
-  }).join('') || `<tr><td colspan="6" style="padding:12px;color:#8296a8;font-size:12.5px">No rooms yet — read them off the Guestline printout and add them above.</td></tr>`;
+  }).join('') || `<tr><td colspan="6" style="padding:12px;color:#8296a8;font-size:12.5px">${flt==='all'?'No rooms yet — read them off the Guestline printout and add them above.':'No rooms in this view. <a href="#" onclick="hhFilterRooms(\'all\');return false" style="color:#1F3864">Show all</a>'}</td></tr>`;
 
   const areaLine = areas.length
     ? `<span style="font-size:11.5px;color:#5b6b7b">Public areas on list: ${areas.map(a=>hhEsc(a.room)).join(', ')}</span>`
@@ -10330,6 +10352,8 @@ async function hhRenderManage(){
         <button onclick="hhBulkOpen()" title="Open the full room grid and tick the rooms that need cleaning" style="display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border:1px solid #1F3864;background:#eef2f8;color:#1F3864;border-radius:9px;font:700 12.5px Lato;cursor:pointer">🗂️ Select rooms (bulk)</button>
         <span style="font-size:11.5px;color:#8296a8;margin-left:10px">Type a few above, or pick from the whole house here.</span>
       </div>
+      ${roomChips}
+      ${staffBanner}
       <div style="overflow-x:auto;border:1px solid #eef1f4;border-radius:10px">
         <table style="width:100%;border-collapse:collapse;font-size:12.5px">
           <thead><tr style="background:#f5f7f9;text-align:left;color:#6b7280;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">
@@ -10633,16 +10657,16 @@ async function hhRenderDash(){
   const eff=Object.values(byHk).sort((a,b)=>b.done-a.done);
 
   const tiles=[
-    ['🛏','Rooms today',rooms.length,'#1F3864','#eef2f8','All rooms reception set for cleaning'],
-    ['✅','Completed',done.length,'#2E6B5E','#e8f5ef','Rooms finished and checked'],
-    ['🧹','In progress',prog.length,'#b9780a','#fff4e1','Rooms a housekeeper has started'],
-    ['⏳','Not done yet',pend.length,'#5b6b7b','#eef1f5','Rooms not started'],
-    ['⏱','Over 30 min',overs.length,overs.length?'#b3261e':'#5b6b7b',overs.length?'#fdecea':'#eef1f5','Rooms taking longer than allowed'],
-    ['📊','Avg min / room',avg,'#1F3864','#eef2f8','Average time to clean a finished room'],
+    ['🛏','Rooms today',rooms.length,'#1F3864','#eef2f8','All rooms reception set for cleaning','all'],
+    ['✅','Completed',done.length,'#2E6B5E','#e8f5ef','Rooms finished and checked','done'],
+    ['🧹','In progress',prog.length,'#b9780a','#fff4e1','Rooms a housekeeper has started','in_progress'],
+    ['⏳','Not done yet',pend.length,'#5b6b7b','#eef1f5','Rooms not started','pending'],
+    ['⏱','Over 30 min',overs.length,overs.length?'#b3261e':'#5b6b7b',overs.length?'#fdecea':'#eef1f5','Rooms taking longer than allowed','over'],
+    ['📊','Avg min / room',avg,'#1F3864','#eef2f8','Average time to clean a finished room',''],
   ];
-  const tileHtml=tiles.map(([ic,k,vv,c,bg,tip])=>`<div title="${hhEsc(tip)}" style="background:${bg};border:1px solid rgba(31,56,100,.06);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+  const tileHtml=tiles.map(([ic,k,vv,c,bg,tip,flt])=>`<div ${flt!==''?`onclick="hhFilterRooms('${flt}')" title="${hhEsc(tip)} — click to see these rooms" style="cursor:pointer;`:`title="${hhEsc(tip)}" style="`}background:${bg};border:1px solid rgba(31,56,100,.06);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
     <div style="display:flex;align-items:center;justify-content:space-between"><div style="font:800 27px Lato;color:${c};line-height:1">${vv}</div><div style="font-size:19px;opacity:.55">${ic}</div></div>
-    <div style="font-size:10.5px;color:#5b6b7b;text-transform:uppercase;letter-spacing:.4px;margin-top:5px;font-weight:800">${k}</div></div>`).join('');
+    <div style="font-size:10.5px;color:#5b6b7b;text-transform:uppercase;letter-spacing:.4px;margin-top:5px;font-weight:800">${k}${flt!==''?' <span style=\"opacity:.5\">→</span>':''}</div></div>`).join('');
 
   const segs=[{label:'Completed',value:done.length,color:HH_CH.done},{label:'In progress',value:prog.length,color:HH_CH.prog},{label:'Not done',value:pend.length,color:HH_CH.todo},{label:'Over 30 min',value:overs.length,color:HH_CH.over}];
   const legend=segs.map(s=>`<div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0"><span style="width:12px;height:12px;border-radius:3px;background:${s.color};display:inline-block"></span>${s.label}<b style="margin-left:auto;color:#1a2b3a">${s.value}</b></div>`).join('');
@@ -10710,12 +10734,12 @@ function hhDashByStaffType(rooms){
   const stf={}; const un={Departure:0,Stayover:0,'Arrival-ready':0,total:0};
   rooms.forEach(r=>{ if(r.area) return; const t=TORD.indexOf(r.type)>=0?r.type:'Departure';
     if(!r.housekeeper){ un[t]++; un.total++; return; }
-    const k=r.housekeeper; (stf[k]=stf[k]||{name:r.housekeeperName||hhNameFor(r)||k,Departure:0,Stayover:0,'Arrival-ready':0,total:0}); stf[k][t]++; stf[k].total++; });
+    const k=r.housekeeper; (stf[k]=stf[k]||{id:k,name:r.housekeeperName||hhNameFor(r)||k,Departure:0,Stayover:0,'Arrival-ready':0,total:0}); stf[k][t]++; stf[k].total++; });
   const list=Object.values(stf).sort((a,b)=>b.total-a.total);
   if(!list.length && !un.total) return '';
   const boxes=o=>TORD.map(t=>`<div title="${t==='Arrival-ready'?'Arrivals':t+'s'}: ${o[t]}" style="flex:0 0 auto;min-width:38px;text-align:center;padding:7px 0;border-radius:9px;font:800 15px Lato;color:#fff;background:${TCOL[t]};opacity:${o[t]?1:.28}">${o[t]}</div>`).join('');
-  const row=o=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #eef1f4">
-    <div style="flex:1;min-width:0;font:700 13.5px Lato;color:#1a2b3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${hhEsc(o.name)}</div>${boxes(o)}</div>`;
+  const row=o=>`<div onclick="hhFilterByStaff('${hhEsc(o.id)}')" title="Click to see ${hhEsc(o.name)}'s rooms" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #eef1f4;cursor:pointer">
+    <div style="flex:1;min-width:0;font:700 13.5px Lato;color:#1a2b3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${hhEsc(o.name)} <span style="color:#8296a8">›</span></div>${boxes(o)}</div>`;
   const key=`<div style="display:flex;flex-wrap:wrap;gap:14px;margin:2px 0 6px">
     ${[['Departures','#1f7a8c'],['Stayover','#4a86c7'],['Arrivals','#2a6a4a']].map(([l,c])=>`<span style="display:inline-flex;align-items:center;gap:6px;font:700 11.5px Lato;color:#6b7280"><i style="width:11px;height:11px;border-radius:3px;background:${c};display:inline-block"></i>${l}</span>`).join('')}
   </div>`;
@@ -10723,8 +10747,8 @@ function hhDashByStaffType(rooms){
     <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:6px">👥 By staff — rooms &amp; type</div>
     ${key}
     ${list.map(row).join('')}
-    ${un.total?`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #eef1f4">
-      <div style="flex:1;min-width:0;font:700 13.5px Lato;color:#8296a8;font-style:italic">Unassigned</div>${boxes(un)}</div>`:''}
+    ${un.total?`<div onclick="hhFilterRooms('unalloc')" title="Click to see unallocated rooms" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #eef1f4;cursor:pointer">
+      <div style="flex:1;min-width:0;font:700 13.5px Lato;color:#8296a8;font-style:italic">Unassigned ›</div>${boxes(un)}</div>`:''}
   </div>`;
 }
 /* At-a-glance grid: every housekeeper, their allocated rooms + public areas, and progress */
@@ -10769,8 +10793,75 @@ function hhModal(html){
 function hhCloseModal(){ const o=document.getElementById('hh-modal'); if(o){ o.style.display='none'; o.innerHTML=''; } }
 function hhPhotoFig(p){
   const src=p.dataUrl||p.url||''; const t=p.takenAt?new Date(p.takenAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
-  return `<figure style="margin:0"><a href="${src}" target="_blank" rel="noopener"><img src="${src}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:10px;border:1px solid #e1e8f1"></a>
+  const lab=(p.label||p.slot||'')+(p.byName?(' · '+p.byName):'');
+  return `<figure style="margin:0"><img src="${src}" alt="" onclick="hhPhotoZoom(this.src,${JSON.stringify(lab)})" style="width:100%;height:150px;object-fit:cover;border-radius:10px;border:1px solid #e1e8f1;cursor:zoom-in">
     <figcaption style="font-size:11px;color:#6b7280;margin-top:3px;line-height:1.3">${hhEsc(p.label||p.slot||'')}<br>${t}${p.byName?(' · '+hhEsc(p.byName)):''}</figcaption></figure>`;
+}
+/* Full-screen photo viewer — stored photos won't display in a new tab, so show them in-app */
+function hhPhotoZoom(src, label){
+  if(!src) return; let z=document.getElementById('hh-photo-zoom');
+  if(!z){ z=document.createElement('div'); z.id='hh-photo-zoom'; document.body.appendChild(z); }
+  z.style.cssText='position:fixed;inset:0;z-index:5000;background:rgba(10,16,26,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px';
+  z.innerHTML=`<img src="${src}" alt="" style="max-width:96vw;max-height:88vh;object-fit:contain;border-radius:12px;box-shadow:0 10px 50px rgba(0,0,0,.55)">
+    ${label?`<div style="color:#fff;font:600 13px Lato;margin-top:12px;text-align:center">${hhEsc(label)}</div>`:''}
+    <button onclick="hhClosePhotoZoom()" style="position:fixed;top:16px;right:18px;width:44px;height:44px;border:none;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:26px;line-height:1;cursor:pointer">×</button>`;
+  z.onclick=e=>{ if(e.target===z) hhClosePhotoZoom(); };
+}
+function hhClosePhotoZoom(){ const z=document.getElementById('hh-photo-zoom'); if(z){ z.style.display='none'; z.innerHTML=''; } }
+/* ---- Voice notes: management records up to 15s; housekeepers hear it on their phone ---- */
+let _hhVrec=null;
+async function hhRoomPatch(room, patch){
+  const date=window._hhDate||hhTodayISO(); patch.updatedAt=Date.now();
+  if(typeof FB!=='undefined' && FB.db){ try{ await FB.db.collection('hoshouse_rooms').doc(hhDocId(date,room)).set(patch,{merge:true}); return; }catch(e){ console.warn('hhRoomPatch',e&&e.code); } }
+  try{ const key='hoshouse_day_'+date; const m=JSON.parse(localStorage.getItem(key)||'{}'); if(m[String(room)]){ Object.assign(m[String(room)],patch); localStorage.setItem(key,JSON.stringify(m)); } }catch(e){}
+}
+function hhBlobToDataURL(blob){ return new Promise(r=>{ const rd=new FileReader(); rd.onload=()=>r(rd.result); rd.onerror=()=>r(null); rd.readAsDataURL(blob); }); }
+function hhVoiceRecord(room){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){ toast('This browser can’t record audio — try Chrome or Edge.'); return; }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    const mime=window.MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':(window.MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':'');
+    const mr=mime?new MediaRecorder(stream,{mimeType:mime,audioBitsPerSecond:32000}):new MediaRecorder(stream);
+    const chunks=[]; mr.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    mr.onstop=async()=>{ const rec=_hhVrec; stream.getTracks().forEach(t=>t.stop()); if(rec&&rec.timer) clearInterval(rec.timer);
+      hhCloseVrec();
+      if(rec&&rec._cancel){ _hhVrec=null; return; }
+      const blob=new Blob(chunks,{type:(mr.mimeType||'audio/webm')}); const du=await hhBlobToDataURL(blob); _hhVrec=null;
+      if(!du){ return; }
+      await hhRoomPatch(room, {voiceNote:du, voiceNoteBy:(typeof SESSION!=='undefined'&&SESSION&&SESSION.name)||'Management', voiceNoteAt:Date.now()});
+      toast('✓ Voice note saved for Room '+room);
+      hhOpenRoom(room); hhRenderManage();
+    };
+    _hhVrec={mr,stream,room,secs:0,timer:null};
+    mr.start();
+    _hhVrec.timer=setInterval(()=>{ _hhVrec.secs++; const el=document.getElementById('hh-vrec-count'); if(el) el.textContent=_hhVrec.secs; if(_hhVrec.secs>=15) hhVoiceStop(); },1000);
+    let o=document.getElementById('hh-vrec'); if(!o){ o=document.createElement('div'); o.id='hh-vrec'; document.body.appendChild(o); }
+    o.style.cssText='position:fixed;inset:0;z-index:5200;background:rgba(10,16,26,.9);display:flex;align-items:center;justify-content:center;padding:18px';
+    o.innerHTML=`<div style="background:#fff;border-radius:16px;padding:24px 26px;max-width:360px;width:100%;text-align:center">
+      <div style="font:800 18px Lato;color:#1a2b3a;margin-bottom:4px">🎙 Recording — Room ${hhEsc(room)}</div>
+      <div style="font:800 46px Lato;color:#b3261e;margin:14px 0 6px"><span id="hh-vrec-count">0</span><span style="font-size:19px;color:#8296a8"> / 15s</span></div>
+      <div style="font-size:12.5px;color:#5b6b7b;margin-bottom:16px">Speak the instruction now. Stops automatically at 15 seconds.</div>
+      <button onclick="hhVoiceStop()" style="padding:11px 22px;border:none;border-radius:9px;background:#b3261e;color:#fff;font:800 13px Lato;cursor:pointer">⏹ Stop &amp; save</button>
+      <button onclick="hhVoiceCancel()" style="padding:11px 18px;border:1px solid #d7dde4;border-radius:9px;background:#fff;color:#1a2b3a;font:700 13px Lato;cursor:pointer;margin-left:8px">Cancel</button>
+    </div>`;
+  }).catch(()=>{ toast('Microphone permission is needed to record a voice note.'); });
+}
+function hhVoiceStop(){ if(_hhVrec&&_hhVrec.mr&&_hhVrec.mr.state!=='inactive'){ try{ _hhVrec.mr.stop(); }catch(e){} } }
+function hhVoiceCancel(){ if(_hhVrec){ _hhVrec._cancel=true; hhVoiceStop(); } else hhCloseVrec(); }
+function hhCloseVrec(){ const o=document.getElementById('hh-vrec'); if(o){ o.style.display='none'; o.innerHTML=''; } }
+function hhVoicePlay(src){ if(!src) return; try{ new Audio(src).play(); }catch(e){} }
+async function hhVoiceDelete(room){ if(!confirm('Delete the voice note for Room '+room+'?')) return;
+  await hhRoomPatch(room, {voiceNote:'', voiceNoteBy:'', voiceNoteAt:0}); toast('Voice note deleted'); hhOpenRoom(room); hhRenderManage(); }
+function hhVoiceCtrl(r){
+  const has=!!r.voiceNote;
+  return `<div style="margin-top:10px;background:#fff;border:1px solid #d7e0ee;border-radius:10px;padding:10px 12px">
+    <div style="font:800 11px Lato;color:#1F3864;text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px">🎙 Voice note <span style="font-weight:500;text-transform:none;color:#5b6b7b">— staff hear this on their phone before cleaning</span></div>
+    ${has?`<div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button onclick="hhVoicePlay(${JSON.stringify((r.voiceNote||''))})" style="padding:9px 14px;border:none;border-radius:8px;background:#2a6a4a;color:#fff;font:800 12.5px Lato;cursor:pointer">▶ Play${r.voiceNoteBy?(' · '+hhEsc(String(r.voiceNoteBy).split(' ')[0])):''}</button>
+        <button onclick="hhVoiceRecord('${hhEsc(r.room)}')" style="padding:9px 14px;border:1px solid #c7d2e0;border-radius:8px;background:#fff;color:#1a2b3a;font:700 12.5px Lato;cursor:pointer">Re-record</button>
+        <button onclick="hhVoiceDelete('${hhEsc(r.room)}')" style="padding:9px 14px;border:1px solid #f3c0ba;border-radius:8px;background:#fff;color:#b3261e;font:700 12.5px Lato;cursor:pointer">Delete</button>
+      </div>`
+    :`<button onclick="hhVoiceRecord('${hhEsc(r.room)}')" style="padding:10px 16px;border:none;border-radius:8px;background:#1F3864;color:#fff;font:800 12.5px Lato;cursor:pointer">🎙 Record voice note (15s)</button>`}
+  </div>`;
 }
 async function hhOpenRoom(room){
   const date=window._hhDate||hhTodayISO();
@@ -10806,6 +10897,7 @@ function hhRoomDetailHTML(r, photos, date){
       ${r.status==='blocked'?`<div style="background:#fdecea;border:1px solid #f3c0ba;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#b3261e;margin-bottom:12px">
         ⛔ Could not be cleaned — ${r.blockReason==='dnd'?'Do Not Disturb sign on the door':'guest refused service'}. Logged by ${esc(r.blockedBy||r.housekeeperName||'housekeeper')} at ${t(r.blockedAt)}.</div>`:''}
       ${r.notes&&r.notes.trim()?`<div style="background:#fff7e8;border:1px solid #f0d9ad;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#7a5a1e;margin-bottom:12px">📝 ${esc(r.notes)}</div>`:''}
+      ${(r.status==='done' && r.voiceNote)?`<div style="margin-bottom:12px"><button onclick="hhVoicePlay(${JSON.stringify(r.voiceNote)})" style="padding:9px 14px;border:none;border-radius:8px;background:#2a6a4a;color:#fff;font:800 12.5px Lato;cursor:pointer">🔊 Play voice note${r.voiceNoteBy?(' · '+esc(String(r.voiceNoteBy).split(' ')[0])):''}</button></div>`:''}
 
       ${comp.length?`<div style="font:800 12px Lato;color:#1a2b3a;text-transform:uppercase;letter-spacing:.4px;margin:4px 0 8px">Completion photos (${comp.length})</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${comp.map(hhPhotoFig).join('')}</div>`
@@ -10819,7 +10911,16 @@ function hhRoomDetailHTML(r, photos, date){
         ${logLine('♻','Items replaced',r.replaced)}
         ${logLine('🎒','Lost property',r.lostProperty)}
       </div>
+      <div style="margin-top:18px;border-top:1px solid #eef1f4;padding-top:12px">
+        <button onclick="hhRemoveRoomConfirm('${esc(r.room)}')" style="padding:8px 14px;border:1px solid #f3c0ba;background:#fff;color:#b3261e;border-radius:8px;font:700 12px Lato;cursor:pointer">🗑 Remove this room from today</button>
+        <div style="font-size:11px;color:#8296a8;margin-top:5px">Management only — use if a room was added by mistake. Works even once it's in progress.</div>
+      </div>
     </div>`;
+}
+async function hhRemoveRoomConfirm(room){
+  if(!confirm('Remove Room '+room+" from today's list?\n\nUse this only if it was added by mistake. This can't be undone.")) return;
+  await hhRemoveRoom(room);
+  hhCloseModal(); toast('🗑 Room '+room+' removed');
 }
 
 /* ---- reallocate a room to another housekeeper (from the room pop-up) ---- */
@@ -10840,7 +10941,12 @@ function hhReassignControlHTML(r){
       <input type="checkbox" id="hh-reassign-urgent" ${r.urgent?'checked':''} style="width:17px;height:17px;margin:0">
       🚨 Mark as URGENT <span style="font-weight:500;color:#5b6b7b">— jumps to the top of their list &amp; alerts them</span>
     </label>
-    <div style="font-size:11px;color:#5b6b7b;margin-top:6px">Only active staff are listed. They see the change on their phone straight away.</div>
+    <div style="margin-top:10px">
+      <label style="display:block;font:800 11px Lato;color:#1F3864;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">📝 Note for the housekeeper <span style="font-weight:500;text-transform:none;color:#5b6b7b">— e.g. extra pillows, extra bed, late check-out</span></label>
+      <textarea id="hh-reassign-note" rows="2" placeholder="They'll see this on their phone for this room" style="width:100%;padding:8px 10px;border:1px solid #c7d2e0;border-radius:8px;font:13px Lato;resize:vertical">${hhEsc(r.notes||'')}</textarea>
+    </div>
+    <div style="font-size:11px;color:#5b6b7b;margin-top:6px">Only active staff are listed. They see changes on their phone straight away. Press <b>Move</b> to save the note &amp; urgent flag (keeping the current person is fine).</div>
+    ${hhVoiceCtrl(r)}
   </div>`;
 }
 async function hhReassignFromModal(room){
@@ -10848,11 +10954,13 @@ async function hhReassignFromModal(room){
   const sel=document.getElementById('hh-reassign-sel'); if(!sel) return;
   const hkId=sel.value; const s=hkId?hhStaffById(hkId):null;
   const urgent=!!(document.getElementById('hh-reassign-urgent') && document.getElementById('hh-reassign-urgent').checked);
+  const noteEl=document.getElementById('hh-reassign-note'); const note=noteEl?noteEl.value:undefined;
   await hhWriteAssign(date, [{room, hkId:hkId||'', hkName:s?s.name:''}]);
-  if(typeof FB!=='undefined' && FB.db){ try{ await FB.db.collection('hoshouse_rooms').doc(hhDocId(date,room)).set({urgent, updatedAt:Date.now()},{merge:true}); }catch(e){} }
-  else { try{ const key='hoshouse_day_'+date; const m=JSON.parse(localStorage.getItem(key)||'{}'); if(m[String(room)]){ m[String(room)].urgent=urgent; localStorage.setItem(key,JSON.stringify(m)); } }catch(e){} }
+  const patch={urgent, updatedAt:Date.now()}; if(note!==undefined) patch.notes=note;
+  if(typeof FB!=='undefined' && FB.db){ try{ await FB.db.collection('hoshouse_rooms').doc(hhDocId(date,room)).set(patch,{merge:true}); }catch(e){} }
+  else { try{ const key='hoshouse_day_'+date; const m=JSON.parse(localStorage.getItem(key)||'{}'); if(m[String(room)]){ m[String(room)].urgent=urgent; if(note!==undefined) m[String(room)].notes=note; localStorage.setItem(key,JSON.stringify(m)); } }catch(e){} }
   hhCloseModal();
-  toast(s?((urgent?'🚨 URGENT · ':'✓ ')+'Room '+room+' → '+s.name.split(' ')[0]):('Room '+room+' unallocated'));
+  toast(s?((urgent?'🚨 URGENT · ':'✓ ')+'Room '+room+' → '+s.name.split(' ')[0]):('Room '+room+((note!==undefined&&note.trim())?' saved':' unallocated')));
   hhRenderDash(); hhRenderManage();
 }
 

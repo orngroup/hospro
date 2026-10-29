@@ -200,6 +200,7 @@
   <div class="wrap">
     <div class="timer" id="rm-timer">00:00</div>
     <div class="rnote" id="rm-note" style="display:none"></div>
+    <div id="rm-voice" style="display:none;margin:4px 0 6px"></div>
     <div class="geo" id="rm-geo"></div>
     <div id="rm-warn"></div>
     <div class="chk" id="rm-chk"></div>
@@ -224,6 +225,11 @@
   let ME=null, rooms=[], unwatch=null, active=null, tmr=null, pinBuf='', prevSnap=null, STARS={}, starUnwatch=null;
   const today=HH.todayISO();
   const PHOTO_SLOTS=[{k:'bath',label:'Bathtub interior'},{k:'mirror',label:'Mirror'},{k:'wc',label:'WC / toilet'},{k:'bed',label:'Bedroom incl. bed'}];
+  // Stayovers want tea trays rather than the mirror; everything else keeps the standard set.
+  const PHOTO_SLOTS_STAY=[{k:'bath',label:'Bathtub interior'},{k:'tea',label:'Tea tray'},{k:'wc',label:'WC / toilet'},{k:'bed',label:'Bedroom incl. bed'}];
+  const PHOTO_MISC={k:'misc',label:'Other (optional)'};          // e.g. DND sign, damage — not required to finish
+  function photoSlotsFor(type){ return (type==='Stayover') ? PHOTO_SLOTS_STAY : PHOTO_SLOTS; }
+  function allPhotoSlots(type){ return photoSlotsFor(type).concat([PHOTO_MISC]); }
   const THUMBS={}; // in-memory thumbnails for this session (room -> slot -> dataUrl)
   function localThumb(room,slot,du){ (THUMBS[room]=THUMBS[room]||{})[slot]=du; }
   function getThumb(room,slot){ return (THUMBS[room]||{})[slot]; }
@@ -495,7 +501,7 @@
       <circle cx="48" cy="48" r="34" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="11"/>
       <circle cx="48" cy="48" r="34" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 48 48)"/>
       <text x="48" y="48" text-anchor="middle" dominant-baseline="central" font-size="21" font-weight="800" fill="#fff">${pct}%</text></svg>`;
-    const hero=`<div class="ovhero" style="display:flex;align-items:center;gap:16px">
+    const hero=`<div class="ovhero" onclick="ovGo('all')" style="display:flex;align-items:center;gap:16px;cursor:pointer">
       ${donut}
       <div style="flex:1;min-width:0">
         <div style="font:800 15px inherit;opacity:.95">Today · ${today2}</div>
@@ -504,10 +510,10 @@
       </div>
     </div>`;
     const stats=`<div class="ovstats">
-      <div class="ovstat ok"><div class="ic">✅</div><b>${done.length}</b><span>Ready</span></div>
-      <div class="ovstat am"><div class="ic">🧹</div><b>${prog.length}</b><span>In progress</span></div>
-      <div class="ovstat td"><div class="ic">🛏</div><b>${pend.length}</b><span>To do</span></div>
-      <div class="ovstat ${urgent.length?'ur':'ur0'}" ${urgent.length?'onclick="showAdmin();setTimeout(()=>setRoomFilter(\'urgent\'),60)" style="cursor:pointer"':''}><div class="ic">⏰</div><b>${urgent.length}</b><span>Urgent${urgent.length?' →':''}</span></div>
+      <div class="ovstat ok" onclick="ovGo('ready')" style="cursor:pointer"><div class="ic">✅</div><b>${done.length}</b><span>Ready →</span></div>
+      <div class="ovstat am" onclick="ovGo('prog')" style="cursor:pointer"><div class="ic">🧹</div><b>${prog.length}</b><span>In progress →</span></div>
+      <div class="ovstat td" onclick="ovGo('waiting')" style="cursor:pointer"><div class="ic">🛏</div><b>${pend.length}</b><span>To do →</span></div>
+      <div class="ovstat ${urgent.length?'ur':'ur0'}" onclick="ovGo('urgent')" style="cursor:pointer"><div class="ic">⏰</div><b>${urgent.length}</b><span>Urgent →</span></div>
     </div>`;
     // rooms by type + by floor (from the Guestline inventory)
     const tc={}; const fc={};
@@ -533,15 +539,15 @@
     const stf={}; let unassigned={Departure:0,Stayover:0,'Arrival-ready':0,total:0};
     rooms.forEach(r=>{ const t=TORD.indexOf(r.type)>=0?r.type:'Departure';
       if(!r.housekeeper){ unassigned[t]++; unassigned.total++; return; }
-      const k=r.housekeeper; (stf[k]=stf[k]||{name:r.housekeeperName||k,Departure:0,Stayover:0,'Arrival-ready':0,total:0}); stf[k][t]++; stf[k].total++; });
+      const k=r.housekeeper; (stf[k]=stf[k]||{id:k,name:r.housekeeperName||k,Departure:0,Stayover:0,'Arrival-ready':0,total:0}); stf[k][t]++; stf[k].total++; });
     const stfList=Object.values(stf).sort((a,b)=>b.total-a.total);
     const boxes=o=>TORD.map(t=>`<div class="tbox${o[t]?'':' z'}" style="background:${TCOL[t]}">${o[t]}</div>`).join('');
     const key=`<div class="tkey"><span><i style="background:var(--dep)"></i>Departures</span><span><i style="background:var(--stay)"></i>Stayover</span><span><i style="background:var(--arr)"></i>Arrivals</span></div>`;
     const byStaff = (stfList.length||unassigned.total)?`<div class="card" style="flex-direction:column;align-items:stretch;gap:0;padding:14px 16px;margin-bottom:14px">
       <div class="sect" style="margin:0 0 4px">👥 By staff — rooms &amp; type</div>
       ${key}
-      ${stfList.map(s=>`<div class="stfrow"><div class="nm">${esc(s.name)}</div>${boxes(s)}</div>`).join('')}
-      ${unassigned.total?`<div class="stfrow"><div class="nm" style="color:var(--muted);font-style:italic">Unassigned</div>${boxes(unassigned)}</div>`:''}
+      ${stfList.map(s=>`<div class="stfrow" onclick="ovGoStaff('${esc(s.id)}')" style="cursor:pointer"><div class="nm">${esc(s.name)} <span style="color:var(--muted);font-weight:600">›</span></div>${boxes(s)}</div>`).join('')}
+      ${unassigned.total?`<div class="stfrow" onclick="ovGo('unalloc')" style="cursor:pointer"><div class="nm" style="color:var(--muted);font-style:italic">Unassigned ›</div>${boxes(unassigned)}</div>`:''}
     </div>`:'';
     const maxDone=performers.length?Math.max(...performers.map(p=>p.done),1):1;
     const PMED=['#b89056','#9aa7b4','#c7935a'];
@@ -609,7 +615,7 @@
     const comp=comps.length;
     const tfmt=ms=>ms?new Date(ms).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
     const pfig=p=>{ const src=p.dataUrl||p.url||''; const tt=p.takenAt?new Date(p.takenAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';
-      return src?`<figure style="margin:0"><a href="${src}" target="_blank" rel="noopener"><img src="${src}" alt="${esc(p.label||'')}" style="width:100%;height:94px;object-fit:cover;border-radius:9px;border:1px solid var(--line)"></a><figcaption style="font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.25">${esc(p.label||p.slot||'')}${tt?' · '+tt:''}</figcaption></figure>`:''; };
+      return src?`<figure style="margin:0"><img src="${src}" alt="${esc(p.label||'')}" onclick="photoZoom(this.src,'${esc(p.label||p.slot||'')}')" style="width:100%;height:94px;object-fit:cover;border-radius:9px;border:1px solid var(--line);cursor:zoom-in"><figcaption style="font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.25">${esc(p.label||p.slot||'')}${tt?' · '+tt:''}</figcaption></figure>`:''; };
     const grid=(arr)=>`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">${arr.map(pfig).join('')}</div>`;
     const photoBlock = comps.length?`<div class="sect" style="margin:8px 0 2px">📷 Completion photos (${comps.length}/4)</div>${grid(comps)}`
       : (r.status==='done'?'<div class="rnote" style="background:#fdecea;border-color:#f3c0ba;color:#b3261e">⚠ Marked done but no completion photos found.</div>':'');
@@ -637,9 +643,12 @@
   }
 
   // ---- Rooms overview (all rooms today, by status; tap to reassign) ----
-  let adminRoomFilter='all', adminRoomView='list';
-  function setRoomFilter(f){ adminRoomFilter=f; renderAdminRooms(); }
+  let adminRoomFilter='all', adminRoomView='list', adminRoomStaff='';
+  function setRoomFilter(f){ adminRoomFilter=f; adminRoomStaff=''; renderAdminRooms(); }
   function setRoomView(v){ adminRoomView=v; renderAdminRooms(); }
+  // Overview panels → jump into Manage · Rooms with the matching filter
+  function ovGo(f){ if(!(ME&&ME.lead)) return; adminRoomStaff=''; showAdmin(); setTimeout(()=>{ setAdminTab('rooms'); setRoomFilter(f); }, 50); }
+  function ovGoStaff(id){ if(!(ME&&ME.lead)) return; showAdmin(); setTimeout(()=>{ setAdminTab('rooms'); adminRoomFilter='all'; adminRoomStaff=id; renderAdminRooms(); }, 50); }
   function renderAdminRooms(){
     const done=rooms.filter(r=>r.status==='done'), prog=rooms.filter(r=>r.status==='in_progress');
     const pend=rooms.filter(r=>r.status==='pending'||r.status==='blocked');
@@ -665,14 +674,19 @@
       ${chip('unalloc','Unallocated',unalloc.length,'var(--red)')}
     </div>`;
     let list = f==='urgent'?urgent : f==='waiting'?pend : f==='prog'?prog : f==='ready'?done : f==='unalloc'?unalloc : rooms.slice();
+    if(adminRoomStaff){ list = list.filter(r=>r.housekeeper===adminRoomStaff); }
     list = list.slice().sort((a,b)=>((b.urgent&&b.status!=='done')?1:0)-((a.urgent&&a.status!=='done')?1:0)||(a.area?1:0)-(b.area?1:0)||(+a.room||0)-(+b.room||0));
+    const staffBanner = adminRoomStaff?(()=>{ const nm=(rooms.find(r=>r.housekeeper===adminRoomStaff)||{}).housekeeperName||adminRoomStaff; return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#eef2f8;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:10px"><span style="font-weight:800;color:var(--navy);font-size:13px">👤 ${esc(nm)}'s rooms</span><button onclick="setRoomFilter('all')" style="padding:5px 11px;border:1px solid var(--line);background:#fff;border-radius:8px;font:700 12px inherit;color:var(--ink)">✕ Clear</button></div>`; })():'';
     const rowHtml=r=>{
       const pc=DEFT[r.type]||'dep'; const u=(r.urgent&&r.status!=='done');
       const st=r.status==='done'?'<span class="done">✓ Ready</span>':r.status==='in_progress'?'<span style="color:var(--amber);font-weight:800;font-size:13px">● In progress</span>':r.status==='blocked'?'<span style="color:var(--red);font-weight:800;font-size:13px">⛔ '+(r.blockReason==='dnd'?'DND':'Refused')+'</span>':'<span style="color:var(--muted);font-weight:700;font-size:13px">Waiting</span>';
       const who=r.housekeeperName?esc(r.housekeeperName):'<em style="color:var(--red)">Unallocated</em>';
-      const move=r.status!=='done'?`<button class="go ghost" style="padding:8px 12px" onclick="reassignRoom('${esc(r.room)}')">Move ⇄</button>`:'';
-      return `<div class="card${u?' urgent':''}"><div class="rmno">${esc(r.room)}</div><span class="pill ${pc}">${esc(r.type)}</span>${u?'<span class="urg">🚨</span>':''}
-        <div class="grow"><div style="font-weight:700">${who}</div><div class="sub">${roomMeta(r)} · ${st}</div></div>${move}</div>`;
+      const action=r.status==='done'
+        ? `<button class="go ghost" style="padding:8px 12px" onclick="event.stopPropagation();findShow('${esc(r.room)}')">Review ›</button>`
+        : `<button class="go ghost" style="padding:8px 12px" onclick="event.stopPropagation();reassignRoom('${esc(r.room)}')">Move ⇄</button>`;
+      const tap=r.status==='done'?`findShow('${esc(r.room)}')`:`reassignRoom('${esc(r.room)}')`;
+      return `<div class="card${u?' urgent':''}" onclick="${tap}" style="cursor:pointer"><div class="rmno">${esc(r.room)}</div><span class="pill ${pc}">${esc(r.type)}</span>${u?'<span class="urg">🚨</span>':''}
+        <div class="grow"><div style="font-weight:700">${who}</div><div class="sub">${roomMeta(r)} · ${st}</div></div>${action}</div>`;
     };
     const label={all:'All rooms today',urgent:'Urgent rooms',waiting:'Waiting to start',prog:'In progress',ready:'Ready rooms',unalloc:'Unallocated'}[f]||'Rooms';
     const bdCard=r=>{ const cls=r.status==='done'?'done':r.status==='in_progress'?'prog':r.status==='blocked'?'blocked':'todo';
@@ -707,7 +721,7 @@
       <div id="lead-msg" style="font-size:12.5px;color:#2a6a4a;font-weight:700;margin-top:7px;min-height:16px"></div>
     </div>`;
     $('adminWrap').innerHTML = tools + (rooms.length
-      ? (tiles+chips+vtog+'<div class="sect">'+label+' ('+list.length+')</div>'+bodyHtml)
+      ? (tiles+chips+staffBanner+vtog+'<div class="sect">'+label+' ('+list.length+')</div>'+bodyHtml)
       : '<div class="empty">No rooms yet — add them above, then Allocate.</div>');
   }
   // open Find for a specific room (used by the board for done rooms)
@@ -770,6 +784,67 @@
   }
 
   function closeSheet(){ const o=$('hhOverlay'); o.style.display='none'; o.innerHTML=''; }
+  // Full-screen photo viewer (fixes the blank new-tab problem with stored photos)
+  function photoZoom(src, label){
+    if(!src) return; let z=$('hhZoom');
+    if(!z){ z=document.createElement('div'); z.id='hhZoom'; document.body.appendChild(z); }
+    z.style.cssText='position:fixed;inset:0;z-index:4000;background:rgba(8,14,24,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px';
+    z.innerHTML=`<img src="${src}" alt="${esc(label||'')}" style="max-width:100%;max-height:86vh;object-fit:contain;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.5)">
+      ${label?`<div style="color:#fff;font:600 13px inherit;margin-top:10px;text-align:center">${esc(label)}</div>`:''}
+      <button onclick="closePhotoZoom()" style="position:fixed;top:14px;right:16px;width:42px;height:42px;border:none;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:24px;line-height:1;cursor:pointer">×</button>`;
+    z.onclick=e=>{ if(e.target===z) closePhotoZoom(); };
+  }
+  function closePhotoZoom(){ const z=$('hhZoom'); if(z){ z.style.display='none'; z.innerHTML=''; } }
+  // ---- Voice notes: management records up to 15s; housekeepers listen before cleaning ----
+  let _vrec=null;
+  function blobToDataURL(blob){ return new Promise(r=>{ const rd=new FileReader(); rd.onload=()=>r(rd.result); rd.onerror=()=>r(null); rd.readAsDataURL(blob); }); }
+  function voiceRecord(room){
+    if(!(ME&&ME.lead)) return;
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){ alert('This phone or browser can’t record audio. Try the latest Chrome or Safari.'); return; }
+    navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+      const mime=window.MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':(window.MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':'');
+      const mr=mime?new MediaRecorder(stream,{mimeType:mime,audioBitsPerSecond:32000}):new MediaRecorder(stream);
+      const chunks=[]; mr.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+      mr.onstop=async()=>{ const rec=_vrec; stream.getTracks().forEach(t=>t.stop()); if(rec&&rec.timer) clearInterval(rec.timer);
+        if(rec&&rec._cancel){ _vrec=null; closeSheet(); return; }
+        const blob=new Blob(chunks,{type:(mr.mimeType||'audio/webm')}); const du=await blobToDataURL(blob); _vrec=null;
+        if(!du){ closeSheet(); return; }
+        await HH.updateRoom(today, room, {voiceNote:du, voiceNoteBy:ME.name, voiceNoteAt:Date.now()});
+        closeSheet(); hhToast('✓ Voice note saved for Room '+room);
+        renderTeam(); if($('scr-admin').classList.contains('on')) renderAdmin();
+      };
+      _vrec={mr,stream,room,secs:0,timer:null};
+      mr.start();
+      _vrec.timer=setInterval(()=>{ _vrec.secs++; const el=$('vrec-count'); if(el) el.textContent=_vrec.secs; if(_vrec.secs>=15) voiceStop(); },1000);
+      const o=$('hhOverlay'); o.style.display='block';
+      o.innerHTML=`<div class="shback"></div><div class="shsheet" style="text-align:center">
+        <div style="font:800 18px inherit;color:var(--navy);margin-bottom:4px">🎙 Recording — Room ${esc(room)}</div>
+        <div style="font:800 46px inherit;color:var(--red);margin:14px 0 6px"><span id="vrec-count">0</span><span style="font-size:19px;color:var(--muted)"> / 15s</span></div>
+        <div class="sub" style="margin-bottom:16px">Speak the instruction now. Stops automatically at 15 seconds.</div>
+        <button class="btn" style="background:var(--red);border:none" onclick="voiceStop()">⏹ Stop &amp; save</button>
+        <button class="btn ghost" style="background:#fff;border:1.5px solid var(--line);color:var(--ink);margin-top:8px" onclick="voiceCancel()">Cancel</button>
+      </div>`;
+    }).catch(()=>{ alert('Microphone permission is needed to record a voice note. Please allow it and try again.'); });
+  }
+  function voiceStop(){ if(_vrec&&_vrec.mr&&_vrec.mr.state!=='inactive'){ try{ _vrec.mr.stop(); }catch(e){} } }
+  function voiceCancel(){ if(_vrec){ _vrec._cancel=true; voiceStop(); } else closeSheet(); }
+  function voicePlay(src){ if(!src) return; try{ const a=new Audio(src); a.play(); }catch(e){} }
+  function voicePlayRoom(room){ const r=rooms.find(x=>String(x.room)===String(room)); if(r&&r.voiceNote) voicePlay(r.voiceNote); }
+  async function voiceDelete(room){ if(!(ME&&ME.lead)) return; if(!confirm('Delete the voice note for Room '+room+'?')) return;
+    await HH.updateRoom(today, room, {voiceNote:'', voiceNoteBy:'', voiceNoteAt:0}); closeSheet(); hhToast('Voice note deleted');
+    renderTeam(); if($('scr-admin').classList.contains('on')) renderAdmin(); }
+  function voiceCtrlMobile(r){
+    const has=!!r.voiceNote;
+    return `<div style="margin:2px 0 12px;background:#f5f7fb;border:1px solid var(--line);border-radius:11px;padding:11px 12px">
+      <div class="sub" style="margin-bottom:7px">🎙 Voice note <span style="color:var(--muted)">— staff hear this on their phone before cleaning</span></div>
+      ${has?`<div style="display:flex;gap:7px;flex-wrap:wrap">
+          <button class="go" style="flex:1;min-width:120px;background:#2a6a4a;padding:10px" onclick="voicePlayRoom('${esc(r.room)}')">▶ Play${r.voiceNoteBy?(' · '+esc(String(r.voiceNoteBy).split(' ')[0])):''}</button>
+          <button class="go ghost" style="background:#fff;border:1.5px solid var(--line);color:var(--ink);padding:10px" onclick="voiceRecord('${esc(r.room)}')">Re-record</button>
+          <button class="go ghost" style="background:#fff;border:1.5px solid #f3c0ba;color:var(--red);padding:10px" onclick="voiceDelete('${esc(r.room)}')">Delete</button>
+        </div>`
+      :`<button class="go" style="width:100%;background:var(--navy);padding:11px" onclick="voiceRecord('${esc(r.room)}')">🎙 Record voice note (15s)</button>`}
+    </div>`;
+  }
   function editStaff(id){
     const s=HH.staffById(id); if(!s) return;
     const sk=(s.skills&&s.skills.length)?s.skills.slice():HH.skillTypes.slice();
@@ -859,21 +934,39 @@
           <div style="font:800 18px inherit;color:var(--navy)">Move Room ${esc(r.room)}</div>
           <div onclick="closeSheet()" style="font-size:22px;color:var(--muted);cursor:pointer;line-height:1">×</div></div>
         <div class="sub" style="margin-bottom:10px">${esc(r.type)} · give this room to…</div>
-        <label style="display:flex;align-items:center;gap:9px;background:#fdecea;border:1.5px solid #f3c0ba;border-radius:11px;padding:11px 13px;margin-bottom:12px;cursor:pointer">
+        <label style="display:flex;align-items:center;gap:9px;background:#fdecea;border:1.5px solid #f3c0ba;border-radius:11px;padding:11px 13px;margin-bottom:10px;cursor:pointer">
           <input type="checkbox" id="rs-urgent" ${r.urgent?'checked':''} style="width:20px;height:20px;margin:0;flex:0 0 auto">
           <span style="font-weight:800;color:var(--red)">🚨 Mark as URGENT</span>
           <span style="font-size:12px;color:var(--muted);margin-left:auto">jumps to top of their list</span>
         </label>
+        <div style="margin-bottom:12px">
+          <div class="sub" style="margin-bottom:4px">📝 Note for the housekeeper <span style="color:var(--muted)">— e.g. extra pillows, extra bed, late check-out</span></div>
+          <textarea id="rs-note" rows="2" placeholder="They'll see this on their phone for this room" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font:14px inherit;resize:vertical">${esc(r.notes||'')}</textarea>
+          <button class="go ghost" style="width:100%;margin-top:7px;background:#fff;border:1.5px solid var(--navy);color:var(--navy);padding:10px" onclick="doReassign('${esc(r.room)}','${esc(cur)}')">💾 Save note &amp; urgent (keep current)</button>
+        </div>
+        ${(ME&&ME.lead)?voiceCtrlMobile(r):''}
+        <div class="sub" style="margin-bottom:6px">Or give this room to…</div>
         ${actives.map(btn).join('')}
         <button class="btn ghost" style="background:#fff;border:1.5px solid var(--line);color:var(--ink);margin-top:4px" onclick="doReassign('${esc(r.room)}','')">Unallocate (put back in the pool)</button>
+        ${(ME&&ME.lead)?`<button class="btn ghost" style="background:#fff;border:1.5px solid #f3c0ba;color:var(--red);margin-top:10px" onclick="removeRoomConfirm('${esc(r.room)}')">🗑 Remove this room from today</button>
+        <div class="sub" style="margin-top:4px;color:var(--muted)">Use if a room was added by mistake — works even once it's started.</div>`:''}
       </div>`;
   }
   async function doReassign(room, hkId){
     const s=hkId?HH.staffById(hkId):null;
     const urgent = !!($('rs-urgent') && $('rs-urgent').checked);
-    await HH.updateRoom(today, room, {housekeeper:hkId||'', housekeeperName:s?s.name:'', urgent});
+    const patch={housekeeper:hkId||'', housekeeperName:s?s.name:'', urgent};
+    if($('rs-note')) patch.notes=$('rs-note').value||'';
+    await HH.updateRoom(today, room, patch);
     closeSheet();
-    hhToast(s?((urgent?'🚨 URGENT · ':'')+'Room '+room+' → '+s.name.split(' ')[0]):('Room '+room+' unallocated'));
+    hhToast(s?((urgent?'🚨 URGENT · ':'')+'Room '+room+' → '+s.name.split(' ')[0]):('Room '+room+(patch.notes?' saved':' unallocated')));
+    renderTeam(); if($('scr-admin').classList.contains('on')) renderAdmin();
+  }
+  async function removeRoomConfirm(room){
+    if(!(ME&&ME.lead)) return;
+    if(!confirm('Remove Room '+room+" from today's list?\n\nUse this only if it was added by mistake. This can't be undone.")) return;
+    await HH.removeRoom(today, room);
+    closeSheet(); hhToast('🗑 Room '+room+' removed');
     renderTeam(); if($('scr-admin').classList.contains('on')) renderAdmin();
   }
 
@@ -931,16 +1024,17 @@
     const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const note=r=> r.notes&&r.notes.trim() ? `<div class="rnote">📝 ${esc(r.notes)}</div>` : '';
     const plus=r=>`<button class="go" style="background:#eef1f5;color:var(--navy);padding:11px 13px" title="Add a note (cot, extra towels…)" onclick="event.stopPropagation();addNote('${r.room}')">📝 Note${r.notes&&r.notes.trim()?' ✓':''}</button>`;
+    const voiceBtn=r=> r.voiceNote ? `<button class="go" style="background:#2a6a4a;color:#fff;padding:11px 13px" title="Listen to the note from management" onclick="event.stopPropagation();voicePlayRoom('${r.room}')">🔊 Listen</button>` : '';
     const blockedNote=r=> r.status==='blocked' ? `<div class="rnote" style="background:#fdecea;border-color:#f3c0ba;color:#b3261e">⛔ ${r.blockReason==='dnd'?'Do Not Disturb':'Guest refused'} · ${r.blockedAt?new Date(r.blockedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):''}${r.blockReason==='dnd'?' · door photo saved':''}</div>` : '';
     const urgBadge=r=> (r.urgent && r.status!=='done') ? '<span class="urg">🚨 URGENT</span>' : '';
     const row=r=>{
       const pc=DEFT[r.type]||'dep'; const u=(r.urgent && r.status!=='done')?' urgent':'';
-      if(r.status==='in_progress') return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${plus(r)}${note(r)}</div>`;
-      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min · 📷4</div></div>${plus(r)}${note(r)}</div>`;
+      if(r.status==='in_progress') return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${voiceBtn(r)}${plus(r)}${note(r)}</div>`;
+      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min · 📷4</div></div>${voiceBtn(r)}${plus(r)}${note(r)}</div>`;
       return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div></div>
         <button class="go" onclick="startRoom('${r.room}')">Start</button>
         <button class="go" style="background:var(--red)" title="Can't clean this room right now" onclick="cannotStart('${r.room}')">Can't start</button>
-        ${plus(r)}${blockedNote(r)}${note(r)}</div>`;
+        ${voiceBtn(r)}${plus(r)}${blockedNote(r)}${note(r)}</div>`;
     };
     const urgentFirst=(a,b)=>((b.urgent?1:0)-(a.urgent?1:0))||((+a.room||0)-(+b.room||0));
     pending.sort(urgentFirst); inprog.sort(urgentFirst);
@@ -1044,6 +1138,7 @@
   function renderActive(){
     const cl=active.checklist||{};
     const nEl=$('rm-note'); if(active.notes&&active.notes.trim()){ nEl.textContent='📝 '+active.notes; nEl.style.display='block'; } else { nEl.style.display='none'; }
+    const vEl=$('rm-voice'); if(vEl){ if(active.voiceNote){ vEl.style.display='block'; vEl.innerHTML=`<button class="go" style="width:100%;background:#2a6a4a;padding:12px;font-size:15px" onclick="voicePlay(active&&active.voiceNote)">🔊 Play voice note from management${active.voiceNoteBy?(' · '+esc(String(active.voiceNoteBy).split(' ')[0])):''}</button>`; } else { vEl.style.display='none'; vEl.innerHTML=''; } }
     const items=HH.checklistFor(active.type);
     $('rm-chk').innerHTML=items.map(it=>`<label class="${cl[it.k]?'ok':''}" style="flex-direction:column;align-items:flex-start;gap:5px">
       <div style="display:flex;align-items:center;gap:10px;width:100%"><input type="checkbox" ${cl[it.k]?'checked':''} onchange="toggleChk('${it.k}',this.checked)"><b>${it.t}</b></div>
@@ -1057,19 +1152,20 @@
     const box=$('rm-photos'); if(!box) return;
     if(active.area){ box.innerHTML=''; return; }   // public areas don't need the 4 room photos
     const photos=active.photos||{};
-    const n=PHOTO_SLOTS.filter(s=>photos[s.k]).length;
-    const slot=s=>{ const taken=!!photos[s.k]; const th=getThumb(active.room,s.k);
-      return `<div style="background:#fff;border:1.5px solid ${taken?'var(--ok)':'var(--line)'};border-radius:12px;padding:10px;text-align:center">
+    const req=photoSlotsFor(active.type); const need=req.length;
+    const n=req.filter(s=>photos[s.k]).length;
+    const slot=(s,optional)=>{ const taken=!!photos[s.k]; const th=getThumb(active.room,s.k);
+      return `<div style="background:#fff;border:1.5px solid ${taken?'var(--ok)':(optional?'#d7dde4':'var(--line)')};border-radius:12px;padding:10px;text-align:center">
         ${th?`<img src="${th}" alt="" style="width:100%;height:80px;object-fit:cover;border-radius:8px;margin-bottom:7px">`:`<div style="height:80px;border-radius:8px;background:${taken?'#ecf6f0':'#f3f5f8'};display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:7px">${taken?'✓':'📷'}</div>`}
         <div style="font-size:12.5px;font-weight:700;color:${taken?'var(--ok)':'var(--ink)'};margin-bottom:7px">${s.label}</div>
-        <button class="go" style="width:100%;background:${taken?'#eef1f5':'var(--navy)'};color:${taken?'var(--navy)':'#fff'};padding:9px" onclick="takeSlot('${s.k}')">${taken?'Retake':'Take photo'}</button>
+        <button class="go" style="width:100%;background:${taken?'#eef1f5':(optional?'#eef1f5':'var(--navy)')};color:${taken||optional?'var(--navy)':'#fff'};padding:9px" onclick="takeSlot('${s.k}')">${taken?'Retake':'Take photo'}</button>
       </div>`; };
-    box.innerHTML=`<div class="sect" style="margin-top:14px">📷 Completion photos — all 4 required (${n}/4)</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${PHOTO_SLOTS.map(slot).join('')}</div>`;
-    const fin=$('rm-finish'); if(fin){ const ready=n===4; fin.style.opacity=ready?'1':'.55'; fin.textContent=ready?'Finish & sign off room':'Take all 4 photos to finish ('+n+'/4)'; }
+    box.innerHTML=`<div class="sect" style="margin-top:14px">📷 Completion photos — ${need} required (${n}/${need})</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${req.map(s=>slot(s,false)).join('')}${slot(PHOTO_MISC,true)}</div>`;
+    const fin=$('rm-finish'); if(fin){ const ready=n===need; fin.style.opacity=ready?'1':'.55'; fin.textContent=ready?'Finish & sign off room':('Take all '+need+' photos to finish ('+n+'/'+need+')'); }
   }
   async function takeSlot(slotK){
-    const slot=PHOTO_SLOTS.find(s=>s.k===slotK); if(!slot||!active) return;
+    const slot=allPhotoSlots(active&&active.type).find(s=>s.k===slotK); if(!slot||!active) return;
     const du=await capturePhoto('Room '+active.room+' · '+slot.label);
     if(!du) return;
     const ts=Date.now();
@@ -1110,8 +1206,8 @@
   }
   async function finishRoom(){
     if(!active.area){
-      const photos=active.photos||{}; const miss=PHOTO_SLOTS.filter(s=>!photos[s.k]).map(s=>s.label);
-      if(miss.length){ alert('Please take all 4 completion photos before signing off:\n\n• '+miss.join('\n• ')); return; }
+      const req=photoSlotsFor(active.type); const photos=active.photos||{}; const miss=req.filter(s=>!photos[s.k]).map(s=>s.label);
+      if(miss.length){ alert('Please take all '+req.length+' completion photos before signing off:\n\n• '+miss.join('\n• ')); return; }
     }
     const cl=active.checklist||{}; const items=HH.checklistFor(active.type); const missed=items.filter(it=>!cl[it.k]).map(it=>it.t);
     if(missed.length && !confirm('Not ticked: '+missed.join(', ')+'. Finish anyway?')) return;
