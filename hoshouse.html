@@ -617,8 +617,14 @@
     const pfig=p=>{ const src=p.dataUrl||p.url||''; const tt=p.takenAt?new Date(p.takenAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';
       return src?`<figure style="margin:0"><img src="${src}" alt="${esc(p.label||'')}" onclick="photoZoom(this.src,'${esc(p.label||p.slot||'')}')" style="width:100%;height:94px;object-fit:cover;border-radius:9px;border:1px solid var(--line);cursor:zoom-in"><figcaption style="font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.25">${esc(p.label||p.slot||'')}${tt?' · '+tt:''}</figcaption></figure>`:''; };
     const grid=(arr)=>`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">${arr.map(pfig).join('')}</div>`;
-    const photoBlock = comps.length?`<div class="sect" style="margin:8px 0 2px">📷 Completion photos (${comps.length}/4)</div>${grid(comps)}`
+    const photoBlock = comps.length?`<div class="sect" style="margin:8px 0 2px">📷 Completion photos (${comps.length})</div>${grid(comps)}`
       : (r.status==='done'?'<div class="rnote" style="background:#fdecea;border-color:#f3c0ba;color:#b3261e">⚠ Marked done but no completion photos found.</div>':'');
+    // what the housekeeper confirmed they did on their phone (read-only)
+    const clMap=r.checklist||{}; const clItems=(HH.checklistFor?HH.checklistFor(r.type):[]);
+    const clDone=clItems.filter(it=>clMap[it.k]).length;
+    const who1=(r.housekeeperName||'').split(' ')[0];
+    const checklistBlock = (clItems.length && (r.status==='done'||r.status==='in_progress'))?`<div class="sect" style="margin:12px 0 4px">✅ Confirmed done${who1?' by '+esc(who1):''} (${clDone}/${clItems.length})</div>
+      <div style="display:flex;flex-direction:column;gap:5px;background:#f7f9fb;border:1px solid var(--line);border-radius:11px;padding:10px 12px">${clItems.map(it=>`<div style="display:flex;align-items:center;gap:9px;font-size:13px"><span style="flex:0 0 auto;width:18px;text-align:center;color:${clMap[it.k]?'var(--ok)':'#c3cad3'};font-weight:800">${clMap[it.k]?'✓':'○'}</span><span style="${clMap[it.k]?'':'color:var(--muted)'}">${esc(it.t)}${clMap[it.k]?'':' <span style="font-size:11px">— not marked</span>'}</span></div>`).join('')}</div>`:'';
     const doorBlock = doors.length?`<div class="sect" style="margin:10px 0 2px">🚪 Do Not Disturb — door photo</div>${grid(doors)}`:'';
     const lostBlock = lost.length?`<div class="sect" style="margin:10px 0 2px">🎒 Lost property photo</div>${grid(lost)}`:'';
     const stCol=r.status==='done'?'var(--ok)':r.status==='in_progress'?'var(--amber)':r.status==='blocked'?'var(--red)':'var(--muted)';
@@ -638,6 +644,7 @@
       ${photoBlock}
       ${doorBlock}
       ${lostBlock}
+      ${checklistBlock}
       ${(r.status!=='done' && date===today)?`<button class="go ghost" style="margin-top:8px" onclick="reassignRoom('${esc(r.room)}')">Reallocate ⇄</button>`:''}
     </div>`;
   }

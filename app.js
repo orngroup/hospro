@@ -9899,6 +9899,21 @@ function hhBars(items){
    ============================================================ */
 const HH_DEFAULT_CAP = 8;                 // rooms for a confirmed person with no rota shift
 const HH_ROOM_TYPES  = ["Departure","Stayover","Arrival-ready"];
+// Housekeeper checklists (mirror of hoshouse-config.js CHECKLISTS) — so the desktop can show what was ticked
+const HH_CHECKLISTS = {
+  Departure: [["bedroom","Bedroom"],["dusting","Dusting"],["tray","Tea tray & kettle"],["bathroom","Bathroom"],["towels","Towels & toiletries"],["floors","Floors"],["fixit","Fix-it check"],["amenities","Guest info & extras"],["final","Final check"],["dustcheck","Final dust check"]],
+  Stayover: [["rubbish","Rubbish & liners"],["bed","Bed made"],["bathroom","Bathroom refreshed"],["towels","Towels & toiletries"],["tray","Tea tray refilled"],["floors","Vacuum & mop"],["dustcheck","Final dust check"]],
+  "Arrival-ready": [["check","Room check"],["amenity","Amenities"],["final","Final check"]],
+  WC: [["pans","Toilets & urinals"],["sinks","Sinks & taps"],["mirrors","Mirrors & surfaces"],["floor","Floor"],["bins","Bins emptied"],["stock","Stocked"]],
+  Reception: [["floors","Floors"],["surfaces","Surfaces & desk"],["glass","Glass & doors"],["seating","Seating & tidy"],["bins","Bins"]]
+};
+function hhChecklistFor(type){
+  if(type==='Stayover') return HH_CHECKLISTS.Stayover;
+  if(type==='Arrival-ready') return HH_CHECKLISTS['Arrival-ready'];
+  if(type==='Reception') return HH_CHECKLISTS.Reception;
+  if(/WC|Toilet/i.test(type||'')) return HH_CHECKLISTS.WC;
+  return HH_CHECKLISTS.Departure;
+}
 const HH_PUBLIC_AREAS = [
   { area:"Gents WC",      slots:["AM","PM"] },
   { area:"Ladies WC",     slots:["AM","PM"] },
@@ -10050,7 +10065,7 @@ function renderHosHouseHub(v){
   <div style="max-width:1040px;margin:0 auto;padding:4px 2px 30px">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div><div style="font:800 20px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping</div>
-        <div style="font-size:12.5px;color:#5b6b7b">${view==='reports'?'Productivity, average times and missed rooms over any date range.':"Pick the day's rooms, confirm who's in, allocate — all on this page."}</div></div>
+        <div style="font-size:12.5px;color:#5b6b7b">${view==='reports'?'Productivity, average times and missed rooms over any date range.':(view==='mgmt'?'The full housekeeping picture — rooms, types, staff, times, lost property and trends.':"Pick the day's rooms, confirm who's in, allocate — all on this page.")}</div></div>
       <div style="display:flex;gap:8px;align-items:center">
         ${view==='today'?`<input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderManage();hhRenderDash();hhStartLive(this.value)" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
         <button onclick="hhManageStaff()" title="Edit staff — skills, rating, status, PINs" style="padding:7px 12px;border:1px solid #1F3864;background:#eef2f8;color:#1F3864;border-radius:8px;font:700 12px Lato;cursor:pointer">👥 Manage staff</button>
@@ -10061,13 +10076,14 @@ function renderHosHouseHub(v){
       </div>
     </div>
 
-    <div style="display:inline-flex;border:1px solid #d7dde4;border-radius:9px;overflow:hidden;margin-bottom:16px">
-      ${tab('today','Today')}${tab('history','🔎 History')}${tab('reports','📈 Reports')}
+    <div style="display:inline-flex;border:1px solid #d7dde4;border-radius:9px;overflow:hidden;margin-bottom:16px;flex-wrap:wrap">
+      ${tab('today','Today')}${tab('history','🔎 History')}${tab('reports','📈 Reports')}${tab('mgmt','📊 Management')}
     </div>
 
-    ${view==='reports'?`<div id="hh-reports"></div>`:(view==='history'?hhHistoryHTML():todayHTML)}
+    ${view==='reports'?`<div id="hh-reports"></div>`:(view==='mgmt'?`<div id="hh-mgmt"></div>`:(view==='history'?hhHistoryHTML():todayHTML))}
   </div>`;
   if(view==='reports'){ hhStopLive(); renderHosHouseReports(); }
+  else if(view==='mgmt'){ hhStopLive(); renderHosHouseMgmt(); }
   else if(view==='history'){ hhStopLive(); /* search form is ready; results load on demand */ }
   else { hhRenderManage(); hhRenderDash(); hhRenderLinks(); hhStartLive(window._hhDate||hhTodayISO()); }
 }
@@ -10513,6 +10529,116 @@ async function hhReportData(from,to){
   for(const dk of dates){ const rooms=await hhFetchDay(dk); rooms.forEach(r=>all.push(Object.assign({_date:dk}, r))); }
   return all;
 }
+/* ============================================================
+   HOSHOUSE MANAGEMENT OVERVIEW — the full picture: rooms, types,
+   staff, times, lost property and trends, with period + staff filters.
+   ============================================================ */
+let HH_MGMT_PERIOD='all', HH_MGMT_STAFF='';
+async function hhFetchAllRooms(){
+  if(typeof FB!=='undefined' && FB.db){ try{ const snap=await FB.db.collection('hoshouse_rooms').get();
+    return snap.docs.map(d=>{ const x=d.data()||{}; return Object.assign({_date:(x.date||String(d.id).split('__')[0]||'')}, x); }); }catch(e){ console.warn('hhFetchAllRooms',e&&e.code); } }
+  const all=[]; try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i);
+    if(k && k.indexOf('hoshouse_day_')===0){ const dk=k.slice(13); try{ Object.values(JSON.parse(localStorage.getItem(k)||'{}')).forEach(r=>all.push(Object.assign({_date:dk}, r))); }catch(e){} } } }catch(e){}
+  return all;
+}
+function hhMgmtRange(period){
+  const to=hhTodayISO();
+  if(period==='7'){ const d=new Date(to+'T12:00'); d.setDate(d.getDate()-6); return {from:d.toLocaleDateString('en-CA'), to}; }
+  if(period==='30'){ const d=new Date(to+'T12:00'); d.setDate(d.getDate()-29); return {from:d.toLocaleDateString('en-CA'), to}; }
+  if(period==='month'){ const n=new Date(); return {from:new Date(n.getFullYear(),n.getMonth(),1).toLocaleDateString('en-CA'), to}; }
+  return {from:null, to};   // all time
+}
+/* multi-series line chart (no library) */
+function hhLineChart(series, labels, opts){
+  opts=opts||{}; const w=opts.w||880, h=opts.h||210, pl=34, pr=14, pt=14, pb=26;
+  const max=Math.max(1,...series.flatMap(s=>s.values)); const n=labels.length;
+  const X=i=>pl+(n<=1?(w-pl-pr)/2:i*(w-pl-pr)/(n-1)), Y=v=>pt+(h-pt-pb)*(1-v/max);
+  const grid=[0,.5,1].map(f=>`<line x1="${pl}" x2="${w-pr}" y1="${Y(max*f)}" y2="${Y(max*f)}" stroke="#eef1f4"/><text x="${pl-5}" y="${Y(max*f)+3}" font-size="9" text-anchor="end" fill="#8296a8">${Math.round(max*f)}</text>`).join('');
+  const paths=series.map(s=>{ const pts=s.values.map((v,i)=>`${X(i)},${Y(v)}`); const d='M'+pts.join(' L');
+    return (s.fill?`<path d="${d} L${X(n-1)},${Y(0)} L${X(0)},${Y(0)} Z" fill="${s.colour}" opacity=".10"/>`:'')+`<path d="${d}" fill="none" stroke="${s.colour}" stroke-width="2.2" stroke-linejoin="round"/>`+
+      s.values.map((v,i)=>`<circle cx="${X(i)}" cy="${Y(v)}" r="2.4" fill="${s.colour}"><title>${hhEsc(labels[i])}: ${v} ${hhEsc(s.name)}</title></circle>`).join(''); }).join('');
+  const every=Math.max(1,Math.ceil(n/12));
+  const xl=labels.map((l,i)=>(i%every===0||i===n-1)?`<text x="${X(i)}" y="${h-8}" font-size="9" text-anchor="middle" fill="#8296a8">${hhEsc(l)}</text>`:'').join('');
+  const leg=series.map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;margin-right:14px;font:600 12px Lato;color:#374151"><i style="width:14px;height:3px;background:${s.colour};display:inline-block;border-radius:2px"></i>${hhEsc(s.name)}</span>`).join('');
+  return `<div style="margin-bottom:4px">${leg}</div><svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block">${grid}${paths}${xl}</svg>`;
+}
+function hhMgmtSet(k,v){ if(k==='period') HH_MGMT_PERIOD=v; else if(k==='staff') HH_MGMT_STAFF=v; renderHosHouseMgmt(); }
+async function renderHosHouseMgmt(){
+  const box=document.getElementById('hh-mgmt'); if(!box) return;
+  box.innerHTML=`<div style="padding:26px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:14px">Compiling the management overview…</div>`;
+  const all=await hhFetchAllRooms();
+  const {from,to}=hhMgmtRange(HH_MGMT_PERIOD);
+  let rows=all.filter(r=> (!from || (r._date||'')>=from) && (r._date||'')<=to);
+  if(HH_MGMT_STAFF) rows=rows.filter(r=>r.housekeeper===HH_MGMT_STAFF);
+  const TC={Departure:'#1f7a8c',Stayover:'#4a86c7','Arrival-ready':'#2a6a4a'};
+  const TLAB={Departure:'Departures',Stayover:'Stayover','Arrival-ready':'Arrivals'};
+  const periodBtn=(id,label)=>`<button onclick="hhMgmtSet('period','${id}')" style="padding:7px 13px;border:1.5px solid ${HH_MGMT_PERIOD===id?'#1F3864':'#d7dde4'};border-radius:20px;font:700 12px Lato;cursor:pointer;background:${HH_MGMT_PERIOD===id?'#1F3864':'#fff'};color:${HH_MGMT_PERIOD===id?'#fff':'#1a2b3a'}">${label}</button>`;
+  const staffOpts=`<option value="">All staff</option>`+(typeof HH_HUB_STAFF!=='undefined'?HH_HUB_STAFF:[]).map(([name,id])=>`<option value="${id}" ${HH_MGMT_STAFF===id?'selected':''}>${hhEsc(name.replace(/ \(.*\)/,''))}</option>`).join('');
+  const controls=`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <span style="font:800 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">Period</span>
+    ${periodBtn('all','All time')}${periodBtn('7','Last 7 days')}${periodBtn('30','Last 30 days')}${periodBtn('month','This month')}
+    <span style="font:800 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-left:8px">Staff</span>
+    <select onchange="hhMgmtSet('staff',this.value)" style="padding:8px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">${staffOpts}</select>
+    <span style="font-size:11px;color:#8296a8;margin-left:auto">${from?('From '+from+' to '+to):'All records'}</span>
+  </div>`;
+  if(!rows.length){ box.innerHTML=controls+`<div style="padding:30px;text-align:center;background:#fff;border:1px solid #e4e9ef;border-radius:14px"><div style="font:800 15px Lato;color:#1a2b3a">No housekeeping data for this selection</div><div style="font-size:12.5px;color:#8296a8;margin-top:4px">Try a wider period or a different person.</div></div>`; return; }
+
+  const beds=rows.filter(r=>!r.area), areas=rows.filter(r=>r.area);
+  const done=beds.filter(r=>r.status==='done');
+  const over=done.filter(r=>(r.durationSec||0)>hhRepTgt(r)*60);
+  const avg=done.length?Math.round(done.reduce((a,r)=>a+(r.durationSec||0)/60,0)/done.length):0;
+  const lost=beds.filter(r=>(r.lostProperty&&r.lostProperty.trim())||r.lostPhoto);
+  const blocked=beds.filter(r=>r.status==='blocked');
+  const maint=beds.filter(r=>r.maintenance&&r.maintenance.trim());
+  const daysActive=new Set(rows.map(r=>r._date).filter(Boolean)).size;
+  const comp=beds.length?Math.round(done.length/beds.length*100):0;
+  const totalMins=Math.round(done.reduce((a,r)=>a+(r.durationSec||0)/60,0));
+  // per-person
+  const by={}; beds.forEach(r=>{ const k=r.housekeeper||'_un'; by[k]=by[k]||{name:hhNameFor(r),done:0,mins:0,over:0,total:0};
+    by[k].total++; if(r.status==='done'){ by[k].done++; by[k].mins+=(r.durationSec||0)/60; if((r.durationSec||0)>hhRepTgt(r)*60) by[k].over++; } });
+  const people=Object.values(by).filter(p=>p.name!=='Unallocated'&&p.done>0).sort((a,b)=>b.done-a.done);
+  // by type (all beds in selection) and by floor
+  const tc={Departure:0,Stayover:0,'Arrival-ready':0}; beds.forEach(r=>{ const t=tc[r.type]!=null?r.type:'Departure'; tc[t]++; });
+  const fc={}; beds.forEach(r=>{ const fl=hhFloorLabel(r.floor||hhFloorOf(r.room))||'—'; fc[fl]=(fc[fl]||0)+1; });
+  // avg time by type
+  const avgByType=['Departure','Stayover','Arrival-ready'].map(t=>{ const dd=done.filter(r=>r.type===t); const m=dd.length?Math.round(dd.reduce((a,r)=>a+(r.durationSec||0)/60,0)/dd.length):0; return {label:TLAB[t],value:m}; });
+  // rooms per day by type (line)
+  const dates=[...new Set(rows.map(r=>r._date).filter(Boolean))].sort();
+  const dlab=dates.map(d=>{ const x=new Date(d+'T12:00'); return isNaN(x)?d:x.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); });
+  const serie=t=>dates.map(d=>beds.filter(r=>r._date===d && (tc[r.type]!=null?r.type:'Departure')===t).length);
+  const lineSeries=[{name:'Departures',values:serie('Departure'),colour:TC.Departure,fill:true},{name:'Stayover',values:serie('Stayover'),colour:TC.Stayover},{name:'Arrivals',values:serie('Arrival-ready'),colour:TC['Arrival-ready']}];
+
+  const tile=(v,k,c,sub)=>`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:13px;padding:13px 15px;box-shadow:0 1px 2px rgba(0,0,0,.04)"><div style="font:800 25px Lato;color:${c}">${v}</div><div style="font-size:10.5px;color:#8296a8;text-transform:uppercase;letter-spacing:.4px;margin-top:3px;font-weight:800">${k}</div>${sub?`<div style="font-size:11px;color:#5b6b7b;margin-top:3px">${sub}</div>`:''}</div>`;
+  const card=(title,inner,extra='')=>`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);${extra}"><div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:10px">${title}</div>${inner}</div>`;
+  const typeSegs=['Departure','Stayover','Arrival-ready'].filter(t=>tc[t]).map(t=>({label:TLAB[t],value:tc[t],color:TC[t]}));
+  const FCOL={Ground:'#2E6B5E',First:'#1F3864'};
+  const floorSegs=Object.entries(fc).sort().map(([f,n])=>({label:f,value:n,color:FCOL[f]||'#7a5aa0'}));
+  const legend=segs=>segs.map(s=>`<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0"><span style="width:12px;height:12px;border-radius:3px;background:${s.color};display:inline-block"></span>${hhEsc(s.label)}<b style="margin-left:auto;color:#1a2b3a">${s.value}</b></div>`).join('');
+  const lostRows=lost.slice().sort((a,b)=>(b._date||'').localeCompare(a._date||'')).slice(0,40).map(r=>`<tr style="border-top:1px solid #eef1f4"><td style="padding:6px 10px;font-weight:700">${hhEsc(r.room)}</td><td style="padding:6px 10px;color:#5b6b7b">${hhEsc(r._date||'')}</td><td style="padding:6px 10px">${hhEsc(r.lostProperty||'(photo only)')}</td><td style="padding:6px 10px;color:#5b6b7b">${hhEsc(hhNameFor(r))}</td></tr>`).join('');
+
+  box.innerHTML=controls+`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px">
+      ${tile(done.length,'Rooms cleaned','#2E6B5E', comp+'% of '+beds.length+' set')}
+      ${tile(avg+'m','Avg clean time','#1F3864', totalMins+' min total')}
+      ${tile(over.length,'Over target', over.length?'#b3261e':'#5b6b7b','Took longer than allowed')}
+      ${tile(lost.length,'Lost property','#7a5aa0','Items logged')}
+      ${tile(blocked.length,'DND / refused', blocked.length?'#b9780a':'#5b6b7b','Could not clean')}
+      ${tile(maint.length,'Maintenance','#b9780a','Issues reported')}
+      ${tile(areas.filter(r=>r.status==='done').length,'Public areas','#2E6B5E','Toilets & reception')}
+      ${tile(daysActive,'Days active','#1F3864','Days with cleaning')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="hh-mg">
+      ${card('Rooms by clean type', `<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${hhDonut(typeSegs,{v:beds.length,k:'rooms'})}<div style="flex:1;min-width:150px">${legend(typeSegs)}</div></div>`)}
+      ${card('Rooms by floor', `<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${hhDonut(floorSegs,{v:beds.length,k:'rooms'})}<div style="flex:1;min-width:150px">${legend(floorSegs)}</div></div>`)}
+    </div>
+    ${card('Rooms per day by type', dates.length>1?hhLineChart(lineSeries,dlab,{h:220}):'<div style="color:#8296a8;font-size:13px">Only one day in this selection — widen the period to see the trend.</div>','margin-bottom:14px')}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="hh-mg">
+      ${card('Top staff — rooms cleaned', people.length?hhBars(people.slice(0,10).map(p=>({label:p.name,value:p.done,sub:p.done?Math.round(p.mins/p.done)+'m avg':''}))):'<div style="color:#8296a8;font-size:13px">No completed rooms yet.</div>')}
+      ${card('Average clean time by type', hhBars(avgByType.map(x=>({label:x.label,value:x.value,sub:'min'}))))}
+    </div>
+    ${card('Lost property'+(lost.length?(' ('+lost.length+')'):''), lost.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Room</th><th style="padding:6px 10px">Date</th><th style="padding:6px 10px">Item</th><th style="padding:6px 10px">Found by</th></tr>${lostRows}</table></div>`:'<div style="color:#8296a8;font-size:13px">No lost property logged in this period.</div>')}
+    <style>@media(max-width:720px){.hh-mg{grid-template-columns:1fr !important}}</style>`;
+}
 function hhRepTgt(r){ return (typeof hhTgt==='function'? hhTgt(r.type) : (HH_TARGET&&HH_TARGET[r.type])||30); }
 async function renderHosHouseReports(){
   const box=document.getElementById('hh-reports'); if(!box) return;
@@ -10902,6 +11028,11 @@ function hhRoomDetailHTML(r, photos, date){
       ${comp.length?`<div style="font:800 12px Lato;color:#1a2b3a;text-transform:uppercase;letter-spacing:.4px;margin:4px 0 8px">Completion photos (${comp.length})</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${comp.map(hhPhotoFig).join('')}</div>`
         : (r.status==='done'?'<div style="font-size:12.5px;color:#b3261e;background:#fdecea;border:1px solid #f3c0ba;border-radius:10px;padding:10px 12px">⚠ Marked done but no completion photos were found for this room.</div>':'')}
+
+      ${(()=>{ const cl=r.checklist||{}; const items=hhChecklistFor(r.type); if(!items.length || (r.status!=='done'&&r.status!=='in_progress')) return '';
+        const done=items.filter(([k])=>cl[k]).length; const who1=(r.housekeeperName||'').split(' ')[0];
+        return `<div style="font:800 12px Lato;color:#1a2b3a;text-transform:uppercase;letter-spacing:.4px;margin:16px 0 8px">✅ Confirmed done${who1?(' by '+esc(who1)):''} (${done}/${items.length})</div>
+          <div style="background:#f7f9fb;border:1px solid #e4e9ef;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px">${items.map(([k,label])=>`<div style="display:flex;align-items:center;gap:9px;font-size:12.5px"><span style="flex:0 0 auto;width:18px;text-align:center;color:${cl[k]?'#2a6a4a':'#c3cad3'};font-weight:800">${cl[k]?'✓':'○'}</span><span style="${cl[k]?'color:#1f2a37':'color:#8296a8'}">${esc(label)}${cl[k]?'':' — not marked'}</span></div>`).join('')}</div>`; })()}
 
       ${door.length?`<div style="font:800 12px Lato;color:#1a2b3a;text-transform:uppercase;letter-spacing:.4px;margin:16px 0 8px">Do Not Disturb — door photo</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${door.map(hhPhotoFig).join('')}</div>`:''}
