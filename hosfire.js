@@ -2287,16 +2287,34 @@ function llGroupOf(r) {
 // Documents ticked by default the first time (the landlord's request plus the main compliance records)
 const llDefaultOn = (r) => !!r.file && !/quote|correspondence|form|training/i.test(r.cat || "") && !/retrospective|queries|email|to complete/i.test(r.title || "");
 
+/* Wi-Fi access point schedule — from Quest's Ubiquiti design plan "Brandon Hall Hotel AP Locations", 29 Oct 2026 */
+const LL_AP_SRC = "Quest — Ubiquiti access point location plan, 29 October 2026";
+const LL_APS = [
+  ...["Room 149–151", "Room 154", "Room 158", "Room 161–162", "Room 163"].map((r) => ["First floor", "B Block", r, "On cupboard door"]),
+  ...["Room 128–130", "Room 124–126", "Room 120–122", "Room 116–118"].map((r) => ["First floor", "A Block", r, "In cupboard"]),
+  ...["Room 62", "Room 61", "Room 51–52", "Room 49", "Room 43–44", "Room 25–27", "Room 33–35", "Room 37–39"].map((r) => ["First floor", "Main building", r, "On hallway ceiling"]),
+  ["First floor", "Main building", "Room 48", "Inside ceiling panel"], ["First floor", "Main building", "Room 41", "Above stairs"],
+  ["First floor", "Main building", "Room 41", "In nearby cleaning cupboard"], ["First floor", "Main building", "Restaurant entrance", "—"],
+  ...["Room 131–132", "Room 136", "Room 140", "Room 142–144", "Room 146"].map((r) => ["Ground floor", "B Block", r, "On hallway ceiling"]),
+  ...["Room 113–114", "Room 109–110", "Room 107–108", "Room 103–104"].map((r) => ["Ground floor", "A Block", r, "On hallway ceiling"]),
+  ...["Room 3–4", "Room 7–8", "Room 13–14", "Room 17–18"].map((r) => ["Ground floor", "Main building", r, "On hallway ceiling"]),
+  ["Ground floor", "Main building", "Boiler room", "—"], ["Ground floor", "Main building", "Restaurant (left)", "—"], ["Ground floor", "Main building", "Restaurant (right)", "—"],
+  ["Ground floor", "Main building", "Warwick Room hallway", "In hatch"], ["Ground floor", "Main building", "Reception", "—"], ["Ground floor", "Main building", "Office", "—"],
+  ["Ground floor", "Main building", "Brandon Suite", "—"], ["Ground floor", "Main building", "Wolfston Suite 1", "On wall"], ["Ground floor", "Main building", "Wolfston Suite 3", "Hatch above door"],
+  ["Ground floor", "Main building", "Beech Room corridor", "—"]
+].map(([floor, block, loc, mount]) => ({ floor, block, loc, mount, door: /door/i.test(mount) && !/above door/i.test(mount) }));
+const LL_WIFI_FACTS = "Quest, the hotel's Wi-Fi provider, has supplied a plan of every Wi-Fi access point (Ubiquiti design plan dated 29 October 2026, in the document library below). It shows 44 access points — 21 on the first floor and 23 on the ground floor — with network switches in the B Block, A Block, server cabinet and comms locations.\n\nFive first-floor access points in B Block are fixed on cupboard doors (near rooms 149–151, 154, 158, 161–162 and 163), and four first-floor access points in A Block are inside cupboards (near rooms 116–130). All other access points are on hallway ceilings or in public areas.\n\nWe have asked Quest to confirm the installation dates, who carried out the work and how the cabling passes into each cupboard.";
 const LL_DEFAULT = () => ({
   password: "3132",
   addressee: "",
   noticeFrom: "",
   noticeDate: "",
   intro: "Thank you for your letter. This page brings together the compliance certificates, reports and fire safety policies for Brandon Hall Hotel and Spa that you asked for, together with our response on the Wi-Fi access points and the other alterations you raised. Every document can be viewed and downloaded below. We will update this page as works are completed and further documents become available.",
-  wifiFacts: "",
+  wifiFacts: LL_WIFI_FACTS,
+  showAps: true,
   wifiResponse: "",
   works: [
-    { work: "Relocate the Wi-Fi access points so that no apparatus is fixed to, or cabled through, a fire door", contractor: "", target: "", status: "Not started", evidence: "" },
+    { work: "Relocate the five B Block first-floor access points fixed on cupboard doors (near rooms 149–151, 154, 158, 161–162 and 163) so that no apparatus is fixed to, or cabled through, a fire door; check the four A Block cupboard access points in the same way", contractor: "Quest", target: "", status: "Not started", evidence: "" },
     { work: "Fire-stop all cable penetrations into the service risers using a tested and certified fire-stopping system", contractor: "", target: "", status: "Not started", evidence: "" },
     { work: "Replace the damaged riser door blanks with certified fire doorsets of the required rating, installed by a third-party certificated installer", contractor: "", target: "", status: "Not started", evidence: "" },
     { work: "Inspection of the completed doors and fire stopping by a competent fire door inspector, and notification to the fire risk assessor", contractor: "", target: "", status: "Not started", evidence: "" }
@@ -2309,12 +2327,15 @@ const LL_DEFAULT = () => ({
   consents: "",
   contact: "",
   docs: {},
+  hub: {},
   certs: {}
 });
 const llDraft = () => {
   if (S.f.ll) return S.f.ll;
   const saved = S.data.config.find((c) => c.id === "landlord") || {};
   const d = Object.assign(LL_DEFAULT(), JSON.parse(JSON.stringify(saved.draft || {})));
+  if (!d.wifiFacts) d.wifiFacts = LL_WIFI_FACTS;
+  if (d.showAps === undefined) d.showAps = true;
   S.f.ll = d; S.f.llMeta = { shareId: saved.shareId || "", publishedAt: saved.publishedAt || 0, publishedBy: saved.publishedBy || "" };
   return d;
 };
@@ -2323,6 +2344,21 @@ const llDocOn = (d, r) => (d.docs[r.id] ? d.docs[r.id].on : llDefaultOn(r));
 const llDocGroup = (d, r) => (d.docs[r.id] && d.docs[r.id].group) || llGroupOf(r);
 const llCertOn = (d, c) => (c.id in d.certs ? d.certs[c.id] : !!c.last);
 const LL_STATUS = ["Not started", "Booked", "In progress", "Completed"];
+// HosHUB documents (hoshub_docs: name, tab, type, fileUrl). Readable by HosPRO staff logins.
+const LL_HUB_WANT = /eicr|electrical|gas|cp12|fire risk|\bfra\b|pool|plant|legionella|water|asbestos|epc|lift|loler|boiler|insurance/i;
+async function llLoadHub() {
+  if (S.f.llHub) return;
+  S.f.llHub = { loading: true, rows: [], err: "" };
+  try {
+    if (!S.live) { let rows = []; try { rows = JSON.parse(localStorage.getItem("hoshub_docs") || "[]").filter((r) => r.fileUrl); } catch (e) {} S.f.llHub = { rows, err: "" }; render(); return; }
+    const snap = await fb.db.collection("hoshub_docs").get();
+    S.f.llHub = { rows: snap.docs.map((x) => ({ id: x.id, ...x.data() })).filter((r) => r.fileUrl).sort((a, b) => String(a.name).localeCompare(String(b.name))), err: "" };
+  } catch (e) { S.f.llHub = { rows: [], err: "Could not read HosHUB (" + (e.code || e.message) + "). Sign in with your HosPRO login to include HosHUB documents." }; }
+  render();
+}
+const llHubTitle = (r) => String(r.name || r.fileName || "Document").replace(/\.(pdf|docx?|xlsx?|jpe?g|png)$/i, "");
+const llHubOn = (d, r) => (d.hub[r.id] ? d.hub[r.id].on : LL_HUB_WANT.test(`${r.name} ${r.type} ${r.tab}`));
+const llHubGroup = (d, r) => (d.hub[r.id] && d.hub[r.id].group) || llGroupOf({ title: `${r.name} ${r.type || ""}`, cat: "" });
 
 // 20 working days from the notice date (England bank holidays 2026–27)
 const LL_BH = ["2026-12-25", "2026-12-28", "2027-01-01", "2027-03-26", "2027-03-29", "2027-05-03", "2027-05-31", "2027-08-30", "2027-12-27", "2027-12-28"];
@@ -2335,7 +2371,8 @@ VIEWS.landlord = () => {
   const due = d.noticeDate ? llWorkingDays(d.noticeDate, 20) : "";
   const inp = (k, ph, type = "text") => `<input type="${type}" data-ll="${k}" value="${h(d[k])}" placeholder="${h(ph || "")}">`;
   const ta = (k, ph, rows = 4) => `<textarea data-ll="${k}" rows="${rows}" placeholder="${h(ph)}">${h(d[k])}</textarea>`;
-  const reqRows = LL_REQUESTED.map(([label, g]) => { const n = docs.filter((r) => llDocOn(d, r) && r.file && llDocGroup(d, r) === g).length;
+  const hubRows = (S.f.llHub || {}).rows || [];
+  const reqRows = LL_REQUESTED.map(([label, g]) => { const n = docs.filter((r) => llDocOn(d, r) && r.file && llDocGroup(d, r) === g).length + hubRows.filter((r) => llHubOn(d, r) && llHubGroup(d, r) === g).length;
     return `<tr><td>${h(label)}</td><td>${n ? `<span class="pill p-ok">${n} included</span>` : `<span class="pill p-amb">To follow</span> <span class="muted">Upload in Documents, then tick it below</span>`}</td></tr>`; }).join("");
   return `<div class="row"><div class="grow"><h2>Landlord <span class="fl">pack</span></h2>
     <p class="lead">A separate, password-protected page for the landlord with the certificates, reports and policies you choose, plus your response to their letter. It has no links into HosFIRE or HosPRO. Blank fields show on the page as <b>To be confirmed</b>.</p></div></div>
@@ -2363,6 +2400,9 @@ VIEWS.landlord = () => {
   <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">3. Wi-Fi access points and the riser fire doors</h3>
     <label>What was installed, when, by whom, and which doors are affected</label>${ta("wifiFacts", "e.g. number of access points, floors and riser doors affected, installer, date of installation", 4)}
     <label>Your response</label>${ta("wifiResponse", "Your response to the points raised (consider taking advice before admitting any breach of the lease)", 4)}
+    <label style="margin-top:12px;display:flex;gap:8px;align-items:center;text-transform:none;font-size:14px"><input type="checkbox" data-ll-chk="showAps" ${d.showAps ? "checked" : ""} style="width:auto">Show the access point schedule on the landlord page (${LL_APS.length} access points — ${h(LL_AP_SRC)})</label>
+    <details><summary class="muted" style="cursor:pointer">See the schedule (${LL_APS.filter((a) => a.door).length} on doors, ${LL_APS.filter((a) => /in cupboard/i.test(a.mount)).length} in cupboards)</summary><div class="tw"><table><tr><th>Floor</th><th>Block</th><th>Location</th><th>Mounting</th></tr>${LL_APS.map((a) => `<tr style="${a.door ? "background:var(--redbg)" : ""}"><td>${h(a.floor)}</td><td>${h(a.block)}</td><td>${h(a.loc)}</td><td>${h(a.mount)}</td></tr>`).join("")}</table></div>
+    <p class="muted">Upload Quest's PDF (“Brandon Hall Hotel AP Locations”) in Documents so it appears in the landlord's document library.</p></details>
     <label style="margin-top:12px">Remedial works and timetable</label>
     <div class="tw"><table><tr><th>Work</th><th style="width:16%">Contractor</th><th style="width:12%">Target date</th><th style="width:12%">Status</th><th style="width:20%">Evidence (certificates, photos)</th><th></th></tr>
     ${d.works.map((w, i) => `<tr><td><textarea rows="2" data-w="${i}|work">${h(w.work)}</textarea></td><td><input data-w="${i}|contractor" value="${h(w.contractor)}"></td><td><input type="date" data-w="${i}|target" value="${h(w.target)}"></td>
@@ -2391,16 +2431,24 @@ VIEWS.landlord = () => {
     <p class="muted">Only documents with a file uploaded can be shared. Quotes, emails, forms and internal statements are left unticked to start with — tick anything else you want the landlord to see.</p>
     <div class="tw"><table><tr><th></th><th>Document</th><th>Date</th><th>Section on the landlord page</th></tr>
     ${docs.map((r) => `<tr style="${r.file ? "" : "opacity:.55"}"><td>${r.file ? `<input type="checkbox" data-doc="${r.id}" ${llDocOn(d, r) ? "checked" : ""} style="width:auto">` : ""}</td><td><b>${h(r.title)}</b><div class="muted">${h(r.cat || "")}${r.file ? "" : " · no file uploaded"}</div></td><td>${r.date ? fds(r.date) : ""}</td>
-      <td><select data-dg="${r.id}" style="width:auto;max-width:240px">${LL_GROUPS.map((g) => `<option ${llDocGroup(d, r) === g ? "selected" : ""}>${g}</option>`).join("")}</select></td></tr>`).join("")}</table></div></div>`;
+      <td><select data-dg="${r.id}" style="width:auto;max-width:240px">${LL_GROUPS.map((g) => `<option ${llDocGroup(d, r) === g ? "selected" : ""}>${g}</option>`).join("")}</select></td></tr>`).join("")}</table></div></div>
+  <div class="card" style="margin-top:12px"><h3 style="margin-top:0">8. Documents from HosHUB <span class="muted" style="font-weight:400">(${hubRows.filter((r) => llHubOn(d, r)).length} ticked)</span></h3>
+    <p class="muted">Certificates and reports already stored in HosPRO → HosHUB (EICR, gas, pool plant, legionella and so on). Ones that match the landlord's request are ticked to start with — check each one is the latest version.</p>
+    ${!S.f.llHub || S.f.llHub.loading ? '<p class="muted">Loading HosHUB documents…</p>' : S.f.llHub.err ? `<p class="muted" style="color:var(--red)">${h(S.f.llHub.err)}</p>` : hubRows.length ? `<div class="tw"><table><tr><th></th><th>Document</th><th>HosHUB section</th><th>Added</th><th>Section on the landlord page</th><th></th></tr>
+    ${hubRows.map((r) => `<tr><td><input type="checkbox" data-hub="${r.id}" ${llHubOn(d, r) ? "checked" : ""} style="width:auto"></td><td><b>${h(llHubTitle(r))}</b>${r.notes ? `<div class="muted">${h(r.notes)}</div>` : ""}</td><td class="muted">${h([r.tab, r.type].filter(Boolean).join(" · "))}</td><td class="muted">${h(r.date || "")}</td>
+      <td><select data-hg="${r.id}" style="width:auto;max-width:240px">${LL_GROUPS.map((g) => `<option ${llHubGroup(d, r) === g ? "selected" : ""}>${g}</option>`).join("")}</select></td><td><a href="${h(r.fileUrl)}" target="_blank" rel="noopener">View</a></td></tr>`).join("")}</table></div>` : '<p class="muted">No HosHUB documents with files found.</p>'}</div>`;
 };
 
 function llRead(v) {
   const d = llDraft();
   $$("[data-ll]", v).forEach((el) => (d[el.dataset.ll] = el.value.trim()));
+  $$("[data-ll-chk]", v).forEach((el) => (d[el.dataset.llChk] = el.checked));
   $$("[data-w]", v).forEach((el) => { const [i, k] = el.dataset.w.split("|"); d.works[+i][k] = el.value.trim(); });
   $$("[data-a]", v).forEach((el) => { const [i, k] = el.dataset.a.split("|"); d.alts[+i][k] = el.value.trim(); });
   $$("[data-cert]", v).forEach((el) => (d.certs[el.dataset.cert] = el.checked));
   $$("[data-doc]", v).forEach((el) => { d.docs[el.dataset.doc] = Object.assign({}, d.docs[el.dataset.doc], { on: el.checked }); });
+  $$("[data-hub]", v).forEach((el) => { d.hub[el.dataset.hub] = Object.assign({}, d.hub[el.dataset.hub], { on: el.checked }); });
+  $$("[data-hg]", v).forEach((el) => { const r = ((S.f.llHub || {}).rows || []).find((x) => x.id === el.dataset.hg); d.hub[el.dataset.hg] = Object.assign({ on: r ? llHubOn(d, r) : false }, d.hub[el.dataset.hg], { group: el.value }); });
   $$("[data-dg]", v).forEach((el) => { d.docs[el.dataset.dg] = Object.assign({ on: llDocOn(d, S.data.registers.find((x) => x.id === el.dataset.dg)) }, d.docs[el.dataset.dg], { group: el.value }); });
   return d;
 }
@@ -2422,10 +2470,12 @@ async function llPublish(v) {
     try { docs.push({ title: r.title, cat: r.cat || "", group: llDocGroup(d, r), date: r.date || "", version: r.version || "", issuer: r.author || "", name: r.file.name || "", url: await llFileUrl(r.file) }); }
     catch (e) { msg.textContent = `Could not prepare “${r.title}”: ${e.message}`; return; }
   }
+  for (const r of ((S.f.llHub || {}).rows || []).filter((x) => llHubOn(d, x)))
+    docs.push({ title: llHubTitle(r), cat: r.type || "", group: llHubGroup(d, r), date: "", version: "", issuer: r.date ? "Added " + r.date : "", name: r.fileName || "", url: r.fileUrl });
   const certs = reg("cert").filter((c) => llCertOn(d, c)).map((c) => { const s = certState(c); return { name: c.name, contractor: c.contractor || "", last: c.last || "", next: s.next || "", status: s.st, certRef: c.certRef || "" }; }).sort((a, b) => natRef(a.name, b.name));
   const payload = { v: 1, hotel: HF_HOTEL.name, address: HF_HOTEL.address, preparedBy: S.user.name, publishedAt: Date.now(),
     addressee: d.addressee, noticeFrom: d.noticeFrom, noticeDate: d.noticeDate, deadline: d.noticeDate ? llWorkingDays(d.noticeDate, 20) : "",
-    intro: d.intro, wifiFacts: d.wifiFacts, wifiResponse: d.wifiResponse, works: d.works, alts: d.alts, consents: d.consents, contact: d.contact,
+    intro: d.intro, wifiFacts: d.wifiFacts, aps: d.showAps ? LL_APS : [], apSrc: LL_AP_SRC, wifiResponse: d.wifiResponse, works: d.works, alts: d.alts, consents: d.consents, contact: d.contact,
     requested: LL_REQUESTED.map(([label, g]) => ({ label, group: g, n: docs.filter((x) => x.group === g).length })), groups: LL_GROUPS, certs, docs,
     fra: { date: HF_HOTEL.fra.date, assessor: HF_HOTEL.fra.assessor, review: HF_HOTEL.fra.review, rev: HF_HOTEL.fra.rev1 },
     inspection: { date: HF_HOTEL.inspection.date, body: HF_HOTEL.inspection.body } };
@@ -2445,6 +2495,7 @@ async function llPublish(v) {
 }
 BIND.landlord = (v) => {
   v.addEventListener("input", () => llRead(v));
+  llLoadHub();
   const re = () => { llRead(v); render(); };
   $("#ll-save", v).onclick = async () => { await llSaveDraft(v); toast("Draft saved"); };
   $("#ll-pub", v).onclick = () => llPublish(v).catch((e) => ($("#ll-msg", v).textContent = "Could not publish: " + e.message));
@@ -2460,7 +2511,7 @@ BIND.landlord = (v) => {
   $("#ll-aadd", v).onclick = () => { llRead(v).alts.push({ what: "", date: "", contractor: "", consent: "", cert: "", status: "" }); render(); };
   $$("[data-wdel]", v).forEach((b) => (b.onclick = () => { llRead(v).works.splice(+b.dataset.wdel, 1); render(); }));
   $$("[data-adel]", v).forEach((b) => (b.onclick = () => { llRead(v).alts.splice(+b.dataset.adel, 1); render(); }));
-  $$('[data-ll="noticeDate"], [data-doc], [data-cert], [data-dg]', v).forEach((el) => (el.onchange = re));
+  $$('[data-ll="noticeDate"], [data-doc], [data-cert], [data-dg], [data-hub], [data-hg]', v).forEach((el) => (el.onchange = re));
 };
 
 /* ============================================================ START */

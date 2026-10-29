@@ -130,6 +130,8 @@ footer{max-width:1060px;margin:0 auto;padding:0 20px 40px;color:var(--muted);fon
     <div class="card" id="wifi"><h2>2. Wi-Fi access points and the riser fire doors</h2>
       ${P.deadline ? `<p><b>20 working days from your letter:</b> ${fd(P.deadline)}</p>` : ""}
       <h3>What was installed</h3>${para(P.wifiFacts)}
+      ${(P.aps || []).length ? `<h3>Access point locations</h3><p class="muted">${h(P.apSrc)} · ${P.aps.length} access points</p>
+      <div class="tw"><table><tr><th>Floor</th><th>Block</th><th>Location</th><th>Mounting</th></tr>${P.aps.map((a) => `<tr${a.door ? ' style="background:var(--redbg)"' : ""}><td>${h(a.floor)}</td><td>${h(a.block)}</td><td>${h(a.loc)}</td><td>${h(a.mount)}${a.door ? ' <span class="pill red">To be relocated</span>' : ""}</td></tr>`).join("")}</table></div>` : ""}
       <h3>Our response</h3>${para(P.wifiResponse)}
       <h3>Remedial works and timetable</h3>
       <div class="tw"><table><tr><th>Work</th><th>Contractor</th><th>Target date</th><th>Status</th><th>Evidence</th></tr>
