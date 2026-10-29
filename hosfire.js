@@ -267,7 +267,7 @@ const NAV = [
   ["Checks and records", [["checks", "📝", "Record a check"], ["rota", "🔔", "Weekly tests"], ["log", "📖", "Logbook"], ["back", "🗂", "Back-records"], ["drills", "🚪", "Drills, PEEPs, permits"]]],
   ["Actions and contractors", [["actions", "📋", "Actions"], ["certs", "📜", "Certificates"], ["ext", "🧯", "Extinguishers"], ["venues", "💍", "Venues & events"]]],
   ["People", [["training", "🎓", "Training"]]],
-  ["Library", [["sign", "✍️", "Documents to Sign"], ["docs", "📁", "Documents"], ["regs", "⚖️", "Regulations"], ["pack", "🖨", "Inspector pack"], ["folder", "📘", "Hotel fire folder"]]],
+  ["Library", [["sign", "✍️", "Documents to Sign"], ["docs", "📁", "Documents"], ["regs", "⚖️", "Regulations"], ["pack", "🖨", "Inspector pack"], ["folder", "📘", "Hotel fire folder"], ["landlord", "🏠", "Landlord pack"]]],
   ["Admin", [["settings", "⚙️", "Settings"]]]
 ];
 function placeNav() { const hh = ($("header") || {}).offsetHeight || 66; const nv = $("#nav"); if (!nv) return; nv.style.top = hh + "px"; nv.style.height = window.innerWidth > 900 ? `calc(100vh - ${hh}px)` : ""; }
@@ -2250,6 +2250,217 @@ BIND.settings = (v) => {
     const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), by: S.user.name, data: S.data }, (k, val) => (val && val.toMillis ? val.toMillis() : val), 2)], { type: "application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `hosfire-backup-${today()}.json`; a.click();
   };
+};
+
+/* ============================================================
+   HosFIRE — Landlord pack
+   Builds the password-protected page at /landlord (landlord/index.html).
+   The draft is kept in hosfire_config/landlord (HosFIRE users only).
+   "Publish" writes a snapshot to hosfire_share/<key>, where <key> is
+   derived from the password (PBKDF2), so the landlord page holds no data
+   and has no way back into HosFIRE or HosPRO. Files are shared as
+   Firebase download links created at the time of publishing.
+   ============================================================ */
+const LL_SALT = "brandonhall-landlord-v1", LL_ITER = 150000;
+async function llKey(pw) {
+  const enc = new TextEncoder();
+  const base = await crypto.subtle.importKey("raw", enc.encode(String(pw).trim()), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: enc.encode(LL_SALT), iterations: LL_ITER, hash: "SHA-256" }, base, 256);
+  return Array.from(new Uint8Array(bits)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+const LL_GROUPS = ["Fire risk assessment", "Fire inspection", "Gas safety", "Electrical (EICR and PAT)", "Fire alarm and emergency lighting", "Fire extinguishers and kitchen suppression", "Fire doors and fire stopping", "Pool plant and leisure", "Policies and procedures", "Alterations and consents", "Other"];
+const LL_REQUESTED = [["Gas safety certificates", "Gas safety"], ["Electrical installation condition report (EICR)", "Electrical (EICR and PAT)"], ["Fire risk assessment reports", "Fire risk assessment"], ["Pool plant testing reports", "Pool plant and leisure"]];
+function llGroupOf(r) {
+  const t = `${r.title || r.name || ""} ${r.cat || ""}`.toLowerCase();
+  if (/risk assessment/.test(t)) return "Fire risk assessment";
+  if (/fire and rescue|wfrs|fire safety order|inspection \/ enforcement/.test(t)) return "Fire inspection";
+  if (/gas/.test(t)) return "Gas safety";
+  if (/eicr|electrical|pat\b|portable appliance/.test(t)) return "Electrical (EICR and PAT)";
+  if (/fire alarm|emergency light|fireclass|zone/.test(t)) return "Fire alarm and emergency lighting";
+  if (/extinguish|suppression|ansul|duct|tr19/.test(t)) return "Fire extinguishers and kitchen suppression";
+  if (/fire door|fire stop/.test(t)) return "Fire doors and fire stopping";
+  if (/pool|spa|leisure|legionella|water/.test(t)) return "Pool plant and leisure";
+  if (/consent|alteration|heat pump|lock|wi-?fi|access point|landlord|lease/.test(t)) return "Alterations and consents";
+  if (/policy|procedure|manual|statement/.test(t)) return "Policies and procedures";
+  return "Other";
+}
+// Documents ticked by default the first time (the landlord's request plus the main compliance records)
+const llDefaultOn = (r) => !!r.file && !/quote|correspondence|form|training/i.test(r.cat || "") && !/retrospective|queries|email|to complete/i.test(r.title || "");
+
+const LL_DEFAULT = () => ({
+  password: "3132",
+  addressee: "",
+  noticeFrom: "",
+  noticeDate: "",
+  intro: "Thank you for your letter. This page brings together the compliance certificates, reports and fire safety policies for Brandon Hall Hotel and Spa that you asked for, together with our response on the Wi-Fi access points and the other alterations you raised. Every document can be viewed and downloaded below. We will update this page as works are completed and further documents become available.",
+  wifiFacts: "",
+  wifiResponse: "",
+  works: [
+    { work: "Relocate the Wi-Fi access points so that no apparatus is fixed to, or cabled through, a fire door", contractor: "", target: "", status: "Not started", evidence: "" },
+    { work: "Fire-stop all cable penetrations into the service risers using a tested and certified fire-stopping system", contractor: "", target: "", status: "Not started", evidence: "" },
+    { work: "Replace the damaged riser door blanks with certified fire doorsets of the required rating, installed by a third-party certificated installer", contractor: "", target: "", status: "Not started", evidence: "" },
+    { work: "Inspection of the completed doors and fire stopping by a competent fire door inspector, and notification to the fire risk assessor", contractor: "", target: "", status: "Not started", evidence: "" }
+  ],
+  alts: [
+    { what: "Wi-Fi access points (service risers)", date: "", contractor: "", consent: "", cert: "", status: "" },
+    { what: "New bedroom door locks", date: "", contractor: "", consent: "", cert: "", status: "" },
+    { what: "Heat pump hot water system", date: "", contractor: "", consent: "", cert: "", status: "" }
+  ],
+  consents: "",
+  contact: "",
+  docs: {},
+  certs: {}
+});
+const llDraft = () => {
+  if (S.f.ll) return S.f.ll;
+  const saved = S.data.config.find((c) => c.id === "landlord") || {};
+  const d = Object.assign(LL_DEFAULT(), JSON.parse(JSON.stringify(saved.draft || {})));
+  S.f.ll = d; S.f.llMeta = { shareId: saved.shareId || "", publishedAt: saved.publishedAt || 0, publishedBy: saved.publishedBy || "" };
+  return d;
+};
+const llDocs = () => S.data.registers.filter((r) => r.kind === "doc").sort((a, b) => natRef(llGroupOf(a), llGroupOf(b)) || natRef(b.date || "", a.date || ""));
+const llDocOn = (d, r) => (d.docs[r.id] ? d.docs[r.id].on : llDefaultOn(r));
+const llDocGroup = (d, r) => (d.docs[r.id] && d.docs[r.id].group) || llGroupOf(r);
+const llCertOn = (d, c) => (c.id in d.certs ? d.certs[c.id] : !!c.last);
+const LL_STATUS = ["Not started", "Booked", "In progress", "Completed"];
+
+// 20 working days from the notice date (England bank holidays 2026–27)
+const LL_BH = ["2026-12-25", "2026-12-28", "2027-01-01", "2027-03-26", "2027-03-29", "2027-05-03", "2027-05-31", "2027-08-30", "2027-12-27", "2027-12-28"];
+function llWorkingDays(from, n) { let d = from, k = 0; while (k < n) { d = addDays(d, 1); const w = parse(d).getDay(); if (w !== 0 && w !== 6 && !LL_BH.includes(d)) k++; } return d; }
+
+VIEWS.landlord = () => {
+  const d = llDraft(), M = S.f.llMeta, base = location.href.split("#")[0].replace(/[^/]*$/, "");
+  const adm = isAdmin();
+  const docs = llDocs(), certs = reg("cert").map((c) => ({ ...c, ...certState(c) })).sort((a, b) => natRef(a.ref, b.ref));
+  const due = d.noticeDate ? llWorkingDays(d.noticeDate, 20) : "";
+  const inp = (k, ph, type = "text") => `<input type="${type}" data-ll="${k}" value="${h(d[k])}" placeholder="${h(ph || "")}">`;
+  const ta = (k, ph, rows = 4) => `<textarea data-ll="${k}" rows="${rows}" placeholder="${h(ph)}">${h(d[k])}</textarea>`;
+  const reqRows = LL_REQUESTED.map(([label, g]) => { const n = docs.filter((r) => llDocOn(d, r) && r.file && llDocGroup(d, r) === g).length;
+    return `<tr><td>${h(label)}</td><td>${n ? `<span class="pill p-ok">${n} included</span>` : `<span class="pill p-amb">To follow</span> <span class="muted">Upload in Documents, then tick it below</span>`}</td></tr>`; }).join("");
+  return `<div class="row"><div class="grow"><h2>Landlord <span class="fl">pack</span></h2>
+    <p class="lead">A separate, password-protected page for the landlord with the certificates, reports and policies you choose, plus your response to their letter. It has no links into HosFIRE or HosPRO. Blank fields show on the page as <b>To be confirmed</b>.</p></div></div>
+  <div class="card" style="border-left:6px solid var(--red);margin-bottom:12px"><div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
+    <div style="flex:1;min-width:260px"><label>Link to share</label><input readonly value="${h(base)}landlord/" onclick="this.select()"></div>
+    <div style="width:140px"><label>Password</label>${inp("password", "Password")}</div>
+    <div>${M.publishedAt ? `<span class="pill p-ok">Published ${h(fds(ymd(new Date(M.publishedAt))))} by ${h(M.publishedBy)}</span>` : `<span class="pill p-grey">Not published yet</span>`}</div></div>
+    <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost" id="ll-save">Save draft</button>
+      <button class="btn red" id="ll-pub" ${adm ? "" : "disabled title='HosFIRE administrators only'"}>${M.publishedAt ? "Update the landlord page" : "Publish the landlord page"}</button>
+      <button class="btn ghost" id="ll-view">Open the landlord page</button>
+      ${M.shareId && adm ? `<button class="btn ghost" id="ll-off" style="color:var(--red)">Take the page down</button>` : ""}
+      <span class="muted" id="ll-msg"></span></div>
+    <p class="muted" style="margin:8px 0 0">Changes are only shown to the landlord after you press <b>${M.publishedAt ? "Update" : "Publish"}</b>. Changing the password and publishing again stops the old password working. A 4-digit password is easy to guess, so for anything sensitive use a longer one.</p></div>
+
+  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">1. Their letter</h3>
+    <div class="f2"><div><label>Addressed to (landlord / agent)</label>${inp("addressee", "e.g. the landlord's surveyor")}</div><div><label>Letter from</label>${inp("noticeFrom", "Name and company")}</div></div>
+    <div class="f2"><div><label>Date of the letter</label>${inp("noticeDate", "", "date")}</div><div><label>20 working days ends</label><input readonly value="${due ? h(fd(due)) : "Enter the letter date"}"></div></div>
+    <label>Introduction shown at the top of the page</label>${ta("intro", "", 4)}</div>
+
+  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">2. Documents requested</h3>
+    <div class="tw"><table><tr><th>Requested</th><th>On the landlord page</th></tr>${reqRows}</table></div>
+    <p class="muted">Pool plant testing reports are kept by Granite Leisure. Ask them for copies, upload them in Documents (category “Certificate / report”, with “pool” in the title) and tick them below.</p></div>
+
+  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">3. Wi-Fi access points and the riser fire doors</h3>
+    <label>What was installed, when, by whom, and which doors are affected</label>${ta("wifiFacts", "e.g. number of access points, floors and riser doors affected, installer, date of installation", 4)}
+    <label>Your response</label>${ta("wifiResponse", "Your response to the points raised (consider taking advice before admitting any breach of the lease)", 4)}
+    <label style="margin-top:12px">Remedial works and timetable</label>
+    <div class="tw"><table><tr><th>Work</th><th style="width:16%">Contractor</th><th style="width:12%">Target date</th><th style="width:12%">Status</th><th style="width:20%">Evidence (certificates, photos)</th><th></th></tr>
+    ${d.works.map((w, i) => `<tr><td><textarea rows="2" data-w="${i}|work">${h(w.work)}</textarea></td><td><input data-w="${i}|contractor" value="${h(w.contractor)}"></td><td><input type="date" data-w="${i}|target" value="${h(w.target)}"></td>
+      <td><select data-w="${i}|status">${LL_STATUS.map((s) => `<option ${w.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></td><td><input data-w="${i}|evidence" value="${h(w.evidence)}"></td><td><button class="btn sm ghost" data-wdel="${i}">✕</button></td></tr>`).join("")}</table></div>
+    <button class="btn sm ghost" id="ll-wadd">+ Add a work item</button></div>
+
+  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">4. Alterations since 1 December 2025 and the consents relied on</h3>
+    <div class="tw"><table><tr><th>Alteration</th><th style="width:11%">Date</th><th style="width:15%">Contractor</th><th style="width:19%">Consent sought / relied on</th><th style="width:19%">Certificates / approvals</th><th style="width:11%">Status</th><th></th></tr>
+    ${d.alts.map((a, i) => `<tr><td><input data-a="${i}|what" value="${h(a.what)}"></td><td><input type="date" data-a="${i}|date" value="${h(a.date)}"></td><td><input data-a="${i}|contractor" value="${h(a.contractor)}"></td>
+      <td><textarea rows="2" data-a="${i}|consent">${h(a.consent)}</textarea></td><td><textarea rows="2" data-a="${i}|cert">${h(a.cert)}</textarea></td><td><input data-a="${i}|status" value="${h(a.status)}"></td><td><button class="btn sm ghost" data-adel="${i}">✕</button></td></tr>`).join("")}</table></div>
+    <button class="btn sm ghost" id="ll-aadd">+ Add an alteration</button>
+    <details style="margin-top:8px"><summary class="muted" style="cursor:pointer">What evidence to gather for each (internal note — not shown to the landlord)</summary><ul class="muted" style="font-size:13px">
+      <li><b>Bedroom door locks:</b> bedroom doors are usually fire doors — the lock supplier's certificate that the lock is fire-tested for that door type, confirmation intumescent protection was fitted, and that the doors still close and latch. Fire door inspector's sign-off if available.</li>
+      <li><b>Heat pump hot water:</b> installer and date, building regulations compliance certificate (competent person scheme), electrical installation certificate, unvented cylinder (G3) certificate, MCS certificate and DNO notification if applicable, F-gas record, and any planning or noise approval.</li>
+      <li><b>Wi-Fi access points:</b> installer, date, photos of the doors before and after, the fire-stopping product data sheet and installer's certificate, new door certificates.</li></ul></details></div>
+
+  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">5. Consents and contact</h3>
+    <label>Consents (requested, granted or to be applied for)</label>${ta("consents", "e.g. retrospective consent being sought for…", 3)}
+    <label>Contact for this matter</label>${ta("contact", "Name, role, email and phone", 2)}</div>
+
+  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">6. Certificates summary <span class="muted" style="font-weight:400">(${certs.filter((c) => llCertOn(d, c)).length} of ${certs.length} shown)</span></h3>
+    <div class="tw"><table><tr><th></th><th>Certificate</th><th>Contractor</th><th>Last done</th><th>Next due</th><th>Status</th></tr>
+    ${certs.map((c) => `<tr><td><input type="checkbox" data-cert="${c.id}" ${llCertOn(d, c) ? "checked" : ""} style="width:auto"></td><td><b>${h(c.name)}</b></td><td>${h(c.contractor || "")}</td><td>${c.last ? fds(c.last) : "—"}</td><td>${c.next ? fds(c.next) : "—"}</td><td>${pill(c.st)}</td></tr>`).join("")}</table></div></div>
+
+  <div class="card"><h3 style="margin-top:0">7. Documents to share <span class="muted" style="font-weight:400">(${docs.filter((r) => r.file && llDocOn(d, r)).length} ticked)</span></h3>
+    <p class="muted">Only documents with a file uploaded can be shared. Quotes, emails, forms and internal statements are left unticked to start with — tick anything else you want the landlord to see.</p>
+    <div class="tw"><table><tr><th></th><th>Document</th><th>Date</th><th>Section on the landlord page</th></tr>
+    ${docs.map((r) => `<tr style="${r.file ? "" : "opacity:.55"}"><td>${r.file ? `<input type="checkbox" data-doc="${r.id}" ${llDocOn(d, r) ? "checked" : ""} style="width:auto">` : ""}</td><td><b>${h(r.title)}</b><div class="muted">${h(r.cat || "")}${r.file ? "" : " · no file uploaded"}</div></td><td>${r.date ? fds(r.date) : ""}</td>
+      <td><select data-dg="${r.id}" style="width:auto;max-width:240px">${LL_GROUPS.map((g) => `<option ${llDocGroup(d, r) === g ? "selected" : ""}>${g}</option>`).join("")}</select></td></tr>`).join("")}</table></div></div>`;
+};
+
+function llRead(v) {
+  const d = llDraft();
+  $$("[data-ll]", v).forEach((el) => (d[el.dataset.ll] = el.value.trim()));
+  $$("[data-w]", v).forEach((el) => { const [i, k] = el.dataset.w.split("|"); d.works[+i][k] = el.value.trim(); });
+  $$("[data-a]", v).forEach((el) => { const [i, k] = el.dataset.a.split("|"); d.alts[+i][k] = el.value.trim(); });
+  $$("[data-cert]", v).forEach((el) => (d.certs[el.dataset.cert] = el.checked));
+  $$("[data-doc]", v).forEach((el) => { d.docs[el.dataset.doc] = Object.assign({}, d.docs[el.dataset.doc], { on: el.checked }); });
+  $$("[data-dg]", v).forEach((el) => { d.docs[el.dataset.dg] = Object.assign({ on: llDocOn(d, S.data.registers.find((x) => x.id === el.dataset.dg)) }, d.docs[el.dataset.dg], { group: el.value }); });
+  return d;
+}
+async function llSaveDraft(v, extra = {}) {
+  const d = llRead(v);
+  await put("config", "landlord", { draft: JSON.parse(JSON.stringify(d)), ...extra });
+}
+async function llFileUrl(f) {
+  if (!f || !f.path) return "";
+  if (!S.live) return "#demo-file";
+  return await fb.st.ref(f.path).getDownloadURL();
+}
+async function llPublish(v) {
+  const d = llRead(v), msg = $("#ll-msg", v);
+  if (!d.password || d.password.length < 4) { msg.textContent = "Enter a password of at least 4 characters."; return; }
+  msg.textContent = "Preparing documents…";
+  const docs = [];
+  for (const r of llDocs().filter((x) => x.file && llDocOn(d, x))) {
+    try { docs.push({ title: r.title, cat: r.cat || "", group: llDocGroup(d, r), date: r.date || "", version: r.version || "", issuer: r.author || "", name: r.file.name || "", url: await llFileUrl(r.file) }); }
+    catch (e) { msg.textContent = `Could not prepare “${r.title}”: ${e.message}`; return; }
+  }
+  const certs = reg("cert").filter((c) => llCertOn(d, c)).map((c) => { const s = certState(c); return { name: c.name, contractor: c.contractor || "", last: c.last || "", next: s.next || "", status: s.st, certRef: c.certRef || "" }; }).sort((a, b) => natRef(a.name, b.name));
+  const payload = { v: 1, hotel: HF_HOTEL.name, address: HF_HOTEL.address, preparedBy: S.user.name, publishedAt: Date.now(),
+    addressee: d.addressee, noticeFrom: d.noticeFrom, noticeDate: d.noticeDate, deadline: d.noticeDate ? llWorkingDays(d.noticeDate, 20) : "",
+    intro: d.intro, wifiFacts: d.wifiFacts, wifiResponse: d.wifiResponse, works: d.works, alts: d.alts, consents: d.consents, contact: d.contact,
+    requested: LL_REQUESTED.map(([label, g]) => ({ label, group: g, n: docs.filter((x) => x.group === g).length })), groups: LL_GROUPS, certs, docs,
+    fra: { date: HF_HOTEL.fra.date, assessor: HF_HOTEL.fra.assessor, review: HF_HOTEL.fra.review, rev: HF_HOTEL.fra.rev1 },
+    inspection: { date: HF_HOTEL.inspection.date, body: HF_HOTEL.inspection.body } };
+  msg.textContent = "Publishing…";
+  const key = await llKey(d.password), old = S.f.llMeta.shareId;
+  const doc = { kind: "landlord", json: JSON.stringify(payload), updatedAt: Date.now(), byName: S.user.name };
+  if (S.live) {
+    await fb.db.collection("hosfire_share").doc(key).set(doc);
+    if (old && old !== key) await fb.db.collection("hosfire_share").doc(old).delete().catch(() => {});
+  } else {
+    const all = JSON.parse(localStorage.getItem("hosfire_share_demo") || "{}"); if (old && old !== key) delete all[old]; all[key] = doc; localStorage.setItem("hosfire_share_demo", JSON.stringify(all));
+  }
+  S.f.llMeta = { shareId: key, publishedAt: payload.publishedAt, publishedBy: S.user.name };
+  await put("config", "landlord", { draft: JSON.parse(JSON.stringify(d)), ...S.f.llMeta });
+  audit(`Landlord page published (${docs.length} documents, ${certs.length} certificates)`);
+  toast("Landlord page published"); render();
+}
+BIND.landlord = (v) => {
+  v.addEventListener("input", () => llRead(v));
+  const re = () => { llRead(v); render(); };
+  $("#ll-save", v).onclick = async () => { await llSaveDraft(v); toast("Draft saved"); };
+  $("#ll-pub", v).onclick = () => llPublish(v).catch((e) => ($("#ll-msg", v).textContent = "Could not publish: " + e.message));
+  $("#ll-view", v).onclick = () => window.open(`landlord/${DEMO ? "?demo=1" : ""}`, "_blank", "noopener");
+  const off = $("#ll-off", v); if (off) off.onclick = async () => {
+    const key = S.f.llMeta.shareId; if (!key) return;
+    if (off.dataset.sure !== "1") { off.dataset.sure = "1"; off.textContent = "Press again to take it down"; return; }
+    if (S.live) await fb.db.collection("hosfire_share").doc(key).delete(); else { const all = JSON.parse(localStorage.getItem("hosfire_share_demo") || "{}"); delete all[key]; localStorage.setItem("hosfire_share_demo", JSON.stringify(all)); }
+    S.f.llMeta = { shareId: "", publishedAt: 0, publishedBy: "" }; await put("config", "landlord", { draft: JSON.parse(JSON.stringify(llRead(v))), shareId: "", publishedAt: 0, publishedBy: "" });
+    audit("Landlord page taken down"); toast("Landlord page taken down"); render();
+  };
+  $("#ll-wadd", v).onclick = () => { llRead(v).works.push({ work: "", contractor: "", target: "", status: "Not started", evidence: "" }); render(); };
+  $("#ll-aadd", v).onclick = () => { llRead(v).alts.push({ what: "", date: "", contractor: "", consent: "", cert: "", status: "" }); render(); };
+  $$("[data-wdel]", v).forEach((b) => (b.onclick = () => { llRead(v).works.splice(+b.dataset.wdel, 1); render(); }));
+  $$("[data-adel]", v).forEach((b) => (b.onclick = () => { llRead(v).alts.splice(+b.dataset.adel, 1); render(); }));
+  $$('[data-ll="noticeDate"], [data-doc], [data-cert], [data-dg]', v).forEach((el) => (el.onchange = re));
 };
 
 /* ============================================================ START */
