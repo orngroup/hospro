@@ -10050,13 +10050,18 @@ function renderHosHouseHub(v){
   const chip = (icon,colour,title,href)=>`
     <a href="${href}" target="_blank" title="${title}" style="display:inline-flex;gap:7px;align-items:center;text-decoration:none;background:#fff;border:1px solid #e4e9ef;border-left:3px solid ${colour};border-radius:9px;padding:8px 12px;font:700 12.5px Lato;color:#1a2b3a">
       <span style="font-size:15px">${icon}</span>${title} <span style="color:${colour}">↗</span></a>`;
-  const view = window._hhView || 'today';
-  const tab=(id,label)=>`<button onclick="hhSetView('${id}')" style="padding:7px 15px;border:none;background:${view===id?'#1F3864':'transparent'};color:${view===id?'#fff':'#45586b'};font:700 12.5px Lato;cursor:pointer">${label}</button>`;
+  let view = window._hhView || 'today';
+  if(view==='reports') view='mgmt';        // Reports folded into Overview
+  if(view==='history') view='roomcheck';   // History folded into Room check
+  window._hhView=view;
+  const tab=(id,label)=>`<button onclick="hhSetView('${id}')" style="padding:8px 16px;border:none;background:${view===id?'#1F3864':'transparent'};color:${view===id?'#fff':'#45586b'};font:700 12.5px Lato;cursor:pointer">${label}</button>`;
   const todayHTML=`
-    <div id="hh-manage"></div>
-    <div style="font:800 15px Lato;color:#1a2b3a;margin:22px 0 10px">📊 Live progress</div>
+    <div style="font:800 13px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin:0 0 9px">📊 Live progress — tap a figure to see those rooms</div>
     <div id="hh-body"></div>
-    <details style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-top:16px" open>
+    <div style="font:800 15px Lato;color:#1a2b3a;margin:22px 0 10px">🛠 Manage today — rooms &amp; staff</div>
+    <div id="hh-manage"></div>
+    <div id="hh-dash2" style="margin-top:16px"></div>
+    <details style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-top:16px">
       <summary style="cursor:pointer;font:800 13px Lato;color:#1a2b3a">🔗 Links &amp; PINs — managers and housekeepers</summary>
       <div id="hh-links"><div style="padding:14px;color:#8296a8;font-size:12px">Loading…</div></div>
     </details>`;
@@ -10065,7 +10070,7 @@ function renderHosHouseHub(v){
   <div style="max-width:1040px;margin:0 auto;padding:4px 2px 30px">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div><div style="font:800 20px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping</div>
-        <div style="font-size:12.5px;color:#5b6b7b">${view==='reports'?'Productivity, average times and missed rooms over any date range.':(view==='mgmt'?'The full housekeeping picture — rooms, types, staff, times, lost property and trends.':"Pick the day's rooms, confirm who's in, allocate — all on this page.")}</div></div>
+        <div style="font-size:12.5px;color:#5b6b7b">${view==='mgmt'?'The full housekeeping picture — rooms, types, staff, times, lost property and trends.':(view==='roomcheck'?'Every room cleaned — search, filter by housekeeper and date, open any room to spot-check.':"Pick the day's rooms, confirm who's in, allocate — all on this page.")}</div></div>
       <div style="display:flex;gap:8px;align-items:center">
         ${view==='today'?`<input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderManage();hhRenderDash();hhStartLive(this.value)" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
         <button onclick="hhManageStaff()" title="Edit staff — skills, rating, status, PINs" style="padding:7px 12px;border:1px solid #1F3864;background:#eef2f8;color:#1F3864;border-radius:8px;font:700 12px Lato;cursor:pointer">👥 Manage staff</button>
@@ -10077,14 +10082,13 @@ function renderHosHouseHub(v){
     </div>
 
     <div style="display:inline-flex;border:1px solid #d7dde4;border-radius:9px;overflow:hidden;margin-bottom:16px;flex-wrap:wrap">
-      ${tab('today','Today')}${tab('history','🔎 History')}${tab('reports','📈 Reports')}${tab('mgmt','📊 Management')}
+      ${tab('today','🧹 Today — Live')}${tab('mgmt','📊 Overview')}${tab('roomcheck','🔎 Room check')}
     </div>
 
-    ${view==='reports'?`<div id="hh-reports"></div>`:(view==='mgmt'?`<div id="hh-mgmt"></div>`:(view==='history'?hhHistoryHTML():todayHTML))}
+    ${view==='mgmt'?`<div id="hh-mgmt"></div>`:(view==='roomcheck'?`<div id="hh-roomcheck"></div>`:todayHTML)}
   </div>`;
-  if(view==='reports'){ hhStopLive(); renderHosHouseReports(); }
-  else if(view==='mgmt'){ hhStopLive(); renderHosHouseMgmt(); }
-  else if(view==='history'){ hhStopLive(); /* search form is ready; results load on demand */ }
+  if(view==='mgmt'){ hhStopLive(); renderHosHouseMgmt(); }
+  else if(view==='roomcheck'){ hhStopLive(); renderHosHouseRoomCheck(); }
   else { hhRenderManage(); hhRenderDash(); hhRenderLinks(); hhStartLive(window._hhDate||hhTodayISO()); }
 }
 function hhSetView(x){ window._hhView=x; switchTab('hhHub'); }
@@ -10594,7 +10598,7 @@ async function renderHosHouseMgmt(){
   const comp=beds.length?Math.round(done.length/beds.length*100):0;
   const totalMins=Math.round(done.reduce((a,r)=>a+(r.durationSec||0)/60,0));
   // per-person
-  const by={}; beds.forEach(r=>{ const k=r.housekeeper||'_un'; by[k]=by[k]||{name:hhNameFor(r),done:0,mins:0,over:0,total:0};
+  const by={}; beds.forEach(r=>{ const k=r.housekeeper||'_un'; by[k]=by[k]||{id:(k==='_un'?'':k),name:hhNameFor(r),done:0,mins:0,over:0,total:0};
     by[k].total++; if(r.status==='done'){ by[k].done++; by[k].mins+=(r.durationSec||0)/60; if((r.durationSec||0)>hhRepTgt(r)*60) by[k].over++; } });
   const people=Object.values(by).filter(p=>p.name!=='Unallocated'&&p.done>0).sort((a,b)=>b.done-a.done);
   // by type (all beds in selection) and by floor
@@ -10608,7 +10612,7 @@ async function renderHosHouseMgmt(){
   const serie=t=>dates.map(d=>beds.filter(r=>r._date===d && (tc[r.type]!=null?r.type:'Departure')===t).length);
   const lineSeries=[{name:'Departures',values:serie('Departure'),colour:TC.Departure,fill:true},{name:'Stayover',values:serie('Stayover'),colour:TC.Stayover},{name:'Arrivals',values:serie('Arrival-ready'),colour:TC['Arrival-ready']}];
 
-  const tile=(v,k,c,sub)=>`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:13px;padding:13px 15px;box-shadow:0 1px 2px rgba(0,0,0,.04)"><div style="font:800 25px Lato;color:${c}">${v}</div><div style="font-size:10.5px;color:#8296a8;text-transform:uppercase;letter-spacing:.4px;margin-top:3px;font-weight:800">${k}</div>${sub?`<div style="font-size:11px;color:#5b6b7b;margin-top:3px">${sub}</div>`:''}</div>`;
+  const tile=(v,k,c,sub,rc)=>`<div ${rc?`onclick="hhMgmtToRC('${rc}')" style="cursor:pointer;`:'style="'}background:#fff;border:1px solid #e4e9ef;border-radius:13px;padding:13px 15px;box-shadow:0 1px 2px rgba(0,0,0,.04)"><div style="font:800 25px Lato;color:${c}">${v}</div><div style="font-size:10.5px;color:#8296a8;text-transform:uppercase;letter-spacing:.4px;margin-top:3px;font-weight:800">${k}${rc?' <span style=\"opacity:.5\">→</span>':''}</div>${sub?`<div style="font-size:11px;color:#5b6b7b;margin-top:3px">${sub}</div>`:''}</div>`;
   const card=(title,inner,extra='')=>`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);${extra}"><div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:10px">${title}</div>${inner}</div>`;
   const typeSegs=['Departure','Stayover','Arrival-ready'].filter(t=>tc[t]).map(t=>({label:TLAB[t],value:tc[t],color:TC[t]}));
   const FCOL={Ground:'#2E6B5E',First:'#1F3864'};
@@ -10618,11 +10622,11 @@ async function renderHosHouseMgmt(){
 
   box.innerHTML=controls+`
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px">
-      ${tile(done.length,'Rooms cleaned','#2E6B5E', comp+'% of '+beds.length+' set')}
+      ${tile(done.length,'Rooms cleaned','#2E6B5E', comp+'% of '+beds.length+' set','done')}
       ${tile(avg+'m','Avg clean time','#1F3864', totalMins+' min total')}
       ${tile(over.length,'Over target', over.length?'#b3261e':'#5b6b7b','Took longer than allowed')}
       ${tile(lost.length,'Lost property','#7a5aa0','Items logged')}
-      ${tile(blocked.length,'DND / refused', blocked.length?'#b9780a':'#5b6b7b','Could not clean')}
+      ${tile(blocked.length,'DND / refused', blocked.length?'#b9780a':'#5b6b7b','Could not clean','blocked')}
       ${tile(maint.length,'Maintenance','#b9780a','Issues reported')}
       ${tile(areas.filter(r=>r.status==='done').length,'Public areas','#2E6B5E','Toilets & reception')}
       ${tile(daysActive,'Days active','#1F3864','Days with cleaning')}
@@ -10637,7 +10641,117 @@ async function renderHosHouseMgmt(){
       ${card('Average clean time by type', hhBars(avgByType.map(x=>({label:x.label,value:x.value,sub:'min'}))))}
     </div>
     ${card('Lost property'+(lost.length?(' ('+lost.length+')'):''), lost.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Room</th><th style="padding:6px 10px">Date</th><th style="padding:6px 10px">Item</th><th style="padding:6px 10px">Found by</th></tr>${lostRows}</table></div>`:'<div style="color:#8296a8;font-size:13px">No lost property logged in this period.</div>')}
+    ${card('Staff efficiency', `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Housekeeper</th><th style="padding:6px 10px">Rooms done</th><th style="padding:6px 10px">Avg min/room</th><th style="padding:6px 10px">Over target</th><th style="padding:6px 10px">Efficiency</th></tr>${people.length?people.map(p=>{ const am=p.done?Math.round(p.mins/p.done):0; const effPct=am?Math.min(100,Math.round(25/am*100)):0; const bar=`<div style="background:#eef1f5;border-radius:5px;height:9px;width:90px;display:inline-block;vertical-align:middle;overflow:hidden"><div style="width:${effPct}%;height:100%;background:${effPct>=90?'#2E6B5E':effPct>=70?'#d9930a':'#b3261e'}"></div></div> <span style="color:#8296a8">${effPct}%</span>`; return `<tr style="border-top:1px solid #eef1f4;cursor:pointer" onclick="hhOpenStaffRooms('${hhEsc(p.id||'')}')"><td style="padding:8px 10px"><b>${hhEsc(p.name)}</b></td><td style="padding:8px 10px">${p.done}</td><td style="padding:8px 10px">${am||'—'}</td><td style="padding:8px 10px;color:${p.over?'#b3261e':'#1f2a37'}">${p.over||0}</td><td style="padding:8px 10px">${bar}</td></tr>`; }).join(''):'<tr><td colspan="5" style="padding:14px;color:#8296a8">No completed rooms in this selection.</td></tr>'}</table></div><div style="font-size:11px;color:#8296a8;margin-top:8px">Efficiency = time allowed per room (25 min) ÷ actual average. Click a row to see that person's rooms.</div>`,'margin-top:14px')}
+    <div style="margin-top:12px"><button onclick="hhMgmtExport()" style="padding:9px 14px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12.5px Lato;cursor:pointer">⬇ Export this view (CSV)</button></div>
     <style>@media(max-width:720px){.hh-mg{grid-template-columns:1fr !important}}</style>`;
+  window._hhMgmtRows=rows;
+}
+// add staff id to the per-person records used by Overview (for click-through)
+function hhOpenStaffRooms(id){ if(!id) return; HH_RC_FROM_MGMT(id); }
+function HH_RC_FROM_MGMT(id){ window._hhView='roomcheck'; HH_RC.staff=id; HH_RC.room=''; HH_RC.status=''; HH_RC.page=0; const {from,to}=hhMgmtRange(HH_MGMT_PERIOD); HH_RC.from=from; HH_RC.to=to; HH_RC._init=true; switchTab('hhHub'); }
+function hhMgmtToRC(status){
+  const {from,to}=hhMgmtRange(HH_MGMT_PERIOD);
+  HH_RC.from=from; HH_RC.to=to; HH_RC.staff=HH_MGMT_STAFF||''; HH_RC.room=''; HH_RC.status=status||''; HH_RC.page=0; HH_RC._init=true;
+  window._hhView='roomcheck'; switchTab('hhHub');
+}
+function hhMgmtExport(){
+  const rows=(window._hhMgmtRows||[]).filter(r=>!r.area);
+  const head=['Date','Room','Type','Floor','Housekeeper','Status','Minutes','LostProperty','Maintenance'];
+  const line=a=>a.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',');
+  const body=rows.sort((a,b)=>(a._date||'').localeCompare(b._date||'')||(+a.room||0)-(+b.room||0)).map(r=>line([r._date||'',r.room,r.type||'',hhFloorLabel(r.floor||hhFloorOf(r.room))||'',hhNameFor(r),r.status||'',r.durationSec?Math.round(r.durationSec/60):'',r.lostProperty||'',r.maintenance||'']));
+  const csv='﻿'+[line(head),...body].join('\r\n');
+  const b=new Blob([csv],{type:'text/csv;charset=utf-8'}); const u=URL.createObjectURL(b);
+  const a=document.createElement('a'); a.href=u; a.download='hoshouse-overview.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000);
+}
+/* ============================================================
+   HOSHOUSE ROOM CHECK — every room cleaned, searchable and filterable,
+   25 per page; click a row to review photos + confirmed checklist.
+   ============================================================ */
+let HH_RC={from:null,to:null,room:'',staff:'',status:'',page:0,_init:false};
+async function renderHosHouseRoomCheck(){
+  const box=document.getElementById('hh-roomcheck'); if(!box) return;
+  if(!HH_RC._init){ const to=hhTodayISO(); const d=new Date(to+'T12:00'); d.setDate(d.getDate()-6); HH_RC.from=d.toLocaleDateString('en-CA'); HH_RC.to=to; HH_RC._init=true; }
+  const inp='padding:8px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato';
+  const lab='display:block;font:700 10.5px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px';
+  const staffOpts=`<option value="">All housekeepers</option>`+(typeof HH_HUB_STAFF!=='undefined'?HH_HUB_STAFF:[]).map(([name,id])=>`<option value="${id}" ${HH_RC.staff===id?'selected':''}>${hhEsc(name.replace(/ \(.*\)/,''))}</option>`).join('');
+  const statusOpts=[['','All statuses'],['done','Ready / done'],['in_progress','In progress'],['notdone','Not done'],['blocked','DND / refused']].map(([v,l])=>`<option value="${v}" ${HH_RC.status===v?'selected':''}>${l}</option>`).join('');
+  box.innerHTML=`
+    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:14px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+        <div><label style="${lab}">From</label><input type="date" id="hh-rc-from" value="${HH_RC.from||''}" onchange="HH_RC.from=this.value||null;HH_RC.page=0;hhRCRender()" style="${inp}"></div>
+        <div><label style="${lab}">To</label><input type="date" id="hh-rc-to" value="${HH_RC.to||''}" onchange="HH_RC.to=this.value||null;HH_RC.page=0;hhRCRender()" style="${inp}"></div>
+        <div><label style="${lab}">Room</label><input id="hh-rc-room" placeholder="e.g. 211" value="${hhEsc(HH_RC.room)}" oninput="HH_RC.room=this.value;HH_RC.page=0;hhRCRender()" style="${inp};width:110px"></div>
+        <div><label style="${lab}">Housekeeper</label><select onchange="HH_RC.staff=this.value;HH_RC.page=0;hhRCRender()" style="${inp}">${staffOpts}</select></div>
+        <div><label style="${lab}">Status</label><select onchange="HH_RC.status=this.value;HH_RC.page=0;hhRCRender()" style="${inp}">${statusOpts}</select></div>
+        <button onclick="hhRCExport()" style="padding:9px 14px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12.5px Lato;cursor:pointer">⬇ CSV</button>
+      </div>
+      <div style="margin-top:9px;font-size:11px;color:#8296a8">Quick:
+        <a href="#" onclick="hhRCQuick('today');return false" style="color:#2E6B5E">Today</a> ·
+        <a href="#" onclick="hhRCQuick('7');return false" style="color:#2E6B5E">7 days</a> ·
+        <a href="#" onclick="hhRCQuick('30');return false" style="color:#2E6B5E">30 days</a> ·
+        <a href="#" onclick="hhRCQuick('all');return false" style="color:#2E6B5E">All time</a></div>
+    </div>
+    <div id="hh-rc-out"><div style="padding:24px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:14px">Loading rooms…</div></div>`;
+  window._hhRCAll=await hhFetchAllRooms();
+  hhRCRender();
+}
+function hhRCQuick(mode){ const to=hhTodayISO();
+  if(mode==='all'){ HH_RC.from=null; HH_RC.to=null; }
+  else if(mode==='today'){ HH_RC.from=to; HH_RC.to=to; }
+  else { const n=mode==='7'?6:29; const d=new Date(to+'T12:00'); d.setDate(d.getDate()-n); HH_RC.from=d.toLocaleDateString('en-CA'); HH_RC.to=to; }
+  const f=document.getElementById('hh-rc-from'), t=document.getElementById('hh-rc-to');
+  if(f) f.value=HH_RC.from||''; if(t) t.value=HH_RC.to||'';
+  HH_RC.page=0; hhRCRender();
+}
+function hhRCFiltered(){
+  let rows=(window._hhRCAll||[]).filter(r=>!r.area);
+  if(HH_RC.from) rows=rows.filter(r=>(r._date||'')>=HH_RC.from);
+  if(HH_RC.to) rows=rows.filter(r=>(r._date||'')<=HH_RC.to);
+  if(HH_RC.room.trim()) rows=rows.filter(r=>String(r.room).indexOf(HH_RC.room.trim())>=0);
+  if(HH_RC.staff) rows=rows.filter(r=>r.housekeeper===HH_RC.staff);
+  if(HH_RC.status) rows=rows.filter(r=> HH_RC.status==='notdone' ? (r.status!=='done') : r.status===HH_RC.status);
+  return rows.sort((a,b)=>(b._date||'').localeCompare(a._date||'')||(+a.room||0)-(+b.room||0));
+}
+function hhRCRender(){
+  const out=document.getElementById('hh-rc-out'); if(!out) return;
+  const rows=hhRCFiltered(); const per=25; const pages=Math.max(1,Math.ceil(rows.length/per));
+  if(HH_RC.page>=pages) HH_RC.page=pages-1; if(HH_RC.page<0) HH_RC.page=0;
+  const slice=rows.slice(HH_RC.page*per, HH_RC.page*per+per);
+  const stPill=r=>{ const c=r.status==='done'?['#2a6a4a','#eaf4f0']:r.status==='in_progress'?['#9c5a00','#fff4e1']:r.status==='blocked'?['#b3261e','#fdecea']:['#6b7280','#eef1f5'];
+    const txt=r.status==='blocked'?('⛔ '+(r.blockReason==='dnd'?'DND':'Refused')):((r.status||'pending').replace('_',' '));
+    return `<span style="background:${c[1]};color:${c[0]};font:700 11px Lato;padding:3px 9px;border-radius:12px;text-transform:capitalize">${hhEsc(txt)}</span>`; };
+  const body=slice.map(r=>{ const cam=Object.keys(r.photos||{}).length; const vn=r.voiceNote?' 🔊':''; const dur=r.status==='done'&&r.durationSec?Math.round(r.durationSec/60)+'m':'';
+    return `<tr onclick="hhOpenRoom('${hhEsc(r.room)}','${hhEsc(r._date||'')}',true)" style="border-top:1px solid #eef1f4;cursor:pointer">
+      <td style="padding:7px 10px;color:#5b6b7b;white-space:nowrap">${hhEsc(r._date||'')}</td>
+      <td style="padding:7px 10px;font-weight:700;color:#1a2b3a">${hhEsc(r.room)}${vn}</td>
+      <td style="padding:7px 10px">${hhEsc(r.type||'')}</td>
+      <td style="padding:7px 10px;color:#5b6b7b">${hhEsc(hhFloorLabel(r.floor||hhFloorOf(r.room))||'')}</td>
+      <td style="padding:7px 10px;color:#5b6b7b">${hhEsc(hhNameFor(r))}</td>
+      <td style="padding:7px 10px">${stPill(r)}</td>
+      <td style="padding:7px 10px;color:#5b6b7b">${dur}</td>
+      <td style="padding:7px 10px;color:#5b6b7b">${cam?('📷 '+cam):''}</td>
+    </tr>`; }).join('') || `<tr><td colspan="8" style="padding:18px;text-align:center;color:#8296a8">No rooms match these filters.</td></tr>`;
+  const start=HH_RC.page*per;
+  const pager = pages<=1 ? '' : `<div style="display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:#5b6b7b">
+    <span style="margin-right:6px">Showing ${rows.length?start+1:0}–${Math.min(start+per,rows.length)} of ${rows.length}</span>
+    <button onclick="HH_RC.page=${HH_RC.page-1};hhRCRender()" ${HH_RC.page===0?'disabled':''} style="padding:6px 11px;border:1px solid #d7dde4;background:#fff;border-radius:7px;cursor:pointer;font:700 12px Lato;${HH_RC.page===0?'opacity:.4':''}">‹ Prev</button>
+    <span>Page ${HH_RC.page+1} / ${pages}</span>
+    <button onclick="HH_RC.page=${HH_RC.page+1};hhRCRender()" ${HH_RC.page>=pages-1?'disabled':''} style="padding:6px 11px;border:1px solid #d7dde4;background:#fff;border-radius:7px;cursor:pointer;font:700 12px Lato;${HH_RC.page>=pages-1?'opacity:.4':''}">Next ›</button></div>`;
+  out.innerHTML=`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:6px 6px 10px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+    <div style="padding:8px 10px 4px;font:700 12.5px Lato;color:#1a2b3a">${rows.length} room${rows.length===1?'':'s'}${(HH_RC.from||HH_RC.to)?' · '+(HH_RC.from||'start')+' → '+(HH_RC.to||'now'):' · all time'}</div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+      <tr style="text-align:left;color:#6b7280;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:7px 10px">Date</th><th style="padding:7px 10px">Room</th><th style="padding:7px 10px">Type</th><th style="padding:7px 10px">Floor</th><th style="padding:7px 10px">Who</th><th style="padding:7px 10px">Status</th><th style="padding:7px 10px">Time</th><th style="padding:7px 10px">Photos</th></tr>
+      ${body}
+    </table></div>${pager}</div>`;
+}
+function hhRCExport(){
+  const rows=hhRCFiltered();
+  const head=['Date','Room','Type','Floor','Housekeeper','Status','Minutes','Photos','Voice note','Lost property','Maintenance'];
+  const line=a=>a.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',');
+  const body=rows.map(r=>line([r._date||'',r.room,r.type||'',hhFloorLabel(r.floor||hhFloorOf(r.room))||'',hhNameFor(r),r.status||'',r.durationSec?Math.round(r.durationSec/60):'',Object.keys(r.photos||{}).length,r.voiceNote?'yes':'',r.lostProperty||'',r.maintenance||'']));
+  const csv='﻿'+[line(head),...body].join('\r\n');
+  const b=new Blob([csv],{type:'text/csv;charset=utf-8'}); const u=URL.createObjectURL(b);
+  const a=document.createElement('a'); a.href=u; a.download='hoshouse-room-check.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000);
 }
 function hhRepTgt(r){ return (typeof hhTgt==='function'? hhTgt(r.type) : (HH_TARGET&&HH_TARGET[r.type])||30); }
 async function renderHosHouseReports(){
@@ -10766,10 +10880,11 @@ async function hhRenderDash(){
   const onNow=new Set(prog.map(r=>r.housekeeper)).size;
 
   if(!rooms.length){
-    body.innerHTML=`<div style="padding:30px;text-align:center;background:#fff;border:1px solid #e4e9ef;border-radius:14px">
-      <div style="font-size:30px;margin-bottom:6px">🧹</div>
-      <div style="font:800 15px Lato;color:#1a2b3a">No rooms set for ${date}</div>
-      <div style="font-size:12.5px;color:#8296a8;margin-top:4px">Add the day's rooms above, confirm who's working, then Allocate &amp; distribute — progress shows here.</div></div>`;
+    body.innerHTML=`<div style="padding:24px;text-align:center;background:#fff;border:1px solid #e4e9ef;border-radius:14px">
+      <div style="font-size:26px;margin-bottom:4px">🧹</div>
+      <div style="font:800 14px Lato;color:#1a2b3a">No rooms set for ${date}</div>
+      <div style="font-size:12px;color:#8296a8;margin-top:4px">Add the day's rooms below, confirm who's working, then Allocate &amp; distribute.</div></div>`;
+    const rest0=document.getElementById('hh-dash2'); if(rest0) rest0.innerHTML='';
     return;
   }
 
@@ -10817,8 +10932,11 @@ async function hhRenderDash(){
   const byTypeCard = rooms.length?`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font:800 14px Lato;color:#1a2b3a">🛏 Rooms by type today</div>${_floorLine?`<div style="font-size:12px;color:#5b6b7b">${_floorLine}</div>`:''}</div>
     ${_typeRows}</div>`:'';
-  body.innerHTML=`
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px">${tileHtml}</div>
+  // TOP (quick overview): compact clickable stat tiles
+  body.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:9px">${tileHtml}</div>`;
+  // DETAIL (below the manage area): progress donut, per-person, by-staff-type, at-a-glance grid
+  const rest=document.getElementById('hh-dash2');
+  if(rest){ rest.innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="hh-dg">
       <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
         <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:10px">Today's progress</div>
@@ -10829,18 +10947,9 @@ async function hhRenderDash(){
         ${eff.length?hhBars(eff.map(e=>({label:e.name,value:e.done,sub:e.done?Math.round(e.mins/e.done)+'m avg':''}))):'<div style="color:#8296a8;font-size:13px">No rooms completed yet.</div>'}
       </div>
     </div>
-    ${byTypeCard}
     ${hhDashByStaffType(rooms)}
     ${hhDashStaffGrid(rooms)}
-    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
-      <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:8px">Staff efficiency</div>
-      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
-        <tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Housekeeper</th><th style="padding:6px 10px">Rooms done</th><th style="padding:6px 10px">In progress</th><th style="padding:6px 10px">Avg min/room</th><th style="padding:6px 10px">Overruns</th><th style="padding:6px 10px">Efficiency</th></tr>
-        ${effRows}
-      </table></div>
-      <div style="font-size:11px;color:#8296a8;margin-top:8px">Efficiency = time allowed per room (${WIN} min) ÷ actual average. 100% = on or under target.</div>
-    </div>
-    <style>@media(max-width:720px){.hh-dg{grid-template-columns:1fr !important}}</style>`;
+    <style>@media(max-width:720px){.hh-dg{grid-template-columns:1fr !important}}</style>`; }
 }
 function hhCopy(txt, btn){
   try{ navigator.clipboard.writeText(txt); const o=btn.textContent; btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent=o,1200); }
@@ -10989,17 +11098,17 @@ function hhVoiceCtrl(r){
     :`<button onclick="hhVoiceRecord('${hhEsc(r.room)}')" style="padding:10px 16px;border:none;border-radius:8px;background:#1F3864;color:#fff;font:800 12.5px Lato;cursor:pointer">🎙 Record voice note (15s)</button>`}
   </div>`;
 }
-async function hhOpenRoom(room){
-  const date=window._hhDate||hhTodayISO();
+async function hhOpenRoom(room, dateArg, reviewOnly){
+  const date=dateArg||window._hhDate||hhTodayISO();
   hhModal('<div style="padding:34px;text-align:center;color:#8296a8">Loading room '+hhEsc(room)+'…</div>');
   let r=null;
   if(typeof FB!=='undefined' && FB.db){ try{ const d=await FB.db.collection('hoshouse_rooms').doc(hhDocId(date,room)).get(); if(d.exists) r=d.data(); }catch(e){} }
   if(!r){ const day=await hhFetchDay(date); r=day.find(x=>String(x.room)===String(room))||{room,status:'pending'}; }
   const photos=await hhLoadPhotos(date, room);
   await hhLoadStaff();
-  hhModal(hhRoomDetailHTML(r, photos, date));
+  hhModal(hhRoomDetailHTML(r, photos, date, reviewOnly));
 }
-function hhRoomDetailHTML(r, photos, date){
+function hhRoomDetailHTML(r, photos, date, reviewOnly){
   const esc=hhEsc;
   const t=ms=>ms?new Date(ms).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
   const comp=photos.filter(p=>p.kind!=='cannotstart'); const door=photos.filter(p=>p.kind==='cannotstart');
@@ -11019,7 +11128,7 @@ function hhRoomDetailHTML(r, photos, date){
         ${r.startAt?`<span style="font-size:12px;color:#5b6b7b">Started ${t(r.startAt)}</span>`:''}
         ${r.finishAt?`<span style="font-size:12px;color:#5b6b7b">· Finished ${t(r.finishAt)}${dur?(' · '+dur):''}</span>`:''}
       </div>
-      ${r.status!=='done'?hhReassignControlHTML(r):''}
+      ${(!reviewOnly && r.status!=='done')?hhReassignControlHTML(r):''}
       ${r.status==='blocked'?`<div style="background:#fdecea;border:1px solid #f3c0ba;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#b3261e;margin-bottom:12px">
         ⛔ Could not be cleaned — ${r.blockReason==='dnd'?'Do Not Disturb sign on the door':'guest refused service'}. Logged by ${esc(r.blockedBy||r.housekeeperName||'housekeeper')} at ${t(r.blockedAt)}.</div>`:''}
       ${r.notes&&r.notes.trim()?`<div style="background:#fff7e8;border:1px solid #f0d9ad;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#7a5a1e;margin-bottom:12px">📝 ${esc(r.notes)}</div>`:''}
@@ -11042,10 +11151,10 @@ function hhRoomDetailHTML(r, photos, date){
         ${logLine('♻','Items replaced',r.replaced)}
         ${logLine('🎒','Lost property',r.lostProperty)}
       </div>
-      <div style="margin-top:18px;border-top:1px solid #eef1f4;padding-top:12px">
+      ${reviewOnly?'':`<div style="margin-top:18px;border-top:1px solid #eef1f4;padding-top:12px">
         <button onclick="hhRemoveRoomConfirm('${esc(r.room)}')" style="padding:8px 14px;border:1px solid #f3c0ba;background:#fff;color:#b3261e;border-radius:8px;font:700 12px Lato;cursor:pointer">🗑 Remove this room from today</button>
         <div style="font-size:11px;color:#8296a8;margin-top:5px">Management only — use if a room was added by mistake. Works even once it's in progress.</div>
-      </div>
+      </div>`}
     </div>`;
 }
 async function hhRemoveRoomConfirm(room){
