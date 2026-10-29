@@ -408,6 +408,72 @@
     if(!(ME&&ME.lead)) return;
     const n=await HH.addPublicAreas(today); leadMsg(n?('✓ Added '+n+' public-area task'+(n>1?'s':'')):'Public areas already on the list.'); if($('scr-admin').classList.contains('on')) renderAdmin(); else renderTeam();
   }
+  // ---- Bulk room picker (phone) — mirrors the desktop "Select rooms (bulk)" grid ----
+  const BULK_COL={Departure:'#1f7a8c',Stayover:'#4a86c7','Arrival-ready':'#2a6a4a'};
+  const BULK_LET={Departure:'D',Stayover:'S','Arrival-ready':'A'};
+  let _bulk=null;
+  async function bulkOpen(){
+    if(!(ME&&ME.lead)) return;
+    const cat=HH.defaultRooms();                 // full inventory [{room,cat,floor}]
+    const day=await HH.getDayRooms(today);
+    const picks={}, locked={}, notes={};
+    day.filter(r=>!r.area).forEach(r=>{ const rm=String(r.room);
+      if(r.status&&r.status!=='pending') locked[rm]=r.status; else picks[rm]=r.type||'Departure';
+      if(r.notes) notes[rm]=r.notes; });
+    _bulk={ rooms:cat, picks, locked, notes, defType:'Departure', q:'' };
+    const tbtn=t=>`<button class="bkt" data-t="${t}" onclick="bulkSetType('${t}')" style="flex:1;padding:9px 4px;border:1.5px solid ${BULK_COL[t]};border-radius:10px;font:800 12px inherit;cursor:pointer;background:${t==='Departure'?BULK_COL[t]:'#fff'};color:${t==='Departure'?'#fff':BULK_COL[t]}">${t}</button>`;
+    const o=$('hhOverlay'); o.style.display='block';
+    o.innerHTML=`<div class="shback" onclick="closeSheet()"></div>
+      <div class="shsheet" style="max-height:96vh;display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font:800 17px inherit;color:var(--navy)">🗂 Select rooms</div>
+          <div onclick="closeSheet()" style="font-size:24px;color:var(--muted);cursor:pointer;line-height:1">×</div></div>
+        <div class="sub" style="margin-bottom:8px">Tap a room to add it · tap again to change type · again to remove. D = Departure · S = Stayover · A = Arrival-ready.</div>
+        <div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:4px">New taps add as:</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">${['Departure','Stayover','Arrival-ready'].map(tbtn).join('')}</div>
+        <input id="bk-find" inputmode="numeric" placeholder="🔍 Find a room number…" oninput="bulkFilter(this.value)" style="padding:11px;border:1px solid var(--line);border-radius:9px;font-size:15px;margin-bottom:8px">
+        <div id="bk-grid" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:7px;padding:2px;min-height:40vh"></div>
+        <div id="bk-count" style="font:800 14px inherit;color:var(--navy);margin:10px 0 8px;text-align:center"></div>
+        <div style="display:flex;gap:8px">
+          <button onclick="bulkConfirm(false)" style="flex:1;padding:13px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);border-radius:11px;font:800 13.5px inherit;cursor:pointer">Confirm selection</button>
+          <button onclick="bulkConfirm(true)" style="flex:1;padding:13px;border:none;background:var(--navy);color:#fff;border-radius:11px;font:800 13.5px inherit;cursor:pointer">Confirm &amp; allocate</button>
+        </div></div>`;
+    bulkRender();
+  }
+  function bulkRender(){
+    const B=_bulk; const box=$('bk-grid'); if(!B||!box) return;
+    const q=(B.q||'').toLowerCase();
+    const list=B.rooms.filter(r=>!q || String(r.room).toLowerCase().includes(q));
+    box.innerHTML=list.map(r=>{ const room=String(r.room);
+      if(B.locked[room]) return `<div style="border:1.5px solid var(--line);border-radius:10px;padding:9px 3px;text-align:center;background:#f2f4f7;opacity:.7"><div style="font:800 16px inherit;color:#9aa7b5">${room}</div><div style="font-size:8px;color:#9aa7b5">${B.locked[room]==='done'?'done':'in prog'}</div></div>`;
+      const t=B.picks[room]; const col=t?BULK_COL[t]:'#d2d9e0';
+      return `<div onclick="bulkTap('${room}')" style="border:1.5px solid ${col};border-radius:10px;padding:9px 3px;text-align:center;cursor:pointer;background:${t?col+'1f':'#fff'}">
+        <div style="font:800 16px inherit;color:${t?col:'var(--ink)'}">${room}${t?` <span style="font-size:11px">${BULK_LET[t]}</span>`:''}</div>
+        <div style="font-size:8px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(HH.catLabel(r.cat))}</div>
+      </div>`;
+    }).join('') || `<div style="grid-column:1/-1;padding:18px;text-align:center;color:var(--muted);font-size:13px">No room matches.</div>`;
+    const n=Object.keys(B.picks).length;
+    const c=$('bk-count'); if(c) c.textContent=n+' room'+(n!==1?'s':'')+' selected';
+  }
+  function bulkTap(room){
+    const B=_bulk; if(!B) return; const order=['Departure','Stayover','Arrival-ready'];
+    if(!B.picks[room]){ B.picks[room]=B.defType; }
+    else { const i=order.indexOf(B.picks[room]); if(i>=order.length-1){ delete B.picks[room]; } else B.picks[room]=order[i+1]; }
+    bulkRender();
+  }
+  function bulkSetType(t){
+    const B=_bulk; if(!B) return; B.defType=t;
+    document.querySelectorAll('.bkt').forEach(b=>{ const on=b.dataset.t===t; b.style.background=on?BULK_COL[b.dataset.t]:'#fff'; b.style.color=on?'#fff':BULK_COL[b.dataset.t]; });
+  }
+  function bulkFilter(v){ const B=_bulk; if(!B) return; B.q=v; bulkRender(); }
+  async function bulkConfirm(alloc){
+    const B=_bulk; if(!B) return;
+    const arr=Object.entries(B.picks).map(([room,type])=>({room, type, note:B.notes[room]||''}));
+    await HH.setDayRooms(today, arr);
+    closeSheet();
+    if(alloc){ await leadAllocateAll(); leadMsg('✓ '+arr.length+' room'+(arr.length===1?'':'s')+' set & allocated.'); }
+    else { leadMsg('✓ '+arr.length+' room'+(arr.length===1?'':'s')+' set for today.'); if($('scr-admin').classList.contains('on')) renderAdmin(); else renderTeam(); }
+  }
   // ---- Housekeeping Overview — the lead's landing dashboard ----
   function renderTeam(){
     const esc=s=>String(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -633,6 +699,7 @@
         <button onclick="leadAddRooms(false)" style="flex:1;min-width:110px;padding:10px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:9px;font-weight:700;font-size:13px">+ Add</button>
         <button onclick="leadAddRooms(true)" style="flex:1;min-width:150px;padding:10px;border:none;background:#2E6B5E;color:#fff;border-radius:9px;font-weight:700;font-size:13px">+ Add &amp; give to lightest</button>
       </div>
+      <button onclick="bulkOpen()" style="width:100%;margin-top:6px;padding:11px;border:1.5px solid var(--navy);background:#eef2f8;color:var(--navy);border-radius:9px;font-weight:800;font-size:13.5px">🗂 Select rooms (bulk) — tap the grid</button>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
         <button onclick="leadAllocateAll()" style="flex:1;min-width:140px;padding:10px;border:none;background:var(--navy);color:#fff;border-radius:9px;font-weight:800;font-size:13px">⚖️ Allocate all</button>
         <button onclick="leadAddAreas()" style="flex:1;min-width:120px;padding:10px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;font-weight:700;font-size:13px">🧼 Public areas</button>

@@ -302,6 +302,7 @@
     // ----- the day's rooms (one doc per room: hoshouse_rooms/<date>__<room>) -----
     docId(date,room){ return date+"__"+room; },
     roomInfo, floorLabel,
+    defaultRooms,            // full room inventory [{room,cat,floor}] — for the bulk picker
     floorOf(room){ return roomInfo(room).floor||""; },
     blankRoom(date,room,type,cat,note){
       const inf=roomInfo(room);
