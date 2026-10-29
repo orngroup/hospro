@@ -2304,6 +2304,12 @@ const LL_APS = [
   ["Ground floor", "Main building", "Beech Room corridor", "—"]
 ].map(([floor, block, loc, mount]) => ({ floor, block, loc, mount, door: /door/i.test(mount) && !/above door/i.test(mount) }));
 const LL_WIFI_FACTS = "Quest, the hotel's Wi-Fi provider, has supplied a plan of every Wi-Fi access point (Ubiquiti design plan dated 29 October 2026, in the document library below). It shows 44 access points — 21 on the first floor and 23 on the ground floor — with network switches in the B Block, A Block, server cabinet and comms locations.\n\nFive first-floor access points in B Block are fixed on cupboard doors (near rooms 149–151, 154, 158, 161–162 and 163), and four first-floor access points in A Block are inside cupboards (near rooms 116–130). All other access points are on hallway ceilings or in public areas.\n\nWe have asked Quest to confirm the installation dates, who carried out the work and how the cabling passes into each cupboard.";
+/* Bedroom door locks — supplier's quote/supply list and dormakaba fire test report (received 29 Oct 2026) */
+const LL_LOCK = {
+  what: "New bedroom door locks — dormakaba Saflok RT+ RFID/BLE mortice locks (79/RT Series), 135 bedroom doors",
+  cert: "Fire test report DMT-DO-50-582-R1 (DMT Test Laboratory for Fire Protection, 14 May 2019), tested to EN 1634-1:2014+A1:2018 on 44 mm timber fire doors: the 79/RT Series lock did not significantly affect the door's integrity or insulation for at least 30 minutes (results 43–46 minutes). Each lock installed with intumescent wrap to the lock case; holes left by the old locks (behind the cover plates) packed with intumescent roll. Supply included intumescent material for 135 doors, 2 intumescent rolls, retrofit internal/external cover plates and extended strike plates.",
+  status: "Installed"
+};
 const LL_DEFAULT = () => ({
   password: "3132",
   addressee: "",
@@ -2321,7 +2327,7 @@ const LL_DEFAULT = () => ({
   ],
   alts: [
     { what: "Wi-Fi access points (service risers)", date: "", contractor: "", consent: "", cert: "", status: "" },
-    { what: "New bedroom door locks", date: "", contractor: "", consent: "", cert: "", status: "" },
+    { what: LL_LOCK.what, date: "", contractor: "", consent: "", cert: LL_LOCK.cert, status: LL_LOCK.status },
     { what: "Heat pump hot water system", date: "", contractor: "", consent: "", cert: "", status: "" }
   ],
   consents: "",
@@ -2336,6 +2342,7 @@ const llDraft = () => {
   const d = Object.assign(LL_DEFAULT(), JSON.parse(JSON.stringify(saved.draft || {})));
   if (!d.wifiFacts) d.wifiFacts = LL_WIFI_FACTS;
   if (d.showAps === undefined) d.showAps = true;
+  (d.alts || []).forEach((a) => { if (/bedroom door locks/i.test(a.what) && !a.cert) { a.what = LL_LOCK.what; a.cert = LL_LOCK.cert; if (!a.status) a.status = LL_LOCK.status; } });
   S.f.ll = d; S.f.llMeta = { shareId: saved.shareId || "", publishedAt: saved.publishedAt || 0, publishedBy: saved.publishedBy || "" };
   return d;
 };
@@ -2415,7 +2422,8 @@ VIEWS.landlord = () => {
       <td><textarea rows="2" data-a="${i}|consent">${h(a.consent)}</textarea></td><td><textarea rows="2" data-a="${i}|cert">${h(a.cert)}</textarea></td><td><input data-a="${i}|status" value="${h(a.status)}"></td><td><button class="btn sm ghost" data-adel="${i}">✕</button></td></tr>`).join("")}</table></div>
     <button class="btn sm ghost" id="ll-aadd">+ Add an alteration</button>
     <details style="margin-top:8px"><summary class="muted" style="cursor:pointer">What evidence to gather for each (internal note — not shown to the landlord)</summary><ul class="muted" style="font-size:13px">
-      <li><b>Bedroom door locks:</b> bedroom doors are usually fire doors — the lock supplier's certificate that the lock is fire-tested for that door type, confirmation intumescent protection was fitted, and that the doors still close and latch. Fire door inspector's sign-off if available.</li>
+      <li><b>Bedroom door locks (fire test report received 29 Oct):</b> the test covers 44 mm timber fire doors — confirm our bedroom doors are 44 mm FD30 doors, add the supplier/installer name, the install date and any consent. Upload the test report in Documents.</li>
+      <li><b>Bedroom door locks (general):</b> bedroom doors are usually fire doors — the lock supplier's certificate that the lock is fire-tested for that door type, confirmation intumescent protection was fitted, and that the doors still close and latch. Fire door inspector's sign-off if available.</li>
       <li><b>Heat pump hot water:</b> installer and date, building regulations compliance certificate (competent person scheme), electrical installation certificate, unvented cylinder (G3) certificate, MCS certificate and DNO notification if applicable, F-gas record, and any planning or noise approval.</li>
       <li><b>Wi-Fi access points:</b> installer, date, photos of the doors before and after, the fire-stopping product data sheet and installer's certificate, new door certificates.</li></ul></details></div>
 
