@@ -60,6 +60,9 @@ const QS = new URLSearchParams(location.search), QDEPT = (QS.get("dept") || "").
 const deptLabel = (k) => (DEPTS.find((d) => d[0] === k) || [k, k])[1];
 const st = { mod: null, step: 0, name: "", dept: "", start: "", regs: [], site: {}, answers: {}, order: {} };
 let fb = null;
+// keep this session's copy of the staff list up to date, so a second module done straight after the first
+// (e.g. induction then refresher) adds to the same person instead of replacing their record
+st.remember = (id, upd) => { const i = st.regs.findIndex((r) => r.id === id); if (i >= 0) st.regs[i] = Object.assign({}, st.regs[i], upd, { courses: upd.courses, ev: upd.ev }); else st.regs.push({ id, ...upd }); };
 const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const fill = (t) => String(t).replace("{assembly}", st.site.assembly || "the assembly point shown on the fire action notices").replace("{manager}", HF_FIRE_MANAGER.name).replace("{marshals}", HF_MARSHALS.join(", "));
 
@@ -207,11 +210,12 @@ async function save(sig) {
   if (DEMO) {
     const j = JSON.parse(localStorage.getItem(DK) || "{}"); j.tlog = j.tlog || []; j.tlog.push({ id: "t" + Date.now(), ...log, createdAt: Date.now() });
     if (k !== "hod") { j.registers = j.registers || []; const i = j.registers.findIndex((x) => x.id === id); if (i >= 0) j.registers[i] = { ...j.registers[i], ...upd }; else j.registers.push({ id, ...upd }); }
-    localStorage.setItem(DK, JSON.stringify(j)); return;
+    localStorage.setItem(DK, JSON.stringify(j)); if (k !== "hod") st.remember(id, upd); return;
   }
   const ts = firebase.firestore.FieldValue.serverTimestamp();
   await fb.db.collection("hosfire_training").add({ ...log, createdAt: ts });
   if (k !== "hod") await fb.db.collection("hosfire_registers").doc(id).set(upd, { merge: true });
+  st.remember(id, upd);
   fb.db.collection("hosfire_audit").add({ what: `Training completed online: ${st.label} — ${st.name} (${st.score}/${st.total})`, ref: "", byName: st.name, byEmail: HF_KIOSK.email, createdAt: ts }).catch(() => {});
 }
 
