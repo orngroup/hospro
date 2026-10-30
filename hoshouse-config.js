@@ -375,6 +375,30 @@
       if(ready){ try{ await db.collection("hoshouse_rooms").doc(this.docId(date,room)).delete(); return true; }catch(e){ console.warn("removeRoom",e&&e.code); } }
       const key="hoshouse_day_"+date; const map=lsGet(key,{}); delete map[String(room)]; lsSet(key,map); return true;
     },
+    // Management: permanently delete all rooms + photos with date < cutoff ("YYYY-MM-DD").
+    // Keeps cutoff day and everything after. Returns {rooms, photos}.
+    async purgeBefore(cutoff){
+      let rooms=0, photos=0;
+      if(ready){
+        try{
+          const rs=await db.collection("hoshouse_rooms").where("date","<",cutoff).get();
+          for(let i=0;i<rs.docs.length;i+=400){ const b=db.batch(); rs.docs.slice(i,i+400).forEach(d=>b.delete(d.ref)); await b.commit(); }
+          rooms=rs.size;
+        }catch(e){ console.warn("purge rooms",e&&e.code); }
+        try{
+          const ps=await db.collection("hoshouse_photos").where("date","<",cutoff).get();
+          for(let i=0;i<ps.docs.length;i+=400){ const b=db.batch(); ps.docs.slice(i,i+400).forEach(d=>b.delete(d.ref)); await b.commit(); }
+          photos=ps.size;
+        }catch(e){ console.warn("purge photos",e&&e.code); }
+      }
+      // local fallback / mirror
+      try{ const del=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i);
+        if(k && k.indexOf("hoshouse_day_")===0 && k.slice(13)<cutoff) del.push(k);
+        if(k && k.indexOf("hoshouse_photos_")===0 && k.slice(16)<cutoff) del.push(k); }
+        del.forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+      }catch(e){}
+      return {rooms, photos};
+    },
 
     // ----- room photos (completion shots + cannot-start door photos) -----
     // rec: { date, room, slot, label, dataUrl, by, byName, kind }

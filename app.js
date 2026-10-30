@@ -10625,7 +10625,7 @@ async function renderHosHouseMgmt(){
   const serie=t=>dates.map(d=>beds.filter(r=>r._date===d && (tc[r.type]!=null?r.type:'Departure')===t).length);
   const lineSeries=[{name:'Departures',values:serie('Departure'),colour:TC.Departure,fill:true},{name:'Stayover',values:serie('Stayover'),colour:TC.Stayover},{name:'Arrivals',values:serie('Arrival-ready'),colour:TC['Arrival-ready']}];
 
-  const tile=(v,k,c,sub,rc)=>`<div ${rc?`onclick="hhMgmtToRC('${rc}')" style="cursor:pointer;`:'style="'}background:#fff;border:1px solid #e4e9ef;border-radius:13px;padding:13px 15px;box-shadow:0 1px 2px rgba(0,0,0,.04)"><div style="font:800 25px Lato;color:${c}">${v}</div><div style="font-size:10.5px;color:#8296a8;text-transform:uppercase;letter-spacing:.4px;margin-top:3px;font-weight:800">${k}${rc?' <span style=\"opacity:.5\">→</span>':''}</div>${sub?`<div style="font-size:11px;color:#5b6b7b;margin-top:3px">${sub}</div>`:''}</div>`;
+  const tile=(v,k,c,sub,rc,click)=>{const oc=click||(rc?`hhMgmtToRC('${rc}')`:'');const arr=(rc||click)?' <span style=\"opacity:.5\">→</span>':'';return `<div ${oc?`onclick="${oc}" style="cursor:pointer;`:'style="'}background:#fff;border:1px solid #e4e9ef;border-radius:13px;padding:13px 15px;box-shadow:0 1px 2px rgba(0,0,0,.04)"><div style="font:800 25px Lato;color:${c}">${v}</div><div style="font-size:10.5px;color:#8296a8;text-transform:uppercase;letter-spacing:.4px;margin-top:3px;font-weight:800">${k}${arr}</div>${sub?`<div style="font-size:11px;color:#5b6b7b;margin-top:3px">${sub}</div>`:''}</div>`;};
   const card=(title,inner,extra='')=>`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);${extra}"><div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:10px">${title}</div>${inner}</div>`;
   const typeSegs=['Departure','Stayover','Arrival-ready'].filter(t=>tc[t]).map(t=>({label:TLAB[t],value:tc[t],color:TC[t]}));
   const FCOL={Ground:'#2E6B5E',First:'#1F3864'};
@@ -10638,9 +10638,9 @@ async function renderHosHouseMgmt(){
       ${tile(done.length,'Rooms cleaned','#2E6B5E', comp+'% of '+beds.length+' set','done')}
       ${tile(avg+'m','Avg clean time','#1F3864', totalMins+' min total')}
       ${tile(over.length,'Over target', over.length?'#b3261e':'#5b6b7b','Took longer than allowed')}
-      ${tile(lost.length,'Lost property','#7a5aa0','Items logged')}
+      ${tile(lost.length,'Lost property','#7a5aa0','Items logged',null,'hhLostList()')}
       ${tile(blocked.length,'DND / refused', blocked.length?'#b9780a':'#5b6b7b','Could not clean','blocked')}
-      ${tile(maint.length,'Maintenance','#b9780a','Issues reported')}
+      ${tile(maint.length,'Maintenance','#b9780a','Issues reported',null,'hhMaintList()')}
       ${tile(areas.filter(r=>r.status==='done').length,'Public areas','#2E6B5E','Toilets & reception')}
       ${tile(daysActive,'Days active','#1F3864','Days with cleaning')}
     </div>
@@ -10655,7 +10655,7 @@ async function renderHosHouseMgmt(){
     </div>
     ${card('Lost property'+(lost.length?(' ('+lost.length+')'):''), lost.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Room</th><th style="padding:6px 10px">Date</th><th style="padding:6px 10px">Item</th><th style="padding:6px 10px">Found by</th></tr>${lostRows}</table></div>`:'<div style="color:#8296a8;font-size:13px">No lost property logged in this period.</div>')}
     ${card('Staff efficiency', `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Housekeeper</th><th style="padding:6px 10px">Rooms done</th><th style="padding:6px 10px">Avg min/room</th><th style="padding:6px 10px">Over target</th><th style="padding:6px 10px">Efficiency</th></tr>${people.length?people.map(p=>{ const am=p.done?Math.round(p.mins/p.done):0; const effPct=am?Math.min(100,Math.round(25/am*100)):0; const bar=`<div style="background:#eef1f5;border-radius:5px;height:9px;width:90px;display:inline-block;vertical-align:middle;overflow:hidden"><div style="width:${effPct}%;height:100%;background:${effPct>=90?'#2E6B5E':effPct>=70?'#d9930a':'#b3261e'}"></div></div> <span style="color:#8296a8">${effPct}%</span>`; return `<tr style="border-top:1px solid #eef1f4;cursor:pointer" onclick="hhOpenStaffRooms('${hhEsc(p.id||'')}')"><td style="padding:8px 10px"><b>${hhEsc(p.name)}</b></td><td style="padding:8px 10px">${p.done}</td><td style="padding:8px 10px">${am||'—'}</td><td style="padding:8px 10px;color:${p.over?'#b3261e':'#1f2a37'}">${p.over||0}</td><td style="padding:8px 10px">${bar}</td></tr>`; }).join(''):'<tr><td colspan="5" style="padding:14px;color:#8296a8">No completed rooms in this selection.</td></tr>'}</table></div><div style="font-size:11px;color:#8296a8;margin-top:8px">Efficiency = time allowed per room (25 min) ÷ actual average. Click a row to see that person's rooms.</div>`,'margin-top:14px')}
-    <div style="margin-top:12px"><button onclick="hhMgmtExport()" style="padding:9px 14px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12.5px Lato;cursor:pointer">⬇ Export this view (CSV)</button></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button onclick="hhMgmtExport()" style="padding:9px 14px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12.5px Lato;cursor:pointer">⬇ Export this view (CSV)</button><button onclick="hhPurgeModal()" style="padding:9px 14px;border:1px solid #e4b9b3;background:#fff;color:#b3261e;border-radius:8px;font:700 12.5px Lato;cursor:pointer" title="Permanently remove early/test records">🗑 Clear old data</button></div>
     <style>@media(max-width:720px){.hh-mg{grid-template-columns:1fr !important}}</style>`;
   window._hhMgmtRows=rows;
 }
@@ -10675,6 +10675,84 @@ function hhMgmtExport(){
   const csv='﻿'+[line(head),...body].join('\r\n');
   const b=new Blob([csv],{type:'text/csv;charset=utf-8'}); const u=URL.createObjectURL(b);
   const a=document.createElement('a'); a.href=u; a.download='hoshouse-overview.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000);
+}
+/* ---- Lost property & Maintenance: click the tile to see the items and send them on ---- */
+function hhIssueDate(d){ if(!d) return ''; const x=new Date(d+'T12:00'); return isNaN(x)?d:x.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+function _hhIssueRows(kind){ const rows=(window._hhMgmtRows||[]).filter(r=>!r.area);
+  return kind==='lost' ? rows.filter(r=>(r.lostProperty&&r.lostProperty.trim())||r.lostPhoto) : rows.filter(r=>r.maintenance&&r.maintenance.trim()); }
+function hhLostList(){ hhIssueModal('lost'); }
+function hhMaintList(){ hhIssueModal('maint'); }
+function hhIssueModal(kind){
+  const lost=kind==='lost';
+  const rows=_hhIssueRows(kind).slice().sort((a,b)=>(b._date||'').localeCompare(a._date||'')||((+a.room||0)-(+b.room||0)));
+  const title=lost?'🎒 Lost property':'🔧 Maintenance issues';
+  const sub=lost?'Items found by housekeeping — to send to the Front Desk':'Issues reported by housekeeping — to send to the Maintenance team';
+  if(!rows.length){ showModal(title,sub,`<div style="padding:24px;text-align:center;color:#8296a8;font:14px Lato">Nothing logged in this period. Try a wider period at the top of the Overview.</div>`); return; }
+  const colH=lost?'Item found':'Issue reported', whoH=lost?'Found by':'Reported by';
+  const valOf=r=>lost?(r.lostProperty||(r.lostPhoto?'(photo only)':'')):(r.maintenance||'');
+  const body=rows.map(r=>`<tr style="border-top:1px solid #eef1f4">
+    <td style="padding:8px 10px;font-weight:700">${hhEsc(r.room)}</td>
+    <td style="padding:8px 10px;color:#5b6b7b;white-space:nowrap">${hhEsc(hhIssueDate(r._date))}</td>
+    <td style="padding:8px 10px">${hhEsc(valOf(r))}${lost&&r.lostPhoto?' <span title="photo attached">📷</span>':''}</td>
+    <td style="padding:8px 10px;color:#5b6b7b">${hhEsc(hhNameFor(r))}</td>
+    <td style="padding:8px 10px;white-space:nowrap"><button onclick="hhOpenRoom('${hhEsc(String(r.room))}','${hhEsc(r._date||'')}',true)" style="padding:5px 10px;border:1px solid #1F3864;background:#fff;color:#1F3864;border-radius:7px;font:700 11.5px Lato;cursor:pointer">View room</button></td>
+  </tr>`).join('');
+  showModal(title, sub+' · '+rows.length+' item'+(rows.length===1?'':'s'), `
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font:13px Lato">
+      <tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+        <th style="padding:6px 10px">Room</th><th style="padding:6px 10px">Date</th><th style="padding:6px 10px">${colH}</th><th style="padding:6px 10px">${whoH}</th><th style="padding:6px 10px"></th></tr>
+      ${body}
+    </table></div>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button onclick="hhIssueCopy('${kind}')" style="padding:9px 14px;border:1px solid #2E6B5E;background:#2E6B5E;color:#fff;border-radius:8px;font:700 12.5px Lato;cursor:pointer">📋 Copy list</button>
+      <button onclick="hhIssueExport('${kind}')" style="padding:9px 14px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12.5px Lato;cursor:pointer">⬇ Export (CSV)</button>
+    </div>
+    <div style="font-size:11px;color:#8296a8;margin-top:8px">Copy pastes straight into an email or WhatsApp. “View room” opens the photos for a spot check.</div>`);
+}
+function hhIssueText(kind){
+  const lost=kind==='lost';
+  const rows=_hhIssueRows(kind).slice().sort((a,b)=>(b._date||'').localeCompare(a._date||'')||((+a.room||0)-(+b.room||0)));
+  const head=lost?'Lost property — to Front Desk':'Maintenance issues — to Maintenance team';
+  return head+'\n'+rows.map(r=>`• Room ${r.room} (${hhIssueDate(r._date)}) — ${lost?(r.lostProperty||'(photo only)'):(r.maintenance||'')} — ${lost?'found':'reported'} by ${hhNameFor(r)}${lost&&r.lostPhoto?' [photo]':''}`).join('\n');
+}
+function hhIssueCopy(kind){ const t=hhIssueText(kind);
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(()=>toast('✓ Copied — paste into your email or message')).catch(()=>toast('Could not copy')); }
+  else { toast('Copy not supported on this device'); } }
+function hhIssueExport(kind){
+  const lost=kind==='lost';
+  const rows=_hhIssueRows(kind).slice().sort((a,b)=>(a._date||'').localeCompare(b._date||'')||((+a.room||0)-(+b.room||0)));
+  const head=['Date','Room','Type','Floor',lost?'Item found':'Issue',lost?'Found by':'Reported by',lost?'PhotoAttached':''];
+  const line=a=>a.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',');
+  const body=rows.map(r=>line([r._date||'',r.room,r.type||'',hhFloorLabel(r.floor||hhFloorOf(r.room))||'',lost?(r.lostProperty||'(photo only)'):(r.maintenance||''),hhNameFor(r),lost?(r.lostPhoto?'yes':''):'']));
+  const csv='﻿'+[line(head),...body].join('\r\n');
+  const b=new Blob([csv],{type:'text/csv;charset=utf-8'}); const u=URL.createObjectURL(b);
+  const a=document.createElement('a'); a.href=u; a.download='hoshouse-'+(lost?'lost-property':'maintenance')+'.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000);
+}
+/* ---- Management: clear early/test housekeeping data (keeps recent) ---- */
+function hhPurgeModal(){
+  showModal('🗑 Clear old housekeeping data','Remove early test records — keep recent ones',`
+    <div style="font:13.5px/1.6 Lato;color:#1a2b3a">
+      <p style="margin:0 0 12px">This permanently deletes <b>all rooms and photos dated before</b> the date below, across every device. Records on and after that date are kept. <b style="color:#b3261e">This cannot be undone.</b></p>
+      <label style="display:block;font:700 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Keep data from this date onward</label>
+      <input type="date" id="hh-purge-date" value="2026-10-30" style="padding:9px 11px;border:1.5px solid #d7dde4;border-radius:8px;font:14px Lato;margin-bottom:14px">
+      <div id="hh-purge-out" style="font-size:12.5px;color:#b3261e;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px">
+        <button id="hh-purge-go" onclick="hhDoPurge()" style="padding:10px 16px;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer;background:#b3261e;color:#fff">Delete earlier data</button>
+        <button onclick="closeModal()" style="padding:10px 16px;border:1px solid #d7dde4;background:#fff;border-radius:9px;font:700 13px Lato;cursor:pointer;color:#1a2b3a">Cancel</button>
+      </div>
+    </div>`);
+}
+async function hhDoPurge(){
+  const d=document.getElementById('hh-purge-date'); const cutoff=d&&d.value; if(!cutoff){ toast('Pick a date'); return; }
+  if(!confirm('Permanently delete all housekeeping rooms and photos before '+cutoff+'?\n\nThis cannot be undone.')) return;
+  const btn=document.getElementById('hh-purge-go'); const out=document.getElementById('hh-purge-out');
+  if(btn){ btn.disabled=true; btn.textContent='Deleting…'; }
+  try{
+    const res=await HH.purgeBefore(cutoff);
+    toast('✓ Removed '+res.rooms+' room record'+(res.rooms===1?'':'s')+(res.photos?(' and '+res.photos+' photo'+(res.photos===1?'':'s')):'')+' before '+cutoff);
+    closeModal();
+    try{ renderHosHouseMgmt(); }catch(e){}
+  }catch(e){ if(btn){ btn.disabled=false; btn.textContent='Delete earlier data'; } if(out) out.textContent='Could not complete — check your connection and try again.'; }
 }
 /* ============================================================
    HOSHOUSE ROOM CHECK — every room cleaned, searchable and filterable,
