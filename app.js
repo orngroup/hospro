@@ -8728,11 +8728,24 @@ const BH_DOCS = [
   { category: "The Clarendon — Menus",
     colour: "#4a9d7f",
     docs: [
-      { title:"Restaurant Menu",              icon:"🍽", file:"clarendon-restaurant-menu.pdf",         desc:"Full à la carte restaurant menu" },
-      { title:"Lunch Menu",                   icon:"🥗", file:"clarendon-lunch-menu.pdf",              desc:"Clarendon lunch menu" },
-      { title:"Dinner, Bed & Breakfast Menu", icon:"🌙", file:"clarendon-dinner-bed-breakfast-menu.pdf",desc:"DBB package menu" },
-      { title:"Wine List",                    icon:"🍷", file:"clarendon-wine-list.pdf",               desc:"Full wine list" },
-      { title:"Restaurant & Bar Wine List",   icon:"🥂", file:"clarendon-restaurant-bar-wine-list.pdf",desc:"Restaurant & bar wine selection" },
+      { title:"À la Carte",        icon:"🍽", file:"clarendon-a-la-carte.pdf",      desc:"Two courses £35 · three courses £42" },
+      { title:"The Bar",           icon:"🍺", file:"clarendon-the-bar.pdf",         desc:"Relaxed bar dining menu" },
+      { title:"From the Grill",    icon:"🥩", file:"clarendon-from-the-grill.pdf",  desc:"Steaks, burgers, sauces & sides" },
+      { title:"Desserts",          icon:"🍰", file:"clarendon-desserts.pdf",        desc:"To finish" },
+      { title:"Children's Menu",   icon:"🧒", file:"clarendon-childrens-menu.pdf",  desc:"Under 12s · kids eat free at Sunday lunch" },
+      { title:"Sunday Lunch",      icon:"🍗", file:"clarendon-sunday-lunch.pdf",    desc:"Starters & the Sunday roast" },
+    ]
+  },
+  { category: "Festive Menus 2026",
+    colour: "#b3261e",
+    docs: [
+      { title:"Christmas at Brandon Hall", icon:"🎄", file:"festive-christmas-at-brandon-hall.pdf", desc:"Three courses · £35 per person" },
+      { title:"Joiner Party Nights",       icon:"🎉", file:"festive-joiner-party-nights.pdf",       desc:"Fri 4 & Fri 18 Dec · £55 per person" },
+      { title:"Christmas Party Nights",    icon:"🪩", file:"festive-christmas-party-nights.pdf",    desc:"From £45 per person · DJ & disco" },
+      { title:"Christmas Day Lunch",       icon:"🎅", file:"festive-christmas-day-lunch.pdf",       desc:"Four courses · adults £80 · children £45" },
+      { title:"New Year's Eve Dinner",     icon:"🥂", file:"festive-new-years-eve-dinner.pdf",      desc:"Four courses · £85 per person" },
+      { title:"Canapés & Fizz",            icon:"🍾", file:"festive-canapes-and-fizz.pdf",          desc:"Tree lights switch-on · £13 per person" },
+      { title:"Festive Afternoon Tea",     icon:"🫖", file:"festive-afternoon-tea.pdf",             desc:"Nov & Dec · £40pp · £45 with mulled wine" },
     ]
   },
 ];
