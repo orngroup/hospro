@@ -675,6 +675,13 @@
     const stTxt=r.status==='blocked'?("Can't start — "+(r.blockReason==='dnd'?'Do Not Disturb':'Guest refused')):((r.status||'pending').replace('_',' '));
     const line=(ic,lab,val)=> val&&String(val).trim()?`<div style="font-size:13px;margin-top:5px">${ic} <b>${lab}:</b> ${esc(val)}</div>`:'';
     const dur=r.durationSec?Math.round(r.durationSec/60)+' min':'';
+    const hasMaint=r.maintenance&&r.maintenance.trim();
+    const hasLost=(r.lostProperty&&r.lostProperty.trim())||lost.length;
+    window._hhFound={room:String(r.room), date:date, maintenance:r.maintenance||'', lostProperty:r.lostProperty||'', lostPhoto:!!lost.length, who:r.housekeeperName||''};
+    const shareBtns=(hasMaint||hasLost)?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        ${hasMaint?`<button class="go ghost" style="flex:1;min-width:150px;background:#25D366;border:1.5px solid #25D366;color:#fff;padding:11px" onclick="shareFound('maint')">💬 Share maintenance</button>`:''}
+        ${hasLost?`<button class="go ghost" style="flex:1;min-width:150px;background:#25D366;border:1.5px solid #25D366;color:#fff;padding:11px" onclick="shareFound('lost')">💬 Share lost property</button>`:''}
+      </div>`:'';
     out.innerHTML=`<div class="card" style="flex-direction:column;align-items:stretch;gap:8px;${(r.urgent&&r.status!=='done')?'border-color:#f3b0a8;box-shadow:0 0 0 2px #fdecea':''}">
       <div style="display:flex;align-items:center;gap:10px"><div class="rmno">${esc(r.room)}</div><span class="pill ${DEFT[r.type]||'dep'}">${esc(r.type)}</span>${(r.urgent&&r.status!=='done')?'<span class="urg">🚨 URGENT</span>':''}
         <span style="margin-left:auto;font-weight:800;color:${stCol};text-transform:capitalize">${esc(stTxt)}</span></div>
@@ -685,6 +692,7 @@
       ${line('🔧','To maintenance',r.maintenance)}
       ${line('♻','Items replaced',r.replaced)}
       ${line('🎒','Lost property',r.lostProperty)}
+      ${shareBtns}
       ${photoBlock}
       ${doorBlock}
       ${lostBlock}
@@ -1241,6 +1249,17 @@
       <button class="go ghost" style="background:#25D366;border:1.5px solid #25D366;color:#fff;margin-top:7px;padding:11px" onclick="shareWhats('lost')">💬 Save &amp; share on WhatsApp — to Front Desk</button>
     </div>`;
   }
+  function hhShareBase(){ return (location.origin&&location.origin.indexOf('http')===0)?location.origin:'https://brandon.hospro.co.uk'; }
+  // Reusable share: one link only (text has no URL; native share carries the URL separately,
+  // the WhatsApp fallback appends it once).
+  async function shareIssue(kind, room, date, detail, who){
+    const lost=kind==='lost';
+    const url=hhShareBase()+'/issue.html?id='+encodeURIComponent(date+'__'+room)+'&k='+(lost?'lost':'maint');
+    const title=(lost?'🎒 Lost property':'🔧 Maintenance')+' — Room '+room;
+    const body=title+'\n'+(detail||'')+(who?('\nLogged by '+who):'');
+    if(navigator.share){ try{ await navigator.share({title:title, text:body, url:url}); return; }catch(e){ if(e&&e.name==='AbortError') return; } }
+    window.open('https://wa.me/?text='+encodeURIComponent(body+'\n'+url),'_blank');
+  }
   async function shareWhats(kind){
     if(!active) return;
     const lost=kind==='lost';
@@ -1249,14 +1268,12 @@
     if(inp){ const v=inp.value; active[lost?'lostProperty':'maintenance']=v; await saveLog(lost?'lostProperty':'maintenance', v); }
     const detail=lost?(active.lostProperty||(active.lostPhoto?'(photo attached)':'')):(active.maintenance||'');
     if(!detail && !(lost&&active.lostPhoto)){ hhToast(lost?'Add the lost item first':'Add the issue first'); return; }
-    const base=(location.origin&&location.origin.indexOf('http')===0)?location.origin:'https://brandon.hospro.co.uk';
-    const url=base+'/issue.html?id='+encodeURIComponent(today+'__'+active.room)+'&k='+(lost?'lost':'maint');
-    const title=(lost?'🎒 Lost property':'🔧 Maintenance')+' — Room '+active.room;
-    const who=(ME&&ME.name)||'';
-    const text=title+'\n'+detail+(who?('\nLogged by '+who):'')+'\n'+url;
-    if(navigator.share){ try{ await navigator.share({title:title, text:text, url:url}); return; }catch(e){ if(e&&e.name==='AbortError') return; } }
-    window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
+    shareIssue(kind, active.room, today, detail, (ME&&ME.name)||'');
   }
+  // Share from a looked-up room (Find) or any room view
+  function shareFound(kind){ const f=window._hhFound; if(!f) return;
+    const lost=kind==='lost'; const detail=lost?(f.lostProperty||(f.lostPhoto?'(photo attached)':'')):(f.maintenance||'');
+    shareIssue(kind, f.room, f.date, detail, f.who); }
   async function lostPropPhoto(){
     if(!active) return;
     const du=await capturePhoto('Room '+active.room+' · Lost property');

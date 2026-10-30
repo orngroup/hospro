@@ -10717,9 +10717,9 @@ function hhIssueShareOne(kind, room, date){
   const detail=lost?(r.lostProperty||'(photo only)'):(r.maintenance||'');
   const url=hhIssueLink(kind, room, date);
   const title=(lost?'Lost property':'Maintenance')+' — Room '+room;
-  const text=title+' ('+hhIssueDate(date)+')\n'+detail+'\nLogged by '+hhNameFor(r)+'\n'+url;
-  if(navigator.share){ navigator.share({title:title, text:text, url:url}).catch(()=>{}); return; }
-  window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
+  const body=title+' ('+hhIssueDate(date)+')\n'+detail+'\nLogged by '+hhNameFor(r);
+  if(navigator.share){ navigator.share({title:title, text:body, url:url}).catch(()=>{}); return; }
+  window.open('https://wa.me/?text='+encodeURIComponent(body+'\n'+url),'_blank');
 }
 function hhIssueText(kind){
   const lost=kind==='lost';
