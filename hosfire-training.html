@@ -111,7 +111,7 @@ function viewWho() {
   const chk = () => { const v = $("#nm").value.trim().toLowerCase(); $("#newp").classList.toggle("hide", !v || st.regs.some((r) => r.name.toLowerCase() === v)); };
   $("#nm").oninput = chk; chk();
   $$("[data-m]").forEach((b) => (b.onclick = () => {
-    const nm = $("#nm").value.trim().replace(/\s+/g, " ");
+    const nm = $("#nm").value.trim().replace(/\s+/g, " ").split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
     if (nm.split(" ").length < 2) { $("#e").textContent = "Please enter your first and last name."; return; }
     const known = st.regs.find((r) => r.name.toLowerCase() === nm.toLowerCase());
     if (b.dataset.m === "hod" && !QDEPT) { $("#e").textContent = "Please open this from the QR code in your department manual."; return; }

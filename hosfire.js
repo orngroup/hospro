@@ -1417,20 +1417,54 @@ const DEPTS = [["", "All departments"], ["admin", "Management / office"], ["rece
 const deptName = (d) => (DEPTS.find((x) => x[0] === d) || [d, d || "—"])[1];
 const evOf = (t, k) => ((t.ev || {})[k]) || {};
 /* Department view of online training: induction, this month's refresher and HOD confirmation */
+/* Online training — department summary, matrix and certificates */
+const tSame = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+const tDeptOf = (x, all) => { const r = all.find((t) => tSame(t.name, x.name)); return (r && r.dept) || x.dept || "other"; };
 function deptTrainTable(all, T) {
   const m1 = today().slice(0, 8) + "01", day = +today().slice(8, 10);
-  const done = (t, mod) => T.some((x) => x.module === mod && x.name.toLowerCase() === t.name.toLowerCase() && (mod !== "monthly" || (x.date || "") >= m1));
+  const done = (t, mod) => T.some((x) => x.module === mod && tSame(x.name, t.name) && (mod !== "monthly" || (x.date || "") >= m1));
   const hasInd = (t) => done(t, "induction") || !!(t.courses || {}).induction;
+  const bar = (n, of) => { const pc = of ? Math.round((n / of) * 100) : 0, col = n === of && of ? "var(--ok)" : day > 20 ? "var(--red)" : "var(--amber)";
+    return `<div style="display:flex;align-items:center;gap:8px;min-width:130px"><b style="color:${col};min-width:44px">${n}/${of}</b><div style="flex:1;height:8px;background:#E6EAF0;border-radius:5px;overflow:hidden"><i style="display:block;height:100%;width:${pc}%;background:${col}"></i></div><span class="muted" style="min-width:34px;text-align:right">${pc}%</span></div>`; };
+  let tot = { n: 0, ind: 0, mon: 0, hod: 0, depts: 0 };
   const rows = DEPTS.filter(([k]) => k).map(([k, l]) => {
     const ppl = all.filter((t) => (t.dept || "other") === k); if (!ppl.length && !T.some((x) => x.module === "hod" && x.dept === k)) return "";
     const noInd = ppl.filter((t) => !hasInd(t)), noMon = ppl.filter((t) => !done(t, "monthly"));
     const hod = T.filter((x) => x.module === "hod" && x.dept === k).sort((a, b) => ms(b.createdAt) - ms(a.createdAt))[0];
-    const c = (n, of) => `<b style="color:${n === of ? "var(--ok)" : day > 20 ? "var(--red)" : "var(--amber)"}">${n}/${of}</b>`;
-    return `<tr><td><b>${h(l)}</b></td><td>${c(ppl.length - noInd.length, ppl.length)}</td><td>${c(ppl.length - noMon.length, ppl.length)}</td>
+    tot.n += ppl.length; tot.ind += ppl.length - noInd.length; tot.mon += ppl.length - noMon.length; tot.depts++; if (hod) tot.hod++;
+    return `<tr><td><b>${h(l)}</b><div class="muted">${ppl.length} staff</div></td><td>${bar(ppl.length - noInd.length, ppl.length)}</td><td>${bar(ppl.length - noMon.length, ppl.length)}</td>
       <td style="font-size:12px">${noInd.length ? `<b>Induction:</b> ${noInd.map((t) => h(t.name)).join(", ")}<br>` : ""}${noMon.length ? `<b>Refresher:</b> ${noMon.map((t) => h(t.name)).join(", ")}` : '<span class="muted">Nobody outstanding</span>'}</td>
-      <td>${hod ? `${h(hod.name)}<br><span class="muted">${fds(hod.date)}</span>` : '<span style="color:var(--red);font-weight:700">Not yet</span>'}</td></tr>`; }).join("");
-  return `<details style="margin-top:8px" open><summary style="cursor:pointer;font-weight:700">By department — who is outstanding (refresher deadline: 20th)</summary>
-    <div class="tw"><table><tr><th>Department</th><th>Induction</th><th>${h(MON[+today().slice(5, 7) - 1])} refresher</th><th>Outstanding</th><th>HOD manual confirmed</th></tr>${rows}</table></div></details>`;
+      <td>${hod ? `<a href="#" data-tcert="${hod.id}" style="color:var(--ok);font-weight:700;text-decoration:none">✓ ${h(hod.name)}</a><br><span class="muted">${fds(hod.date)}</span>` : '<span style="color:var(--red);font-weight:700">Not yet</span>'}</td></tr>`; }).join("");
+  return `<details style="margin-top:8px" open><summary style="cursor:pointer;font-weight:700">By department — how many have done it, and who is outstanding (refresher deadline: 20th)</summary>
+    <div class="tw"><table><tr><th>Department</th><th>Induction</th><th>${h(MON[+today().slice(5, 7) - 1])} refresher</th><th>Outstanding</th><th>HOD manual confirmed</th></tr>${rows}
+    <tr style="background:#F2F5F9"><td><b>All departments</b><div class="muted">${tot.n} staff</div></td><td>${bar(tot.ind, tot.n)}</td><td>${bar(tot.mon, tot.n)}</td><td></td><td><b>${tot.hod}/${tot.depts}</b> confirmed</td></tr></table></div></details>`;
+}
+function tMatrix(all, T) {
+  const cur = today().slice(0, 7), months = []; for (let m = "2026-10"; m <= cur && months.length < 12; m = addMonths(m + "-01", 1).slice(0, 7)) months.push(m);
+  const first = (name, mod, ym) => T.filter((x) => x.module === mod && tSame(x.name, name) && (!ym || (x.date || "").slice(0, 7) === ym)).sort((a, b) => (a.date || "").localeCompare(b.date || ""))[0];
+  const dd = (d) => { const p = parse(d); return `${p.getDate()} ${MON[p.getMonth()].slice(0, 3)}`; };
+  const cellOf = (x, label) => x ? `<td style="background:var(--okbg);text-align:center"><a href="#" data-tcert="${x.id}" title="Show the certificate" style="color:var(--ok);font-weight:800;text-decoration:none">✓ ${dd(x.date)}</a></td>` : `<td style="text-align:center;color:#B0B8C4">${label || "—"}</td>`;
+  const depts = DEPTS.filter(([k]) => k && all.some((t) => (t.dept || "other") === k));
+  return `<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700">Training matrix by department — click a ✓ to see the certificate</summary>
+    ${depts.map(([k, l]) => { const ppl = all.filter((t) => (t.dept || "other") === k).sort((a, b) => natRef(a.name, b.name));
+      const nInd = ppl.filter((t) => first(t.name, "induction") || (t.courses || {}).induction).length, nMon = ppl.filter((t) => first(t.name, "monthly", cur)).length;
+      return `<details style="margin:8px 0 0 10px"><summary style="cursor:pointer"><b>${h(l)}</b> <span class="muted">— induction ${nInd}/${ppl.length} · ${h(MON[+cur.slice(5, 7) - 1])} refresher ${nMon}/${ppl.length}</span></summary>
+        <div class="tw"><table><tr><th>Name</th><th style="text-align:center">Induction</th>${months.map((m) => `<th style="text-align:center">${h(MON[+m.slice(5, 7) - 1].slice(0, 3))} ${m.slice(2, 4)}<br><span style="font-weight:400;text-transform:none">refresher</span></th>`).join("")}</tr>
+        ${ppl.map((t) => { const ind = first(t.name, "induction"), off = !ind && (t.courses || {}).induction;
+          return `<tr><td><b>${h(t.name)}</b>${t.role ? `<div class="muted">${h(t.role)}</div>` : ""}</td>${ind ? cellOf(ind) : off ? `<td style="text-align:center;background:#F4F6F8" title="Recorded on paper / in the matrix — not online">${dd(off)}<div class="muted" style="font-size:11px">recorded</div></td>` : cellOf(null)}${months.map((m) => cellOf(first(t.name, "monthly", m), m === cur ? "due" : "—")).join("")}</tr>`; }).join("")}</table></div></details>`; }).join("")}</details>`;
+}
+function tCert(x) {
+  const all = reg("training"), dept = deptName(tDeptOf(x, all)), hod = x.module === "hod";
+  const html = `<div style="border:3px solid #163C6A;border-top:10px solid #C62828;border-radius:12px;padding:26px 22px;text-align:center;font-family:inherit;color:#14243A;background:#fff">
+    <img src="assets/marketing/logos/logo-blue-crop.png" style="height:64px" onerror="this.style.display='none'">
+    <div style="letter-spacing:.16em;text-transform:uppercase;color:#C62828;font-weight:800;margin-top:12px">${hod ? "Head of department confirmation" : "Certificate of completion"}</div>
+    <h2 style="margin:10px 0 4px;color:#163C6A">${h(x.title)}</h2>
+    <p style="font-size:22px;margin:14px 0 4px"><b>${h(x.name)}</b></p><p class="muted" style="margin:0">${h(dept)}</p>
+    <p style="margin:14px 0">${hod ? "confirmed" : "completed this fire safety training"} on <b>${h(fd(x.date))}</b>${hod ? "" : `<br>Score ${x.score} out of ${x.total}`}</p>
+    ${x.sig ? `<img src="${x.sig}" style="height:70px;border-bottom:1px solid #9AA5B1;padding:0 30px"><div class="muted">Signature</div>` : ""}
+    <p class="muted" style="margin-top:16px;font-size:12px">${h(HF_HOTEL.name)} · recorded in HosFIRE ${x.createdAt ? "at " + new Date(ms(x.createdAt)).toLocaleString("en-GB") : ""} · Fire Safety Manager: ${h(HF_FIRE_MANAGER.name)}</p></div>`;
+  const m = modal(`${html}<div class="row" style="margin-top:12px"><button class="btn red" id="tc-pr">🖨 Print certificate</button><button class="btn ghost" data-close>Close</button></div>`);
+  $("#tc-pr", m).onclick = () => { $("#print").innerHTML = `<div style="padding:30mm 20mm">${html}</div>`; m.close(); printPortrait(); };
 }
 VIEWS.training = () => {
   const f = S.f.trn || (S.f.trn = { dept: "", q: "", show: "all" });
@@ -1458,7 +1492,8 @@ VIEWS.training = () => {
       <div style="min-width:220px"><div class="n" style="font-size:26px;font-weight:900;color:var(--navy)">${new Set(ind.map((x) => x.name)).size} / ${staffN}</div><div class="muted">completed the online induction</div>
       <div class="n" style="font-size:26px;font-weight:900;color:var(--navy);margin-top:6px">${new Set(mon.map((x) => x.name)).size} / ${staffN}</div><div class="muted">this month's refresher (${h(hfMonthlyTopic()[0])})</div></div></div>
       ${deptTrainTable(all, T)}
-      ${T.length ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700">Recent online completions (${T.length})</summary><div class="tw"><table><tr><th>Date</th><th>Name</th><th>Training</th><th>Score</th><th>Signature</th></tr>${T.slice().sort((a, b) => ms(b.createdAt) - ms(a.createdAt)).slice(0, 40).map((x) => `<tr><td>${fds(x.date)}</td><td>${h(x.name)}</td><td>${h(x.title)}</td><td>${x.module === "hod" ? "—" : `${x.score}/${x.total}`}</td><td>${x.sig ? `<img src="${x.sig}" style="height:28px">` : ""}</td></tr>`).join("")}</table></div></details>` : ""}</div>`; })()}
+      ${T.length ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700">Recent online completions (${T.length})</summary><div class="tw"><table><tr><th>Date</th><th>Name</th><th>Department</th><th>Training</th><th>Score</th><th>Signature</th><th></th></tr>${T.slice().sort((a, b) => ms(b.createdAt) - ms(a.createdAt)).slice(0, 60).map((x) => `<tr data-tcert="${x.id}" style="cursor:pointer" title="Show the certificate"><td>${fds(x.date)}</td><td><b>${h(x.name)}</b></td><td>${h(deptName(tDeptOf(x, all)))}</td><td>${h(x.title)}</td><td>${x.module === "hod" ? "—" : `${x.score}/${x.total}`}</td><td>${x.sig ? `<img src="${x.sig}" style="height:28px">` : ""}</td><td><span class="btn sm ghost">🎓 Certificate</span></td></tr>`).join("")}</table></div></details>` : ""}
+      ${tMatrix(all, T)}</div>`; })()}
   <div class="grid g6" style="margin-bottom:12px">
     <div class="card tile"><div class="n">${n}</div><div class="l">Staff on the matrix</div></div>
     <div class="card tile ${pc(ind) >= 90 ? "g" : "a"}"><div class="n">${pc(ind)}%</div><div class="l">Fire training recorded (${ind})</div></div>
@@ -1485,6 +1520,7 @@ VIEWS.training = () => {
   <p class="muted" style="margin-top:8px">Click any training cell to add or change a date. ✓ evidence seen · <b style="color:var(--amber)">?</b> date recorded, evidence still to be confirmed · green in date · amber due within 30 days · red overdue · grey no record.</p>`;
 };
 BIND.training = (v) => {
+  $$("[data-tcert]", v).forEach((el) => (el.onclick = (e) => { e.preventDefault(); const x = (S.data.tlog || []).find((y) => y.id === el.dataset.tcert); if (x) tCert(x); }));
   const qb = $("#t-qr", v); if (qb) qb.onclick = async () => {
     const base = location.href.split("#")[0].replace(/[^/]*$/, "");
     if (!window.QRCode) await new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
