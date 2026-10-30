@@ -1231,13 +1231,31 @@
     const esc=s=>String(s||'').replace(/"/g,'&quot;');
     box.innerHTML=`<div class="logsec">
       <label class="loglbl">🔧 Report to maintenance <span>— anything you can't fix yourself</span></label>
-      <input class="loginp" placeholder="e.g. blown bathroom bulb" value="${esc(active.maintenance)}" onchange="saveLog('maintenance',this.value)">
-      <label class="loglbl">♻ Items replaced <span>— picked up from the store</span></label>
+      <input class="loginp" id="rm-maint-inp" placeholder="e.g. blown bathroom bulb" value="${esc(active.maintenance)}" onchange="saveLog('maintenance',this.value)">
+      <button class="go ghost" style="background:#25D366;border:1.5px solid #25D366;color:#fff;margin-top:7px;padding:11px" onclick="shareWhats('maint')">💬 Save &amp; share on WhatsApp — to Maintenance</button>
+      <label class="loglbl" style="margin-top:14px">♻ Items replaced <span>— picked up from the store</span></label>
       <input class="loginp" placeholder="e.g. 2 bulbs, 1 TV remote" value="${esc(active.replaced)}" onchange="saveLog('replaced',this.value)">
-      <label class="loglbl">🎒 Lost property found</label>
-      <input class="loginp" placeholder="e.g. phone charger, under bed" value="${esc(active.lostProperty)}" onchange="saveLog('lostProperty',this.value)">
+      <label class="loglbl" style="margin-top:14px">🎒 Lost property found</label>
+      <input class="loginp" id="rm-lost-inp" placeholder="e.g. phone charger, under bed" value="${esc(active.lostProperty)}" onchange="saveLog('lostProperty',this.value)">
       <button class="go ghost" style="background:#fff;border:1.5px solid var(--line);color:var(--navy);margin-top:7px;padding:11px" onclick="lostPropPhoto()">📷 ${active.lostPhoto?'Lost property photo saved ✓ — retake':'Take a photo of the lost property'}</button>
+      <button class="go ghost" style="background:#25D366;border:1.5px solid #25D366;color:#fff;margin-top:7px;padding:11px" onclick="shareWhats('lost')">💬 Save &amp; share on WhatsApp — to Front Desk</button>
     </div>`;
+  }
+  async function shareWhats(kind){
+    if(!active) return;
+    const lost=kind==='lost';
+    // make sure the latest typed text is saved first
+    const inp=document.getElementById(lost?'rm-lost-inp':'rm-maint-inp');
+    if(inp){ const v=inp.value; active[lost?'lostProperty':'maintenance']=v; await saveLog(lost?'lostProperty':'maintenance', v); }
+    const detail=lost?(active.lostProperty||(active.lostPhoto?'(photo attached)':'')):(active.maintenance||'');
+    if(!detail && !(lost&&active.lostPhoto)){ hhToast(lost?'Add the lost item first':'Add the issue first'); return; }
+    const base=(location.origin&&location.origin.indexOf('http')===0)?location.origin:'https://brandon.hospro.co.uk';
+    const url=base+'/issue.html?id='+encodeURIComponent(today+'__'+active.room)+'&k='+(lost?'lost':'maint');
+    const title=(lost?'🎒 Lost property':'🔧 Maintenance')+' — Room '+active.room;
+    const who=(ME&&ME.name)||'';
+    const text=title+'\n'+detail+(who?('\nLogged by '+who):'')+'\n'+url;
+    if(navigator.share){ try{ await navigator.share({title:title, text:text, url:url}); return; }catch(e){ if(e&&e.name==='AbortError') return; } }
+    window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
   }
   async function lostPropPhoto(){
     if(!active) return;

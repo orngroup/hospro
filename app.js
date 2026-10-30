@@ -10695,7 +10695,7 @@ function hhIssueModal(kind){
     <td style="padding:8px 10px;color:#5b6b7b;white-space:nowrap">${hhEsc(hhIssueDate(r._date))}</td>
     <td style="padding:8px 10px">${hhEsc(valOf(r))}${lost&&r.lostPhoto?' <span title="photo attached">📷</span>':''}</td>
     <td style="padding:8px 10px;color:#5b6b7b">${hhEsc(hhNameFor(r))}</td>
-    <td style="padding:8px 10px;white-space:nowrap"><button onclick="hhOpenRoom('${hhEsc(String(r.room))}','${hhEsc(r._date||'')}',true)" style="padding:5px 10px;border:1px solid #1F3864;background:#fff;color:#1F3864;border-radius:7px;font:700 11.5px Lato;cursor:pointer">View room</button></td>
+    <td style="padding:8px 10px;white-space:nowrap"><button onclick="hhOpenRoom('${hhEsc(String(r.room))}','${hhEsc(r._date||'')}',true)" style="padding:5px 10px;border:1px solid #1F3864;background:#fff;color:#1F3864;border-radius:7px;font:700 11.5px Lato;cursor:pointer">View</button> <button onclick="hhIssueShareOne('${kind}','${hhEsc(String(r.room))}','${hhEsc(r._date||'')}')" style="padding:5px 10px;border:1px solid #2E6B5E;background:#2E6B5E;color:#fff;border-radius:7px;font:700 11.5px Lato;cursor:pointer">↗ Share</button></td>
   </tr>`).join('');
   showModal(title, sub+' · '+rows.length+' item'+(rows.length===1?'':'s'), `
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font:13px Lato">
@@ -10709,11 +10709,23 @@ function hhIssueModal(kind){
     </div>
     <div style="font-size:11px;color:#8296a8;margin-top:8px">Copy pastes straight into an email or WhatsApp. “View room” opens the photos for a spot check.</div>`);
 }
+function hhPublicBase(){ try{ return (location.origin&&location.origin.indexOf('http')===0)?location.origin:'https://brandon.hospro.co.uk'; }catch(e){ return 'https://brandon.hospro.co.uk'; } }
+function hhIssueLink(kind, room, date){ return hhPublicBase()+'/issue.html?id='+encodeURIComponent(date+'__'+room)+'&k='+(kind==='lost'?'lost':'maint'); }
+function hhIssueShareOne(kind, room, date){
+  const lost=kind==='lost';
+  const r=_hhIssueRows(kind).find(x=>String(x.room)===String(room) && (x._date||'')===date) || {room:room,_date:date};
+  const detail=lost?(r.lostProperty||'(photo only)'):(r.maintenance||'');
+  const url=hhIssueLink(kind, room, date);
+  const title=(lost?'Lost property':'Maintenance')+' — Room '+room;
+  const text=title+' ('+hhIssueDate(date)+')\n'+detail+'\nLogged by '+hhNameFor(r)+'\n'+url;
+  if(navigator.share){ navigator.share({title:title, text:text, url:url}).catch(()=>{}); return; }
+  window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
+}
 function hhIssueText(kind){
   const lost=kind==='lost';
   const rows=_hhIssueRows(kind).slice().sort((a,b)=>(b._date||'').localeCompare(a._date||'')||((+a.room||0)-(+b.room||0)));
   const head=lost?'Lost property — to Front Desk':'Maintenance issues — to Maintenance team';
-  return head+'\n'+rows.map(r=>`• Room ${r.room} (${hhIssueDate(r._date)}) — ${lost?(r.lostProperty||'(photo only)'):(r.maintenance||'')} — ${lost?'found':'reported'} by ${hhNameFor(r)}${lost&&r.lostPhoto?' [photo]':''}`).join('\n');
+  return head+'\n\n'+rows.map(r=>`• Room ${r.room} (${hhIssueDate(r._date)}) — ${lost?(r.lostProperty||'(photo only)'):(r.maintenance||'')} — ${lost?'found':'reported'} by ${hhNameFor(r)}${lost&&r.lostPhoto?' [photo]':''}\n  ${hhIssueLink(kind, r.room, r._date)}`).join('\n\n');
 }
 function hhIssueCopy(kind){ const t=hhIssueText(kind);
   if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(()=>toast('✓ Copied — paste into your email or message')).catch(()=>toast('Could not copy')); }
