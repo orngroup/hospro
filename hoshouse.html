@@ -587,6 +587,7 @@
   // ---- Find / room status lookup (any date) ----
   function renderAdminFind(){
     const todayStr=HH.todayISO();
+    const hkOpts=`<option value="">All housekeepers</option>`+HH.staff.filter(s=>(s.status||'active')!=='left').map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
     $('adminWrap').innerHTML=
       `<div class="sect" style="margin-top:2px">Find a room</div>
        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
@@ -596,8 +597,51 @@
            <input id="find-date" type="date" value="${todayStr}" style="margin:0"></div>
          <button class="go" style="padding:13px 16px" onclick="findRoom()">Search</button>
        </div>
-       <div id="findOut"><div class="sub">Type a room number and tap Search — see who's on it, its status, times and photos. Works for any date.</div></div>`;
-    const inp=$('find-room'); if(inp){ inp.onkeydown=e=>{ if(e.key==='Enter') findRoom(); }; inp.focus(); }
+       <div class="sect" style="margin-top:4px">📅 Check by dates <span class="sub" style="font-weight:600">— rooms the team worked on over a range</span></div>
+       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px">
+         <div style="flex:1;min-width:110px"><div class="sub" style="margin-bottom:3px">From</div><input id="find-from" type="date" value="${todayStr}" style="margin:0"></div>
+         <div style="flex:1;min-width:110px"><div class="sub" style="margin-bottom:3px">To</div><input id="find-to" type="date" value="${todayStr}" style="margin:0"></div>
+         <div style="flex:1;min-width:130px"><div class="sub" style="margin-bottom:3px">Housekeeper</div><select id="find-hk" style="margin:0">${hkOpts}</select></div>
+         <button class="go" style="padding:13px 16px" onclick="histRange()">Show rooms</button>
+       </div>
+       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+         <button class="qchip" onclick="histQuick('today')">Today</button>
+         <button class="qchip" onclick="histQuick(7)">Last 7 days</button>
+         <button class="qchip" onclick="histQuick(30)">Last 30 days</button>
+       </div>
+       <div id="findOut"><div class="sub">Search a single room above, or pick a date range to list every room the team worked on — tap any room to see its photos and checklist.</div></div>`;
+    const inp=$('find-room'); if(inp){ inp.onkeydown=e=>{ if(e.key==='Enter') findRoom(); }; }
+  }
+  function histQuick(mode){
+    const to=HH.todayISO(); let from=to;
+    if(mode!=='today'){ const d=new Date(to+'T12:00'); d.setDate(d.getDate()-(mode-1)); from=d.toLocaleDateString('en-CA'); }
+    if($('find-from')) $('find-from').value=from; if($('find-to')) $('find-to').value=to; histRange();
+  }
+  async function histRange(){
+    const from=($('find-from')&&$('find-from').value)||HH.todayISO();
+    const to=($('find-to')&&$('find-to').value)||HH.todayISO();
+    const hk=($('find-hk')&&$('find-hk').value)||'';
+    const out=$('findOut'); if(!out) return;
+    out.innerHTML='<div class="empty">Loading…</div>';
+    let rows=await HH.getRoomsRange(from||null, to||null);
+    rows=rows.filter(r=>!r.area);
+    if(hk) rows=rows.filter(r=>r.housekeeper===hk);
+    rows.sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(+a.room||0)-(+b.room||0));
+    if(!rows.length){ out.innerHTML='<div class="empty">No rooms worked on '+(from===to?('on '+esc(from)):('between '+esc(from)+' and '+esc(to)))+(hk?' by that person':'')+'.</div>'; return; }
+    const cap=300; const shown=rows.slice(0,cap);
+    const stTxt=r=>r.status==='done'?'<span class="done">✓ Ready</span>':r.status==='in_progress'?'<span style="color:var(--amber);font-weight:800;font-size:13px">● In progress</span>':r.status==='blocked'?'<span style="color:var(--red);font-weight:800;font-size:13px">⛔ '+(r.blockReason==='dnd'?'DND':'Refused')+'</span>':'<span style="color:var(--muted);font-weight:700;font-size:13px">Waiting</span>';
+    out.innerHTML=`<div class="sub" style="margin-bottom:7px">${rows.length} room${rows.length===1?'':'s'} · ${esc(from)} → ${esc(to)}${hk?' · '+esc((HH.staffById(hk)||{}).name||''):''}${rows.length>cap?(' (showing first '+cap+')'):''}</div>`
+      + shown.map(r=>{ const cam=(r.photos&&Object.keys(r.photos).length)||0; const vn=r.voiceNote?' 🔊':'';
+        return `<div class="card" onclick="histShowRoom('${esc(r.room)}','${esc(r.date)}')" style="cursor:pointer"><div class="rmno">${esc(r.room)}</div><span class="pill ${DEFT[r.type]||'dep'}">${esc(r.type)}</span>
+          <div class="grow"><div style="font-weight:700">${r.housekeeperName?esc(r.housekeeperName):'<em style="color:var(--muted)">Unallocated</em>'}${vn}</div>
+            <div class="sub">${esc(r.date)} · ${stTxt(r)}${cam?(' · 📷'+cam):''}</div></div><span class="ar">›</span></div>`;
+      }).join('');
+  }
+  async function histShowRoom(room, date){
+    if($('find-room')) $('find-room').value=room;
+    if($('find-date')) $('find-date').value=date;
+    await findRoom();
+    const out=$('findOut'); if(out) out.insertAdjacentHTML('afterbegin','<button class="go ghost" style="margin-bottom:9px;background:#fff;border:1.5px solid var(--line);color:var(--navy)" onclick="histRange()">← Back to the list</button>');
   }
   async function findRoom(){
     const room=($('find-room')&&$('find-room').value||'').trim();
