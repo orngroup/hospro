@@ -38,7 +38,7 @@ canvas{width:100%;height:170px;border:1.5px dashed var(--line);border-radius:10p
 </style>
 </head>
 <body>
-<div class="top"><img src="assets/marketing/logos/logo-blue-transparent.png" alt=""><div><b>Hos<span>FIRE</span> Training</b><small>Brandon Hall Hotel and Spa — fire safety for every member of staff</small></div></div>
+<div class="top"><img src="assets/marketing/logos/logo-blue-transparent.png" alt=""><div><b>Hos<span>FIRE</span> Training</b><small>Brandon Hall Hotel and Spa — fire safety for every member of staff</small></div><a href="fire/" style="margin-left:auto;color:#fff;font-size:13px;text-decoration:none;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:5px 9px;white-space:nowrap">⌂ Fire home</a></div>
 <div class="wrap" id="app"></div>
 <div class="nav hide" id="nav"></div>
 
@@ -83,7 +83,9 @@ function viewCode() {
     <button class="btn" id="go">Start</button><div class="err" id="e"></div></div>`;
   $("#code").onkeydown = (e) => { if (e.key === "Enter") $("#go").click(); };
   $("#go").onclick = async () => {
-    if ($("#code").value.trim() !== HF_KIOSK_CODE) { $("#e").textContent = "That code is not right."; return; }
+    let ok = false; try { ok = sessionStorage.getItem("hf_fire_ok") === "1"; } catch (e) {}
+    if (!ok && $("#code").value.trim() !== HF_KIOSK_CODE) { $("#e").textContent = "That code is not right."; return; }
+    try { sessionStorage.setItem("hf_fire_ok", "1"); } catch (e) {}
     $("#go").disabled = true; $("#go").textContent = "Connecting…";
     try { await connect(); viewWho(); } catch (err) { $("#go").disabled = false; $("#go").textContent = "Start"; $("#e").textContent = "Could not connect: " + err.message; }
   };
@@ -224,6 +226,7 @@ function viewDone() {
 }
 
 viewCode();
+try { if (sessionStorage.getItem("hf_fire_ok") === "1") $("#go").click(); } catch (e) {}
 })();
 </script>
 </body>

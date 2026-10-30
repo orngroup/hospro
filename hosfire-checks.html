@@ -33,7 +33,7 @@ input,select,textarea{width:100%;padding:11px;border:1.5px solid var(--line);bor
 </style>
 </head>
 <body>
-<div class="top"><img src="assets/marketing/logos/logo-blue-transparent.png" alt=""><div class="g"><b>Hos<span>FIRE</span> Checks</b><small>Front desk — daily, weekly and monthly fire checks</small></div><button id="who" class="hide"></button></div>
+<div class="top"><img src="assets/marketing/logos/logo-blue-transparent.png" alt=""><div class="g"><b>Hos<span>FIRE</span> Checks</b><small>Front desk — daily, weekly and monthly fire checks</small></div><button id="who" class="hide"></button><a href="fire/" style="color:#fff;font-size:13px;margin-left:8px;text-decoration:none;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:5px 9px;white-space:nowrap">⌂ Fire home</a></div>
 <div class="wrap" id="app"></div>
 <div class="nav hide" id="nav"></div>
 
@@ -49,7 +49,9 @@ const h = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&
 const pad = (n) => String(n).padStart(2, "0"), ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, today = () => ymd(new Date());
 const monday = () => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return ymd(d); }, month1 = () => today().slice(0, 8) + "01";
 const DEMO = /[?&]demo=1/.test(location.search), DK = "hosfire_demo_v1";
-const FRONT = ["daily", "weekly_alarm", "el_weekly", "doors_weekly", "el_monthly", "doors_monthly", "extinguishers", "co_alarm", "laundry", "kitchen", "spa", "alarm_event"];
+const FRONT = ["daily", "weekly_alarm", "el_weekly", "doors_weekly", "el_monthly", "doors_monthly", "extinguishers", "co_alarm", "laundry", "kitchen", "spa", "alarm_event", "drill"];
+const QC = new URLSearchParams(location.search).get("c") || "";   // ?c=drill opens that form straight after the name
+const CODE_OK = () => { try { return sessionStorage.getItem("hf_fire_ok") === "1"; } catch (e) { return false; } };
 const CHECKS = FRONT.map((id) => HF_CHECKS.find((c) => c.id === id)).filter(Boolean);
 const st = { name: "", recs: [], ext: [], regs: [], actions: [] };
 let fb = null;
@@ -73,13 +75,14 @@ function viewCode() {
   app.innerHTML = `<div class="card"><h2>Fire safety checks</h2><p>Record the hotel's daily, weekly and monthly fire checks. Every check is saved with your name and the time, straight into HosFIRE.</p>
     <label>Staff code</label><input id="code" type="password" inputmode="numeric" autocomplete="off"><button class="btn" id="go">Start</button><div class="err" id="e"></div></div>`;
   $("#code").onkeydown = (e) => { if (e.key === "Enter") $("#go").click(); };
-  $("#go").onclick = async () => { if ($("#code").value.trim() !== HF_KIOSK_CODE) { $("#e").textContent = "That code is not right."; return; }
+  $("#go").onclick = async () => { if (!CODE_OK() && $("#code").value.trim() !== HF_KIOSK_CODE) { $("#e").textContent = "That code is not right."; return; }
+    try { sessionStorage.setItem("hf_fire_ok", "1"); } catch (e) {}
     $("#go").disabled = true; $("#go").textContent = "Connecting…"; try { await connect(); viewName(); } catch (err) { $("#go").disabled = false; $("#go").textContent = "Start"; $("#e").textContent = "Could not connect: " + err.message; } };
 }
 function viewName() {
   const names = st.regs.map((r) => r.name).sort();
   app.innerHTML = `<div class="card"><h2>Who is doing the checks?</h2><label>Your full name</label><input id="nm" list="nl" value="${h(st.name)}" placeholder="Start typing your name"><datalist id="nl">${names.map((n) => `<option value="${h(n)}">`).join("")}</datalist><button class="btn" id="go">Continue</button><div class="err" id="e"></div></div>`;
-  $("#go").onclick = () => { const n = $("#nm").value.trim().replace(/\s+/g, " "); if (n.split(" ").length < 2) { $("#e").textContent = "Please enter your first and last name."; return; } st.name = n; $("#who").textContent = n.split(" ")[0] + " · change"; $("#who").classList.remove("hide"); viewList(); };
+  $("#go").onclick = () => { const n = $("#nm").value.trim().replace(/\s+/g, " "); if (n.split(" ").length < 2) { $("#e").textContent = "Please enter your first and last name."; return; } st.name = n; $("#who").textContent = n.split(" ")[0] + " · change"; $("#who").classList.remove("hide"); const q = QC && HF_CHECKS.find((c) => c.id === QC && FRONT.includes(c.id)); if (q) viewForm(q); else viewList(); };
 }
 $("#who").onclick = () => viewName();
 
@@ -140,6 +143,7 @@ async function saveCheck(c, fields, items, notes, bad) {
   fb.db.collection("hosfire_audit").add({ what: `${c.name} recorded on HosFIRE Checks by ${st.name}${acts.length ? ` — ${acts.length} action(s) raised` : ""}`, ref: "", byName: st.name, byEmail: HF_KIOSK.email, createdAt: ts }).catch(() => {});
 }
 viewCode();
+if (CODE_OK()) { const g = $("#go"); if (g) g.click(); }
 })();
 </script>
 </body>

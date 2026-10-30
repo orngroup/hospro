@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Fire safety — Brandon Hall</title>
+<meta name="theme-color" content="#1D4E89">
+<link rel="icon" href="../assets/favicon.png">
+<style>
+:root{--blue:#1D4E89;--blue2:#163C6A;--red:#C62828;--redbg:#FDECEA;--ink:#14243A;--muted:#5E6E82;--line:#DCE4EE;--ok:#1E8A55;--bg:#F3F6FA}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+.hide{display:none!important}
+.top{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;padding:calc(env(safe-area-inset-top) + 14px) 16px 14px;border-bottom:4px solid var(--red);display:flex;align-items:center;gap:12px}
+.top img{height:40px;background:#fff;border-radius:8px;padding:4px 8px}.top b{font-size:20px}.top small{display:block;color:#C9D8EC;font-size:13px}
+.wrap{max-width:760px;margin:0 auto;padding:16px 14px 50px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:12px}
+h1{font-size:24px;margin:0 0 6px;color:var(--blue2)}h2{font-size:20px;margin:0 0 10px;color:var(--blue2)}
+.muted{color:var(--muted);font-size:14px}
+input{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:10px;font:inherit;font-size:20px;text-align:center;letter-spacing:.3em}
+.btn{display:block;width:100%;border:none;border-radius:12px;padding:15px;font-weight:800;font-size:17px;background:var(--red);color:#fff;margin-top:12px;cursor:pointer}
+.big{display:flex;align-items:center;gap:14px;text-decoration:none;color:var(--ink);background:#fff;border:2px solid var(--line);border-radius:16px;padding:18px;margin-bottom:12px}
+.big .ic{font-size:34px;width:52px;text-align:center}.big b{display:block;font-size:20px;color:var(--blue2)}.big span{font-size:14px;color:var(--muted)}
+.big.main{border-color:var(--red);background:var(--redbg)}.big.main b{color:var(--red);font-size:23px}
+.err{color:var(--red);font-weight:700;margin-top:8px}
+.alert{background:var(--red);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;font-weight:700}
+.alert small{display:block;font-weight:400;opacity:.9;font-size:14px;margin-top:4px}
+ol{padding-left:20px;margin:0}li{margin-bottom:8px}
+.docs a{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);color:var(--blue2);font-weight:700;text-decoration:none}.docs a:last-child{border-bottom:none}
+.docs a span{color:var(--muted);font-weight:400;font-size:13px;white-space:nowrap}
+details summary{cursor:pointer;font-weight:800;color:var(--blue2);font-size:18px}
+</style>
+</head>
+<body>
+<div class="top"><img src="../assets/marketing/logos/logo-blue-crop.png" alt="Brandon Hall"><div><b>Fire safety</b><small>Brandon Hall Hotel and Spa — checks, drills and training</small></div></div>
+<div class="wrap" id="app">
+  <div class="card"><h1>Fire safety</h1><p>For all Brandon Hall staff. Enter the staff code to continue.</p>
+    <input id="code" type="password" inputmode="numeric" autocomplete="off" placeholder="Staff code" autofocus>
+    <button class="btn" id="go">Open</button><div class="err" id="e"></div></div>
+</div>
+
+<script src="../hosfire-defs.js?v=20261030a"></script>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const h = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const Q = /[?&]demo=1/.test(location.search) ? "?demo=1" : "", Q2 = Q ? "&demo=1" : "";
+  const okd = () => { try { return sessionStorage.getItem("hf_fire_ok") === "1"; } catch (e) { return false; } };
+  const S = typeof HF_SITE_DEFAULT !== "undefined" ? HF_SITE_DEFAULT : {};
+  const MANUALS = [["reception", "Reception"], ["nights", "Night team"], ["housekeeping", "Housekeeping and laundry"], ["kitchen", "Kitchen"], ["restaurant", "Restaurant, banqueting and events"], ["bar", "Bar and cellar"], ["spa", "Spa and leisure"], ["maintenance", "Maintenance"], ["management", "Management, sales and office"]];
+
+  function show() {
+    const steps = (typeof HF_RECEPTION_STEPS !== "undefined" ? HF_RECEPTION_STEPS : []);
+    $("#app").innerHTML = `
+    <div class="alert">Fire alarm sounding? Call 999 first — every time.<small>Brandon Hall Hotel and Spa, Main Street, Brandon, Coventry CV8 3FW. Everyone leaves; never use the lift. Assembly point: ${h((S.assembly || "see the fire action notice").replace(/\s*\(.*\)\s*$/, ""))}.</small></div>
+    <a class="big main" href="../hosfire-checks.html${Q}"><div class="ic">✅</div><div><b>Do fire checks</b><span>Daily check, weekly alarm test, monthly checks, extinguishers, fire alarm events</span></div></a>
+    <a class="big" href="../hosfire-checks.html?c=drill${Q2}"><div class="ic">🚨</div><div><b>Record a fire drill</b><span>Day or night drill: times, who took part, what went wrong</span></div></a>
+    <a class="big" href="../hosfire-training.html${Q}"><div class="ic">🎓</div><div><b>Fire training</b><span>New starter induction (15 minutes) and this month's refresher (3 minutes)</span></div></a>
+    <div class="card"><details><summary>🔥 Reception fire alarm procedure</summary><ol style="margin-top:12px">${steps.map(([t, d]) => `<li><b>${h(t)}.</b> ${h(d)}</li>`).join("")}</ol>
+      <p class="muted" style="margin-top:10px">Main fire alarm panel: ${h(S.mainPanel || "")}. Fire alarm faults: Leader Systems ${h(S.leaderPhone || "")}.</p>
+      <div class="docs"><a href="manuals/reception-fire-alarm-procedure.pdf" target="_blank" rel="noopener">Reception Fire Alarm Activation Procedure (PDF)<span>2 pages</span></a></div></details></div>
+    <div class="card"><details><summary>📘 Department fire safety manuals</summary><p class="muted" style="margin-top:10px">Each department's manual: fire procedure, the risks in that area, the checks it owns, and how staff are trained.</p>
+      <div class="docs">${MANUALS.map(([k, l]) => `<a href="manuals/${k}.pdf" target="_blank" rel="noopener">${h(l)}<span>PDF</span></a>`).join("")}</div></details></div>
+    <p class="muted" style="text-align:center">Every check, drill and training record is saved with your name and the time. Anything that fails goes straight to the Fire Safety Manager${typeof HF_FIRE_MANAGER !== "undefined" ? ", " + h(HF_FIRE_MANAGER.name) : ""}.</p>`;
+  }
+  $("#code").onkeydown = (e) => { if (e.key === "Enter") $("#go").click(); };
+  $("#go").onclick = () => {
+    if ($("#code").value.trim() !== (typeof HF_KIOSK_CODE !== "undefined" ? HF_KIOSK_CODE : "999")) { $("#e").textContent = "That code is not right."; return; }
+    try { sessionStorage.setItem("hf_fire_ok", "1"); } catch (e) {}
+    show();
+  };
+  if (okd()) show();
+})();
+</script>
+</body>
+</html>
