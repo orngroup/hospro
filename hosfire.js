@@ -2344,7 +2344,9 @@ const LL_WIFI_FACTS = "Quest, the hotel's Wi-Fi provider, has supplied a plan of
 const LL_LOCK = {
   what: "New bedroom door locks — dormakaba Saflok RT+ RFID/BLE mortice locks (79/RT Series), 135 bedroom doors",
   cert: "Fire test report DMT-DO-50-582-R1 (DMT Test Laboratory for Fire Protection, 14 May 2019), tested to EN 1634-1:2014+A1:2018 on 44 mm timber fire doors: the 79/RT Series lock did not significantly affect the door's integrity or insulation for at least 30 minutes (results 43–46 minutes). Each lock installed with intumescent wrap to the lock case; holes left by the old locks (behind the cover plates) packed with intumescent roll. Supply included intumescent material for 135 doors, 2 intumescent rolls, retrofit internal/external cover plates and extended strike plates.",
-  status: "Installed"
+  status: "Installed",
+  date: "2026-07-06",
+  contractor: "dormakaba UK (Lodging Products) — supplied and installed; system set-up and staff training 2–3 July 2026, lock installation week commencing 6 July 2026"
 };
 const LL_DEFAULT = () => ({
   password: "3132",
@@ -2363,14 +2365,15 @@ const LL_DEFAULT = () => ({
   ],
   alts: [
     { what: "Wi-Fi access points (service risers)", date: "", contractor: "", consent: "", cert: "", status: "" },
-    { what: LL_LOCK.what, date: "", contractor: "", consent: "", cert: LL_LOCK.cert, status: LL_LOCK.status },
+    { what: LL_LOCK.what, date: LL_LOCK.date, contractor: LL_LOCK.contractor, consent: "", cert: LL_LOCK.cert, status: LL_LOCK.status },
     { what: "Heat pump hot water system", date: "", contractor: "", consent: "", cert: "", status: "" }
   ],
   consents: "",
   contact: "",
   docs: {},
   hub: {},
-  certs: {}
+  certs: {},
+  certNotes: {}
 });
 const llDraft = () => {
   if (S.f.ll) return S.f.ll;
@@ -2378,7 +2381,9 @@ const llDraft = () => {
   const d = Object.assign(LL_DEFAULT(), JSON.parse(JSON.stringify(saved.draft || {})));
   if (!d.wifiFacts) d.wifiFacts = LL_WIFI_FACTS;
   if (d.showAps === undefined) d.showAps = true;
-  (d.alts || []).forEach((a) => { if (/bedroom door locks/i.test(a.what) && !a.cert) { a.what = LL_LOCK.what; a.cert = LL_LOCK.cert; if (!a.status) a.status = LL_LOCK.status; } });
+  d.certNotes = d.certNotes || {};
+  (d.alts || []).forEach((a) => { if (/bedroom door locks/i.test(a.what)) { if (!a.cert) { a.what = LL_LOCK.what; a.cert = LL_LOCK.cert; } if (!a.status) a.status = LL_LOCK.status; if (!a.date) a.date = LL_LOCK.date; if (!a.contractor) a.contractor = LL_LOCK.contractor; } });
+  if (!(d.alts || []).some((a) => /wi-?fi/i.test(a.what))) d.alts.unshift({ what: "Wi-Fi access points (service risers)", date: "", contractor: "Quest (hotel Wi-Fi provider) — to be confirmed", consent: "", cert: "", status: "" });
   S.f.ll = d; S.f.llMeta = { shareId: saved.shareId || "", publishedAt: saved.publishedAt || 0, publishedBy: saved.publishedBy || "" };
   return d;
 };
@@ -2468,8 +2473,9 @@ VIEWS.landlord = () => {
     <label>Contact for this matter</label>${ta("contact", "Name, role, email and phone", 2)}</div>
 
   <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">6. Certificates summary <span class="muted" style="font-weight:400">(${certs.filter((c) => llCertOn(d, c)).length} of ${certs.length} shown)</span></h3>
-    <div class="tw"><table><tr><th></th><th>Certificate</th><th>Contractor</th><th>Last done</th><th>Next due</th><th>Status</th></tr>
-    ${certs.map((c) => `<tr><td><input type="checkbox" data-cert="${c.id}" ${llCertOn(d, c) ? "checked" : ""} style="width:auto"></td><td><b>${h(c.name)}</b></td><td>${h(c.contractor || "")}</td><td>${c.last ? fds(c.last) : "—"}</td><td>${c.next ? fds(c.next) : "—"}</td><td>${pill(c.st)}</td></tr>`).join("")}</table></div></div>
+    <p class="muted">Contractor and dates come from HosFIRE → Certificates — edit them there. Use the note to explain anything overdue or due soon (e.g. "Service booked for 4 November 2026"); it shows under the status on the landlord page.</p>
+    <div class="tw"><table><tr><th></th><th>Certificate</th><th>Contractor</th><th>Last done</th><th>Next due</th><th>Status</th><th style="width:28%">Note for the landlord</th></tr>
+    ${certs.map((c) => `<tr><td><input type="checkbox" data-cert="${c.id}" ${llCertOn(d, c) ? "checked" : ""} style="width:auto"></td><td><b>${h(c.name)}</b></td><td>${c.contractor ? h(c.contractor) : '<span class="pill p-amb">Add in Certificates</span>'}</td><td>${c.last ? fds(c.last) : "—"}</td><td>${c.next ? fds(c.next) : "—"}</td><td>${pill(c.st)}</td><td><input data-cn="${c.id}" value="${h(d.certNotes[c.id] || "")}" placeholder="${c.st === "Overdue" || c.st === "Due soon" ? "e.g. Booked for …" : ""}"></td></tr>`).join("")}</table></div></div>
 
   <div class="card"><h3 style="margin-top:0">7. Documents to share <span class="muted" style="font-weight:400">(${docs.filter((r) => r.file && llDocOn(d, r)).length} ticked)</span></h3>
     <p class="muted">Only documents with a file uploaded can be shared. Quotes, emails, forms and internal statements are left unticked to start with — tick anything else you want the landlord to see.</p>
@@ -2490,6 +2496,7 @@ function llRead(v) {
   $$("[data-w]", v).forEach((el) => { const [i, k] = el.dataset.w.split("|"); d.works[+i][k] = el.value.trim(); });
   $$("[data-a]", v).forEach((el) => { const [i, k] = el.dataset.a.split("|"); d.alts[+i][k] = el.value.trim(); });
   $$("[data-cert]", v).forEach((el) => (d.certs[el.dataset.cert] = el.checked));
+  $$("[data-cn]", v).forEach((el) => (d.certNotes[el.dataset.cn] = el.value.trim()));
   $$("[data-doc]", v).forEach((el) => { d.docs[el.dataset.doc] = Object.assign({}, d.docs[el.dataset.doc], { on: el.checked }); });
   $$("[data-hub]", v).forEach((el) => { d.hub[el.dataset.hub] = Object.assign({}, d.hub[el.dataset.hub], { on: el.checked }); });
   $$("[data-hg]", v).forEach((el) => { const r = ((S.f.llHub || {}).rows || []).find((x) => x.id === el.dataset.hg); d.hub[el.dataset.hg] = Object.assign({ on: r ? llHubOn(d, r) : false }, d.hub[el.dataset.hg], { group: el.value }); });
@@ -2516,7 +2523,7 @@ async function llPublish(v) {
   }
   for (const r of ((S.f.llHub || {}).rows || []).filter((x) => llHubOn(d, x)))
     docs.push({ title: llHubTitle(r), cat: r.type || "", group: llHubGroup(d, r), date: "", version: "", issuer: r.date ? "Added " + r.date : "", name: r.fileName || "", url: r.fileUrl });
-  const certs = reg("cert").filter((c) => llCertOn(d, c)).map((c) => { const s = certState(c); return { name: c.name, contractor: c.contractor || "", last: c.last || "", next: s.next || "", status: s.st, certRef: c.certRef || "" }; }).sort((a, b) => natRef(a.name, b.name));
+  const certs = reg("cert").filter((c) => llCertOn(d, c)).map((c) => { const s = certState(c); return { name: c.name, contractor: c.contractor || "", last: c.last || "", next: s.next || "", status: s.st, certRef: c.certRef || "", note: (d.certNotes || {})[c.id] || "" }; }).sort((a, b) => natRef(a.name, b.name));
   const payload = { v: 1, hotel: HF_HOTEL.name, address: HF_HOTEL.address, preparedBy: S.user.name, publishedAt: Date.now(),
     addressee: d.addressee, noticeFrom: d.noticeFrom, noticeDate: d.noticeDate, deadline: d.noticeDate ? llWorkingDays(d.noticeDate, 20) : "",
     intro: d.intro, wifiFacts: d.wifiFacts, aps: d.showAps ? LL_APS : [], apSrc: LL_AP_SRC, wifiResponse: d.wifiResponse, works: d.works, alts: d.alts, consents: d.consents, contact: d.contact,

@@ -142,7 +142,7 @@ footer{max-width:1060px;margin:0 auto;padding:0 20px 40px;color:var(--muted);fon
       <h3>Consents</h3>${para(P.consents)}</div>
     <div class="card" id="certs"><h2>4. Certificates and servicing</h2>
       <div class="tw"><table><tr><th>Certificate / service</th><th>Contractor</th><th>Last done</th><th>Next due</th><th>Status</th></tr>
-      ${(P.certs || []).map((c) => `<tr><td><b>${h(c.name)}</b>${c.certRef ? `<div class="muted">${h(c.certRef)}</div>` : ""}</td><td>${tbc(c.contractor)}</td><td>${tbc(c.last, fd)}</td><td>${c.next ? fd(c.next) : "—"}</td><td>${st(c.status)}</td></tr>`).join("")}</table></div></div>
+      ${(P.certs || []).map((c) => `<tr><td><b>${h(c.name)}</b>${c.certRef ? `<div class="muted">${h(c.certRef)}</div>` : ""}</td><td>${tbc(c.contractor)}</td><td>${tbc(c.last, fd)}</td><td>${c.next ? fd(c.next) : "—"}</td><td>${st(c.status)}${c.note ? `<div class="muted" style="margin-top:4px">${h(c.note)}</div>` : ""}</td></tr>`).join("")}</table></div></div>
     <div class="card" id="lib"><h2>5. Document library</h2><p class="muted">Select a document to view it; use your browser’s download or print option to keep a copy.</p>
       ${groups.map((g) => `<h3>${h(g)}</h3>${docs.filter((d) => d.group === g).map((d) => { const u = safeUrl(d.url);
         return `<div class="doc"><div class="t"><b>${h(d.title)}</b><span class="muted">${[d.date ? fd(d.date) : "", d.version, d.issuer].filter(Boolean).map(h).join(" · ")}</span></div>${u ? `<a class="btn" href="${h(u)}" target="_blank" rel="noopener noreferrer">View / download</a>` : ""}</div>`; }).join("")}`).join("") || '<p><span class="tbc">Documents to follow</span></p>'}</div>
