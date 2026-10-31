@@ -10558,12 +10558,14 @@ async function hhFetchAllRooms(){
     if(k && k.indexOf('hoshouse_day_')===0){ const dk=k.slice(13); try{ Object.values(JSON.parse(localStorage.getItem(k)||'{}')).forEach(r=>all.push(Object.assign({_date:dk}, r))); }catch(e){} } } }catch(e){}
   return all;
 }
+const HH_DATA_FLOOR='2026-10-30'; // HosHOUSE went fully live 30 Oct 2026 — earlier test data is never counted
 function hhMgmtRange(period){
-  const to=hhTodayISO();
-  if(period==='7'){ const d=new Date(to+'T12:00'); d.setDate(d.getDate()-6); return {from:d.toLocaleDateString('en-CA'), to}; }
-  if(period==='30'){ const d=new Date(to+'T12:00'); d.setDate(d.getDate()-29); return {from:d.toLocaleDateString('en-CA'), to}; }
-  if(period==='month'){ const n=new Date(); return {from:new Date(n.getFullYear(),n.getMonth(),1).toLocaleDateString('en-CA'), to}; }
-  return {from:null, to};   // all time
+  const to=hhTodayISO(); let from=null;
+  if(period==='7'){ const d=new Date(to+'T12:00'); d.setDate(d.getDate()-6); from=d.toLocaleDateString('en-CA'); }
+  else if(period==='30'){ const d=new Date(to+'T12:00'); d.setDate(d.getDate()-29); from=d.toLocaleDateString('en-CA'); }
+  else if(period==='month'){ const n=new Date(); from=new Date(n.getFullYear(),n.getMonth(),1).toLocaleDateString('en-CA'); }
+  if(!from || from<HH_DATA_FLOOR) from=HH_DATA_FLOOR;   // clamp every period to go-live
+  return {from, to};
 }
 /* multi-series line chart (no library) */
 function hhLineChart(series, labels, opts){
@@ -10636,13 +10638,13 @@ async function renderHosHouseMgmt(){
   box.innerHTML=controls+`
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px">
       ${tile(done.length,'Rooms cleaned','#2E6B5E', comp+'% of '+beds.length+' set','done')}
-      ${tile(avg+'m','Avg clean time','#1F3864', totalMins+' min total')}
-      ${tile(over.length,'Over target', over.length?'#b3261e':'#5b6b7b','Took longer than allowed')}
+      ${tile(avg+'m','Avg clean time','#1F3864', totalMins+' min total','done')}
+      ${tile(over.length,'Over target', over.length?'#b3261e':'#5b6b7b','Took longer than allowed','over')}
       ${tile(lost.length,'Lost property','#7a5aa0','Items logged',null,'hhLostList()')}
       ${tile(blocked.length,'DND / refused', blocked.length?'#b9780a':'#5b6b7b','Could not clean','blocked')}
       ${tile(maint.length,'Maintenance','#b9780a','Issues reported',null,'hhMaintList()')}
-      ${tile(areas.filter(r=>r.status==='done').length,'Public areas','#2E6B5E','Toilets & reception')}
-      ${tile(daysActive,'Days active','#1F3864','Days with cleaning')}
+      ${tile(areas.filter(r=>r.status==='done').length,'Public areas','#2E6B5E','Toilets & reception','areas')}
+      ${tile(daysActive,'Days active','#1F3864','Days with cleaning','all')}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="hh-mg">
       ${card('Rooms by clean type', `<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${hhDonut(typeSegs,{v:beds.length,k:'rooms'})}<div style="flex:1;min-width:150px">${legend(typeSegs)}</div></div>`)}
@@ -10664,7 +10666,7 @@ function hhOpenStaffRooms(id){ if(!id) return; HH_RC_FROM_MGMT(id); }
 function HH_RC_FROM_MGMT(id){ window._hhView='roomcheck'; HH_RC.staff=id; HH_RC.room=''; HH_RC.status=''; HH_RC.page=0; const {from,to}=hhMgmtRange(HH_MGMT_PERIOD); HH_RC.from=from; HH_RC.to=to; HH_RC._init=true; switchTab('hhHub'); }
 function hhMgmtToRC(status){
   const {from,to}=hhMgmtRange(HH_MGMT_PERIOD);
-  HH_RC.from=from; HH_RC.to=to; HH_RC.staff=HH_MGMT_STAFF||''; HH_RC.room=''; HH_RC.status=status||''; HH_RC.page=0; HH_RC._init=true;
+  HH_RC.from=from; HH_RC.to=to; HH_RC.staff=HH_MGMT_STAFF||''; HH_RC.room=''; HH_RC.status=(status==='all'?'':(status||'')); HH_RC.page=0; HH_RC._init=true;
   window._hhView='roomcheck'; switchTab('hhHub');
 }
 function hhMgmtExport(){
@@ -10777,7 +10779,7 @@ async function renderHosHouseRoomCheck(){
   const inp='padding:8px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato';
   const lab='display:block;font:700 10.5px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px';
   const staffOpts=`<option value="">All housekeepers</option>`+(typeof HH_HUB_STAFF!=='undefined'?HH_HUB_STAFF:[]).map(([name,id])=>`<option value="${id}" ${HH_RC.staff===id?'selected':''}>${hhEsc(name.replace(/ \(.*\)/,''))}</option>`).join('');
-  const statusOpts=[['','All statuses'],['done','Ready / done'],['in_progress','In progress'],['notdone','Not done'],['blocked','DND / refused']].map(([v,l])=>`<option value="${v}" ${HH_RC.status===v?'selected':''}>${l}</option>`).join('');
+  const statusOpts=[['','All statuses'],['done','Ready / done'],['over','Over target'],['in_progress','In progress'],['notdone','Not done'],['blocked','DND / refused'],['areas','Public areas']].map(([v,l])=>`<option value="${v}" ${HH_RC.status===v?'selected':''}>${l}</option>`).join('');
   box.innerHTML=`
     <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:14px">
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
@@ -10807,12 +10809,15 @@ function hhRCQuick(mode){ const to=hhTodayISO();
   HH_RC.page=0; hhRCRender();
 }
 function hhRCFiltered(){
-  let rows=(window._hhRCAll||[]).filter(r=>!r.area);
+  let rows=(window._hhRCAll||[]);
+  rows = (HH_RC.status==='areas') ? rows.filter(r=>r.area) : rows.filter(r=>!r.area);
+  rows = rows.filter(r=>(r._date||'')>=HH_DATA_FLOOR);   // never show pre go-live data
   if(HH_RC.from) rows=rows.filter(r=>(r._date||'')>=HH_RC.from);
   if(HH_RC.to) rows=rows.filter(r=>(r._date||'')<=HH_RC.to);
   if(HH_RC.room.trim()) rows=rows.filter(r=>String(r.room).indexOf(HH_RC.room.trim())>=0);
   if(HH_RC.staff) rows=rows.filter(r=>r.housekeeper===HH_RC.staff);
-  if(HH_RC.status) rows=rows.filter(r=> HH_RC.status==='notdone' ? (r.status!=='done') : r.status===HH_RC.status);
+  if(HH_RC.status==='over') rows=rows.filter(r=>r.status==='done' && (r.durationSec||0)>hhRepTgt(r)*60);
+  else if(HH_RC.status && HH_RC.status!=='areas') rows=rows.filter(r=> HH_RC.status==='notdone' ? (r.status!=='done') : r.status===HH_RC.status);
   return rows.sort((a,b)=>(b._date||'').localeCompare(a._date||'')||(+a.room||0)-(+b.room||0));
 }
 function hhRCRender(){
