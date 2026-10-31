@@ -427,7 +427,11 @@
       if(r.status&&r.status!=='pending') locked[rm]=r.status; else picks[rm]=r.type||'Departure';
       if(r.notes) notes[rm]=r.notes; });
     _bulk={ rooms:cat, picks, locked, notes, defType:'Departure', q:'' };
-    const tbtn=t=>`<button class="bkt" data-t="${t}" onclick="bulkSetType('${t}')" style="flex:1;padding:9px 4px;border:1.5px solid ${BULK_COL[t]};border-radius:10px;font:800 12px inherit;cursor:pointer;background:${t==='Departure'?BULK_COL[t]:'#fff'};color:${t==='Departure'?'#fff':BULK_COL[t]}">${t}</button>`;
+    bulkShowGrid();
+  }
+  function bulkShowGrid(){
+    const B=_bulk; if(!B) return;
+    const tbtn=t=>`<button class="bkt" data-t="${t}" onclick="bulkSetType('${t}')" style="flex:1;padding:9px 4px;border:1.5px solid ${BULK_COL[t]};border-radius:10px;font:800 12px inherit;cursor:pointer;background:${t===B.defType?BULK_COL[t]:'#fff'};color:${t===B.defType?'#fff':BULK_COL[t]}">${t}</button>`;
     const o=$('hhOverlay'); o.style.display='block';
     o.innerHTML=`<div class="shback" onclick="closeSheet()"></div>
       <div class="shsheet" style="max-height:96vh;display:flex;flex-direction:column">
@@ -437,14 +441,63 @@
         <div class="sub" style="margin-bottom:8px">Tap a room to add it · tap again to change type · again to remove. D = Departure · S = Stayover · A = Arrival-ready.</div>
         <div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:4px">New taps add as:</div>
         <div style="display:flex;gap:6px;margin-bottom:8px">${['Departure','Stayover','Arrival-ready'].map(tbtn).join('')}</div>
-        <input id="bk-find" inputmode="numeric" placeholder="🔍 Find a room number…" oninput="bulkFilter(this.value)" style="padding:11px;border:1px solid var(--line);border-radius:9px;font-size:15px;margin-bottom:8px">
+        <input id="bk-find" inputmode="numeric" value="${esc(B.q||'')}" placeholder="🔍 Find a room number…" oninput="bulkFilter(this.value)" style="padding:11px;border:1px solid var(--line);border-radius:9px;font-size:15px;margin-bottom:8px">
         <div id="bk-grid" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:7px;padding:2px;min-height:40vh"></div>
         <div id="bk-count" style="font:800 14px inherit;color:var(--navy);margin:10px 0 8px;text-align:center"></div>
         <div style="display:flex;gap:8px">
           <button onclick="bulkConfirm(false)" style="flex:1;padding:13px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);border-radius:11px;font:800 13.5px inherit;cursor:pointer">Confirm selection</button>
-          <button onclick="bulkConfirm(true)" style="flex:1;padding:13px;border:none;background:var(--navy);color:#fff;border-radius:11px;font:800 13.5px inherit;cursor:pointer">Confirm &amp; allocate</button>
+          <button onclick="bulkAllocStep()" style="flex:1;padding:13px;border:none;background:var(--navy);color:#fff;border-radius:11px;font:800 13.5px inherit;cursor:pointer">Confirm &amp; allocate →</button>
         </div></div>`;
     bulkRender();
+  }
+  // Step 2 — choose automatic (spread) or give all selected rooms to one person
+  function bulkAllocStep(){
+    const B=_bulk; if(!B) return;
+    const n=Object.keys(B.picks).length;
+    if(!n){ leadMsg('Select at least one room first.'); return; }
+    const actives=HH.staff.filter(s=>(s.status||'active')==='active' && !s.lead);
+    const opts=actives.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+    const o=$('hhOverlay'); o.style.display='block';
+    o.innerHTML=`<div class="shback" onclick="closeSheet()"></div>
+      <div class="shsheet" style="max-height:96vh;display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font:800 17px inherit;color:var(--navy)">Allocate ${n} room${n===1?'':'s'}</div>
+          <div onclick="closeSheet()" style="font-size:24px;color:var(--muted);cursor:pointer;line-height:1">×</div></div>
+        <div class="sub" style="margin-bottom:14px">Choose how to share out the ${n} selected room${n===1?'':'s'}.</div>
+        <button onclick="bulkAllocate('auto')" style="width:100%;padding:14px;border:none;background:var(--navy);color:#fff;border-radius:11px;font:800 14px inherit;cursor:pointer;margin-bottom:12px;text-align:left">⚡ Automatic — spread across the team<div style="font-weight:600;font-size:11.5px;opacity:.85;margin-top:2px">By skill, rating & who has the least on</div></button>
+        <div style="text-align:center;color:var(--muted);font-size:12px;margin:4px 0 12px">— or give them all to one person —</div>
+        <label class="loglbl" style="margin-bottom:4px">Housekeeper</label>
+        <select id="bk-alloc-who" class="loginp" style="margin-bottom:12px;background:#fff">${opts||'<option value="">No active housekeepers</option>'}</select>
+        <button onclick="bulkAllocate($('bk-alloc-who')&&$('bk-alloc-who').value)" style="width:100%;padding:14px;border:1.5px solid var(--navy);background:#eef2f8;color:var(--navy);border-radius:11px;font:800 14px inherit;cursor:pointer;margin-bottom:12px">👤 Allocate all to this person</button>
+        <button onclick="bulkShowGrid()" style="width:100%;padding:11px;border:1.5px solid var(--line);background:#fff;color:var(--ink);border-radius:11px;font:700 13px inherit;cursor:pointer">← Back to rooms</button>
+      </div>`;
+  }
+  // Save the selected rooms, then allocate them — 'auto' spreads across the team, otherwise a staff id gets all of them
+  async function bulkAllocate(mode){
+    const B=_bulk; if(!B) return;
+    const arr=Object.entries(B.picks).map(([room,type])=>({room:String(room), type, note:B.notes[room]||''}));
+    if(!arr.length){ leadMsg('No rooms selected.'); return; }
+    if(mode!=='auto' && !mode){ leadMsg('Pick a housekeeper, or choose Automatic.'); return; }
+    await HH.setDayRooms(today, arr);
+    let n=0;
+    if(mode==='auto'){
+      const pool=await leadWorkerPool(); if(!pool.length){ leadMsg('No active housekeepers to allocate to yet.'); return; }
+      const after=await HH.getDayRooms(today);
+      const load={}; pool.forEach(w=>load[w.hkId]=0);
+      after.forEach(r=>{ if(r.housekeeper && r.status!=='done' && load[r.housekeeper]!=null) load[r.housekeeper]++; });
+      for(const it of arr){
+        const elig=pool.filter(w=>HH.canDoType(w, it.type));
+        const w=(elig.length?elig:pool).slice().sort((a,b)=>load[a.hkId]-load[b.hkId]||(b.rating||3)-(a.rating||3))[0];
+        if(!w) break;
+        await HH.updateRoom(today, it.room, {housekeeper:w.hkId, housekeeperName:w.name}); load[w.hkId]++; n++;
+      }
+      closeSheet(); leadMsg('✓ '+n+' room'+(n===1?'':'s')+' shared across '+pool.length+' staff — by skill & rating.');
+    } else {
+      const s=HH.staffById(mode); if(!s){ leadMsg('Pick a housekeeper.'); return; }
+      for(const it of arr){ await HH.updateRoom(today, it.room, {housekeeper:s.id, housekeeperName:s.name}); n++; }
+      closeSheet(); leadMsg('✓ '+n+' room'+(n===1?'':'s')+' allocated to '+s.name.split(' ')[0]+'.');
+    }
+    if($('scr-admin').classList.contains('on')) renderAdmin(); else renderTeam();
   }
   function bulkRender(){
     const B=_bulk; const box=$('bk-grid'); if(!B||!box) return;
