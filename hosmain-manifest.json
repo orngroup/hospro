@@ -3,26 +3,13 @@
   "short_name": "HosFIX",
   "description": "Brandon Hall Hotel and Spa — Maintenance & Compliance Management",
   "display": "standalone",
-  "background_color": "#182A3E",
-  "theme_color": "#182A3E",
+  "background_color": "#EA7A1E",
+  "theme_color": "#EA7A1E",
   "orientation": "portrait",
-  "categories": [
-    "productivity",
-    "utilities"
-  ],
+  "categories": ["productivity", "utilities"],
   "icons": [
-    {
-      "src": "assets/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "assets/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "assets/hosfix-mobile-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/hosfix-mobile-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ],
   "scope": "/"
 }

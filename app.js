@@ -7054,6 +7054,12 @@ function renderCompReport(v){
 }
 
 /* ============================================================ HOSFIX — Maintenance Portal Views */
+function hfCopyReportLink(){
+  const base=(location.origin&&location.origin.indexOf('http')===0)?location.origin:'https://brandon.hospro.co.uk';
+  const url=base+'/hosfix-report.html';
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(()=>toast('✓ Reception fault-report link copied')).catch(()=>prompt('Copy this link:',url)); }
+  else prompt('Copy this link:',url);
+}
 function renderFixDash(v){
   const jobs=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');
   const open=jobs.filter(j=>j.status!=='complete'&&j.status!=='cancelled');
@@ -7070,6 +7076,8 @@ function renderFixDash(v){
         <p style="font-size:13px;color:#374151">Brandon Hall Hotel and Spa · Property & Maintenance Management</p>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="hosfix-report.html" target="_blank" rel="noopener" class="btn" style="background:#1F3864;text-decoration:none;font-size:13px;padding:10px 18px">➕ Report a fault</a>
+        <button onclick="hfCopyReportLink()" class="btn" style="background:#fff;border:1px solid #1F3864;color:#1F3864;font-size:13px;padding:10px 18px;cursor:pointer">🔗 Copy reception link</button>
         <a href="hosmain.html" target="_blank" rel="noopener" class="btn" style="background:#965638;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open HosFIX app ↗</a>
       </div>
     </div>
@@ -7102,7 +7110,7 @@ function renderFixDash(v){
         </tr></thead>
         <tbody>${jobs.slice(0,10).map(j=>`<tr style="border-bottom:1px solid #f5f7f9">
           <td style="padding:10px 13px;font-weight:600;color:var(--navy)">${j.title}</td>
-          <td style="padding:10px 13px;color:#374151">${j.area||''}${j.location?' · '+j.location:''}</td>
+          <td style="padding:10px 13px;color:#374151">${j.location||j.areaLabel||j.area||''}${j.source?` <span style="font-size:10px;color:#8a97a6">· from ${hhEsc(j.source)}</span>`:''}</td>
           <td style="padding:10px 13px">
             <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:${j.priority==='urgent'?'#fff0e0':j.priority==='high'?'#fde8e6':j.priority==='medium'?'#fffbe6':'#e8f3ee'};color:${j.priority==='urgent'?'#c45c00':j.priority==='high'?'#b3261e':j.priority==='medium'?'#997300':'#2a6a4a'}">${j.priority}</span>
           </td>
@@ -10092,7 +10100,7 @@ function renderHosHouseHub(v){
   <div style="max-width:1040px;margin:0 auto;padding:4px 2px 30px">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div><div style="font:800 20px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping</div>
-        <div style="font-size:12.5px;color:#5b6b7b">${view==='mgmt'?'The full housekeeping picture — rooms, types, staff, times, lost property and trends.':(view==='roomcheck'?'Every room cleaned — search, filter by housekeeper and date, open any room to spot-check.':"Pick the day's rooms, confirm who's in, allocate — all on this page.")}</div></div>
+        <div style="font-size:12.5px;color:#5b6b7b">${view==='mgmt'?'The full housekeeping picture — rooms, types, staff, times, lost property and trends.':(view==='roomcheck'?'Every room cleaned — search, filter by housekeeper and date, open any room to spot-check.':(view==='maint'?'Maintenance faults reported to HosFIX — room, time, issue, photo and live status.':"Pick the day's rooms, confirm who's in, allocate — all on this page."))}</div></div>
       <div style="display:flex;gap:8px;align-items:center">
         ${view==='today'?`<input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderManage();hhRenderDash();hhStartLive(this.value)" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
         <button onclick="hhManageStaff()" title="Edit staff — skills, rating, status, PINs" style="padding:7px 12px;border:1px solid #1F3864;background:#eef2f8;color:#1F3864;border-radius:8px;font:700 12px Lato;cursor:pointer">👥 Manage staff</button>
@@ -10104,16 +10112,74 @@ function renderHosHouseHub(v){
     </div>
 
     <div style="display:inline-flex;border:1px solid #d7dde4;border-radius:9px;overflow:hidden;margin-bottom:16px;flex-wrap:wrap">
-      ${tab('today','🧹 Today — Live')}${tab('mgmt','📊 Overview')}${tab('roomcheck','🔎 Room check')}
+      ${tab('today','🧹 Today — Live')}${tab('mgmt','📊 Overview')}${tab('roomcheck','🔎 Room check')}${tab('maint','🔧 Maintenance')}
     </div>
 
-    ${view==='mgmt'?`<div id="hh-mgmt"></div>`:(view==='roomcheck'?`<div id="hh-roomcheck"></div>`:todayHTML)}
+    ${view==='mgmt'?`<div id="hh-mgmt"></div>`:(view==='roomcheck'?`<div id="hh-roomcheck"></div>`:(view==='maint'?`<div id="hh-maintlog"></div>`:todayHTML))}
   </div>`;
   if(view==='mgmt'){ hhStopLive(); renderHosHouseMgmt(); }
   else if(view==='roomcheck'){ hhStopLive(); renderHosHouseRoomCheck(); }
+  else if(view==='maint'){ hhStopLive(); renderHosHouseMaintLog(); }
   else { hhRenderManage(); hhRenderDash(); hhRenderLinks(); hhStartLive(window._hhDate||hhTodayISO()); }
 }
 function hhSetView(x){ window._hhView=x; switchTab('hhHub'); }
+
+/* ---- Maintenance log: faults reported to HosFIX, with live status ---- */
+let HH_ML_FILTER='all';
+function hhMLSet(f){ HH_ML_FILTER=f; renderHosHouseMaintLog(); }
+function renderHosHouseMaintLog(){
+  const box=document.getElementById('hh-maintlog'); if(!box) return;
+  let jobs=[]; try{ jobs=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]'); }catch(e){}
+  // faults raised from housekeeping / reception (room-based)
+  jobs=jobs.filter(j=>j && (j.source==='HosHOUSE'||j.source==='Reception'||j.room||/^Room /.test(j.location||'')));
+  jobs.sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  const isDone=j=>j.status==='complete';
+  const isCancel=j=>j.status==='cancelled';
+  const open=jobs.filter(j=>!isDone(j)&&!isCancel(j));
+  const done=jobs.filter(isDone);
+  const fil = HH_ML_FILTER==='open'?open : HH_ML_FILTER==='done'?done : jobs;
+  const fdt=iso=>{ if(!iso) return '—'; const d=new Date(iso); return isNaN(d)?'—':d.toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); };
+  const prioCol={urgent:'#c45c00',high:'#b3261e',medium:'#997300',low:'#2a6a4a'};
+  const statePill=j=>{
+    if(isDone(j)) return `<span style="font:700 11px Lato;color:#166534;background:#dcfce7;padding:3px 9px;border-radius:12px">✓ Completed${j.completedAt?(' · '+fdt(j.completedAt)):''}</span>`;
+    if(isCancel(j)) return `<span style="font:700 11px Lato;color:#6b7280;background:#eef1f5;padding:3px 9px;border-radius:12px">Cancelled</span>`;
+    if(j.status==='pending_approval') return `<span style="font:700 11px Lato;color:#c45c00;background:#fff0e0;padding:3px 9px;border-radius:12px">⏳ Approval</span>`;
+    const anyStarted=(j.startedAt||j.startPhoto||(j.timeLogs&&j.timeLogs.length));
+    return `<span style="font:700 11px Lato;color:#1d4ed8;background:#dbeafe;padding:3px 9px;border-radius:12px">${anyStarted?'In progress':'Open'}</span>`;
+  };
+  const chip=(id,label,n)=>`<button onclick="hhMLSet('${id}')" style="padding:6px 13px;border:1.5px solid ${HH_ML_FILTER===id?'#1F3864':'#d7dde4'};border-radius:16px;font:700 12px Lato;cursor:pointer;background:${HH_ML_FILTER===id?'#1F3864':'#fff'};color:${HH_ML_FILTER===id?'#fff':'#1a2b3a'}">${label} ${n}</button>`;
+  const base=(location.origin&&location.origin.indexOf('http')===0)?location.origin:'https://brandon.hospro.co.uk';
+  const rows=fil.map(j=>{
+    const img=(j.photos&&j.photos[0])||j.startPhoto||'';
+    const loc=j.location||(j.room?('Room '+j.room):'')||j.areaLabel||'';
+    const desc=(j.description||'').split('\n')[0];
+    return `<tr style="border-top:1px solid #eef1f4;vertical-align:top">
+      <td style="padding:9px 10px;font-weight:700;white-space:nowrap">${hhEsc(loc)}</td>
+      <td style="padding:9px 10px;color:#5b6b7b;white-space:nowrap">${hhEsc(fdt(j.createdAt))}</td>
+      <td style="padding:9px 10px">${hhEsc(desc)}${j.source?`<div style="font-size:10.5px;color:#8a97a6">from ${hhEsc(j.source)}${j.reportedBy?(' · '+hhEsc(j.reportedBy)):''}</div>`:''}</td>
+      <td style="padding:9px 10px"><span style="font:700 11px Lato;color:${prioCol[j.priority]||'#5b6b7b'}">${hhEsc(j.priority||'')}</span></td>
+      <td style="padding:9px 10px">${statePill(j)}</td>
+      <td style="padding:9px 10px">${img?`<img src="${img}" onclick="hhPhotoZoom('${img.replace(/'/g,"\\'")}','${hhEsc(loc)}')" style="width:46px;height:46px;object-fit:cover;border-radius:7px;border:1px solid #e4e9ef;cursor:zoom-in">`:'<span style="color:#c3cad3">—</span>'}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" style="padding:18px;text-align:center;color:#8296a8;font-size:12.5px">No maintenance faults reported yet.</td></tr>`;
+  box.innerHTML=`
+    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font:800 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">Show</span>
+      ${chip('all','All',jobs.length)}${chip('open','Open',open.length)}${chip('done','Completed',done.length)}
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <a href="hosfix-report.html" target="_blank" rel="noopener" style="padding:7px 13px;border:1px solid #1F3864;background:#1F3864;color:#fff;border-radius:8px;font:700 12px Lato;text-decoration:none">➕ Report a fault</a>
+        <button onclick="renderHosHouseMaintLog()" style="padding:7px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e9ef;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font:13px Lato">
+        <tr style="text-align:left;color:#6b7280;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;background:#f7f9fb">
+          <th style="padding:8px 10px">Room / location</th><th style="padding:8px 10px">Reported</th><th style="padding:8px 10px">Issue</th><th style="padding:8px 10px">Priority</th><th style="padding:8px 10px">Status</th><th style="padding:8px 10px">Photo</th></tr>
+        ${rows}
+      </table></div>
+    </div>
+    <div style="font-size:11px;color:#8296a8;margin-top:9px">Updates live from HosFIX — a fault shows “✓ Completed” here once the maintenance team signs it off.</div>`;
+}
 
 /* ---- Floor plans: Ground / First layouts for planning room distribution ---- */
 function hhFloorPlan(){
