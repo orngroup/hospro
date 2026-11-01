@@ -732,6 +732,7 @@
     const hasLost=(r.lostProperty&&r.lostProperty.trim())||lost.length;
     window._hhFound={room:String(r.room), date:date, maintenance:r.maintenance||'', lostProperty:r.lostProperty||'', lostPhoto:!!lost.length, who:r.housekeeperName||''};
     const shareBtns=(hasMaint||hasLost)?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        ${hasMaint?`<button class="go ghost" style="flex:1;min-width:150px;background:#965638;border:1.5px solid #965638;color:#fff;padding:11px" onclick="sendFoundToFix()">🔧 Send to HosFIX</button>`:''}
         ${hasMaint?`<button class="go ghost" style="flex:1;min-width:150px;background:#25D366;border:1.5px solid #25D366;color:#fff;padding:11px" onclick="shareFound('maint')">💬 Share maintenance</button>`:''}
         ${hasLost?`<button class="go ghost" style="flex:1;min-width:150px;background:#25D366;border:1.5px solid #25D366;color:#fff;padding:11px" onclick="shareFound('lost')">💬 Share lost property</button>`:''}
       </div>`:'';
@@ -1139,14 +1140,16 @@
     const voiceBtn=r=> r.voiceNote ? `<button class="go" style="background:#2a6a4a;color:#fff;padding:11px 13px" title="Listen to the note from management" onclick="event.stopPropagation();voicePlayRoom('${r.room}')">🔊 Listen</button>` : '';
     const blockedNote=r=> r.status==='blocked' ? `<div class="rnote" style="background:#fdecea;border-color:#f3c0ba;color:#b3261e">⛔ ${r.blockReason==='dnd'?'Do Not Disturb':'Guest refused'} · ${r.blockedAt?new Date(r.blockedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):''}${r.blockReason==='dnd'?' · door photo saved':''}</div>` : '';
     const urgBadge=r=> (r.urgent && r.status!=='done') ? '<span class="urg">🚨 URGENT</span>' : '';
+    // Report a maintenance fault — available on every room, any status (gated by code for now)
+    const fixBtn=r=>`<button class="go" style="background:#f2ece6;color:#965638;border:1px solid #d8cfc5;padding:11px 13px" title="Report a maintenance fault to HosFIX (code needed)" onclick="event.stopPropagation();reportFixFor('${r.room}')">🔧 Report${r.maintJobId?' ✓':''}</button>`;
     const row=r=>{
       const pc=DEFT[r.type]||'dep'; const u=(r.urgent && r.status!=='done')?' urgent':'';
-      if(r.status==='in_progress') return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${voiceBtn(r)}${plus(r)}${note(r)}</div>`;
-      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min · 📷4</div></div>${voiceBtn(r)}${plus(r)}${note(r)}</div>`;
+      if(r.status==='in_progress') return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${voiceBtn(r)}${plus(r)}${fixBtn(r)}${note(r)}</div>`;
+      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min · 📷4</div></div>${voiceBtn(r)}${plus(r)}${fixBtn(r)}${note(r)}</div>`;
       return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div></div>
         <button class="go" onclick="startRoom('${r.room}')">Start</button>
         <button class="go" style="background:var(--red)" title="Can't clean this room right now" onclick="cannotStart('${r.room}')">Can't start</button>
-        ${voiceBtn(r)}${plus(r)}${blockedNote(r)}${note(r)}</div>`;
+        ${voiceBtn(r)}${plus(r)}${fixBtn(r)}${blockedNote(r)}${note(r)}</div>`;
     };
     const urgentFirst=(a,b)=>((b.urgent?1:0)-(a.urgent?1:0))||((+a.room||0)-(+b.room||0));
     pending.sort(urgentFirst); inprog.sort(urgentFirst);
@@ -1293,7 +1296,9 @@
     box.innerHTML=`<div class="logsec">
       <label class="loglbl">🔧 Report to maintenance <span>— anything you can't fix yourself</span></label>
       <input class="loginp" id="rm-maint-inp" placeholder="e.g. blown bathroom bulb" value="${esc(active.maintenance)}" onchange="saveLog('maintenance',this.value)">
-      <button class="go ghost" style="background:#25D366;border:1.5px solid #25D366;color:#fff;margin-top:7px;padding:11px" onclick="shareWhats('maint')">💬 Save &amp; share on WhatsApp — to Maintenance</button>
+      <button class="go ghost" style="background:#965638;border:1.5px solid #965638;color:#fff;margin-top:7px;padding:11px" onclick="reportFixOpen()">🔧 Report a fault to HosFIX — photo, details &amp; priority</button>
+      ${active.maintJobId?`<div style="font-size:11.5px;color:#2a6a4a;font-weight:700;margin-top:4px">✓ Job raised in HosFIX for the maintenance team</div>`:''}
+      <button class="go ghost" style="background:#25D366;border:1.5px solid #25D366;color:#fff;margin-top:7px;padding:11px" onclick="shareWhats('maint')">💬 Save &amp; share on WhatsApp</button>
       <label class="loglbl" style="margin-top:14px">♻ Items replaced <span>— picked up from the store</span></label>
       <input class="loginp" placeholder="e.g. 2 bulbs, 1 TV remote" value="${esc(active.replaced)}" onchange="saveLog('replaced',this.value)">
       <label class="loglbl" style="margin-top:14px">🎒 Lost property found</label>
@@ -1322,6 +1327,72 @@
     const detail=lost?(active.lostProperty||(active.lostPhoto?'(photo attached)':'')):(active.maintenance||'');
     if(!detail && !(lost&&active.lostPhoto)){ hhToast(lost?'Add the lost item first':'Add the issue first'); return; }
     shareIssue(kind, active.room, today, detail, (ME&&ME.name)||'');
+  }
+  // ── Report a fault to HosFIX ──────────────────────────────────────────────
+  // Temporary testing gate — only people with the code can raise jobs for now.
+  var HF_REPORT_PIN='3132';
+  function hfReportGate(){
+    const c=prompt('Maintenance report code (for testing):');
+    if(c===null) return false;
+    if(String(c).trim()!==HF_REPORT_PIN){ hhToast('Incorrect code'); return false; }
+    return true;
+  }
+  var _rfx=null;
+  function reportFixOpen(){
+    if(!active) return;
+    if(!hfReportGate()) return;
+    const inp=document.getElementById('rm-maint-inp');
+    _rfx={ room:active.room, type:active.type, desc:(inp?inp.value:active.maintenance)||'', prio:active.urgent?'high':'medium', photo:null, date:today, by:(ME&&ME.name)||'Housekeeping' };
+    reportFixSheet();
+  }
+  // Report a fault for any room (from the list) — works at any status, incl. done
+  function reportFixFor(room){
+    const r=rooms.find(x=>String(x.room)===String(room)); if(!r){ hhToast('Room not found'); return; }
+    if(!hfReportGate()) return;
+    _rfx={ room:r.room, type:r.type, desc:(r.maintenance||''), prio:r.urgent?'high':'medium', photo:null, date:today, by:(ME&&ME.name)||'Housekeeping' };
+    reportFixSheet();
+  }
+  function reportFixSheet(){
+    const R=_rfx; if(!R) return;
+    const PR=[['low','Low','#2a6a4a'],['medium','Medium','#997300'],['high','High','#b3261e'],['urgent','Urgent','#c45c00']];
+    const o=$('hhOverlay'); o.style.display='block';
+    o.innerHTML=`<div class="shback" onclick="closeSheet()"></div>
+      <div class="shsheet" style="max-height:94vh;display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="font:800 17px inherit;color:var(--navy)">🔧 Report a fault — Room ${esc(R.room)}</div><div onclick="closeSheet()" style="font-size:24px;color:var(--muted);cursor:pointer;line-height:1">×</div></div>
+        <div class="sub" style="margin-bottom:10px">${esc(R.type||'')} · goes straight to HosFIX (Herman &amp; Pete)</div>
+        <label class="loglbl">What's the fault?</label>
+        <textarea class="loginp" id="rfx-desc" style="min-height:82px" placeholder="e.g. Shower mixer dripping constantly">${esc(R.desc)}</textarea>
+        <label class="loglbl" style="margin-top:12px">Priority</label>
+        <div style="display:flex;gap:6px">${PR.map(p=>`<button onclick="reportFixPrio('${p[0]}')" style="flex:1;padding:10px 4px;border:1.5px solid ${R.prio===p[0]?'transparent':'var(--line)'};border-radius:9px;font:800 12.5px inherit;cursor:pointer;background:${R.prio===p[0]?p[2]:'#fff'};color:${R.prio===p[0]?'#fff':'var(--ink)'}">${p[1]}</button>`).join('')}</div>
+        <button class="go ghost" style="background:#fff;border:1.5px solid var(--line);color:var(--navy);margin-top:12px;padding:11px" onclick="reportFixPhoto()">📷 ${R.photo?'Photo added ✓ — retake':'Take a photo of the fault'}</button>
+        <div style="margin-top:8px">${R.photo?`<img src="${R.photo}" style="width:100%;max-height:190px;object-fit:cover;border-radius:10px">`:''}</div>
+        <button class="go" id="rfx-send" style="background:#965638;margin-top:14px;padding:14px;font-size:15px" onclick="reportFixSubmit()">🔧 Send to HosFIX</button>
+      </div>`;
+  }
+  function reportFixPrio(p){ if(_rfx){ _rfx.prio=p; reportFixSheet(); } }
+  async function reportFixPhoto(){ if(!_rfx) return; const du=await capturePhoto('Room '+_rfx.room+' · Fault'); if(du){ _rfx.photo=du; reportFixSheet(); } }
+  async function reportFixSubmit(){
+    const R=_rfx; if(!R) return;
+    const d=document.getElementById('rfx-desc'); const desc=((d?d.value:R.desc)||'').trim();
+    if(!desc){ hhToast('Add a description of the fault'); return; }
+    const btn=document.getElementById('rfx-send'); if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
+    const job=await HH.raiseFixJob({room:R.room, roomType:R.type, description:desc, photos:R.photo?[R.photo]:[], by:R.by, source:'HosHOUSE', priority:R.prio, date:R.date});
+    try{ await HH.updateRoom(R.date, R.room, {maintenance:desc, maintJobId:job.id, maintSentAt:Date.now()}); if(active&&String(active.room)===String(R.room)){ active.maintenance=desc; active.maintJobId=job.id; } }catch(e){}
+    // reflect on the room record so the list shows the ✓ and avoids dupes
+    try{ const rr=rooms.find(x=>String(x.room)===String(R.room)); if(rr){ rr.maintenance=desc; rr.maintJobId=job.id; } }catch(e){}
+    closeSheet(); hhToast('🔧 Sent to HosFIX — job raised for Room '+R.room);
+    if(active&&String(active.room)===String(R.room)) renderLogs();
+    try{ if($('scr-list').classList.contains('on')) renderList(); else if($('scr-admin')&&$('scr-admin').classList.contains('on')) renderAdmin(); }catch(e){}
+  }
+  // From the room lookup (Find) — also gated during testing
+  async function sendFoundToFix(){
+    const f=window._hhFound; if(!f) return;
+    const desc=(f.maintenance||'').trim(); if(!desc){ hhToast('No maintenance issue on this room'); return; }
+    if(!hfReportGate()) return;
+    let photos=[]; try{ const ph=await HH.getRoomPhotos(f.date, f.room); photos=ph.map(p=>p.dataUrl).filter(Boolean).slice(0,3); }catch(e){}
+    const job=await HH.raiseFixJob({room:f.room, description:desc, photos:photos, by:f.who||'Housekeeping', source:'HosHOUSE', date:f.date});
+    try{ await HH.updateRoom(f.date, f.room, {maintJobId:job.id, maintSentAt:Date.now()}); }catch(e){}
+    hhToast('🔧 Sent to HosFIX — job raised for Room '+f.room);
   }
   // Share from a looked-up room (Find) or any room view
   function shareFound(kind){ const f=window._hhFound; if(!f) return;
