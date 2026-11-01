@@ -10782,60 +10782,85 @@ function hhReportHTML(rows, from, to){
   const listRows=(arr,valf)=>arr.length?arr.slice().sort((a,b)=>(a._date||'').localeCompare(b._date||'')).map(r=>`<tr><td><b>${hhEsc(r.room)}</b></td><td>${hhEsc(fd(r._date))}</td><td>${hhEsc(valf(r))}</td><td>${hhEsc(hhNameFor(r))}</td></tr>`).join(''):'<tr><td colspan="4" style="color:#8296a8">None logged.</td></tr>';
   const lostTbl=listRows(lost,r=>r.lostProperty||'(photo only)');
   const maintTbl=listRows(maint,r=>r.maintenance||'');
-  const card=(title,inner)=>`<div class="card"><div class="ct">${title}</div>${inner}</div>`;
+  const card=(title,inner,cls)=>`<div class="card ${cls||''}"><div class="ct">${title}</div>${inner}</div>`;
   const gen=new Date().toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const base=(location.origin&&location.origin.indexOf('http')===0)?location.origin:'https://brandon.hospro.co.uk';
+  const logoW=base+'/assets/logos/logo---white-transparent.png';
+  const logoB=base+'/assets/logos/logo---blue-transparent.png';
+  const band=`<div class="band"><img class="blogo" src="${logoW}" alt="Brandon Hall" onerror="this.style.display='none'"><div class="bt"><div class="brand">Brandon Hall Hotel &amp; Spa · HosPRO</div><h1>HosHOUSE — Housekeeping Management Report</h1><div class="range">${fd(from)} – ${fd(to)}</div></div></div>`;
+  const strip=t=>`<div class="strip"><img src="${logoB}" alt="" onerror="this.style.display='none'"><span class="st-t">${t}</span><span class="st-r">${fd(from)} – ${fd(to)}</span></div>`;
+  const foot=`<div class="foot"><span>HosHOUSE · Brandon Hall Hotel &amp; Spa</span><span>Generated ${gen}</span></div>`;
   return `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><title>HosHOUSE Management Report — ${fd(from)} to ${fd(to)}</title>
 <style>
-  @page{ size:A4; margin:14mm; }
+  @page{ size:A4 landscape; margin:10mm; }
   *{ box-sizing:border-box; }
-  body{ font-family:'Aptos','Segoe UI',system-ui,-apple-system,Roboto,sans-serif; color:#1a2b3a; margin:0; font-size:12px; line-height:1.5; }
-  .band{ background:#1F3864; color:#fff; padding:22px 26px; border-radius:0 0 4px 4px; }
-  .band .brand{ font-size:12px; letter-spacing:1px; text-transform:uppercase; opacity:.8; font-weight:700; }
-  .band h1{ margin:4px 0 2px; font-size:24px; }
-  .band .range{ font-size:13px; opacity:.9; }
-  .wrap{ padding:18px 26px 40px; }
-  .lead{ font-size:13px; background:#f4f7fb; border-left:4px solid #2E6B5E; padding:12px 16px; border-radius:6px; margin:0 0 18px; }
-  .kgrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
-  .kpi{ border:1px solid #e4e9ef; border-radius:10px; padding:11px 13px; }
-  .kv{ font-size:23px; font-weight:800; }
-  .kl{ font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:#6b7280; font-weight:800; margin-top:2px; }
-  .ks{ font-size:10.5px; color:#5b6b7b; margin-top:2px; }
-  .row{ display:flex; gap:14px; margin-bottom:16px; }
+  body{ font-family:'Aptos','Segoe UI',system-ui,-apple-system,Roboto,sans-serif; color:#1a2b3a; margin:0; font-size:11.5px; line-height:1.45; background:#fff; }
+  .page{ padding:0 4mm 6mm; }
+  .page.brk{ page-break-before:always; }
+  .band{ background:#1F3864; color:#fff; padding:16px 22px; border-radius:6px; display:flex; align-items:center; gap:20px; margin-bottom:14px; }
+  .band .blogo{ height:54px; width:auto; flex:0 0 auto; }
+  .band .brand{ font-size:11px; letter-spacing:1.2px; text-transform:uppercase; opacity:.82; font-weight:700; }
+  .band h1{ margin:3px 0 2px; font-size:21px; font-weight:800; }
+  .band .range{ font-size:12.5px; opacity:.92; }
+  .strip{ display:flex; align-items:center; gap:12px; border-bottom:2px solid #1F3864; padding-bottom:7px; margin-bottom:13px; }
+  .strip img{ height:26px; width:auto; }
+  .strip .st-t{ font-weight:800; color:#1F3864; font-size:14px; }
+  .strip .st-r{ margin-left:auto; color:#6b7280; font-size:11px; }
+  .lead{ font-size:12.5px; background:#f4f7fb; border-left:4px solid #2E6B5E; padding:11px 15px; border-radius:6px; margin:0 0 14px; }
+  .kgrid{ display:grid; grid-template-columns:repeat(8,1fr); gap:9px; margin-bottom:15px; }
+  .kpi{ border:1px solid #e4e9ef; border-radius:10px; padding:10px 11px; }
+  .kv{ font-size:21px; font-weight:800; line-height:1.05; }
+  .kl{ font-size:9px; text-transform:uppercase; letter-spacing:.3px; color:#6b7280; font-weight:800; margin-top:3px; }
+  .ks{ font-size:9.5px; color:#5b6b7b; margin-top:2px; }
+  .row{ display:flex; gap:14px; align-items:stretch; }
   .row>.card{ flex:1; }
-  .card{ border:1px solid #e4e9ef; border-radius:12px; padding:14px 16px; page-break-inside:avoid; }
-  .ct{ font-size:13px; font-weight:800; margin-bottom:10px; color:#1F3864; }
-  .sec{ page-break-inside:avoid; margin-bottom:16px; }
-  table{ width:100%; border-collapse:collapse; font-size:11.5px; }
-  th{ text-align:left; color:#6b7280; font-size:10px; text-transform:uppercase; letter-spacing:.4px; padding:5px 8px; border-bottom:1.5px solid #e4e9ef; }
-  td{ padding:6px 8px; border-bottom:1px solid #eef1f4; }
-  .flx{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
-  .foot{ margin-top:18px; border-top:1px solid #e4e9ef; padding-top:10px; font-size:10px; color:#9aa7b4; display:flex; justify-content:space-between; }
-  .noprint{ text-align:center; padding:12px; }
-  .noprint button{ background:#1F3864; color:#fff; border:none; border-radius:8px; padding:10px 20px; font:700 13px sans-serif; cursor:pointer; }
-  @media print{ .noprint{ display:none; } }
+  .card{ border:1px solid #e4e9ef; border-radius:12px; padding:13px 15px; page-break-inside:avoid; margin-bottom:14px; }
+  .card.c1{ flex:0 0 31%; } .card.c2{ flex:1; }
+  .ct{ font-size:12.5px; font-weight:800; margin-bottom:9px; color:#1F3864; }
+  table{ width:100%; border-collapse:collapse; font-size:11px; }
+  th{ text-align:left; color:#6b7280; font-size:9.5px; text-transform:uppercase; letter-spacing:.3px; padding:5px 8px; border-bottom:1.5px solid #e4e9ef; }
+  td{ padding:5px 8px; border-bottom:1px solid #eef1f4; }
+  tr{ page-break-inside:avoid; }
+  .flx{ display:flex; align-items:center; gap:14px; }
+  .foot{ border-top:1px solid #e4e9ef; padding-top:9px; margin-top:12px; font-size:9.5px; color:#9aa7b4; display:flex; justify-content:space-between; }
+  .noprint{ text-align:center; padding:12px; background:#f4f6f9; }
+  .noprint button{ background:#1F3864; color:#fff; border:none; border-radius:8px; padding:10px 22px; font:700 13px sans-serif; cursor:pointer; }
+  @media print{ .noprint{ display:none; } .page{ padding:0; } }
 </style></head><body>
-  <div class="noprint"><button onclick="window.print()">🖨 Save as PDF / Print</button></div>
-  <div class="band"><div class="brand">Brandon Hall Hotel &amp; Spa · HosPRO</div><h1>HosHOUSE — Housekeeping Management Report</h1><div class="range">${fd(from)} – ${fd(to)}</div></div>
-  <div class="wrap">
+  <div class="noprint"><button onclick="window.print()">🖨 Save as PDF / Print  ·  choose “Landscape”</button></div>
+
+  <div class="page">
+    ${band}
     <p class="lead">${narr}</p>
     <div class="kgrid">${kpis}</div>
     <div class="row">
-      ${card('Rooms by clean type', `<div class="flx">${hhDonut(typeSegs,{v:beds.length,k:'rooms'})}<div style="flex:1;min-width:140px">${legend(typeSegs)||'<span style="color:#8296a8">No data</span>'}</div></div>`)}
-      ${card('Rooms by floor', `<div class="flx">${hhDonut(floorSegs,{v:beds.length,k:'rooms'})}<div style="flex:1;min-width:140px">${legend(floorSegs)||'<span style="color:#8296a8">No data</span>'}</div></div>`)}
+      ${card('Rooms by clean type', `<div class="flx">${hhDonut(typeSegs,{v:beds.length,k:'rooms'})}<div style="flex:1">${legend(typeSegs)||'<span style="color:#8296a8">No data</span>'}</div></div>`,'c1')}
+      ${card('Rooms by floor', `<div class="flx">${hhDonut(floorSegs,{v:beds.length,k:'rooms'})}<div style="flex:1">${legend(floorSegs)||'<span style="color:#8296a8">No data</span>'}</div></div>`,'c1')}
+      ${card('Average clean time by type', hhBars(avgByType),'c2')}
     </div>
-    ${card('Rooms per day by type', dates.length>1?hhLineChart(lineSeries,dlab,{w:760,h:200}):'<div style="color:#8296a8">Only one day in this selection.</div>')}
-    <div class="row" style="margin-top:16px">
-      ${card('Top staff — rooms cleaned', people.length?hhBars(people.slice(0,10).map(p=>({label:p.name,value:p.done,sub:p.done?Math.round(p.mins/p.done)+'m avg':''}))):'<div style="color:#8296a8">No completed rooms.</div>')}
-      ${card('Average clean time by type', hhBars(avgByType))}
-    </div>
-    ${card('Team efficiency — individual breakdown', `<table><thead><tr><th>Housekeeper</th><th>Rooms done</th><th>Avg min/room</th><th>Over target</th><th>Efficiency</th></tr></thead><tbody>${effRows}</tbody></table><div style="font-size:10px;color:#8296a8;margin-top:8px">Efficiency = 25 min allowed per room ÷ actual average.</div>`)}
-    <div class="sec"></div>
-    ${card('Lost property ('+lost.length+')', `<table><thead><tr><th>Room</th><th>Date</th><th>Item</th><th>Found by</th></tr></thead><tbody>${lostTbl}</tbody></table>`)}
-    <div style="height:14px"></div>
-    ${card('Maintenance issues ('+maint.length+')', `<table><thead><tr><th>Room</th><th>Date</th><th>Issue</th><th>Reported by</th></tr></thead><tbody>${maintTbl}</tbody></table>`)}
-    <div class="foot"><span>HosHOUSE · Brandon Hall Hotel &amp; Spa</span><span>Generated ${gen}</span></div>
+    ${foot}
   </div>
-  <script>window.onload=function(){setTimeout(function(){try{window.print();}catch(e){}},400);};<\/script>
+
+  <div class="page brk">
+    ${strip('Daily activity &amp; team performance')}
+    ${card('Rooms per day by type', dates.length>1?hhLineChart(lineSeries,dlab,{w:1020,h:230}):'<div style="color:#8296a8">Only one day in this selection — widen the dates to see the trend.</div>')}
+    <div class="row">
+      ${card('Top staff — rooms cleaned', people.length?hhBars(people.slice(0,12).map(p=>({label:p.name,value:p.done,sub:p.done?Math.round(p.mins/p.done)+'m avg':''}))):'<div style="color:#8296a8">No completed rooms.</div>')}
+      ${card('Team efficiency — individual breakdown', `<table><thead><tr><th>Housekeeper</th><th>Rooms done</th><th>Avg min/room</th><th>Over target</th><th>Efficiency</th></tr></thead><tbody>${effRows}</tbody></table><div style="font-size:9.5px;color:#8296a8;margin-top:7px">Efficiency = 25 min allowed per room ÷ actual average.</div>`)}
+    </div>
+    ${foot}
+  </div>
+
+  <div class="page brk">
+    ${strip('Lost property &amp; maintenance log')}
+    <div class="row">
+      ${card('Lost property ('+lost.length+')', `<table><thead><tr><th>Room</th><th>Date</th><th>Item</th><th>Found by</th></tr></thead><tbody>${lostTbl}</tbody></table>`)}
+      ${card('Maintenance issues ('+maint.length+')', `<table><thead><tr><th>Room</th><th>Date</th><th>Issue</th><th>Reported by</th></tr></thead><tbody>${maintTbl}</tbody></table>`)}
+    </div>
+    ${foot}
+  </div>
+
+  <script>window.onload=function(){setTimeout(function(){try{window.print();}catch(e){}},500);};<\/script>
 </body></html>`;
 }
 /* ---- Lost property & Maintenance: click the tile to see the items and send them on ---- */
