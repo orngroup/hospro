@@ -147,12 +147,21 @@ function hpAccessMergeDefaults(){
     Object.keys(DEFAULT_ACCESS.users ).forEach(u=>{ if(!ACCESS_CONFIG.users[u])  ACCESS_CONFIG.users[u]=JSON.parse(JSON.stringify(DEFAULT_ACCESS.users[u])); });
   }catch(e){}
 }
+/* These accounts are locked to Housekeeping only — they must never see the rest
+   of the portal (finance, sales, maintenance, etc.), whatever a saved config says. */
+const HK_ONLY_USERS={ 'ruth.addison':'Ruth Addison', 'laith.hardy':'Laith Hardy' };
+function hpEnforceHKOnly(){
+  try{ ACCESS_CONFIG.users=ACCESS_CONFIG.users||{};
+    Object.keys(HK_ONLY_USERS).forEach(k=>{ const u=ACCESS_CONFIG.users[k]||{name:HK_ONLY_USERS[k],position:'Housekeeping',email:'',phone:''};
+      u.groups=['housekeeping']; delete u.group; ACCESS_CONFIG.users[k]=u; });
+  }catch(e){}
+}
 function hpAccessLoad(){
   try{ const raw=localStorage.getItem('hp_access'); if(raw) hpAccessApply(JSON.parse(raw)); }catch(e){}
-  hpAccessMergeDefaults();
+  hpAccessMergeDefaults(); hpEnforceHKOnly();
   try{ if(typeof FB!=="undefined" && FB.ready && FB.db){
     FB.db.collection('meta').doc('access_config').get().then(d=>{
-      if(d.exists){ hpAccessApply(d.data()); hpAccessMergeDefaults();
+      if(d.exists){ hpAccessApply(d.data()); hpAccessMergeDefaults(); hpEnforceHKOnly();
         try{ localStorage.setItem('hp_access', JSON.stringify({maintenance:ACCESS_CONFIG.maintenance,groups:ACCESS_CONFIG.groups,users:ACCESS_CONFIG.users})); }catch(e){}
         try{ render(); }catch(e){}
       }
@@ -10657,7 +10666,7 @@ async function renderHosHouseMgmt(){
     </div>
     ${card('Lost property'+(lost.length?(' ('+lost.length+')'):''), lost.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Room</th><th style="padding:6px 10px">Date</th><th style="padding:6px 10px">Item</th><th style="padding:6px 10px">Found by</th></tr>${lostRows}</table></div>`:'<div style="color:#8296a8;font-size:13px">No lost property logged in this period.</div>')}
     ${card('Staff efficiency', `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Housekeeper</th><th style="padding:6px 10px">Rooms done</th><th style="padding:6px 10px">Avg min/room</th><th style="padding:6px 10px">Over target</th><th style="padding:6px 10px">Efficiency</th></tr>${people.length?people.map(p=>{ const am=p.done?Math.round(p.mins/p.done):0; const effPct=am?Math.min(100,Math.round(25/am*100)):0; const bar=`<div style="background:#eef1f5;border-radius:5px;height:9px;width:90px;display:inline-block;vertical-align:middle;overflow:hidden"><div style="width:${effPct}%;height:100%;background:${effPct>=90?'#2E6B5E':effPct>=70?'#d9930a':'#b3261e'}"></div></div> <span style="color:#8296a8">${effPct}%</span>`; return `<tr style="border-top:1px solid #eef1f4;cursor:pointer" onclick="hhOpenStaffRooms('${hhEsc(p.id||'')}')"><td style="padding:8px 10px"><b>${hhEsc(p.name)}</b></td><td style="padding:8px 10px">${p.done}</td><td style="padding:8px 10px">${am||'—'}</td><td style="padding:8px 10px;color:${p.over?'#b3261e':'#1f2a37'}">${p.over||0}</td><td style="padding:8px 10px">${bar}</td></tr>`; }).join(''):'<tr><td colspan="5" style="padding:14px;color:#8296a8">No completed rooms in this selection.</td></tr>'}</table></div><div style="font-size:11px;color:#8296a8;margin-top:8px">Efficiency = time allowed per room (25 min) ÷ actual average. Click a row to see that person's rooms.</div>`,'margin-top:14px')}
-    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button onclick="hhMgmtExport()" style="padding:9px 14px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12.5px Lato;cursor:pointer">⬇ Export this view (CSV)</button><button onclick="hhPurgeModal()" style="padding:9px 14px;border:1px solid #e4b9b3;background:#fff;color:#b3261e;border-radius:8px;font:700 12.5px Lato;cursor:pointer" title="Permanently remove early/test records">🗑 Clear old data</button></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button onclick="hhReportModal()" style="padding:9px 14px;border:none;background:#1F3864;color:#fff;border-radius:8px;font:700 12.5px Lato;cursor:pointer">📄 Management report (PDF)</button><button onclick="hhMgmtExport()" style="padding:9px 14px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12.5px Lato;cursor:pointer">⬇ Export this view (CSV)</button><button onclick="hhPurgeModal()" style="padding:9px 14px;border:1px solid #e4b9b3;background:#fff;color:#b3261e;border-radius:8px;font:700 12.5px Lato;cursor:pointer" title="Permanently remove early/test records">🗑 Clear old data</button></div>
     <style>@media(max-width:720px){.hh-mg{grid-template-columns:1fr !important}}</style>`;
   window._hhMgmtRows=rows;
 }
@@ -10677,6 +10686,157 @@ function hhMgmtExport(){
   const csv='﻿'+[line(head),...body].join('\r\n');
   const b=new Blob([csv],{type:'text/csv;charset=utf-8'}); const u=URL.createObjectURL(b);
   const a=document.createElement('a'); a.href=u; a.download='hoshouse-overview.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000);
+}
+/* ============================================================
+   HOSHOUSE — branded Management Report (date range → print / Save as PDF)
+   ============================================================ */
+function hhReportModal(){
+  const {from,to}=hhMgmtRange(HH_MGMT_PERIOD);
+  const ds='display:block;font:700 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px';
+  const is='padding:9px 11px;border:1.5px solid #d7dde4;border-radius:8px;font:14px Lato';
+  showModal('📄 Management report','Branded housekeeping summary — save as PDF',`
+    <div style="font:13.5px/1.6 Lato;color:#1a2b3a">
+      <p style="margin:0 0 12px">Choose the dates to cover. The report includes the summary stats, charts, team efficiency and an individual breakdown — ready to save as a PDF.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <div><label style="${ds}">From</label><input type="date" id="hh-rep-from" value="${from}" style="${is}"></div>
+        <div><label style="${ds}">To</label><input type="date" id="hh-rep-to" value="${to}" style="${is}"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="hhCreateReport()" style="padding:10px 16px;border:none;border-radius:9px;font:700 13px Lato;cursor:pointer;background:#1F3864;color:#fff">Create report</button>
+        <button onclick="closeModal()" style="padding:10px 16px;border:1px solid #d7dde4;background:#fff;border-radius:9px;font:700 13px Lato;cursor:pointer;color:#1a2b3a">Cancel</button>
+      </div>
+      <div style="font-size:11px;color:#8296a8;margin-top:10px">Opens a print view — pick “Save as PDF” as the destination.</div>
+    </div>`);
+}
+async function hhCreateReport(){
+  const f=document.getElementById('hh-rep-from'), t=document.getElementById('hh-rep-to');
+  let from=(f&&f.value)||HH_DATA_FLOOR, to=(t&&t.value)||hhTodayISO();
+  if(from<HH_DATA_FLOOR) from=HH_DATA_FLOOR;
+  if(to<from){ const x=from; from=to; to=x; }
+  const all=await hhFetchAllRooms();
+  const rows=all.filter(r=>(r._date||'')>=from && (r._date||'')<=to && (r._date||'')>=HH_DATA_FLOOR);
+  const html=hhReportHTML(rows, from, to);
+  const w=window.open('','_blank');
+  if(!w){ toast('Allow pop-ups to open the report'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  closeModal();
+}
+function hhReportHTML(rows, from, to){
+  const fd=d=>{ if(!d) return ''; const x=new Date(d+'T12:00'); return isNaN(x)?d:x.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
+  const TC={Departure:'#1f7a8c',Stayover:'#4a86c7','Arrival-ready':'#2a6a4a'};
+  const TLAB={Departure:'Departures',Stayover:'Stayover','Arrival-ready':'Arrivals'};
+  const beds=rows.filter(r=>!r.area), areas=rows.filter(r=>r.area);
+  const done=beds.filter(r=>r.status==='done');
+  const over=done.filter(r=>(r.durationSec||0)>hhRepTgt(r)*60);
+  const avg=done.length?Math.round(done.reduce((a,r)=>a+(r.durationSec||0)/60,0)/done.length):0;
+  const totalMins=Math.round(done.reduce((a,r)=>a+(r.durationSec||0)/60,0));
+  const totalHrs=Math.round(totalMins/60*10)/10;
+  const lost=beds.filter(r=>(r.lostProperty&&r.lostProperty.trim())||r.lostPhoto);
+  const maint=beds.filter(r=>r.maintenance&&r.maintenance.trim());
+  const blocked=beds.filter(r=>r.status==='blocked');
+  const daysActive=new Set(rows.map(r=>r._date).filter(Boolean)).size;
+  const comp=beds.length?Math.round(done.length/beds.length*100):0;
+  const pubDone=areas.filter(r=>r.status==='done').length;
+  // per-person
+  const by={}; beds.forEach(r=>{ const k=r.housekeeper||'_un'; by[k]=by[k]||{name:hhNameFor(r),done:0,mins:0,over:0,total:0};
+    by[k].total++; if(r.status==='done'){ by[k].done++; by[k].mins+=(r.durationSec||0)/60; if((r.durationSec||0)>hhRepTgt(r)*60) by[k].over++; } });
+  const people=Object.values(by).filter(p=>p.name!=='Unallocated'&&p.done>0).sort((a,b)=>b.done-a.done);
+  const tc={Departure:0,Stayover:0,'Arrival-ready':0}; beds.forEach(r=>{ const t=tc[r.type]!=null?r.type:'Departure'; tc[t]++; });
+  const fc={}; beds.forEach(r=>{ const fl=hhFloorLabel(r.floor||hhFloorOf(r.room))||'—'; fc[fl]=(fc[fl]||0)+1; });
+  const avgByType=['Departure','Stayover','Arrival-ready'].map(t=>{ const dd=done.filter(r=>r.type===t); const m=dd.length?Math.round(dd.reduce((a,r)=>a+(r.durationSec||0)/60,0)/dd.length):0; return {label:TLAB[t],value:m,sub:'min'}; });
+  const dates=[...new Set(rows.map(r=>r._date).filter(Boolean))].sort();
+  const dlab=dates.map(d=>{ const x=new Date(d+'T12:00'); return isNaN(x)?d:x.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); });
+  const serie=t=>dates.map(d=>beds.filter(r=>r._date===d && (tc[r.type]!=null?r.type:'Departure')===t).length);
+  const lineSeries=[{name:'Departures',values:serie('Departure'),colour:TC.Departure,fill:true},{name:'Stayover',values:serie('Stayover'),colour:TC.Stayover},{name:'Arrivals',values:serie('Arrival-ready'),colour:TC['Arrival-ready']}];
+  const typeSegs=['Departure','Stayover','Arrival-ready'].filter(t=>tc[t]).map(t=>({label:TLAB[t],value:tc[t],color:TC[t]}));
+  const FCOL={Ground:'#2E6B5E',First:'#1F3864'};
+  const floorSegs=Object.entries(fc).sort().map(([f,n])=>({label:f,value:n,color:FCOL[f]||'#7a5aa0'}));
+  const legend=segs=>segs.map(s=>`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0"><span style="width:11px;height:11px;border-radius:3px;background:${s.color};display:inline-block"></span>${hhEsc(s.label)}<b style="margin-left:auto">${s.value}</b></div>`).join('');
+  const topName=people.length?people[0].name:'—';
+  const topDone=people.length?people[0].done:0;
+  const topAvg=people.length&&people[0].done?Math.round(people[0].mins/people[0].done):0;
+  const teamEff=(()=>{ const am=done.length?totalMins/done.length:0; return am?Math.min(100,Math.round(25/am*100)):0; })();
+  // narrative
+  const narr=`Between <b>${fd(from)}</b> and <b>${fd(to)}</b>, the housekeeping team completed <b>${done.length}</b> of ${beds.length} rooms set (<b>${comp}%</b>) across <b>${daysActive}</b> working day${daysActive===1?'':'s'}. `+
+    `The average clean time was <b>${avg} minutes</b> per room — ${totalHrs} hours in total. <b>${over.length}</b> room${over.length===1?'':'s'} ran over the 25-minute target (team efficiency <b>${teamEff}%</b>). `+
+    (people.length?`<b>${hhEsc(topName)}</b> cleaned the most rooms (${topDone}, averaging ${topAvg}m). `:'')+
+    `${lost.length} lost-property item${lost.length===1?'':'s'}, ${maint.length} maintenance issue${maint.length===1?'':'s'} and ${blocked.length} DND/refused room${blocked.length===1?'':'s'} were logged. ${pubDone} public-area task${pubDone===1?'':'s'} completed.`;
+  // KPI tiles
+  const kpi=(v,l,c,sub)=>`<div class="kpi"><div class="kv" style="color:${c}">${v}</div><div class="kl">${l}</div>${sub?`<div class="ks">${sub}</div>`:''}</div>`;
+  const kpis=[
+    kpi(done.length,'Rooms cleaned','#2E6B5E',comp+'% of '+beds.length+' set'),
+    kpi(avg+'m','Avg clean time','#1F3864',totalHrs+' hrs total'),
+    kpi(over.length,'Over target',over.length?'#b3261e':'#5b6b7b','> 25 min'),
+    kpi(teamEff+'%','Team efficiency','#2E6B5E','25m ÷ avg'),
+    kpi(lost.length,'Lost property','#7a5aa0','items logged'),
+    kpi(maint.length,'Maintenance','#b9780a','issues'),
+    kpi(blocked.length,'DND / refused','#b9780a','could not clean'),
+    kpi(daysActive,'Days active','#1F3864','with cleaning'),
+  ].join('');
+  // efficiency table
+  const effRows=people.length?people.map(p=>{ const am=p.done?Math.round(p.mins/p.done):0; const eff=am?Math.min(100,Math.round(25/am*100)):0;
+    const col=eff>=90?'#2E6B5E':eff>=70?'#d9930a':'#b3261e';
+    return `<tr><td><b>${hhEsc(p.name)}</b></td><td>${p.done}</td><td>${am||'—'}</td><td style="color:${p.over?'#b3261e':'#1f2a37'}">${p.over||0}</td><td><span style="display:inline-block;width:70px;height:8px;background:#eef1f5;border-radius:5px;overflow:hidden;vertical-align:middle"><span style="display:block;width:${eff}%;height:100%;background:${col}"></span></span> ${eff}%</td></tr>`;
+  }).join(''):'<tr><td colspan="5" style="color:#8296a8">No completed rooms in this period.</td></tr>';
+  // lost + maint lists
+  const listRows=(arr,valf)=>arr.length?arr.slice().sort((a,b)=>(a._date||'').localeCompare(b._date||'')).map(r=>`<tr><td><b>${hhEsc(r.room)}</b></td><td>${hhEsc(fd(r._date))}</td><td>${hhEsc(valf(r))}</td><td>${hhEsc(hhNameFor(r))}</td></tr>`).join(''):'<tr><td colspan="4" style="color:#8296a8">None logged.</td></tr>';
+  const lostTbl=listRows(lost,r=>r.lostProperty||'(photo only)');
+  const maintTbl=listRows(maint,r=>r.maintenance||'');
+  const card=(title,inner)=>`<div class="card"><div class="ct">${title}</div>${inner}</div>`;
+  const gen=new Date().toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  return `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><title>HosHOUSE Management Report — ${fd(from)} to ${fd(to)}</title>
+<style>
+  @page{ size:A4; margin:14mm; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Aptos','Segoe UI',system-ui,-apple-system,Roboto,sans-serif; color:#1a2b3a; margin:0; font-size:12px; line-height:1.5; }
+  .band{ background:#1F3864; color:#fff; padding:22px 26px; border-radius:0 0 4px 4px; }
+  .band .brand{ font-size:12px; letter-spacing:1px; text-transform:uppercase; opacity:.8; font-weight:700; }
+  .band h1{ margin:4px 0 2px; font-size:24px; }
+  .band .range{ font-size:13px; opacity:.9; }
+  .wrap{ padding:18px 26px 40px; }
+  .lead{ font-size:13px; background:#f4f7fb; border-left:4px solid #2E6B5E; padding:12px 16px; border-radius:6px; margin:0 0 18px; }
+  .kgrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
+  .kpi{ border:1px solid #e4e9ef; border-radius:10px; padding:11px 13px; }
+  .kv{ font-size:23px; font-weight:800; }
+  .kl{ font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:#6b7280; font-weight:800; margin-top:2px; }
+  .ks{ font-size:10.5px; color:#5b6b7b; margin-top:2px; }
+  .row{ display:flex; gap:14px; margin-bottom:16px; }
+  .row>.card{ flex:1; }
+  .card{ border:1px solid #e4e9ef; border-radius:12px; padding:14px 16px; page-break-inside:avoid; }
+  .ct{ font-size:13px; font-weight:800; margin-bottom:10px; color:#1F3864; }
+  .sec{ page-break-inside:avoid; margin-bottom:16px; }
+  table{ width:100%; border-collapse:collapse; font-size:11.5px; }
+  th{ text-align:left; color:#6b7280; font-size:10px; text-transform:uppercase; letter-spacing:.4px; padding:5px 8px; border-bottom:1.5px solid #e4e9ef; }
+  td{ padding:6px 8px; border-bottom:1px solid #eef1f4; }
+  .flx{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .foot{ margin-top:18px; border-top:1px solid #e4e9ef; padding-top:10px; font-size:10px; color:#9aa7b4; display:flex; justify-content:space-between; }
+  .noprint{ text-align:center; padding:12px; }
+  .noprint button{ background:#1F3864; color:#fff; border:none; border-radius:8px; padding:10px 20px; font:700 13px sans-serif; cursor:pointer; }
+  @media print{ .noprint{ display:none; } }
+</style></head><body>
+  <div class="noprint"><button onclick="window.print()">🖨 Save as PDF / Print</button></div>
+  <div class="band"><div class="brand">Brandon Hall Hotel &amp; Spa · HosPRO</div><h1>HosHOUSE — Housekeeping Management Report</h1><div class="range">${fd(from)} – ${fd(to)}</div></div>
+  <div class="wrap">
+    <p class="lead">${narr}</p>
+    <div class="kgrid">${kpis}</div>
+    <div class="row">
+      ${card('Rooms by clean type', `<div class="flx">${hhDonut(typeSegs,{v:beds.length,k:'rooms'})}<div style="flex:1;min-width:140px">${legend(typeSegs)||'<span style="color:#8296a8">No data</span>'}</div></div>`)}
+      ${card('Rooms by floor', `<div class="flx">${hhDonut(floorSegs,{v:beds.length,k:'rooms'})}<div style="flex:1;min-width:140px">${legend(floorSegs)||'<span style="color:#8296a8">No data</span>'}</div></div>`)}
+    </div>
+    ${card('Rooms per day by type', dates.length>1?hhLineChart(lineSeries,dlab,{w:760,h:200}):'<div style="color:#8296a8">Only one day in this selection.</div>')}
+    <div class="row" style="margin-top:16px">
+      ${card('Top staff — rooms cleaned', people.length?hhBars(people.slice(0,10).map(p=>({label:p.name,value:p.done,sub:p.done?Math.round(p.mins/p.done)+'m avg':''}))):'<div style="color:#8296a8">No completed rooms.</div>')}
+      ${card('Average clean time by type', hhBars(avgByType))}
+    </div>
+    ${card('Team efficiency — individual breakdown', `<table><thead><tr><th>Housekeeper</th><th>Rooms done</th><th>Avg min/room</th><th>Over target</th><th>Efficiency</th></tr></thead><tbody>${effRows}</tbody></table><div style="font-size:10px;color:#8296a8;margin-top:8px">Efficiency = 25 min allowed per room ÷ actual average.</div>`)}
+    <div class="sec"></div>
+    ${card('Lost property ('+lost.length+')', `<table><thead><tr><th>Room</th><th>Date</th><th>Item</th><th>Found by</th></tr></thead><tbody>${lostTbl}</tbody></table>`)}
+    <div style="height:14px"></div>
+    ${card('Maintenance issues ('+maint.length+')', `<table><thead><tr><th>Room</th><th>Date</th><th>Issue</th><th>Reported by</th></tr></thead><tbody>${maintTbl}</tbody></table>`)}
+    <div class="foot"><span>HosHOUSE · Brandon Hall Hotel &amp; Spa</span><span>Generated ${gen}</span></div>
+  </div>
+  <script>window.onload=function(){setTimeout(function(){try{window.print();}catch(e){}},400);};<\/script>
+</body></html>`;
 }
 /* ---- Lost property & Maintenance: click the tile to see the items and send them on ---- */
 function hhIssueDate(d){ if(!d) return ''; const x=new Date(d+'T12:00'); return isNaN(x)?d:x.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
