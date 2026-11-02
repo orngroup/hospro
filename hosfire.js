@@ -2304,24 +2304,30 @@ async function llKey(pw) {
   const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: enc.encode(LL_SALT), iterations: LL_ITER, hash: "SHA-256" }, base, 256);
   return Array.from(new Uint8Array(bits)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-const LL_GROUPS = ["Fire risk assessment", "Fire inspection", "Gas safety", "Electrical (EICR and PAT)", "Fire alarm and emergency lighting", "Fire extinguishers and kitchen suppression", "Fire doors and fire stopping", "Pool plant and leisure", "Policies and procedures", "Alterations and consents", "Other"];
+const LL_GROUPS = ["Fire risk assessment", "Fire inspection", "Gas safety", "Electrical (EICR and PAT)", "Fire alarm and emergency lighting", "Fire extinguishers and kitchen suppression", "Fire doors and fire stopping", "Pool plant and leisure", "Water hygiene (legionella)", "Alterations and consents", "Floor plans and building", "Policies and procedures", "Other"];
 const LL_REQUESTED = [["Gas safety certificates", "Gas safety"], ["Electrical installation condition report (EICR)", "Electrical (EICR and PAT)"], ["Fire risk assessment reports", "Fire risk assessment"], ["Pool plant testing reports", "Pool plant and leisure"]];
+const llStrip = (t) => String(t || "").replace(/^\s*(FRA|Leader|HosHUB)\s+Documents\s*[—–-]\s*/i, "").replace(/\.(pdf|docx?|xlsx?|jpe?g|png)$/i, "");
 function llGroupOf(r) {
-  const t = `${r.title || r.name || ""} ${r.cat || ""}`.toLowerCase();
-  if (/risk assessment/.test(t)) return "Fire risk assessment";
+  const t = `${llStrip(r.title || r.name || "")} ${r.cat || ""}`.toLowerCase();
+  if (/legionella|disinfection|water hygiene|\btmv\b|sampling/.test(t)) return "Water hygiene (legionella)";
+  if (/pool|swimming|spa plant|plant room log|chlorine/.test(t)) return "Pool plant and leisure";
+  if (/risk assessment|\bfra\b|bs ?9792|pas ?79/.test(t)) return "Fire risk assessment";
   if (/fire and rescue|wfrs|fire safety order|inspection \/ enforcement/.test(t)) return "Fire inspection";
-  if (/gas/.test(t)) return "Gas safety";
-  if (/eicr|electrical|pat\b|portable appliance/.test(t)) return "Electrical (EICR and PAT)";
-  if (/fire alarm|emergency light|fireclass|zone/.test(t)) return "Fire alarm and emergency lighting";
-  if (/extinguish|suppression|ansul|duct|tr19/.test(t)) return "Fire extinguishers and kitchen suppression";
+  if (/\bgas\b|gas safe|cp12|gas genie/.test(t)) return "Gas safety";
+  if (/eicr|electrical|electical|\bpat\b|portable appliance/.test(t)) return "Electrical (EICR and PAT)";
+  if (/fire alarm|emergency l|\beml\b|\bfas\b|fireclass|\bzone|fire certificate/.test(t)) return "Fire alarm and emergency lighting";
+  if (/extinguish|\bext\b|suppression|ansul|duct|tr19|extract/.test(t)) return "Fire extinguishers and kitchen suppression";
   if (/fire door|fire stop/.test(t)) return "Fire doors and fire stopping";
-  if (/pool|spa|leisure|legionella|water/.test(t)) return "Pool plant and leisure";
-  if (/consent|alteration|heat pump|lock|wi-?fi|access point|landlord|lease/.test(t)) return "Alterations and consents";
+  if (/consent|alteration|heat pump|\block|wi-?fi|access point|landlord|lease/.test(t)) return "Alterations and consents";
+  if (/floor plan|escape route plan|roof/.test(t)) return "Floor plans and building";
   if (/policy|procedure|manual|statement/.test(t)) return "Policies and procedures";
   return "Other";
 }
+/* Internal working documents — not for the landlord unless deliberately ticked */
+const LL_INTERNAL = /BHH-ST-0?(4|6|7|8|9|10|11)\b|records gap|interim measures|false alarm summary|letter of authority|cover letter|action plan progress|gas appliance isolation|fireclass|test rota|\bSKM_|retrospective|queries|job sheet|small-?works|\bcow\b/i;
+const llInternal = (r) => LL_INTERNAL.test(`${r.title || r.name || ""} ${r.fileName || ""}`);
 // Documents ticked by default the first time (the landlord's request plus the main compliance records)
-const llDefaultOn = (r) => !!r.file && !/quote|correspondence|form|training/i.test(r.cat || "") && !/retrospective|queries|email|to complete/i.test(r.title || "");
+const llDefaultOn = (r) => !!r.file && !llInternal(r) && !/quote|correspondence|form|training/i.test(r.cat || "") && !/retrospective|queries|email|to complete/i.test(r.title || "");
 
 /* Wi-Fi access point schedule — from Quest's Ubiquiti design plan "Brandon Hall Hotel AP Locations", 29 Oct 2026 */
 const LL_AP_SRC = "Quest — Ubiquiti access point location plan, 29 October 2026";
@@ -2383,12 +2389,19 @@ const llDraft = () => {
   if (d.showAps === undefined) d.showAps = true;
   d.certNotes = d.certNotes || {};
   (d.alts || []).forEach((a) => { if (/bedroom door locks/i.test(a.what)) { if (!a.cert) { a.what = LL_LOCK.what; a.cert = LL_LOCK.cert; } if (!a.status) a.status = LL_LOCK.status; if (!a.date) a.date = LL_LOCK.date; if (!a.contractor) a.contractor = LL_LOCK.contractor; } });
+  if ((d.v || 0) < 2) {   // one-off clean-up (2 Nov 2026): automatic sections, internal documents unticked, stale notes cleared, door-blank work restored
+    Object.values(d.docs || {}).forEach((x) => { delete x.group; delete x.keep; }); Object.values(d.hub || {}).forEach((x) => { delete x.group; delete x.keep; });
+    reg("doc").forEach((r) => { if (llInternal(r)) d.docs[r.id] = { on: false }; });
+    reg("cert").forEach((c) => { if (/will be provided once completed/i.test(d.certNotes[c.id] || "") && certState(c).st === "OK") d.certNotes[c.id] = ""; });
+    if (!(d.works || []).some((w) => /door blank|fire doorset/i.test(w.work))) d.works.splice(2, 0, { work: "Replace the damaged riser door blanks with certified fire doorsets of the required rating, installed by a third-party certificated installer", contractor: "", target: "", status: "Not started", evidence: "" });
+    d.v = 2; S.f.llMigrated = true;
+  }
   if (!(d.alts || []).some((a) => /wi-?fi/i.test(a.what))) d.alts.unshift({ what: "Wi-Fi access points (service risers)", date: "", contractor: "Quest (hotel Wi-Fi provider) — to be confirmed", consent: "", cert: "", status: "" });
   S.f.ll = d; S.f.llMeta = { shareId: saved.shareId || "", publishedAt: saved.publishedAt || 0, publishedBy: saved.publishedBy || "" };
   return d;
 };
 const llDocs = () => S.data.registers.filter((r) => r.kind === "doc").sort((a, b) => natRef(llGroupOf(a), llGroupOf(b)) || natRef(b.date || "", a.date || ""));
-const llDocOn = (d, r) => (d.docs[r.id] ? d.docs[r.id].on : llDefaultOn(r));
+const llDocOn = (d, r) => (d.docs[r.id] && (d.docs[r.id].keep || !llInternal(r)) ? d.docs[r.id].on : llDefaultOn(r));
 const llDocGroup = (d, r) => (d.docs[r.id] && d.docs[r.id].group) || llGroupOf(r);
 const llCertOn = (d, c) => (c.id in d.certs ? d.certs[c.id] : !!c.last);
 const LL_STATUS = ["Not started", "Booked", "In progress", "Completed"];
@@ -2404,8 +2417,8 @@ async function llLoadHub() {
   } catch (e) { S.f.llHub = { rows: [], err: "Could not read HosHUB (" + (e.code || e.message) + "). Sign in with your HosPRO login to include HosHUB documents." }; }
   render();
 }
-const llHubTitle = (r) => String(r.name || r.fileName || "Document").replace(/\.(pdf|docx?|xlsx?|jpe?g|png)$/i, "");
-const llHubOn = (d, r) => (d.hub[r.id] ? d.hub[r.id].on : LL_HUB_WANT.test(`${r.name} ${r.type} ${r.tab}`));
+const llHubTitle = (r) => llStrip(r.name || r.fileName || "Document");
+const llHubOn = (d, r) => (d.hub[r.id] && (d.hub[r.id].keep || !llInternal(r)) ? d.hub[r.id].on : !llInternal(r) && LL_HUB_WANT.test(`${r.name} ${r.type} ${r.tab}`));
 const llHubGroup = (d, r) => (d.hub[r.id] && d.hub[r.id].group) || llGroupOf({ title: `${r.name} ${r.type || ""}`, cat: "" });
 
 // 20 working days from the notice date (England bank holidays 2026–27)
@@ -2432,10 +2445,12 @@ VIEWS.landlord = () => {
       <button class="btn ghost" id="ll-save">Save draft</button>
       <button class="btn red" id="ll-pub" ${adm ? "" : "disabled title='HosFIRE administrators only'"}>${M.publishedAt ? "Update the landlord page" : "Publish the landlord page"}</button>
       <button class="btn ghost" id="ll-view">Open the landlord page</button>
+      <button class="btn ghost" id="ll-pdf">🖨 Landlord pack (PDF)</button>
       ${M.shareId && adm ? `<button class="btn ghost" id="ll-off" style="color:var(--red)">Take the page down</button>` : ""}
       <span class="muted" id="ll-msg"></span></div>
     <p class="muted" style="margin:8px 0 0">Changes are only shown to the landlord after you press <b>${M.publishedAt ? "Update" : "Publish"}</b>. Changing the password and publishing again stops the old password working. A 4-digit password is easy to guess, so for anything sensitive use a longer one.</p></div>
 
+  ${S.f.llMigrated ? `<div class="card" style="margin-bottom:12px;border-left:6px solid var(--ok)"><b>Tidied up for you:</b> documents are now sorted into the right sections automatically, internal working documents (statements ST-04 and ST-06 to ST-11, FireClass manuals, the test rota, unnamed scans and job sheets) are unticked, "Will be provided once completed" notes on certificates already in date are cleared, and the riser door replacement work is back in the timetable. Duplicate copies are left out when you publish. Check the sections below, then press <b>Save draft</b> and <b>Update the landlord page</b>.</div>` : ""}
   <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">1. Their letter</h3>
     <div class="f2"><div><label>Addressed to (landlord / agent)</label>${inp("addressee", "e.g. the landlord's surveyor")}</div><div><label>Letter from</label>${inp("noticeFrom", "Name and company")}</div></div>
     <div class="f2"><div><label>Date of the letter</label>${inp("noticeDate", "", "date")}</div><div><label>20 working days ends</label><input readonly value="${due ? h(fd(due)) : "Enter the letter date"}"></div></div>
@@ -2472,10 +2487,22 @@ VIEWS.landlord = () => {
     <label>Consents (requested, granted or to be applied for)</label>${ta("consents", "e.g. retrospective consent being sought for…", 3)}
     <label>Contact for this matter</label>${ta("contact", "Name, role, email and phone", 2)}</div>
 
-  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">6. Certificates summary <span class="muted" style="font-weight:400">(${certs.filter((c) => llCertOn(d, c)).length} of ${certs.length} shown)</span></h3>
-    <p class="muted">Contractor and dates come from HosFIRE → Certificates — edit them there. Use the note to explain anything overdue or due soon (e.g. "Service booked for 4 November 2026"); it shows under the status on the landlord page.</p>
-    <div class="tw"><table><tr><th></th><th>Certificate</th><th>Contractor</th><th>Last done</th><th>Next due</th><th>Status</th><th style="width:28%">Note for the landlord</th></tr>
-    ${certs.map((c) => `<tr><td><input type="checkbox" data-cert="${c.id}" ${llCertOn(d, c) ? "checked" : ""} style="width:auto"></td><td><b>${h(c.name)}</b></td><td>${c.contractor ? h(c.contractor) : '<span class="pill p-amb">Add in Certificates</span>'}</td><td>${c.last ? fds(c.last) : "—"}</td><td>${c.next ? fds(c.next) : "—"}</td><td>${pill(c.st)}</td><td><input data-cn="${c.id}" value="${h(d.certNotes[c.id] || "")}" placeholder="${c.st === "Overdue" || c.st === "Due soon" ? "e.g. Booked for …" : ""}"></td></tr>`).join("")}</table></div></div>
+  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">6. Certificates and servicing <span class="muted" style="font-weight:400">(${certs.filter((c) => llCertOn(d, c)).length} of ${certs.length} shown to the landlord)</span></h3>
+    <p class="muted">Update each line here — contractor, the date it was last done, how often, the certificate number, who is arranging it and the next booked date. Changes save straight into HosFIRE → Certificates. Upload the certificate itself with 📎 and it becomes a download link on the landlord page. The note is shown to the landlord (e.g. "Service booked for 4 November 2026"); "Arranged by" stays internal.</p>
+    ${certs.map((c) => { const miss = []; if (!c.contractor) miss.push("contractor"); if (!c.last) miss.push("date last done"); if (!c.file) miss.push("certificate file"); if ((c.st === "Overdue" || c.st === "Due soon") && !c.booked && !d.certNotes[c.id]) miss.push("booking date or note");
+      return `<div style="border:1px solid var(--line);border-left:5px solid ${c.st === "Overdue" ? "var(--red)" : c.st === "Due soon" ? "var(--amber)" : c.st === "OK" ? "var(--ok)" : "#B0B8C4"};border-radius:10px;padding:10px 12px;margin-bottom:8px">
+      <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap"><input type="checkbox" data-cert="${c.id}" ${llCertOn(d, c) ? "checked" : ""} style="width:auto" title="Show on the landlord page"><b style="flex:1;min-width:220px">${h(c.name)}</b>${pill(c.st)}<span class="muted">${c.next ? "Next due " + fds(c.next) : "No due date yet"}</span>
+        ${c.file ? `<a href="#" data-cfo="${c.id}" class="btn sm ghost">View certificate</a>` : ""}<label class="btn sm ghost" style="margin:0;cursor:pointer">📎 ${c.file ? "Replace" : "Upload"} certificate<input type="file" data-cf="${c.id}" class="hide" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"></label></div>
+      <div style="display:grid;grid-template-columns:2fr 1.1fr .8fr 1.1fr 1.2fr 1.1fr;gap:8px;margin-top:8px">
+        <div><label>Contractor / engineer</label><input data-ce="${c.id}|contractor" value="${h(c.contractor || "")}"></div>
+        <div><label>Last done</label><input type="date" data-ce="${c.id}|last" value="${h(c.last || "")}"></div>
+        <div><label>Every (months)</label><input type="number" min="0" data-ce="${c.id}|months" value="${h(c.months || "")}"></div>
+        <div><label>Certificate / job no.</label><input data-ce="${c.id}|certRef" value="${h(c.certRef || "")}"></div>
+        <div><label>Next visit booked</label><input type="date" data-ce="${c.id}|booked" value="${h(c.booked || "")}"></div>
+        <div><label>Arranged by</label><input data-ce="${c.id}|arrangedBy" value="${h(c.arrangedBy || "")}" placeholder="e.g. Glenn"></div></div>
+      <label>Note for the landlord</label><input data-cn="${c.id}" value="${h(d.certNotes[c.id] || "")}" placeholder="${c.st === "Overdue" || c.st === "Due soon" ? "e.g. Service booked for …" : "Optional"}">
+      ${miss.length ? `<div class="muted" style="color:var(--amber);margin-top:4px">Missing: ${miss.join(", ")}</div>` : ""}</div>`; }).join("")}
+    <div class="row" style="margin-top:6px"><button class="btn sm ghost" id="ll-adoc">📎 Add another document (alteration, consent, photos…)</button></div></div>
 
   <div class="card"><h3 style="margin-top:0">7. Documents to share <span class="muted" style="font-weight:400">(${docs.filter((r) => r.file && llDocOn(d, r)).length} ticked)</span></h3>
     <p class="muted">Only documents with a file uploaded can be shared. Quotes, emails, forms and internal statements are left unticked to start with — tick anything else you want the landlord to see.</p>
@@ -2497,10 +2524,11 @@ function llRead(v) {
   $$("[data-a]", v).forEach((el) => { const [i, k] = el.dataset.a.split("|"); d.alts[+i][k] = el.value.trim(); });
   $$("[data-cert]", v).forEach((el) => (d.certs[el.dataset.cert] = el.checked));
   $$("[data-cn]", v).forEach((el) => (d.certNotes[el.dataset.cn] = el.value.trim()));
-  $$("[data-doc]", v).forEach((el) => { d.docs[el.dataset.doc] = Object.assign({}, d.docs[el.dataset.doc], { on: el.checked }); });
-  $$("[data-hub]", v).forEach((el) => { d.hub[el.dataset.hub] = Object.assign({}, d.hub[el.dataset.hub], { on: el.checked }); });
-  $$("[data-hg]", v).forEach((el) => { const r = ((S.f.llHub || {}).rows || []).find((x) => x.id === el.dataset.hg); d.hub[el.dataset.hg] = Object.assign({ on: r ? llHubOn(d, r) : false }, d.hub[el.dataset.hg], { group: el.value }); });
-  $$("[data-dg]", v).forEach((el) => { d.docs[el.dataset.dg] = Object.assign({ on: llDocOn(d, S.data.registers.find((x) => x.id === el.dataset.dg)) }, d.docs[el.dataset.dg], { group: el.value }); });
+  const hubRow = (id) => ((S.f.llHub || {}).rows || []).find((x) => x.id === id), docRow = (id) => S.data.registers.find((x) => x.id === id);
+  $$("[data-doc]", v).forEach((el) => { const r = docRow(el.dataset.doc); d.docs[el.dataset.doc] = Object.assign({}, d.docs[el.dataset.doc], { on: el.checked }, r && llInternal(r) && el.checked ? { keep: true } : {}); });
+  $$("[data-hub]", v).forEach((el) => { const r = hubRow(el.dataset.hub); d.hub[el.dataset.hub] = Object.assign({}, d.hub[el.dataset.hub], { on: el.checked }, r && llInternal(r) && el.checked ? { keep: true } : {}); });
+  $$("[data-hg]", v).forEach((el) => { const r = hubRow(el.dataset.hg); if (!r) return; const auto = llGroupOf({ title: `${r.name} ${r.type || ""}`, cat: "" }); const o = Object.assign({ on: llHubOn(d, r) }, d.hub[el.dataset.hg]); if (el.value === auto) delete o.group; else o.group = el.value; d.hub[el.dataset.hg] = o; });
+  $$("[data-dg]", v).forEach((el) => { const r = docRow(el.dataset.dg); if (!r) return; const o = Object.assign({ on: llDocOn(d, r) }, d.docs[el.dataset.dg]); if (el.value === llGroupOf(r)) delete o.group; else o.group = el.value; d.docs[el.dataset.dg] = o; });
   return d;
 }
 async function llSaveDraft(v, extra = {}) {
@@ -2512,24 +2540,65 @@ async function llFileUrl(f) {
   if (!S.live) return "#demo-file";
   return await fb.st.ref(f.path).getDownloadURL();
 }
-async function llPublish(v) {
-  const d = llRead(v), msg = $("#ll-msg", v);
-  if (!d.password || d.password.length < 4) { msg.textContent = "Enter a password of at least 4 characters."; return; }
+async function llBuild(d, msg) {
   msg.textContent = "Preparing documents…";
   const docs = [];
   for (const r of llDocs().filter((x) => x.file && llDocOn(d, x))) {
-    try { docs.push({ title: r.title, cat: r.cat || "", group: llDocGroup(d, r), date: r.date || "", version: r.version || "", issuer: r.author || "", name: r.file.name || "", url: await llFileUrl(r.file) }); }
-    catch (e) { msg.textContent = `Could not prepare “${r.title}”: ${e.message}`; return; }
+    try { docs.push({ title: r.title, cat: r.cat || "", group: llDocGroup(d, r), date: r.date || "", version: r.version || "", issuer: r.author || "", name: r.file.name || "", url: await llFileUrl(r.file), size: r.file.size || 0 }); }
+    catch (e) { msg.textContent = `Could not prepare “${r.title}”: ${e.message}`; return null; }
   }
   for (const r of ((S.f.llHub || {}).rows || []).filter((x) => llHubOn(d, x)))
-    docs.push({ title: llHubTitle(r), cat: r.type || "", group: llHubGroup(d, r), date: "", version: "", issuer: r.date ? "Added " + r.date : "", name: r.fileName || "", url: r.fileUrl });
-  const certs = reg("cert").filter((c) => llCertOn(d, c)).map((c) => { const s = certState(c); return { name: c.name, contractor: c.contractor || "", last: c.last || "", next: s.next || "", status: s.st, certRef: c.certRef || "", note: (d.certNotes || {})[c.id] || "" }; }).sort((a, b) => natRef(a.name, b.name));
+    docs.push({ title: llHubTitle(r), cat: r.type || "", group: llHubGroup(d, r), date: "", version: "", issuer: r.date ? "Added " + r.date : "", name: r.fileName || "", url: r.fileUrl, size: r.size || 0 });
+  // remove duplicates: same file (size + name) or same title — keeps the first (HosFIRE documents come before HosHUB copies)
+  { const seen = new Set(), norm = (x) => llStrip(x).toLowerCase().replace(/^\d{10,}_/, "").replace(/[^a-z0-9]+/g, ""), keep = [];
+    for (const x of docs) { const keys = [norm(x.title), x.name ? norm(x.name) : "", x.size ? "s" + x.size : ""].filter(Boolean); if (keys.some((k) => seen.has(k))) continue; keys.forEach((k) => seen.add(k)); keep.push(x); }
+    d._dupes = docs.length - keep.length; docs.length = 0; docs.push(...keep); }
+  const certs = [];
+  for (const c of reg("cert").filter((x) => llCertOn(d, x))) { const st = certState(c); let url = ""; if (c.file) { try { url = await llFileUrl(c.file); } catch (e) {} }
+    certs.push({ name: c.name, contractor: c.contractor || "", last: c.last || "", next: st.next || "", status: st.st, certRef: c.certRef || "", booked: c.booked || "", note: (d.certNotes || {})[c.id] || "", url }); }
+  certs.sort((a, b) => natRef(a.name, b.name));
   const payload = { v: 1, hotel: HF_HOTEL.name, address: HF_HOTEL.address, preparedBy: S.user.name, publishedAt: Date.now(),
     addressee: d.addressee, noticeFrom: d.noticeFrom, noticeDate: d.noticeDate, deadline: d.noticeDate ? llWorkingDays(d.noticeDate, 20) : "",
     intro: d.intro, wifiFacts: d.wifiFacts, aps: d.showAps ? LL_APS : [], apSrc: LL_AP_SRC, wifiResponse: d.wifiResponse, works: d.works, alts: d.alts, consents: d.consents, contact: d.contact,
     requested: LL_REQUESTED.map(([label, g]) => ({ label, group: g, n: docs.filter((x) => x.group === g).length })), groups: LL_GROUPS, certs, docs,
     fra: { date: HF_HOTEL.fra.date, assessor: HF_HOTEL.fra.assessor, review: HF_HOTEL.fra.review, rev: HF_HOTEL.fra.rev1 },
     inspection: { date: HF_HOTEL.inspection.date, body: HF_HOTEL.inspection.body } };
+  return payload;
+}
+/* Printable landlord pack (portrait PDF via the browser) — same content as the landlord page, with live links */
+function llPackHTML(P) {
+  const fdd = (x) => (x ? fds(x) : ""), tbc = (x, f) => (x && String(x).trim() ? (f ? f(x) : h(x)) : '<span style="color:#9A6200;font-weight:700">To be confirmed</span>');
+  const para = (x) => `<p style="white-space:pre-wrap;margin:0 0 3mm">${x && x.trim() ? h(x) : tbc("")}</p>`;
+  const H = (t) => `<h2 style="font-size:15pt;color:#1F3448;border-bottom:2px solid #BB9979;padding-bottom:1.5mm;margin:7mm 0 3mm">${t}</h2>`;
+  const T = (head, rows) => `<table style="width:100%;border-collapse:collapse;font-size:9.5pt;margin-bottom:3mm"><tr>${head.map((x) => `<th style="text-align:left;background:#F2EDE4;color:#1F3448;padding:2mm;border-bottom:1px solid #DDD">${x}</th>`).join("")}</tr>${rows.map((r) => `<tr style="page-break-inside:avoid">${r.map((x) => `<td style="padding:2mm;border-bottom:1px solid #E2DCD1;vertical-align:top">${x}</td>`).join("")}</tr>`).join("")}</table>`;
+  const L = (u, t) => (u ? `<a href="${h(u)}" style="color:#1D4E89">${t || "View / download"}</a>` : "");
+  const groups = (P.groups || []).filter((g) => P.docs.some((x) => x.group === g));
+  return `<div style="font-family:inherit;color:#1B2733;font-size:10.5pt;line-height:1.45">
+    <div style="border-bottom:4px solid #BB9979;padding-bottom:4mm;display:flex;align-items:center;gap:6mm"><img src="assets/marketing/logos/logo-blue-crop.png" style="height:20mm"><div><div style="font-size:20pt;font-weight:800;color:#1F3448">Compliance documents and response</div><div>${h(P.hotel)}, ${h(P.address)}</div><div style="color:#5F6B78">${P.addressee ? "Prepared for " + h(P.addressee) + " · " : ""}${fds(ymd(new Date(P.publishedAt)))}</div></div></div>
+    ${P.noticeDate || P.noticeFrom ? `<p style="margin-top:4mm"><b>Your letter:</b> ${tbc(P.noticeDate, fdd)}${P.noticeFrom ? " from " + h(P.noticeFrom) : ""}${P.deadline ? ` · 20 working days ends <b>${fdd(P.deadline)}</b>` : ""}</p>` : ""}
+    ${para(P.intro)}
+    <p style="background:#F7F3EC;padding:3mm;border-radius:2mm">Fire risk assessment: ${fdd(P.fra.date)}, ${h(P.fra.assessor)}${P.fra.rev ? " (" + h(P.fra.rev) + ")" : ""}; next review ${fdd(P.fra.review)}. Fire Safety Order inspection: ${fdd(P.inspection.date)}, ${h(P.inspection.body)}. Secure online copy of this pack: brandon.hospro.co.uk/landlord</p>
+    ${H("1. Documents you requested")}${T(["Requested", "Status"], (P.requested || []).map((r) => [h(r.label), r.n ? `${r.n} document${r.n > 1 ? "s" : ""} — see section 5` : '<b style="color:#9A6200">To follow</b>']))}
+    ${H("2. Wi-Fi access points and the riser fire doors")}<h3 style="font-size:11.5pt;margin:2mm 0">What was installed</h3>${para(P.wifiFacts)}
+    ${(P.aps || []).length ? `<h3 style="font-size:11.5pt;margin:2mm 0">Access point locations</h3><p style="color:#5F6B78;margin:0 0 2mm">${h(P.apSrc)} · ${P.aps.length} access points</p><p style="margin:0 0 2mm">Access points fixed to doors (to be relocated):</p>${T(["Floor", "Block", "Location", "Mounting"], P.aps.filter((a) => a.door).map((a) => [h(a.floor), h(a.block), h(a.loc), h(a.mount)]))}<p style="color:#5F6B78;margin:0 0 3mm">The full list of all ${P.aps.length} access points is on the online page and in Quest's plan in the document library.</p>` : ""}
+    <h3 style="font-size:11.5pt;margin:2mm 0">Our response</h3>${para(P.wifiResponse)}
+    <h3 style="font-size:11.5pt;margin:2mm 0">Remedial works and timetable</h3>${T(["Work", "Contractor", "Target", "Status", "Evidence"], (P.works || []).filter((w) => w.work).map((w) => [h(w.work), tbc(w.contractor), tbc(w.target, fdd), h(w.status || "Not started"), tbc(w.evidence)]))}
+    ${H("3. Alterations since 1 December 2025 and consents")}${(P.alts || []).filter((a) => a.what).map((a) => `<div style="border:1px solid #E2DCD1;border-radius:2mm;padding:3mm;margin-bottom:3mm;page-break-inside:avoid"><b>${h(a.what)}</b> — ${tbc(a.status)}<table style="width:100%;font-size:9.5pt;margin-top:1.5mm"><tr><td style="width:22%;color:#5F6B78">Date</td><td>${tbc(a.date, fdd)}</td></tr><tr><td style="color:#5F6B78">Contractor</td><td>${tbc(a.contractor)}</td></tr><tr><td style="color:#5F6B78">Consent</td><td>${tbc(a.consent)}</td></tr><tr><td style="color:#5F6B78;vertical-align:top">Certificates / approvals</td><td>${tbc(a.cert)}</td></tr></table></div>`).join("")}
+    <h3 style="font-size:11.5pt;margin:2mm 0">Consents</h3>${para(P.consents)}
+    ${H("4. Certificates and servicing")}${T(["Certificate / service", "Contractor", "Last done", "Next due", "Status", "Certificate"], (P.certs || []).map((c) => [`<b>${h(c.name)}</b>${c.certRef ? `<br><span style="color:#5F6B78">${h(c.certRef)}</span>` : ""}`, tbc(c.contractor), tbc(c.last, fdd), c.next ? fdd(c.next) : "—", `${h(c.status === "No date" ? "Date to be confirmed" : c.status)}${c.booked ? `<br>Booked: ${fdd(c.booked)}` : ""}${c.note ? `<br><span style="color:#5F6B78">${h(c.note)}</span>` : ""}`, L(c.url, "View certificate") || "—"]))}
+    ${H("5. Document library")}${groups.map((g) => `<h3 style="font-size:11.5pt;margin:3mm 0 1mm">${h(g)}</h3>${T(["Document", "Date", "Link"], P.docs.filter((x) => x.group === g).map((x) => [`<b>${h(x.title)}</b>${x.issuer ? `<br><span style="color:#5F6B78">${h(x.issuer)}</span>` : ""}`, x.date ? fdd(x.date) : "", L(x.url)]))}`).join("") || "<p>Documents to follow.</p>"}
+    ${H("6. Contact")}${para(P.contact)}
+    <p style="color:#5F6B78;font-size:9pt;margin-top:6mm">Confidential — prepared for the landlord of ${h(P.hotel)}. Links open the documents online. Prepared by ${h(P.preparedBy)}.</p></div>`;
+}
+async function llPrint(v) {
+  const d = llRead(v), msg = $("#ll-msg", v);
+  const P = await llBuild(d, msg); if (!P) return; msg.textContent = "";
+  $("#print").innerHTML = llPackHTML(P); printPortrait();
+}
+async function llPublish(v) {
+  const d = llRead(v), msg = $("#ll-msg", v);
+  if (!d.password || d.password.length < 4) { msg.textContent = "Enter a password of at least 4 characters."; return; }
+  const payload = await llBuild(d, msg); if (!payload) return; const docs = payload.docs, certs = payload.certs;
   msg.textContent = "Publishing…";
   const key = await llKey(d.password), old = S.f.llMeta.shareId;
   const doc = { kind: "landlord", json: JSON.stringify(payload), updatedAt: Date.now(), byName: S.user.name };
@@ -2542,7 +2611,7 @@ async function llPublish(v) {
   S.f.llMeta = { shareId: key, publishedAt: payload.publishedAt, publishedBy: S.user.name };
   await put("config", "landlord", { draft: JSON.parse(JSON.stringify(d)), ...S.f.llMeta });
   audit(`Landlord page published (${docs.length} documents, ${certs.length} certificates)`);
-  toast("Landlord page published"); render();
+  toast(`Landlord page published${d._dupes ? ` — ${d._dupes} duplicate document${d._dupes > 1 ? "s" : ""} left out` : ""}`); delete d._dupes; render();
 }
 BIND.landlord = (v) => {
   v.addEventListener("input", () => llRead(v));
@@ -2551,6 +2620,11 @@ BIND.landlord = (v) => {
   $("#ll-save", v).onclick = async () => { await llSaveDraft(v); toast("Draft saved"); };
   $("#ll-pub", v).onclick = () => llPublish(v).catch((e) => ($("#ll-msg", v).textContent = "Could not publish: " + e.message));
   $("#ll-view", v).onclick = () => window.open(`landlord/${DEMO ? "?demo=1" : ""}`, "_blank", "noopener");
+  $("#ll-pdf", v).onclick = () => llPrint(v).catch((e) => ($("#ll-msg", v).textContent = "Could not build the PDF: " + e.message));
+  $$("[data-ce]", v).forEach((el) => (el.onchange = async () => { const [id, k] = el.dataset.ce.split("|"); llRead(v); await put("registers", id, { [k]: k === "months" ? Number(el.value) || "" : el.value.trim() }); audit(`Certificate updated from the landlord pack: ${k}`); toast("Saved"); }));
+  $$("[data-cf]", v).forEach((el) => (el.onchange = async () => { const f = el.files[0]; if (!f) return; try { toast("Uploading…"); llRead(v); const file = await upload("certificates", f); await put("registers", el.dataset.cf, { file }); audit(`Certificate file uploaded from the landlord pack: ${f.name}`); toast("Certificate uploaded"); } catch (e) { toast(e.message); } }));
+  $$("[data-cfo]", v).forEach((a) => (a.onclick = (e) => { e.preventDefault(); openFile(S.data.registers.find((x) => x.id === a.dataset.cfo).file); }));
+  const ad = $("#ll-adoc", v); if (ad) ad.onclick = () => { llRead(v); editReg("doc", null); };
   const off = $("#ll-off", v); if (off) off.onclick = async () => {
     const key = S.f.llMeta.shareId; if (!key) return;
     if (off.dataset.sure !== "1") { off.dataset.sure = "1"; off.textContent = "Press again to take it down"; return; }
