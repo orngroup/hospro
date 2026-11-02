@@ -400,6 +400,38 @@
       return {rooms, photos};
     },
 
+    // ----- Raise a maintenance job in HosFIX (shared hosfix_jobs store) -----
+    // opts: {room, location, area, type/roomType, description, title, priority, photos, by, source, assignees, workType, date}
+    async raiseFixJob(opts){
+      opts=opts||{};
+      const id='HR'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+      const now=new Date().toISOString();
+      const room=(opts.room!=null&&opts.room!=='')?String(opts.room):'';
+      const area=opts.area||'bedrooms';
+      const AREALAB={bedrooms:'Bedrooms',meeting_events:'Meeting & Events',food_beverage:'Food & Beverage',spa:'Spa & Leisure',public_areas:'Public Areas',external:'External / Grounds',maintenance:'Maintenance Areas'};
+      const loc=opts.location || (room?('Room '+room):'');
+      const desc=String(opts.description||'').trim();
+      const by=opts.by||'';
+      const src=opts.source||'HosHOUSE';
+      const fullDesc=desc+(by?('\n\nReported by '+by):'')+'\nSource: '+src+(loc?(' · '+loc):'')+(opts.roomType?(' · '+opts.roomType):'');
+      // cap photos so the Firestore doc stays well under 1 MB
+      let photos=Array.isArray(opts.photos)?opts.photos.filter(Boolean).slice(0,3):[];
+      while(photos.length && JSON.stringify(photos).length>820000) photos.pop();
+      const job={
+        id, title: opts.title || (loc?(loc+' — '+(desc||'Maintenance').slice(0,48)):(desc||'Maintenance').slice(0,56)),
+        area, areaLabel:AREALAB[area]||area, location:loc, workType:opts.workType||'',
+        description:fullDesc, status:'not-started', priority:opts.priority||'medium',
+        assignees:(opts.assignees&&opts.assignees.length)?opts.assignees:['herman','pete'],
+        cost:0, module:'maintenance', photos:photos, materials:[], notes:[],
+        createdAt:now, updatedAt:now, createdBy:src, reportedBy:by,
+        source:src, room:room, roomType:opts.roomType||'', reportedDate:opts.date||now.slice(0,10),
+        approvedBy:null, approvedAt:null, completedAt:null
+      };
+      if(ready && db){ try{ await db.collection('hosfix_jobs').doc(id).set(job); }catch(e){ console.warn('raiseFixJob',e&&e.code); } }
+      try{ const l=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]'); l.unshift(job); localStorage.setItem('hosfix_jobs',JSON.stringify(l)); }catch(e){}
+      return job;
+    },
+
     // ----- room photos (completion shots + cannot-start door photos) -----
     // rec: { date, room, slot, label, dataUrl, by, byName, kind }
     async addPhoto(rec){

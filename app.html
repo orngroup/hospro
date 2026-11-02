@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1F3864">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HosPRO">
+<title>HosPRO — Brandon Hall</title>
+<link rel="manifest" href="app-manifest.json">
+<link rel="apple-touch-icon" href="assets/hospro/apple-touch-icon.png">
+<link rel="icon" href="assets/hospro/favicon-32.png">
+<link rel="stylesheet" href="app/app.css?v=20261102a">
+</head>
+<body>
+<div id="login" class="login"></div>
+<div id="main" class="hidden"></div>
+<div id="overlay"></div>
+<div id="toast"></div>
+
+<script>window.HP_VERSION='2026.11.02a';</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="hoshouse-config.js"></script>
+<script src="app/core.js?v=20261102a"></script>
+<script src="app/mod-house.js?v=20261102a"></script>
+<script src="app/mod-fix.js?v=20261102a"></script>
+<script src="app/mod-rec.js?v=20261102a"></script>
+<script src="app/mod-fb.js?v=20261102a"></script>
+<script src="app/mod-sales.js?v=20261102a"></script>
+<script src="app/mod-misc.js?v=20261102a"></script>
+<script src="app/mod-manage.js?v=20261102a"></script>
+<script>HP.boot();</script>
+</body>
+</html>

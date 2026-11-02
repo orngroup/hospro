@@ -1141,7 +1141,7 @@
     const blockedNote=r=> r.status==='blocked' ? `<div class="rnote" style="background:#fdecea;border-color:#f3c0ba;color:#b3261e">⛔ ${r.blockReason==='dnd'?'Do Not Disturb':'Guest refused'} · ${r.blockedAt?new Date(r.blockedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):''}${r.blockReason==='dnd'?' · door photo saved':''}</div>` : '';
     const urgBadge=r=> (r.urgent && r.status!=='done') ? '<span class="urg">🚨 URGENT</span>' : '';
     // Report a maintenance fault — available on every room, any status (gated by code for now)
-    const fixBtn=r=>`<button class="go" style="background:#f2ece6;color:#965638;border:1px solid #d8cfc5;padding:11px 13px" title="Report a maintenance fault to HosFIX (code needed)" onclick="event.stopPropagation();reportFixFor('${r.room}')">🔧 Report${r.maintJobId?' ✓':''}</button>`;
+    const fixBtn=r=>`<button class="go" style="background:#f2ece6;color:#965638;border:1px solid #d8cfc5;padding:11px 13px" title="Report a maintenance fault to HosFIX (code needed)" onclick="event.stopPropagation();reportFixFor('${r.room}')">🔧 ${r.maintStatus==='complete'?'Fixed ✓':'Report'+(r.maintJobId?' ✓':'')}</button>`;
     const row=r=>{
       const pc=DEFT[r.type]||'dep'; const u=(r.urgent && r.status!=='done')?' urgent':'';
       if(r.status==='in_progress') return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${voiceBtn(r)}${plus(r)}${fixBtn(r)}${note(r)}</div>`;
@@ -1297,7 +1297,7 @@
       <label class="loglbl">🔧 Report to maintenance <span>— anything you can't fix yourself</span></label>
       <input class="loginp" id="rm-maint-inp" placeholder="e.g. blown bathroom bulb" value="${esc(active.maintenance)}" onchange="saveLog('maintenance',this.value)">
       <button class="go ghost" style="background:#965638;border:1.5px solid #965638;color:#fff;margin-top:7px;padding:11px" onclick="reportFixOpen()">🔧 Report a fault to HosFIX — photo, details &amp; priority</button>
-      ${active.maintJobId?`<div style="font-size:11.5px;color:#2a6a4a;font-weight:700;margin-top:4px">✓ Job raised in HosFIX for the maintenance team</div>`:''}
+      ${active.maintJobId?`<div style="font-size:11.5px;color:#2a6a4a;font-weight:700;margin-top:4px">${active.maintStatus==='complete'?'✓ Completed by maintenance'+(active.maintCompletedBy?' ('+esc(active.maintCompletedBy)+')':''):'✓ Job raised in HosFIX for the maintenance team'}</div>`:''}
       <button class="go ghost" style="background:#25D366;border:1.5px solid #25D366;color:#fff;margin-top:7px;padding:11px" onclick="shareWhats('maint')">💬 Save &amp; share on WhatsApp</button>
       <label class="loglbl" style="margin-top:14px">♻ Items replaced <span>— picked up from the store</span></label>
       <input class="loginp" placeholder="e.g. 2 bulbs, 1 TV remote" value="${esc(active.replaced)}" onchange="saveLog('replaced',this.value)">

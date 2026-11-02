@@ -191,6 +191,18 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+
+    // ── HosPRO Mobile (app.html) — shared, app-level sign-in like HosHOUSE / HosFIX ──
+    match /hospro_app/{doc}      { allow read, write: if true; }            // user directory & PIN overrides
+    match /hosfix_photos/{doc}   { allow read, create, update: if true; allow delete: if isStaff(); }
+    match /hosfix_timelogs/{doc} { allow read, create: if true; allow update, delete: if isStaff(); }
+    match /hosrec_requests/{doc} { allow read, create, update: if true; allow delete: if isStaff(); }
+    match /hosrec_incidents/{doc}{ allow read, create, update: if true; allow delete: if false; }
+    match /hosrec_fire/{doc}     { allow read, create, update: if true; allow delete: if false; }
+    match /fb_daily/{doc}        { allow read, create, update: if true; allow delete: if isStaff(); }
+    match /fb_checks/{doc}       { allow read, create, update: if true; allow delete: if isStaff(); }
+    match /fb_menus/{doc}        { allow read, write: if true; }
+
     match /{document=**} {
       allow read, write: if false;
     }
