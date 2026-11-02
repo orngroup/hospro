@@ -426,7 +426,8 @@
     day.filter(r=>!r.area).forEach(r=>{ const rm=String(r.room);
       if(r.status&&r.status!=='pending') locked[rm]=r.status; else picks[rm]=r.type||'Departure';
       if(r.notes) notes[rm]=r.notes; });
-    _bulk={ rooms:cat, picks, locked, notes, defType:'Departure', q:'' };
+    const off={}; try{ const meta=await HH.getDayMeta(today); (meta.offSale||[]).forEach(o=>{ off[String(o.room)]=o.kind; }); }catch(e){}
+    _bulk={ rooms:cat, picks, locked, notes, off, mode:'alloc', defType:'Departure', q:'' };
     bulkShowGrid();
   }
   function bulkShowGrid(){
@@ -438,9 +439,14 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <div style="font:800 17px inherit;color:var(--navy)">🗂 Select rooms</div>
           <div onclick="closeSheet()" style="font-size:24px;color:var(--muted);cursor:pointer;line-height:1">×</div></div>
-        <div class="sub" style="margin-bottom:8px">Tap a room to add it · tap again to change type · again to remove. D = Departure · S = Stayover · A = Arrival-ready.</div>
-        <div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:4px">New taps add as:</div>
-        <div style="display:flex;gap:6px;margin-bottom:8px">${['Departure','Stayover','Arrival-ready'].map(tbtn).join('')}</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button id="bk-mode-alloc" data-base="flex:1;padding:9px 4px;border:1.5px solid var(--navy);border-radius:10px;font:800 12px inherit;cursor:pointer;" style="flex:1;padding:9px 4px;border:1.5px solid var(--navy);border-radius:10px;font:800 12px inherit;cursor:pointer;background:var(--navy);color:#fff" onclick="bulkMode('alloc')">Allocate</button>
+          <button id="bk-mode-off" data-base="flex:1;padding:9px 4px;border:1.5px solid var(--navy);border-radius:10px;font:800 12px inherit;cursor:pointer;" style="flex:1;padding:9px 4px;border:1.5px solid var(--navy);border-radius:10px;font:800 12px inherit;cursor:pointer;background:#fff;color:var(--navy)" onclick="bulkMode('offsale')">Off sale (OOO/DFS)</button>
+        </div>
+        <div id="bk-hint-alloc" class="sub" style="margin-bottom:8px">Tap a room to add it · tap again to change type · again to remove. D = Departure · S = Stayover · A = Arrival-ready.</div>
+        <div id="bk-hint-off" class="sub" style="display:none;margin-bottom:8px">Off-sale rooms aren't allocated or cleaned — just counted. Tap cycles: Available → Out of Order → Due For Service → Available.</div>
+        <div id="bk-typerow"><div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:4px">New taps add as:</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">${['Departure','Stayover','Arrival-ready'].map(tbtn).join('')}</div></div>
         <input id="bk-find" inputmode="numeric" value="${esc(B.q||'')}" placeholder="🔍 Find a room number…" oninput="bulkFilter(this.value)" style="padding:11px;border:1px solid var(--line);border-radius:9px;font-size:15px;margin-bottom:8px">
         <div id="bk-grid" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:7px;padding:2px;min-height:40vh"></div>
         <div id="bk-count" style="font:800 14px inherit;color:var(--navy);margin:10px 0 8px;text-align:center"></div>
@@ -479,6 +485,7 @@
     if(!arr.length){ leadMsg('No rooms selected.'); return; }
     if(mode!=='auto' && !mode){ leadMsg('Pick a housekeeper, or choose Automatic.'); return; }
     await HH.setDayRooms(today, arr);
+    try{ await HH.setOffSale(today, Object.entries(B.off||{}).map(([room,kind])=>({room,kind}))); }catch(e){}
     let n=0;
     if(mode==='auto'){
       const pool=await leadWorkerPool(); if(!pool.length){ leadMsg('No active housekeepers to allocate to yet.'); return; }
@@ -499,23 +506,46 @@
     }
     if($('scr-admin').classList.contains('on')) renderAdmin(); else renderTeam();
   }
+  const BULK_OFFCOL={ooo:'#b9780a',dfs:'#8a5a00'}, BULK_OFFLET={ooo:'OOO',dfs:'DFS'};
   function bulkRender(){
     const B=_bulk; const box=$('bk-grid'); if(!B||!box) return;
     const q=(B.q||'').toLowerCase();
     const list=B.rooms.filter(r=>!q || String(r.room).toLowerCase().includes(q));
     box.innerHTML=list.map(r=>{ const room=String(r.room);
       if(B.locked[room]) return `<div style="border:1.5px solid var(--line);border-radius:10px;padding:9px 3px;text-align:center;background:#f2f4f7;opacity:.7"><div style="font:800 16px inherit;color:#9aa7b5">${room}</div><div style="font-size:8px;color:#9aa7b5">${B.locked[room]==='done'?'done':'in prog'}</div></div>`;
+      const ok=B.off[room];
+      if(B.mode==='offsale'){ const col=ok?BULK_OFFCOL[ok]:'#d2d9e0';
+        return `<div onclick="bulkTap('${room}')" style="border:1.5px solid ${col};border-radius:10px;padding:9px 3px;text-align:center;cursor:pointer;background:${ok?col+'22':'#fff'}">
+          <div style="font:800 16px inherit;color:${ok?col:'var(--ink)'}">${room}${ok?` <span style="font-size:10px">${BULK_OFFLET[ok]}</span>`:''}</div>
+          <div style="font-size:8px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(HH.catLabel(r.cat))}</div>
+        </div>`; }
+      if(ok) return `<div style="border:1.5px dashed ${BULK_OFFCOL[ok]};border-radius:10px;padding:9px 3px;text-align:center;background:${BULK_OFFCOL[ok]}12;opacity:.9"><div style="font:800 16px inherit;color:${BULK_OFFCOL[ok]}">${room}</div><div style="font-size:8px;color:${BULK_OFFCOL[ok]}">${BULK_OFFLET[ok]} · off sale</div></div>`;
       const t=B.picks[room]; const col=t?BULK_COL[t]:'#d2d9e0';
       return `<div onclick="bulkTap('${room}')" style="border:1.5px solid ${col};border-radius:10px;padding:9px 3px;text-align:center;cursor:pointer;background:${t?col+'1f':'#fff'}">
         <div style="font:800 16px inherit;color:${t?col:'var(--ink)'}">${room}${t?` <span style="font-size:11px">${BULK_LET[t]}</span>`:''}</div>
         <div style="font-size:8px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(HH.catLabel(r.cat))}</div>
       </div>`;
     }).join('') || `<div style="grid-column:1/-1;padding:18px;text-align:center;color:var(--muted);font-size:13px">No room matches.</div>`;
-    const n=Object.keys(B.picks).length;
-    const c=$('bk-count'); if(c) c.textContent=n+' room'+(n!==1?'s':'')+' selected';
+    const c=$('bk-count'); if(c){ if(B.mode==='offsale'){ const o=Object.keys(B.off).length; c.textContent=o+' room'+(o!==1?'s':'')+' off sale'; } else { const n=Object.keys(B.picks).length; c.textContent=n+' room'+(n!==1?'s':'')+' selected'; } }
+  }
+  function bulkMode(m){
+    const B=_bulk; if(!B) return; B.mode=m;
+    const a=$('bk-mode-alloc'), o=$('bk-mode-off');
+    if(a&&o){ a.style.cssText=a.dataset.base+(m==='alloc'?'background:var(--navy);color:#fff':'background:#fff;color:var(--navy)'); o.style.cssText=o.dataset.base+(m==='offsale'?'background:var(--navy);color:#fff':'background:#fff;color:var(--navy)'); }
+    const tr=$('bk-typerow'), h1=$('bk-hint-alloc'), h2=$('bk-hint-off');
+    if(tr) tr.style.display=m==='alloc'?'block':'none';
+    if(h1) h1.style.display=m==='alloc'?'block':'none';
+    if(h2) h2.style.display=m==='offsale'?'block':'none';
+    bulkRender();
   }
   function bulkTap(room){
-    const B=_bulk; if(!B) return; const order=['Departure','Stayover','Arrival-ready'];
+    const B=_bulk; if(!B) return;
+    if(B.mode==='offsale'){ const order=['ooo','dfs']; const cur=B.off[room];
+      if(!cur){ B.off[room]='ooo'; } else { const i=order.indexOf(cur); if(i>=order.length-1) delete B.off[room]; else B.off[room]=order[i+1]; }
+      if(B.off[room]) delete B.picks[room];
+      bulkRender(); return; }
+    if(B.off[room]) return;
+    const order=['Departure','Stayover','Arrival-ready'];
     if(!B.picks[room]){ B.picks[room]=B.defType; }
     else { const i=order.indexOf(B.picks[room]); if(i>=order.length-1){ delete B.picks[room]; } else B.picks[room]=order[i+1]; }
     bulkRender();
@@ -529,6 +559,7 @@
     const B=_bulk; if(!B) return;
     const arr=Object.entries(B.picks).map(([room,type])=>({room, type, note:B.notes[room]||''}));
     await HH.setDayRooms(today, arr);
+    try{ await HH.setOffSale(today, Object.entries(B.off||{}).map(([room,kind])=>({room,kind}))); }catch(e){}
     closeSheet();
     if(alloc){ await leadAllocateAll(); leadMsg('✓ '+arr.length+' room'+(arr.length===1?'':'s')+' set & allocated.'); }
     else { leadMsg('✓ '+arr.length+' room'+(arr.length===1?'':'s')+' set for today.'); if($('scr-admin').classList.contains('on')) renderAdmin(); else renderTeam(); }
@@ -618,12 +649,33 @@
       <div class="ql" onclick="showPlan()"><span class="ic">🗺</span><div><div class="tt">Floor plans</div><div class="ds">Ground & First layouts — plan rooms near each other</div></div><span class="ar">›</span></div>`;
 
     if(!rooms.length){
-      $('teamWrap').innerHTML = hero + stats + links +
+      $('teamWrap').innerHTML = hero + stats + '<div id="hh-m-forsale" style="margin:10px 0 2px"></div>' + links +
         '<div class="empty" style="margin-top:6px">No rooms set yet today. Tap <b>Manage rooms & staff</b> to add them and allocate.</div>';
+      hhMForSale();
       return;
     }
-    $('teamWrap').innerHTML = hero + stats + byType + byStaff + perf + '<div class="sect">Quick actions</div>' + links;
+    $('teamWrap').innerHTML = hero + stats + '<div id="hh-m-forsale" style="margin:10px 0 2px"></div>' + byType + byStaff + perf + '<div class="sect">Quick actions</div>' + links;
+    hhMForSale();
   }
+  async function hhMForSale(){
+    const box=$('hh-m-forsale'); if(!box) return;
+    let meta={forSale:null,offSale:[]}; try{ meta=await HH.getDayMeta(today); }catch(e){}
+    const off=meta.offSale||[]; const ooo=off.filter(o=>o.kind==='ooo').length, dfs=off.filter(o=>o.kind==='dfs').length;
+    const fs=(meta.forSale==null?'':meta.forSale); const lead=!!(ME&&ME.lead);
+    box.innerHTML=`<div class="card" style="flex-direction:column;align-items:stretch;gap:8px;padding:13px 15px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <span style="font:800 12px inherit;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">🛏 Rooms for sale today</span>
+        ${lead?`<input id="hh-m-fs-input" type="number" min="0" inputmode="numeric" value="${fs}" placeholder="—" onchange="hhMSetForSale(this.value)" style="width:84px;padding:8px;border:1.5px solid var(--navy);border-radius:9px;font:800 18px inherit;color:var(--navy);text-align:center;margin:0">`:`<span style="font:800 20px inherit;color:var(--navy)">${fs===''?'—':fs}</span>`}
+      </div>
+      <div style="display:flex;gap:12px;font:700 12px inherit;color:var(--muted);flex-wrap:wrap;align-items:center">
+        <span>Off sale: <b style="color:${off.length?'#b3261e':'var(--muted)'}">${off.length}</b></span>
+        <span style="color:#b9780a">OOO ${ooo}</span>
+        <span style="color:#8a5a00">DFS ${dfs}</span>
+        ${lead?`<span onclick="bulkOpen()" style="margin-left:auto;color:var(--navy);font-weight:800;cursor:pointer">Manage off-sale ›</span>`:''}
+      </div>
+    </div>`;
+  }
+  function hhMSetForSale(v){ if(window.HH&&HH.setForSale){ HH.setForSale(today,v).then(()=>{ try{ hhMForSale(); }catch(e){} }); } }
   // ============================================================
   //  ADMIN / MANAGEMENT DASHBOARD  (leads: Laith, Ruth, Ajay)
   // ============================================================

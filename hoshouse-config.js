@@ -299,6 +299,30 @@
       return this._cfg;
     },
 
+    // ----- day meta: manager-entered rooms-for-sale figure + off-sale rooms (OOO / DFS).
+    //       Kept in its own hoshouse_config/daymeta doc so it NEVER touches the cleaning
+    //       data, counts, dashboards or reports. Shape: { <date>: {forSale, offSale:[{room,kind}]} }
+    _daymeta: null,
+    async loadDayMeta(){
+      if(ready){ try{ const d=await db.collection("hoshouse_config").doc("daymeta").get();
+        this._daymeta = d.exists ? (d.data()||{}) : {}; }catch(e){ console.warn("daymeta load",e&&e.code); this._daymeta={}; } }
+      else this._daymeta = this._daymeta || {};
+      return this._daymeta;
+    },
+    async getDayMeta(date){
+      if(!this._daymeta) await this.loadDayMeta();
+      const m=(this._daymeta&&this._daymeta[date])||{};
+      return { forSale:(m.forSale==null?null:+m.forSale), offSale:Array.isArray(m.offSale)?m.offSale:[] };
+    },
+    async saveDayMeta(date, meta){
+      if(!this._daymeta) await this.loadDayMeta();
+      this._daymeta[date]=meta;
+      if(ready){ try{ await db.collection("hoshouse_config").doc("daymeta").set({[date]:meta},{merge:true}); return true; }catch(e){ console.warn("daymeta save",e&&e.code); return false; } }
+      return true;
+    },
+    async setForSale(date, n){ const m=await this.getDayMeta(date); m.forSale=(n===''||n==null||isNaN(+n))?null:Math.max(0,Math.round(+n)); return this.saveDayMeta(date,m); },
+    async setOffSale(date, list){ const m=await this.getDayMeta(date); m.offSale=Array.isArray(list)?list:[]; return this.saveDayMeta(date,m); },
+
     // ----- the day's rooms (one doc per room: hoshouse_rooms/<date>__<room>) -----
     docId(date,room){ return date+"__"+room; },
     roomInfo, floorLabel,

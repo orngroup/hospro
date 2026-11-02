@@ -10111,6 +10111,8 @@ function renderHosHouseHub(v){
       </div>
     </div>
 
+    ${view==='today'?`<div id="hh-forsale" style="margin-bottom:14px"></div>`:''}
+
     <div style="display:inline-flex;border:1px solid #d7dde4;border-radius:9px;overflow:hidden;margin-bottom:16px;flex-wrap:wrap">
       ${tab('today','🧹 Today — Live')}${tab('mgmt','📊 Overview')}${tab('roomcheck','🔎 Room check')}${tab('maint','🔧 Maintenance')}
     </div>
@@ -10120,9 +10122,31 @@ function renderHosHouseHub(v){
   if(view==='mgmt'){ hhStopLive(); renderHosHouseMgmt(); }
   else if(view==='roomcheck'){ hhStopLive(); renderHosHouseRoomCheck(); }
   else if(view==='maint'){ hhStopLive(); renderHosHouseMaintLog(); }
-  else { hhRenderManage(); hhRenderDash(); hhRenderLinks(); hhStartLive(window._hhDate||hhTodayISO()); }
+  else { hhRenderManage(); hhRenderDash(); hhRenderLinks(); hhRenderForSale(window._hhDate||hhTodayISO()); hhStartLive(window._hhDate||hhTodayISO()); }
 }
 function hhSetView(x){ window._hhView=x; switchTab('hhHub'); }
+
+/* ---- Rooms-for-sale box (manager types the starting figure) + off-sale summary ---- */
+async function hhRenderForSale(date){
+  const box=document.getElementById('hh-forsale'); if(!box) return;
+  let meta={forSale:null,offSale:[]}; try{ meta=await hhGetDayMeta(date); }catch(e){}
+  const off=meta.offSale||[]; const ooo=off.filter(o=>o.kind==='ooo').length, dfs=off.filter(o=>o.kind==='dfs').length;
+  const fs=(meta.forSale==null?'':meta.forSale);
+  box.innerHTML=`<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:11px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font:800 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">🛏 Rooms for sale today</span>
+      <input id="hh-fs-input" type="number" min="0" value="${fs}" placeholder="—" onchange="hhSetForSale(this.value)" style="width:78px;padding:7px 9px;border:1.5px solid #1F3864;border-radius:8px;font:800 17px Lato;color:#1F3864;text-align:center">
+    </div>
+    <div style="height:26px;width:1px;background:#e4e9ef"></div>
+    <div style="display:flex;align-items:center;gap:12px;font:700 12px Lato;color:#5b6b7b">
+      <span>Off sale: <b style="color:${off.length?'#b3261e':'#5b6b7b'}">${off.length}</b></span>
+      <span style="color:#b9780a">OOO ${ooo}</span>
+      <span style="color:#8a5a00">DFS ${dfs}</span>
+      <button onclick="hhBulkOpen()" style="padding:6px 11px;border:1px solid #d7dde4;background:#fff;border-radius:7px;font:700 11px Lato;cursor:pointer;color:#1F3864">Manage off-sale ▸</button>
+    </div>
+  </div>`;
+}
+function hhSetForSale(v){ const date=window._hhDate||hhTodayISO(); hhSaveForSale(date,v).then(()=>{ try{ hhRenderForSale(date); }catch(e){} }); }
 
 /* ---- Maintenance log: faults reported to HosFIX, with live status ---- */
 let HH_ML_FILTER='all';
@@ -10539,6 +10563,20 @@ async function hhRoomCatalogue(){
     if(d.exists){ const r=d.data().rooms; if(Array.isArray(r)&&r.length) return r.map(x=>({room:String(x.room),cat:x.cat||''})); } }catch(e){} }
   return hhDefaultRooms();
 }
+/* ---- day meta (rooms-for-sale figure + off-sale rooms) — desktop reads/writes the same
+        hoshouse_config/daymeta doc the mobile app uses, via FB.db (no dependency on window.HH) ---- */
+async function hhDayMetaDoc(){
+  if(typeof FB!=='undefined' && FB.db){ try{ const d=await FB.db.collection('hoshouse_config').doc('daymeta').get(); return d.exists?(d.data()||{}):{}; }catch(e){} }
+  try{ return JSON.parse(localStorage.getItem('hoshouse_daymeta')||'{}'); }catch(e){ return {}; }
+}
+async function hhGetDayMeta(date){ const all=await hhDayMetaDoc(); const m=all[date]||{}; return {forSale:(m.forSale==null?null:+m.forSale), offSale:Array.isArray(m.offSale)?m.offSale:[]}; }
+async function hhSaveDayMeta(date, meta){
+  if(typeof FB!=='undefined' && FB.db){ try{ await FB.db.collection('hoshouse_config').doc('daymeta').set({[date]:meta},{merge:true}); }catch(e){} }
+  try{ const all=JSON.parse(localStorage.getItem('hoshouse_daymeta')||'{}'); all[date]=meta; localStorage.setItem('hoshouse_daymeta',JSON.stringify(all)); }catch(e){}
+  return true;
+}
+async function hhSaveForSale(date, n){ const m=await hhGetDayMeta(date); m.forSale=(n===''||n==null||isNaN(+n))?null:Math.max(0,Math.round(+n)); return hhSaveDayMeta(date,m); }
+async function hhSaveOffSale(date, list){ const m=await hhGetDayMeta(date); m.offSale=Array.isArray(list)?list:[]; return hhSaveDayMeta(date,m); }
 const HH_T_LET={Departure:'D',Stayover:'S','Arrival-ready':'A'};
 const HH_T_COL={Departure:'#2E6B5E',Stayover:'#d9930a','Arrival-ready':'#3B6585'};
 async function hhBulkOpen(){
@@ -10549,15 +10587,19 @@ async function hhBulkOpen(){
   day.filter(r=>!r.area).forEach(r=>{ const rm=String(r.room);
     if(r.status&&r.status!=='pending') locked[rm]=r.status; else picks[rm]=r.type||'Departure';
     if(r.notes) notes[rm]=r.notes; });
-  window._hhBulk={ rooms, picks, locked, notes, defType:'Departure', q:'' };
+  const off={}; try{ const meta=await hhGetDayMeta(date); (meta.offSale||[]).forEach(o=>{ off[String(o.room)]=o.kind; }); }catch(e){}
+  window._hhBulk={ rooms, picks, locked, notes, off, mode:'alloc', defType:'Departure', q:'' };
   const typeBtns=['Departure','Stayover','Arrival-ready'].map(t=>
     `<button class="hhbt" data-t="${t}" onclick="hhBulkSetType('${t}')" style="padding:6px 12px;border:1.5px solid ${HH_T_COL[t]};border-radius:20px;font:700 12px Lato;cursor:pointer;background:${t==='Departure'?HH_T_COL[t]:'#fff'};color:${t==='Departure'?'#fff':HH_T_COL[t]}">${t}</button>`).join('');
   showModal('Select rooms', 'Tap a room to add it · tap again to change type · tap again to remove', `
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
-      <span style="font:700 12px Lato;color:#374151">New taps add as:</span>${typeBtns}
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <button id="hh-mode-alloc" data-base="padding:7px 14px;border:1.5px solid #1F3864;border-radius:20px;font:700 12px Lato;cursor:pointer;" style="padding:7px 14px;border:1.5px solid #1F3864;border-radius:20px;font:700 12px Lato;cursor:pointer;background:#1F3864;color:#fff" onclick="hhBulkMode('alloc')">Allocate rooms</button>
+      <button id="hh-mode-off" data-base="padding:7px 14px;border:1.5px solid #1F3864;border-radius:20px;font:700 12px Lato;cursor:pointer;" style="padding:7px 14px;border:1.5px solid #1F3864;border-radius:20px;font:700 12px Lato;cursor:pointer;background:#fff;color:#1F3864" onclick="hhBulkMode('offsale')">Off sale (OOO / DFS)</button>
       <input id="hh-bulk-find" placeholder="🔍 Find a room number…" oninput="hhBulkFilter(this.value)" style="margin-left:auto;padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato;min-width:150px">
     </div>
-    <div style="font-size:11.5px;color:#6b7280;margin-bottom:8px">D = Departure · S = Stayover · A = Arrival-ready. Tap cycles D → S → A → off.</div>
+    <div id="hh-bulk-typerow" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><span style="font:700 12px Lato;color:#374151">New taps add as:</span>${typeBtns}</div>
+    <div id="hh-bulk-hint-alloc" style="font-size:11.5px;color:#6b7280;margin-bottom:8px">D = Departure · S = Stayover · A = Arrival-ready. Tap cycles D → S → A → off.</div>
+    <div id="hh-bulk-hint-off" style="display:none;font-size:11.5px;color:#6b7280;margin-bottom:8px">Off-sale rooms aren't allocated or cleaned — just counted. Tap cycles: Available → <b style="color:#b9780a">Out of Order</b> → <b style="color:#8a5a00">Due For Service</b> → Available.</div>
     <div id="hh-bulk-grid" style="max-height:50vh;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:7px;padding:2px"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;flex-wrap:wrap">
       <span id="hh-bulk-count" style="font:700 13px Lato;color:#1a2b3a"></span>
@@ -10572,20 +10614,46 @@ function hhBulkRender(){
   const B=window._hhBulk; const box=document.getElementById('hh-bulk-grid'); if(!B||!box) return;
   const q=(B.q||'').toLowerCase();
   const list=B.rooms.filter(r=>!q || String(r.room).toLowerCase().includes(q));
+  const OFFCOL={ooo:'#b9780a',dfs:'#8a5a00'}, OFFLET={ooo:'OOO',dfs:'DFS'};
   box.innerHTML=list.map(r=>{
     const room=String(r.room);
     if(B.locked[room]) return `<div style="border:1.5px solid #e4e9ef;border-radius:9px;padding:8px 5px;text-align:center;background:#f3f4f6;opacity:.75"><div style="font:800 15px Lato;color:#9aa7b5">${room}</div><div style="font-size:9px;color:#9aa7b5">${B.locked[room]==='done'?'done':'in prog.'}</div></div>`;
+    const ok=B.off[room];
+    if(B.mode==='offsale'){
+      const col=ok?OFFCOL[ok]:'#d7dde4';
+      return `<div onclick="hhBulkTap('${room}')" style="border:1.5px solid ${col};border-radius:9px;padding:8px 5px;text-align:center;cursor:pointer;background:${ok?col+'18':'#fff'}">
+        <div style="font:800 15px Lato;color:${ok?col:'#1a2b3a'}">${room}${ok?` <span style="font-size:10px">${OFFLET[ok]}</span>`:''}</div>
+        <div style="font-size:9px;color:#8296a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${hhEsc(hhCatLabel(r.cat))}</div>
+      </div>`;
+    }
+    if(ok) return `<div style="border:1.5px dashed ${OFFCOL[ok]};border-radius:9px;padding:8px 5px;text-align:center;background:${OFFCOL[ok]}0f;opacity:.9"><div style="font:800 15px Lato;color:${OFFCOL[ok]}">${room}</div><div style="font-size:9px;color:${OFFCOL[ok]}">${OFFLET[ok]} · off sale</div></div>`;
     const t=B.picks[room]; const col=t?HH_T_COL[t]:'#d7dde4';
     return `<div onclick="hhBulkTap('${room}')" style="border:1.5px solid ${col};border-radius:9px;padding:8px 5px;text-align:center;cursor:pointer;background:${t?col+'14':'#fff'}">
       <div style="font:800 15px Lato;color:${t?col:'#1a2b3a'}">${room}${t?` <span style="font-size:11px">${HH_T_LET[t]}</span>`:''}</div>
       <div style="font-size:9px;color:#8296a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${hhEsc(hhCatLabel(r.cat))}</div>
     </div>`;
   }).join('') || `<div style="grid-column:1/-1;padding:16px;text-align:center;color:#8296a8;font-size:13px">No room matches.</div>`;
-  const n=Object.keys(B.picks).length;
-  const cnt=document.getElementById('hh-bulk-count'); if(cnt) cnt.textContent=n+' room'+(n!==1?'s':'')+' selected';
+  const cnt=document.getElementById('hh-bulk-count');
+  if(cnt){ if(B.mode==='offsale'){ const o=Object.keys(B.off).length; cnt.textContent=o+' room'+(o!==1?'s':'')+' off sale'; } else { const n=Object.keys(B.picks).length; cnt.textContent=n+' room'+(n!==1?'s':'')+' selected'; } }
+}
+function hhBulkMode(m){
+  const B=window._hhBulk; if(!B) return; B.mode=m;
+  const a=document.getElementById('hh-mode-alloc'), o=document.getElementById('hh-mode-off');
+  if(a&&o){ a.style.cssText=a.dataset.base+(m==='alloc'?'background:#1F3864;color:#fff':'background:#fff;color:#1F3864'); o.style.cssText=o.dataset.base+(m==='offsale'?'background:#1F3864;color:#fff':'background:#fff;color:#1F3864'); }
+  const tr=document.getElementById('hh-bulk-typerow'), h1=document.getElementById('hh-bulk-hint-alloc'), h2=document.getElementById('hh-bulk-hint-off');
+  if(tr) tr.style.display=m==='alloc'?'flex':'none';
+  if(h1) h1.style.display=m==='alloc'?'block':'none';
+  if(h2) h2.style.display=m==='offsale'?'block':'none';
+  hhBulkRender();
 }
 function hhBulkTap(room){
-  const B=window._hhBulk; if(!B) return; const order=['Departure','Stayover','Arrival-ready'];
+  const B=window._hhBulk; if(!B) return;
+  if(B.mode==='offsale'){ const order=['ooo','dfs']; const cur=B.off[room];
+    if(!cur){ B.off[room]='ooo'; } else { const i=order.indexOf(cur); if(i>=order.length-1) delete B.off[room]; else B.off[room]=order[i+1]; }
+    if(B.off[room]) delete B.picks[room];
+    hhBulkRender(); return; }
+  if(B.off[room]) return;   // off-sale rooms aren't allocatable here
+  const order=['Departure','Stayover','Arrival-ready'];
   if(!B.picks[room]){ B.picks[room]=B.defType; }
   else { const i=order.indexOf(B.picks[room]); if(i>=order.length-1){ delete B.picks[room]; } else B.picks[room]=order[i+1]; }
   hhBulkRender();
@@ -10600,8 +10668,10 @@ async function hhBulkConfirm(){
   const date=window._hhDate||hhTodayISO();
   const arr=Object.entries(B.picks).map(([room,type])=>({room, type, note:B.notes[room]||''}));
   await hhSetDayRooms(date, arr);
-  closeModal(); toast('✓ '+arr.length+' room'+(arr.length===1?'':'s')+' set for '+date);
-  hhRenderManage(); hhRenderDash();
+  try{ const offList=Object.entries(B.off||{}).map(([room,kind])=>({room, kind})); await hhSaveOffSale(date, offList); }catch(e){}
+  const offN=Object.keys(B.off||{}).length;
+  closeModal(); toast('✓ '+arr.length+' room'+(arr.length===1?'':'s')+' set'+(offN?(' · '+offN+' off sale'):'')+' for '+date);
+  hhRenderManage(); hhRenderDash(); try{ hhRenderForSale(date); }catch(e){}
 }
 
 /* ============================================================
@@ -10691,6 +10761,13 @@ async function renderHosHouseMgmt(){
   const by={}; beds.forEach(r=>{ const k=r.housekeeper||'_un'; by[k]=by[k]||{id:(k==='_un'?'':k),name:hhNameFor(r),done:0,mins:0,over:0,total:0};
     by[k].total++; if(r.status==='done'){ by[k].done++; by[k].mins+=(r.durationSec||0)/60; if((r.durationSec||0)>hhRepTgt(r)*60) by[k].over++; } });
   const people=Object.values(by).filter(p=>p.name!=='Unallocated'&&p.done>0).sort((a,b)=>b.done-a.done);
+  // time between rooms — gap from finishing one room to starting the next (per person, per day; breaks over 60 min excluded)
+  const _gpd={}; done.filter(r=>r.startAt&&r.finishAt).forEach(r=>{ const k=(r.housekeeper||'_un')+'||'+(r._date||''); (_gpd[k]=_gpd[k]||[]).push(r); });
+  const _perGap={}; let _allGap=[];
+  Object.keys(_gpd).forEach(k=>{ const hk=k.split('||')[0]; const l=_gpd[k].sort((a,b)=>(a.startAt||0)-(b.startAt||0));
+    for(let i=1;i<l.length;i++){ const g=((l[i].startAt||0)-(l[i-1].finishAt||0))/60000; if(g>=0&&g<=60){ (_perGap[hk]=_perGap[hk]||[]).push(g); _allGap.push(g); } } });
+  const _avgArr=a=>a&&a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):null;
+  const gapTeam=_avgArr(_allGap); const gapBy={}; Object.keys(_perGap).forEach(hk=>gapBy[hk]=_avgArr(_perGap[hk]));
   // by type (all beds in selection) and by floor
   const tc={Departure:0,Stayover:0,'Arrival-ready':0}; beds.forEach(r=>{ const t=tc[r.type]!=null?r.type:'Departure'; tc[t]++; });
   const fc={}; beds.forEach(r=>{ const fl=hhFloorLabel(r.floor||hhFloorOf(r.room))||'—'; fc[fl]=(fc[fl]||0)+1; });
@@ -10714,6 +10791,7 @@ async function renderHosHouseMgmt(){
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px">
       ${tile(done.length,'Rooms cleaned','#2E6B5E', comp+'% of '+beds.length+' set','done')}
       ${tile(avg+'m','Avg clean time','#1F3864', totalMins+' min total','done')}
+      ${tile(gapTeam!=null?gapTeam+'m':'—','Avg gap between rooms','#1F3864','Finish → next room start')}
       ${tile(over.length,'Over target', over.length?'#b3261e':'#5b6b7b','Took longer than allowed','over')}
       ${tile(lost.length,'Lost property','#7a5aa0','Items logged',null,'hhLostList()')}
       ${tile(blocked.length,'DND / refused', blocked.length?'#b9780a':'#5b6b7b','Could not clean','blocked')}
@@ -10731,7 +10809,7 @@ async function renderHosHouseMgmt(){
       ${card('Average clean time by type', hhBars(avgByType.map(x=>({label:x.label,value:x.value,sub:'min'}))))}
     </div>
     ${card('Lost property'+(lost.length?(' ('+lost.length+')'):''), lost.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Room</th><th style="padding:6px 10px">Date</th><th style="padding:6px 10px">Item</th><th style="padding:6px 10px">Found by</th></tr>${lostRows}</table></div>`:'<div style="color:#8296a8;font-size:13px">No lost property logged in this period.</div>')}
-    ${card('Staff efficiency', `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Housekeeper</th><th style="padding:6px 10px">Rooms done</th><th style="padding:6px 10px">Avg min/room</th><th style="padding:6px 10px">Over target</th><th style="padding:6px 10px">Efficiency</th></tr>${people.length?people.map(p=>{ const am=p.done?Math.round(p.mins/p.done):0; const effPct=am?Math.min(100,Math.round(25/am*100)):0; const bar=`<div style="background:#eef1f5;border-radius:5px;height:9px;width:90px;display:inline-block;vertical-align:middle;overflow:hidden"><div style="width:${effPct}%;height:100%;background:${effPct>=90?'#2E6B5E':effPct>=70?'#d9930a':'#b3261e'}"></div></div> <span style="color:#8296a8">${effPct}%</span>`; return `<tr style="border-top:1px solid #eef1f4;cursor:pointer" onclick="hhOpenStaffRooms('${hhEsc(p.id||'')}')"><td style="padding:8px 10px"><b>${hhEsc(p.name)}</b></td><td style="padding:8px 10px">${p.done}</td><td style="padding:8px 10px">${am||'—'}</td><td style="padding:8px 10px;color:${p.over?'#b3261e':'#1f2a37'}">${p.over||0}</td><td style="padding:8px 10px">${bar}</td></tr>`; }).join(''):'<tr><td colspan="5" style="padding:14px;color:#8296a8">No completed rooms in this selection.</td></tr>'}</table></div><div style="font-size:11px;color:#8296a8;margin-top:8px">Efficiency = time allowed per room (25 min) ÷ actual average. Click a row to see that person's rooms.</div>`,'margin-top:14px')}
+    ${card('Staff efficiency', `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.4px"><th style="padding:6px 10px">Housekeeper</th><th style="padding:6px 10px">Rooms done</th><th style="padding:6px 10px">Avg min/room</th><th style="padding:6px 10px">Avg gap</th><th style="padding:6px 10px">Over target</th><th style="padding:6px 10px">Efficiency</th></tr>${people.length?people.map(p=>{ const am=p.done?Math.round(p.mins/p.done):0; const effPct=am?Math.min(100,Math.round(25/am*100)):0; const bar=`<div style="background:#eef1f5;border-radius:5px;height:9px;width:90px;display:inline-block;vertical-align:middle;overflow:hidden"><div style="width:${effPct}%;height:100%;background:${effPct>=90?'#2E6B5E':effPct>=70?'#d9930a':'#b3261e'}"></div></div> <span style="color:#8296a8">${effPct}%</span>`; return `<tr style="border-top:1px solid #eef1f4;cursor:pointer" onclick="hhOpenStaffRooms('${hhEsc(p.id||'')}')"><td style="padding:8px 10px"><b>${hhEsc(p.name)}</b></td><td style="padding:8px 10px">${p.done}</td><td style="padding:8px 10px">${am||'—'}</td><td style="padding:8px 10px">${gapBy[p.id||'_un']!=null?gapBy[p.id||'_un']+'m':'—'}</td><td style="padding:8px 10px;color:${p.over?'#b3261e':'#1f2a37'}">${p.over||0}</td><td style="padding:8px 10px">${bar}</td></tr>`; }).join(''):'<tr><td colspan="6" style="padding:14px;color:#8296a8">No completed rooms in this selection.</td></tr>'}</table></div><div style="font-size:11px;color:#8296a8;margin-top:8px">Avg gap = average time between finishing one room and starting the next (breaks over 60 min excluded). Efficiency = time allowed per room (25 min) ÷ actual average. Click a row to see that person's rooms.</div>`,'margin-top:14px')}
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button onclick="hhReportModal()" style="padding:9px 14px;border:none;background:#1F3864;color:#fff;border-radius:8px;font:700 12.5px Lato;cursor:pointer">📄 Management report (PDF)</button><button onclick="hhMgmtExport()" style="padding:9px 14px;border:1px solid #2E6B5E;background:#fff;color:#2E6B5E;border-radius:8px;font:700 12.5px Lato;cursor:pointer">⬇ Export this view (CSV)</button><button onclick="hhPurgeModal()" style="padding:9px 14px;border:1px solid #e4b9b3;background:#fff;color:#b3261e;border-radius:8px;font:700 12.5px Lato;cursor:pointer" title="Permanently remove early/test records">🗑 Clear old data</button></div>
     <style>@media(max-width:720px){.hh-mg{grid-template-columns:1fr !important}}</style>`;
   window._hhMgmtRows=rows;
