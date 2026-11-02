@@ -1,6 +1,6 @@
 /* HosPRO Mobile service worker — network-first so updates show on the next reload;
    cached copy used only when offline. */
-const CACHE='hospro-app-v20261102a';
+const CACHE='hospro-app-v20261102c';
 self.addEventListener('install',e=>self.skipWaiting());
 self.addEventListener('activate',e=>{ e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('hospro-app-')&&k!==CACHE).map(k=>caches.delete(k))))); self.clients.claim(); });
 self.addEventListener('fetch',e=>{

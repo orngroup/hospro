@@ -1,0 +1,25 @@
+{
+  "name": "HosPRO Housekeeping \u2014 Brandon Hall",
+  "short_name": "HosPRO Housekeeping",
+  "description": "Brandon Hall Hotel & Spa \u2014 Housekeeping",
+  "start_url": "/app.html?d=housekeeping",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#182A3E",
+  "theme_color": "#1F3864",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "assets/app/icon-housekeeping-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/app/icon-housekeeping-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

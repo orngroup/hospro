@@ -24,7 +24,8 @@ async function openFullApp(){
   const u=HP.ME;
   const hh=await ensureHHAccount(u);
   if(hh){ try{ sessionStorage.setItem('hh_me',hh); localStorage.setItem('hh_pref',hh); }catch(e){} }
-  openFrame({mod:'house', title:'Housekeeping', sub:'HosHOUSE · '+u.name, url:'hoshouse.html'+(hh?'?u='+encodeURIComponent(hh):''), openNew:true});
+  if(hh){ try{ localStorage.setItem('hp_hh',hh); }catch(e){} }
+  openFrame({mod:'house', title:'Housekeeping', sub:'HosHOUSE · '+u.name, url:'hoshouse.html'+(hh?'?u='+encodeURIComponent(hh)+'&auto=1':''), openNew:true});
 }
 
 HP.HOUSE={ rooms:[], unwatch:null };

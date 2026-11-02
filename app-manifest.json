@@ -1,15 +1,25 @@
 {
-  "name": "HosPRO — Brandon Hall Hotel & Spa",
+  "name": "HosPRO \u2014 Brandon Hall Hotel & Spa",
   "short_name": "HosPRO",
-  "description": "Brandon Hall Hotel & Spa — one app for housekeeping, maintenance, reception, food & beverage, sales and fire safety",
+  "description": "Brandon Hall Hotel & Spa \u2014 one app for every department",
   "start_url": "/app.html",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#1F3864",
+  "background_color": "#182A3E",
   "theme_color": "#1F3864",
   "orientation": "portrait",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "assets/app/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/app/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

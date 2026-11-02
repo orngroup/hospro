@@ -12,11 +12,11 @@ const {$,esc,todayISO,nowISO,toast,sheet,closeSheet,confirmSheet,capturePhoto,vi
 const CLEAN_FROM='2026-10-10T10:00:00.000Z';   // clean-start cutoff (same as HosFIX)
 const AREAS={
   bedrooms:{label:'Bedrooms',icon:'🛏️'}, meeting_events:{label:'Meeting & Events',icon:'🎪',locs:['Wolston Suite','Brandon Suite','Brandon Suite 1','Brandon Suite 2','Beech Room','Hunt Room','Warwick Room','Boardroom','Event Lawn','Marquee Area']},
-  food_beverage:{label:'Food & Beverage',icon:'🍽️',locs:['Restaurant','Bar','Private Dining','Terrace','Kitchen']},
+  food_beverage:{label:'Food & Beverage',icon:'fb',locs:['Restaurant','Bar','Private Dining','Terrace','Kitchen']},
   spa:{label:'Spa & Leisure',icon:'💆',locs:['Spa','Pool','Gym','Treatment Room 1','Treatment Room 2','Sauna','Steam Room']},
   public_areas:{label:'Public Areas',icon:'🏛️',locs:['Reception','Lobby','Corridors (Ground)','Corridors (First)','Corridors (Second)','Lift','Gents WC','Ladies WC','Accessible WC','Main Entrance','Staff Areas','Cellar/Store']},
   external:{label:'External / Grounds',icon:'🌳',locs:['Car Park','Gardens','Woodlands','External Walls','Roof','Outbuildings']},
-  maintenance:{label:'Maintenance Areas',icon:'🔧',locs:['Boiler Room','Plant Room','Electrical Cupboard','Linen Store','Bin Store','Cellar']}
+  maintenance:{label:'Maintenance Areas',icon:'fix',locs:['Boiler Room','Plant Room','Electrical Cupboard','Linen Store','Bin Store','Cellar']}
 };
 const SUITES=['Beech Suite','Brandon Suite 1','Brandon Suite 2','Hunt Room','Warwick Room','Wolston Suite','Junior Suite','Accessible Room'];
 function bedroomLocs(){ let rooms=[]; try{ rooms=HH.defaultRooms().map(r=>'Room '+r.room); }catch(e){ for(let i=1;i<=120;i++) rooms.push('Room '+i); } return rooms.concat(SUITES); }
@@ -148,7 +148,7 @@ registerView('fix',{ render(el){
     <div id="fix-list">${L.length?L.map(jobCard).join(''):'<div class="empty">No jobs here.</div>'}</div>
   </div>
   <button class="btn fix" style="position:fixed;right:16px;bottom:calc(76px + var(--safe-bot));width:auto;border-radius:30px;padding:14px 20px;box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:25" onclick="HP.FIX.newJob()">＋ Report a fault</button>
-  ${bnav([{id:'jobs',icon:'🔧',label:'Jobs',onclick:"HP.go('fix')"},{id:'home',icon:'🏠',label:'Home',onclick:"HP.go('home')"}].concat(isMgr()?[{id:'report',icon:'📄',label:'Reports',onclick:"HP.go('fix/report')"}]:[]),'jobs')}`;
+  ${bnav([{id:'jobs',icon:'fix',label:'Jobs',onclick:"HP.go('fix')"},{id:'home',icon:'home',label:'Home',onclick:"HP.go('home')"}].concat(isMgr()?[{id:'report',icon:'comp',label:'Reports',onclick:"HP.go('fix/report')"}]:[]),'jobs')}`;
 }});
 function setFilter(f){ F.filter=f; refresh(); }
 function search(q){ F.q=q; const box=$('fix-list'); if(box){ const L=filtered(); box.innerHTML=L.length?L.map(jobCard).join(''):'<div class="empty">No jobs match.</div>'; } }

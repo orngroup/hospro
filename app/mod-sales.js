@@ -50,7 +50,7 @@ registerView('sales',{ render(el){
     <input class="inp" placeholder="Search name, company, email…" value="${esc(S.q)}" oninput="HP.SALES.search(this.value)">
     <div class="scrollx" style="margin-top:8px">${chips.map(c=>`<button class="qchip ${S.filter===c[0]?'on':''}" onclick="HP.SALES.filter('${c[0]}')">${c[1]} <b>${c[2]}</b></button>`).join('')}</div>
     <div id="sales-list">${L.map(card).join('')||'<div class="empty">Nothing here.</div>'}</div>
-  </div>${bnav([{id:'sales',icon:'📈',label:'Pipeline',onclick:"HP.go('sales')"},{id:'home',icon:'🏠',label:'Home',onclick:"HP.go('home')"}],'sales')}`;
+  </div>${bnav([{id:'sales',icon:'sales',label:'Pipeline',onclick:"HP.go('sales')"},{id:'home',icon:'home',label:'Home',onclick:"HP.go('home')"}],'sales')}`;
 }});
 function filter(f){ S.filter=f; refresh(); }
 function search(q){ S.q=q; const b=$('sales-list'); if(b){ const L=filtered(); b.innerHTML=L.map(card).join('')||'<div class="empty">No matches.</div>'; } }

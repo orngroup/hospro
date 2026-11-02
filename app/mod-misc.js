@@ -33,7 +33,7 @@ registerView('fire',{ render(el){
     ${F.slice(0,40).map(HP.REC.fireCard).join('')||'<div class="empty">Nothing logged yet.</div>'}
     <button class="btn ghost" onclick="HP.MISC.hosfire()">Open the HosFIRE checks app</button>
     <div class="sub" style="text-align:center;margin-top:6px">Fire risk assessment actions, registers and sign-offs live in HosFIRE.</div>
-  </div>${bnav([{id:'fire',icon:'🔥',label:'Fire',onclick:"HP.go('fire')"},{id:'rec',icon:'🛎️',label:'Reception',onclick:"HP.go('rec')"},{id:'home',icon:'🏠',label:'Home',onclick:"HP.go('home')"}],'fire')}`;
+  </div>${bnav([{id:'fire',icon:'fire',label:'Fire',onclick:"HP.go('fire')"},{id:'rec',icon:'rec',label:'Reception',onclick:"HP.go('rec')"},{id:'home',icon:'home',label:'Home',onclick:"HP.go('home')"}],'fire')}`;
 }});
 HP_MODULE_OPEN.fire=()=>go('fire');
 function hosfire(){ openFrame({mod:'fire',title:'HosFIRE',sub:'Fire safety checks',url:'hosfire-mobile.html',openNew:true}); }
@@ -45,11 +45,17 @@ registerView('comp',{ render(el){
     <div class="card"><div class="ttl">Fire safety</div><div class="sub">Weekly alarm tests, drills and checks are logged in the Fire Safety module.</div><button class="btn ghost" onclick="HP.go('fire')">Fire Safety ›</button></div>
     ${checks.length?`<div class="sect">Recent safety checks</div>${checks.map(HP.REC.fireCard).join('')}`:''}
     ${HP.isAdmin()?`<div class="card"><div class="ttl">Previous compliance screens</div><div class="sub">The old HosFIX compliance tasks and actions (kept as a fallback).</div><button class="btn ghost" onclick="HP.MISC.oldFix()">Open old HosFIX app</button></div>`:''}
-  </div>${bnav([{id:'comp',icon:'📋',label:'Compliance',onclick:"HP.go('comp')"},{id:'fire',icon:'🔥',label:'Fire',onclick:"HP.go('fire')"},{id:'home',icon:'🏠',label:'Home',onclick:"HP.go('home')"}],'comp')}`;
+  </div>${bnav([{id:'comp',icon:'comp',label:'Compliance',onclick:"HP.go('comp')"},{id:'fire',icon:'fire',label:'Fire',onclick:"HP.go('fire')"},{id:'home',icon:'home',label:'Home',onclick:"HP.go('home')"}],'comp')}`;
 }});
 function oldFix(){ const u=HP.ME; openFrame({mod:'fix',title:'HosFIX (previous app)',sub:u.name,url:'hosmain.html'+(u.fixId?'?u='+encodeURIComponent(u.fixId):''),openNew:true}); }
 
-HP_MODULE_OPEN.rota=()=>{ openFrame({title:'My Rota',sub:'Published rota · '+HP.ME.name,url:'my-rota.html',openNew:true}); };
+HP_MODULE_OPEN.rota=async()=>{
+  // find this person in the published rota so it opens straight on their shifts
+  let sid=''; try{ const pub=await HP.Store.get('hospro_public','rota'); const me=HP.ME.name.toLowerCase().trim();
+    const hit=(pub&&pub.staff||[]).find(x=>String(x.name||'').toLowerCase().trim()===me)||(pub&&pub.staff||[]).find(x=>String(x.name||'').toLowerCase().split(' ')[0]===me.split(' ')[0]&&me.split(' ').length===1);
+    if(hit) sid=hit.id; }catch(e){}
+  openFrame({title:'My Rota',sub:'Published rota · '+HP.ME.name,url:'my-rota.html'+(sid?'?staff='+encodeURIComponent(sid):''),openNew:true});
+};
 
 HP.MISC={ hosfire, oldFix };
 })();

@@ -48,7 +48,7 @@ registerView('rec',{ render(el){
     ${R0.length>36?`<button class="btn ghost sm" style="margin-top:8px" onclick="HP.go('house')">See all ${R0.length} rooms</button>`:''}
     <div class="sect">Open requests <span class="r" onclick="HP.go('rec/log')">All logs ›</span></div>
     ${open.slice(0,8).map(reqCard).join('')||'<div class="empty">Nothing open — nice.</div>'}
-  </div>${bnav([{id:'rec',icon:'🛎️',label:'Reception',onclick:"HP.go('rec')"},{id:'log',icon:'📒',label:'Logs',onclick:"HP.go('rec/log')"},{id:'home',icon:'🏠',label:'Home',onclick:"HP.go('home')"}],'rec')}`;
+  </div>${bnav([{id:'rec',icon:'rec',label:'Reception',onclick:"HP.go('rec')"},{id:'log',icon:'comp',label:'Logs',onclick:"HP.go('rec/log')"},{id:'home',icon:'home',label:'Home',onclick:"HP.go('home')"}],'rec')}`;
 }});
 
 function reqCard(x){ const T=REQ_TYPES.find(t=>t[0]===x.type)||REQ_TYPES[0];
@@ -163,7 +163,7 @@ registerView('rec/log',{ render(el,p){
   else body=R.fire.map(fireCard).join('')||'<div class="empty">No fire records yet.</div>';
   el.innerHTML=topbar({mod:'rec',title:'Reception logs',sub:T[tab],backTo:'rec',action:{label:'＋ New',onclick:tab==='requests'?"HP.REC.reqSheet('guest')":tab==='incidents'?"HP.REC.incidentSheet()":"HP.REC.fireSheet('test')"}})+`<div class="wrap">
     <div class="seg">${Object.keys(T).map(k=>`<button class="${tab===k?'on':''}" onclick="HP.go('rec/log',{tab:'${k}'},true)">${T[k]}</button>`).join('')}</div>
-    <div style="margin-top:10px">${body}</div></div>${bnav([{id:'rec',icon:'🛎️',label:'Reception',onclick:"HP.go('rec')"},{id:'log',icon:'📒',label:'Logs',onclick:"HP.go('rec/log')"},{id:'home',icon:'🏠',label:'Home',onclick:"HP.go('home')"}],'log')}`;
+    <div style="margin-top:10px">${body}</div></div>${bnav([{id:'rec',icon:'rec',label:'Reception',onclick:"HP.go('rec')"},{id:'log',icon:'comp',label:'Logs',onclick:"HP.go('rec/log')"},{id:'home',icon:'home',label:'Home',onclick:"HP.go('home')"}],'log')}`;
 }});
 
 HP.REC={ reqSheet, reqSheetRe, qSet:(k,v)=>{ R.q[k]=v; }, reqSave, hkSheet, reqOpen, reqUpdate, reqDone, reqReopen, incidentSheet, incType, incPhoto, incSave, incOpen, incUpdate, incClose, fireSheet, fireSave, fireCard, data:R, INCIDENT_TYPES, FIRE_KINDS };

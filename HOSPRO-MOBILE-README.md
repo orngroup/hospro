@@ -84,3 +84,19 @@ New (open rules, like the housekeeping collections): `hospro_app/users` (PIN/rol
 - Push notifications for new/assigned/completed jobs (the old HosFIX Cloud Functions could be pointed at the new app).
 - F&B: wastage and stock counts if wanted; Sales: quotes are desktop-only for now.
 - Guest-facing fault report page (`hosfix-report.html`) now works again once `hoshouse-config.js` is updated.
+
+## Update 2 Nov 2026 (v2026.11.02b)
+- Stays signed in on the phone for 14 days (Sign out is in Settings), so the home-screen icon opens straight to your screens.
+- Managers land on the **Hotel overview** (Today / 7 days / Rooms 360°): occupancy, arrivals and departures (from the portal forecast until the Guestline API is live), needs-attention list, 7-day charts for rooms cleaned, maintenance raised vs fixed, open jobs by area, F&B sales and month-to-date, sales pipeline by stage, reception activity; **Rooms 360°** shows one room's full history (cleaning, maintenance, requests, incidents).
+- Opening Housekeeping as a manager goes straight into HosHOUSE with no second sign-in (needs the updated `hoshouse.html`); My Rota opens on your own shifts.
+- Tighter, more app-like look: compact tiles and stats, bottom navigation on Home/Overview/Settings, module colour in the status bar, screen transitions.
+
+## Update 2 Nov 2026 (v2026.11.02c) — home-screen icons
+- New HosPRO app icons in `assets/app/`: a navy tile with the H mark and wordmark, plus one per department (Management, Housekeeping, Maintenance, Reception, Food & Bev, Sales) with the swoosh in the department colour.
+- Whoever is signed in gets their department's icon when they add to the home screen (iPhone and Android). Department links also work before sign-in: `app.html?d=housekeeping`, `?d=reception`, `?d=fb`, `?d=sales`, `?d=maintenance`, `?d=management`. The manifests are `app-manifest.json` and `app-manifest-<department>.json`.
+- In-app tiles and navigation now use proper line icons in HosPRO colours instead of emoji, so they look the same on every phone.
+
+## Update 2 Nov 2026 (v2026.11.02d) — HosHOUSE
+- A room that is already signed off can be opened again ("Open" on the done card): cleaning is locked, but maintenance, items replaced, lost property and "Report a fault" stay live.
+- The maintenance "Report" button is on every room at every status, solid brown (green "Fixed ✓" once maintenance has signed the job off).
+- The testing code (3132) on "Report a fault" is removed — any housekeeper can raise a fault straight to Herman & Pete.

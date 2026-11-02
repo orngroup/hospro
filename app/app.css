@@ -184,3 +184,43 @@ textarea.inp{min-height:84px;resize:vertical}
 .avatars{display:flex;gap:4px} .avatars .avatar{width:26px;height:26px;font-size:11px;margin-left:-6px;border:2px solid #fff} .avatars .avatar:first-child{margin-left:0}
 @media (min-width:600px){ .modgrid{grid-template-columns:1fr 1fr 1fr} .stats{grid-template-columns:repeat(4,1fr)} .stats.four{grid-template-columns:repeat(4,1fr)} }
 @media print{ .topbar,.bnav,#toast{display:none!important} }
+
+/* ---- app-like polish (v2) ---- */
+html{overscroll-behavior-y:none;-webkit-text-size-adjust:100%}
+body{font-size:15px;user-select:none;-webkit-user-select:none}
+input,textarea,select,[contenteditable]{user-select:text;-webkit-user-select:text}
+#main.fade{animation:hpfade .18s ease-out}
+@keyframes hpfade{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
+.tile,.card.tap,.dept,.namelist button,.btn,.qchip,.bnav button,.rgrid button{transition:transform .08s ease,box-shadow .08s ease}
+.tile:active,.card.tap:active,.dept:active,.namelist button:active,.btn:active,.rgrid button:active{transform:scale(.97)}
+.topbar{min-height:54px;padding-top:calc(10px + var(--safe-top));padding-bottom:10px;box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.topbar.home{background:linear-gradient(135deg,var(--navy),#2c4f8a)}
+.topbar .act.av{background:none;padding:0;border-radius:50%}
+.topbar .act.av .avatar{border:2px solid rgba(255,255,255,.55)}
+.wrap{padding:12px 12px calc(84px + var(--safe-bot))}
+.modgrid{gap:8px}
+.tile{min-height:104px;padding:12px;border-radius:14px}
+.tile .ic{width:38px;height:38px;font-size:20px;border-radius:11px}
+.tile .nm{font-size:14px;margin-top:8px} .tile .ds{font-size:11.5px}
+.stats{gap:6px;margin:2px 0 8px} .stats.four{grid-template-columns:repeat(4,1fr)}
+.stat{padding:8px 4px;border-radius:11px} .stat .n{font-size:19px;line-height:1.15} .stat .l{font-size:9.5px;letter-spacing:.2px}
+.card{padding:12px 13px;margin-bottom:8px;border-radius:13px}
+.sect{margin:14px 2px 6px;font-size:12px}
+.bnav{backdrop-filter:saturate(180%) blur(12px);background:rgba(255,255,255,.92)}
+.bnav button{font-size:10.5px;padding:7px 2px 6px} .bnav button .i{font-size:19px}
+.hero{padding:16px 14px;border-radius:14px;margin-bottom:12px}
+.login{padding-top:calc(18px + var(--safe-top))}
+.login .logo{height:120px}
+.sheet{border-radius:20px 20px 0 0;animation:hpsheet .22s cubic-bezier(.2,.8,.3,1)}
+@keyframes hpsheet{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+.inp,select.inp,textarea.inp{padding:11px 12px;border-radius:10px;font-size:15px}
+.btn{padding:13px;border-radius:12px;font-size:15px}
+.empty{padding:26px 10px;font-size:13.5px}
+.chart{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px 10px 6px;margin-bottom:8px}
+.chart .ct{font-weight:800;font-size:13px;color:var(--ink);margin:0 4px 4px;display:flex;justify-content:space-between}
+.chart .ct span{font-weight:700;color:var(--muted);font-size:11.5px}
+.chart svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin:4px 4px 0;font-size:11px;color:var(--muted);font-weight:700}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.rooms360 .rgrid{grid-template-columns:repeat(8,1fr);gap:4px} .rooms360 .rgrid button{font-size:11px;border-radius:7px}
+@media (display-mode: standalone){ .topbar{padding-top:calc(14px + var(--safe-top))} }

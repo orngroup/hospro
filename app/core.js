@@ -7,28 +7,50 @@
 (function(){
 "use strict";
 
+/* ---------- icon set (inline SVG, 24px grid, stroke) ---------- */
+const ICONS={
+  home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  overview:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+  house:'<path d="M4 20h16"/><path d="M6 20V9l6-5 6 5v11"/><path d="M10 20v-5h4v5"/><path d="M9 12h6"/>',
+  fix:'<path d="M14.7 6.3a4 4 0 0 0-5.3 5L4 16.7 7.3 20l5.4-5.4a4 4 0 0 0 5-5.3l-2.5 2.5-2.1-.6-.6-2.1z"/>',
+  rec:'<path d="M4 18h16"/><path d="M5 18a7 7 0 0 1 14 0"/><path d="M12 11V9"/><path d="M10 9h4"/>',
+  fb:'<path d="M7 3v8a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V3"/><path d="M9 13v8"/><path d="M16 3c-2 1.5-2 6 0 8v10"/>',
+  sales:'<path d="M4 19l5-6 4 3 7-8"/><path d="M16 8h4v4"/>',
+  fire:'<path d="M12 3c1 3 4 5 4 9a4 4 0 0 1-8 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 0-8z"/>',
+  comp:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M8.5 12l2.5 2.5 4.5-4.5"/>',
+  rota:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  management:'<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19l1-5.8L3.5 9.2l5.9-.9z"/>',
+  housekeeping:'<path d="M14 3l-5 5"/><path d="M9 8l-5 5 4 4 5-5z"/><path d="M4 13l4 4"/><path d="M14 3l7 7"/>',
+  maintenance:'<path d="M14.7 6.3a4 4 0 0 0-5.3 5L4 16.7 7.3 20l5.4-5.4a4 4 0 0 0 5-5.3l-2.5 2.5-2.1-.6-.6-2.1z"/>',
+  reception:'<path d="M4 18h16"/><path d="M5 18a7 7 0 0 1 14 0"/><path d="M12 11V9"/><path d="M10 9h4"/>',
+  fbdept:'<path d="M7 3v8a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V3"/><path d="M9 13v8"/><path d="M16 3c-2 1.5-2 6 0 8v10"/>',
+  salesdept:'<path d="M4 19l5-6 4 3 7-8"/><path d="M16 8h4v4"/>'
+};
+function icon(name, size){ const p=ICONS[name]; if(!p) return esc(name); return `<svg viewBox="0 0 24 24" width="${size||22}" height="${size||22}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`; }
+
 /* ---------- departments ---------- */
 const DEPTS = {
-  management:   { id:'management',   name:'Management',     icon:'⭐', colour:'#1F3864', desc:'Directors & managers' },
-  housekeeping: { id:'housekeeping', name:'Housekeeping',   icon:'🧹', colour:'#2E6B5E', desc:'Rooms & public areas' },
-  maintenance:  { id:'maintenance',  name:'Maintenance',    icon:'🔧', colour:'#EA7A1E', desc:'Fixers & engineers' },
-  reception:    { id:'reception',    name:'Reception',      icon:'🛎️', colour:'#3B6585', desc:'Front office & nights' },
-  fb:           { id:'fb',           name:'Food & Beverage',icon:'🍽️', colour:'#6E4E7A', desc:'Restaurant, bar & kitchen' },
-  sales:        { id:'sales',        name:'Sales & Events', icon:'📈', colour:'#7A6538', desc:'Enquiries & marketing' }
+  management:   { id:'management',   name:'Management',     icon:'management', colour:'#1F3864', desc:'Directors & managers' },
+  housekeeping: { id:'housekeeping', name:'Housekeeping',   icon:'housekeeping', colour:'#2E6B5E', desc:'Rooms & public areas' },
+  maintenance:  { id:'maintenance',  name:'Maintenance',    icon:'maintenance', colour:'#EA7A1E', desc:'Fixers & engineers' },
+  reception:    { id:'reception',    name:'Reception',      icon:'reception', colour:'#3B6585', desc:'Front office & nights' },
+  fb:           { id:'fb',           name:'Food & Beverage',icon:'fbdept', colour:'#6E4E7A', desc:'Restaurant, bar & kitchen' },
+  sales:        { id:'sales',        name:'Sales & Events', icon:'salesdept', colour:'#7A6538', desc:'Enquiries & marketing' }
 };
 const DEPT_ORDER = ['management','housekeeping','maintenance','reception','fb','sales'];
 
 /* ---------- modules (what a tile opens) ---------- */
 const MODULES = [
-  { id:'manage', name:'Overview',        icon:'📊', colour:'#1F3864', desc:'Every department at a glance', tiers:['admin'] },
-  { id:'house',  name:'Housekeeping',    icon:'🧹', colour:'#2E6B5E', desc:'Rooms, cleaning & checks' },
-  { id:'fix',    name:'Maintenance',     icon:'🔧', colour:'#EA7A1E', desc:'Faults, jobs & costs' },
-  { id:'rec',    name:'Reception',       icon:'🛎️', colour:'#3B6585', desc:'Reports, requests & incidents' },
-  { id:'fb',     name:'Food & Beverage', icon:'🍽️', colour:'#6E4E7A', desc:'Daily figures & menus' },
-  { id:'sales',  name:'Sales & Events',  icon:'📈', colour:'#7A6538', desc:'Enquiries & pipeline' },
-  { id:'fire',   name:'Fire Safety',     icon:'🔥', colour:'#B3261E', desc:'Alarm tests, drills & checks' },
-  { id:'comp',   name:'Compliance',      icon:'📋', colour:'#4B5288', desc:'Scheduled tasks & actions' },
-  { id:'rota',   name:'My Rota',         icon:'📅', colour:'#55744F', desc:'Shifts & attendance' }
+  { id:'manage', name:'Overview',        icon:'overview', colour:'#1F3864', desc:'Every department at a glance', tiers:['admin'] },
+  { id:'house',  name:'Housekeeping',    icon:'house', colour:'#2E6B5E', desc:'Rooms, cleaning & checks' },
+  { id:'fix',    name:'Maintenance',     icon:'fix', colour:'#EA7A1E', desc:'Faults, jobs & costs' },
+  { id:'rec',    name:'Reception',       icon:'rec', colour:'#3B6585', desc:'Reports, requests & incidents' },
+  { id:'fb',     name:'Food & Beverage', icon:'fb', colour:'#6E4E7A', desc:'Daily figures & menus' },
+  { id:'sales',  name:'Sales & Events',  icon:'sales', colour:'#7A6538', desc:'Enquiries & pipeline' },
+  { id:'fire',   name:'Fire Safety',     icon:'fire', colour:'#B3261E', desc:'Alarm tests, drills & checks' },
+  { id:'comp',   name:'Compliance',      icon:'comp', colour:'#4B5288', desc:'Scheduled tasks & actions' },
+  { id:'rota',   name:'My Rota',         icon:'rota', colour:'#55744F', desc:'Shifts & attendance' }
 ];
 
 /* What each department can open. Managers (tier admin) open everything. */
@@ -179,6 +201,15 @@ const Users = {
   }
 };
 
+/* ---------- home-screen icon: the department's own HosPRO tile ---------- */
+function setAppIcon(dept){
+  const d=DEPTS[dept]?dept:'';
+  const man=document.querySelector('link[rel="manifest"]'), ati=document.querySelector('link[rel="apple-touch-icon"]');
+  if(man) man.setAttribute('href', d?('app-manifest-'+d+'.json'):'app-manifest.json');
+  if(ati) ati.setAttribute('href', d?('assets/app/icon-'+d+'-180.png'):'assets/app/icon-180.png');
+  const t=document.querySelector('meta[name="apple-mobile-web-app-title"]'); if(t) t.setAttribute('content', d?('HosPRO '+DEPTS[d].name.split(' ')[0]):'HosPRO');
+}
+
 /* ---------- session ---------- */
 let ME=null;
 function isAdmin(){ return !!(ME&&ME.tier==='admin'); }
@@ -200,11 +231,11 @@ function renderLogin(){
   const steps=`<div class="steps">${[0,1,2].map(i=>`<span class="${L.step===i?'on':''}"></span>`).join('')}</div>`;
   if(L.step===0){
     el.innerHTML=`<img class="logo" src="assets/logos/logo---blue-transparent.png" alt="Brandon Hall" onerror="this.style.display='none'"><h1>HosPRO</h1><p>Brandon Hall Hotel &amp; Spa · choose your department</p>${steps}
-      <div class="deptgrid">${DEPT_ORDER.map(d=>{ const D=DEPTS[d]; const n=Users.byDept(d).length; if(!n) return ''; return `<button class="dept" onclick="HP.loginDept('${d}')"><span class="ic" style="background:${D.colour}">${D.icon}</span><span>${esc(D.name)}<small>${esc(D.desc)}</small></span></button>`; }).join('')}</div>
+      <div class="deptgrid">${DEPT_ORDER.map(d=>{ const D=DEPTS[d]; const n=Users.byDept(d).length; if(!n) return ''; return `<button class="dept" onclick="HP.loginDept('${d}')"><span class="ic" style="background:${D.colour}">${icon(D.icon,20)}</span><span>${esc(D.name)}<small>${esc(D.desc)}</small></span></button>`; }).join('')}</div>
       <div style="margin-top:18px"><a class="linkbtn" href="index.html">Desktop portal →</a></div>`;
   } else if(L.step===1){
     const D=DEPTS[L.dept];
-    el.innerHTML=`<h1 style="margin-top:calc(8px + var(--safe-top))">${D.icon} ${esc(D.name)}</h1><p>Tap your name</p>${steps}
+    el.innerHTML=`<h1 style="margin-top:calc(8px + var(--safe-top))"><span style="display:inline-grid;place-items:center;width:38px;height:38px;border-radius:11px;background:${D.colour};color:#fff;vertical-align:middle;margin-right:6px">${icon(D.icon,21)}</span>${esc(D.name)}</h1><p>Tap your name</p>${steps}
       <div class="namelist">${Users.byDept(L.dept).map(u=>`<button onclick="HP.loginUser('${esc(u.id)}')">${avatar(u)}<span>${esc(u.name)}</span><small>${esc(u.role||'')}</small></button>`).join('')}</div>
       <button class="linkbtn" onclick="HP.loginBack()">← Departments</button>`;
   } else {
@@ -231,14 +262,20 @@ function doLogin(){
   if(!ok){ $('lgmsg').textContent='Wrong PIN — try again.'; L.pin=''; $('pindisp').textContent=''; if(navigator.vibrate) navigator.vibrate(80); return; }
   signIn(u);
 }
+function rememberSession(u){
+  // stays signed in on this phone for 14 days (like an installed app); Sign out clears it
+  try{ sessionStorage.setItem('hp_me',u.id); localStorage.setItem('hp_pref',u.id); localStorage.setItem('hp_session',JSON.stringify({id:u.id,at:Date.now()}));
+       if(u.hhId){ sessionStorage.setItem('hh_me',u.hhId); localStorage.setItem('hp_hh',u.hhId); localStorage.setItem('hh_pref',u.hhId); } else { localStorage.removeItem('hp_hh'); } }catch(e){}
+}
 function signIn(u){
   ME=u; L={step:0,dept:null,user:null,pin:''};
-  try{ sessionStorage.setItem('hp_me',u.id); localStorage.setItem('hp_pref',u.id); if(u.hhId) sessionStorage.setItem('hh_me',u.hhId); }catch(e){}
+  rememberSession(u); setAppIcon(u.dept);
   document.dispatchEvent(new CustomEvent('hp:login',{detail:u}));
-  go('home');
+  setTheme('');
+  go(u.tier==='admin'?'manage':'home');
 }
 function signOut(){
-  try{ sessionStorage.removeItem('hp_me'); sessionStorage.removeItem('hh_me'); }catch(e){}
+  try{ sessionStorage.removeItem('hp_me'); sessionStorage.removeItem('hh_me'); localStorage.removeItem('hp_session'); localStorage.removeItem('hp_hh'); }catch(e){}
   document.dispatchEvent(new CustomEvent('hp:logout'));
   ME=null; L={step:0,dept:null,user:null,pin:''}; go('login');
 }
@@ -255,8 +292,9 @@ function go(id, params, replace){
   if(!replace && prev && prev.id!==id) HIST.push(prev);
   if(HIST.length>30) HIST.shift();
   document.querySelectorAll('.framewrap').forEach(f=>f.remove());
-  if(id==='login'){ $('login').classList.remove('hidden'); main.classList.add('hidden'); renderLogin(); window.scrollTo(0,0); return; }
-  $('login').classList.add('hidden'); main.classList.remove('hidden');
+  if(id==='login'){ $('login').classList.remove('hidden'); main.classList.add('hidden'); setTheme(''); renderLogin(); window.scrollTo(0,0); return; }
+  $('login').classList.add('hidden'); main.classList.remove('hidden'); if(id==='home'||id==='settings') setTheme('');
+  main.classList.remove('fade'); void main.offsetWidth; main.classList.add('fade');
   const v=VIEWS[id]; if(!v){ main.innerHTML=`<div class="topbar"><button class="back" onclick="HP.back()">‹</button><div class="ttl"><div class="t">Not found</div></div></div><div class="wrap empty">That screen doesn't exist yet.</div>`; return; }
   main.innerHTML=''; window.scrollTo(0,0);
   try{ v.render(main, CUR.params); }catch(e){ console.error(e); main.innerHTML=`<div class="topbar"><button class="back" onclick="HP.back()">‹</button><div class="ttl"><div class="t">Something went wrong</div></div></div><div class="wrap"><div class="note bad">${esc(e&&e.message)}</div><button class="btn" onclick="HP.go('home')">Home</button></div>`; }
@@ -264,12 +302,15 @@ function go(id, params, replace){
 }
 function back(){ const p=HIST.pop(); if(p) go(p.id,p.params,true); else go('home',null,true); }
 function refresh(){ if(CUR) go(CUR.id,CUR.params,true); }
+const THEME={house:'#2E6B5E',fix:'#965638',rec:'#3B6585',fb:'#6E4E7A',sales:'#7A6538',fire:'#B3261E',comp:'#4B5288'};
+function setTheme(mod){ const m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content',THEME[mod]||'#1F3864'); }
 function topbar(opts){
+  setTheme(opts.mod||'');
   const cls=opts.mod?' mod-'+opts.mod:'';
   return `<div class="topbar${cls}"><button class="back" onclick="${opts.backTo?`HP.go('${opts.backTo}')`:'HP.back()'}" aria-label="Back">‹</button><div class="ttl"><div class="t">${opts.title||''}</div>${opts.sub?`<div class="u">${opts.sub}</div>`:''}</div>${opts.action?`<button class="act" onclick="${opts.action.onclick}">${opts.action.label}</button>`:''}</div>`;
 }
 function bnav(items, active){
-  return `<div class="bnav">${items.map(i=>`<button class="${i.id===active?'on':''}" onclick="${i.onclick}"><span class="i">${i.icon}</span>${esc(i.label)}${i.badge?`<span class="bb">${i.badge}</span>`:''}</button>`).join('')}</div>`;
+  return `<div class="bnav">${items.map(i=>`<button class="${i.id===active?'on':''}" onclick="${i.onclick}"><span class="i">${icon(i.icon,21)}</span>${esc(i.label)}${i.badge?`<span class="bb">${i.badge}</span>`:''}</button>`).join('')}</div>`;
 }
 /* iframe module: existing apps are shown inside the shell, auto signed-in where possible */
 function openFrame(opts){
@@ -286,30 +327,35 @@ function setBadge(mod, n, cls){ HOME_BADGES[mod]={n,cls}; const el=document.quer
 registerView('home',{ render(el){
   const h=new Date().getHours(); const greet=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
   const mods=myModules();
-  el.innerHTML=`<div class="topbar"><div class="ttl"><div class="t">HosPRO · Brandon Hall</div><div class="u">${esc(new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}))}</div></div><button class="act" onclick="HP.go('settings')">⚙︎</button><button class="act" onclick="HP.signOut()">Sign out</button></div>
+  el.innerHTML=`<div class="topbar home"><div class="ttl"><div class="t">${greet}, ${esc(ME.name.split(' ')[0])}</div><div class="u">${esc(DEPTS[ME.dept].name)}${ME.role?' · '+esc(ME.role):''} · ${esc(new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}))}</div></div><button class="act av" onclick="HP.go('settings')" aria-label="Settings">${avatar(ME,34)}</button></div>
   <div class="wrap">
-    <div class="hero"><div class="hi">${greet}, ${esc(ME.name.split(' ')[0])}</div><div class="sub">Welcome ${esc(ME.name)} · ${esc(DEPTS[ME.dept].name)}${ME.role?' · '+esc(ME.role):''}</div>
-      <div class="chips" id="home-chips"><span class="chip">${ME.tier==='admin'?'Sees all departments':ME.tier==='lead'?'Department lead':ME.tier==='fixer'?'My jobs':'Team member'}</span></div></div>
-    <div class="modgrid">${mods.map(m=>`<button class="tile" data-tile="${m.id}" onclick="HP.open('${m.id}')"><span class="ic" style="background:${m.colour}">${m.icon}</span><span class="badge" style="display:none"></span><div><div class="nm">${esc(m.name)}</div><div class="ds">${esc(m.desc)}</div></div></button>`).join('')}</div>
+    <div class="modgrid">${mods.map(m=>`<button class="tile" data-tile="${m.id}" onclick="HP.open('${m.id}')"><span class="ic" style="background:${m.colour}">${icon(m.icon,21)}</span><span class="badge" style="display:none"></span><div><div class="nm">${esc(m.name)}</div><div class="ds">${esc(m.desc)}</div></div></button>`).join('')}</div>
     <div id="home-feed"></div>
-  </div>`;
+  </div>${homeNav('home')}`;
   Object.keys(HOME_BADGES).forEach(k=>setBadge(k,HOME_BADGES[k].n,HOME_BADGES[k].cls));
   document.dispatchEvent(new CustomEvent('hp:home',{detail:{el:$('home-feed')}}));
 }});
 
+function homeNav(active){
+  const items=[{id:'home',icon:'home',label:'Home',onclick:"HP.go('home')"}];
+  if(isAdmin()) items.unshift({id:'manage',icon:'overview',label:'Overview',onclick:"HP.go('manage')"});
+  items.push({id:'settings',icon:'settings',label:'Settings',onclick:"HP.go('settings')"});
+  return bnav(items,active);
+}
 /* ---------- settings (users & PINs — managers only edit) ---------- */
 registerView('settings',{ free:true, render(el){
   const admin=isAdmin();
-  el.innerHTML=topbar({title:'Settings',sub:esc(ME.name)})+`<div class="wrap">
-    <div class="card"><div class="ttl">Install on your phone</div><div class="sub">iPhone: Share → "Add to Home Screen". Android: menu → "Install app" / "Add to Home screen". One icon for every department.</div><button class="btn ghost" id="hp-install" style="display:none">Install HosPRO</button></div>
+  el.innerHTML=topbar({title:'Settings',sub:esc(ME.name),backTo:'home'})+`<div class="wrap">
+    <div class="card"><div class="row"><img src="assets/app/icon-${esc(ME.dept)}-192.png" style="width:56px;height:56px;border-radius:14px;flex:0 0 auto" alt=""><div class="grow"><div class="ttl">Install on your phone</div><div class="sub">iPhone: Share → "Add to Home Screen". Android: menu → "Install app". You'll get the ${esc(DEPTS[ME.dept].name)} HosPRO icon.</div></div></div><button class="btn ghost" id="hp-install" style="display:none">Install HosPRO</button></div>
     <div class="card"><div class="ttl">Change my PIN</div><div class="sub">4 digits. This is how you sign in on every HosPRO screen.</div>
       <div class="two" style="margin-top:8px"><input class="inp" id="st-pin1" inputmode="numeric" maxlength="4" placeholder="New PIN"><input class="inp" id="st-pin2" inputmode="numeric" maxlength="4" placeholder="Repeat"></div><button class="btn sm" style="margin-top:8px" onclick="HP.changePin()">Save PIN</button></div>
     ${admin?`<div class="sect">Team &amp; access <span class="r" onclick="HP.addUserSheet()">+ Add person</span></div>
-      ${DEPT_ORDER.map(d=>{ const us=Users.byDept(d); if(!us.length) return ''; return `<div class="card"><div class="ttl">${DEPTS[d].icon} ${esc(DEPTS[d].name)}</div>${us.map(u=>`<div class="line"><span class="row">${avatar(u,26)}<span><b>${esc(u.name)}</b><span class="sub" style="display:block">${esc(u.role||'')} · ${esc(u.tier)}${u.hhId?' · HosHOUSE ✓':''}</span></span></span><button class="btn sm ghost" onclick="HP.editUserSheet('${esc(u.id)}')">Edit</button></div>`).join('')}</div>`; }).join('')}
+      ${DEPT_ORDER.map(d=>{ const us=Users.byDept(d); if(!us.length) return ''; return `<div class="card"><div class="ttl row"><span style="width:26px;height:26px;border-radius:7px;background:${DEPTS[d].colour};color:#fff;display:inline-grid;place-items:center">${icon(DEPTS[d].icon,15)}</span>${esc(DEPTS[d].name)}</div>${us.map(u=>`<div class="line"><span class="row">${avatar(u,26)}<span><b>${esc(u.name)}</b><span class="sub" style="display:block">${esc(u.role||'')} · ${esc(u.tier)}${u.hhId?' · HosHOUSE ✓':''}</span></span></span><button class="btn sm ghost" onclick="HP.editUserSheet('${esc(u.id)}')">Edit</button></div>`).join('')}</div>`; }).join('')}
       <div class="note info">Housekeepers and their PINs come from the HosHOUSE staff list (Manage → Staff) so there is one list. Everyone else is managed here and saved for all devices.</div>`:''}
     <div class="card"><div class="ttl">Other apps</div><div class="sub">The previous apps stay available as a fallback.</div><div class="chips"><a class="qchip" href="hoshouse.html" target="_blank">HosHOUSE</a><a class="qchip" href="hosmain.html" target="_blank">HosFIX (old)</a><a class="qchip" href="hosfire-mobile.html" target="_blank">HosFIRE</a><a class="qchip" href="index.html" target="_blank">Desktop portal</a><a class="qchip" href="https://fixray.app" target="_blank">FixRay ↗</a></div></div>
+    <button class="btn ghost" style="color:var(--red)" onclick="HP.signOut()">Sign out of HosPRO</button>
     <div class="sub" style="text-align:center;margin-top:14px">HosPRO Mobile v${esc(window.HP_VERSION||'1')}</div>
-  </div>`;
+  </div>${homeNav('settings')}`;
   if(window._hpInstallEvt){ const b=$('hp-install'); b.style.display='block'; b.onclick=()=>{ window._hpInstallEvt.prompt(); }; }
 }});
 async function changePin(){
@@ -398,11 +444,13 @@ const Store={
 async function boot(){
   try{ if(window.HH) await HH.loadCfg(); }catch(e){}
   await Users.load();
-  const saved=(()=>{ try{ return sessionStorage.getItem('hp_me'); }catch(e){ return null; } })();
+  let saved=(()=>{ try{ return sessionStorage.getItem('hp_me'); }catch(e){ return null; } })();
+  if(!saved){ const ss=lsGet('hp_session',null); if(ss&&ss.id&&Date.now()-(ss.at||0)<14*864e5) saved=ss.id; }
   const pre=new URLSearchParams(location.search).get('u');
   const u=saved?Users.byId(saved):null;
-  if(u){ ME=u; try{ if(u.hhId) sessionStorage.setItem('hh_me',u.hhId); }catch(e){} document.dispatchEvent(new CustomEvent('hp:login',{detail:u})); const want=(location.hash||'').slice(1); go(want&&want!=='login'&&VIEWS[want]?want:'home',null,true); }
-  else { if(pre && Users.byId(pre)){ const pu=Users.byId(pre); L.dept=pu.dept; L.user=pu; L.step=2; } else { const pref=lsGet('hp_pref',null); const lu=typeof pref==='string'?Users.byId(pref):null; if(lu){ L.dept=lu.dept; L.user=lu; L.step=2; } } go('login',null,true); }
+  const dq=new URLSearchParams(location.search).get('d'); if(dq&&DEPTS[dq]) setAppIcon(dq);
+  if(u && (!pre || pre===u.id)){ ME=u; rememberSession(u); setAppIcon(u.dept); document.dispatchEvent(new CustomEvent('hp:login',{detail:u})); const want=(location.hash||'').slice(1); go(want&&want!=='login'&&VIEWS[want]?want:(u.tier==='admin'?'manage':'home'),null,true); }
+  else { if(pre && Users.byId(pre)){ const pu=Users.byId(pre); L.dept=pu.dept; L.user=pu; L.step=2; setAppIcon(pu.dept); } else if(dq&&DEPTS[dq]){ L.dept=dq; L.step=1; } else { const pref=lsGet('hp_pref',null); const lu=typeof pref==='string'?Users.byId(pref):null; if(lu){ L.dept=lu.dept; L.user=lu; L.step=2; } } go('login',null,true); }
   window.addEventListener('popstate',()=>{ if(document.querySelector('.framewrap')) { closeFrame(); return; } back(); });
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('app-sw.js').catch(()=>{}); }
   window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); window._hpInstallEvt=e; });
@@ -412,7 +460,7 @@ window.HP={ DEPTS, DEPT_ORDER, MODULES, Users, Store, APPROVAL_THRESHOLD, DEFAUL
   get ME(){ return ME; }, isAdmin, isLead, canOpen, myModules,
   $, esc, todayISO, nowISO, gbp, fmtDate, fmtTime, fmtDT, ago, mmss, uid, initials, avatar, lsGet, lsSet, toast,
   sheet, closeSheet, confirmSheet, capturePhoto, viewPhoto,
-  registerView, go, back, refresh, topbar, bnav, openFrame, closeFrame, setBadge, open,
+  registerView, go, back, refresh, topbar, bnav, homeNav, openFrame, closeFrame, setBadge, open, setTheme, setAppIcon, icon,
   loginDept, loginUser, loginBack, loginKey, signOut, changePin, editUserSheet, saveUser, removeUser, addUserSheet, addUser,
   boot };
 window.HP_MODULE_OPEN={};
