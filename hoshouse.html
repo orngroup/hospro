@@ -730,9 +730,10 @@
     const dur=r.durationSec?Math.round(r.durationSec/60)+' min':'';
     const hasMaint=r.maintenance&&r.maintenance.trim();
     const hasLost=(r.lostProperty&&r.lostProperty.trim())||lost.length;
-    window._hhFound={room:String(r.room), date:date, maintenance:r.maintenance||'', lostProperty:r.lostProperty||'', lostPhoto:!!lost.length, who:r.housekeeperName||''};
+    window._hhFound={room:String(r.room), date:date, type:r.type||'', maintenance:r.maintenance||'', lostProperty:r.lostProperty||'', lostPhoto:!!lost.length, who:r.housekeeperName||'', maintJobId:r.maintJobId||''};
+    const reportBtn=`<button class="go" style="background:#965638;margin-top:10px;padding:12px" onclick="reportFixFound()">🔧 Report a fault to HosFIX${r.maintJobId?' (raise another)':''}</button>${r.maintJobId?`<div style="font-size:11.5px;color:#2a6a4a;font-weight:700;margin-top:3px">✓ A HosFIX job was already raised for this room</div>`:''}`;
     const shareBtns=(hasMaint||hasLost)?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-        ${hasMaint?`<button class="go ghost" style="flex:1;min-width:150px;background:#965638;border:1.5px solid #965638;color:#fff;padding:11px" onclick="sendFoundToFix()">🔧 Send to HosFIX</button>`:''}
+        ${hasMaint?`<button class="go ghost" style="flex:1;min-width:150px;background:#965638;border:1.5px solid #965638;color:#fff;padding:11px" onclick="sendFoundToFix()">🔧 Send note to HosFIX</button>`:''}
         ${hasMaint?`<button class="go ghost" style="flex:1;min-width:150px;background:#25D366;border:1.5px solid #25D366;color:#fff;padding:11px" onclick="shareFound('maint')">💬 Share maintenance</button>`:''}
         ${hasLost?`<button class="go ghost" style="flex:1;min-width:150px;background:#25D366;border:1.5px solid #25D366;color:#fff;padding:11px" onclick="shareFound('lost')">💬 Share lost property</button>`:''}
       </div>`:'';
@@ -746,6 +747,7 @@
       ${line('🔧','To maintenance',r.maintenance)}
       ${line('♻','Items replaced',r.replaced)}
       ${line('🎒','Lost property',r.lostProperty)}
+      ${reportBtn}
       ${shareBtns}
       ${photoBlock}
       ${doorBlock}
@@ -1141,11 +1143,11 @@
     const blockedNote=r=> r.status==='blocked' ? `<div class="rnote" style="background:#fdecea;border-color:#f3c0ba;color:#b3261e">⛔ ${r.blockReason==='dnd'?'Do Not Disturb':'Guest refused'} · ${r.blockedAt?new Date(r.blockedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):''}${r.blockReason==='dnd'?' · door photo saved':''}</div>` : '';
     const urgBadge=r=> (r.urgent && r.status!=='done') ? '<span class="urg">🚨 URGENT</span>' : '';
     // Report a maintenance fault — available on every room, any status (gated by code for now)
-    const fixBtn=r=>`<button class="go" style="background:${r.maintStatus==='complete'?'#2a6a4a':'#965638'};color:#fff;padding:11px 13px" title="Report a maintenance fault to maintenance" onclick="event.stopPropagation();reportFixFor('${r.room}')">🔧 ${r.maintStatus==='complete'?'Fixed ✓':'Report'+(r.maintJobId?' ✓':'')}</button>`;
+    const fixBtn=r=>`<button class="go" style="background:#f2ece6;color:#965638;border:1px solid #d8cfc5;padding:11px 13px" title="Report a maintenance fault to HosFIX (code needed)" onclick="event.stopPropagation();reportFixFor('${r.room}')">🔧 Report${r.maintJobId?' ✓':''}</button>`;
     const row=r=>{
       const pc=DEFT[r.type]||'dep'; const u=(r.urgent && r.status!=='done')?' urgent':'';
       if(r.status==='in_progress') return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${voiceBtn(r)}${plus(r)}${fixBtn(r)}${note(r)}</div>`;
-      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min · 📷4</div></div><button class="go ghost" onclick="openRoom('${r.room}')">Open</button>${voiceBtn(r)}${plus(r)}${fixBtn(r)}${note(r)}</div>`;
+      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min · 📷4</div></div>${voiceBtn(r)}${plus(r)}${fixBtn(r)}${note(r)}</div>`;
       return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div></div>
         <button class="go" onclick="startRoom('${r.room}')">Start</button>
         <button class="go" style="background:var(--red)" title="Can't clean this room right now" onclick="cannotStart('${r.room}')">Can't start</button>
@@ -1252,10 +1254,6 @@
   function refreshActive(){ const r=rooms.find(x=>x.room===active.room); if(r) active=r; if($('scr-room').classList.contains('on')) renderActive(); }
   function renderActive(){
     const cl=active.checklist||{};
-    // A room that is already signed off opens read-only for cleaning, but maintenance,
-    // lost property and "report a fault" stay live so issues can still be logged.
-    { const isDone=active.status==='done'; const fin=$('rm-finish'); if(fin) fin.style.display=isDone?'none':'';
-      const t=$('rm-timer'); if(t&&isDone){ t.textContent='✓ Done · '+Math.round((active.durationSec||0)/60)+' min'; t.className='timer'; t.style.fontSize='22px'; } else if(t){ t.style.fontSize=''; } }
     const nEl=$('rm-note'); if(active.notes&&active.notes.trim()){ nEl.textContent='📝 '+active.notes; nEl.style.display='block'; } else { nEl.style.display='none'; }
     const vEl=$('rm-voice'); if(vEl){ if(active.voiceNote){ vEl.style.display='block'; vEl.innerHTML=`<button class="go" style="width:100%;background:#2a6a4a;padding:12px;font-size:15px" onclick="voicePlay(active&&active.voiceNote)">🔊 Play voice note from management${active.voiceNoteBy?(' · '+esc(String(active.voiceNoteBy).split(' ')[0])):''}</button>`; } else { vEl.style.display='none'; vEl.innerHTML=''; } }
     const items=HH.checklistFor(active.type);
@@ -1301,7 +1299,7 @@
       <label class="loglbl">🔧 Report to maintenance <span>— anything you can't fix yourself</span></label>
       <input class="loginp" id="rm-maint-inp" placeholder="e.g. blown bathroom bulb" value="${esc(active.maintenance)}" onchange="saveLog('maintenance',this.value)">
       <button class="go ghost" style="background:#965638;border:1.5px solid #965638;color:#fff;margin-top:7px;padding:11px" onclick="reportFixOpen()">🔧 Report a fault to HosFIX — photo, details &amp; priority</button>
-      ${active.maintJobId?`<div style="font-size:11.5px;color:#2a6a4a;font-weight:700;margin-top:4px">${active.maintStatus==='complete'?'✓ Completed by maintenance'+(active.maintCompletedBy?' ('+esc(active.maintCompletedBy)+')':''):'✓ Job raised in HosFIX for the maintenance team'}</div>`:''}
+      ${active.maintJobId?`<div style="font-size:11.5px;color:#2a6a4a;font-weight:700;margin-top:4px">✓ Job raised in HosFIX for the maintenance team</div>`:''}
       <button class="go ghost" style="background:#25D366;border:1.5px solid #25D366;color:#fff;margin-top:7px;padding:11px" onclick="shareWhats('maint')">💬 Save &amp; share on WhatsApp</button>
       <label class="loglbl" style="margin-top:14px">♻ Items replaced <span>— picked up from the store</span></label>
       <input class="loginp" placeholder="e.g. 2 bulbs, 1 TV remote" value="${esc(active.replaced)}" onchange="saveLog('replaced',this.value)">
@@ -1335,7 +1333,12 @@
   // ── Report a fault to HosFIX ──────────────────────────────────────────────
   // Temporary testing gate — only people with the code can raise jobs for now.
   var HF_REPORT_PIN='3132';
-  function hfReportGate(){ return true; }   // testing code removed — reporting is open to all housekeeping staff
+  function hfReportGate(){
+    const c=prompt('Maintenance report code (for testing):');
+    if(c===null) return false;
+    if(String(c).trim()!==HF_REPORT_PIN){ hhToast('Incorrect code'); return false; }
+    return true;
+  }
   var _rfx=null;
   function reportFixOpen(){
     if(!active) return;
@@ -1351,6 +1354,13 @@
     _rfx={ room:r.room, type:r.type, desc:(r.maintenance||''), prio:r.urgent?'high':'medium', photo:null, date:today, by:(ME&&ME.name)||'Housekeeping' };
     reportFixSheet();
   }
+  // Report a fault from the management Find / review screen (any room, any date)
+  function reportFixFound(){
+    const f=window._hhFound; if(!f){ hhToast('Open a room first'); return; }
+    if(!hfReportGate()) return;
+    _rfx={ room:f.room, type:f.type||'', desc:(f.maintenance||''), prio:'medium', photo:null, date:f.date||today, by:(ME&&ME.name)||'Management' };
+    reportFixSheet();
+  }
   function reportFixSheet(){
     const R=_rfx; if(!R) return;
     const PR=[['low','Low','#2a6a4a'],['medium','Medium','#997300'],['high','High','#b3261e'],['urgent','Urgent','#c45c00']];
@@ -1358,7 +1368,7 @@
     o.innerHTML=`<div class="shback" onclick="closeSheet()"></div>
       <div class="shsheet" style="max-height:94vh;display:flex;flex-direction:column">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="font:800 17px inherit;color:var(--navy)">🔧 Report a fault — Room ${esc(R.room)}</div><div onclick="closeSheet()" style="font-size:24px;color:var(--muted);cursor:pointer;line-height:1">×</div></div>
-        <div class="sub" style="margin-bottom:10px">${esc(R.type||'')} · goes straight to maintenance (Herman &amp; Pete)</div>
+        <div class="sub" style="margin-bottom:10px">${esc(R.type||'')} · goes straight to HosFIX (Herman &amp; Pete)</div>
         <label class="loglbl">What's the fault?</label>
         <textarea class="loginp" id="rfx-desc" style="min-height:82px" placeholder="e.g. Shower mixer dripping constantly">${esc(R.desc)}</textarea>
         <label class="loglbl" style="margin-top:12px">Priority</label>
@@ -1381,7 +1391,11 @@
     try{ const rr=rooms.find(x=>String(x.room)===String(R.room)); if(rr){ rr.maintenance=desc; rr.maintJobId=job.id; } }catch(e){}
     closeSheet(); hhToast('🔧 Sent to HosFIX — job raised for Room '+R.room);
     if(active&&String(active.room)===String(R.room)) renderLogs();
-    try{ if($('scr-list').classList.contains('on')) renderList(); else if($('scr-admin')&&$('scr-admin').classList.contains('on')) renderAdmin(); }catch(e){}
+    try{ if(window._hhFound) window._hhFound.maintJobId=job.id; }catch(e){}
+    try{
+      if($('scr-list').classList.contains('on')) renderList();
+      else if($('scr-admin')&&$('scr-admin').classList.contains('on')){ const fi=$('find-room'); if(fi&&String(fi.value).trim()===String(R.room)) findRoom(); }
+    }catch(e){}
   }
   // From the room lookup (Find) — also gated during testing
   async function sendFoundToFix(){
@@ -1409,7 +1423,6 @@
   async function saveLog(field,val){ active[field]=val; const p={}; p[field]=val; await HH.updateRoom(today, active.room, p); }
   async function toggleChk(item,val){ const cl=Object.assign({},active.checklist||{}); cl[item]=val; active.checklist=cl; await HH.updateRoom(today, active.room, {checklist:cl}); renderActive(); }
   function tickTimer(){
-    if(active&&active.status==='done') return;
     if(!active||!active.startAt){ $('rm-timer').textContent='00:00'; return; }
     const s=Math.floor((Date.now()-active.startAt)/1000); const win=HH.targetMin(active.type)||30;
     const el=$('rm-timer'); el.textContent=mmss(s); el.className='timer'+(s>=win*60?' red':s>=(win-5)*60?' amber':'');
@@ -1434,9 +1447,7 @@
   (async function(){
     await HH.loadCfg();   // load shared staff list first so names are current
     buildLogin();
-    let saved=sessionStorage.getItem('hh_me');
-    // Opened from HosPRO Mobile (app.html): the person has already entered their PIN there
-    try{ const q=new URLSearchParams(location.search); if(!saved && q.get('auto')==='1' && q.get('u') && localStorage.getItem('hp_hh')===q.get('u')){ saved=q.get('u'); sessionStorage.setItem('hh_me',saved); } }catch(e){}
+    const saved=sessionStorage.getItem('hh_me');
     if(saved && HH.staffById(saved)){ ME=HH.staffById(saved); startList(); }
   })();
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('/hoshouse-sw.js').catch(()=>{}); }
