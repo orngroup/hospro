@@ -267,7 +267,7 @@ const NAV = [
   ["Checks and records", [["checks", "📝", "Record a check"], ["rota", "🔔", "Weekly tests"], ["log", "📖", "Logbook"], ["back", "🗂", "Back-records"], ["drills", "🚪", "Drills, PEEPs, permits"]]],
   ["Actions and contractors", [["actions", "📋", "Actions"], ["certs", "📜", "Certificates"], ["ext", "🧯", "Extinguishers"], ["venues", "💍", "Venues & events"]]],
   ["People", [["training", "🎓", "Training"]]],
-  ["Library", [["sign", "✍️", "Documents to Sign"], ["docs", "📁", "Documents"], ["regs", "⚖️", "Regulations"], ["pack", "🖨", "Inspector pack"], ["folder", "📘", "Hotel fire folder"], ["landlord", "🏠", "Landlord pack"]]],
+  ["Library", [["sign", "✍️", "Documents to Sign"], ["docs", "📁", "Documents"], ["regs", "⚖️", "Regulations"], ["pack", "🖨", "Inspector pack"], ["folder", "📘", "Hotel fire folder"], ["landlord", "🏠", "Landlord pack"], ["fra", "🧾", "FRA request"]]],
   ["Admin", [["settings", "⚙️", "Settings"]]]
 ];
 function placeNav() { const hh = ($("header") || {}).offsetHeight || 66; const nv = $("#nav"); if (!nv) return; nv.style.top = hh + "px"; nv.style.height = window.innerWidth > 900 ? `calc(100vh - ${hh}px)` : ""; }
@@ -2637,6 +2637,139 @@ BIND.landlord = (v) => {
   $$("[data-wdel]", v).forEach((b) => (b.onclick = () => { llRead(v).works.splice(+b.dataset.wdel, 1); render(); }));
   $$("[data-adel]", v).forEach((b) => (b.onclick = () => { llRead(v).alts.splice(+b.dataset.adel, 1); render(); }));
   $$('[data-ll="noticeDate"], [data-doc], [data-cert], [data-dg], [data-hub], [data-hg]', v).forEach((el) => (el.onchange = re));
+};
+
+/* ============================================================
+   FRA REQUEST — answers to the fire officer's follow-up questions.
+   Draft kept in hosfire_config/fra_request. "Publish" writes a snapshot to
+   hosfire_share/<key> (kind "inspector"), opened at /fra with its own password.
+   ============================================================ */
+const FR_KEY = (pw) => llKey("fra|" + String(pw).trim());
+const FR_ITEMS = [
+  { id: "pat", q: "The date that PAT testing was last completed at the premises.", match: /\bpat\b|portable appliance|eswo/i, cert: /portable appliance/i,
+    answer: "Portable appliance testing was last completed on 12 December 2025 (report ESWO173507: 768 items tested, no failures recorded). The next test is due by December 2026.", date: "2025-12-12" },
+  { id: "eicr", q: "Supply a copy of the last EICR report that was completed for the premises.", match: /eicr|electrical installation|40697526|yec/i, cert: /eicr|electrical installation/i,
+    answer: "The last Electrical Installation Condition Report was completed on 25 November 2025 by YEC Electrical and Construction Services (certificate 40697526). The installation was reported as satisfactory. A copy is attached. The next inspection is due by 25 November 2028.", date: "2025-11-25" },
+  { id: "gas", q: "The date that a gas safe check was last completed at the premises.", match: /gas safe|gas safety|cp12|gas genie|warmfix/i, cert: /gas/i,
+    answer: "The last gas safety check was completed on 30 November 2025 by WarmFix Ltd (Gas Safe 639579). The appliances that did not pass were isolated and labelled and are not in use pending replacement.", date: "2025-11-30",
+    hint: "Your landlord pack says \"Completed – Gas Genie\". If there is a newer check, change the date and wording and attach that certificate." },
+  { id: "ansul", q: "The date the Ansul system was last serviced / maintained.", match: /ansul|suppression/i, cert: /ansul|suppression/i,
+    answer: "The Ansul kitchen fire suppression system was last serviced on 13 November 2025 by Leader Systems (job 58152). The report is attached.", date: "2025-11-13",
+    hint: "Your landlord pack says \"Leaders have completed\". If Leader have serviced it since, change the date and attach the new report." },
+  { id: "drill", q: "Please could you confirm details of the last fire drill that was undertaken at the premises.", match: /drill/i, cert: null, auto: "drills",
+    answer: "", date: "",
+    hint: "Drills recorded in HosFIRE are listed automatically below the answer. If no drill has taken place, say so honestly and give the date the next day and night drills are booked." },
+  { id: "training", q: "Do you keep a record of staff training? If yes, supply a copy of the record for the last time staff received fire safety training.", match: /training record|fire marshal|fire warden|BHH-ST-13|training and fire checks/i, cert: null, auto: "training",
+    answer: "Yes. Staff fire safety training is recorded in HosFIRE, the hotel's fire safety records system. Since the audit every member of staff, including housekeeping, has been asked to complete an online fire safety induction, which they sign on completion, followed by a short refresher every month. The current training record is shown below, with each person's most recent training date.", date: "" }
+];
+const FR_DEFAULT = () => ({ password: "2710", to: "Ranjit Bahi, Warwickshire Fire and Rescue Service", ref: HF_HOTEL.inspection.ref,
+  intro: "Thank you for your visit on 27 October 2026. Below are our answers to the points in your email, with copies of the certificates and records you asked for. Each document can be viewed or downloaded.",
+  answers: {}, picks: {}, contact: "" });
+const frDraft = () => {
+  if (S.f.fr) return S.f.fr;
+  const saved = S.data.config.find((c) => c.id === "fra_request") || {};
+  const d = Object.assign(FR_DEFAULT(), JSON.parse(JSON.stringify(saved.draft || {})));
+  FR_ITEMS.forEach((it) => { if (!d.answers[it.id]) d.answers[it.id] = { answer: it.answer, date: it.date }; });
+  S.f.fr = d; S.f.frMeta = { shareId: saved.shareId || "", publishedAt: saved.publishedAt || 0, publishedBy: saved.publishedBy || "" };
+  return d;
+};
+// documents that can be attached: HosFIRE documents and certificates with a file, and HosHUB documents
+const frSources = () => {
+  const a = [];
+  reg("doc").filter((r) => r.file).forEach((r) => a.push({ key: "d:" + r.id, title: r.title, date: r.date || "", file: r.file, size: r.file.size || 0 }));
+  reg("cert").filter((c) => c.file).forEach((c) => a.push({ key: "c:" + c.id, title: c.name + (c.certRef ? " — " + c.certRef : "") + " (certificate)", date: c.last || "", file: c.file, size: c.file.size || 0 }));
+  (((S.f.llHub || {}).rows) || []).forEach((r) => a.push({ key: "h:" + r.id, title: llHubTitle(r), date: "", url: r.fileUrl, size: r.size || 0, hub: r.date || "" }));
+  return a;
+};
+const frPicked = (d, it, src) => { const p = d.picks[it.id]; if (p && src.key in p) return p[src.key]; return it.match.test(src.title) && !llInternal({ title: src.title }); };
+function frDrills() {
+  return recs("drill").slice().sort((a, b) => (b.date || "").localeCompare(a.date || "")).map((r) => ({ date: r.date, by: r.byName || r.doneBy || "", shift: (r.fields || {}).shift || "", time: (r.fields || {}).time || "",
+    evac: (r.fields || {}).evac || "", staff: (r.fields || {}).staff || "", names: (r.fields || {}).names || "", issues: (r.fields || {}).issues || r.notes || "",
+    fails: Object.entries(r.items || {}).filter(([, v]) => v === "fail").map(([k]) => ((HF_CHECKS.find((c) => c.id === "drill") || { items: [] }).items.find((i) => i[0] === k) || [k, k])[1]) }));
+}
+function frTraining() {
+  const T = S.data.tlog || [], same = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+  const rows = reg("training").map((t) => {
+    const c = t.courses || {}, on = T.filter((x) => same(x.name, t.name) && x.module !== "hod").sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    const ind = on.find((x) => x.module === "induction"), mon = on.find((x) => x.module === "monthly");
+    const last = [c.induction, c.refresher, c.monthly, c.marshal, c.procedure].filter(Boolean).sort().pop() || "";
+    return { name: t.name, dept: deptName(t.dept), role: t.role || "", induction: c.induction || "", how: ind ? `Online, signed (score ${ind.score}/${ind.total})` : c.induction ? (evOf(t, "induction").confirmed ? "Recorded — evidence seen" : "Recorded") : "", monthly: mon ? mon.date : (c.monthly || ""), marshal: c.marshal || "", last };
+  }).sort((a, b) => a.dept.localeCompare(b.dept) || a.name.localeCompare(b.name));
+  const done = rows.filter((r) => r.induction).length;
+  return { rows, total: rows.length, done, lastDate: rows.map((r) => r.last).filter(Boolean).sort().pop() || "" };
+}
+VIEWS.fra = () => {
+  const d = frDraft(), M = S.f.frMeta, base = location.href.split("#")[0].replace(/[^/]*$/, ""), src = frSources(), dr = frDrills(), tr = frTraining();
+  return `<h2>FRA <span class="fl">request</span></h2>
+  <p class="lead">Answers to the fire officer's follow-up questions after the ${h(fds(HF_HOTEL.inspection.date))} audit, with the documents attached. Publish it to a separate password link for ${h(HF_HOTEL.inspection.inspector)} — it has no access to HosFIRE.</p>
+  <div class="card" style="border-left:6px solid var(--red);margin-bottom:12px"><div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
+    <div style="flex:1;min-width:240px"><label>Link to send</label><input readonly value="${h(base)}fra/" onclick="this.select()"></div>
+    <div style="width:140px"><label>Password</label><input data-fr="password" value="${h(d.password)}"></div>
+    <div>${M.publishedAt ? `<span class="pill p-ok">Published ${h(fds(ymd(new Date(M.publishedAt))))} by ${h(M.publishedBy)}</span>` : `<span class="pill p-grey">Not published yet</span>`}</div></div>
+    <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="fr-save">Save draft</button><button class="btn red" id="fr-pub" ${isAdmin() ? "" : "disabled"}>${M.publishedAt ? "Update the FRA page" : "Publish the FRA page"}</button>
+      <button class="btn ghost" id="fr-view">Open the FRA page</button><button class="btn ghost" id="fr-pdf">🖨 PDF</button><span class="muted" id="fr-msg"></span></div>
+    <div class="f2" style="margin-top:8px"><div><label>For</label><input data-fr="to" value="${h(d.to)}"></div><div><label>Reference</label><input data-fr="ref" value="${h(d.ref)}"></div></div>
+    <label>Introduction</label><textarea data-fr="intro" rows="2">${h(d.intro)}</textarea>
+    <label>Contact (name, role, phone, email)</label><input data-fr="contact" value="${h(d.contact)}" placeholder="e.g. Ajay Kawa, Director — 07… — ajay@…"></div>
+  ${FR_ITEMS.map((it, i) => { const a = d.answers[it.id] || {}, list = src.filter((s) => frPicked(d, it, s) || it.match.test(s.title)).concat(src.filter((s) => !(frPicked(d, it, s) || it.match.test(s.title))));
+    const n = src.filter((s) => frPicked(d, it, s)).length;
+    return `<div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">${i + 1}. ${h(it.q)}</h3>
+      ${it.hint ? `<p class="muted" style="color:var(--amber)">${h(it.hint)}</p>` : ""}
+      <div class="f2"><div style="flex:3"><label>Our answer</label><textarea data-fa="${it.id}|answer" rows="3">${h(a.answer || "")}</textarea></div><div><label>Date</label><input type="date" data-fa="${it.id}|date" value="${h(a.date || "")}"></div></div>
+      ${it.auto === "drills" ? `<p style="margin:8px 0 4px"><b>Drills recorded in HosFIRE:</b> ${dr.length ? dr.map((x) => `${fds(x.date)} (${h(x.shift || "")}${x.evac ? ", " + h(x.evac) + " min" : ""})`).join(" · ") : '<span style="color:var(--red);font-weight:700">none recorded</span>'}</p>` : ""}
+      ${it.auto === "training" ? `<p style="margin:8px 0 4px"><b>Training record included automatically:</b> ${tr.done} of ${tr.total} staff with fire safety training recorded; most recent ${tr.lastDate ? fds(tr.lastDate) : "—"}.</p>` : ""}
+      <details ${n ? "" : "open"}><summary style="cursor:pointer;font-weight:700">Documents attached (${n}) — tick to attach</summary><div style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin-top:6px">
+      ${list.map((s) => `<label style="display:flex;gap:8px;align-items:flex-start;text-transform:none;font-weight:400;font-size:14px;margin:4px 0;color:var(--ink)"><input type="checkbox" data-fp="${it.id}|${s.key}" ${frPicked(d, it, s) ? "checked" : ""} style="width:auto;margin-top:3px">${h(s.title)}${s.date ? ` <span class="muted">· ${fds(s.date)}</span>` : ""}${s.hub ? ' <span class="muted">· HosHUB</span>' : ""}</label>`).join("") || '<p class="muted">No documents with files yet — upload in Documents.</p>'}
+      </div></details></div>`; }).join("")}`;
+};
+function frRead(v) {
+  const d = frDraft();
+  $$("[data-fr]", v).forEach((el) => (d[el.dataset.fr] = el.value.trim()));
+  $$("[data-fa]", v).forEach((el) => { const [id, k] = el.dataset.fa.split("|"); d.answers[id] = Object.assign({}, d.answers[id], { [k]: el.value.trim() }); });
+  $$("[data-fp]", v).forEach((el) => { const [id, ...rest] = el.dataset.fp.split("|"); const key = rest.join("|"); d.picks[id] = Object.assign({}, d.picks[id], { [key]: el.checked }); });
+  return d;
+}
+async function frBuild(d, msg) {
+  msg.textContent = "Preparing documents…";
+  const src = frSources(), items = [];
+  for (const it of FR_ITEMS) {
+    const a = d.answers[it.id] || {}, docs = [];
+    for (const s of src.filter((x) => frPicked(d, it, x))) { let url = s.url || ""; if (!url && s.file) { try { url = await llFileUrl(s.file); } catch (e) { msg.textContent = `Could not prepare “${s.title}”: ${e.message}`; return null; } } docs.push({ title: s.title, date: s.date, url }); }
+    const seen = new Set(); items.push({ id: it.id, q: it.q, answer: a.answer || "", date: a.date || "", docs: docs.filter((x) => { const k = llStrip(x.title).toLowerCase().replace(/[^a-z0-9]+/g, ""); if (seen.has(k)) return false; seen.add(k); return true; }) });
+  }
+  return { v: 1, kind: "inspector", hotel: HF_HOTEL.name, address: HF_HOTEL.address, to: d.to, ref: d.ref, intro: d.intro, contact: d.contact, inspection: HF_HOTEL.inspection,
+    items, drills: frDrills(), training: frTraining(), preparedBy: S.user.name, publishedAt: Date.now() };
+}
+function frHTML(P) {
+  const T = (head, rows) => `<table style="width:100%;border-collapse:collapse;font-size:9pt;margin:2mm 0 3mm"><tr>${head.map((x) => `<th style="text-align:left;background:#F2EDE4;padding:1.6mm">${x}</th>`).join("")}</tr>${rows.map((r) => `<tr style="page-break-inside:avoid">${r.map((x) => `<td style="padding:1.6mm;border-bottom:1px solid #E2DCD1;vertical-align:top">${x}</td>`).join("")}</tr>`).join("")}</table>`;
+  return `<div style="font-family:inherit;color:#1B2733;font-size:10.5pt;line-height:1.45">
+  <div style="border-bottom:4px solid #C62828;padding-bottom:4mm;display:flex;gap:6mm;align-items:center"><img src="assets/marketing/logos/logo-blue-crop.png" style="height:18mm"><div><div style="font-size:18pt;font-weight:800;color:#163C6A">Fire Safety Order audit — follow-up information</div><div>${h(P.hotel)}, ${h(P.address)}</div><div style="color:#5F6B78">For ${h(P.to)} · Ref ${h(P.ref)} · ${fds(ymd(new Date(P.publishedAt)))}</div></div></div>
+  <p style="margin-top:4mm">${h(P.intro)}</p>
+  ${P.items.map((it, i) => `<div style="border:1px solid #DCE4EE;border-left:4px solid #163C6A;border-radius:2mm;padding:3mm 4mm;margin:3mm 0;page-break-inside:avoid"><b>${i + 1}. ${h(it.q)}</b><p style="white-space:pre-wrap;margin:2mm 0">${it.answer ? h(it.answer) : '<b style="color:#9A6200">To follow</b>'}</p>${it.date ? `<p style="margin:0"><b>Date:</b> ${fds(it.date)}</p>` : ""}${it.docs.length ? `<p style="margin:2mm 0 0"><b>Attached:</b> ${it.docs.map((x) => `<a href="${h(x.url)}" style="color:#1D4E89">${h(x.title)}</a>`).join(" · ")}</p>` : ""}
+    ${it.id === "drill" ? (P.drills.length ? T(["Date", "Day / night", "Time", "Evacuation (min)", "Staff", "Recorded by", "Issues"], P.drills.map((x) => [fds(x.date), h(x.shift), h(x.time), h(x.evac), h(x.staff), h(x.by), h(x.issues || "None recorded")])) : "") : ""}</div>`).join("")}
+  <h3 style="color:#163C6A;margin-top:6mm">Staff fire safety training record</h3><p>${P.training.done} of ${P.training.total} staff have fire safety training recorded. Most recent training: ${P.training.lastDate ? fds(P.training.lastDate) : "—"}.</p>
+  ${T(["Name", "Department", "Fire induction", "How recorded", "Latest monthly refresher", "Fire marshal course"], P.training.rows.map((r) => [h(r.name), h(r.dept), r.induction ? fds(r.induction) : "—", h(r.how), r.monthly ? fds(r.monthly) : "—", r.marshal ? fds(r.marshal) : "—"]))}
+  ${P.contact ? `<p><b>Contact:</b> ${h(P.contact)}</p>` : ""}</div>`;
+}
+BIND.fra = (v) => {
+  v.addEventListener("input", () => frRead(v)); v.addEventListener("change", () => frRead(v));
+  llLoadHub();
+  $("#fr-save", v).onclick = async () => { await put("config", "fra_request", { draft: JSON.parse(JSON.stringify(frRead(v))) }); toast("Draft saved"); };
+  $("#fr-view", v).onclick = () => window.open(`fra/${DEMO ? "?demo=1" : ""}`, "_blank", "noopener");
+  $("#fr-pdf", v).onclick = async () => { const P = await frBuild(frRead(v), $("#fr-msg", v)); if (!P) return; $("#fr-msg", v).textContent = ""; $("#print").innerHTML = frHTML(P); printPortrait(); };
+  $("#fr-pub", v).onclick = async () => {
+    const d = frRead(v), msg = $("#fr-msg", v);
+    try {
+      if (!d.password || d.password.length < 4) { msg.textContent = "Enter a password of at least 4 characters."; return; }
+      const P = await frBuild(d, msg); if (!P) return; msg.textContent = "Publishing…";
+      const key = await FR_KEY(d.password), old = S.f.frMeta.shareId, doc = { kind: "inspector", json: JSON.stringify(P), updatedAt: Date.now(), byName: S.user.name };
+      if (S.live) { await fb.db.collection("hosfire_share").doc(key).set(doc); if (old && old !== key) await fb.db.collection("hosfire_share").doc(old).delete().catch(() => {}); }
+      else { const all = JSON.parse(localStorage.getItem("hosfire_share_demo") || "{}"); if (old && old !== key) delete all[old]; all[key] = doc; localStorage.setItem("hosfire_share_demo", JSON.stringify(all)); }
+      S.f.frMeta = { shareId: key, publishedAt: P.publishedAt, publishedBy: S.user.name };
+      await put("config", "fra_request", { draft: JSON.parse(JSON.stringify(d)), ...S.f.frMeta });
+      audit("FRA request page published for the fire officer"); msg.textContent = ""; toast("FRA page published"); render();
+    } catch (e) { msg.textContent = "Could not publish: " + e.message; }
+  };
 };
 
 /* ============================================================ START */
