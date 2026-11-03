@@ -86,7 +86,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
     <div class="card">
       <label class="fl">Room number</label>
       <div id="room-fixed" class="hide"><div class="roomfix" id="room-fixed-n"></div></div>
-      <input id="f-room" type="number" inputmode="numeric" placeholder="e.g. 101" min="0">
+      <select id="f-room" class="hide"><option value="">Select your room…</option></select>
+      <input id="f-room-txt" type="number" inputmode="numeric" placeholder="e.g. 101" min="0" class="hide">
     </div>
 
     <div class="card">
@@ -224,16 +225,30 @@ function setPrio(p){ FS.prio=p; $('pb-n').className='pb'+(p==='normal'?' on-n':'
 /* ---- reception mode shows priority; QR/guest does not ---- */
 if(RECEPTION){ $('prio-card').classList.remove('hide'); $('top-tt').textContent='🧹 Log a Housekeeping Request'; }
 
-/* ---- room pre-fill from QR ?room= ---- */
+/* ---- room: fixed from QR ?room=, else a picker of the real room list (no free text) ---- */
 (function(){
   const r=(qs.get('room')||'').trim();
-  if(r){ FS.room=r; $('room-fixed').classList.remove('hide'); $('room-fixed-n').textContent='Room '+r; $('f-room').classList.add('hide'); }
+  if(r){ FS.room=r; $('room-fixed').classList.remove('hide'); $('room-fixed-n').textContent='Room '+r; return; }
+  loadRooms();
 })();
+async function loadRooms(){
+  let rooms=[];
+  try{ if(db){ const d=await db.collection('hoshouse_config').doc('current').get(); const rr=(d.exists?(d.data()||{}):{}).rooms; if(Array.isArray(rr)) rooms=rr.map(x=>String(x.room)).filter(Boolean); } }catch(e){}
+  const sel=$('f-room');
+  if(rooms.length){
+    rooms.sort((a,b)=>(+a||0)-(+b||0)||String(a).localeCompare(String(b)));
+    sel.innerHTML='<option value="">Select your room…</option>'+rooms.map(r=>`<option value="${esc(r)}">Room ${esc(r)}</option>`).join('');
+    sel.classList.remove('hide');
+  } else {
+    $('f-room-txt').classList.remove('hide');   // fallback: type it if the room list isn't available
+  }
+}
+function getRoom(){ if(FS.room) return FS.room; const sel=$('f-room'); if(sel && !sel.classList.contains('hide') && sel.value) return sel.value; const t=$('f-room-txt'); if(t && !t.classList.contains('hide')) return (t.value||'').trim(); return ''; }
 
 /* ---- submit ---- */
 async function submitRequest(){
-  const room=(FS.room||$('f-room').value||'').toString().trim();
-  if(!room){ toast('Please enter your room number'); $('f-room').focus(); return; }
+  const room=getRoom().toString().trim();
+  if(!room){ toast('Please select your room'); const s=$('f-room'),t=$('f-room-txt'); (s&&!s.classList.contains('hide')?s:t).focus(); return; }
   const ids=Object.keys(FS.items);
   if(!ids.length){ toast('Please pick what you need'); return; }
   const items=ids.map(id=>({type:id,label:TYPE_LABEL(id),qty:FS.items[id]||1}));
@@ -251,7 +266,7 @@ async function submitRequest(){
     showScreen('scr-thanks');
   }catch(e){ console.warn('submit',e); toast('Could not send — please tell reception'); }
 }
-function resetForm(){ FS={room:FS.room, items:{}, prio:'normal'}; $('f-detail').value=''; setPrio('normal'); document.querySelectorAll('.rt').forEach(b=>b.classList.remove('on')); renderSelected(); if(!qs.get('room')) $('f-room').value=''; showScreen('scr-form'); }
+function resetForm(){ FS={room:FS.room, items:{}, prio:'normal'}; $('f-detail').value=''; setPrio('normal'); document.querySelectorAll('.rt').forEach(b=>b.classList.remove('on')); renderSelected(); if(!qs.get('room')){ const s=$('f-room'); if(s) s.value=''; const t=$('f-room-txt'); if(t) t.value=''; } showScreen('scr-form'); }
 
 /* ---- screens ---- */
 function showScreen(id){ ['scr-form','scr-thanks','scr-pin','scr-board'].forEach(s=>$(s).classList.toggle('hide',s!==id)); window.scrollTo(0,0); }

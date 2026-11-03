@@ -162,6 +162,7 @@
   <header><div><div class="t">🧹 My rooms</div><div class="u" id="hdr-date"></div></div>
     <div style="display:flex;gap:14px;align-items:center">
       <div class="u" id="hdr-team" onclick="showTeam()" style="cursor:pointer;display:none">👁 Team</div>
+      <div class="u" onclick="showRequests()" style="cursor:pointer">🔔 Requests</div>
       <div class="u" id="hdr-user" onclick="logout()" style="cursor:pointer">Sign out</div>
     </div></header>
   <div class="wrap" id="listWrap"></div>
@@ -172,6 +173,7 @@
   <header><div><div class="t">🏨 Housekeeping Overview</div><div class="u" id="tm-date"></div></div>
     <div style="display:flex;gap:14px;align-items:center">
       <div class="u" onclick="showAdmin()" style="cursor:pointer">⚙ Manage</div>
+      <div class="u" onclick="showRequests()" style="cursor:pointer">🔔 Requests</div>
       <div class="u" onclick="showScreen('scr-list');renderList()" style="cursor:pointer">← My rooms</div>
     </div></header>
   <div class="wrap">
@@ -191,6 +193,13 @@
     <button class="adtab" data-tab="links" onclick="setAdminTab('links')">🔗 Links</button>
   </div>
   <div class="wrap" id="adminWrap"></div>
+</div>
+
+<!-- GUEST REQUESTS -->
+<div class="screen" id="scr-requests">
+  <header><div><div class="t">🔔 Guest Requests</div><div class="u" id="req-sub"></div></div>
+    <div class="u" onclick="reqBack()" style="cursor:pointer">← Back</div></header>
+  <div class="wrap" id="reqWrap"></div>
 </div>
 
 <!-- ACTIVE ROOM -->
@@ -259,6 +268,69 @@
   }
 
   function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on')); $(id).classList.add('on'); }
+
+  /* ===== GUEST REQUESTS (mobile) — reads/writes ONLY hoshouse_requests ===== */
+  let REQ_LIST=[], REQ_UNSUB=null, REQ_STAFF=[];
+  const REQ_E={cleaning:'🧹',towels:'🧺',pillows:'🛌',teacoffee:'☕',toiletries:'🧴',batteries:'🔋',extrabed:'🛏️',servicing:'🕐',other:'✍️'};
+  function reqEsc(x){ return String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function reqTodayISO(){ return new Date().toLocaleDateString('en-CA'); }
+  function reqItems(r){ if(r.items&&r.items.length) return r.items.map(it=>(REQ_E[it.type]||'•')+' '+reqEsc(it.label||it.type)+(it.qty>1?(' ×'+it.qty):'')).join(' · '); return (REQ_E[r.type]||'•')+' '+reqEsc(r.typeLabel||'Request'); }
+  function reqAgo(iso){ if(!iso) return ''; const s=Math.floor((Date.now()-new Date(iso).getTime())/1000); if(s<60)return'just now'; const m=Math.floor(s/60); if(m<60)return m+'m ago'; const h=Math.floor(m/60); if(h<24)return h+'h ago'; return Math.floor(h/24)+'d ago'; }
+  function reqStop(){ if(REQ_UNSUB){ try{REQ_UNSUB();}catch(e){} REQ_UNSUB=null; } }
+  function reqBack(){ reqStop(); if(ME&&ME.lead){ showScreen('scr-team'); try{renderTeam();}catch(e){} } else { showScreen('scr-list'); try{renderList();}catch(e){} } }
+  async function reqLoadStaff(){ try{ if(HH&&HH.db){ const d=await HH.db.collection('hoshouse_config').doc('current').get(); const st=(d.exists?(d.data()||{}):{}).staff; if(Array.isArray(st)) return st.filter(s=>(s.status||'active')==='active').map(s=>({id:s.id,name:s.name})); } }catch(e){} return []; }
+  async function showRequests(){
+    showScreen('scr-requests'); $('reqWrap').innerHTML='<div style="padding:26px;text-align:center;color:#8a97a6">Loading…</div>';
+    if(ME&&ME.lead){ REQ_STAFF=await reqLoadStaff(); }
+    reqStop();
+    try{ requestNotifyPerm(); }catch(e){}
+    if(HH&&HH.ready&&HH.db){
+      REQ_UNSUB=HH.db.collection('hoshouse_requests').onSnapshot(snap=>{ REQ_LIST=snap.docs.map(d=>d.data()).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); reqRender(); },
+        e=>{ $('reqWrap').innerHTML='<div style="padding:26px;text-align:center;color:#b3261e">Could not load — check connection / the hoshouse_requests rule.</div>'; });
+    } else { $('reqWrap').innerHTML='<div style="padding:26px;text-align:center;color:#8a97a6">Offline — reopen when connected.</div>'; }
+  }
+  function reqRender(){
+    const lead=!!(ME&&ME.lead); const today=reqTodayISO();
+    const open=REQ_LIST.filter(r=>r.status!=='done');
+    try{ $('req-sub').textContent=open.length+' open'; }catch(e){}
+    let rows=REQ_LIST.slice();
+    if(lead){ rows=rows.filter(r=> r.status!=='done' || String(r.completedAt||'').slice(0,10)===today ); }
+    else { rows=rows.filter(r=> r.status!=='done' && (!r.assignedTo || r.assignedTo===(ME&&ME.id)) ); }
+    rows.sort((a,b)=>{ const o={pending:0,in_progress:1,done:2}; const ao=(a.priority==='urgent'&&a.status!=='done')?-1:o[a.status]; const bo=(b.priority==='urgent'&&b.status!=='done')?-1:o[b.status]; return ao-bo||(b.createdAt||'').localeCompare(a.createdAt||''); });
+    if(!rows.length){ $('reqWrap').innerHTML='<div style="padding:30px 18px;text-align:center;color:#8a97a6"><div style="font-size:40px">✅</div><div style="font-weight:800;color:#1F3864;margin-top:6px">'+(lead?'No open requests':'Nothing for you right now')+'</div></div>'; return; }
+    const BORD={pending:'#9aa7b5',urgent:'#b3261e',in_progress:'#b9780a',done:'#2E6B5E'};
+    const sopts=u=>'<option value="">— allocate —</option>'+REQ_STAFF.map(st=>'<option value="'+st.id+'" '+(u===st.id?'selected':'')+'>'+reqEsc(st.name)+'</option>').join('');
+    const bstyle='padding:10px 13px;border-radius:9px;border:none;font:800 13px system-ui,-apple-system,sans-serif;cursor:pointer';
+    $('reqWrap').innerHTML=rows.map(r=>{
+      const st=(r.priority==='urgent'&&r.status!=='done')?'urgent':r.status;
+      const bdg=r.status==='done'?'<span style="background:#e9f3ee;color:#2E6B5E;font:800 10px system-ui;padding:3px 9px;border-radius:7px">✓ DONE</span>':r.status==='in_progress'?'<span style="background:#fff6e6;color:#b9780a;font:800 10px system-ui;padding:3px 9px;border-radius:7px">IN PROGRESS</span>':(r.priority==='urgent'?'<span style="background:#fdeceb;color:#b3261e;font:800 10px system-ui;padding:3px 9px;border-radius:7px">URGENT</span>':'<span style="background:#eef2f6;color:#5b6b7b;font:800 10px system-ui;padding:3px 9px;border-radius:7px">PENDING</span>');
+      let acts='';
+      if(r.status!=='done'){
+        if(lead){
+          acts+='<select onchange="reqAllocate(\''+r.id+'\',this.value)" style="padding:9px 10px;border:1px solid #d7dde4;border-radius:9px;font:13px system-ui">'+sopts(r.assignedTo)+'</select>';
+          acts+='<button onclick="reqUrgent(\''+r.id+'\',\''+r.priority+'\')" style="'+bstyle+';background:'+(r.priority==='urgent'?'#b3261e':'#fdeceb')+';color:'+(r.priority==='urgent'?'#fff':'#b3261e')+'">'+(r.priority==='urgent'?'● Urgent':'⚑ Urgent')+'</button>';
+          if(r.status==='pending') acts+='<button onclick="reqStart(\''+r.id+'\')" style="'+bstyle+';background:#b9780a;color:#fff">Start</button>';
+          acts+='<button onclick="reqDone(\''+r.id+'\')" style="'+bstyle+';background:#2E6B5E;color:#fff">✓ Complete</button>';
+        } else {
+          if(!r.assignedTo) acts+='<button onclick="reqTake(\''+r.id+'\')" style="'+bstyle+';background:#1F3864;color:#fff">I’ll do this</button>';
+          else if(r.status==='pending') acts+='<button onclick="reqStart(\''+r.id+'\')" style="'+bstyle+';background:#b9780a;color:#fff">Start</button>';
+          if(r.assignedTo===(ME&&ME.id) || r.status==='in_progress') acts+='<button onclick="reqDone(\''+r.id+'\')" style="'+bstyle+';background:#2E6B5E;color:#fff">✓ Complete</button>';
+        }
+      }
+      return '<div style="background:#fff;border:1px solid #e4e9ef;border-left:5px solid '+(BORD[st]||'#9aa7b5')+';border-radius:13px;padding:13px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05)">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font:900 17px system-ui;color:#1F3864">Room '+reqEsc(r.room)+'</span><span style="font-weight:700;font-size:14px">'+reqItems(r)+'</span>'+bdg+'</div>'
+        +(r.detail?('<div style="font-size:13px;color:#5b6b7b;margin-top:5px">'+reqEsc(r.detail)+'</div>'):'')
+        +'<div style="font-size:12px;color:#8a97a6;margin-top:5px">'+(r.source==='reception'?'Front desk':'Guest')+' · '+reqAgo(r.createdAt)+(r.assignedName?(' · 👤 '+reqEsc(r.assignedName)):'')+'</div>'
+        +(acts?('<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:11px">'+acts+'</div>'):'')
+        +'</div>';
+    }).join('');
+  }
+  function reqPatch(id,f){ f.updatedAt=new Date().toISOString(); try{ if(HH&&HH.db) HH.db.collection('hoshouse_requests').doc(id).set(f,{merge:true}); }catch(e){ try{hhToast('Could not save — check connection');}catch(x){} } }
+  function reqAllocate(id,hk){ const s=REQ_STAFF.find(x=>x.id===hk); reqPatch(id,{assignedTo:hk||'',assignedName:s?s.name:''}); }
+  function reqStart(id){ reqPatch(id,{status:'in_progress',startedAt:new Date().toISOString()}); }
+  function reqTake(id){ reqPatch(id,{assignedTo:(ME&&ME.id)||'',assignedName:(ME&&ME.name)||'',status:'in_progress',startedAt:new Date().toISOString()}); try{hhToast('Taken — marked in progress');}catch(e){} }
+  function reqDone(id){ reqPatch(id,{status:'done',completedAt:new Date().toISOString(),completedBy:(ME&&ME.name)||''}); try{hhToast('✓ Completed');}catch(e){} }
+  function reqUrgent(id,cur){ reqPatch(id,{priority:cur==='urgent'?'normal':'urgent'}); }
 
   // ---- notifications ----
   function hhToast(msg){

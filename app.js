@@ -732,7 +732,7 @@ function openRoom(r){
   $("#rm-quote").onclick=()=>{ closeModal(); alert("To build a quote, start from an enquiry in the Sales Pipeline."); switchTab("pipeline"); };
   $("#rm-enq").onclick=()=>{ closeModal(); startNewEnquiry({room:r.id,event:evId}); };
 }
-function switchTab(t){ if(HH_KIOSK && t!=='hhHub') t='hhHub'; if(t!=='hhHub'){ try{ hhStopLive(); }catch(e){} } CURRENT_TAB=t; render(); }
+function switchTab(t){ if(HH_KIOSK && t!=='hhHub') t='hhHub'; if(t!=='hhHub'){ try{ hhStopLive(); }catch(e){} try{ hhReqStop(); }catch(e){} } CURRENT_TAB=t; render(); }
 
 /* ============================================================ PACKAGES */
 /* Packages are editable and persist to localStorage + Firebase (meta/packages).
@@ -10155,6 +10155,7 @@ function renderHosHouseHub(v){
   window._hhView=view;
   const tab=(id,label)=>`<button onclick="hhSetView('${id}')" style="padding:8px 16px;border:none;background:${view===id?'#1F3864':'transparent'};color:${view===id?'#fff':'#45586b'};font:700 12.5px Lato;cursor:pointer">${label}</button>`;
   const todayHTML=`
+    <div id="hh-reqbanner"></div>
     <div style="font:800 13px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin:0 0 9px">📊 Live progress — tap a figure to see those rooms</div>
     <div id="hh-body"></div>
     <div style="font:800 15px Lato;color:#1a2b3a;margin:22px 0 10px">🛠 Manage today — rooms &amp; staff</div>
@@ -10169,7 +10170,7 @@ function renderHosHouseHub(v){
   <div style="max-width:1040px;margin:0 auto;padding:4px 2px 30px">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div><div style="font:800 20px Lato;color:#1a2b3a">🧹 HosHOUSE — Housekeeping</div>
-        <div style="font-size:12.5px;color:#5b6b7b">${view==='mgmt'?'The full housekeeping picture — rooms, types, staff, times, lost property and trends.':(view==='roomcheck'?'Every room cleaned — search, filter by housekeeper and date, open any room to spot-check.':(view==='maint'?'Maintenance faults reported to HosFIX — room, time, issue, photo and live status.':"Pick the day's rooms, confirm who's in, allocate — all on this page."))}</div></div>
+        <div style="font-size:12.5px;color:#5b6b7b">${view==='mgmt'?'The full housekeeping picture — rooms, types, staff, times, lost property and trends.':(view==='roomcheck'?'Every room cleaned — search, filter by housekeeper and date, open any room to spot-check.':(view==='maint'?'Maintenance faults reported to HosFIX — room, time, issue, photo and live status.':(view==='requests'?'Guest &amp; front-desk requests — towels, pillows, servicing and more. Allocate and complete here.':"Pick the day's rooms, confirm who's in, allocate — all on this page.")))}</div></div>
       <div style="display:flex;gap:8px;align-items:center">
         ${view==='today'?`<input type="date" id="hh-date" value="${window._hhDate}" onchange="window._hhDate=this.value;hhRenderManage();hhRenderDash();hhStartLive(this.value)" style="padding:7px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
         <button onclick="hhManageStaff()" title="Edit staff — skills, rating, status, PINs" style="padding:7px 12px;border:1px solid #1F3864;background:#eef2f8;color:#1F3864;border-radius:8px;font:700 12px Lato;cursor:pointer">👥 Manage staff</button>
@@ -10183,17 +10184,100 @@ function renderHosHouseHub(v){
     ${view==='today'?`<div id="hh-forsale" style="margin-bottom:14px"></div>`:''}
 
     <div style="display:inline-flex;border:1px solid #d7dde4;border-radius:9px;overflow:hidden;margin-bottom:16px;flex-wrap:wrap">
-      ${tab('today','🧹 Today — Live')}${tab('mgmt','📊 Overview')}${tab('roomcheck','🔎 Room check')}${tab('maint','🔧 Maintenance')}
+      ${tab('today','🧹 Today — Live')}${tab('mgmt','📊 Overview')}${tab('roomcheck','🔎 Room check')}${tab('maint','🔧 Maintenance')}${tab('requests','🔔 Guest Requests')}
     </div>
 
-    ${view==='mgmt'?`<div id="hh-mgmt"></div>`:(view==='roomcheck'?`<div id="hh-roomcheck"></div>`:(view==='maint'?`<div id="hh-maintlog"></div>`:todayHTML))}
+    ${view==='mgmt'?`<div id="hh-mgmt"></div>`:(view==='roomcheck'?`<div id="hh-roomcheck"></div>`:(view==='maint'?`<div id="hh-maintlog"></div>`:(view==='requests'?`<div id="hh-requests"></div>`:todayHTML)))}
   </div>`;
+  if(view!=='requests'){ try{ hhReqStop(); }catch(e){} }
   if(view==='mgmt'){ hhStopLive(); renderHosHouseMgmt(); }
   else if(view==='roomcheck'){ hhStopLive(); renderHosHouseRoomCheck(); }
   else if(view==='maint'){ hhStopLive(); renderHosHouseMaintLog(); }
-  else { hhRenderManage(); hhRenderDash(); hhRenderLinks(); hhRenderForSale(window._hhDate||hhTodayISO()); hhStartLive(window._hhDate||hhTodayISO()); }
+  else if(view==='requests'){ hhStopLive(); renderHosHouseRequests(); }
+  else { hhRenderManage(); hhRenderDash(); hhRenderLinks(); hhRenderForSale(window._hhDate||hhTodayISO()); hhStartLive(window._hhDate||hhTodayISO()); try{ hhReqBanner(); }catch(e){} }
 }
 function hhSetView(x){ window._hhView=x; switchTab('hhHub'); }
+
+/* ============================================================
+   HosHOUSE — Guest / Front-Desk Requests (desktop board).
+   Reads/writes ONLY the hoshouse_requests collection — never touches
+   room or cleaning data.
+   ============================================================ */
+const HH_REQ_TYPE_E={cleaning:'🧹',towels:'🧺',pillows:'🛌',teacoffee:'☕',toiletries:'🧴',batteries:'🔋',extrabed:'🛏️',servicing:'🕐',other:'✍️'};
+let HH_REQ=[], HH_REQ_UNSUB=null, HH_REQ_FILTER='open', HH_REQ_STAFF=[];
+function hhReqStop(){ if(HH_REQ_UNSUB){ try{HH_REQ_UNSUB();}catch(e){} HH_REQ_UNSUB=null; } }
+function hhReqAgo(iso){ if(!iso) return ''; const s=Math.floor((Date.now()-new Date(iso).getTime())/1000); if(s<60)return'just now'; const m=Math.floor(s/60); if(m<60)return m+'m ago'; const h=Math.floor(m/60); if(h<24)return h+'h ago'; return Math.floor(h/24)+'d ago'; }
+function hhReqItems(r){ if(r.items&&r.items.length) return r.items.map(it=>`${HH_REQ_TYPE_E[it.type]||'•'} ${hhEsc(it.label||it.type)}${it.qty>1?(' ×'+it.qty):''}`).join('  ·  '); return `${HH_REQ_TYPE_E[r.type]||'•'} ${hhEsc(r.typeLabel||'Request')}`; }
+async function renderHosHouseRequests(){
+  const box=document.getElementById('hh-requests'); if(!box) return;
+  box.innerHTML='<div style="padding:24px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:14px">Loading requests…</div>';
+  try{ await hhLoadStaff(); }catch(e){}
+  try{ HH_REQ_STAFF=(hhStaffList?hhStaffList():[]).filter(s=>(s.status||'active')==='active'); }catch(e){ HH_REQ_STAFF=[]; }
+  hhReqStop();
+  if(typeof FB!=='undefined' && FB.db){
+    HH_REQ_UNSUB=FB.db.collection('hoshouse_requests').onSnapshot(snap=>{ HH_REQ=snap.docs.map(d=>d.data()).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); hhReqRender(); },
+      e=>{ console.warn('req snap',e&&e.code); box.innerHTML='<div style="padding:24px;text-align:center;color:#b3261e;background:#fff;border:1px solid #e4e9ef;border-radius:14px">Could not load requests — check the Firestore rule for <b>hoshouse_requests</b>.</div>'; });
+  } else { HH_REQ=[]; hhReqRender(); }
+}
+function hhReqSetFilter(f){ HH_REQ_FILTER=f; hhReqRender(); }
+function hhReqRender(){
+  const box=document.getElementById('hh-requests'); if(!box) return;
+  const today=hhTodayISO();
+  const pend=HH_REQ.filter(r=>r.status==='pending'), urg=HH_REQ.filter(r=>r.status!=='done'&&r.priority==='urgent');
+  const ip=HH_REQ.filter(r=>r.status==='in_progress'), doneT=HH_REQ.filter(r=>r.status==='done'&&String(r.completedAt||'').slice(0,10)===today);
+  const F=HH_REQ_FILTER;
+  let rows=HH_REQ.slice();
+  if(F==='open') rows=rows.filter(r=>r.status==='pending'||r.status==='in_progress');
+  else if(F==='urgent') rows=rows.filter(r=>r.status!=='done'&&r.priority==='urgent');
+  else if(F==='in_progress') rows=rows.filter(r=>r.status==='in_progress');
+  else if(F==='done') rows=rows.filter(r=>r.status==='done'&&String(r.completedAt||'').slice(0,10)===today);
+  rows.sort((a,b)=>{ const o={pending:0,in_progress:1,done:2}; const ao=(a.priority==='urgent'&&a.status!=='done')?-1:o[a.status]; const bo=(b.priority==='urgent'&&b.status!=='done')?-1:o[b.status]; return ao-bo || (b.createdAt||'').localeCompare(a.createdAt||''); });
+  const tile=(v,k,c)=>`<div style="background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.04);text-align:center"><div style="font:900 24px Lato;color:${c}">${v}</div><div style="font-size:10px;color:#8296a8;text-transform:uppercase;font-weight:800;letter-spacing:.3px;margin-top:2px">${k}</div></div>`;
+  const F2=[['open','To do'],['urgent','🔴 Urgent'],['in_progress','⏱ In progress'],['done','✓ Done today'],['all','All']];
+  const chip=(f,l)=>`<button onclick="hhReqSetFilter('${f}')" style="padding:7px 13px;border-radius:20px;border:1.5px solid ${F===f?'#1F3864':'#d7dde4'};background:${F===f?'#1F3864':'#fff'};color:${F===f?'#fff':'#5b6b7b'};font:800 12px Lato;cursor:pointer;white-space:nowrap">${l}</button>`;
+  const sopts=u=>`<option value="">— allocate —</option>`+HH_REQ_STAFF.map(st=>`<option value="${st.id}" ${u===st.id?'selected':''}>${hhEsc(st.name)}</option>`).join('');
+  const BORD={pending:'#9aa7b5',urgent:'#b3261e',in_progress:'#b9780a',done:'#2E6B5E'};
+  const list = rows.length? rows.map(r=>{
+    const st=(r.priority==='urgent'&&r.status!=='done')?'urgent':r.status;
+    const bdg=r.status==='done'?'<span style="background:#e9f3ee;color:#2E6B5E;font:800 10px Lato;padding:2px 8px;border-radius:7px">✓ DONE</span>':r.status==='in_progress'?'<span style="background:#fff6e6;color:#b9780a;font:800 10px Lato;padding:2px 8px;border-radius:7px">IN PROGRESS</span>':(r.priority==='urgent'?'<span style="background:#fdeceb;color:#b3261e;font:800 10px Lato;padding:2px 8px;border-radius:7px">URGENT</span>':'<span style="background:#eef2f6;color:#5b6b7b;font:800 10px Lato;padding:2px 8px;border-radius:7px">PENDING</span>');
+    const resp=(r.status==='done'&&r.completedAt&&r.createdAt)?(' · done in '+Math.max(1,Math.round((new Date(r.completedAt)-new Date(r.createdAt))/60000))+'m'):'';
+    return `<div style="background:#fff;border:1px solid #e4e9ef;border-left:5px solid ${BORD[st]||'#9aa7b5'};border-radius:12px;padding:12px 14px;margin-bottom:9px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+      <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap"><span style="font:900 16px Lato;color:#1F3864">Room ${hhEsc(r.room)}</span><span style="font-weight:700;font-size:14px">${hhReqItems(r)}</span>${bdg}</div>
+      ${r.detail?`<div style="font-size:12.5px;color:#5b6b7b;margin-top:5px">${hhEsc(r.detail)}</div>`:''}
+      <div style="font-size:12px;color:#8296a8;margin-top:5px">${r.source==='reception'?'Front desk':'Guest'} · ${hhReqAgo(r.createdAt)}${r.assignedName?(' · 👤 '+hhEsc(r.assignedName)):''}${resp}</div>
+      ${r.status!=='done'?`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px">
+        <select onchange="hhReqAllocate('${r.id}',this.value)" style="padding:7px 9px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">${sopts(r.assignedTo)}</select>
+        <button onclick="hhReqUrgent('${r.id}','${r.priority}')" style="padding:8px 12px;border-radius:8px;border:1px solid ${r.priority==='urgent'?'#b3261e':'#f0c4c0'};background:${r.priority==='urgent'?'#b3261e':'#fdeceb'};color:${r.priority==='urgent'?'#fff':'#b3261e'};font:800 12px Lato;cursor:pointer">${r.priority==='urgent'?'● Urgent':'⚑ Urgent'}</button>
+        ${r.status==='pending'?`<button onclick="hhReqStatus('${r.id}','in_progress')" style="padding:8px 12px;border-radius:8px;border:1px solid #b9780a;background:#b9780a;color:#fff;font:800 12px Lato;cursor:pointer">Start</button>`:''}
+        <button onclick="hhReqStatus('${r.id}','done')" style="padding:8px 12px;border-radius:8px;border:1px solid #2E6B5E;background:#2E6B5E;color:#fff;font:800 12px Lato;cursor:pointer">✓ Complete</button>
+      </div>`:''}
+    </div>`;
+  }).join('') : '<div style="padding:26px;text-align:center;color:#8296a8;background:#fff;border:1px solid #e4e9ef;border-radius:12px">Nothing here — all clear ✓</div>';
+  box.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      ${tile(pend.length,'Pending','#5b6b7b')}${tile(urg.length,'Urgent','#b3261e')}${tile(ip.length,'In progress','#b9780a')}${tile(doneT.length,'Done today','#2E6B5E')}
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">${F2.map(x=>chip(x[0],x[1])).join('')}</div>
+    <div style="font-size:11.5px;color:#8296a8;margin-bottom:12px">Guests scan the in-room QR, or reception logs at <b>${hhEsc(hhOrigin())}hoshouse-request.html</b>. New requests appear here live.</div>
+    ${list}`;
+}
+async function hhReqPatch(id,fields){ fields.updatedAt=new Date().toISOString(); try{ if(typeof FB!=='undefined'&&FB.db){ await FB.db.collection('hoshouse_requests').doc(id).set(fields,{merge:true}); } }catch(e){ try{ toast('Could not save — check connection'); }catch(x){} } }
+function hhReqAllocate(id,hk){ const s=HH_REQ_STAFF.find(x=>x.id===hk); hhReqPatch(id,{assignedTo:hk||'',assignedName:s?s.name:''}); }
+function hhReqStatus(id,status){ const f={status}; const now=new Date().toISOString(); if(status==='in_progress') f.startedAt=now; if(status==='done') f.completedAt=now; hhReqPatch(id,f); }
+function hhReqUrgent(id,cur){ hhReqPatch(id,{priority:cur==='urgent'?'normal':'urgent'}); }
+async function hhReqBanner(){
+  const box=document.getElementById('hh-reqbanner'); if(!box) return;
+  try{ if(typeof FB==='undefined'||!FB.db){ box.innerHTML=''; return; }
+    const snap=await FB.db.collection('hoshouse_requests').get();
+    const open=snap.docs.map(d=>d.data()).filter(r=>r.status!=='done'); const urg=open.filter(r=>r.priority==='urgent');
+    if(!open.length){ box.innerHTML=''; return; }
+    box.innerHTML=`<div onclick="hhSetView('requests')" style="cursor:pointer;background:#fff;border:1px solid #e4e9ef;border-left:5px solid ${urg.length?'#b3261e':'#1F3864'};border-radius:12px;padding:11px 15px;margin-bottom:14px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+      <span style="font-size:20px">🔔</span>
+      <div style="flex:1"><div style="font:800 13px Lato;color:#1a2b3a">${open.length} guest request${open.length===1?'':'s'} open${urg.length?(' · <span style="color:#b3261e">'+urg.length+' urgent</span>'):''}</div>
+      <div style="font-size:11.5px;color:#8296a8">Tap to open the Guest Requests board</div></div>
+      <span style="color:#1F3864;font:800 12px Lato">Open →</span></div>`;
+  }catch(e){ box.innerHTML=''; }
+}
 
 /* ---- Rooms-for-sale box (manager types the starting figure) + off-sale summary ---- */
 async function hhRenderForSale(date){
