@@ -10198,20 +10198,38 @@ function hhSetView(x){ window._hhView=x; switchTab('hhHub'); }
 /* ---- Rooms-for-sale box (manager types the starting figure) + off-sale summary ---- */
 async function hhRenderForSale(date){
   const box=document.getElementById('hh-forsale'); if(!box) return;
-  let meta={forSale:null,offSale:[]}; try{ meta=await hhGetDayMeta(date); }catch(e){}
+  let meta={forSale:null,offSale:[],occPct:null}; try{ meta=await hhGetDayMeta(date); }catch(e){}
+  let total=0; try{ total=await hhGetTotalRooms(); }catch(e){}
   const off=meta.offSale||[]; const ooo=off.filter(o=>o.kind==='ooo').length, dfs=off.filter(o=>o.kind==='dfs').length;
   const fs=(meta.forSale==null?'':meta.forSale);
-  box.innerHTML=`<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:11px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
-    <div style="display:flex;align-items:center;gap:10px">
-      <span style="font:800 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">🛏 Rooms for sale today</span>
-      <input id="hh-fs-input" type="number" min="0" value="${fs}" placeholder="—" onchange="hhSetForSale(this.value)" style="width:78px;padding:7px 9px;border:1.5px solid #1F3864;border-radius:8px;font:800 17px Lato;color:#1F3864;text-align:center">
+  const occ=(meta.occPct==null?'':meta.occPct);
+  const occN=(meta.occPct==null?null:+meta.occPct);
+  const occupied=(total>0 && occN!=null)?Math.round(total*occN/100):null;
+  const toSell=(occupied!=null)?Math.max(0,total-occupied):null;
+  box.innerHTML=`<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid #e4e9ef;border-radius:12px;padding:11px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+    <div style="display:flex;align-items:center;gap:9px">
+      <span style="font:800 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">📊 Occupancy today</span>
+      <div style="position:relative;display:flex;align-items:center">
+        <input id="hh-occ-input" type="number" min="0" max="100" value="${occ}" placeholder="—" onchange="hhSetOccPct(this.value)" style="width:72px;padding:7px 20px 7px 9px;border:1.5px solid #2E6B5E;border-radius:8px;font:800 17px Lato;color:#2E6B5E;text-align:center">
+        <span style="position:absolute;right:7px;font:800 13px Lato;color:#2E6B5E">%</span>
+      </div>
+      ${occupied!=null?`<span style="font:700 12px Lato;color:#5b6b7b">= <b style="color:#1a2b3a">${occupied}</b> occupied · <b style="color:#1a2b3a">${toSell}</b> to sell</span>`:`<span style="font-size:11px;color:#8296a8">set total rooms →</span>`}
+    </div>
+    <div style="height:26px;width:1px;background:#e4e9ef"></div>
+    <div style="display:flex;align-items:center;gap:9px">
+      <span style="font:800 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px">🛏 Rooms for sale</span>
+      <input id="hh-fs-input" type="number" min="0" value="${fs}" placeholder="—" onchange="hhSetForSale(this.value)" style="width:72px;padding:7px 9px;border:1.5px solid #1F3864;border-radius:8px;font:800 17px Lato;color:#1F3864;text-align:center">
     </div>
     <div style="height:26px;width:1px;background:#e4e9ef"></div>
     <div style="display:flex;align-items:center;gap:12px;font:700 12px Lato;color:#5b6b7b">
       <span>Off sale: <b style="color:${off.length?'#b3261e':'#5b6b7b'}">${off.length}</b></span>
-      <span style="color:#b9780a">OOO ${ooo}</span>
-      <span style="color:#8a5a00">DFS ${dfs}</span>
+      <span style="color:#b9780a" title="Out of Order — maintenance">OOO ${ooo}</span>
+      <span style="color:#8a5a00" title="Due For Service — off sale">DFS ${dfs}</span>
       <button onclick="hhBulkOpen()" style="padding:6px 11px;border:1px solid #d7dde4;background:#fff;border-radius:7px;font:700 11px Lato;cursor:pointer;color:#1F3864">Manage off-sale ▸</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:7px;margin-left:auto;font:700 11px Lato;color:#8296a8">
+      <span>Total rooms</span>
+      <input id="hh-total-input" type="number" min="0" value="${total||''}" placeholder="set" onchange="hhSetTotalRooms(this.value)" title="Total sellable rooms in the hotel — set once" style="width:58px;padding:6px 8px;border:1px solid #d7dde4;border-radius:7px;font:800 13px Lato;color:#1a2b3a;text-align:center">
     </div>
   </div>`;
 }
@@ -10676,7 +10694,7 @@ async function hhDayMetaDoc(){
   if(typeof FB!=='undefined' && FB.db){ try{ const d=await FB.db.collection('hoshouse_config').doc('daymeta').get(); return d.exists?(d.data()||{}):{}; }catch(e){} }
   try{ return JSON.parse(localStorage.getItem('hoshouse_daymeta')||'{}'); }catch(e){ return {}; }
 }
-async function hhGetDayMeta(date){ const all=await hhDayMetaDoc(); const m=all[date]||{}; return {forSale:(m.forSale==null?null:+m.forSale), offSale:Array.isArray(m.offSale)?m.offSale:[]}; }
+async function hhGetDayMeta(date){ const all=await hhDayMetaDoc(); const m=all[date]||{}; return {forSale:(m.forSale==null?null:+m.forSale), offSale:Array.isArray(m.offSale)?m.offSale:[], occPct:(m.occPct==null||m.occPct===''?null:+m.occPct)}; }
 async function hhSaveDayMeta(date, meta){
   if(typeof FB!=='undefined' && FB.db){ try{ await FB.db.collection('hoshouse_config').doc('daymeta').set({[date]:meta},{merge:true}); }catch(e){} }
   try{ const all=JSON.parse(localStorage.getItem('hoshouse_daymeta')||'{}'); all[date]=meta; localStorage.setItem('hoshouse_daymeta',JSON.stringify(all)); }catch(e){}
@@ -10684,6 +10702,12 @@ async function hhSaveDayMeta(date, meta){
 }
 async function hhSaveForSale(date, n){ const m=await hhGetDayMeta(date); m.forSale=(n===''||n==null||isNaN(+n))?null:Math.max(0,Math.round(+n)); return hhSaveDayMeta(date,m); }
 async function hhSaveOffSale(date, list){ const m=await hhGetDayMeta(date); m.offSale=Array.isArray(list)?list:[]; return hhSaveDayMeta(date,m); }
+/* ---- Daily occupancy % (per date) + total-rooms inventory (set once) ---- */
+async function hhSaveOccPct(date, pct){ const m=await hhGetDayMeta(date); m.occPct=(pct===''||pct==null||isNaN(+pct))?null:Math.max(0,Math.min(100,Math.round(+pct))); return hhSaveDayMeta(date,m); }
+async function hhGetTotalRooms(){ try{ if(typeof FB!=='undefined' && FB.db){ const d=await FB.db.collection('hoshouse_config').doc('current').get(); const n=+((d.data()||{}).totalRooms); if(n>0) return n; } }catch(e){} try{ const n=+(localStorage.getItem('hoshouse_total_rooms')||0); if(n>0) return n; }catch(e){} return 0; }
+async function hhSaveTotalRooms(n){ n=Math.max(0,parseInt(n,10)||0); try{ if(typeof FB!=='undefined' && FB.db){ await FB.db.collection('hoshouse_config').doc('current').set({totalRooms:n},{merge:true}); } }catch(e){} try{ localStorage.setItem('hoshouse_total_rooms',String(n)); }catch(e){} return n; }
+function hhSetOccPct(v){ const date=window._hhDate||hhTodayISO(); hhSaveOccPct(date,v).then(()=>{ try{ hhRenderForSale(date); }catch(e){} }); }
+function hhSetTotalRooms(v){ hhSaveTotalRooms(v).then(()=>{ try{ hhRenderForSale(window._hhDate||hhTodayISO()); }catch(e){} }); }
 const HH_T_LET={Departure:'D',Stayover:'S','Arrival-ready':'A'};
 const HH_T_COL={Departure:'#2E6B5E',Stayover:'#d9930a','Arrival-ready':'#3B6585'};
 async function hhBulkOpen(){
@@ -10915,11 +10939,21 @@ async function renderHosHouseMgmt(){
   const FCOL={Ground:'#2E6B5E',First:'#1F3864'};
   const floorSegs=Object.entries(fc).sort().map(([f,n])=>({label:f,value:n,color:FCOL[f]||'#7a5aa0'}));
   const legend=segs=>segs.map(s=>`<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0"><span style="width:12px;height:12px;border-radius:3px;background:${s.color};display:inline-block"></span>${hhEsc(s.label)}<b style="margin-left:auto;color:#1a2b3a">${s.value}</b></div>`).join('');
+  // Occupancy (daily %) vs rooms cleaned
+  let _dm={}; try{ _dm=await hhDayMetaDoc(); }catch(e){}
+  let _total=0; try{ _total=await hhGetTotalRooms(); }catch(e){}
+  const occIdx=dates.map((d,i)=>i).filter(i=>{ const m=_dm[dates[i]]||{}; return !(m.occPct==null||m.occPct===''); });
+  const occLab=occIdx.map(i=>dlab[i]);
+  const occPctSerie=occIdx.map(i=>+(_dm[dates[i]].occPct));
+  const cleanedSerie=occIdx.map(i=>beds.filter(r=>r._date===dates[i] && r.status==='done').length);
+  const occupiedSerie=occPctSerie.map(pc=>_total>0?Math.round(_total*pc/100):0);
+  const avgOcc=occIdx.length?Math.round(occPctSerie.reduce((a,b)=>a+b,0)/occPctSerie.length):null;
   const lostRows=lost.slice().sort((a,b)=>(b._date||'').localeCompare(a._date||'')).slice(0,40).map(r=>`<tr style="border-top:1px solid #eef1f4"><td style="padding:6px 10px;font-weight:700">${hhEsc(r.room)}</td><td style="padding:6px 10px;color:#5b6b7b">${hhEsc(r._date||'')}</td><td style="padding:6px 10px">${hhEsc(r.lostProperty||'(photo only)')}</td><td style="padding:6px 10px;color:#5b6b7b">${hhEsc(hhNameFor(r))}</td></tr>`).join('');
 
   box.innerHTML=controls+`
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px">
       ${tile(done.length,'Rooms cleaned','#2E6B5E', comp+'% of '+beds.length+' set','done')}
+      ${occIdx.length?tile(avgOcc+'%','Avg occupancy','#b9780a',(_total>0?('~'+Math.round(_total*avgOcc/100)+' rooms occupied'):'Rooms occupied'),null,''):''}
       ${tile(avg+'m','Avg clean time','#1F3864', totalMins+' min total','done')}
       ${tile(gapTeam!=null?gapTeam+'m':'—','Avg gap between rooms','#1F3864','Finish → next room start')}
       ${tile(over.length,'Over target', over.length?'#b3261e':'#5b6b7b','Took longer than allowed','over')}
@@ -10934,6 +10968,7 @@ async function renderHosHouseMgmt(){
       ${card('Rooms by floor', `<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${hhDonut(floorSegs,{v:beds.length,k:'rooms'})}<div style="flex:1;min-width:150px">${legend(floorSegs)}</div></div>`)}
     </div>
     ${card('Rooms per day by type', dates.length>1?hhLineChart(lineSeries,dlab,{h:220}):'<div style="color:#8296a8;font-size:13px">Only one day in this selection — widen the period to see the trend.</div>','margin-bottom:14px')}
+    ${occIdx.length? card('Occupancy vs rooms cleaned', (_total>0? hhLineChart([{name:'Rooms occupied',values:occupiedSerie,colour:'#b9780a',fill:true},{name:'Rooms cleaned',values:cleanedSerie,colour:'#2E6B5E'}],occLab,{h:220}) : hhLineChart([{name:'Occupancy %',values:occPctSerie,colour:'#b9780a',fill:true}],occLab,{h:200})) + '<div style="font-size:11.5px;color:#5b6b7b;margin-top:8px">Avg occupancy <b>'+avgOcc+'%</b>'+(_total>0?(' · total rooms '+_total+' — rooms cleaned vs rooms occupied each day'):' — set Total rooms on the Today page to compare with rooms cleaned')+'.</div>', 'margin-bottom:14px') : ''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="hh-mg">
       ${card('Top staff — rooms cleaned', people.length?hhBars(people.slice(0,10).map(p=>({label:p.name,value:p.done,sub:p.done?Math.round(p.mins/p.done)+'m avg':''}))):'<div style="color:#8296a8;font-size:13px">No completed rooms yet.</div>')}
       ${card('Average clean time by type', hhBars(avgByType.map(x=>({label:x.label,value:x.value,sub:'min'}))))}
