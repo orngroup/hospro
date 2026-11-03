@@ -21,21 +21,23 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;font-family:'Lato',sans-serif}
 body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
-  padding:32px 28px calc(32px + env(safe-area-inset-bottom,0px));color:#fff;
+  padding:30px 26px calc(30px + env(safe-area-inset-bottom,0px));color:#fff;
   background:linear-gradient(160deg,#b3261e 0%,#7a1612 100%)}
-.ic{width:104px;height:104px;border-radius:24px;box-shadow:0 12px 30px rgba(0,0,0,.35);margin-bottom:22px}
-.nm{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:700;letter-spacing:1px;margin-bottom:4px}
-.nm b{color:#f1c6c2}
+.ic{width:104px;height:104px;border-radius:24px;box-shadow:0 12px 30px rgba(0,0,0,.35);margin-bottom:20px}
+.nm{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:700;letter-spacing:1px;margin-bottom:4px}
+.nm b{color:#e9b7b2}
 .ht{font-size:14px;color:rgba(255,255,255,.8);font-weight:600;margin-bottom:2px}
-.sb{font-size:10px;letter-spacing:3px;font-weight:700;color:#f1c6c2;text-transform:uppercase;margin-bottom:30px}
-.open{width:100%;max-width:320px;padding:16px;border-radius:14px;border:none;background:#f1c6c2;color:#1a2b3a;
-  font:700 16px 'Lato';cursor:pointer;text-decoration:none;display:block;margin-bottom:22px;touch-action:manipulation}
+.sb{font-size:10px;letter-spacing:3px;font-weight:700;color:#e9b7b2;text-transform:uppercase;margin-bottom:26px}
+.btn{width:100%;max-width:330px;padding:16px;border-radius:14px;border:none;font:700 16px 'Lato';cursor:pointer;
+  text-decoration:none;display:block;margin-bottom:11px;touch-action:manipulation}
+.btn-prim{background:#e9b7b2;color:#1a2b3a}
+.btn-sec{background:rgba(255,255,255,.1);color:rgba(255,255,255,.85)}
 .steps{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:16px 18px;
-  max-width:340px;width:100%;text-align:left}
-.steps .t{font-size:11px;font-weight:700;letter-spacing:.6px;color:#f1c6c2;text-transform:uppercase;margin-bottom:10px}
+  max-width:340px;width:100%;text-align:left;margin-top:14px}
+.steps .t{font-size:11px;font-weight:700;letter-spacing:.6px;color:#e9b7b2;text-transform:uppercase;margin-bottom:10px}
 .steps .s{display:flex;align-items:flex-start;gap:11px;padding:6px 0;font-size:13px;color:rgba(255,255,255,.88);line-height:1.5}
-.steps .n{width:24px;height:24px;flex-shrink:0;border-radius:50%;background:#f1c6c2;color:#1a2b3a;font-weight:700;font-size:12px;display:grid;place-items:center;margin-top:1px}
-.foot{margin-top:22px;font-size:11px;color:rgba(255,255,255,.45)}
+.steps .n{width:24px;height:24px;flex-shrink:0;border-radius:50%;background:#e9b7b2;color:#1a2b3a;font-weight:700;font-size:12px;display:grid;place-items:center;margin-top:1px}
+.foot{margin-top:18px;font-size:11px;color:rgba(255,255,255,.45);max-width:300px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -43,17 +45,53 @@ body{min-height:100vh;display:flex;flex-direction:column;align-items:center;just
   <div class="nm">Hos<b>Fix</b> — Reporter</div>
   <div class="ht">Brandon Hall Hotel and Spa</div>
   <div class="sb">Maintenance</div>
-  <a class="open" href="/hosmain.html?tier=reporter">Open HosFix - Rep →</a>
-  <div class="steps">
-    <div class="t">📲 Add to your home screen</div>
-    <div class="s"><div class="n">1</div><span>Tap the <b>Share</b> button in your browser</span></div>
-    <div class="s"><div class="n">2</div><span>Choose <b>Add to Home Screen</b></span></div>
-    <div class="s"><div class="n">3</div><span>Tap <b>Add</b> — the <b>HosFix - Rep</b> icon appears on your phone</span></div>
+
+  <button type="button" id="installBtn" class="btn btn-prim">📲 Install HosFix</button>
+  <a class="btn btn-sec" href="/hosmain.html?tier=reporter">Open in browser →</a>
+
+  <div class="steps" id="steps">
+    <div class="t">📲 How to install</div>
+    <div class="s"><div class="n">1</div><span id="st1">Tap <b>Install HosFix</b> above and confirm</span></div>
+    <div class="s"><div class="n">2</div><span>Open the new <b>HosFix - Rep</b> icon on your home screen</span></div>
+    <div class="s"><div class="n">3</div><span>Tap your name once — it remembers you, no code needed</span></div>
   </div>
-  <div class="foot">One-tap access next time — no code needed</div>
+  <div class="foot" id="foot">The coloured <b>HosFix - Rep</b> icon is added to your home screen — one tap to open next time.</div>
+
 <script>
-// If already installed (opened from the home-screen icon), go straight into the app.
-try{ if(window.matchMedia('(display-mode:standalone)').matches || navigator.standalone===true){ location.replace('/hosmain.html?tier=reporter'); } }catch(e){}
+(function(){
+  var tier='reporter';
+  var ua=navigator.userAgent||'';
+  var isIOS=/iphone|ipad|ipod/i.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  var standalone=false;
+  try{ standalone=window.matchMedia('(display-mode:standalone)').matches || navigator.standalone===true; }catch(e){}
+  // Already installed and opened from the icon -> go straight into the app
+  if(standalone){ location.replace('/hosmain.html?tier='+tier); return; }
+  // Register the service worker so the browser offers a real install
+  if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('/hosmain-sw.js'); }catch(e){} }
+
+  var deferred=null, btn=document.getElementById('installBtn'), st1=document.getElementById('st1'), foot=document.getElementById('foot');
+
+  function setIOSHelp(){
+    st1.innerHTML='Tap the <b>Share</b> icon (the box with an ↑) at the bottom of Safari, then <b>Add to Home Screen</b>';
+    btn.textContent='📲 Show me how to install';
+  }
+  if(isIOS) setIOSHelp();
+
+  window.addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); deferred=e; btn.textContent='📲 Install HosFix'; });
+
+  btn.addEventListener('click',function(){
+    if(deferred){
+      deferred.prompt();
+      deferred.userChoice.then(function(c){ deferred=null; if(c&&c.outcome==='accepted'){ foot.innerHTML='✅ Installing… open the <b>HosFix - Rep</b> icon on your home screen, then tap your name.'; } });
+      return;
+    }
+    // iOS or install not offered yet -> make sure the steps are visible
+    var s=document.getElementById('steps'); if(s) s.scrollIntoView({behavior:'smooth',block:'center'});
+    if(isIOS) setIOSHelp();
+  });
+
+  window.addEventListener('appinstalled',function(){ foot.innerHTML='✅ Installed. Open the <b>HosFix - Rep</b> icon on your home screen, then tap your name.'; });
+})();
 </script>
 </body>
 </html>

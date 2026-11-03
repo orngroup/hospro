@@ -1632,14 +1632,14 @@ function doCompleteJob(jobId){
   j.notes=j.notes||[];
   j.notes.push({text:`Job completed${mins>0?' · '+Math.floor(mins/60)+'h '+mins%60+'m':''}`,by:MY_USER?.name||ME,at:todayStr()});
   if(note) j.notes.push({text:note,by:MY_USER?.name||ME,at:todayStr()});
-  saveJobs();
-  // Notify managers via push
-  // In-app notification to admins on completion
-  const admins=USERS.filter(u=>NOTIFY_ON_COMPLETE.includes(u.id));
-  fcmNotify('job_completed',job,[]);
-  html+='<button type="button" class="btn btn-ghost" style="margin-top:6px" onclick="closeModal()">Done</button>';
-  openModal(html);
-  updateTimerBar(); render();
+  saveJobs();            // instant local save + push to the team (Firestore)
+  render();              // refresh the list straight away
+  updateTimerBar();
+  closeModal();
+  toast('✓ Job completed');
+  // Notify managers — wrapped so a notification hiccup can never block the save or the UI
+  try{ sendAdminNotification(j,'complete'); }catch(e){}
+  try{ fcmNotify('job_completed', j, []); }catch(e){}
 }
 
 function updateTimerBar(){
