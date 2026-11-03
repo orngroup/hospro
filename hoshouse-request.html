@@ -25,17 +25,25 @@ textarea{min-height:72px;resize:vertical}
 input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
 .roomfix{font:900 30px Lato;color:var(--navy);text-align:center;padding:8px 0 2px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.rt{display:flex;align-items:center;gap:10px;padding:13px 12px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font:700 14px Lato;color:var(--ink);text-align:left;touch-action:manipulation}
+.rt{display:flex;align-items:center;gap:10px;padding:13px 12px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font:700 14px Lato;color:var(--ink);text-align:left;touch-action:manipulation;position:relative}
 .rt .e{font-size:22px;line-height:1}
 .rt.on{border-color:var(--navy);background:#eef2f8;box-shadow:inset 0 0 0 1px var(--navy)}
+.rt.on::after{content:'✓';position:absolute;top:6px;right:9px;color:var(--green);font-weight:900;font-size:13px}
+.selhint{font-size:12px;color:var(--muted);margin:2px 0 10px}
+.selrow{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--line)}
+.selrow:first-child{border-top:none}
+.sl-name{flex:1;font-weight:700;font-size:14px}
+.qty{display:flex;align-items:center;gap:0;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
+.qty button{width:38px;height:38px;border:none;background:#f3f6f9;font:900 20px Lato;color:var(--navy);cursor:pointer}
+.qty span{min-width:34px;text-align:center;font:900 16px Lato}
+.sl-x{width:32px;height:32px;border:none;background:none;color:#aeb8c4;font-size:18px;cursor:pointer}
+.btn{width:100%;padding:16px;border-radius:13px;border:none;font:900 16px Lato;cursor:pointer;touch-action:manipulation;margin-top:4px}
+.btn-go{background:var(--navy);color:#fff}
+.btn-gold{background:var(--gold);color:var(--navy)}
 .prio{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .pb{padding:13px;border:2px solid var(--line);border-radius:12px;background:#fff;font:800 15px Lato;cursor:pointer;text-align:center;color:var(--muted);touch-action:manipulation}
 .pb.on-n{border-color:var(--green);background:#e9f3ee;color:var(--green)}
 .pb.on-u{border-color:var(--red);background:#fdeceb;color:var(--red)}
-.btn{width:100%;padding:16px;border-radius:13px;border:none;font:900 16px Lato;cursor:pointer;touch-action:manipulation;margin-top:4px}
-.btn-go{background:var(--navy);color:#fff}
-.btn-gold{background:var(--gold);color:var(--navy)}
-.btn-ghost{background:#eef1f5;color:var(--navy)}
 .muted{color:var(--muted);font-size:13px;line-height:1.5}
 .stafflink{display:block;text-align:center;color:#9aa7b5;font:700 12px Lato;margin-top:20px;cursor:pointer;text-decoration:underline;background:none;border:none;width:100%}
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -56,6 +64,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
 .sbtn{padding:8px 12px;border-radius:9px;border:1px solid var(--line);background:#fff;font:800 12px Lato;cursor:pointer;color:var(--navy);touch-action:manipulation}
 .sbtn.go{background:var(--green);color:#fff;border-color:var(--green)}
 .sbtn.st{background:var(--amber);color:#fff;border-color:var(--amber)}
+.sbtn.urg{background:#fdeceb;color:var(--red);border-color:#f0c4c0}
+.sbtn.urg.on{background:var(--red);color:#fff;border-color:var(--red)}
 .rsel{padding:8px 10px;border:1px solid var(--line);border-radius:9px;font:13px Lato}
 .hide{display:none}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(26,43,58,.95);color:#fff;padding:11px 18px;border-radius:22px;font:800 14px Lato;z-index:99;opacity:0;transition:.2s;pointer-events:none}
@@ -80,16 +90,23 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
     </div>
 
     <div class="card">
-      <label class="fl">What do you need?</label>
+      <label class="fl">What do you need? <span style="font-weight:400;text-transform:none;color:#9aa7b5">(pick one or more)</span></label>
       <div class="grid" id="type-grid"></div>
+    </div>
+
+    <div class="card hide" id="sel-wrap">
+      <label class="fl">Your request</label>
+      <div class="selhint">Set how many where it applies (e.g. pillows).</div>
+      <div id="sel-box"></div>
     </div>
 
     <div class="card">
       <label class="fl">Any details <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
-      <textarea id="f-detail" placeholder="Anything that helps the team — e.g. 2 extra pillows, service after 2pm…"></textarea>
+      <textarea id="f-detail" placeholder="Anything that helps the team — e.g. service after 2pm, which towels…"></textarea>
     </div>
 
-    <div class="card">
+    <!-- priority: reception only (hidden for the in-room QR) -->
+    <div class="card hide" id="prio-card">
       <label class="fl">Priority</label>
       <div class="prio">
         <button type="button" class="pb on-n" id="pb-n" onclick="setPrio('normal')">Normal</button>
@@ -147,9 +164,10 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
 /* ============================================================
    HosHOUSE — Front Desk / Guest Requests (standalone v1)
    Writes to Firestore collection: hoshouse_requests
-   Share:  /hoshouse-request.html          (guest/reception form)
-           /hoshouse-request.html?room=101 (pre-filled for a room)
-           /hoshouse-request.html?board    (staff board — PIN)
+   Share:  /hoshouse-request.html             (guest form — QR; no priority)
+           /hoshouse-request.html?room=101    (pre-filled for a room)
+           /hoshouse-request.html?reception   (reception — shows priority)
+           /hoshouse-request.html?board       (staff board — PIN)
    ------------------------------------------------------------
    STAFF CODE for the board — change this line to set your own:
    ============================================================ */
@@ -166,6 +184,8 @@ const REQ_TYPES = [
   {id:'servicing', e:'🕐', label:'Room servicing'},
   {id:'other',     e:'✍️', label:'Something else'}
 ];
+// items that take a quantity
+const QTY_ITEMS = ['towels','pillows','teacoffee','toiletries','batteries','extrabed'];
 const TYPE_LABEL = id => (REQ_TYPES.find(t=>t.id===id)||{}).label || 'Request';
 const TYPE_EMOJI = id => (REQ_TYPES.find(t=>t.id===id)||{}).e || '🧹';
 
@@ -174,16 +194,35 @@ try{ if(typeof firebase!=='undefined' && typeof firebaseConfig!=='undefined'){ i
 
 const $=id=>document.getElementById(id);
 const qs=new URLSearchParams(location.search);
-let FS={ room:'', type:'', detail:'', prio:'normal' };
+const RECEPTION=qs.has('reception');
+let FS={ room:'', items:{}, prio:'normal' };   // items = { typeId: qty }
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function ago(iso){ if(!iso) return ''; const s=Math.floor((Date.now()-new Date(iso).getTime())/1000); if(s<60)return'just now'; const m=Math.floor(s/60); if(m<60)return m+'m ago'; const h=Math.floor(m/60); if(h<24)return h+'h ago'; return Math.floor(h/24)+'d ago'; }
 function todayISO(){ return new Date().toLocaleDateString('en-CA'); }
 
-/* ---- build the request-type grid ---- */
-$('type-grid').innerHTML = REQ_TYPES.map(t=>`<button type="button" class="rt" data-t="${t.id}" onclick="setType('${t.id}')"><span class="e">${t.e}</span>${t.label}</button>`).join('');
-function setType(id){ FS.type=id; document.querySelectorAll('.rt').forEach(b=>b.classList.toggle('on',b.dataset.t===id)); }
+/* ---- request-type grid (multi-select) ---- */
+$('type-grid').innerHTML = REQ_TYPES.map(t=>`<button type="button" class="rt" data-t="${t.id}" onclick="toggleType('${t.id}')"><span class="e">${t.e}</span>${t.label}</button>`).join('');
+function toggleType(id){
+  if(FS.items[id]!=null) delete FS.items[id];
+  else FS.items[id]=1;
+  document.querySelectorAll('.rt').forEach(b=>b.classList.toggle('on', FS.items[b.dataset.t]!=null));
+  renderSelected();
+}
+function itemQty(id,d){ if(FS.items[id]==null) return; FS.items[id]=Math.max(1,(FS.items[id]||1)+d); renderSelected(); }
+function renderSelected(){
+  const ids=Object.keys(FS.items);
+  $('sel-wrap').classList.toggle('hide', ids.length===0);
+  $('sel-box').innerHTML=ids.map(id=>`<div class="selrow">
+    <span class="sl-name">${TYPE_EMOJI(id)} ${TYPE_LABEL(id)}</span>
+    ${QTY_ITEMS.includes(id)?`<div class="qty"><button type="button" onclick="itemQty('${id}',-1)">−</button><span>${FS.items[id]}</span><button type="button" onclick="itemQty('${id}',1)">+</button></div>`:''}
+    <button type="button" class="sl-x" onclick="toggleType('${id}')">✕</button>
+  </div>`).join('');
+}
 function setPrio(p){ FS.prio=p; $('pb-n').className='pb'+(p==='normal'?' on-n':''); $('pb-u').className='pb'+(p==='urgent'?' on-u':''); }
+
+/* ---- reception mode shows priority; QR/guest does not ---- */
+if(RECEPTION){ $('prio-card').classList.remove('hide'); $('top-tt').textContent='🧹 Log a Housekeeping Request'; }
 
 /* ---- room pre-fill from QR ?room= ---- */
 (function(){
@@ -195,12 +234,15 @@ function setPrio(p){ FS.prio=p; $('pb-n').className='pb'+(p==='normal'?' on-n':'
 async function submitRequest(){
   const room=(FS.room||$('f-room').value||'').toString().trim();
   if(!room){ toast('Please enter your room number'); $('f-room').focus(); return; }
-  if(!FS.type){ toast('Please pick what you need'); return; }
+  const ids=Object.keys(FS.items);
+  if(!ids.length){ toast('Please pick what you need'); return; }
+  const items=ids.map(id=>({type:id,label:TYPE_LABEL(id),qty:FS.items[id]||1}));
+  const summary=items.map(it=>(it.qty>1?it.qty+'× ':'')+it.label).join(', ');
   const detail=$('f-detail').value.trim();
   const now=new Date().toISOString();
   const id='req_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  const doc={ id, room:String(room), type:FS.type, typeLabel:TYPE_LABEL(FS.type),
-    detail, priority:FS.prio, status:'pending', source:(qs.has('reception')?'reception':'guest'),
+  const doc={ id, room:String(room), items, typeLabel:summary, type:items[0].type,
+    detail, priority:(RECEPTION?FS.prio:'normal'), status:'pending', source:(RECEPTION?'reception':'guest'),
     createdAt:now, updatedAt:now, assignedTo:'', assignedName:'', startedAt:null, completedAt:null, completedBy:'' };
   try{
     if(db){ await db.collection('hoshouse_requests').doc(id).set(doc); }
@@ -209,27 +251,25 @@ async function submitRequest(){
     showScreen('scr-thanks');
   }catch(e){ console.warn('submit',e); toast('Could not send — please tell reception'); }
 }
-function resetForm(){ FS={room:FS.room, type:'', detail:'', prio:'normal'}; $('f-detail').value=''; setPrio('normal'); document.querySelectorAll('.rt').forEach(b=>b.classList.remove('on')); if(!qs.get('room')) $('f-room').value=''; showScreen('scr-form'); }
+function resetForm(){ FS={room:FS.room, items:{}, prio:'normal'}; $('f-detail').value=''; setPrio('normal'); document.querySelectorAll('.rt').forEach(b=>b.classList.remove('on')); renderSelected(); if(!qs.get('room')) $('f-room').value=''; showScreen('scr-form'); }
 
 /* ---- screens ---- */
 function showScreen(id){ ['scr-form','scr-thanks','scr-pin','scr-board'].forEach(s=>$(s).classList.toggle('hide',s!==id)); window.scrollTo(0,0); }
-function showForm(){ $('top-tt').textContent='🧹 Housekeeping Request'; stopBoard(); showScreen('scr-form'); }
+function showForm(){ $('top-tt').textContent=RECEPTION?'🧹 Log a Housekeeping Request':'🧹 Housekeeping Request'; stopBoard(); showScreen('scr-form'); }
 function openBoard(){ showScreen('scr-pin'); setTimeout(()=>$('pin-in').focus(),100); }
 function checkPin(){ if(($('pin-in').value||'').trim()===BOARD_PIN){ $('pin-err').textContent=''; startBoard(); } else { $('pin-err').textContent='Wrong code — ask a manager'; $('pin-in').value=''; } }
 $('pin-in') && $('pin-in').addEventListener('keydown',e=>{ if(e.key==='Enter') checkPin(); });
 
 /* ============================================================
-   STAFF BOARD — live list, allocate, start, complete
+   STAFF BOARD — live list, allocate, start, complete, mark urgent
    ============================================================ */
-let B_FILTER='open', B_UNSUB=null, B_ROWS=[], B_STAFF=[];
+let B_FILTER='open', B_UNSUB=null, B_ROWS=[], B_STAFF=[], B_READY=false;
 const B_FILTERS=[['open','To do'],['urgent','🔴 Urgent'],['in_progress','⏱ In progress'],['done','✓ Done today'],['all','All']];
 
 async function loadStaff(){
-  // live housekeeping staff from the same config the apps use
   try{ if(db){ const d=await db.collection('hoshouse_config').doc('current').get(); const st=(d.exists?(d.data()||{}):{}).staff; if(Array.isArray(st)&&st.length){ B_STAFF=st.filter(s=>(s.status||'active')==='active').map(s=>({id:s.id,name:s.name})); return; } } }catch(e){}
   B_STAFF=[{id:'ruth',name:'Ruth Addison'},{id:'aryan',name:'Aryan'},{id:'lara',name:'Lara Jervis'},{id:'rahul',name:'Rahul Reghunath'},{id:'manoj',name:'Manoj'},{id:'satya',name:'Satya'},{id:'laith',name:'Laith Hardy'}];
 }
-
 async function startBoard(){
   $('top-tt').textContent='📋 Requests board';
   showScreen('scr-board');
@@ -241,19 +281,16 @@ async function startBoard(){
       const prevOpen=B_ROWS.filter(r=>r.status==='pending').length;
       B_ROWS=snap.docs.map(d=>d.data()).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
       const nowOpen=B_ROWS.filter(r=>r.status==='pending').length;
-      if(nowOpen>prevOpen && prevOpen>=0 && B_READY) notifyNew();
-      B_READY=true;
-      bRender();
+      if(nowOpen>prevOpen && B_READY) notifyNew();
+      B_READY=true; bRender();
     }, e=>{ console.warn('board snap',e); $('b-list').innerHTML='<div class="muted" style="padding:20px;text-align:center">Could not load requests — check connection.</div>'; });
-  } else {
-    B_ROWS=JSON.parse(localStorage.getItem('hoshouse_requests')||'[]'); bRender();
-  }
+  } else { B_ROWS=JSON.parse(localStorage.getItem('hoshouse_requests')||'[]'); bRender(); }
   try{ if('Notification' in window && Notification.permission==='default') Notification.requestPermission(); }catch(e){}
 }
-let B_READY=false;
 function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } B_READY=false; }
 function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l])=>`<button class="chip ${B_FILTER===ff?'on':''}" onclick="bSetFilter('${ff}')">${l}</button>`).join(''); bRender(); }
 function notifyNew(){ try{ if('Notification' in window && Notification.permission==='granted') new Notification('🧹 New housekeeping request',{body:'A guest/front-desk request just came in.'}); }catch(e){} toast('🔔 New request in'); }
+function reqItems(r){ if(r.items&&r.items.length) return r.items.map(it=>`${TYPE_EMOJI(it.type)} ${esc(it.label)}${it.qty>1?(' ×'+it.qty):''}`).join('  ·  '); return `${TYPE_EMOJI(r.type)} ${esc(r.typeLabel||'')}`; }
 
 function bRender(){
   const today=todayISO();
@@ -265,7 +302,6 @@ function bRender(){
   else if(B_FILTER==='urgent') rows=rows.filter(r=>r.status!=='done'&&r.priority==='urgent');
   else if(B_FILTER==='in_progress') rows=rows.filter(r=>r.status==='in_progress');
   else if(B_FILTER==='done') rows=rows.filter(r=>r.status==='done'&&String(r.completedAt||'').slice(0,10)===today);
-  // sort: urgent & pending first
   rows.sort((a,b)=>{ const o={pending:0,in_progress:1,done:2}; const ao=(a.priority==='urgent'&&a.status!=='done')?-1:o[a.status]; const bo=(b.priority==='urgent'&&b.status!=='done')?-1:o[b.status]; return ao-bo || (b.createdAt||'').localeCompare(a.createdAt||''); });
   if(!rows.length){ $('b-list').innerHTML='<div class="muted" style="padding:26px;text-align:center">Nothing here — all clear ✓</div>'; return; }
   const staffOpts=u=>`<option value="">— allocate —</option>`+B_STAFF.map(s=>`<option value="${s.id}" ${u===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
@@ -274,11 +310,12 @@ function bRender(){
     const bdg=r.status==='done'?'<span class="bdg d">✓ Done</span>':r.status==='in_progress'?'<span class="bdg ip">In progress</span>':(r.priority==='urgent'?'<span class="bdg u">Urgent</span>':'<span class="bdg p">Pending</span>');
     const resp=(r.status==='done'&&r.completedAt&&r.createdAt)?('· done in '+Math.max(1,Math.round((new Date(r.completedAt)-new Date(r.createdAt))/60000))+'m'):'';
     return `<div class="req s-${st}">
-      <div class="r1"><span class="rm">Room ${esc(r.room)}</span><span class="ty">${TYPE_EMOJI(r.type)} ${esc(r.typeLabel||'')}</span>${bdg}</div>
+      <div class="r1"><span class="rm">Room ${esc(r.room)}</span><span class="ty">${reqItems(r)}</span>${bdg}</div>
       ${r.detail?`<div class="meta">${esc(r.detail)}</div>`:''}
       <div class="meta">${esc(r.source==='reception'?'Front desk':'Guest')} · ${ago(r.createdAt)} ${r.assignedName?('· 👤 '+esc(r.assignedName)):''} ${resp}</div>
       ${r.status!=='done'?`<div class="acts">
         <select class="rsel" onchange="allocate('${r.id}',this.value)">${staffOpts(r.assignedTo)}</select>
+        <button class="sbtn urg ${r.priority==='urgent'?'on':''}" onclick="toggleUrgent('${r.id}','${r.priority}')">${r.priority==='urgent'?'● Urgent':'⚑ Urgent'}</button>
         ${r.status==='pending'?`<button class="sbtn st" onclick="setStatus('${r.id}','in_progress')">Start</button>`:''}
         <button class="sbtn go" onclick="setStatus('${r.id}','done')">✓ Complete</button>
       </div>`:''}
@@ -287,7 +324,8 @@ function bRender(){
 }
 async function patch(id,fields){ fields.updatedAt=new Date().toISOString(); try{ if(db){ await db.collection('hoshouse_requests').doc(id).set(fields,{merge:true}); } else { const a=JSON.parse(localStorage.getItem('hoshouse_requests')||'[]'); const r=a.find(x=>x.id===id); if(r){Object.assign(r,fields); localStorage.setItem('hoshouse_requests',JSON.stringify(a)); bRender();} } }catch(e){ toast('Could not save — check connection'); } }
 function allocate(id,hk){ const s=B_STAFF.find(x=>x.id===hk); patch(id,{assignedTo:hk||'',assignedName:s?s.name:''}); toast(s?('Allocated to '+s.name.split(' ')[0]):'Unassigned'); }
-function setStatus(id,status){ const f={status}; const now=new Date().toISOString(); if(status==='in_progress') f.startedAt=now; if(status==='done'){ f.completedAt=now; } patch(id,f); toast(status==='done'?'✓ Completed':'Marked in progress'); }
+function setStatus(id,status){ const f={status}; const now=new Date().toISOString(); if(status==='in_progress') f.startedAt=now; if(status==='done') f.completedAt=now; patch(id,f); toast(status==='done'?'✓ Completed':'Marked in progress'); }
+function toggleUrgent(id,cur){ const u=cur==='urgent'?'normal':'urgent'; patch(id,{priority:u}); toast(u==='urgent'?'Marked urgent':'Urgent removed'); }
 
 /* ---- entry: ?board opens straight to the PIN ---- */
 if(qs.has('board')) openBoard();
