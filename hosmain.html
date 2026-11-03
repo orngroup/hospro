@@ -1965,10 +1965,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   const canNotify   = typeof Notification !== 'undefined';
   const hasPreset   = PRESET_USER && USERS.find(u=>u.id===PRESET_USER);
 
-  if (!installed && !seen) {
+  const hasTier = /[?&](tier=|management|manager|admin|reporter|operative|maintenance|fixer)/i.test(location.search);
+  if (!installed && !seen && !hasTier) {
     showScreen('scr-install');                       // first visit: offer add-to-home
   } else {
-    showScreen('scr-login');                         // name + PIN (preset name is pre-selected)
+    showScreen('scr-login');                         // tier links & returning users → straight to name list
   }
   checkSyncHash();
 });

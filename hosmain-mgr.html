@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1f5fbf">
+<meta property="og:title" content="HosFix - Mgr — Brandon Hall Hotel and Spa">
+<meta property="og:image" content="https://brandon.hospro.co.uk/assets/hosfix-mgr-512.png">
+<link rel="manifest" href="/hosmain-manifest-mgr.json">
+<link rel="apple-touch-icon" href="/assets/hosfix-mgr-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="/assets/hosfix-mgr-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/hosfix-mgr-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/assets/hosfix-mgr-512.png">
+<meta name="apple-mobile-web-app-title" content="HosFix - Mgr">
+<title>HosFix - Mgr — Brandon Hall</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:'Lato',sans-serif}
+body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  padding:32px 28px calc(32px + env(safe-area-inset-bottom,0px));color:#fff;
+  background:linear-gradient(160deg,#1f5fbf 0%,#17407f 100%)}
+.ic{width:104px;height:104px;border-radius:24px;box-shadow:0 12px 30px rgba(0,0,0,.35);margin-bottom:22px}
+.nm{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:700;letter-spacing:1px;margin-bottom:4px}
+.nm b{color:#c9a978}
+.ht{font-size:14px;color:rgba(255,255,255,.8);font-weight:600;margin-bottom:2px}
+.sb{font-size:10px;letter-spacing:3px;font-weight:700;color:#c9a978;text-transform:uppercase;margin-bottom:30px}
+.open{width:100%;max-width:320px;padding:16px;border-radius:14px;border:none;background:#c9a978;color:#1a2b3a;
+  font:700 16px 'Lato';cursor:pointer;text-decoration:none;display:block;margin-bottom:22px;touch-action:manipulation}
+.steps{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:16px 18px;
+  max-width:340px;width:100%;text-align:left}
+.steps .t{font-size:11px;font-weight:700;letter-spacing:.6px;color:#c9a978;text-transform:uppercase;margin-bottom:10px}
+.steps .s{display:flex;align-items:flex-start;gap:11px;padding:6px 0;font-size:13px;color:rgba(255,255,255,.88);line-height:1.5}
+.steps .n{width:24px;height:24px;flex-shrink:0;border-radius:50%;background:#c9a978;color:#1a2b3a;font-weight:700;font-size:12px;display:grid;place-items:center;margin-top:1px}
+.foot{margin-top:22px;font-size:11px;color:rgba(255,255,255,.45)}
+</style>
+</head>
+<body>
+  <img class="ic" src="/assets/hosfix-mgr-192.png" alt="HosFix - Mgr">
+  <div class="nm">Hos<b>Fix</b> — Management</div>
+  <div class="ht">Brandon Hall Hotel and Spa</div>
+  <div class="sb">Maintenance</div>
+  <a class="open" href="/hosmain.html?tier=management">Open HosFix - Mgr →</a>
+  <div class="steps">
+    <div class="t">📲 Add to your home screen</div>
+    <div class="s"><div class="n">1</div><span>Tap the <b>Share</b> button in your browser</span></div>
+    <div class="s"><div class="n">2</div><span>Choose <b>Add to Home Screen</b></span></div>
+    <div class="s"><div class="n">3</div><span>Tap <b>Add</b> — the <b>HosFix - Mgr</b> icon appears on your phone</span></div>
+  </div>
+  <div class="foot">One-tap access next time — no code needed</div>
+<script>
+// If already installed (opened from the home-screen icon), go straight into the app.
+try{ if(window.matchMedia('(display-mode:standalone)').matches || navigator.standalone===true){ location.replace('/hosmain.html?tier=management'); } }catch(e){}
+</script>
+</body>
+</html>
