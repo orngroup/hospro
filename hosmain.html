@@ -370,14 +370,26 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
     <div class="lg-name">Hos<span>FIX</span></div>
     <div class="lg-hotel">Brandon Hall Hotel and Spa</div>
     <div class="lg-tagline">MAINTENANCE &amp; COMPLIANCE MANAGEMENT</div>
-    <select class="lg-select" id="lg-sel">
-      <option value="">Select your name…</option>
-    </select>
-    <input id="lg-pin" type="tel" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4-digit PIN"
-      style="width:100%;max-width:320px;margin-top:12px;padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font:700 18px 'Lato';text-align:center;letter-spacing:8px;box-sizing:border-box">
-    <div id="lg-err" style="color:#ff9d9d;font-size:12px;min-height:15px;margin:7px 0 2px"></div>
-    <button class="lg-btn" id="lg-btn" disabled>Sign in</button>
-    <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:12px;max-width:300px;line-height:1.5">New here? Pick your name and enter <b>9999</b>. Forgotten your PIN? Ask your manager.</div>
+    <!-- Step 1 — access code -->
+    <div id="lg-step-code">
+      <div style="color:rgba(255,255,255,.75);font-size:13px;margin:4px 0 10px">Enter your access code</div>
+      <input id="lg-code" type="tel" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"
+        style="width:100%;max-width:320px;padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font:700 22px 'Lato';text-align:center;letter-spacing:12px;box-sizing:border-box">
+      <div id="lg-err" style="color:#ff9d9d;font-size:12px;min-height:15px;margin:7px 0 2px"></div>
+      <button class="lg-btn" id="lg-code-btn" disabled>Continue →</button>
+      <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:12px;max-width:300px;line-height:1.5">Management, Reporters and Maintenance each have their own code — ask your manager.</div>
+    </div>
+    <!-- Step 2 — pick your name -->
+    <div id="lg-step-name" style="display:none">
+      <div id="lg-tier-label" style="color:#fff;font-weight:800;font-size:15px;margin:2px 0 12px"></div>
+      <div id="lg-names" style="display:flex;flex-wrap:wrap;gap:9px;justify-content:center;max-width:340px"></div>
+      <div id="lg-addname" style="display:none;margin-top:14px;width:100%;max-width:320px">
+        <input id="lg-newname" placeholder="Or type your name" autocomplete="off"
+          style="width:100%;padding:13px 15px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font:600 15px 'Lato';text-align:center;box-sizing:border-box">
+        <button class="lg-btn" onclick="lgAddName()" style="margin-top:9px">＋ Add &amp; sign in</button>
+      </div>
+      <button type="button" onclick="lgBackToCode()" style="margin-top:14px;background:none;border:none;color:rgba(255,255,255,.6);font-size:13px;cursor:pointer;text-decoration:underline">← Back</button>
+    </div>
   </div>
 </div>
 
@@ -532,8 +544,8 @@ const NOTIFY_ASSIGN = ['glenn','ruth','pete','herman','daniel','jomy'];
 // Everyone else is a reporter (log a fault + see own reports). Default PIN 9999.
 const PINS = { raj:"0000", ajay:"1111", glenn:"2222", herman:"3333", pete:"4444" };
 const pinFor = id => (PINS[id] || "9999");
-const ADMIN_TIER = ["raj","ajay","glenn"];
-const FIXER_TIER = ["herman","pete"];
+const ADMIN_TIER = ["raj","ajay","alia","glenn","patrik","laith"];   // Management — login code 0000 (report + review + allocate)
+const FIXER_TIER = ["glenn","herman","pete"];                         // Maintenance team — login code 3333 (action jobs only)
 function tierOf(id){ id=id||ME; return ADMIN_TIER.includes(id)?"admin":(FIXER_TIER.includes(id)?"fixer":"reporter"); }
 function isAdmin(id){ return tierOf(id)==="admin"; }
 function isFixer(id){ return tierOf(id)==="fixer"; }
@@ -561,7 +573,7 @@ let COMP_FILTER = 'all';
 // ── JOBS ─────────────────────────────────────────────────────────────────────
 
 // ── Clean start: jobs logged before 2026-10-10 10:00 UTC (11:00 UK, 10 Oct 2026) are cleared on every device ──
-const HF_CLEAN_FROM='2026-10-10T10:00:00.000Z';
+const HF_CLEAN_FROM='2026-11-01T00:00:00.000Z';   // clean start — only jobs from 1 Nov 2026 onwards
 function hfOldJob(j){ return !j || !(String(j.createdAt||'')>=HF_CLEAN_FROM); }
 let JOBS = JSON.parse(localStorage.getItem('hosfix_jobs')||'null');
 if(!Array.isArray(JOBS)) JOBS=[];
@@ -694,31 +706,59 @@ function initInstall(){
 }
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
+// New login: three shared access codes → pick your name → remembered on the device.
+const LG_CODES={ '0000':'admin', '1111':'reporter', '3333':'fixer' };
+let LG_TIER=null;
 function initLogin(){
-  const sel=$('lg-sel'), pin=$('lg-pin'), btn=$('lg-btn'), err=$('lg-err');
-  if(sel && sel.options.length<=1){
-    USERS.forEach(u=>{ const o=document.createElement('option'); o.value=u.id; o.textContent=u.name+' ('+u.role+')'; sel.appendChild(o); });
+  const code=$('lg-code'), cbtn=$('lg-code-btn'), err=$('lg-err');
+  if(code){
+    code.value='';
+    code.addEventListener('input',()=>{ code.value=code.value.replace(/\D/g,'').slice(0,4); if(err) err.textContent=''; if(cbtn) cbtn.disabled=code.value.length!==4; });
+    code.addEventListener('keydown',e=>{ if(e.key==='Enter'&&code.value.length===4) lgCheckCode(); });
   }
-  function refresh(){ if(btn) btn.disabled=!(sel && sel.value && pin && pin.value.length===4); }
-  if(sel) sel.addEventListener('change',()=>{ if(err) err.textContent=''; if(pin){ pin.value=''; } refresh(); });
-  if(pin) pin.addEventListener('input',()=>{ pin.value=pin.value.replace(/\D/g,'').slice(0,4); if(err) err.textContent=''; refresh(); });
-  function trySignIn(){
-    const uid=sel?sel.value:''; if(!uid) return;
-    const entered=(pin?pin.value:'')||'';
-    if(entered!==pinFor(uid)){ if(err) err.textContent='Incorrect PIN — please try again'; if(pin) pin.value=''; refresh(); return; }
-    if(pin) pin.value=''; if(err) err.textContent='';
-    loginAs(uid);
-    setTimeout(maybeAskNotifications,2500);
-  }
-  if(btn) btn.addEventListener('click',trySignIn);
-  if(pin) pin.addEventListener('keydown',e=>{ if(e.key==='Enter') trySignIn(); });
-  // Personal link (?u= or PRESET_USER) pre-selects the name — they just key their PIN
+  if(cbtn) cbtn.onclick=lgCheckCode;
+  // Dedicated per-group links skip the code and open straight on the name list:
+  //   ?tier=management  ·  ?tier=reporter  ·  ?tier=operative   (bare ?management etc. also works)
   try{
-    const uid = PRESET_USER || new URLSearchParams(location.search).get('u');
-    if(uid && USERS.some(u=>u.id===uid) && sel){ sel.value=uid; setTimeout(()=>{ try{pin&&pin.focus();}catch(e){} },250); }
+    const q=new URLSearchParams(location.search);
+    let t=(q.get('tier')||'').toLowerCase();
+    if(!t){ ['management','manager','admin','reporter','reporters','operative','operatives','maintenance','fixer'].forEach(k=>{ if(q.has(k)) t=k; }); }
+    const map={management:'admin',manager:'admin',admin:'admin',reporter:'reporter',reporters:'reporter',operative:'fixer',operatives:'fixer',maintenance:'fixer',fixer:'fixer'};
+    if(map[t]) lgShowNames(map[t]);
   }catch(e){}
-  refresh();
 }
+function lgCheckCode(){
+  const el=$('lg-code'); const entered=(el?el.value:'')||''; const tier=LG_CODES[entered]; const err=$('lg-err');
+  if(!tier){ if(err) err.textContent='Incorrect code — ask your manager'; if(el) el.value=''; const b=$('lg-code-btn'); if(b) b.disabled=true; return; }
+  LG_TIER=tier; if(err) err.textContent=''; lgShowNames(tier);
+}
+function lgTierUsers(tier){
+  if(tier==='admin') return ADMIN_TIER.map(id=>USERS.find(u=>u.id===id)).filter(Boolean);
+  if(tier==='fixer') return FIXER_TIER.map(id=>USERS.find(u=>u.id===id)).filter(Boolean);
+  // reporter: everyone who isn't Management and isn't a fixer (Herman/Pete) — plus any names added here
+  return USERS.filter(u=>!ADMIN_TIER.includes(u.id) && !['herman','pete'].includes(u.id));
+}
+function lgShowNames(tier){
+  const sc=$('lg-step-code'), sn=$('lg-step-name'); if(sc) sc.style.display='none'; if(sn) sn.style.display='block';
+  const LB={admin:'👔 Management — tap your name', reporter:'📣 Report an issue — tap your name', fixer:'🔧 Maintenance team — tap your name'};
+  const lab=$('lg-tier-label'); if(lab) lab.textContent=LB[tier]||'Tap your name';
+  const list=lgTierUsers(tier); const box=$('lg-names');
+  if(box) box.innerHTML=list.map(u=>`<button type="button" onclick="lgPick('${u.id}')" style="padding:11px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font:700 14px 'Lato';cursor:pointer;touch-action:manipulation">${u.name.split(' ')[0]}</button>`).join('');
+  const an=$('lg-addname'); if(an) an.style.display = tier==='reporter' ? 'block' : 'none';
+}
+function lgPick(uid){ if(!USERS.find(u=>u.id===uid)) return; try{localStorage.setItem('hf_me',uid);}catch(e){} loginAs(uid); setTimeout(maybeAskNotifications,2500); }
+function lgAddName(){
+  const el=$('lg-newname'); const v=(el?el.value:'').trim(); if(!v){ if(el) el.focus(); return; }
+  const existing=USERS.find(u=>u.name.toLowerCase()===v.toLowerCase());
+  if(existing){ lgPick(existing.id); return; }
+  const id='rep_'+v.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,18)+'_'+Date.now().toString(36).slice(-3);
+  USERS.push({id,name:v,role:'Reporter',level:1,color:'#64748b',admin:false,seeCosts:false,tier:'reporter'}); saveAddedUsers();
+  lgPick(id);
+}
+function lgBackToCode(){ const sc=$('lg-step-code'), sn=$('lg-step-name'); if(sn) sn.style.display='none'; if(sc) sc.style.display='block'; const c=$('lg-code'); if(c) c.value=''; const b=$('lg-code-btn'); if(b) b.disabled=true; }
+// reporter-added names persist on this device
+function saveAddedUsers(){ try{ const added=USERS.filter(u=>String(u.id).indexOf('rep_')===0).map(u=>({id:u.id,name:u.name,role:u.role||'Reporter',color:u.color||'#64748b',tier:'reporter',level:1,admin:false,seeCosts:false})); localStorage.setItem('hf_added_users',JSON.stringify(added)); }catch(e){} }
+function loadAddedUsers(){ try{ const added=JSON.parse(localStorage.getItem('hf_added_users')||'[]'); added.forEach(a=>{ if(a&&a.id&&!USERS.find(u=>u.id===a.id)) USERS.push(a); }); }catch(e){} }
 
 // ── MODULE HOME ──────────────────────────────────────────────────────────────
 // ── ON DUTY TODAY (home screen) — managers/directors toggle Working / Off ─────
@@ -810,8 +850,10 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 function signOut(){
   sessionStorage.removeItem('hf_user');
+  try{ localStorage.removeItem('hf_me'); }catch(e){}   // clear remembered login so another person can sign in
   ACTIVE_TIMER=null; saveTimer();
   $('app').style.display='none';
+  try{ var sc=$('lg-step-code'), sn=$('lg-step-name'), c=$('lg-code'); if(sn) sn.style.display='none'; if(sc) sc.style.display='block'; if(c) c.value=''; }catch(e){}
   showScreen('scr-login');
 }
 
@@ -858,10 +900,10 @@ function buildMaintenanceNav(){
     <button class="bnav on" data-v="jobs"><span class="ico">📋</span>My Reports</button>
     <button class="bnav" data-v="new"><span class="ico">➕</span>Report a Fault</button>`;
   } else if(isFixer()){
+    // Maintenance team — action jobs only, no reporting
     btns=`
     <button class="bnav on" data-v="dashboard"><span class="ico">📊</span>Dashboard</button>
-    <button class="bnav" data-v="jobs"><span class="ico">🔧</span>My Jobs<span class="bb" id="bn-u" style="display:none"></span></button>
-    <button class="bnav" data-v="new"><span class="ico">➕</span>New Job</button>`;
+    <button class="bnav" data-v="jobs"><span class="ico">🔧</span>My Jobs<span class="bb" id="bn-u" style="display:none"></span></button>`;
   } else {
     btns=`
     <button class="bnav on" data-v="dashboard"><span class="ico">📊</span>Dashboard</button>
@@ -1932,6 +1974,7 @@ function loginAs(uid){
   ME=uid;
   MY_USER=USERS.find(u=>u.id===uid);
   sessionStorage.setItem('hf_user',uid);
+  try{ localStorage.setItem('hf_me',uid); }catch(e){}
   // Role from the new scheme (admin / fixer / reporter)
   if(MY_USER){ MY_USER.tier=tierOf(uid); MY_USER.admin=isAdmin(uid); MY_USER.seeCosts=isAdmin(uid); }
   IS_SUPER=isAdmin(uid);
@@ -2180,10 +2223,13 @@ function openTaskDetail(id){
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded',()=>{
   initInstall();
+  loadAddedUsers();
   initLogin();
 
   loadPhones();
-  // Restore session
+  // Remembered sign-in (persists across launches), then this-session restore
+  const remembered=localStorage.getItem('hf_me');
+  if(remembered && USERS.find(u=>u.id===remembered)){ loginAs(remembered); return; }
   const saved=sessionStorage.getItem('hf_user');
   if(saved && USERS.find(u=>u.id===saved)){ loginAs(saved); return; }
 
@@ -2440,6 +2486,51 @@ function jobSyncPush(){
   });
 }
 
+// ── SEED: real jobs from the Brandon Hall Maintenance WhatsApp chat (1 Nov onwards) ──
+// Create-if-absent by id, and skip if the app already has an open job at that location,
+// so nothing is ever duplicated. Runs once per device after the first cloud snapshot.
+function hfSeedJobs(){
+  if(localStorage.getItem('hf_seed_wa_v1')==='1') return;
+  const S=[
+    {id:'wa-151-heating', loc:'Room 151', title:'No heating', desc:'No heating reported — arrival room.', prio:'urgent', wt:'HVAC', who:['glenn','pete'], at:'2026-11-02T19:31:00.000Z', by:'Alice Grace', cb:'alice'},
+    {id:'wa-154-heating', loc:'Room 154', title:'No heating', desc:'No heating reported — arrival room.', prio:'urgent', wt:'HVAC', who:['glenn','pete'], at:'2026-11-02T17:44:00.000Z', by:'Alice Grace', cb:'alice'},
+    {id:'wa-116-heating', loc:'Room 116', title:'No heating', desc:'No heating reported — arrival room today.', prio:'urgent', wt:'HVAC', who:['glenn','pete'], at:'2026-11-02T19:31:00.000Z', by:'Alice Grace', cb:'alice'},
+    {id:'wa-13-shower-handle', loc:'Room 13', title:'Shower handle broken', desc:'Shower handle broken — needs to be ready for today.', prio:'urgent', wt:'Plumbing', who:['glenn','pete'], at:'2026-11-03T09:36:00.000Z', by:'Raj Kumar', cb:'raj'},
+    {id:'wa-30-lock', loc:'Room 30', title:'Door lock — bolt realignment', desc:'Lock bolt realignment; room opens with emergency key only. Instructions shared in chat.', prio:'urgent', wt:'Locks', who:['glenn','pete'], at:'2026-11-01T08:51:00.000Z', by:'Patrik Vlach', cb:'patrik'},
+    {id:'wa-105-lock', loc:'Room 105', title:'Door lock — bolt realignment', desc:'Lock bolt realignment; emergency key only. Bolt aligned but key still not working.', prio:'urgent', wt:'Locks', who:['pete'], at:'2026-11-01T08:51:00.000Z', by:'Patrik Vlach', cb:'patrik', status:'in-progress'},
+    {id:'wa-111-tv', loc:'Room 111', title:'Replace TV (damaged)', desc:'TV screen broken (guest-caused, charged). Replace — take spare from Warwick / Marston.', prio:'urgent', wt:'Electrical', who:['glenn'], at:'2026-11-01T17:28:00.000Z', by:'Aghil Joy', cb:'aghil'},
+    {id:'wa-145-flush', loc:'Room 145', title:'Toilet flush + fit part', desc:'Toilet flushing issue; part to be fitted. Arrival room.', prio:'high', wt:'Plumbing', who:['glenn','pete'], at:'2026-11-01T12:34:00.000Z', by:'Alice Grace', cb:'alice'},
+    {id:'wa-149-window', loc:'Room 149', title:'Window handle / lock broken', desc:"Window won't shut, handle broken, no window lock.", prio:'high', wt:'Joinery', who:['glenn','pete'], at:'2026-11-02T18:28:00.000Z', by:'Alice Grace', cb:'alice'},
+    {id:'wa-61-bathtub', loc:'Room 61', title:'Bath tub leaking', desc:'Bath tub water leaking (photo logged in HosHOUSE).', prio:'high', wt:'Plumbing', who:['glenn'], at:'2026-11-01T15:13:00.000Z', by:'Manoj', cb:'laith'},
+    {id:'wa-22-mould', loc:'Room 22', title:'Mould', desc:'Mould — needs treating before sale.', prio:'high', wt:'Decorating', who:['pete'], at:'2026-11-03T09:36:00.000Z', by:'Raj Kumar', cb:'raj'},
+    {id:'wa-19-mould', loc:'Room 19', title:'Mould', desc:'Mould — needs treating before sale.', prio:'high', wt:'Decorating', who:['pete'], at:'2026-11-03T09:36:00.000Z', by:'Raj Kumar', cb:'raj'},
+    {id:'wa-106-sealant', loc:'Room 106', title:'Shower sealant + bed moving', desc:'Shower needs mastic/sealant; bed moving.', prio:'medium', wt:'General', who:['glenn'], at:'2026-11-02T17:36:00.000Z', by:'Alice Grace', cb:'alice'},
+    {id:'wa-115-window', loc:'Room 115', title:'Window needs new handle', desc:'Window handle replacement.', prio:'medium', wt:'Joinery', who:['glenn','pete'], at:'2026-11-03T09:36:00.000Z', by:'Raj Kumar', cb:'raj'},
+    {id:'wa-32-bed', loc:'Room 32', title:'Bed rolling — fit wheel disks', desc:'Bed rolling; fit disks under the wheels.', prio:'low', wt:'General', who:['glenn'], at:'2026-11-01T15:02:00.000Z', by:'Alice Grace', cb:'alice'},
+    {id:'wa-plugs-stock', loc:'Stores', area:'maintenance', title:'Bath & sink plugs — restock', desc:'Bring ~20 bath plugs and 20 sink plugs.', prio:'low', wt:'General', who:['glenn'], at:'2026-11-03T09:19:00.000Z', by:'Laith Hardy', cb:'laith'},
+    {id:'wa-18-flush', loc:'Room 18', title:'Toilet flush not flushing', desc:'Toilet flush not flushing properly — guest booking.', prio:'high', wt:'Plumbing', who:['glenn'], at:'2026-11-02T15:34:00.000Z', by:'Laith Hardy', cb:'laith', status:'complete', completedAt:'2026-11-02T15:45:00.000Z', completedBy:'Glenn Randell'},
+    {id:'wa-162-sink', loc:'Room 162', title:'Sink clogged', desc:'Sink clogged.', prio:'medium', wt:'Plumbing', who:['pete'], at:'2026-11-02T16:38:00.000Z', by:'Laith Hardy', cb:'laith', status:'complete', completedAt:'2026-11-02T17:33:00.000Z', completedBy:'Pete'}
+  ];
+  let added=0;
+  S.forEach(s=>{
+    if(JOBS.some(j=>String(j.id)===s.id)) return;
+    const done = s.status==='complete';
+    if(!done){ if(JOBS.some(j=>!hfOldJob(j) && j.location===s.loc && !['complete','cancelled'].includes(j.status))) return; }
+    else { if(JOBS.some(j=>!hfOldJob(j) && j.location===s.loc)) return; }
+    const area=s.area||'bedrooms';
+    const job={ id:s.id, title:s.title, area, areaLabel:(PROPERTY[area]&&PROPERTY[area].label)||'Bedrooms',
+      location:s.loc, workType:s.wt||'General', description:s.desc||s.title,
+      status:s.status||'not-started', priority:s.prio||'medium', assignees:s.who||['glenn'],
+      cost:0, module:'maintenance', photos:[], materials:[], receipts:[],
+      notes:[{text:'Logged from the Brandon Hall Maintenance WhatsApp chat'+(s.by?(' — reported by '+s.by):''), by:'System', at:String(s.at||'').slice(0,10)}],
+      createdAt:s.at, createdBy:s.cb||'laith', reportedBy:s.by||'', source:'WhatsApp',
+      approvedBy:null, approvedAt:null, completedAt:s.completedAt||null };
+    if(done){ job.completedBy=s.completedBy||''; job.notes.push({text:'Marked complete',by:s.completedBy||'',at:String(s.completedAt||'').slice(0,10)}); }
+    JOBS.unshift(job); added++;
+  });
+  if(added){ try{ localStorage.setItem('hosfix_jobs',JSON.stringify(JOBS)); }catch(e){} try{ jobSyncPush(); }catch(e){} }
+  try{ localStorage.setItem('hf_seed_wa_v1','1'); }catch(e){}
+}
 function jobSyncStart(){
   fbInit(); if(!fbDb || JOB_SYNC.on) return;
   JOB_SYNC.on = true;
@@ -2474,6 +2565,7 @@ function jobSyncStart(){
     JOBS.forEach(j=>{ if(!cloudIds.has(String(j.id))) delete JOB_SYNC.sent[j.id]; });
     JOBS.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
     try{ localStorage.setItem("hosfix_jobs", JSON.stringify(JOBS)); }catch(e){}
+    if(wasFirst){ try{ hfSeedJobs(); }catch(e){} }
     jobSyncPush();
     if(pending.length){
       if(wasFirst){
