@@ -422,12 +422,12 @@
     if(!(ME&&ME.lead)) return;
     const cat=HH.defaultRooms();                 // full inventory [{room,cat,floor}]
     const day=await HH.getDayRooms(today);
-    const picks={}, locked={}, notes={};
+    const picks={}, locked={}, notes={}, occ={};
     day.filter(r=>!r.area).forEach(r=>{ const rm=String(r.room);
       if(r.status&&r.status!=='pending') locked[rm]=r.status; else picks[rm]=r.type||'Departure';
-      if(r.notes) notes[rm]=r.notes; });
+      if(r.notes) notes[rm]=r.notes; if(r.occupancy) occ[rm]=r.occupancy; });
     const off={}; try{ const meta=await HH.getDayMeta(today); (meta.offSale||[]).forEach(o=>{ off[String(o.room)]=o.kind; }); }catch(e){}
-    _bulk={ rooms:cat, picks, locked, notes, off, mode:'alloc', defType:'Departure', q:'' };
+    _bulk={ rooms:cat, picks, locked, notes, occ, occ0:Object.assign({},occ), off, mode:'alloc', defType:'Departure', q:'' };
     bulkShowGrid();
   }
   function bulkShowGrid(){
@@ -486,6 +486,7 @@
     if(mode!=='auto' && !mode){ leadMsg('Pick a housekeeper, or choose Automatic.'); return; }
     await HH.setDayRooms(today, arr);
     try{ await HH.setOffSale(today, Object.entries(B.off||{}).map(([room,kind])=>({room,kind}))); }catch(e){}
+    await bulkSaveOcc();
     let n=0;
     if(mode==='auto'){
       const pool=await leadWorkerPool(); if(!pool.length){ leadMsg('No active housekeepers to allocate to yet.'); return; }
@@ -507,6 +508,23 @@
     if($('scr-admin').classList.contains('on')) renderAdmin(); else renderTeam();
   }
   const BULK_OFFCOL={ooo:'#b9780a',dfs:'#8a5a00'}, BULK_OFFLET={ooo:'OOO',dfs:'DFS'};
+  function bulkOcc(room, ev){ if(ev&&ev.stopPropagation) ev.stopPropagation();
+    const B=_bulk; if(!B) return; const cur=B.occ[room]||'';
+    const btn=(val,label,bg)=>`<button onclick="bulkOccSet('${room}','${val}')" style="display:block;width:100%;padding:14px;margin:6px 0;border:1.5px solid ${bg};border-radius:11px;background:${cur===val?bg:'#fff'};color:${cur===val?'#fff':bg};font:800 15px inherit;cursor:pointer">${label}</button>`;
+    const o=document.createElement('div'); o.id='bk-occ-pop';
+    o.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;padding:20px';
+    o.onclick=e=>{ if(e.target===o){ try{ document.body.removeChild(o); }catch(x){} } };
+    o.innerHTML=`<div style="background:#fff;border-radius:16px;padding:18px;width:280px;max-width:92vw" onclick="event.stopPropagation()">
+      <div style="font:800 16px inherit;color:var(--navy);margin-bottom:3px">Room ${esc(room)} — occupancy</div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">The housekeeper sees this on their phone when they open the room.</div>
+      ${btn('vacant','✓ Vacant','#2E6B5E')}${btn('occupied','● Occupied','#b9780a')}
+      <button onclick="bulkOccSet('${room}','')" style="display:block;width:100%;padding:11px;margin-top:6px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--muted);font:700 14px inherit;cursor:pointer">Clear</button>
+    </div>`;
+    document.body.appendChild(o);
+  }
+  function bulkOccSet(room, val){ const B=_bulk; if(B){ if(val) B.occ[room]=val; else delete B.occ[room]; } const o=document.getElementById('bk-occ-pop'); if(o){ try{ document.body.removeChild(o); }catch(x){} } bulkRender(); }
+  async function bulkSaveOcc(){ const B=_bulk; if(!B) return; const rooms=new Set([...Object.keys(B.occ||{}), ...Object.keys(B.occ0||{})]);
+    for(const room of rooms){ if(B.picks[room]!=null){ try{ await HH.updateRoom(today, room, {occupancy:B.occ[room]||''}); }catch(e){} } } }
   function bulkRender(){
     const B=_bulk; const box=$('bk-grid'); if(!B||!box) return;
     const q=(B.q||'').toLowerCase();
@@ -521,9 +539,12 @@
         </div>`; }
       if(ok) return `<div style="border:1.5px dashed ${BULK_OFFCOL[ok]};border-radius:10px;padding:9px 3px;text-align:center;background:${BULK_OFFCOL[ok]}12;opacity:.9"><div style="font:800 16px inherit;color:${BULK_OFFCOL[ok]}">${room}</div><div style="font-size:8px;color:${BULK_OFFCOL[ok]}">${BULK_OFFLET[ok]} · off sale</div></div>`;
       const t=B.picks[room]; const col=t?BULK_COL[t]:'#d2d9e0';
+      const oc=B.occ[room]; const OCCC={vacant:['Vacant','#2E6B5E'],occupied:['Occupied','#b9780a']};
+      const occBtn=t?`<div style="margin-top:3px"><button onclick="bulkOcc('${room}',event)" style="font:800 8px inherit;border:1px solid ${oc?OCCC[oc][1]:'#cbd5e1'};color:${oc?'#fff':'#64748b'};background:${oc?OCCC[oc][1]:'#fff'};border-radius:10px;padding:2px 7px;cursor:pointer">${oc?OCCC[oc][0]:'+ V/O'}</button></div>`:'';
       return `<div onclick="bulkTap('${room}')" style="border:1.5px solid ${col};border-radius:10px;padding:9px 3px;text-align:center;cursor:pointer;background:${t?col+'1f':'#fff'}">
         <div style="font:800 16px inherit;color:${t?col:'var(--ink)'}">${room}${t?` <span style="font-size:11px">${BULK_LET[t]}</span>`:''}</div>
         <div style="font-size:8px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(HH.catLabel(r.cat))}</div>
+        ${occBtn}
       </div>`;
     }).join('') || `<div style="grid-column:1/-1;padding:18px;text-align:center;color:var(--muted);font-size:13px">No room matches.</div>`;
     const c=$('bk-count'); if(c){ if(B.mode==='offsale'){ const o=Object.keys(B.off).length; c.textContent=o+' room'+(o!==1?'s':'')+' off sale'; } else { const n=Object.keys(B.picks).length; c.textContent=n+' room'+(n!==1?'s':'')+' selected'; } }
@@ -560,6 +581,7 @@
     const arr=Object.entries(B.picks).map(([room,type])=>({room, type, note:B.notes[room]||''}));
     await HH.setDayRooms(today, arr);
     try{ await HH.setOffSale(today, Object.entries(B.off||{}).map(([room,kind])=>({room,kind}))); }catch(e){}
+    await bulkSaveOcc();
     closeSheet();
     if(alloc){ await leadAllocateAll(); leadMsg('✓ '+arr.length+' room'+(arr.length===1?'':'s')+' set & allocated.'); }
     else { leadMsg('✓ '+arr.length+' room'+(arr.length===1?'':'s')+' set for today.'); if($('scr-admin').classList.contains('on')) renderAdmin(); else renderTeam(); }
@@ -1194,13 +1216,15 @@
     const voiceBtn=r=> r.voiceNote ? `<button class="go" style="background:#2a6a4a;color:#fff;padding:11px 13px" title="Listen to the note from management" onclick="event.stopPropagation();voicePlayRoom('${r.room}')">🔊 Listen</button>` : '';
     const blockedNote=r=> r.status==='blocked' ? `<div class="rnote" style="background:#fdecea;border-color:#f3c0ba;color:#b3261e">⛔ ${r.blockReason==='dnd'?'Do Not Disturb':'Guest refused'} · ${r.blockedAt?new Date(r.blockedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):''}${r.blockReason==='dnd'?' · door photo saved':''}</div>` : '';
     const urgBadge=r=> (r.urgent && r.status!=='done') ? '<span class="urg">🚨 URGENT</span>' : '';
+    const OCCLAB={vacant:['Vacant','#2E6B5E'],occupied:['Occupied','#b9780a']};
+    const occBadge=r=> (r.occupancy&&OCCLAB[r.occupancy]) ? `<span class="pill" style="background:${OCCLAB[r.occupancy][1]};color:#fff">${OCCLAB[r.occupancy][0]}</span>` : '';
     // Report a maintenance fault — available on every room, any status (gated by code for now)
     const fixBtn=r=>`<button class="go" style="background:#f2ece6;color:#965638;border:1px solid #d8cfc5;padding:11px 13px" title="Report a maintenance fault to HosFIX (code needed)" onclick="event.stopPropagation();reportFixFor('${r.room}')">🔧 Report${r.maintJobId?' ✓':''}</button>`;
     const row=r=>{
       const pc=DEFT[r.type]||'dep'; const u=(r.urgent && r.status!=='done')?' urgent':'';
-      if(r.status==='in_progress') return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${voiceBtn(r)}${plus(r)}${fixBtn(r)}${note(r)}</div>`;
-      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span><div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min · 📷4</div></div>${voiceBtn(r)}${plus(r)}${fixBtn(r)}${note(r)}</div>`;
-      return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div></div>
+      if(r.status==='in_progress') return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${occBadge(r)}${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="sub">In progress · ${elapsedStr(r)}</div></div><button class="go" onclick="openRoom('${r.room}')">Open</button>${voiceBtn(r)}${plus(r)}${fixBtn(r)}${note(r)}</div>`;
+      if(r.status==='done') return `<div class="card"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${occBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div><div class="done">✓ Done · ${Math.round((r.durationSec||0)/60)} min · 📷4</div></div>${voiceBtn(r)}${plus(r)}${fixBtn(r)}${note(r)}</div>`;
+      return `<div class="card${u}"><div class="rmno">${r.room}</div><span class="pill ${pc}">${r.type}</span>${occBadge(r)}${urgBadge(r)}<div class="grow"><div style="font-size:12px;font-weight:700;color:var(--navy)">${roomMeta(r)}</div></div>
         <button class="go" onclick="startRoom('${r.room}')">Start</button>
         <button class="go" style="background:var(--red)" title="Can't clean this room right now" onclick="cannotStart('${r.room}')">Can't start</button>
         ${voiceBtn(r)}${plus(r)}${fixBtn(r)}${blockedNote(r)}${note(r)}</div>`;
@@ -1306,7 +1330,12 @@
   function refreshActive(){ const r=rooms.find(x=>x.room===active.room); if(r) active=r; if($('scr-room').classList.contains('on')) renderActive(); }
   function renderActive(){
     const cl=active.checklist||{};
-    const nEl=$('rm-note'); if(active.notes&&active.notes.trim()){ nEl.textContent='📝 '+active.notes; nEl.style.display='block'; } else { nEl.style.display='none'; }
+    const nEl=$('rm-note');
+    const occTxt=active.occupancy==='vacant'?'✓ Vacant':active.occupancy==='occupied'?'● Occupied — guest may be in':'';
+    let noteHtml='';
+    if(occTxt) noteHtml+=`<div style="font-weight:800;color:${active.occupancy==='occupied'?'#b9780a':'#2E6B5E'}">${occTxt}</div>`;
+    if(active.notes&&active.notes.trim()) noteHtml+='📝 '+esc(active.notes);
+    if(noteHtml){ nEl.innerHTML=noteHtml; nEl.style.display='block'; } else { nEl.style.display='none'; }
     const vEl=$('rm-voice'); if(vEl){ if(active.voiceNote){ vEl.style.display='block'; vEl.innerHTML=`<button class="go" style="width:100%;background:#2a6a4a;padding:12px;font-size:15px" onclick="voicePlay(active&&active.voiceNote)">🔊 Play voice note from management${active.voiceNoteBy?(' · '+esc(String(active.voiceNoteBy).split(' ')[0])):''}</button>`; } else { vEl.style.display='none'; vEl.innerHTML=''; } }
     const items=HH.checklistFor(active.type);
     $('rm-chk').innerHTML=items.map(it=>`<label class="${cl[it.k]?'ok':''}" style="flex-direction:column;align-items:flex-start;gap:5px">

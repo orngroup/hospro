@@ -332,7 +332,7 @@
       const inf=roomInfo(room);
       return { date, room:String(room), type:type||"Departure", cat:cat||inf.cat||"", floor:inf.floor||"", status:"pending",
                housekeeper:"", housekeeperName:"", startAt:null, finishAt:null, durationSec:0,
-               checklist:{}, geoStartOk:null, geoFinishOk:null, notes:note||"",
+               checklist:{}, geoStartOk:null, geoFinishOk:null, notes:note||"", occupancy:"",
                area:false, slot:"", replaced:"", maintenance:"", lostProperty:"", updatedAt:Date.now() };
     },
     blankArea(date, area, slot){

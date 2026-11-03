@@ -9728,19 +9728,73 @@ async function hhAllocateAll(){
     return `<label style="display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1.5px solid ${on?'#2E6B5E':'#d7dde4'};background:${on?'#eaf4f0':'#fff'};border-radius:9px;cursor:pointer;font:700 12px Lato;color:${on?'#1f5a4e':'#45586b'}">
       <input type="checkbox" data-hk="${s.id}" ${on?'checked':''} onchange="hhAllocToggle('${s.id}')" style="width:15px;height:15px;margin:0">
       ${hhEsc(s.name)}${s.lead?' <span style="color:#b89056;font-weight:800;font-size:10px">MGR</span>':''}</label>`; };
+  window._hhActives = actives;
+  window._hhManual = {}; rooms.forEach(r=>{ if(r.housekeeper) window._hhManual[String(r.room)]=r.housekeeper; });
+  window._hhAllocMode = 'auto';
+  const tabBtn=(m,label)=>`<button id="hh-am-${m}" onclick="hhAllocMode('${m}')" style="flex:1;padding:9px;border:1.5px solid #d7dde4;border-radius:9px;background:${m==='auto'?'#1F3864':'#fff'};color:${m==='auto'?'#fff':'#45586b'};font:700 12.5px Lato;cursor:pointer">${label}</button>`;
   showModal('Allocate rooms — '+date, rooms.length+' room'+(rooms.length===1?'':'s')+' to share',
     `<div style="font-size:13px;color:#1a2b3a">
-      <div style="font:800 12px Lato;color:#1F3864;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Give these rooms to…</div>
-      <div style="font-size:11.5px;color:#5b6b7b;margin-bottom:8px">Tick the staff who should get these rooms — rooms only go to who you tick. Managers (MGR) are off by default.</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${actives.map(chk).join('')}</div>
-      <div id="hh-alloc-preview"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
-        <button onclick="closeModal()" style="padding:9px 15px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:600 13px Lato;cursor:pointer">Cancel</button>
-        <button id="hh-alloc-go" onclick="hhAllocSave()" style="padding:9px 18px;border:none;border-radius:8px;background:#2E6B5E;color:#fff;font:700 13px Lato;cursor:pointer">Allocate &amp; save</button>
+      <div style="display:flex;gap:8px;margin-bottom:12px">${tabBtn('auto','⚡ Auto-distribute')}${tabBtn('manual','👤 Assign each room')}</div>
+
+      <div id="hh-alloc-auto">
+        <div style="font:800 12px Lato;color:#1F3864;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Give these rooms to…</div>
+        <div style="font-size:11.5px;color:#5b6b7b;margin-bottom:8px">Tick the staff who should get these rooms — rooms are shared out by skill &amp; rating. Managers (MGR) are off by default.</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${actives.map(chk).join('')}</div>
+        <div id="hh-alloc-preview"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+          <button onclick="closeModal()" style="padding:9px 15px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:600 13px Lato;cursor:pointer">Cancel</button>
+          <button id="hh-alloc-go" onclick="hhAllocSave()" style="padding:9px 18px;border:none;border-radius:8px;background:#2E6B5E;color:#fff;font:700 13px Lato;cursor:pointer">Allocate &amp; save</button>
+        </div>
+        <div style="font-size:11px;color:#8296a8;margin-top:8px">Each person then sees only their own rooms. Rooms already started or done aren't moved. Re-run any time.</div>
       </div>
-      <div style="font-size:11px;color:#8296a8;margin-top:8px">Each person then sees only their own rooms. Rooms already started or done aren't moved. Re-run any time.</div>
+
+      <div id="hh-alloc-manual" style="display:none">
+        <div style="font-size:11.5px;color:#5b6b7b;margin-bottom:10px">Pick who does each room. Use <b>Give all to</b> to fill them in one go, then change any individually. Leave a room on <b>— unassigned —</b> to skip it.</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+          <span style="font:700 12px Lato;color:#1F3864;white-space:nowrap">Give all to:</span>
+          <select onchange="hhManualAll(this.value)" style="flex:1;padding:8px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">${hhHkOptions('')}</select>
+        </div>
+        <div id="hh-manual-rows" style="max-height:44vh;overflow:auto;border:1px solid #e4e9ef;border-radius:10px"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+          <button onclick="closeModal()" style="padding:9px 15px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:600 13px Lato;cursor:pointer">Cancel</button>
+          <button onclick="hhAllocSaveManual()" style="padding:9px 18px;border:none;border-radius:8px;background:#2E6B5E;color:#fff;font:700 13px Lato;cursor:pointer">Allocate &amp; save</button>
+        </div>
+        <div style="font-size:11px;color:#8296a8;margin-top:8px">Each person then sees only their own rooms. Rooms already started or done aren't moved.</div>
+      </div>
     </div>`);
   hhAllocRecalc();
+  hhManualRows();
+}
+/* ---- Manual per-room allocation (desktop) — mirrors the app's assign-to-person ---- */
+function hhAllocMode(m){
+  window._hhAllocMode=m;
+  const a=document.getElementById('hh-alloc-auto'), mn=document.getElementById('hh-alloc-manual');
+  if(a) a.style.display=(m==='auto'?'':'none'); if(mn) mn.style.display=(m==='manual'?'':'none');
+  ['auto','manual'].forEach(x=>{ const b=document.getElementById('hh-am-'+x); if(b){ const on=(x===m); b.style.background=on?'#1F3864':'#fff'; b.style.color=on?'#fff':'#45586b'; } });
+  if(m==='manual') hhManualRows();
+}
+function hhHkOptions(sel){ const acts=window._hhActives||[]; return `<option value="">— unassigned —</option>`+acts.map(s=>`<option value="${s.id}" ${sel===s.id?'selected':''}>${hhEsc(s.name)}${s.lead?' (MGR)':''}</option>`).join(''); }
+function hhManualRows(){
+  const box=document.getElementById('hh-manual-rows'); if(!box) return;
+  const rooms=window._hhAllocRooms||[]; const M=window._hhManual||{};
+  box.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12.5px">
+    <thead><tr style="background:#1F3864;color:#fff;position:sticky;top:0"><th style="padding:6px 10px;text-align:left">Room</th><th style="padding:6px 10px;text-align:left">Housekeeper</th></tr></thead>
+    <tbody>${rooms.map(r=>{ const room=String(r.room); return `<tr style="border-top:1px solid #eef1f4">
+      <td style="padding:6px 10px;font-weight:700">${r.area?('🧹 '+hhEsc(r.room)):hhEsc(r.room)}<span style="color:#8296a8;font-weight:400"> · ${hhEsc(r.type||'')}</span></td>
+      <td style="padding:5px 10px"><select onchange="hhManualSet('${room}',this.value)" style="width:100%;padding:6px 8px;border:1px solid #d7dde4;border-radius:7px;font:12.5px Lato">${hhHkOptions(M[room]||'')}</select></td>
+    </tr>`; }).join('')}</tbody></table>`;
+}
+function hhManualSet(room, hkId){ window._hhManual=window._hhManual||{}; if(hkId) window._hhManual[room]=hkId; else delete window._hhManual[room]; }
+function hhManualAll(hkId){ const rooms=window._hhAllocRooms||[]; window._hhManual=window._hhManual||{}; rooms.forEach(r=>{ const room=String(r.room); if(hkId) window._hhManual[room]=hkId; else delete window._hhManual[room]; }); hhManualRows(); }
+async function hhAllocSaveManual(){
+  const date=window._hhAllocDate; const M=window._hhManual||{}; const acts=window._hhActives||[];
+  const assigns=Object.keys(M).filter(room=>M[room]).map(room=>{ const sx=acts.find(x=>x.id===M[room]); return {room, hkId:M[room], hkName:sx?sx.name:''}; });
+  if(!assigns.length){ toast('Pick a housekeeper for at least one room.'); return; }
+  let ok=false; try{ ok=await hhWriteAssign(date, assigns); }catch(e){ ok=false; }
+  try{ const crew=(window._hhCrew||await hhLoadCrew(date)).slice(); const have=new Set(crew.map(c=>c.hkId));
+    const uniq={}; assigns.forEach(a=>{ uniq[a.hkId]=a.hkName; });
+    Object.keys(uniq).forEach(id=>{ if(!have.has(id)) crew.push({hkId:id, name:uniq[id]||'', shift:'', cap:HH_DEFAULT_CAP}); }); await hhSaveCrew(date, crew); }catch(e){}
+  closeModal(); toast(ok?('✓ '+assigns.length+' room'+(assigns.length===1?'':'s')+' allocated'):'Could not save — check connection'); hhRenderManage(); hhRenderDash();
 }
 function hhAllocToggle(id){
   const sel=window._hhAllocSel||[]; const i=sel.indexOf(id); if(i>=0) sel.splice(i,1); else sel.push(id); window._hhAllocSel=sel;
@@ -9950,11 +10004,25 @@ const HH_PUBLIC_AREAS = [
   { area:"Accessible WC", slots:["AM","PM"] },
   { area:"Reception",     slots:["Daily"]  }
 ];
+/* Public-areas master list is editable and stored in hoshouse_config/current (publicAreas);
+   falls back to the default list above. Editing it only changes what "Add public areas"
+   offers — it never deletes area tasks already on a day. */
+async function hhGetPublicAreas(){
+  if(typeof FB!=='undefined' && FB.db){ try{ const d=await FB.db.collection('hoshouse_config').doc('current').get();
+    if(d.exists){ const pa=d.data().publicAreas; if(Array.isArray(pa)&&pa.length) return pa; } }catch(e){} }
+  try{ const pa=JSON.parse(localStorage.getItem('hoshouse_public_areas')||'null'); if(Array.isArray(pa)&&pa.length) return pa; }catch(e){}
+  return HH_PUBLIC_AREAS.map(a=>({area:a.area, slots:a.slots.slice()}));
+}
+async function hhSavePublicAreas(list){
+  if(typeof FB!=='undefined' && FB.db){ try{ await FB.db.collection('hoshouse_config').doc('current').set({publicAreas:list},{merge:true}); }catch(e){} }
+  try{ localStorage.setItem('hoshouse_public_areas', JSON.stringify(list)); }catch(e){}
+  return true;
+}
 function hhDocId(date,room){ return date+"__"+room; }
 function hhBlankRoom(date,room,type,note){
   return { date, room:String(room), type:type||"Departure", cat:hhCatOf(room), floor:hhFloorOf(room), status:"pending",
     housekeeper:"", housekeeperName:"", startAt:null, finishAt:null, durationSec:0,
-    checklist:{}, geoStartOk:null, geoFinishOk:null, notes:note||"",
+    checklist:{}, geoStartOk:null, geoFinishOk:null, notes:note||"", occupancy:"",
     area:false, slot:"", replaced:"", maintenance:"", lostProperty:"", updatedAt:Date.now() };
 }
 function hhBlankArea(date,area,slot){
@@ -9989,7 +10057,8 @@ async function hhSetDayRooms(date, picks){
 }
 async function hhAddPublicAreas(date){
   const have=await hhFetchDay(date); const haveIds=new Set(have.map(r=>r.room));
-  const add=[]; HH_PUBLIC_AREAS.forEach(a=>a.slots.forEach(slot=>{ const b=hhBlankArea(date,a.area,slot); if(!haveIds.has(b.room)) add.push(b); }));
+  const PA=await hhGetPublicAreas();
+  const add=[]; PA.forEach(a=>(a.slots&&a.slots.length?a.slots:['Daily']).forEach(slot=>{ const b=hhBlankArea(date,a.area,slot); if(!haveIds.has(b.room)) add.push(b); }));
   if(!add.length) return 0;
   if(typeof FB!=='undefined' && FB.db){ try{ const batch=FB.db.batch(); add.forEach(b=>batch.set(FB.db.collection('hoshouse_rooms').doc(hhDocId(date,b.room)), b)); await batch.commit(); return add.length; }catch(e){ console.warn('hhAddAreas',e&&e.code); } }
   const key='hoshouse_day_'+date; let map={}; try{ map=JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){}
@@ -10446,7 +10515,7 @@ async function hhRenderManage(){
         : `<select onchange="hhChangeType('${hhEsc(r.room)}',this.value)" style="padding:4px 6px;border:1px solid #d7dde4;border-radius:6px;font:12px Lato">${typeOpt(r.type)}</select>`}</td>
       <td style="padding:6px 8px;color:#5b6b7b">${hhEsc(who)}</td>
       <td style="padding:6px 8px;font-size:11px;font-weight:700;color:${stCol};text-transform:capitalize">${stText}${cam}</td>
-      <td style="padding:6px 8px;color:#5b6b7b;font-size:11.5px">${r.voiceNote?'<span title="Has a voice note from management">🔊 </span>':''}${hhEsc(r.notes||'')}</td>
+      <td style="padding:6px 8px;color:#5b6b7b;font-size:11.5px">${r.occupancy==='vacant'?'<span style="color:#2E6B5E;font-weight:800">Vacant</span> ':r.occupancy==='occupied'?'<span style="color:#b9780a;font-weight:800">Occupied</span> ':''}${r.voiceNote?'<span title="Has a voice note from management">🔊 </span>':''}${hhEsc(r.notes||'')}</td>
       <td style="padding:6px 8px;text-align:right" onclick="event.stopPropagation()">${locked
         ? `<button onclick="hhRemoveRoomConfirm('${hhEsc(r.room)}')" title="Remove this room (added by mistake) — asks to confirm" style="border:none;background:none;color:#c98b86;cursor:pointer;font-size:14px">✕</button>`
         : `<button onclick="hhRemoveRoom('${hhEsc(r.room)}')" title="Remove this room" style="border:none;background:none;color:#b3261e;cursor:pointer;font-size:14px">✕</button>`}</td>
@@ -10496,6 +10565,7 @@ async function hhRenderManage(){
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button onclick="hhAddAreas()" style="padding:8px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1a2b3a">🧼 Add public areas (toilets + reception)</button>
+          <button onclick="hhManageAreasModal()" title="Add or remove public areas from the list" style="padding:8px 12px;border:1px solid #d7dde4;background:#fff;border-radius:8px;font:700 12px Lato;cursor:pointer;color:#1F3864">✏️ Manage areas</button>
           ${areaLine}
         </div>
         <button onclick="hhAllocateAll()" title="Share all unstarted rooms across everyone confirmed working, balanced by hours" style="padding:10px 16px;border:none;background:#1F3864;color:#fff;border-radius:9px;font:800 13px Lato;cursor:pointer">⚖️ Allocate &amp; distribute${unalloc.length?(' ('+unalloc.length+')'):''}</button>
@@ -10547,6 +10617,43 @@ async function hhAddAreas(){
   toast(n?('✓ Added '+n+' public-area task'+(n>1?'s':'')):'Public areas already on the list');
   hhRenderManage(); hhRenderDash();
 }
+/* ---- Manage the public-areas master list (add / remove) ---- */
+async function hhManageAreasModal(){
+  const list=await hhGetPublicAreas();
+  window._hhAreas=list.map(a=>({area:a.area, slots:(a.slots&&a.slots.length?a.slots.slice():['Daily'])}));
+  hhAreasRender();
+}
+function hhAreasRender(){
+  const list=window._hhAreas||[];
+  const rows=list.map((a,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #eef1f4">
+    <div style="flex:1;font:700 13px Lato;color:#1a2b3a">${hhEsc(a.area)} <span style="color:#8296a8;font-weight:600;font-size:11px">· ${hhEsc((a.slots||['Daily']).join(' + '))}</span></div>
+    <button onclick="hhAreasRemove(${i})" title="Remove from the list" style="border:none;background:none;color:#b3261e;cursor:pointer;font-size:15px">✕</button>
+  </div>`).join('')||'<div style="color:#8296a8;font-size:12.5px;padding:8px 0">No public areas yet — add one below.</div>';
+  showModal('Manage public areas','Add or remove the public areas you can put on a day',`
+    <div style="font-size:13px;color:#1a2b3a">
+      <div style="border:1px solid #e4e9ef;border-radius:10px;padding:4px 12px;margin-bottom:12px;max-height:40vh;overflow:auto">${rows}</div>
+      <div style="font:800 11px Lato;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Add a public area</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="hh-area-name" placeholder="e.g. Spa changing rooms" style="flex:1;min-width:160px;padding:9px 11px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">
+        <select id="hh-area-slots" style="padding:9px 10px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato"><option value="Daily">Once a day</option><option value="AM,PM">Twice (AM + PM)</option></select>
+        <button onclick="hhAreasAdd()" style="padding:9px 14px;border:none;background:#2E6B5E;color:#fff;border-radius:8px;font:700 12.5px Lato;cursor:pointer">+ Add</button>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+        <button onclick="closeModal()" style="padding:9px 15px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:600 13px Lato;cursor:pointer">Cancel</button>
+        <button onclick="hhAreasSave()" style="padding:9px 18px;border:none;border-radius:8px;background:#1F3864;color:#fff;font:800 13px Lato;cursor:pointer">Save list</button>
+      </div>
+      <div style="font-size:11px;color:#8296a8;margin-top:8px">Removing an area only takes it off this list — it never deletes a public-area task already added to a day.</div>
+    </div>`);
+}
+function hhAreasAdd(){
+  const el=document.getElementById('hh-area-name'); const n=(el&&el.value||'').trim(); if(!n){ toast('Type an area name'); return; }
+  const slots=(document.getElementById('hh-area-slots').value||'Daily').split(',');
+  window._hhAreas=window._hhAreas||[];
+  if(window._hhAreas.some(a=>a.area.toLowerCase()===n.toLowerCase())){ toast('That area is already on the list'); return; }
+  window._hhAreas.push({area:n, slots}); hhAreasRender();
+}
+function hhAreasRemove(i){ if(window._hhAreas){ window._hhAreas.splice(i,1); } hhAreasRender(); }
+async function hhAreasSave(){ await hhSavePublicAreas(window._hhAreas||[]); closeModal(); toast('✓ Public-areas list saved'); }
 
 /* ---- Bulk room picker (the old reception grid, as a pop-up) ---- */
 const HH_ROOM_CATS=[
@@ -10583,12 +10690,12 @@ async function hhBulkOpen(){
   const date=window._hhDate||hhTodayISO();
   const rooms=await hhRoomCatalogue();
   const day=await hhFetchDay(date);
-  const picks={}, locked={}, notes={};
+  const picks={}, locked={}, notes={}, occ={};
   day.filter(r=>!r.area).forEach(r=>{ const rm=String(r.room);
     if(r.status&&r.status!=='pending') locked[rm]=r.status; else picks[rm]=r.type||'Departure';
-    if(r.notes) notes[rm]=r.notes; });
+    if(r.notes) notes[rm]=r.notes; if(r.occupancy) occ[rm]=r.occupancy; });
   const off={}; try{ const meta=await hhGetDayMeta(date); (meta.offSale||[]).forEach(o=>{ off[String(o.room)]=o.kind; }); }catch(e){}
-  window._hhBulk={ rooms, picks, locked, notes, off, mode:'alloc', defType:'Departure', q:'' };
+  window._hhBulk={ rooms, picks, locked, notes, occ, off, mode:'alloc', defType:'Departure', q:'' };
   const typeBtns=['Departure','Stayover','Arrival-ready'].map(t=>
     `<button class="hhbt" data-t="${t}" onclick="hhBulkSetType('${t}')" style="padding:6px 12px;border:1.5px solid ${HH_T_COL[t]};border-radius:20px;font:700 12px Lato;cursor:pointer;background:${t==='Departure'?HH_T_COL[t]:'#fff'};color:${t==='Departure'?'#fff':HH_T_COL[t]}">${t}</button>`).join('');
   showModal('Select rooms', 'Tap a room to add it · tap again to change type · tap again to remove', `
@@ -10605,7 +10712,8 @@ async function hhBulkOpen(){
       <span id="hh-bulk-count" style="font:700 13px Lato;color:#1a2b3a"></span>
       <div style="display:flex;gap:8px">
         <button onclick="closeModal()" style="padding:9px 15px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:600 13px Lato;cursor:pointer">Cancel</button>
-        <button onclick="hhBulkConfirm()" style="padding:9px 20px;border:none;border-radius:8px;background:#1F3864;color:#fff;font:800 13px Lato;cursor:pointer">Confirm selection</button>
+        <button onclick="hhBulkConfirm(false)" style="padding:9px 16px;border:1.5px solid #1F3864;border-radius:8px;background:#fff;color:#1F3864;font:800 13px Lato;cursor:pointer">Confirm selection</button>
+        <button onclick="hhBulkConfirm(true)" style="padding:9px 18px;border:none;border-radius:8px;background:#1F3864;color:#fff;font:800 13px Lato;cursor:pointer">Confirm &amp; allocate →</button>
       </div>
     </div>`);
   hhBulkRender();
@@ -10628,9 +10736,12 @@ function hhBulkRender(){
     }
     if(ok) return `<div style="border:1.5px dashed ${OFFCOL[ok]};border-radius:9px;padding:8px 5px;text-align:center;background:${OFFCOL[ok]}0f;opacity:.9"><div style="font:800 15px Lato;color:${OFFCOL[ok]}">${room}</div><div style="font-size:9px;color:${OFFCOL[ok]}">${OFFLET[ok]} · off sale</div></div>`;
     const t=B.picks[room]; const col=t?HH_T_COL[t]:'#d7dde4';
+    const oc=B.occ[room]; const OCCC={vacant:['Vacant','#2E6B5E'],occupied:['Occupied','#b9780a']};
+    const occBtn=t?`<div style="margin-top:3px"><button onclick="hhBulkOcc('${room}',event)" title="Set vacant / occupied — the housekeeper sees this on their phone" style="font:800 9px Lato;border:1px solid ${oc?OCCC[oc][1]:'#cbd5e1'};color:${oc?'#fff':'#64748b'};background:${oc?OCCC[oc][1]:'#fff'};border-radius:10px;padding:1px 7px;cursor:pointer">${oc?OCCC[oc][0]:'+ V/O'}</button></div>`:'';
     return `<div onclick="hhBulkTap('${room}')" style="border:1.5px solid ${col};border-radius:9px;padding:8px 5px;text-align:center;cursor:pointer;background:${t?col+'14':'#fff'}">
       <div style="font:800 15px Lato;color:${t?col:'#1a2b3a'}">${room}${t?` <span style="font-size:11px">${HH_T_LET[t]}</span>`:''}</div>
       <div style="font-size:9px;color:#8296a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${hhEsc(hhCatLabel(r.cat))}</div>
+      ${occBtn}
     </div>`;
   }).join('') || `<div style="grid-column:1/-1;padding:16px;text-align:center;color:#8296a8;font-size:13px">No room matches.</div>`;
   const cnt=document.getElementById('hh-bulk-count');
@@ -10663,15 +10774,34 @@ function hhBulkSetType(t){
   document.querySelectorAll('.hhbt').forEach(b=>{ const on=b.dataset.t===t; b.style.background=on?HH_T_COL[t]:'#fff'; b.style.color=on?'#fff':HH_T_COL[b.dataset.t]; });
 }
 function hhBulkFilter(v){ const B=window._hhBulk; if(!B) return; B.q=v; hhBulkRender(); }
-async function hhBulkConfirm(){
+/* small Vacant/Occupied chooser that opens over the bulk grid (doesn't replace it) */
+function hhBulkOcc(room, ev){ if(ev&&ev.stopPropagation) ev.stopPropagation();
+  const B=window._hhBulk; if(!B) return; const cur=B.occ[room]||'';
+  const btn=(val,label,bg)=>`<button onclick="hhBulkOccSet('${room}','${val}')" style="display:block;width:100%;padding:12px;margin:6px 0;border:1.5px solid ${bg};border-radius:10px;background:${cur===val?bg:'#fff'};color:${cur===val?'#fff':bg};font:800 14px Lato;cursor:pointer">${label}</button>`;
+  const o=document.createElement('div'); o.id='hh-occ-pop';
+  o.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center';
+  o.onclick=e=>{ if(e.target===o){ try{ document.body.removeChild(o); }catch(x){} } };
+  o.innerHTML=`<div style="background:#fff;border-radius:14px;padding:18px;width:260px;max-width:90vw" onclick="event.stopPropagation()">
+    <div style="font:800 15px Lato;color:#1a2b3a;margin-bottom:3px">Room ${hhEsc(room)} — occupancy</div>
+    <div style="font-size:12px;color:#8296a8;margin-bottom:10px">The housekeeper sees this on their phone when they open the room.</div>
+    ${btn('vacant','✓ Vacant','#2E6B5E')}${btn('occupied','● Occupied','#b9780a')}
+    <button onclick="hhBulkOccSet('${room}','')" style="display:block;width:100%;padding:10px;margin-top:6px;border:1px solid #d7dde4;border-radius:10px;background:#fff;color:#5b6b7b;font:700 13px Lato;cursor:pointer">Clear</button>
+  </div>`;
+  document.body.appendChild(o);
+}
+function hhBulkOccSet(room, val){ const B=window._hhBulk; if(B){ if(val) B.occ[room]=val; else delete B.occ[room]; } const o=document.getElementById('hh-occ-pop'); if(o){ try{ document.body.removeChild(o); }catch(x){} } hhBulkRender(); }
+async function hhBulkConfirm(alloc){
   const B=window._hhBulk; if(!B) return;
   const date=window._hhDate||hhTodayISO();
   const arr=Object.entries(B.picks).map(([room,type])=>({room, type, note:B.notes[room]||''}));
   await hhSetDayRooms(date, arr);
   try{ const offList=Object.entries(B.off||{}).map(([room,kind])=>({room, kind})); await hhSaveOffSale(date, offList); }catch(e){}
+  // occupancy written separately as a targeted merge-update (never touches hhSetDayRooms' add/prune logic)
+  try{ if(typeof FB!=='undefined' && FB.db){ const b=FB.db.batch(); Object.keys(B.picks).forEach(room=>{ b.set(FB.db.collection('hoshouse_rooms').doc(hhDocId(date,room)), {occupancy:B.occ[room]||''}, {merge:true}); }); await b.commit(); } }catch(e){}
   const offN=Object.keys(B.off||{}).length;
   closeModal(); toast('✓ '+arr.length+' room'+(arr.length===1?'':'s')+' set'+(offN?(' · '+offN+' off sale'):'')+' for '+date);
   hhRenderManage(); hhRenderDash(); try{ hhRenderForSale(date); }catch(e){}
+  if(alloc) hhAllocateAll();
 }
 
 /* ============================================================
