@@ -181,6 +181,9 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
 .prio-opt{padding:10px 4px;border-radius:10px;border:2px solid var(--line);background:#fff;
   font:600 12px 'Lato';cursor:pointer;text-align:center;touch-action:manipulation}
 .prio-opt.on{border-color:var(--amber);background:#fffbe6;color:#c78a3b}
+.occ-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.occ-opt{padding:11px 4px;border-radius:10px;border:2px solid var(--line);background:#fff;font:600 12px 'Lato';cursor:pointer;text-align:center;touch-action:manipulation}
+.occ-opt.on{border-color:var(--navy);background:#eef2f7;color:var(--navy)}
 
 /* Assignee picker */
 .arow{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;
@@ -508,9 +511,14 @@ const NOTIFY_ASSIGN = ['glenn','ruth','pete','herman','daniel','jomy'];
 // Everyone else is a reporter (log a fault + see own reports). Default PIN 9999.
 const PINS = { raj:"0000", ajay:"1111", glenn:"2222", herman:"3333", pete:"4444" };
 const pinFor = id => (PINS[id] || "9999");
-const ADMIN_TIER = ["raj","ajay","alia","glenn","patrik","laith"];   // Management — login code 0000 (report + review + allocate)
-const FIXER_TIER = ["glenn","herman","pete"];                         // Maintenance team — login code 3333 (action jobs only)
-function tierOf(id){ id=id||ME; return ADMIN_TIER.includes(id)?"admin":(FIXER_TIER.includes(id)?"fixer":"reporter"); }
+// ── TEST ROSTER (sign-off build): Manager=Raj, Reporter=Raj, Operative=Glenn ──
+const ADMIN_TIER    = ["raj"];     // Management — code 0000 / ?tier=management
+const FIXER_TIER    = ["glenn"];   // Operatives — code 3333 / ?tier=operative
+const REPORTER_TIER = ["raj"];     // Reporters  — code 1111 / ?tier=reporter (+ add my name)
+// The CURRENT session's role comes from the link/code used to sign in, so one person
+// (Raj) can be Manager on one link and Reporter on another. Falls back to id-based.
+let SESSION_TIER = null;
+function tierOf(id){ id=id||ME; if(id===ME && SESSION_TIER) return SESSION_TIER; return ADMIN_TIER.includes(id)?"admin":(FIXER_TIER.includes(id)?"fixer":"reporter"); }
 function isAdmin(id){ return tierOf(id)==="admin"; }
 function isFixer(id){ return tierOf(id)==="fixer"; }
 function isReporter(id){ return tierOf(id)==="reporter"; }
@@ -682,10 +690,13 @@ function lgCheckCode(){
 function lgTierUsers(tier){
   if(tier==='admin') return ADMIN_TIER.map(id=>USERS.find(u=>u.id===id)).filter(Boolean);
   if(tier==='fixer') return FIXER_TIER.map(id=>USERS.find(u=>u.id===id)).filter(Boolean);
-  // reporter: everyone who isn't Management and isn't a fixer (Herman/Pete) — plus any names added here
-  return USERS.filter(u=>!ADMIN_TIER.includes(u.id) && !['herman','pete'].includes(u.id));
+  // reporter: the named reporters for this build + any names added on this device
+  const base=REPORTER_TIER.map(id=>USERS.find(u=>u.id===id)).filter(Boolean);
+  const added=USERS.filter(u=>String(u.id).indexOf('rep_')===0);
+  return base.concat(added);
 }
 function lgShowNames(tier){
+  LG_TIER=tier;
   const sc=$('lg-step-code'), sn=$('lg-step-name'); if(sc) sc.style.display='none'; if(sn) sn.style.display='block';
   const LB={admin:'👔 Management — tap your name', reporter:'📣 Report an issue — tap your name', fixer:'🔧 Maintenance team — tap your name'};
   const lab=$('lg-tier-label'); if(lab) lab.textContent=LB[tier]||'Tap your name';
@@ -693,7 +704,7 @@ function lgShowNames(tier){
   if(box) box.innerHTML=list.map(u=>`<button type="button" onclick="lgPick('${u.id}')" style="padding:11px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font:700 14px 'Lato';cursor:pointer;touch-action:manipulation">${u.name.split(' ')[0]}</button>`).join('');
   const an=$('lg-addname'); if(an) an.style.display = tier==='reporter' ? 'block' : 'none';
 }
-function lgPick(uid){ if(!USERS.find(u=>u.id===uid)) return; try{localStorage.setItem('hf_me',uid);}catch(e){} loginAs(uid); setTimeout(maybeAskNotifications,2500); }
+function lgPick(uid){ if(!USERS.find(u=>u.id===uid)) return; try{localStorage.setItem('hf_me',uid);}catch(e){} loginAs(uid, LG_TIER); setTimeout(maybeAskNotifications,2500); }
 function lgAddName(){
   const el=$('lg-newname'); const v=(el?el.value:'').trim(); if(!v){ if(el) el.focus(); return; }
   const existing=USERS.find(u=>u.name.toLowerCase()===v.toLowerCase());
@@ -768,7 +779,8 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 function signOut(){
   sessionStorage.removeItem('hf_user');
-  try{ localStorage.removeItem('hf_me'); }catch(e){}   // clear remembered login so another person can sign in
+  SESSION_TIER=null;
+  try{ localStorage.removeItem('hf_me'); localStorage.removeItem('hf_tier'); }catch(e){}   // clear remembered login
   ACTIVE_TIMER=null; saveTimer();
   $('app').style.display='none';
   try{ var sc=$('lg-step-code'), sn=$('lg-step-name'), c=$('lg-code'); if(sn) sn.style.display='none'; if(sc) sc.style.display='block'; if(c) c.value=''; }catch(e){}
@@ -992,12 +1004,19 @@ function jobCard(j){
     j.status==='complete'?'s-complete':j.status==='in-progress'?'s-in-progress':
     j.status==='pending_approval'?'s-pending':'s-not-started';
   const assignees=(j.assignees||[]).map(id=>USERS.find(u=>u.id===id)).filter(Boolean);
+  const unassigned=!(j.assignees||[]).length && j.status!=='complete';
+  const occ=j.occupancy==='occupied'?`<span class="j-badge" style="background:#fde8e6;color:#b3261e">🚪 Occupied</span>`
+    :j.occupancy==='vacant'?`<span class="j-badge" style="background:#e8f3ee;color:#2a6a4a">✅ Vacant</span>`:'';
   return `<div class="jcard ${cls}" onclick="openJobDetail('${j.id}')">
     <div class="j-title${j.status==='complete'?' done':''}">${j.title}</div>
     <div class="j-meta">
       ${j.areaLabel?`<span>📍 ${j.areaLabel}${j.location?' · '+j.location:''}</span>`:''}
       ${j.workType?`<span>· ${WORK_TYPES.find(w=>w.id===j.workType)?.label||j.workType}</span>`:''}
       ${j.priority==='urgent'&&j.status!=='complete'?`<span class="j-badge urgent">🔴 Urgent</span>`:''}
+      ${unassigned?`<span class="j-badge" style="background:#fff3e8;color:#c45c00">⏳ Unassigned</span>`:''}
+      ${occ}
+      ${j.voiceNote?`<span title="Voice note">🎙️</span>`:''}
+      ${(j.photos&&j.photos.length)?`<span title="Photos">📷${j.photos.length}</span>`:''}
       ${j.status==='in-progress'?`<span class="j-badge in-prog">⏱ In progress</span>`:''}
       ${j.status==='complete'?`<span class="j-badge complete">✓ Complete</span>`:''}
       <span style="margin-left:auto;font-size:11px;color:#9ca3af">${fmtShort(j.createdAt?.slice(0,10)||j.createdAt)}</span>
@@ -1009,14 +1028,10 @@ function jobCard(j){
 
 // ── NEW JOB FORM ──────────────────────────────────────────────────────────────
 function openNewJob(){
-  FS={
-    module:'maintenance',
-    area:'', location:'', workType:'', title:'', description:'',
-    status:'not-started', priority:'medium',
-    assignees: IS_SUPER?[]:[ME],
-    cost:0, photos:[], materials:[]
-  };
-  renderNewJobForm();
+  FS={ module:'maintenance', area:'', location:'', workType:'', title:'', description:'',
+    status:'not-started', priority:'medium', assignees:[], cost:0, photos:[], materials:[],
+    occupancy:'', voiceNote:null, newJobPhoto:null };
+  if(IS_REPORTER){ renderReporterForm(); } else { renderNewJobForm(); }
 }
 
 function renderNewJobForm(){
@@ -1072,7 +1087,7 @@ function renderNewJobForm(){
 
   ${isSup?`<div class="f-field"><label>Assign to</label>
     <div id="nj-assignees">
-      ${USERS.map(u=>`
+      ${FIXER_TIER.map(id=>USERS.find(x=>x.id===id)).filter(Boolean).map(u=>`
         <div class="arow ${(f.assignees||[]).includes(u.id)?'selected':''}" data-uid="${u.id}">
           <div class="av" style="background:${u.color}">${initials(u.name)}</div>
           <div><div class="ar-name">${u.name}</div><div class="ar-role">${u.role}</div></div>
@@ -1151,6 +1166,142 @@ function renderNewJobForm(){
   // submit via inline onclick on button
 }
 
+// ── REPORTER FORM (simple: where · occupied? · what's wrong · photos · 25s voice) ──
+function renderReporterForm(){
+  const f=FS; if(!f.photos) f.photos=[];
+  let html=`<div class="modal-title">📣 Report an issue</div>
+  <p style="font-size:13px;color:#7a8494;margin:-6px 0 14px">Quick report — where it is, what's wrong, a photo or voice note. The team allocates it.</p>
+
+  <div class="f-field"><label>Where is it?</label>
+    <select id="rp-area"><option value="">Select area…</option>
+      ${Object.entries(PROPERTY).map(([k,v])=>`<option value="${k}" ${f.area===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
+    </select>
+  </div>
+  <div class="f-field" id="rp-room-wrap" style="${f.area?'':'display:none'}"><label>Room / location</label>
+    <select id="rp-room"><option value="">Select room…</option>
+      ${f.area&&PROPERTY[f.area]?PROPERTY[f.area].rooms.map(r=>`<option value="${r}" ${f.location===r?'selected':''}>${r}</option>`).join(''):''}
+    </select>
+  </div>
+
+  <div class="f-field"><label>Is the room occupied?</label>
+    <div class="occ-row">
+      <button type="button" class="occ-opt ${f.occupancy==='occupied'?'on':''}" onclick="rpOcc(this,'occupied')">🚪 Occupied</button>
+      <button type="button" class="occ-opt ${f.occupancy==='vacant'?'on':''}" onclick="rpOcc(this,'vacant')">✅ Vacant</button>
+      <button type="button" class="occ-opt ${f.occupancy==='unknown'?'on':''}" onclick="rpOcc(this,'unknown')">❔ Not sure</button>
+    </div>
+  </div>
+
+  <div class="f-field"><label>What's wrong? *</label>
+    <input type="text" id="rp-title" placeholder="e.g. Leaking tap / no heating" value="${f.title||''}">
+  </div>
+  <div class="f-field"><label>More detail (optional)</label>
+    <textarea id="rp-desc" placeholder="Anything useful for the team…">${f.description||''}</textarea>
+  </div>
+
+  <div class="f-field"><label>Priority</label>
+    <div class="toggle-row" style="grid-template-columns:1fr 1fr">
+      <button type="button" class="toggle-opt ${f.priority!=='urgent'?'on-co':''}" id="rp-normal" onclick="FS.priority='medium';this.classList.add('on-co');document.getElementById('rp-urgent').classList.remove('on-ur')">Normal</button>
+      <button type="button" class="toggle-opt ${f.priority==='urgent'?'on-ur':''}" id="rp-urgent" onclick="FS.priority='urgent';this.classList.add('on-ur');document.getElementById('rp-normal').classList.remove('on-co')">🔴 Urgent</button>
+    </div>
+  </div>
+
+  <div class="f-field"><label>Photos</label>
+    <div class="photo-zone" id="rp-photo-zone">📷 Tap to add photo(s)</div>
+    <div id="rp-photo-preview" class="photo-thumbs" style="margin-top:8px"></div>
+  </div>
+
+  <div class="f-field"><label>Voice note (up to 25s)</label>
+    <div id="nj-voice-box"></div>
+  </div>
+
+  <div class="btn-row" style="margin-top:18px">
+    <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button type="button" class="btn btn-orange btn-full" onclick="submitReporterJob()">📣 Send report</button>
+  </div>`;
+  openModal(html);
+
+  $('rp-area').addEventListener('change',function(){
+    FS.area=this.value; FS.location='';
+    const wrap=$('rp-room-wrap'), sel=$('rp-room');
+    if(this.value&&PROPERTY[this.value]){ sel.innerHTML='<option value="">Select room…</option>'+PROPERTY[this.value].rooms.map(r=>`<option value="${r}">${r}</option>`).join(''); wrap.style.display=''; }
+    else wrap.style.display='none';
+  });
+  const rm=$('rp-room'); if(rm) rm.addEventListener('change',function(){ FS.location=this.value; });
+
+  if($('_rp_photo_inp')){ try{document.body.removeChild($('_rp_photo_inp'));}catch(e){} }
+  const inp=document.createElement('input'); inp.id='_rp_photo_inp'; inp.type='file'; inp.accept='image/*'; inp.capture='environment'; inp.multiple=true;
+  inp.style.cssText='position:fixed;top:-200px;left:-200px;opacity:0;width:1px;height:1px';
+  document.body.appendChild(inp);
+  $('rp-photo-zone').addEventListener('click',()=>inp.click());
+  inp.addEventListener('change',function(){
+    [].slice.call(this.files).forEach(function(file){
+      const reader=new FileReader();
+      reader.onload=e=>compressPhoto(e.target.result,900,0.6,function(c){ FS.photos=FS.photos||[]; FS.photos.push(c); rpRenderPhotos(); });
+      reader.readAsDataURL(file);
+    });
+  });
+
+  rpRenderPhotos();
+  njRenderVoice();
+}
+function rpOcc(el,v){ FS.occupancy=v; document.querySelectorAll('.occ-opt').forEach(b=>b.classList.remove('on')); el.classList.add('on'); }
+function rpRenderPhotos(){
+  const pv=$('rp-photo-preview'); if(!pv) return;
+  const ph=FS.photos||[];
+  pv.innerHTML=ph.map((p,i)=>`<div style="position:relative;display:inline-block"><img src="${p}" class="photo-thumb"><button type="button" onclick="FS.photos.splice(${i},1);rpRenderPhotos()" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#b3261e;color:#fff;font-size:12px;line-height:1;cursor:pointer">×</button></div>`).join('');
+  const z=$('rp-photo-zone'); if(z){ if(ph.length){ z.className='photo-zone captured'; z.textContent='✓ '+ph.length+' photo'+(ph.length>1?'s':'')+' — tap to add more'; } else { z.className='photo-zone'; z.textContent='📷 Tap to add photo(s)'; } }
+}
+
+// ── 25-second voice note (MediaRecorder) ──
+let _rec=null,_recChunks=[],_recTimer=null,_recStart=0;
+function njStartVoice(){
+  if(_rec && _rec.state==='recording'){ njStopVoice(); return; }
+  if(!navigator.mediaDevices || !window.MediaRecorder){ toast('Voice notes not supported on this device'); return; }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    _recChunks=[]; try{ _rec=new MediaRecorder(stream); }catch(e){ _rec=new MediaRecorder(stream,{}); }
+    _rec.ondataavailable=e=>{ if(e.data && e.data.size) _recChunks.push(e.data); };
+    _rec.onstop=function(){
+      stream.getTracks().forEach(t=>t.stop());
+      clearInterval(_recTimer); _recTimer=null;
+      const blob=new Blob(_recChunks,{type:(_rec&&_rec.mimeType)||'audio/webm'});
+      const r=new FileReader(); r.onload=function(){ FS.voiceNote=r.result; njRenderVoice(); toast('Voice note saved ✓'); }; r.readAsDataURL(blob);
+    };
+    _rec.start(); _recStart=Date.now(); njRenderVoice(true);
+    _recTimer=setInterval(function(){ const left=25-Math.floor((Date.now()-_recStart)/1000); const el=$('nj-voice-time'); if(el) el.textContent=Math.max(0,left)+'s'; if(left<=0) njStopVoice(); },250);
+  }).catch(function(){ toast('Microphone blocked — allow mic access to record'); });
+}
+function njStopVoice(){ try{ if(_rec && _rec.state==='recording') _rec.stop(); }catch(e){} }
+function njRenderVoice(recording){
+  const box=$('nj-voice-box'); if(!box) return;
+  if(recording){ box.innerHTML='<button type="button" class="btn btn-red" onclick="njStopVoice()">⏹ Stop recording — <span id="nj-voice-time">25s</span></button>'; return; }
+  if(FS.voiceNote){ box.innerHTML='<audio controls src="'+FS.voiceNote+'" style="width:100%;margin-bottom:6px"></audio><button type="button" class="btn btn-ghost" onclick="FS.voiceNote=null;njRenderVoice()">✕ Remove voice note</button>'; return; }
+  box.innerHTML='<button type="button" class="btn btn-ghost" onclick="njStartVoice()">🎙️ Record voice note</button>';
+}
+
+function submitReporterJob(){
+  try{
+    const title=($('rp-title')?.value||'').trim();
+    if(!title){ toast('⚠️ Please say what needs fixing'); return; }
+    const area=$('rp-area')?.value||FS.area||'';
+    const location=$('rp-room')?.value||FS.location||'';
+    const description=$('rp-desc')?.value||'';
+    const job={ id:makeId(), title, area, areaLabel:(PROPERTY[area]&&PROPERTY[area].label)||area||'—',
+      location, workType:'', description,
+      status:'not-started', priority:FS.priority==='urgent'?'urgent':'medium',
+      assignees:[], occupancy:FS.occupancy||'', cost:0, module:'maintenance',
+      photos:(FS.photos||[]).slice(), voiceNote:FS.voiceNote||null, materials:[],
+      notes:[{text:'Reported via HosFix'+(FS.occupancy?(' — room '+FS.occupancy):''),by:MY_USER?.name||ME,at:todayStr()}],
+      createdAt:new Date().toISOString(), createdBy:ME, reportedBy:MY_USER?.name||'', source:'reporter',
+      approvedBy:null, approvedAt:null, completedAt:null };
+    JOBS.unshift(job); saveJobs();
+    try{ if(typeof fcmNotify==='function') fcmNotify(job.priority==='urgent'?'job_urgent':'job_new', job, []); }catch(e){}
+    VIEW='jobs'; FILTER='all';
+    try{ $('bnav').querySelectorAll('.bnav').forEach(b=>b.classList.remove('on')); $('bnav').querySelector('[data-v="jobs"]')?.classList.add('on'); }catch(e){}
+    render(); closeModal();
+    toast('✓ Report sent — the team will allocate it');
+  }catch(err){ toast('Error: '+err.message); console.error('submitReporterJob',err); }
+}
+
 function setFS(key,val,el,cls,parentClass){
   FS[key]=val;
   if(el&&cls&&parentClass){
@@ -1177,15 +1328,8 @@ function submitJob(){
   const cost=parseFloat($('nj-cost')?.value)||0;
   const needsApproval=IS_APPROVER===false&&cost>APPROVAL_THRESHOLD;
 
-  let assignees;
-  if(IS_SUPER){
-    assignees=FS.assignees&&FS.assignees.length?FS.assignees:[ME];
-  } else {
-    assignees=[ME];
-  }
-  // Reporters/fixers: auto-assign to Glenn if no assignee chosen
-  if((MY_USER?.tier||'admin')!=='manager'&&assignees.length===0) assignees=['glenn'];
-  if((MY_USER?.tier||'admin')==='reporter') assignees=['glenn'];
+  // Jobs default to UNASSIGNED — they sit in the manager queue for Raj to allocate.
+  let assignees = (IS_SUPER && FS.assignees && FS.assignees.length) ? FS.assignees : [];
 
   const job={
     id:makeId(),
@@ -1296,9 +1440,14 @@ function openJobDetail(jobId){
     ${j.priority==='urgent'?`<span style="font-size:12px;background:#fde8e6;color:#b3261e;padding:3px 9px;border-radius:6px;font-weight:700">🔴 URGENT</span>`:''}
     ${j.status==='complete'?`<span style="font-size:12px;background:#e8f3ee;color:#2a6a4a;padding:3px 9px;border-radius:6px;font-weight:700">✓ Complete</span>`:''}
     ${j.status==='in-progress'?`<span style="font-size:12px;background:#fffbe6;color:#997300;padding:3px 9px;border-radius:6px;font-weight:700">⏱ In progress</span>`:''}
+    ${j.occupancy==='occupied'?`<span style="font-size:12px;background:#fde8e6;color:#b3261e;padding:3px 9px;border-radius:6px;font-weight:700">🚪 Room occupied</span>`:(j.occupancy==='vacant'?`<span style="font-size:12px;background:#e8f3ee;color:#2a6a4a;padding:3px 9px;border-radius:6px;font-weight:700">✅ Room vacant</span>`:'')}
+    ${(!(j.assignees||[]).length && j.status!=='complete')?`<span style="font-size:12px;background:#fff3e8;color:#c45c00;padding:3px 9px;border-radius:6px;font-weight:700">⏳ Unassigned</span>`:''}
   </div>
 
   ${j.description?`<div style="background:#f5f7f9;border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--ink);line-height:1.5">${j.description}</div>`:''}
+
+  ${j.voiceNote?`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🎙️ Voice note</div><audio controls src="${j.voiceNote}" style="width:100%"></audio></div>`:''}
+  ${(j.photos&&j.photos.length)?`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">📷 Reported photos</div><div style="display:flex;gap:8px;flex-wrap:wrap">${j.photos.map(ph=>`<img src="${ph}" style="width:100px;height:100px;border-radius:10px;object-fit:cover">`).join('')}</div></div>`:''}
 
   <div style="background:#fff;border-radius:10px;border:1px solid var(--line);margin-bottom:14px;overflow:hidden">
     ${[['Work type',j.workType?WORK_TYPES.find(w=>w.id===j.workType)?.label||j.workType:'—'],
@@ -1320,6 +1469,8 @@ function openJobDetail(jobId){
       ${IS_SUPER&&!isDone?`<button type="button" onclick="openReassign('${j.id}')" style="background:none;border:1px solid var(--line);border-radius:20px;padding:5px 12px;font:600 12px 'Lato';cursor:pointer;color:var(--navy);touch-action:manipulation">Reassign</button>`:''}
     </div>
   </div>`:''}
+
+  ${(!(j.assignees||[]).length && IS_SUPER && j.status!=='complete')?`<div style="margin-bottom:14px"><button type="button" class="btn btn-orange" onclick="openReassign('${j.id}')">👤 Allocate to an operative</button></div>`:''}
 
   <!-- Materials -->
   ${!isDone?`<div style="margin-bottom:14px">
@@ -1397,61 +1548,17 @@ function openJobDetail(jobId){
 function startJobFlow(jobId){
   _jid=jobId;
   const j=JOBS.find(x=>x.id===jobId); if(!j) return;
-
   let html=`<div class="modal-title">▶ Start job</div>
+  <div style="font-size:13px;color:#7a8494;margin:-4px 0 12px">${j.title}${j.location?' · '+j.location:''}</div>
   <div style="background:#fffbe6;border:1px solid var(--amber);border-radius:12px;padding:14px;margin-bottom:16px">
     <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;font-size:14px;line-height:1.5;touch-action:manipulation">
       <input type="checkbox" id="safety-chk" style="width:22px;height:22px;margin-top:1px;flex-shrink:0;accent-color:var(--green)" onclick="var b=$('btn-confirm-start');if(b){b.disabled=!this.checked;b.style.opacity=this.checked?'1':'0.4'}">
-      <span><strong>Area is safe</strong> — no guests in proximity and safe to proceed</span>
+      <span><strong>Safe to start</strong> — the room is free of guests and safe to work in</span>
     </label>
   </div>
-  <div style="margin-bottom:16px">
-    <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Before photo <span style="font-weight:400;color:#9ca3af">(recommended)</span></div>
-    <div class="photo-zone" id="before-zone">📷 Tap to photograph before starting</div>
-    <div id="before-preview" style="margin-top:8px"></div>
-  </div>
-  <button type="button" class="btn btn-green" id="btn-confirm-start" disabled style="opacity:.4" onclick="confirmAndStart()">▶ Confirmed — Start job</button>
+  <button type="button" class="btn btn-green" id="btn-confirm-start" disabled style="opacity:.4" onclick="confirmAndStart()">▶ Start job</button>
   <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>`;
-
   openModal(html);
-
-  // Safety checkbox enables start button
-  $('safety-chk').addEventListener('change',function(){
-    const btn=$('btn-confirm-start');
-    btn.disabled=!this.checked;
-    btn.style.opacity=this.checked?'1':'0.4';
-  });
-
-  // Before photo - create file input dynamically
-  const photoInp=document.createElement('input');
-  photoInp.type='file'; photoInp.accept='image/*'; photoInp.capture='environment';
-  photoInp.style.cssText='position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;top:0;left:0';
-  document.body.appendChild(photoInp);
-
-  $('before-zone').addEventListener('click',()=>photoInp.click());
-
-  photoInp.addEventListener('change',function(){
-    const file=this.files[0]; if(!file) return;
-    const reader=new FileReader();
-    reader.onload=e=>{
-      const j=JOBS.find(x=>x.id===_jid); if(j) j.startPhoto=e.target.result;
-      $('before-zone').className='photo-zone captured'; $('before-zone').textContent='✓ Photo saved';
-      $('before-preview').innerHTML=`<img src="${e.target.result}" style="width:100%;border-radius:10px;max-height:150px;object-fit:cover">`;
-      toast('Before photo saved');
-      document.body.removeChild(photoInp);
-    };
-    reader.readAsDataURL(file);
-  });
-
-  // Start button
-  $('btn-confirm-start').addEventListener('click',()=>{
-    if($('safety-chk')&&!$('safety-chk').checked){ toast('Please confirm area is safe'); return; }
-    const j=JOBS.find(x=>x.id===_jid); if(!j) return;
-    j.safetyConfirmed=true;
-    j.notes=j.notes||[];
-    j.notes.push({text:'Area confirmed safe — no guests in proximity',by:MY_USER?.name||ME,at:todayStr()});
-    doStartTimer(_jid);
-  });
 }
 
 // Global functions for modal buttons that need inline onclick
@@ -1472,6 +1579,7 @@ function doReassign(){
   const j=JOBS.find(x=>x.id===_jid); if(!j) return;
   const before=j.assignees||[];
   j.assignees=_reassignees;
+  const _wt=$('ra-wtype')?$('ra-wtype').value:''; if(_wt) j.workType=_wt;
   // Notify anyone newly added to the job (in-app + push)
   try{
     const added=_reassignees.filter(id=>!before.includes(id)&&id!==ME);
@@ -1479,8 +1587,8 @@ function doReassign(){
     if(added.length && typeof fcmNotify==='function') fcmNotify('job_assigned',j,added).then(r=>fcmReportDelivery(r, added));
   }catch(e){ console.warn('reassign notify failed',e); }
   j.notes=j.notes||[];
-  j.notes.push({text:'Job reassigned to '+_reassignees.map(id=>USERS.find(u=>u.id===id)?.name||id).join(', '),by:MY_USER?.name||ME,at:todayStr()});
-  saveJobs(); closeModal(); toast('Reassigned ✓'); openJobDetail(_jid);
+  j.notes.push({text:(_reassignees.length?'Allocated to '+_reassignees.map(id=>USERS.find(u=>u.id===id)?.name||id).join(', '):'Unassigned')+(_wt?(' · '+(WORK_TYPES.find(w=>w.id===_wt)?.label||_wt)):''),by:MY_USER?.name||ME,at:todayStr()});
+  saveJobs(); render(); closeModal(); toast('Allocated ✓'); openJobDetail(_jid);
 }
 
 function addReceipt(jobId){
@@ -1731,10 +1839,19 @@ function openStockPicker(jobId){
 
 // ── REASSIGN ─────────────────────────────────────────────────────────────────
 function openReassign(jobId){
+  _jid=jobId;
   const j=JOBS.find(x=>x.id===jobId); if(!j) return;
-  let html=`<div class="modal-title">Reassign job</div>
-  <div style="font-size:13px;color:#7a8494;margin-bottom:14px">${j.title}</div>
-  ${USERS.map(u=>`
+  const ops=FIXER_TIER.map(id=>USERS.find(u=>u.id===id)).filter(Boolean);
+  let html=`<div class="modal-title">Allocate job</div>
+  <div style="font-size:13px;color:#7a8494;margin-bottom:14px">${j.title}${j.location?' · '+j.location:''}</div>
+  <div class="f-field"><label>Type of work / trade</label>
+    <select id="ra-wtype">
+      <option value="">Select trade…</option>
+      ${WORK_TYPES.map(w=>`<option value="${w.id}" ${j.workType===w.id?'selected':''}>${w.icon} ${w.label}</option>`).join('')}
+    </select>
+  </div>
+  <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Assign to operative</div>
+  ${ops.map(u=>`
     <div class="arow ${(j.assignees||[]).includes(u.id)?'selected':''}" data-uid="${u.id}">
       <div class="av" style="background:${u.color};width:30px;height:30px;font-size:10px">${initials(u.name)}</div>
       <div style="flex:1"><div class="ar-name">${u.name}</div><div class="ar-role">${u.role}</div></div>
@@ -1742,12 +1859,10 @@ function openReassign(jobId){
     </div>`).join('')}
   <div class="btn-row" style="margin-top:14px">
     <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-    <button type="button" class="btn btn-navy" onclick="doReassign()">Save</button>
+    <button type="button" class="btn btn-navy" onclick="doReassign()">Allocate</button>
   </div>`;
 
   openModal(html);
-  let newAssignees=[...(j.assignees||[])];
-
   _reassignees=[...(j.assignees||[])];
   $('modal-content').querySelectorAll('.arow[data-uid]').forEach(row=>{
     row.addEventListener('click',()=>{
@@ -1881,12 +1996,13 @@ function verifyDOB(){
   loginAs(PRESET_USER);
 }
 
-function loginAs(uid){
+function loginAs(uid, tier){
   ME=uid;
   MY_USER=USERS.find(u=>u.id===uid);
+  SESSION_TIER = tier || SESSION_TIER || null;   // role chosen via the link/code
   sessionStorage.setItem('hf_user',uid);
-  try{ localStorage.setItem('hf_me',uid); }catch(e){}
-  // Role from the new scheme (admin / fixer / reporter)
+  try{ localStorage.setItem('hf_me',uid); if(SESSION_TIER) localStorage.setItem('hf_tier',SESSION_TIER); }catch(e){}
+  // Role for this session (admin / fixer / reporter), honouring the chosen tier
   if(MY_USER){ MY_USER.tier=tierOf(uid); MY_USER.admin=isAdmin(uid); MY_USER.seeCosts=isAdmin(uid); }
   IS_SUPER=isAdmin(uid);
   IS_APPROVER=isAdmin(uid);
@@ -1954,7 +2070,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   loadPhones();
   // Remembered sign-in (persists across launches), then this-session restore
   const remembered=localStorage.getItem('hf_me');
-  if(remembered && USERS.find(u=>u.id===remembered)){ loginAs(remembered); return; }
+  if(remembered && USERS.find(u=>u.id===remembered)){ loginAs(remembered, localStorage.getItem('hf_tier')||null); return; }
   const saved=sessionStorage.getItem('hf_user');
   if(saved && USERS.find(u=>u.id===saved)){ loginAs(saved); return; }
 
@@ -2191,7 +2307,7 @@ function jobForCloud(j){
   const c = Object.assign({}, j);
   // Firestore docs are capped at 1 MB — keep photos on the device if the job is too big
   if(JSON.stringify(c).length > 900000){
-    ["photos","startPhoto","completionPhoto"].forEach(k=>{ if(k in c) c[k] = Array.isArray(c[k])?[]:null; });
+    ["photos","startPhoto","completionPhoto","voiceNote"].forEach(k=>{ if(k in c) c[k] = Array.isArray(c[k])?[]:null; });
     c.photosLocalOnly = true;
   }
   return JSON.parse(JSON.stringify(c));                // strips undefined values
@@ -2216,7 +2332,7 @@ function jobSyncPush(){
 // Create-if-absent by id, and skip if the app already has an open job at that location,
 // so nothing is ever duplicated. Runs once per device after the first cloud snapshot.
 function hfSeedJobs(){
-  if(localStorage.getItem('hf_seed_wa_v1')==='1') return;
+  if(localStorage.getItem('hf_seed_wa_v2')==='1') return;
   const S=[
     {id:'wa-151-heating', loc:'Room 151', title:'No heating', desc:'No heating reported — arrival room.', prio:'urgent', wt:'HVAC', who:['glenn','pete'], at:'2026-11-02T19:31:00.000Z', by:'Alice Grace', cb:'alice'},
     {id:'wa-154-heating', loc:'Room 154', title:'No heating', desc:'No heating reported — arrival room.', prio:'urgent', wt:'HVAC', who:['glenn','pete'], at:'2026-11-02T17:44:00.000Z', by:'Alice Grace', cb:'alice'},
@@ -2239,14 +2355,16 @@ function hfSeedJobs(){
   ];
   let added=0;
   S.forEach(s=>{
-    if(JOBS.some(j=>String(j.id)===s.id)) return;
     const done = s.status==='complete';
+    // Existing seeded job? Move it to the manager queue (unassigned) so Raj allocates it.
+    const existing=JOBS.find(j=>String(j.id)===s.id);
+    if(existing){ existing.assignees=[]; if(!done && existing.status!=='complete') existing.status='not-started'; added++; return; }
     if(!done){ if(JOBS.some(j=>!hfOldJob(j) && j.location===s.loc && !['complete','cancelled'].includes(j.status))) return; }
     else { if(JOBS.some(j=>!hfOldJob(j) && j.location===s.loc)) return; }
     const area=s.area||'bedrooms';
     const job={ id:s.id, title:s.title, area, areaLabel:(PROPERTY[area]&&PROPERTY[area].label)||'Bedrooms',
       location:s.loc, workType:s.wt||'General', description:s.desc||s.title,
-      status:s.status||'not-started', priority:s.prio||'medium', assignees:s.who||['glenn'],
+      status:s.status||'not-started', priority:s.prio||'medium', assignees:[],
       cost:0, module:'maintenance', photos:[], materials:[], receipts:[],
       notes:[{text:'Logged from the Brandon Hall Maintenance WhatsApp chat'+(s.by?(' — reported by '+s.by):''), by:'System', at:String(s.at||'').slice(0,10)}],
       createdAt:s.at, createdBy:s.cb||'laith', reportedBy:s.by||'', source:'WhatsApp',
@@ -2255,7 +2373,7 @@ function hfSeedJobs(){
     JOBS.unshift(job); added++;
   });
   if(added){ try{ localStorage.setItem('hosfix_jobs',JSON.stringify(JOBS)); }catch(e){} try{ jobSyncPush(); }catch(e){} }
-  try{ localStorage.setItem('hf_seed_wa_v1','1'); }catch(e){}
+  try{ localStorage.setItem('hf_seed_wa_v2','1'); }catch(e){}
 }
 function jobSyncStart(){
   fbInit(); if(!fbDb || JOB_SYNC.on) return;
