@@ -15,6 +15,27 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/hosfix-mobile-192.png">
 <meta name="apple-mobile-web-app-title" content="HosFIX">
 <title>HosFIX — Brandon Hall</title>
+<script>
+/* Per-group Home-Screen identity: management=blue "HosFix - Mgr", reporter=red "- Rep",
+   operative=green "- Ops". Runs before install so Add-to-Home-Screen picks up the right
+   icon, name, theme and manifest. Plain hosmain.html (no tier) keeps the default HosFIX. */
+(function(){
+  try{
+    var q=new URLSearchParams(location.search);
+    var t=(q.get('tier')||'').toLowerCase();
+    if(!t){['management','manager','admin','reporter','reporters','operative','operatives','maintenance','fixer'].forEach(function(k){if(q.has(k))t=k;});}
+    var map={management:'mgr',manager:'mgr',admin:'mgr',reporter:'rep',reporters:'rep',operative:'ops',operatives:'ops',maintenance:'ops',fixer:'ops'};
+    var g=map[t]; if(!g) return;
+    var cfg={mgr:{name:'HosFix - Mgr',theme:'#1f5fbf'},rep:{name:'HosFix - Rep',theme:'#b3261e'},ops:{name:'HosFix - Ops',theme:'#2a6a4a'}}[g];
+    var man=document.querySelector('link[rel="manifest"]'); if(man) man.href='/hosmain-manifest-'+g+'.json';
+    var at=document.querySelector('link[rel="apple-touch-icon"]'); if(at) at.href='/assets/hosfix-'+g+'-192.png';
+    var ic=document.querySelector('link[rel="icon"]'); if(ic) ic.href='/assets/hosfix-'+g+'-192.png';
+    var ti=document.querySelector('meta[name="apple-mobile-web-app-title"]'); if(ti) ti.setAttribute('content',cfg.name);
+    var tc=document.querySelector('meta[name="theme-color"]'); if(tc) tc.setAttribute('content',cfg.theme);
+    document.title=cfg.name+' — Brandon Hall';
+  }catch(e){}
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
