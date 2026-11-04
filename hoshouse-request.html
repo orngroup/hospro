@@ -77,8 +77,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
 /* logo + wide 3-column reception console */
 .top .logo{height:48px;margin:0 auto 10px;display:block}
 body.console .wrap{max-width:1200px}
-.dash{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-top:14px}
-.cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:10px;align-items:start}
+.dash{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:14px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;align-items:start}
 .col{min-width:0}
 body.console #scr-form{max-width:560px;margin:0 auto}
 @media(max-width:980px){ .cols{grid-template-columns:1fr} .dash{grid-template-columns:repeat(3,1fr)} }
@@ -176,7 +176,6 @@ body.console #scr-form{max-width:560px;margin:0 auto}
       <div class="tile"><div class="v" id="t-urg" style="color:var(--red)">0</div><div class="k">Urgent</div></div>
       <div class="tile"><div class="v" id="t-ip" style="color:var(--amber)">0</div><div class="k">In progress</div></div>
       <div class="tile"><div class="v" id="t-done" style="color:var(--green)">0</div><div class="k">Done today</div></div>
-      <div class="tile"><div class="v" id="t-vis" style="color:var(--green)">0</div><div class="k">Visitors today</div></div>
       <div class="tile"><div class="v" id="t-del" style="color:var(--amber)">0</div><div class="k">Deliveries today</div></div>
     </div>
 
@@ -191,27 +190,7 @@ body.console #scr-form{max-width:560px;margin:0 auto}
         <div id="b-list"></div>
       </div>
 
-      <!-- Column 2 · Visitor Log -->
-      <div class="col">
-        <div class="sec sec-vis">👤 Visitor Log</div>
-        <div class="card">
-          <label class="fl">Visitor name</label>
-          <input id="v-name" type="text" placeholder="Full name">
-          <label class="fl" style="margin-top:12px">Company <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
-          <input id="v-company" type="text" list="supplier-list" placeholder="e.g. Brakes, Initial, private">
-          <label class="fl" style="margin-top:12px">Here to see</label>
-          <input id="v-host" type="text" list="staff-list" placeholder="Name or department">
-          <label class="fl" style="margin-top:12px">Date</label>
-          <input id="v-date" type="date">
-          <label class="fl" style="margin-top:12px">Notes <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
-          <input id="v-notes" type="text" placeholder="e.g. car reg, reason for visit">
-          <button class="btn btn-go" style="margin-top:14px" onclick="logVisitor()">Log visitor →</button>
-        </div>
-        <div class="sechd">Today's visitors</div>
-        <div id="v-list"></div>
-      </div>
-
-      <!-- Column 3 · Delivery Log -->
+      <!-- Column 2 · Delivery Log -->
       <div class="col">
         <div class="sec sec-del">📦 Delivery Log</div>
         <div class="card">
@@ -392,7 +371,6 @@ async function startBoard(){
   $('top-tt').textContent='📋 Reception Console';
   showScreen('scr-board');
   await loadStaff(); fillStaffDatalist(); fillSupplierDatalist();
-  if(!$('v-date').value) $('v-date').value=todayISO();
   // Section 1 — requests (live)
   $('b-chips').innerHTML=B_FILTERS.map(([f,l])=>`<button class="chip ${B_FILTER===f?'on':''}" onclick="bSetFilter('${f}')">${l}</button>`).join('');
   if(db){
@@ -404,15 +382,11 @@ async function startBoard(){
       if(nowOpen>prevOpen && B_READY) notifyNew();
       B_READY=true; bRender();
     }, e=>{ console.warn('board snap',e); $('b-list').innerHTML='<div class="muted" style="padding:20px;text-align:center">Could not load requests — check connection.</div>'; });
-    // Section 2 — visitors (live)
-    if(V_UNSUB) V_UNSUB();
-    V_UNSUB=db.collection('hoshouse_visitors').onSnapshot(snap=>{ V_ROWS=snap.docs.map(d=>d.data()).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); renderVisitors(); }, e=>{ $('v-list').innerHTML='<div class="muted" style="padding:16px;text-align:center">Could not load visitors.</div>'; });
-    // Section 3 — deliveries (live)
+    // Section 2 — deliveries (live)
     if(D_UNSUB) D_UNSUB();
     D_UNSUB=db.collection('hoshouse_deliveries').onSnapshot(snap=>{ D_ROWS=snap.docs.map(d=>d.data()).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); renderDeliveries(); }, e=>{ $('d-list').innerHTML='<div class="muted" style="padding:16px;text-align:center">Could not load deliveries.</div>'; });
   } else {
     B_ROWS=JSON.parse(localStorage.getItem('hoshouse_requests')||'[]'); bRender();
-    V_ROWS=JSON.parse(localStorage.getItem('hoshouse_visitors')||'[]'); renderVisitors();
     D_ROWS=JSON.parse(localStorage.getItem('hoshouse_deliveries')||'[]'); renderDeliveries();
   }
   try{ if('Notification' in window && Notification.permission==='default') Notification.requestPermission(); }catch(e){}
