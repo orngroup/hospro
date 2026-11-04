@@ -126,10 +126,14 @@ html,body{height:100%;overflow:hidden;font-family:'Lato',sans-serif;background:v
 /* ── MODAL ─────────────────────────────────────────────────────────── */
 #modal-bg{position:fixed;inset:0;background:rgba(16,29,51,.65);z-index:100;display:none;align-items:flex-end}
 #modal-bg.open{display:flex}
-.modal-sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-height:93vh;
+.modal-sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-height:93vh;position:relative;
   overflow-y:auto;-webkit-overflow-scrolling:touch;
   padding:16px 16px calc(20px + var(--safe-bot))}
 .modal-handle{width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 16px}
+.modal-close{position:absolute;top:12px;right:14px;width:36px;height:36px;border-radius:50%;border:none;
+  background:#f1f5f9;color:#475569;font-size:17px;font-weight:700;line-height:1;cursor:pointer;z-index:5;
+  display:flex;align-items:center;justify-content:center;touch-action:manipulation}
+.modal-close:active{background:#e2e8f0}
 .modal-title{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--navy);margin-bottom:14px}
 
 /* ── CARDS & UI ─────────────────────────────────────────────────────── */
@@ -171,6 +175,11 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
   font:14px 'Lato';color:var(--ink);background:#fff;-webkit-appearance:none;appearance:none}
 .f-field textarea{min-height:70px;resize:vertical}
 .f-field select:focus,.f-field input:focus,.f-field textarea:focus{outline:none;border-color:var(--amber)}
+/* reporter form — real-app card layout */
+#scr-report{text-align:left}
+#report-body .rcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 15px 3px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+#report-body .rcard-t{font:800 12px 'Lato';color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+#report-body .rcard .f-field:last-child{margin-bottom:12px}
 
 /* Status/priority toggles */
 .toggle-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:4px}
@@ -471,6 +480,7 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
 <div id="modal-bg">
   <div class="modal-sheet" id="modal-sheet">
     <div class="modal-handle"></div>
+    <button type="button" class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
     <div id="modal-content"></div>
   </div>
 </div>
@@ -1373,33 +1383,46 @@ function renderGuestReport(){
   const opts=reporterNameOptions();
   const body=$('report-body'); if(!body) return;
   body.innerHTML=`
-    <p style="font-size:13px;color:#7a8494;margin:0 0 14px">Tell us where it is and what's wrong — add a photo, and a voice note if it helps. The maintenance team takes it from there.</p>
-    <div class="f-field"><label>Your name *</label>
-      <select id="gr-name"><option value="">Select your name…</option>${opts.map(o=>`<option value="${o.id}">${o.name}</option>`).join('')}</select></div>
-    <div class="f-field"><label>Where is it? *</label>
-      <select id="rp-area"><option value="">Select area…</option>${Object.entries(PROPERTY).map(([k,v])=>`<option value="${k}">${v.icon} ${v.label}</option>`).join('')}</select></div>
-    <div class="f-field" id="rp-room-wrap" style="display:none"><label>Room / location</label>
-      <select id="rp-room"><option value="">Select room…</option></select></div>
-    <div class="f-field"><label>Is the room occupied?</label>
-      <div class="occ-row">
-        <button type="button" class="occ-opt" onclick="rpOcc(this,'occupied')">🚪 Occupied</button>
-        <button type="button" class="occ-opt" onclick="rpOcc(this,'vacant')">✅ Vacant</button>
-        <button type="button" class="occ-opt" onclick="rpOcc(this,'unknown')">❔ Not sure</button>
-      </div></div>
-    <div class="f-field"><label>What's wrong? *</label>
-      <input type="text" id="rp-title" placeholder="e.g. Leaking tap / no heating"></div>
-    <div class="f-field"><label>More detail (optional)</label>
-      <textarea id="rp-desc" placeholder="Anything useful for the team…"></textarea></div>
-    <div class="f-field"><label>Priority</label>
-      <div class="toggle-row" style="grid-template-columns:1fr 1fr">
-        <button type="button" class="toggle-opt on-co" id="rp-normal" onclick="FS.priority='medium';this.classList.add('on-co');document.getElementById('rp-urgent').classList.remove('on-ur')">Normal</button>
-        <button type="button" class="toggle-opt" id="rp-urgent" onclick="FS.priority='urgent';this.classList.add('on-ur');document.getElementById('rp-normal').classList.remove('on-co')">🔴 Urgent</button>
-      </div></div>
-    <div class="f-field"><label>Photo * <span style="font-weight:400;color:#7a8494">— at least one</span></label>
-      <div class="photo-zone" id="rp-photo-zone">📷 Tap to add photo(s)</div>
-      <div id="rp-photo-preview" class="photo-thumbs" style="margin-top:8px"></div></div>
-    <div class="f-field"><label>Voice note (up to 20s)</label><div id="nj-voice-box"></div></div>
-    <button type="button" class="btn btn-orange btn-full" style="margin-top:12px" onclick="submitGuestReport()">📣 Send report</button>`;
+    <p style="font-size:13px;color:#7a8494;margin:0 0 14px;line-height:1.5">Tell us where it is and what's wrong — add a photo, and a voice note if it helps. The maintenance team takes it from there.</p>
+
+    <div class="rcard">
+      <div class="rcard-t">📍 Where &amp; who</div>
+      <div class="f-field"><label>Your name *</label>
+        <select id="gr-name"><option value="">Select your name…</option>${opts.map(o=>`<option value="${o.id}">${o.name}</option>`).join('')}</select></div>
+      <div class="f-field"><label>Where is it? *</label>
+        <select id="rp-area"><option value="">Select area…</option>${Object.entries(PROPERTY).map(([k,v])=>`<option value="${k}">${v.icon} ${v.label}</option>`).join('')}</select></div>
+      <div class="f-field" id="rp-room-wrap" style="display:none"><label>Room / location</label>
+        <select id="rp-room"><option value="">Select room…</option></select></div>
+      <div class="f-field"><label>Is the room occupied?</label>
+        <div class="occ-row">
+          <button type="button" class="occ-opt" onclick="rpOcc(this,'occupied')">🚪 Occupied</button>
+          <button type="button" class="occ-opt" onclick="rpOcc(this,'vacant')">✅ Vacant</button>
+          <button type="button" class="occ-opt" onclick="rpOcc(this,'unknown')">❔ Not sure</button>
+        </div></div>
+    </div>
+
+    <div class="rcard">
+      <div class="rcard-t">🔧 What's wrong</div>
+      <div class="f-field"><label>The problem *</label>
+        <input type="text" id="rp-title" placeholder="e.g. Leaking tap / no heating"></div>
+      <div class="f-field"><label>More detail (optional)</label>
+        <textarea id="rp-desc" placeholder="Anything useful for the team…"></textarea></div>
+      <div class="f-field"><label>Priority</label>
+        <div class="toggle-row" style="grid-template-columns:1fr 1fr">
+          <button type="button" class="toggle-opt on-co" id="rp-normal" onclick="FS.priority='medium';this.classList.add('on-co');document.getElementById('rp-urgent').classList.remove('on-ur')">Normal</button>
+          <button type="button" class="toggle-opt" id="rp-urgent" onclick="FS.priority='urgent';this.classList.add('on-ur');document.getElementById('rp-normal').classList.remove('on-co')">🔴 Urgent</button>
+        </div></div>
+    </div>
+
+    <div class="rcard">
+      <div class="rcard-t">📷 Photo &amp; voice</div>
+      <div class="f-field"><label>Photo * <span style="font-weight:400;color:#7a8494">— at least one</span></label>
+        <div class="photo-zone" id="rp-photo-zone">📷 Tap to add photo(s)</div>
+        <div id="rp-photo-preview" class="photo-thumbs" style="margin-top:8px"></div></div>
+      <div class="f-field"><label>Voice note (up to 20s)</label><div id="nj-voice-box"></div></div>
+    </div>
+
+    <button type="button" class="btn btn-orange btn-full" style="margin-top:4px" onclick="submitGuestReport()">📣 Send report</button>`;
   $('rp-area').addEventListener('change',function(){
     FS.area=this.value; FS.location='';
     const wrap=$('rp-room-wrap'), sel=$('rp-room');
@@ -1690,7 +1713,7 @@ function openJobDetail(jobId){
     <div style="font:700 14px 'Lato';color:var(--green)">✓ Completed by ${j.completedBy||'team'}</div>
     <div style="font-size:12px;color:#7a8494;margin-top:2px">${fmtDate(j.completedAt?.slice(0,10))}</div>
   </div>`:''}
-  <button type="button" class="btn btn-ghost" onclick="closeModal()">Close</button>`;
+  <button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-top:4px">← Back to jobs</button>`;
 
   openModal(html);
 
