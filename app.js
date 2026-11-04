@@ -10244,7 +10244,7 @@ function hhReqRender(){
     return `<div style="background:#fff;border:1px solid #e4e9ef;border-left:5px solid ${BORD[st]||'#9aa7b5'};border-radius:12px;padding:12px 14px;margin-bottom:9px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
       <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap"><span style="font:900 16px Lato;color:#1F3864">Room ${hhEsc(r.room)}</span><span style="font-weight:700;font-size:14px">${hhReqItems(r)}</span>${bdg}</div>
       ${r.detail?`<div style="font-size:12.5px;color:#5b6b7b;margin-top:5px">${hhEsc(r.detail)}</div>`:''}
-      <div style="font-size:12px;color:#8296a8;margin-top:5px">${r.source==='reception'?'Front desk':'Guest'} · ${hhReqAgo(r.createdAt)}${r.assignedName?(' · 👤 '+hhEsc(r.assignedName)):''}${resp}</div>
+      <div style="font-size:12px;color:#8296a8;margin-top:5px">${r.source==='reception'?'Front desk':r.source==='staff'?(r.loggedBy?('By '+hhEsc(r.loggedBy)):'Staff'):'Guest'} · ${hhReqAgo(r.createdAt)}${r.assignedName?(' · 👤 '+hhEsc(r.assignedName)):''}${resp}</div>
       ${r.status!=='done'?`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px">
         <select onchange="hhReqAllocate('${r.id}',this.value)" style="padding:7px 9px;border:1px solid #d7dde4;border-radius:8px;font:13px Lato">${sopts(r.assignedTo)}</select>
         <button onclick="hhReqUrgent('${r.id}','${r.priority}')" style="padding:8px 12px;border-radius:8px;border:1px solid ${r.priority==='urgent'?'#b3261e':'#f0c4c0'};background:${r.priority==='urgent'?'#b3261e':'#fdeceb'};color:${r.priority==='urgent'?'#fff':'#b3261e'};font:800 12px Lato;cursor:pointer">${r.priority==='urgent'?'● Urgent':'⚑ Urgent'}</button>
@@ -10257,14 +10257,71 @@ function hhReqRender(){
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
       ${tile(pend.length,'Pending','#5b6b7b')}${tile(urg.length,'Urgent','#b3261e')}${tile(ip.length,'In progress','#b9780a')}${tile(doneT.length,'Done today','#2E6B5E')}
     </div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">${F2.map(x=>chip(x[0],x[1])).join('')}</div>
-    <div style="font-size:11.5px;color:#8296a8;margin-bottom:12px">Guests scan the in-room QR, or reception logs at <b>${hhEsc(hhOrigin())}hoshouse-request.html</b>. New requests appear here live.</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${F2.map(x=>chip(x[0],x[1])).join('')}
+      <button onclick="hhReqLogOpen()" style="margin-left:auto;padding:8px 15px;border-radius:9px;border:none;background:#1F3864;color:#fff;font:800 13px Lato;cursor:pointer">➕ Log a request</button></div>
+    <div style="font-size:11.5px;color:#8296a8;margin-bottom:12px">Guests scan the in-room QR, reception logs at <b>${hhEsc(hhOrigin())}hoshouse-request.html</b>, or use <b>➕ Log a request</b> above. New requests appear here live.</div>
     ${list}`;
 }
 async function hhReqPatch(id,fields){ fields.updatedAt=new Date().toISOString(); try{ if(typeof FB!=='undefined'&&FB.db){ await FB.db.collection('hoshouse_requests').doc(id).set(fields,{merge:true}); } }catch(e){ try{ toast('Could not save — check connection'); }catch(x){} } }
 function hhReqAllocate(id,hk){ const s=HH_REQ_STAFF.find(x=>x.id===hk); hhReqPatch(id,{assignedTo:hk||'',assignedName:s?s.name:''}); }
 function hhReqStatus(id,status){ const f={status}; const now=new Date().toISOString(); if(status==='in_progress') f.startedAt=now; if(status==='done') f.completedAt=now; hhReqPatch(id,f); }
 function hhReqUrgent(id,cur){ hhReqPatch(id,{priority:cur==='urgent'?'normal':'urgent'}); }
+/* ---- Log a request from the desktop console (reception / managers, on behalf of a room) ---- */
+const HH_RL_TYPES=[
+  {t:'towels',e:'🧺',l:'Towels'},{t:'pillows',e:'🛌',l:'Pillows'},
+  {t:'teacoffee',e:'☕',l:'Tea / coffee'},{t:'toiletries',e:'🧴',l:'Toiletries'},
+  {t:'batteries',e:'🔋',l:'Batteries'},{t:'extrabed',e:'🛏️',l:'Extra bed'},
+  {t:'servicing',e:'🕐',l:'Room servicing'},{t:'cleaning',e:'🧹',l:'Cleaning issue'},
+  {t:'other',e:'✍️',l:'Something else'}
+];
+const HH_RL_QTY=['towels','pillows','teacoffee','toiletries','batteries','extrabed'];
+async function hhReqLogOpen(){
+  window._hhRL={};
+  let rooms=[]; try{ rooms=await hhRoomCatalogue(); }catch(e){}
+  const opts='<option value="">Select the room…</option>'+rooms.map(r=>`<option value="${hhEsc(String(r.room))}">Room ${hhEsc(String(r.room))}</option>`).join('');
+  showModal('➕ Log a request','On behalf of a guest or room',`
+    <div style="font:800 13px Lato;color:#1F3864;margin-bottom:5px">Room</div>
+    <select id="hhrl-room" style="width:100%;padding:11px;border:1px solid #d7dde4;border-radius:9px;font:14px Lato;margin-bottom:14px">${opts}</select>
+    <div style="font:800 13px Lato;color:#1F3864;margin-bottom:6px">What's needed</div>
+    <div id="hhrl-items" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px"></div>
+    <div style="font:800 13px Lato;color:#1F3864;margin-bottom:5px">Note (optional)</div>
+    <textarea id="hhrl-note" rows="2" placeholder="Any detail…" style="width:100%;padding:10px;border:1px solid #d7dde4;border-radius:9px;font:13px Lato;box-sizing:border-box;margin-bottom:14px"></textarea>
+    <label style="display:flex;align-items:center;gap:9px;margin-bottom:16px;cursor:pointer"><input type="checkbox" id="hhrl-urgent" style="width:18px;height:18px"><span style="font-weight:700;color:#b3261e;font:700 13px Lato">Mark as urgent</span></label>
+    <button onclick="hhReqLogSubmit()" style="width:100%;padding:13px;border:none;border-radius:10px;background:#2E6B5E;color:#fff;font:800 15px Lato;cursor:pointer">Log request</button>`);
+  hhReqLogItems();
+}
+function hhReqLogItems(){
+  const box=document.getElementById('hhrl-items'); if(!box) return; const SEL=window._hhRL||{};
+  box.innerHTML=HH_RL_TYPES.map(it=>{
+    const on=SEL[it.t]!=null, qty=SEL[it.t]||1, canQ=HH_RL_QTY.indexOf(it.t)>=0;
+    let h=`<div onclick="hhReqLogToggle('${it.t}')" style="border:2px solid ${on?'#1F3864':'#e4e9ef'};background:${on?'#eef2fb':'#fff'};border-radius:11px;padding:10px 7px;text-align:center;cursor:pointer">`;
+    h+=`<div style="font-size:22px">${it.e}</div><div style="font-weight:700;font-size:12px;color:#1F3864;margin-top:2px">${it.l}</div>`;
+    if(on&&canQ){ h+=`<div onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:center;gap:9px;margin-top:6px">
+      <button onclick="hhReqLogQty('${it.t}',-1)" style="width:26px;height:26px;border:1px solid #c3ccd6;border-radius:7px;background:#fff;font-weight:800;cursor:pointer">−</button>
+      <span style="font-weight:800;min-width:14px">${qty}</span>
+      <button onclick="hhReqLogQty('${it.t}',1)" style="width:26px;height:26px;border:1px solid #c3ccd6;border-radius:7px;background:#fff;font-weight:800;cursor:pointer">+</button></div>`; }
+    h+='</div>'; return h;
+  }).join('');
+}
+function hhReqLogToggle(t){ const S=window._hhRL||(window._hhRL={}); if(S[t]!=null) delete S[t]; else S[t]=1; hhReqLogItems(); }
+function hhReqLogQty(t,d){ const S=window._hhRL||(window._hhRL={}); S[t]=Math.max(1,(S[t]||1)+d); hhReqLogItems(); }
+function hhReqLogSubmit(){
+  const room=(document.getElementById('hhrl-room')||{}).value||'';
+  if(!room){ try{toast('Pick a room first');}catch(e){} return; }
+  const SEL=window._hhRL||{}; const keys=Object.keys(SEL);
+  if(!keys.length){ try{toast('Pick at least one item');}catch(e){} return; }
+  const LB={}; HH_RL_TYPES.forEach(it=>LB[it.t]=it.l);
+  const items=keys.map(t=>({type:t,label:LB[t],qty:SEL[t]||1}));
+  const id='req_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  const now=new Date().toISOString();
+  const doc={ id, room:String(room), items, detail:((document.getElementById('hhrl-note')||{}).value||'').trim(),
+    priority:(document.getElementById('hhrl-urgent')||{}).checked?'urgent':'normal', status:'pending',
+    source:'staff', loggedBy:(typeof SESSION!=='undefined'&&SESSION&&SESSION.name)||'Reception', createdAt:now, updatedAt:now };
+  try{ if(typeof FB!=='undefined'&&FB.db){ FB.db.collection('hoshouse_requests').doc(id).set(doc); } else { throw new Error('offline'); } }
+  catch(e){ try{toast('Could not save — check connection');}catch(x){} return; }
+  try{toast('✓ Request logged');}catch(e){}
+  closeModal();
+}
 async function hhReqBanner(){
   const box=document.getElementById('hh-reqbanner'); if(!box) return;
   try{ if(typeof FB==='undefined'||!FB.db){ box.innerHTML=''; return; }

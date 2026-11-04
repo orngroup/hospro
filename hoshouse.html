@@ -199,7 +199,26 @@
 <div class="screen" id="scr-requests">
   <header><div><div class="t">🔔 Guest Requests</div><div class="u" id="req-sub"></div></div>
     <div class="u" onclick="reqBack()" style="cursor:pointer">← Back</div></header>
-  <div class="wrap" id="reqWrap"></div>
+  <div class="wrap">
+    <button id="req-logbtn" onclick="showReqLog()" style="width:100%;padding:13px;border:none;border-radius:11px;background:#1F3864;color:#fff;font:800 15px system-ui,-apple-system,sans-serif;cursor:pointer;margin-bottom:13px">➕ Log a request</button>
+    <div id="reqWrap"></div>
+  </div>
+</div>
+
+<!-- GUEST REQUESTS — log on behalf of a guest / room -->
+<div class="screen" id="scr-reqlog">
+  <header><div><div class="t">➕ Log a request</div><div class="u">On behalf of a guest or room</div></div>
+    <div class="u" onclick="showRequests()" style="cursor:pointer">← Back</div></header>
+  <div class="wrap">
+    <label style="font-weight:800;color:#1F3864;font-size:14px">Room</label>
+    <select id="rl-room" style="width:100%;padding:12px;border:1px solid #d7dde4;border-radius:10px;font:15px system-ui;margin:6px 0 15px;background:#fff"></select>
+    <label style="font-weight:800;color:#1F3864;font-size:14px">What's needed</label>
+    <div id="rl-items" style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:8px 0 15px"></div>
+    <label style="font-weight:800;color:#1F3864;font-size:14px">Note (optional)</label>
+    <textarea id="rl-note" rows="2" placeholder="Any detail…" style="width:100%;padding:11px;border:1px solid #d7dde4;border-radius:10px;font:14px system-ui;margin:6px 0 15px;box-sizing:border-box"></textarea>
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:17px;cursor:pointer"><input type="checkbox" id="rl-urgent" style="width:20px;height:20px"><span style="font-weight:700;color:#b3261e">Mark as urgent</span></label>
+    <button onclick="reqLogSubmit()" style="width:100%;padding:15px;border:none;border-radius:12px;background:#2E6B5E;color:#fff;font:800 16px system-ui,-apple-system,sans-serif;cursor:pointer">Log request</button>
+  </div>
 </div>
 
 <!-- ACTIVE ROOM -->
@@ -320,7 +339,7 @@
       return '<div style="background:#fff;border:1px solid #e4e9ef;border-left:5px solid '+(BORD[st]||'#9aa7b5')+';border-radius:13px;padding:13px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05)">'
         +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font:900 17px system-ui;color:#1F3864">Room '+reqEsc(r.room)+'</span><span style="font-weight:700;font-size:14px">'+reqItems(r)+'</span>'+bdg+'</div>'
         +(r.detail?('<div style="font-size:13px;color:#5b6b7b;margin-top:5px">'+reqEsc(r.detail)+'</div>'):'')
-        +'<div style="font-size:12px;color:#8a97a6;margin-top:5px">'+(r.source==='reception'?'Front desk':'Guest')+' · '+reqAgo(r.createdAt)+(r.assignedName?(' · 👤 '+reqEsc(r.assignedName)):'')+'</div>'
+        +'<div style="font-size:12px;color:#8a97a6;margin-top:5px">'+(r.source==='reception'?'Front desk':r.source==='staff'?(r.loggedBy?('By '+reqEsc(r.loggedBy)):'Staff'):'Guest')+' · '+reqAgo(r.createdAt)+(r.assignedName?(' · 👤 '+reqEsc(r.assignedName)):'')+'</div>'
         +(acts?('<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:11px">'+acts+'</div>'):'')
         +'</div>';
     }).join('');
@@ -331,6 +350,54 @@
   function reqTake(id){ reqPatch(id,{assignedTo:(ME&&ME.id)||'',assignedName:(ME&&ME.name)||'',status:'in_progress',startedAt:new Date().toISOString()}); try{hhToast('Taken — marked in progress');}catch(e){} }
   function reqDone(id){ reqPatch(id,{status:'done',completedAt:new Date().toISOString(),completedBy:(ME&&ME.name)||''}); try{hhToast('✓ Completed');}catch(e){} }
   function reqUrgent(id,cur){ reqPatch(id,{priority:cur==='urgent'?'normal':'urgent'}); }
+  /* ---- log a request from inside the app (lead or housekeeper, on behalf of a room) ---- */
+  const RL_TYPES=[
+    {t:'towels',e:'🧺',l:'Towels'},{t:'pillows',e:'🛌',l:'Pillows'},
+    {t:'teacoffee',e:'☕',l:'Tea / coffee'},{t:'toiletries',e:'🧴',l:'Toiletries'},
+    {t:'batteries',e:'🔋',l:'Batteries'},{t:'extrabed',e:'🛏️',l:'Extra bed'},
+    {t:'servicing',e:'🕐',l:'Room servicing'},{t:'cleaning',e:'🧹',l:'Cleaning issue'},
+    {t:'other',e:'✍️',l:'Something else'}
+  ];
+  const RL_QTY=['towels','pillows','teacoffee','toiletries','batteries','extrabed'];
+  let RL_SEL={};
+  function showReqLog(){
+    RL_SEL={};
+    let rr=[]; try{ rr=((HH.cfg()||{}).rooms||[]).map(x=>String(x.room)).filter(Boolean); }catch(e){}
+    $('rl-room').innerHTML='<option value="">Select the room…</option>'+rr.map(r=>'<option value="'+reqEsc(r)+'">Room '+reqEsc(r)+'</option>').join('');
+    $('rl-note').value=''; $('rl-urgent').checked=false;
+    reqLogItems(); showScreen('scr-reqlog');
+  }
+  function reqLogItems(){
+    $('rl-items').innerHTML=RL_TYPES.map(it=>{
+      const on=RL_SEL[it.t]!=null, qty=RL_SEL[it.t]||1, canQ=RL_QTY.indexOf(it.t)>=0;
+      let h='<div onclick="reqLogToggle(\''+it.t+'\')" style="border:2px solid '+(on?'#1F3864':'#e4e9ef')+';background:'+(on?'#eef2fb':'#fff')+';border-radius:12px;padding:11px 9px;text-align:center;cursor:pointer">';
+      h+='<div style="font-size:24px">'+it.e+'</div><div style="font-weight:700;font-size:13px;color:#1F3864;margin-top:3px">'+it.l+'</div>';
+      if(on&&canQ){ h+='<div onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:7px">'
+        +'<button onclick="reqLogQty(\''+it.t+'\',-1)" style="width:28px;height:28px;border:1px solid #c3ccd6;border-radius:8px;background:#fff;font-weight:800;cursor:pointer">−</button>'
+        +'<span style="font-weight:800;min-width:16px">'+qty+'</span>'
+        +'<button onclick="reqLogQty(\''+it.t+'\',1)" style="width:28px;height:28px;border:1px solid #c3ccd6;border-radius:8px;background:#fff;font-weight:800;cursor:pointer">+</button></div>'; }
+      h+='</div>'; return h;
+    }).join('');
+  }
+  function reqLogToggle(t){ if(RL_SEL[t]!=null) delete RL_SEL[t]; else RL_SEL[t]=1; reqLogItems(); }
+  function reqLogQty(t,d){ RL_SEL[t]=Math.max(1,(RL_SEL[t]||1)+d); reqLogItems(); }
+  function reqLogSubmit(){
+    const room=$('rl-room').value;
+    if(!room){ try{hhToast('Pick a room first');}catch(e){} return; }
+    const keys=Object.keys(RL_SEL);
+    if(!keys.length){ try{hhToast('Pick at least one item');}catch(e){} return; }
+    const LB={}; RL_TYPES.forEach(it=>LB[it.t]=it.l);
+    const items=keys.map(t=>({type:t,label:LB[t],qty:RL_SEL[t]||1}));
+    const id='req_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    const now=new Date().toISOString();
+    const doc={ id, room:String(room), items, detail:($('rl-note').value||'').trim(),
+      priority:$('rl-urgent').checked?'urgent':'normal', status:'pending',
+      source:'staff', loggedBy:(ME&&ME.name)||'', createdAt:now, updatedAt:now };
+    try{ if(HH&&HH.db){ HH.db.collection('hoshouse_requests').doc(id).set(doc); } else { throw new Error('offline'); } }
+    catch(e){ try{hhToast('Could not save — check connection');}catch(x){} return; }
+    try{hhToast('✓ Request logged');}catch(e){}
+    showRequests();
+  }
 
   // ---- notifications ----
   function hhToast(msg){

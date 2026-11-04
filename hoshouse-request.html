@@ -116,7 +116,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
     </div>
 
     <button class="btn btn-go" style="margin-top:14px" onclick="submitRequest()">Send to Housekeeping →</button>
-    <button class="stafflink" onclick="openBoard()">Staff access</button>
+    <button class="stafflink" id="form-back" style="display:none" onclick="startBoard()">← Back to the requests board</button>
+    <button class="stafflink" id="form-staff" onclick="openBoard()">Staff access</button>
   </div>
 
   <!-- ===== THANK YOU ===== -->
@@ -143,7 +144,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
   </div>
 
   <div id="scr-board" class="hide">
-    <div class="tiles" style="margin-top:14px">
+    <button class="btn btn-go" style="margin-top:14px" onclick="openLogForm()">➕ Log a request</button>
+    <div class="tiles" style="margin-top:4px">
       <div class="tile"><div class="v" id="t-pend" style="color:#5b6b7b">0</div><div class="k">Pending</div></div>
       <div class="tile"><div class="v" id="t-urg" style="color:var(--red)">0</div><div class="k">Urgent</div></div>
       <div class="tile"><div class="v" id="t-ip" style="color:var(--amber)">0</div><div class="k">In progress</div></div>
@@ -151,7 +153,6 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
     </div>
     <div class="chips" id="b-chips"></div>
     <div id="b-list"></div>
-    <button class="stafflink" onclick="showForm()">← Back to request form</button>
   </div>
 
 </div>
@@ -160,6 +161,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
+<script src="hoshouse-config.js"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -195,7 +197,7 @@ try{ if(typeof firebase!=='undefined' && typeof firebaseConfig!=='undefined'){ i
 
 const $=id=>document.getElementById(id);
 const qs=new URLSearchParams(location.search);
-const RECEPTION=qs.has('reception');
+const RECEPTION=qs.has('reception'); const STAFF=qs.has('board')||qs.has('reception');
 let FS={ room:'', items:{}, prio:'normal' };   // items = { typeId: qty }
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -222,8 +224,7 @@ function renderSelected(){
 }
 function setPrio(p){ FS.prio=p; $('pb-n').className='pb'+(p==='normal'?' on-n':''); $('pb-u').className='pb'+(p==='urgent'?' on-u':''); }
 
-/* ---- reception mode shows priority; QR/guest does not ---- */
-if(RECEPTION){ $('prio-card').classList.remove('hide'); $('top-tt').textContent='🧹 Log a Housekeeping Request'; }
+/* priority is shown only when a staff member logs from the board (openLogForm) */
 
 /* ---- room: fixed from QR ?room=, else a picker of the real room list (no free text) ---- */
 (function(){
@@ -233,12 +234,15 @@ if(RECEPTION){ $('prio-card').classList.remove('hide'); $('top-tt').textContent=
 })();
 async function loadRooms(){
   let rooms=[];
-  try{ if(db){ const d=await db.collection('hoshouse_config').doc('current').get(); const rr=(d.exists?(d.data()||{}):{}).rooms; if(Array.isArray(rr)) rooms=rr.map(x=>String(x.room)).filter(Boolean); } }catch(e){}
+  // same room list the app uses (HH.cfg().rooms — has a built-in default even if none saved)
+  try{ if(typeof HH!=='undefined' && HH.loadCfg){ await HH.loadCfg(); const rr=HH.cfg().rooms; if(Array.isArray(rr)) rooms=rr.map(x=>String(x.room)).filter(Boolean); } }catch(e){}
+  if(!rooms.length){ try{ if(typeof HH!=='undefined' && HH.cfg){ const rr=HH.cfg().rooms; if(Array.isArray(rr)) rooms=rr.map(x=>String(x.room)).filter(Boolean); } }catch(e){} }
+  if(!rooms.length){ try{ if(db){ const d=await db.collection('hoshouse_config').doc('current').get(); const rr=(d.exists?(d.data()||{}):{}).rooms; if(Array.isArray(rr)) rooms=rr.map(x=>String(x.room)).filter(Boolean); } }catch(e){} }
   const sel=$('f-room');
   if(rooms.length){
     rooms.sort((a,b)=>(+a||0)-(+b||0)||String(a).localeCompare(String(b)));
-    sel.innerHTML='<option value="">Select your room…</option>'+rooms.map(r=>`<option value="${esc(r)}">Room ${esc(r)}</option>`).join('');
-    sel.classList.remove('hide');
+    sel.innerHTML='<option value="">Select the room…</option>'+rooms.map(r=>`<option value="${esc(r)}">Room ${esc(r)}</option>`).join('');
+    sel.classList.remove('hide'); $('f-room-txt').classList.add('hide');
   } else {
     $('f-room-txt').classList.remove('hide');   // fallback: type it if the room list isn't available
   }
@@ -257,11 +261,12 @@ async function submitRequest(){
   const now=new Date().toISOString();
   const id='req_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   const doc={ id, room:String(room), items, typeLabel:summary, type:items[0].type,
-    detail, priority:(RECEPTION?FS.prio:'normal'), status:'pending', source:(RECEPTION?'reception':'guest'),
+    detail, priority:(window._staffLog?FS.prio:'normal'), status:'pending', source:(window._staffLog?'reception':'guest'),
     createdAt:now, updatedAt:now, assignedTo:'', assignedName:'', startedAt:null, completedAt:null, completedBy:'' };
   try{
     if(db){ await db.collection('hoshouse_requests').doc(id).set(doc); }
     else { const a=JSON.parse(localStorage.getItem('hoshouse_requests')||'[]'); a.unshift(doc); localStorage.setItem('hoshouse_requests',JSON.stringify(a)); }
+    if(window._staffLog){ FS.items={}; FS.voiceNote=null; document.querySelectorAll('.rt').forEach(b=>b.classList.remove('on')); try{renderSelected();}catch(e){} $('f-detail').value=''; setPrio('normal'); toast('✓ Request logged'); window._staffLog=false; startBoard(); return; }
     $('thanks-ref').textContent='Ref: '+id.slice(-4).toUpperCase()+'  ·  Room '+room;
     showScreen('scr-thanks');
   }catch(e){ console.warn('submit',e); toast('Could not send — please tell reception'); }
@@ -270,7 +275,16 @@ function resetForm(){ FS={room:FS.room, items:{}, prio:'normal'}; $('f-detail').
 
 /* ---- screens ---- */
 function showScreen(id){ ['scr-form','scr-thanks','scr-pin','scr-board'].forEach(s=>$(s).classList.toggle('hide',s!==id)); window.scrollTo(0,0); }
-function showForm(){ $('top-tt').textContent=RECEPTION?'🧹 Log a Housekeeping Request':'🧹 Housekeeping Request'; stopBoard(); showScreen('scr-form'); }
+function showForm(){ window._staffLog=false; $('prio-card').classList.add('hide'); var fb=$('form-back'); if(fb) fb.style.display='none'; var fs=$('form-staff'); if(fs) fs.style.display=''; $('top-tt').textContent='🧹 Housekeeping Request'; stopBoard(); showScreen('scr-form'); }
+function openLogForm(){
+  window._staffLog=true;
+  FS.room=''; FS.items={}; FS.voiceNote=null; FS.prio='normal';
+  if(!qs.get('room')){ var s=$('f-room'); if(s) s.value=''; var t=$('f-room-txt'); if(t) t.value=''; }
+  document.querySelectorAll('.rt').forEach(b=>b.classList.remove('on')); try{renderSelected();}catch(e){} $('f-detail').value=''; setPrio('normal');
+  $('prio-card').classList.remove('hide');
+  var fb=$('form-back'); if(fb) fb.style.display=''; var fs=$('form-staff'); if(fs) fs.style.display='none';
+  $('top-tt').textContent='➕ Log a request'; window.scrollTo(0,0); showScreen('scr-form');
+}
 function openBoard(){ showScreen('scr-pin'); setTimeout(()=>$('pin-in').focus(),100); }
 function checkPin(){ if(($('pin-in').value||'').trim()===BOARD_PIN){ $('pin-err').textContent=''; startBoard(); } else { $('pin-err').textContent='Wrong code — ask a manager'; $('pin-in').value=''; } }
 $('pin-in') && $('pin-in').addEventListener('keydown',e=>{ if(e.key==='Enter') checkPin(); });
@@ -342,8 +356,8 @@ function allocate(id,hk){ const s=B_STAFF.find(x=>x.id===hk); patch(id,{assigned
 function setStatus(id,status){ const f={status}; const now=new Date().toISOString(); if(status==='in_progress') f.startedAt=now; if(status==='done') f.completedAt=now; patch(id,f); toast(status==='done'?'✓ Completed':'Marked in progress'); }
 function toggleUrgent(id,cur){ const u=cur==='urgent'?'normal':'urgent'; patch(id,{priority:u}); toast(u==='urgent'?'Marked urgent':'Urgent removed'); }
 
-/* ---- entry: ?board opens straight to the PIN ---- */
-if(qs.has('board')) openBoard();
+/* ---- entry: staff console (reception/desktop) opens the board; guests see the form ---- */
+if(STAFF) openBoard();
 </script>
 </body>
 </html>
