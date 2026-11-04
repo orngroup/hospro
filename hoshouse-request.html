@@ -68,6 +68,21 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
 .sbtn.urg.on{background:var(--red);color:#fff;border-color:var(--red)}
 .rsel{padding:8px 10px;border:1px solid var(--line);border-radius:9px;font:13px Lato}
 .hide{display:none}
+/* reception console — three colour-coded sections on one screen */
+.sec{border-radius:12px;padding:13px 15px;margin:20px 0 12px;font:900 16px Lato;color:#fff;display:flex;align-items:center;gap:9px;box-shadow:0 2px 7px rgba(0,0,0,.09)}
+.sec:first-child{margin-top:12px}
+.sec-req{background:linear-gradient(135deg,#1a2b3a,#2c4155)}
+.sec-vis{background:linear-gradient(135deg,#2a6a4a,#1f5038)}
+.sec-del{background:linear-gradient(135deg,#b9780a,#935f08)}
+.sz{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+.szb{padding:12px;border:2px solid var(--line);border-radius:12px;background:#fff;font:800 14px Lato;color:var(--muted);cursor:pointer;text-align:center;touch-action:manipulation}
+.szb.on{border-color:var(--navy);background:#eef2f8;color:var(--navy)}
+.rec{background:#fff;border:1px solid var(--line);border-left:5px solid var(--gold);border-radius:12px;padding:11px 13px;margin-bottom:9px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.rec .r1{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.rec .nm2{font:900 15px Lato;color:var(--navy)}
+.rec .tag{font:800 10px Lato;padding:2px 8px;border-radius:7px;background:#eef2f6;color:#5b6b7b;text-transform:uppercase;letter-spacing:.3px}
+.rec .meta{font-size:12.5px;color:var(--muted);margin-top:4px}
+.sechd{font:900 16px Lato;color:var(--navy);margin:16px 2px 2px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(26,43,58,.95);color:#fff;padding:11px 18px;border-radius:22px;font:800 14px Lato;z-index:99;opacity:0;transition:.2s;pointer-events:none}
 .toast.show{opacity:1}
 </style>
@@ -143,9 +158,13 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
     </div>
   </div>
 
+  <!-- ===== RECEPTION CONSOLE — one screen, three sections ===== -->
   <div id="scr-board" class="hide">
-    <button class="btn btn-go" style="margin-top:14px" onclick="openLogForm()">➕ Log a request</button>
-    <div class="tiles" style="margin-top:4px">
+
+    <!-- Section 1 · Housekeeping Requests -->
+    <div class="sec sec-req">🧹 Housekeeping Requests</div>
+    <button class="btn btn-go" onclick="openLogForm()">➕ Log a request</button>
+    <div class="tiles" style="margin-top:10px">
       <div class="tile"><div class="v" id="t-pend" style="color:#5b6b7b">0</div><div class="k">Pending</div></div>
       <div class="tile"><div class="v" id="t-urg" style="color:var(--red)">0</div><div class="k">Urgent</div></div>
       <div class="tile"><div class="v" id="t-ip" style="color:var(--amber)">0</div><div class="k">In progress</div></div>
@@ -153,9 +172,55 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
     </div>
     <div class="chips" id="b-chips"></div>
     <div id="b-list"></div>
+
+    <!-- Section 2 · Visitor Log -->
+    <div class="sec sec-vis">👤 Visitor Log</div>
+    <div class="card">
+      <label class="fl">Visitor name</label>
+      <input id="v-name" type="text" placeholder="Full name">
+      <label class="fl" style="margin-top:12px">Company <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
+      <input id="v-company" type="text" list="supplier-list" placeholder="e.g. Brakes, Initial, private">
+      <label class="fl" style="margin-top:12px">Here to see</label>
+      <input id="v-host" type="text" list="staff-list" placeholder="Name or department">
+      <label class="fl" style="margin-top:12px">Date</label>
+      <input id="v-date" type="date">
+      <label class="fl" style="margin-top:12px">Notes <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
+      <input id="v-notes" type="text" placeholder="e.g. car reg, reason for visit">
+      <button class="btn btn-go" style="margin-top:14px" onclick="logVisitor()">Log visitor →</button>
+    </div>
+    <div class="sechd">Today's visitors</div>
+    <div id="v-list"></div>
+
+    <!-- Section 3 · Delivery Log -->
+    <div class="sec sec-del">📦 Delivery Log</div>
+    <div class="card">
+      <label class="fl">Supplier <span style="font-weight:400;text-transform:none;color:#9aa7b5">(pick or type)</span></label>
+      <input id="d-supplier" type="text" list="supplier-list" placeholder="Start typing — e.g. Brakes, DPD…">
+      <label class="fl" style="margin-top:12px">Goods description</label>
+      <input id="d-desc" type="text" placeholder="What was delivered">
+      <label class="fl" style="margin-top:12px">Size</label>
+      <div class="sz" id="d-size">
+        <button type="button" class="szb" onclick="setSize('small')">Small</button>
+        <button type="button" class="szb on" onclick="setSize('medium')">Medium</button>
+        <button type="button" class="szb" onclick="setSize('large')">Large</button>
+      </div>
+      <label class="fl" style="margin-top:12px">Who it's for</label>
+      <input id="d-for" type="text" list="staff-list" placeholder="Name or department">
+      <label class="fl" style="margin-top:12px">Where left</label>
+      <input id="d-loc" type="text" placeholder="e.g. Reception, back office, kitchen">
+      <label class="fl" style="margin-top:12px">Delivery ref <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
+      <input id="d-ref" type="text" placeholder="Tracking / consignment no.">
+      <div class="muted" style="margin-top:10px;font-size:12px">📅 Date &amp; time are recorded automatically when you log it.</div>
+      <button class="btn btn-go" style="margin-top:12px" onclick="logDelivery()">Log delivery →</button>
+    </div>
+    <div class="sechd">Today's deliveries</div>
+    <div id="d-list"></div>
+
   </div>
 
 </div>
+<datalist id="staff-list"></datalist>
+<datalist id="supplier-list"></datalist>
 <div class="toast" id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -300,9 +365,11 @@ async function loadStaff(){
   B_STAFF=[{id:'ruth',name:'Ruth Addison'},{id:'aryan',name:'Aryan'},{id:'lara',name:'Lara Jervis'},{id:'rahul',name:'Rahul Reghunath'},{id:'manoj',name:'Manoj'},{id:'satya',name:'Satya'},{id:'laith',name:'Laith Hardy'}];
 }
 async function startBoard(){
-  $('top-tt').textContent='📋 Requests board';
+  $('top-tt').textContent='📋 Reception Console';
   showScreen('scr-board');
-  await loadStaff();
+  await loadStaff(); fillStaffDatalist(); fillSupplierDatalist();
+  if(!$('v-date').value) $('v-date').value=todayISO();
+  // Section 1 — requests (live)
   $('b-chips').innerHTML=B_FILTERS.map(([f,l])=>`<button class="chip ${B_FILTER===f?'on':''}" onclick="bSetFilter('${f}')">${l}</button>`).join('');
   if(db){
     if(B_UNSUB) B_UNSUB();
@@ -313,10 +380,20 @@ async function startBoard(){
       if(nowOpen>prevOpen && B_READY) notifyNew();
       B_READY=true; bRender();
     }, e=>{ console.warn('board snap',e); $('b-list').innerHTML='<div class="muted" style="padding:20px;text-align:center">Could not load requests — check connection.</div>'; });
-  } else { B_ROWS=JSON.parse(localStorage.getItem('hoshouse_requests')||'[]'); bRender(); }
+    // Section 2 — visitors (live)
+    if(V_UNSUB) V_UNSUB();
+    V_UNSUB=db.collection('hoshouse_visitors').onSnapshot(snap=>{ V_ROWS=snap.docs.map(d=>d.data()).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); renderVisitors(); }, e=>{ $('v-list').innerHTML='<div class="muted" style="padding:16px;text-align:center">Could not load visitors.</div>'; });
+    // Section 3 — deliveries (live)
+    if(D_UNSUB) D_UNSUB();
+    D_UNSUB=db.collection('hoshouse_deliveries').onSnapshot(snap=>{ D_ROWS=snap.docs.map(d=>d.data()).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); renderDeliveries(); }, e=>{ $('d-list').innerHTML='<div class="muted" style="padding:16px;text-align:center">Could not load deliveries.</div>'; });
+  } else {
+    B_ROWS=JSON.parse(localStorage.getItem('hoshouse_requests')||'[]'); bRender();
+    V_ROWS=JSON.parse(localStorage.getItem('hoshouse_visitors')||'[]'); renderVisitors();
+    D_ROWS=JSON.parse(localStorage.getItem('hoshouse_deliveries')||'[]'); renderDeliveries();
+  }
   try{ if('Notification' in window && Notification.permission==='default') Notification.requestPermission(); }catch(e){}
 }
-function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } B_READY=false; }
+function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } stopVD(); B_READY=false; }
 function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l])=>`<button class="chip ${B_FILTER===ff?'on':''}" onclick="bSetFilter('${ff}')">${l}</button>`).join(''); bRender(); }
 function notifyNew(){ try{ if('Notification' in window && Notification.permission==='granted') new Notification('🧹 New housekeeping request',{body:'A guest/front-desk request just came in.'}); }catch(e){} toast('🔔 New request in'); }
 function reqItems(r){ if(r.items&&r.items.length) return r.items.map(it=>`${TYPE_EMOJI(it.type)} ${esc(it.label)}${it.qty>1?(' ×'+it.qty):''}`).join('  ·  '); return `${TYPE_EMOJI(r.type)} ${esc(r.typeLabel||'')}`; }
@@ -355,6 +432,75 @@ async function patch(id,fields){ fields.updatedAt=new Date().toISOString(); try{
 function allocate(id,hk){ const s=B_STAFF.find(x=>x.id===hk); patch(id,{assignedTo:hk||'',assignedName:s?s.name:''}); toast(s?('Allocated to '+s.name.split(' ')[0]):'Unassigned'); }
 function setStatus(id,status){ const f={status}; const now=new Date().toISOString(); if(status==='in_progress') f.startedAt=now; if(status==='done') f.completedAt=now; patch(id,f); toast(status==='done'?'✓ Completed':'Marked in progress'); }
 function toggleUrgent(id,cur){ const u=cur==='urgent'?'normal':'urgent'; patch(id,{priority:u}); toast(u==='urgent'?'Marked urgent':'Urgent removed'); }
+
+/* ============================================================
+   VISITOR LOG + DELIVERY LOG (reception console tabs)
+   Write to:  hoshouse_visitors   ·   hoshouse_deliveries
+   ============================================================ */
+let V_UNSUB=null, V_ROWS=[], D_UNSUB=null, D_ROWS=[], _delSize='medium';
+function stopVD(){ if(V_UNSUB){ V_UNSUB(); V_UNSUB=null; } if(D_UNSUB){ D_UNSUB(); D_UNSUB=null; } }
+function fillStaffDatalist(){ const dl=$('staff-list'); if(dl) dl.innerHTML=B_STAFF.map(s=>`<option value="${esc(s.name)}">`).join(''); }
+/* Regular suppliers — pre-loaded; reception can still type anything else.
+   Edit this list to match Brandon Hall's own suppliers. */
+const SUPPLIERS = [
+  'Brakes','Bidfood','Booker','Nisbets','Matthew Clark','LWC Drinks','Coca-Cola',
+  'Johnsons Stalbridge Linen','JLA','Initial Washroom','Rentokil','Molton Brown',
+  'Amazon','DPD','DHL','UPS','FedEx','Royal Mail','Parcelforce','Evri',
+  'Screwfix','Toolstation','City Plumbing','Howdens','Lyreco','Office Depot'
+];
+function fillSupplierDatalist(){ const dl=$('supplier-list'); if(dl) dl.innerHTML=SUPPLIERS.map(s=>`<option value="${esc(s)}">`).join(''); }
+function recTime(iso){ try{ return new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+async function saveRec(coll,doc,localCb){
+  try{ if(db){ await db.collection(coll).doc(doc.id).set(doc); } else { const a=JSON.parse(localStorage.getItem(coll)||'[]'); a.unshift(doc); localStorage.setItem(coll,JSON.stringify(a)); if(localCb) localCb(); } }
+  catch(e){ console.warn('saveRec',e); toast('Could not save — check connection'); }
+}
+
+/* ----- Visitors ----- */
+function logVisitor(){
+  const name=($('v-name').value||'').trim();
+  if(!name){ toast('Enter the visitor name'); $('v-name').focus(); return; }
+  const now=new Date().toISOString();
+  const doc={ id:'vis_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), name,
+    company:($('v-company').value||'').trim(), host:($('v-host').value||'').trim(),
+    date:($('v-date').value||todayISO()), notes:($('v-notes').value||'').trim(), createdAt:now };
+  saveRec('hoshouse_visitors',doc,()=>{ V_ROWS.unshift(doc); renderVisitors(); });
+  $('v-name').value=''; $('v-company').value=''; $('v-host').value=''; $('v-notes').value='';
+  toast('✓ Visitor logged');
+}
+function renderVisitors(){
+  const today=todayISO();
+  const rows=V_ROWS.filter(r=> r.date===today || String(r.createdAt||'').slice(0,10)===today );
+  if(!rows.length){ $('v-list').innerHTML='<div class="muted" style="padding:20px;text-align:center">No visitors logged today.</div>'; return; }
+  $('v-list').innerHTML=rows.map(r=>`<div class="rec">
+    <div class="r1"><span class="nm2">${esc(r.name)}</span>${r.company?`<span class="tag">${esc(r.company)}</span>`:''}</div>
+    <div class="meta">${r.host?('🔗 Visiting '+esc(r.host)+' · '):''}🕐 ${recTime(r.createdAt)}${r.notes?(' · '+esc(r.notes)):''}</div>
+  </div>`).join('');
+}
+
+/* ----- Deliveries ----- */
+function setSize(s){ _delSize=s; const btns=document.querySelectorAll('#d-size .szb'); const map={small:0,medium:1,large:2}; btns.forEach(b=>b.classList.remove('on')); if(btns[map[s]]) btns[map[s]].classList.add('on'); }
+function logDelivery(){
+  const supplier=($('d-supplier').value||'').trim(); const desc=($('d-desc').value||'').trim();
+  if(!supplier){ toast('Enter the supplier'); $('d-supplier').focus(); return; }
+  if(!desc){ toast('Enter what was delivered'); $('d-desc').focus(); return; }
+  const now=new Date().toISOString();
+  const doc={ id:'del_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), supplier, desc, size:_delSize,
+    forWho:($('d-for').value||'').trim(), location:($('d-loc').value||'').trim(), ref:($('d-ref').value||'').trim(), createdAt:now };
+  saveRec('hoshouse_deliveries',doc,()=>{ D_ROWS.unshift(doc); renderDeliveries(); });
+  $('d-supplier').value=''; $('d-desc').value=''; $('d-for').value=''; $('d-loc').value=''; $('d-ref').value=''; setSize('medium');
+  toast('✓ Delivery logged');
+}
+function renderDeliveries(){
+  const today=todayISO();
+  const rows=D_ROWS.filter(r=> String(r.createdAt||'').slice(0,10)===today );
+  if(!rows.length){ $('d-list').innerHTML='<div class="muted" style="padding:20px;text-align:center">No deliveries logged today.</div>'; return; }
+  const SZ={small:'Small',medium:'Medium',large:'Large'};
+  $('d-list').innerHTML=rows.map(r=>`<div class="rec">
+    <div class="r1"><span class="nm2">${esc(r.supplier)}</span><span class="tag">${SZ[r.size]||'Medium'}</span>${r.ref?`<span class="tag">Ref ${esc(r.ref)}</span>`:''}</div>
+    <div class="meta">📦 ${esc(r.desc)}</div>
+    <div class="meta">${r.forWho?('👤 For '+esc(r.forWho)+' · '):''}${r.location?('📍 '+esc(r.location)+' · '):''}🕐 ${recTime(r.createdAt)}</div>
+  </div>`).join('');
+}
 
 /* ---- entry: staff console (reception/desktop) opens the board; guests see the form ---- */
 if(STAFF) openBoard();
