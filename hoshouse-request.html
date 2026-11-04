@@ -172,19 +172,21 @@ body.console #scr-form{max-width:560px;margin:0 auto}
 
     <!-- Dashboard across the top -->
     <div class="dash">
-      <div class="tile"><div class="v" id="t-pend" style="color:#5b6b7b">0</div><div class="k">Pending</div></div>
-      <div class="tile"><div class="v" id="t-urg" style="color:var(--red)">0</div><div class="k">Urgent</div></div>
-      <div class="tile"><div class="v" id="t-ip" style="color:var(--amber)">0</div><div class="k">In progress</div></div>
-      <div class="tile"><div class="v" id="t-done" style="color:var(--green)">0</div><div class="k">Done today</div></div>
-      <div class="tile"><div class="v" id="t-del" style="color:var(--amber)">0</div><div class="k">Deliveries today</div></div>
+      <div class="tile" style="cursor:pointer" onclick="bTile('open')"><div class="v" id="t-pend" style="color:#5b6b7b">0</div><div class="k">Pending</div></div>
+      <div class="tile" style="cursor:pointer" onclick="bTile('urgent')"><div class="v" id="t-urg" style="color:var(--red)">0</div><div class="k">Urgent</div></div>
+      <div class="tile" style="cursor:pointer" onclick="bTile('in_progress')"><div class="v" id="t-ip" style="color:var(--amber)">0</div><div class="k">In progress</div></div>
+      <div class="tile" style="cursor:pointer" onclick="bTile('done')"><div class="v" id="t-done" style="color:var(--green)">0</div><div class="k">Done today</div></div>
+      <div class="tile" style="cursor:pointer" onclick="(document.getElementById('d-list')||{}).scrollIntoView&&document.getElementById('d-list').scrollIntoView({behavior:'smooth',block:'start'})"><div class="v" id="t-del" style="color:var(--amber)">0</div><div class="k">Deliveries today</div></div>
     </div>
+
+    <button id="rec-back" onclick="recBack()" style="display:none;margin:12px 0 0;background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:11px 16px;font:800 13px Lato;color:var(--navy);cursor:pointer">← Back to overview</button>
 
     <!-- Three columns side by side -->
     <div class="cols">
 
       <!-- Column 1 · Housekeeping Requests -->
       <div class="col">
-        <div class="sec sec-req">🧹 Housekeeping Requests</div>
+        <div class="sec sec-req" style="cursor:pointer" onclick="bShowAll()">🧹 Housekeeping Requests <span style="margin-left:auto;font-size:12px;font-weight:700;opacity:.85">See all ›</span></div>
         <button class="btn btn-go" onclick="openLogForm()">➕ Log a request</button>
         <div class="chips" id="b-chips"></div>
         <div id="b-list"></div>
@@ -192,7 +194,7 @@ body.console #scr-form{max-width:560px;margin:0 auto}
 
       <!-- Column 2 · Delivery Log -->
       <div class="col">
-        <div class="sec sec-del">📦 Delivery Log</div>
+        <div class="sec sec-del" style="cursor:pointer" onclick="(document.getElementById('d-list')||{}).scrollIntoView&&document.getElementById('d-list').scrollIntoView({behavior:'smooth',block:'start'})">📦 Delivery Log <span style="margin-left:auto;font-size:12px;font-weight:700;opacity:.85">See all ›</span></div>
         <div class="card">
           <label class="fl">Supplier <span style="font-weight:400;text-transform:none;color:#9aa7b5">(pick or type)</span></label>
           <input id="d-supplier" type="text" list="supplier-list" placeholder="Start typing — e.g. Brakes, DPD…">
@@ -393,6 +395,12 @@ async function startBoard(){
 }
 function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } stopVD(); B_READY=false; }
 function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l])=>`<button class="chip ${B_FILTER===ff?'on':''}" onclick="bSetFilter('${ff}')">${l}</button>`).join(''); bRender(); }
+// Dashboard tile tapped → switch the requests filter and jump to the list.
+function bTile(f){ bSetFilter(f); try{ const el=$('rec-back'); if(el) el.style.display='inline-block'; }catch(e){} try{ const el=$('b-list'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){} }
+// Header tab tapped → show ALL requests (every fix) with a back button.
+function bShowAll(){ bSetFilter('all'); try{ const el=$('rec-back'); if(el) el.style.display='inline-block'; }catch(e){} try{ const el=$('b-list'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){} }
+// Back → return to the default overview (open/to-do) and hide the back button.
+function recBack(){ bSetFilter('open'); try{ const el=$('rec-back'); if(el) el.style.display='none'; }catch(e){} try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); } }
 function notifyNew(){ try{ if('Notification' in window && Notification.permission==='granted') new Notification('🧹 New housekeeping request',{body:'A guest/front-desk request just came in.'}); }catch(e){} toast('🔔 New request in'); }
 function reqItems(r){ if(r.items&&r.items.length) return r.items.map(it=>`${TYPE_EMOJI(it.type)} ${esc(it.label)}${it.qty>1?(' ×'+it.qty):''}`).join('  ·  '); return `${TYPE_EMOJI(r.type)} ${esc(r.typeLabel||'')}`; }
 
