@@ -74,6 +74,15 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
 .sec-req{background:linear-gradient(135deg,#1a2b3a,#2c4155)}
 .sec-vis{background:linear-gradient(135deg,#2a6a4a,#1f5038)}
 .sec-del{background:linear-gradient(135deg,#b9780a,#935f08)}
+/* logo + wide 3-column reception console */
+.top .logo{height:48px;margin:0 auto 10px;display:block}
+body.console .wrap{max-width:1200px}
+.dash{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-top:14px}
+.cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:10px;align-items:start}
+.col{min-width:0}
+body.console #scr-form{max-width:560px;margin:0 auto}
+@media(max-width:980px){ .cols{grid-template-columns:1fr} .dash{grid-template-columns:repeat(3,1fr)} }
+@media(max-width:520px){ .dash{grid-template-columns:repeat(2,1fr)} }
 .sz{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
 .szb{padding:12px;border:2px solid var(--line);border-radius:12px;background:#fff;font:800 14px Lato;color:var(--muted);cursor:pointer;text-align:center;touch-action:manipulation}
 .szb.on{border-color:var(--navy);background:#eef2f8;color:var(--navy)}
@@ -89,6 +98,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
 </head>
 <body>
 <div class="top">
+  <img class="logo" src="/assets/logos/logo---white-transparent.png" alt="Brandon Hall Hotel &amp; Spa" onerror="this.style.display='none'">
   <div class="nm">Brandon Hall</div>
   <div class="sub">Hotel &amp; Spa</div>
   <div class="tt" id="top-tt">🧹 Housekeeping Request</div>
@@ -131,8 +141,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
     </div>
 
     <button class="btn btn-go" style="margin-top:14px" onclick="submitRequest()">Send to Housekeeping →</button>
-    <button class="stafflink" id="form-back" style="display:none" onclick="startBoard()">← Back to the requests board</button>
-    <button class="stafflink" id="form-staff" onclick="openBoard()">Staff access</button>
+    <button class="stafflink" id="form-back" style="display:none" onclick="startBoard()">← Back to the console</button>
   </div>
 
   <!-- ===== THANK YOU ===== -->
@@ -158,64 +167,78 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
     </div>
   </div>
 
-  <!-- ===== RECEPTION CONSOLE — one screen, three sections ===== -->
+  <!-- ===== RECEPTION CONSOLE — dashboard + three columns (no login) ===== -->
   <div id="scr-board" class="hide">
 
-    <!-- Section 1 · Housekeeping Requests -->
-    <div class="sec sec-req">🧹 Housekeeping Requests</div>
-    <button class="btn btn-go" onclick="openLogForm()">➕ Log a request</button>
-    <div class="tiles" style="margin-top:10px">
+    <!-- Dashboard across the top -->
+    <div class="dash">
       <div class="tile"><div class="v" id="t-pend" style="color:#5b6b7b">0</div><div class="k">Pending</div></div>
       <div class="tile"><div class="v" id="t-urg" style="color:var(--red)">0</div><div class="k">Urgent</div></div>
       <div class="tile"><div class="v" id="t-ip" style="color:var(--amber)">0</div><div class="k">In progress</div></div>
       <div class="tile"><div class="v" id="t-done" style="color:var(--green)">0</div><div class="k">Done today</div></div>
+      <div class="tile"><div class="v" id="t-vis" style="color:var(--green)">0</div><div class="k">Visitors today</div></div>
+      <div class="tile"><div class="v" id="t-del" style="color:var(--amber)">0</div><div class="k">Deliveries today</div></div>
     </div>
-    <div class="chips" id="b-chips"></div>
-    <div id="b-list"></div>
 
-    <!-- Section 2 · Visitor Log -->
-    <div class="sec sec-vis">👤 Visitor Log</div>
-    <div class="card">
-      <label class="fl">Visitor name</label>
-      <input id="v-name" type="text" placeholder="Full name">
-      <label class="fl" style="margin-top:12px">Company <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
-      <input id="v-company" type="text" list="supplier-list" placeholder="e.g. Brakes, Initial, private">
-      <label class="fl" style="margin-top:12px">Here to see</label>
-      <input id="v-host" type="text" list="staff-list" placeholder="Name or department">
-      <label class="fl" style="margin-top:12px">Date</label>
-      <input id="v-date" type="date">
-      <label class="fl" style="margin-top:12px">Notes <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
-      <input id="v-notes" type="text" placeholder="e.g. car reg, reason for visit">
-      <button class="btn btn-go" style="margin-top:14px" onclick="logVisitor()">Log visitor →</button>
-    </div>
-    <div class="sechd">Today's visitors</div>
-    <div id="v-list"></div>
+    <!-- Three columns side by side -->
+    <div class="cols">
 
-    <!-- Section 3 · Delivery Log -->
-    <div class="sec sec-del">📦 Delivery Log</div>
-    <div class="card">
-      <label class="fl">Supplier <span style="font-weight:400;text-transform:none;color:#9aa7b5">(pick or type)</span></label>
-      <input id="d-supplier" type="text" list="supplier-list" placeholder="Start typing — e.g. Brakes, DPD…">
-      <label class="fl" style="margin-top:12px">Goods description</label>
-      <input id="d-desc" type="text" placeholder="What was delivered">
-      <label class="fl" style="margin-top:12px">Size</label>
-      <div class="sz" id="d-size">
-        <button type="button" class="szb" onclick="setSize('small')">Small</button>
-        <button type="button" class="szb on" onclick="setSize('medium')">Medium</button>
-        <button type="button" class="szb" onclick="setSize('large')">Large</button>
+      <!-- Column 1 · Housekeeping Requests -->
+      <div class="col">
+        <div class="sec sec-req">🧹 Housekeeping Requests</div>
+        <button class="btn btn-go" onclick="openLogForm()">➕ Log a request</button>
+        <div class="chips" id="b-chips"></div>
+        <div id="b-list"></div>
       </div>
-      <label class="fl" style="margin-top:12px">Who it's for</label>
-      <input id="d-for" type="text" list="staff-list" placeholder="Name or department">
-      <label class="fl" style="margin-top:12px">Where left</label>
-      <input id="d-loc" type="text" placeholder="e.g. Reception, back office, kitchen">
-      <label class="fl" style="margin-top:12px">Delivery ref <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
-      <input id="d-ref" type="text" placeholder="Tracking / consignment no.">
-      <div class="muted" style="margin-top:10px;font-size:12px">📅 Date &amp; time are recorded automatically when you log it.</div>
-      <button class="btn btn-go" style="margin-top:12px" onclick="logDelivery()">Log delivery →</button>
-    </div>
-    <div class="sechd">Today's deliveries</div>
-    <div id="d-list"></div>
 
+      <!-- Column 2 · Visitor Log -->
+      <div class="col">
+        <div class="sec sec-vis">👤 Visitor Log</div>
+        <div class="card">
+          <label class="fl">Visitor name</label>
+          <input id="v-name" type="text" placeholder="Full name">
+          <label class="fl" style="margin-top:12px">Company <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
+          <input id="v-company" type="text" list="supplier-list" placeholder="e.g. Brakes, Initial, private">
+          <label class="fl" style="margin-top:12px">Here to see</label>
+          <input id="v-host" type="text" list="staff-list" placeholder="Name or department">
+          <label class="fl" style="margin-top:12px">Date</label>
+          <input id="v-date" type="date">
+          <label class="fl" style="margin-top:12px">Notes <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
+          <input id="v-notes" type="text" placeholder="e.g. car reg, reason for visit">
+          <button class="btn btn-go" style="margin-top:14px" onclick="logVisitor()">Log visitor →</button>
+        </div>
+        <div class="sechd">Today's visitors</div>
+        <div id="v-list"></div>
+      </div>
+
+      <!-- Column 3 · Delivery Log -->
+      <div class="col">
+        <div class="sec sec-del">📦 Delivery Log</div>
+        <div class="card">
+          <label class="fl">Supplier <span style="font-weight:400;text-transform:none;color:#9aa7b5">(pick or type)</span></label>
+          <input id="d-supplier" type="text" list="supplier-list" placeholder="Start typing — e.g. Brakes, DPD…">
+          <label class="fl" style="margin-top:12px">Goods description</label>
+          <input id="d-desc" type="text" placeholder="What was delivered">
+          <label class="fl" style="margin-top:12px">Size</label>
+          <div class="sz" id="d-size">
+            <button type="button" class="szb" onclick="setSize('small')">Small</button>
+            <button type="button" class="szb on" onclick="setSize('medium')">Medium</button>
+            <button type="button" class="szb" onclick="setSize('large')">Large</button>
+          </div>
+          <label class="fl" style="margin-top:12px">Who it's for</label>
+          <input id="d-for" type="text" list="staff-list" placeholder="Name or department">
+          <label class="fl" style="margin-top:12px">Where left</label>
+          <input id="d-loc" type="text" placeholder="e.g. Reception, back office, kitchen">
+          <label class="fl" style="margin-top:12px">Delivery ref <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
+          <input id="d-ref" type="text" placeholder="Tracking / consignment no.">
+          <div class="muted" style="margin-top:10px;font-size:12px">📅 Date &amp; time are recorded automatically when you log it.</div>
+          <button class="btn btn-go" style="margin-top:12px" onclick="logDelivery()">Log delivery →</button>
+        </div>
+        <div class="sechd">Today's deliveries</div>
+        <div id="d-list"></div>
+      </div>
+
+    </div>
   </div>
 
 </div>
@@ -365,6 +388,7 @@ async function loadStaff(){
   B_STAFF=[{id:'ruth',name:'Ruth Addison'},{id:'aryan',name:'Aryan'},{id:'lara',name:'Lara Jervis'},{id:'rahul',name:'Rahul Reghunath'},{id:'manoj',name:'Manoj'},{id:'satya',name:'Satya'},{id:'laith',name:'Laith Hardy'}];
 }
 async function startBoard(){
+  document.body.classList.add('console');
   $('top-tt').textContent='📋 Reception Console';
   showScreen('scr-board');
   await loadStaff(); fillStaffDatalist(); fillSupplierDatalist();
@@ -470,6 +494,7 @@ function logVisitor(){
 function renderVisitors(){
   const today=todayISO();
   const rows=V_ROWS.filter(r=> r.date===today || String(r.createdAt||'').slice(0,10)===today );
+  try{ const el=$('t-vis'); if(el) el.textContent=rows.length; }catch(e){}
   if(!rows.length){ $('v-list').innerHTML='<div class="muted" style="padding:20px;text-align:center">No visitors logged today.</div>'; return; }
   $('v-list').innerHTML=rows.map(r=>`<div class="rec">
     <div class="r1"><span class="nm2">${esc(r.name)}</span>${r.company?`<span class="tag">${esc(r.company)}</span>`:''}</div>
@@ -493,6 +518,7 @@ function logDelivery(){
 function renderDeliveries(){
   const today=todayISO();
   const rows=D_ROWS.filter(r=> String(r.createdAt||'').slice(0,10)===today );
+  try{ const el=$('t-del'); if(el) el.textContent=rows.length; }catch(e){}
   if(!rows.length){ $('d-list').innerHTML='<div class="muted" style="padding:20px;text-align:center">No deliveries logged today.</div>'; return; }
   const SZ={small:'Small',medium:'Medium',large:'Large'};
   $('d-list').innerHTML=rows.map(r=>`<div class="rec">
@@ -502,8 +528,9 @@ function renderDeliveries(){
   </div>`).join('');
 }
 
-/* ---- entry: staff console (reception/desktop) opens the board; guests see the form ---- */
-if(STAFF) openBoard();
+/* ---- entry: the reception link opens the console straight away (no login);
+        guests (QR / plain link) see just the request form ---- */
+if(STAFF) startBoard();
 </script>
 </body>
 </html>
