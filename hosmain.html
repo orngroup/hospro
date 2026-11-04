@@ -323,24 +323,24 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
   </div>
 
   <div style="font-size:56px;margin-bottom:16px">🔔</div>
-  <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:10px">Enable notifications</div>
+  <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:10px">Turn on alerts, camera &amp; mic</div>
   <div style="font-size:13px;color:rgba(255,255,255,.65);max-width:300px;text-align:center;line-height:1.6;margin-bottom:28px">
-    Get a real buzz on your phone when a job is assigned to you or completed — even when the app is closed.
+    Get a real buzz on your phone when a job is assigned or completed — even when the app is closed — plus camera &amp; mic so reporting a fault with a photo or voice note is instant.
   </div>
 
   <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:16px 20px;max-width:300px;width:100%;margin-bottom:28px;text-align:left">
-    <div style="font-size:12px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">You'll be notified when:</div>
+    <div style="font-size:12px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">This turns on:</div>
     <div style="font-size:13px;color:rgba(255,255,255,.8);line-height:2">
-      🔧 A job is assigned to you<br>
-      ✅ A job you're on is completed<br>
-      📋 You're added to a new job
+      🔔 Job alerts — even when HosFIX is closed<br>
+      📷 Camera — add photos to a report<br>
+      🎙️ Microphone — record a voice note
     </div>
   </div>
 
-  <button class="ib-btn ib-primary" onclick="onbRequestNotif()">🔔 Allow notifications</button>
+  <button class="ib-btn ib-primary" onclick="onbRequestNotif()">🔔 Allow alerts, camera &amp; mic</button>
   <button class="ib-btn ib-secondary" onclick="onbGoStep3()">Skip for now</button>
   <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:12px;max-width:260px;text-align:center">
-    You can enable notifications later in your phone settings
+    You can turn these on later in your phone settings
   </div>
 </div>
 
@@ -430,8 +430,8 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
   display:none;align-items:center;gap:12px;box-shadow:0 8px 24px rgba(0,0,0,.3)">
   <span style="font-size:22px">🔔</span>
   <div style="flex:1;font-size:13px;color:#fff">
-    <strong style="display:block;margin-bottom:2px">Enable notifications</strong>
-    Get alerts when jobs are assigned or completed
+    <strong style="display:block;margin-bottom:2px">Turn on alerts, camera &amp; mic</strong>
+    Job alerts even when closed, plus photo &amp; voice
   </div>
   <button id="btn-notif-allow" style="padding:8px 12px;border-radius:9px;border:none;
     background:var(--gold);color:var(--navy);font:700 12px 'Lato';cursor:pointer;touch-action:manipulation">Allow</button>
@@ -796,8 +796,9 @@ if('serviceWorker' in navigator){
 
 function maybeAskNotifications(){
   try{
-  if(typeof Notification==='undefined'||!('Notification' in window)) return;
-  if(Notification.permission==='granted'||Notification.permission==='denied') return;
+  const notifPending = (typeof Notification!=='undefined') && ('Notification' in window) && Notification.permission==='default';
+  let mediaPending=true; try{ mediaPending = !localStorage.getItem('hf_media_primed'); }catch(e){}
+  if(!notifPending && !mediaPending) return;   // already set up
   const nb=$('notif-banner'); if(!nb) return;
   nb.style.display='flex';
   }catch(e){}
@@ -806,7 +807,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const ab=$('btn-notif-allow');
   if(ab) ab.addEventListener('click',()=>{
     $('notif-banner').style.display='none';
-    if(typeof Notification!=='undefined') Notification.requestPermission().then(p=>{ if(p==='granted'){ localStorage.setItem('hf_notif_granted','1'); toast('Notifications enabled ✓'); if(typeof fcmEnsureRegistered==='function') fcmEnsureRegistered(true); } });
+    if(typeof hfRequestPermissions==='function') hfRequestPermissions();
   });
   const cb=$('btn-notif-close');
   if(cb) cb.addEventListener('click',()=>{ $('notif-banner').style.display='none'; });
@@ -820,6 +821,33 @@ function sendNotif(title,body,tag){
     if(swReg) swReg.showNotification(title,opts);
     else new Notification(title,opts);
   }catch(e){}
+}
+
+// ── One-tap permissions: push notifications (work even when the app is closed)
+//    + camera + microphone, so photos and voice notes never prompt mid-report.
+//    Must be called straight from a tap (user gesture) or the prompts won't show.
+async function hfRequestPermissions(){
+  // 1) Notifications → register this phone for push via FCM
+  try{
+    if(typeof Notification!=='undefined'){
+      if(Notification.permission==='default'){
+        const p=await Notification.requestPermission();
+        if(p==='granted'){ try{localStorage.setItem('hf_notif_granted','1');}catch(e){} if(typeof fcmEnsureRegistered==='function') fcmEnsureRegistered(true); }
+        else { try{localStorage.setItem('hf_notif_granted','0');}catch(e){} }
+      } else if(Notification.permission==='granted'){
+        if(typeof fcmEnsureRegistered==='function') fcmEnsureRegistered(true);
+      }
+    }
+  }catch(e){}
+  // 2) Camera + microphone — prime so the reporter's photo/voice capture is instant
+  try{
+    if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+      let stream=await navigator.mediaDevices.getUserMedia({video:true,audio:true}).catch(()=>null);
+      if(!stream) stream=await navigator.mediaDevices.getUserMedia({audio:true}).catch(()=>null);
+      if(stream){ try{stream.getTracks().forEach(t=>t.stop());}catch(e){} try{localStorage.setItem('hf_media_primed','1');}catch(e){} }
+    } else { try{localStorage.setItem('hf_media_primed','1');}catch(e){} }
+  }catch(e){}
+  try{ toast('✓ All set — alerts, camera & mic ready'); }catch(e){}
 }
 
 // ── MAINTENANCE NAV ──────────────────────────────────────────────────────────
@@ -962,15 +990,17 @@ function renderJobs(){
   });
 
   // Filter
-  if(FILTER==='urgent') jobs=jobs.filter(j=>j.priority==='urgent'&&j.status!=='complete');
+  if(FILTER==='new') jobs=jobs.filter(j=>j.status!=='complete' && !(j.assignees||[]).length);
+  else if(FILTER==='urgent') jobs=jobs.filter(j=>j.priority==='urgent'&&j.status!=='complete');
   else if(FILTER==='not-started') jobs=jobs.filter(j=>j.status==='not-started');
   else if(FILTER==='in-progress') jobs=jobs.filter(j=>j.status==='in-progress');
   else if(FILTER==='complete') jobs=jobs.filter(j=>j.status==='complete');
 
   let html=`${isReporter()?`<div class="hf-hero"><div class="hf-hero-greet">Hi ${MY_USER?.name.split(' ')[0]||''}</div><div class="hf-hero-date">Spotted something that needs fixing?</div></div><div style="padding:14px 14px 0"><button type="button" class="btn btn-orange" onclick="openNewJob()">➕ Report a fault</button></div>`:''}<div class="chips">
-    ${['all','urgent','not-started','in-progress','complete'].map(f=>`
+    ${(isReporter()?['all','urgent','not-started','in-progress','complete']:['all','new','urgent','not-started','in-progress','complete']).map(f=>`
       <span class="chip ${FILTER===f?'on':''}" data-filter="${f}">${
         f==='all'?'All ('+myJobs().filter(j=>j.status!=='complete').length+')':
+        f==='new'?'🆕 New ('+myJobs().filter(j=>j.status!=='complete'&&!(j.assignees||[]).length).length+')':
         f==='urgent'?'🟠 Urgent':f==='not-started'?'🔴 Not started':
         f==='in-progress'?'🟡 In progress':'🟢 Complete'
       }</span>`).join('')}
@@ -1205,12 +1235,12 @@ function renderReporterForm(){
     </div>
   </div>
 
-  <div class="f-field"><label>Photos</label>
+  <div class="f-field"><label>Photo * <span style="font-weight:400;color:#7a8494">— at least one</span></label>
     <div class="photo-zone" id="rp-photo-zone">📷 Tap to add photo(s)</div>
     <div id="rp-photo-preview" class="photo-thumbs" style="margin-top:8px"></div>
   </div>
 
-  <div class="f-field"><label>Voice note (up to 25s)</label>
+  <div class="f-field"><label>Voice note (up to 20s)</label>
     <div id="nj-voice-box"></div>
   </div>
 
@@ -1267,13 +1297,13 @@ function njStartVoice(){
       const r=new FileReader(); r.onload=function(){ FS.voiceNote=r.result; njRenderVoice(); toast('Voice note saved ✓'); }; r.readAsDataURL(blob);
     };
     _rec.start(); _recStart=Date.now(); njRenderVoice(true);
-    _recTimer=setInterval(function(){ const left=25-Math.floor((Date.now()-_recStart)/1000); const el=$('nj-voice-time'); if(el) el.textContent=Math.max(0,left)+'s'; if(left<=0) njStopVoice(); },250);
+    _recTimer=setInterval(function(){ const left=20-Math.floor((Date.now()-_recStart)/1000); const el=$('nj-voice-time'); if(el) el.textContent=Math.max(0,left)+'s'; if(left<=0) njStopVoice(); },250);
   }).catch(function(){ toast('Microphone blocked — allow mic access to record'); });
 }
 function njStopVoice(){ try{ if(_rec && _rec.state==='recording') _rec.stop(); }catch(e){} }
 function njRenderVoice(recording){
   const box=$('nj-voice-box'); if(!box) return;
-  if(recording){ box.innerHTML='<button type="button" class="btn btn-red" onclick="njStopVoice()">⏹ Stop recording — <span id="nj-voice-time">25s</span></button>'; return; }
+  if(recording){ box.innerHTML='<button type="button" class="btn btn-red" onclick="njStopVoice()">⏹ Stop recording — <span id="nj-voice-time">20s</span></button>'; return; }
   if(FS.voiceNote){ box.innerHTML='<audio controls src="'+FS.voiceNote+'" style="width:100%;margin-bottom:6px"></audio><button type="button" class="btn btn-ghost" onclick="FS.voiceNote=null;njRenderVoice()">✕ Remove voice note</button>'; return; }
   box.innerHTML='<button type="button" class="btn btn-ghost" onclick="njStartVoice()">🎙️ Record voice note</button>';
 }
@@ -1282,6 +1312,7 @@ function submitReporterJob(){
   try{
     const title=($('rp-title')?.value||'').trim();
     if(!title){ toast('⚠️ Please say what needs fixing'); return; }
+    if(!(FS.photos&&FS.photos.length)){ toast('📷 Please add at least one photo'); return; }
     const area=$('rp-area')?.value||FS.area||'';
     const location=$('rp-room')?.value||FS.location||'';
     const description=$('rp-desc')?.value||'';
@@ -2681,16 +2712,7 @@ function onbGoStep2() {
 }
 
 async function onbRequestNotif() {
-  try {
-    const perm = await Notification.requestPermission();
-    if (perm === "granted") {
-      localStorage.setItem("hf_notif_granted","1");
-      showToastNotification("✓ Notifications enabled — you'll buzz when jobs arrive");
-      fcmEnsureRegistered(true);
-    } else {
-      localStorage.setItem("hf_notif_granted","0");
-    }
-  } catch(e) {}
+  try { if(typeof hfRequestPermissions==='function') await hfRequestPermissions(); } catch(e) {}
   onbGoStep3();
 }
 
