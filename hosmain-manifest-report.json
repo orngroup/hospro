@@ -1,7 +1,7 @@
 {
   "name": "HosFix - Report",
   "short_name": "HosFix - Report",
-  "start_url": "/hosmain.html?report&v=20261104b",
+  "start_url": "/hosmain-report.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

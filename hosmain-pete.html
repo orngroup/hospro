@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -21,20 +24,17 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;font-family:'Lato',sans-serif}
 body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
-  padding:30px 26px calc(30px + env(safe-area-inset-bottom,0px));color:#fff;
-  background:linear-gradient(160deg,#2a6a4a 0%,#18422e 100%)}
+  padding:30px 26px calc(30px + env(safe-area-inset-bottom,0px));color:#fff;background:linear-gradient(160deg,#2a6a4a 0%,#18422e 100%)}
 .ic{width:104px;height:104px;border-radius:24px;box-shadow:0 12px 30px rgba(0,0,0,.35);margin-bottom:20px}
 .nm{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:700;letter-spacing:1px;margin-bottom:4px}
 .nm b{color:#c9a978}
 .ht{font-size:14px;color:rgba(255,255,255,.8);font-weight:600;margin-bottom:2px}
 .sb{font-size:10px;letter-spacing:3px;font-weight:700;color:#c9a978;text-transform:uppercase;margin-bottom:8px}
 .rl{font-size:12px;color:rgba(255,255,255,.72);margin-bottom:22px}
-.btn{width:100%;max-width:330px;padding:16px;border-radius:14px;border:none;font:700 16px 'Lato';cursor:pointer;
-  text-decoration:none;display:block;margin-bottom:11px;touch-action:manipulation}
+.btn{width:100%;max-width:330px;padding:16px;border-radius:14px;border:none;font:700 16px 'Lato';cursor:pointer;text-decoration:none;display:block;margin-bottom:11px;touch-action:manipulation}
 .btn-prim{background:#c9a978;color:#1a2b3a}
 .btn-sec{background:rgba(255,255,255,.1);color:rgba(255,255,255,.85)}
-.steps{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:16px 18px;
-  max-width:340px;width:100%;text-align:left;margin-top:14px}
+.steps{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:16px 18px;max-width:340px;width:100%;text-align:left;margin-top:14px}
 .steps .t{font-size:11px;font-weight:700;letter-spacing:.6px;color:#c9a978;text-transform:uppercase;margin-bottom:10px}
 .steps .s{display:flex;align-items:flex-start;gap:11px;padding:6px 0;font-size:13px;color:rgba(255,255,255,.88);line-height:1.5}
 .steps .n{width:24px;height:24px;flex-shrink:0;border-radius:50%;background:#c9a978;color:#1a2b3a;font-weight:700;font-size:12px;display:grid;place-items:center;margin-top:1px}
@@ -49,7 +49,7 @@ body{min-height:100vh;display:flex;flex-direction:column;align-items:center;just
   <div class="rl">Operative — your allocated jobs</div>
 
   <button type="button" id="installBtn" class="btn btn-prim">📲 Install HosFix</button>
-  <a class="btn btn-sec" href="/hosmain.html?me=pete&v=20261104b">Open in browser →</a>
+  <a class="btn btn-sec" id="openBtn" href="#">Open in browser →</a>
 
   <div class="steps" id="steps">
     <div class="t">📲 How to install</div>
@@ -62,11 +62,14 @@ body{min-height:100vh;display:flex;flex-direction:column;align-items:center;just
 <script>
 (function(){
   var target='me=pete';
+  // Always-fresh: a new timestamp each launch means the app can never load a cached build.
+  function dest(){ return '/hosmain.html?'+target+'&v='+Date.now(); }
   var ua=navigator.userAgent||'';
   var isIOS=/iphone|ipad|ipod/i.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
   var standalone=false;
   try{ standalone=window.matchMedia('(display-mode:standalone)').matches || navigator.standalone===true; }catch(e){}
-  if(standalone){ location.replace('/hosmain.html?'+target+'&v=20261104b'); return; }
+  if(standalone){ location.replace(dest()); return; }
+  var ob=document.getElementById('openBtn'); if(ob) ob.setAttribute('href',dest());
   if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('/hosmain-sw.js'); }catch(e){} }
   var deferred=null, btn=document.getElementById('installBtn'), st1=document.getElementById('st1'), foot=document.getElementById('foot');
   function setIOSHelp(){ st1.innerHTML='Tap the <b>Share</b> icon (the box with an ↑) at the bottom of Safari, then <b>Add to Home Screen</b>'; btn.textContent='📲 Show me how to install'; }

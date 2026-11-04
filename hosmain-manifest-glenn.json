@@ -1,7 +1,7 @@
 {
   "name": "HosFix - Glenn",
   "short_name": "HosFix - Glenn",
-  "start_url": "/hosmain.html?me=glenn&v=20261104b",
+  "start_url": "/hosmain-glenn.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

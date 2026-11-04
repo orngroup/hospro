@@ -1,7 +1,7 @@
 {
   "name": "HosFix - Raj",
   "short_name": "HosFix - Raj",
-  "start_url": "/hosmain.html?me=raj&v=20261104b",
+  "start_url": "/hosmain-raj.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

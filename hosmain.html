@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -979,7 +982,7 @@ function renderDashboard(){
   }
 
   if(isAdmin()){
-    html+=`<div style="padding:4px 14px 2px"><button type="button" onclick="hfResetTodayDemo()" style="width:100%;padding:11px;border:1px dashed #c3ccd6;border-radius:11px;background:#fff;color:#7a8494;font:700 13px Lato;cursor:pointer">↻ Load today's demo jobs</button></div>`;
+    html+=`<div style="padding:4px 14px 2px"><button type="button" onclick="hfClearAllJobs()" style="width:100%;padding:11px;border:1px dashed #c3ccd6;border-radius:11px;background:#fff;color:#7a8494;font:700 13px Lato;cursor:pointer">🗑 Clear all jobs</button></div>`;
   }
 
   if(isAdmin()){
@@ -2490,54 +2493,28 @@ function jobSyncPush(){
   });
 }
 
-// ── SEED: today's jobs from the Brandon Hall Maintenance WhatsApp chat (4 Nov) ──
-// Clears the board first (archives every earlier job — hidden, not deleted, since
-// Firestore blocks deletes) then loads today's jobs UNALLOCATED so they can be
-// allocated live in the demo. Runs once per device after the first cloud snapshot.
-const HF_TODAY_JOBS=[
-  {id:'td-158-ac',    loc:'Room 158', title:'A/C not working — turns itself off', desc:'Air-con turns itself off / not working.', prio:'urgent', wt:'HVAC',       at:'2026-11-04T08:16:00.000Z', by:'Patrik Vlach — Front Office Manager', cb:'patrik'},
-  {id:'td-134-heat',  loc:'Room 134', title:'No heating in the room',             desc:'No heating in the room.',               prio:'urgent', wt:'HVAC',       at:'2026-11-04T08:35:00.000Z', by:'Manjusha — Front Desk', cb:'manjusha'},
-  {id:'td-156-tv',    loc:'Room 156', title:'TV not working',                     desc:'TV not working — Patrik to take a look.', prio:'medium', wt:'Electrical', at:'2026-11-04T08:35:00.000Z', by:'Manjusha — Front Desk', cb:'manjusha'},
-  {id:'td-10-paint',  loc:'Room 10',  title:'Painting / redecorate',             desc:'Room needs painting.',                  prio:'low',    wt:'Decorating', at:'2026-11-04T09:15:00.000Z', by:'Raj Kumar', cb:'raj'},
-  {id:'td-11-paint',  loc:'Room 11',  title:'Painting / redecorate',             desc:'Room needs painting.',                  prio:'low',    wt:'Decorating', at:'2026-11-04T09:15:00.000Z', by:'Raj Kumar', cb:'raj'},
-  {id:'td-19-paint',  loc:'Room 19',  title:'Wall paint',                        desc:'Wall paint / touch-up needed.',         prio:'low',    wt:'Decorating', at:'2026-11-04T09:15:00.000Z', by:'Raj Kumar', cb:'raj'},
-  {id:'td-22-paint',  loc:'Room 22',  title:'Wall paint',                        desc:'Wall paint / touch-up needed.',         prio:'low',    wt:'Decorating', at:'2026-11-04T09:15:00.000Z', by:'Raj Kumar', cb:'raj'},
-  {id:'td-136-stain', loc:'Room 136', title:'Black stain — treat / redecorate',  desc:'Black stain / mark on wall.',           prio:'medium', wt:'Decorating', at:'2026-11-04T09:15:00.000Z', by:'Raj Kumar', cb:'raj'},
-  {id:'td-101-hole',  loc:'Room 101', title:'Hole in wall — fill & redecorate',  desc:'Hole and decoration needed.',           prio:'medium', wt:'Decorating', at:'2026-11-04T09:15:00.000Z', by:'Raj Kumar', cb:'raj'}
-];
-function hfLoadTodayJobs(){
-  const TIDS=new Set(HF_TODAY_JOBS.map(x=>x.id));
-  const now=new Date().toISOString();
-  // 1) Clear the board — archive every job that isn't one of today's (hidden, not deleted)
-  JOBS.forEach(j=>{ if(!TIDS.has(String(j.id)) && !j.demoHidden){ j.demoHidden=true; if(j.status!=='complete') j.status='cancelled'; j.updatedAt=now; } });
-  // 2) Load today's jobs — unallocated, ready to allocate in the demo
-  HF_TODAY_JOBS.forEach(s=>{
-    const ex=JOBS.find(j=>String(j.id)===s.id);
-    if(ex){ ex.demoHidden=false; ex.assignees=['glenn']; ex.status='not-started'; ex.updatedAt=now; return; }
-    JOBS.unshift({ id:s.id, title:s.title, area:'bedrooms', areaLabel:'Bedrooms',
-      location:s.loc, workType:s.wt||'General', description:s.desc||s.title,
-      status:'not-started', priority:s.prio||'medium', assignees:['glenn'],
-      cost:0, module:'maintenance', photos:[], materials:[], receipts:[],
-      notes:[{text:'Reported via the Maintenance WhatsApp'+(s.by?(' — '+s.by):''), by:'System', at:'2026-11-04'}],
-      createdAt:s.at, createdBy:s.cb||'raj', reportedBy:s.by||'', source:'reporter',
-      approvedBy:null, approvedAt:null, completedAt:null });
-  });
-  try{ localStorage.setItem('hosfix_jobs',JSON.stringify(JOBS)); }catch(e){}
-  try{ jobSyncPush(); }catch(e){}
+// ── CLEAN SLATE ──────────────────────────────────────────────────────────────
+// No demo/seed jobs. The board only ever holds jobs reporters actually log.
+// Archiving hides a job everywhere (Firestore blocks deletes, so we never delete).
+function hfIsDemo(j){ const id=String(j.id||''); return id.indexOf('td-')===0 || id.indexOf('wa-')===0 || j.source==='WhatsApp' || j.createdBy==='System'; }
+function hfArchive(filterFn){
+  const now=new Date().toISOString(); let n=0;
+  JOBS.forEach(j=>{ if(!j.demoHidden && filterFn(j)){ j.demoHidden=true; if(j.status!=='complete') j.status='cancelled'; j.updatedAt=now; n++; } });
+  if(n){ try{ localStorage.setItem('hosfix_jobs',JSON.stringify(JOBS)); }catch(e){} try{ jobSyncPush(); }catch(e){} }
+  return n;
 }
+// Auto (once per device): clear only the old seeded demo jobs — never real reports.
 function hfSeedJobs(){
-  if(localStorage.getItem('hf_seed_today_v2')==='1') return;
-  hfLoadTodayJobs();
-  try{ localStorage.setItem('hf_seed_today_v2','1'); }catch(e){}
-  try{ localStorage.setItem('hf_seed_wa_v2','1'); }catch(e){}   // make sure the old seed never runs
+  if(localStorage.getItem('hf_clean_v1')==='1') return;
+  hfArchive(hfIsDemo);
+  try{ localStorage.setItem('hf_clean_v1','1'); localStorage.setItem('hf_seed_today_v2','1'); localStorage.setItem('hf_seed_wa_v2','1'); }catch(e){}
 }
-// Manager demo control: re-wipe and reload today's jobs on demand (between demo runs)
-function hfResetTodayDemo(){
-  if(!confirm("Clear the board and load today's jobs?\n\nAll current jobs are archived (hidden), not deleted, and today's 9 jobs load in unallocated.")) return;
-  try{ hfLoadTodayJobs(); }catch(e){}
-  try{ localStorage.setItem('hf_seed_today_v2','1'); localStorage.setItem('hf_seed_wa_v2','1'); }catch(e){}
-  try{ VIEW='jobs'; FILTER='new'; render(); }catch(e){}
-  try{ toast("✓ Today's jobs loaded — 9 to allocate"); }catch(e){}
+// Manager control: clear the WHOLE board on demand (archives, never deletes).
+function hfClearAllJobs(){
+  if(!confirm('Clear ALL jobs from the board?\n\nThey are hidden from everyone, not deleted. New reports still come through as normal.')) return;
+  const n=hfArchive(()=>true);
+  try{ VIEW='jobs'; FILTER='all'; render(); }catch(e){}
+  try{ toast('✓ Board cleared ('+n+' archived)'); }catch(e){}
 }
 function jobSyncStart(){
   fbInit(); if(!fbDb || JOB_SYNC.on) return;

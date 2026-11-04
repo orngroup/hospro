@@ -1,7 +1,7 @@
 {
   "name": "HosFix - Pete",
   "short_name": "HosFix - Pete",
-  "start_url": "/hosmain.html?me=pete&v=20261104b",
+  "start_url": "/hosmain-pete.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

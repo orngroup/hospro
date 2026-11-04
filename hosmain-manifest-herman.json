@@ -1,7 +1,7 @@
 {
   "name": "HosFix - Herman",
   "short_name": "HosFix - Herman",
-  "start_url": "/hosmain.html?me=herman&v=20261104b",
+  "start_url": "/hosmain-herman.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
