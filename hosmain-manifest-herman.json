@@ -1,0 +1,24 @@
+{
+  "name": "HosFix - Herman",
+  "short_name": "HosFix - Herman",
+  "start_url": "/hosmain.html?me=herman&v=20261104b",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a2b3a",
+  "theme_color": "#2a6a4a",
+  "icons": [
+    {
+      "src": "/assets/hosfix-ops-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/hosfix-ops-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
