@@ -80,6 +80,10 @@ body.console .wrap{max-width:1200px}
 .dash{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:14px}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;align-items:start}
 .col{min-width:0}
+.daterow{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:13px}
+.dchip{padding:7px 13px;border-radius:20px;background:#fff;border:1.5px solid var(--line);font:800 12px Lato;cursor:pointer;color:var(--muted);white-space:nowrap}
+.dchip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.daterow input[type=date]{padding:7px 9px;border:1.5px solid var(--line);border-radius:9px;font:13px Lato;color:var(--ink);background:#fff}
 body.console #scr-form{max-width:560px;margin:0 auto}
 @media(max-width:980px){ .cols{grid-template-columns:1fr} .dash{grid-template-columns:repeat(3,1fr)} }
 @media(max-width:520px){ .dash{grid-template-columns:repeat(2,1fr)} }
@@ -175,8 +179,22 @@ body.console #scr-form{max-width:560px;margin:0 auto}
       <div class="tile" style="cursor:pointer" onclick="bTile('open')"><div class="v" id="t-pend" style="color:#5b6b7b">0</div><div class="k">Pending</div></div>
       <div class="tile" style="cursor:pointer" onclick="bTile('urgent')"><div class="v" id="t-urg" style="color:var(--red)">0</div><div class="k">Urgent</div></div>
       <div class="tile" style="cursor:pointer" onclick="bTile('in_progress')"><div class="v" id="t-ip" style="color:var(--amber)">0</div><div class="k">In progress</div></div>
-      <div class="tile" style="cursor:pointer" onclick="bTile('done')"><div class="v" id="t-done" style="color:var(--green)">0</div><div class="k">Done today</div></div>
-      <div class="tile" style="cursor:pointer" onclick="(document.getElementById('d-list')||{}).scrollIntoView&&document.getElementById('d-list').scrollIntoView({behavior:'smooth',block:'start'})"><div class="v" id="t-del" style="color:var(--amber)">0</div><div class="k">Deliveries today</div></div>
+      <div class="tile" style="cursor:pointer" onclick="bTile('done')"><div class="v" id="t-done" style="color:var(--green)">0</div><div class="k">Done</div></div>
+      <div class="tile" style="cursor:pointer" onclick="(document.getElementById('d-list')||{}).scrollIntoView&&document.getElementById('d-list').scrollIntoView({behavior:'smooth',block:'start'})"><div class="v" id="t-del" style="color:var(--amber)">0</div><div class="k">Deliveries</div></div>
+    </div>
+
+    <!-- Date filter: view previous days or a range (handy for invoice checking) -->
+    <div class="daterow" id="date-row">
+      <span style="font:800 11px Lato;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-right:2px">📅 Period</span>
+      <button class="dchip on" id="dc-today" onclick="setRange('today')">Today</button>
+      <button class="dchip" id="dc-yesterday" onclick="setRange('yesterday')">Yesterday</button>
+      <button class="dchip" id="dc-7" onclick="setRange('7')">Last 7 days</button>
+      <button class="dchip" id="dc-month" onclick="setRange('month')">This month</button>
+      <span style="display:flex;align-items:center;gap:6px;margin-left:auto">
+        <input type="date" id="d-from" onchange="setCustomRange()">
+        <span style="color:var(--muted);font-weight:800">→</span>
+        <input type="date" id="d-to" onchange="setCustomRange()">
+      </span>
     </div>
 
     <button id="rec-back" onclick="recBack()" style="display:none;margin:12px 0 0;background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:11px 16px;font:800 13px Lato;color:var(--navy);cursor:pointer">← Back to overview</button>
@@ -362,7 +380,7 @@ $('pin-in') && $('pin-in').addEventListener('keydown',e=>{ if(e.key==='Enter') c
    STAFF BOARD — live list, allocate, start, complete, mark urgent
    ============================================================ */
 let B_FILTER='open', B_UNSUB=null, B_ROWS=[], B_STAFF=[], B_READY=false;
-const B_FILTERS=[['open','To do'],['urgent','🔴 Urgent'],['in_progress','⏱ In progress'],['done','✓ Done today'],['all','All']];
+const B_FILTERS=[['open','To do'],['urgent','🔴 Urgent'],['in_progress','⏱ In progress'],['done','✓ Done'],['all','All']];
 
 async function loadStaff(){
   try{ if(db){ const d=await db.collection('hoshouse_config').doc('current').get(); const st=(d.exists?(d.data()||{}):{}).staff; if(Array.isArray(st)&&st.length){ B_STAFF=st.filter(s=>(s.status||'active')==='active').map(s=>({id:s.id,name:s.name})); return; } } }catch(e){}
@@ -373,6 +391,7 @@ async function startBoard(){
   $('top-tt').textContent='📋 Reception Console';
   showScreen('scr-board');
   await loadStaff(); fillStaffDatalist(); fillSupplierDatalist();
+  try{ dSyncInputs(); }catch(e){}
   // Section 1 — requests (live)
   $('b-chips').innerHTML=B_FILTERS.map(([f,l])=>`<button class="chip ${B_FILTER===f?'on':''}" onclick="bSetFilter('${f}')">${l}</button>`).join('');
   if(db){
@@ -399,21 +418,44 @@ function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l]
 function bTile(f){ bSetFilter(f); try{ const el=$('rec-back'); if(el) el.style.display='inline-block'; }catch(e){} try{ const el=$('b-list'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){} }
 // Header tab tapped → show ALL requests (every fix) with a back button.
 function bShowAll(){ bSetFilter('all'); try{ const el=$('rec-back'); if(el) el.style.display='inline-block'; }catch(e){} try{ const el=$('b-list'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){} }
-// Back → return to the default overview (open/to-do) and hide the back button.
-function recBack(){ bSetFilter('open'); try{ const el=$('rec-back'); if(el) el.style.display='none'; }catch(e){} try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); } }
+// Back → return to the default overview (today, open/to-do) and hide the back button.
+function recBack(){ B_FILTER='open'; setRange('today'); try{ const el=$('rec-back'); if(el) el.style.display='none'; }catch(e){} try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); } }
+
+/* ---- Date filter: view previous days or a range ---- */
+let DATE_FROM=todayISO(), DATE_TO=todayISO();
+function dInRange(iso){ const d=String(iso||'').slice(0,10); return !!d && d>=DATE_FROM && d<=DATE_TO; }
+function dShift(n){ const dt=new Date(); dt.setDate(dt.getDate()+n); return dt.toLocaleDateString('en-CA'); }
+function dMarkChip(id){ ['today','yesterday','7','month'].forEach(x=>{ const bq=$('dc-'+x); if(bq) bq.classList.toggle('on', x===id); }); }
+function dSyncInputs(){ if($('d-from')) $('d-from').value=DATE_FROM; if($('d-to')) $('d-to').value=DATE_TO; }
+function dRefresh(){ try{ bRender(); }catch(e){} try{ renderDeliveries(); }catch(e){} }
+function setRange(r){
+  const t=todayISO();
+  if(r==='today'){ DATE_FROM=t; DATE_TO=t; }
+  else if(r==='yesterday'){ DATE_FROM=dShift(-1); DATE_TO=dShift(-1); }
+  else if(r==='7'){ DATE_FROM=dShift(-6); DATE_TO=t; }
+  else if(r==='month'){ const n=new Date(); DATE_FROM=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-01'; DATE_TO=t; }
+  dSyncInputs(); dMarkChip(r); dRefresh();
+}
+function setCustomRange(){
+  const f=($('d-from')||{}).value, tt=($('d-to')||{}).value;
+  DATE_FROM=f||todayISO(); DATE_TO=tt||DATE_FROM;
+  if(DATE_TO<DATE_FROM){ DATE_TO=DATE_FROM; if($('d-to')) $('d-to').value=DATE_TO; }
+  dMarkChip(''); dRefresh();
+}
 function notifyNew(){ try{ if('Notification' in window && Notification.permission==='granted') new Notification('🧹 New housekeeping request',{body:'A guest/front-desk request just came in.'}); }catch(e){} toast('🔔 New request in'); }
 function reqItems(r){ if(r.items&&r.items.length) return r.items.map(it=>`${TYPE_EMOJI(it.type)} ${esc(it.label)}${it.qty>1?(' ×'+it.qty):''}`).join('  ·  '); return `${TYPE_EMOJI(r.type)} ${esc(r.typeLabel||'')}`; }
 
 function bRender(){
-  const today=todayISO();
-  const pend=B_ROWS.filter(r=>r.status==='pending'), urg=B_ROWS.filter(r=>r.status!=='done'&&r.priority==='urgent');
-  const ip=B_ROWS.filter(r=>r.status==='in_progress'), doneT=B_ROWS.filter(r=>r.status==='done'&&String(r.completedAt||'').slice(0,10)===today);
+  // Counts + list are scoped to the selected date range (by the day each was logged).
+  const inR=B_ROWS.filter(r=>dInRange(r.createdAt));
+  const pend=inR.filter(r=>r.status==='pending'), urg=inR.filter(r=>r.status!=='done'&&r.priority==='urgent');
+  const ip=inR.filter(r=>r.status==='in_progress'), doneT=inR.filter(r=>r.status==='done');
   $('t-pend').textContent=pend.length; $('t-urg').textContent=urg.length; $('t-ip').textContent=ip.length; $('t-done').textContent=doneT.length;
-  let rows=B_ROWS.slice();
+  let rows=inR.slice();
   if(B_FILTER==='open') rows=rows.filter(r=>r.status==='pending'||r.status==='in_progress');
   else if(B_FILTER==='urgent') rows=rows.filter(r=>r.status!=='done'&&r.priority==='urgent');
   else if(B_FILTER==='in_progress') rows=rows.filter(r=>r.status==='in_progress');
-  else if(B_FILTER==='done') rows=rows.filter(r=>r.status==='done'&&String(r.completedAt||'').slice(0,10)===today);
+  else if(B_FILTER==='done') rows=rows.filter(r=>r.status==='done');
   rows.sort((a,b)=>{ const o={pending:0,in_progress:1,done:2}; const ao=(a.priority==='urgent'&&a.status!=='done')?-1:o[a.status]; const bo=(b.priority==='urgent'&&b.status!=='done')?-1:o[b.status]; return ao-bo || (b.createdAt||'').localeCompare(a.createdAt||''); });
   if(!rows.length){ $('b-list').innerHTML='<div class="muted" style="padding:26px;text-align:center">Nothing here — all clear ✓</div>'; return; }
   const staffOpts=u=>`<option value="">— allocate —</option>`+B_STAFF.map(s=>`<option value="${s.id}" ${u===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
@@ -424,7 +466,7 @@ function bRender(){
     return `<div class="req s-${st}">
       <div class="r1"><span class="rm">Room ${esc(r.room)}</span><span class="ty">${reqItems(r)}</span>${bdg}</div>
       ${r.detail?`<div class="meta">${esc(r.detail)}</div>`:''}
-      <div class="meta">${esc(r.source==='reception'?'Front desk':'Guest')} · ${ago(r.createdAt)} ${r.assignedName?('· 👤 '+esc(r.assignedName)):''} ${resp}</div>
+      <div class="meta">${esc(r.source==='reception'?'Front desk':'Guest')} · ${recWhen(r.createdAt)} ${r.assignedName?('· 👤 '+esc(r.assignedName)):''} ${resp}</div>
       ${r.status!=='done'?`<div class="acts">
         <select class="rsel" onchange="allocate('${r.id}',this.value)">${staffOpts(r.assignedTo)}</select>
         <button class="sbtn urg ${r.priority==='urgent'?'on':''}" onclick="toggleUrgent('${r.id}','${r.priority}')">${r.priority==='urgent'?'● Urgent':'⚑ Urgent'}</button>
@@ -456,6 +498,8 @@ const SUPPLIERS = [
 ];
 function fillSupplierDatalist(){ const dl=$('supplier-list'); if(dl) dl.innerHTML=SUPPLIERS.map(s=>`<option value="${esc(s)}">`).join(''); }
 function recTime(iso){ try{ return new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+// time for today, otherwise "5 Nov 14:05" so historical rows show which day
+function recWhen(iso){ try{ const d=String(iso||'').slice(0,10); const dt=new Date(iso); const tm=dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); return d===todayISO()?tm:(dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' · '+tm); }catch(e){ return ''; } }
 async function saveRec(coll,doc,localCb){
   try{ if(db){ await db.collection(coll).doc(doc.id).set(doc); } else { const a=JSON.parse(localStorage.getItem(coll)||'[]'); a.unshift(doc); localStorage.setItem(coll,JSON.stringify(a)); if(localCb) localCb(); } }
   catch(e){ console.warn('saveRec',e); toast('Could not save — check connection'); }
@@ -498,15 +542,14 @@ function logDelivery(){
   toast('✓ Delivery logged');
 }
 function renderDeliveries(){
-  const today=todayISO();
-  const rows=D_ROWS.filter(r=> String(r.createdAt||'').slice(0,10)===today );
+  const rows=D_ROWS.filter(r=> dInRange(r.createdAt) );
   try{ const el=$('t-del'); if(el) el.textContent=rows.length; }catch(e){}
-  if(!rows.length){ $('d-list').innerHTML='<div class="muted" style="padding:20px;text-align:center">No deliveries logged today.</div>'; return; }
+  if(!rows.length){ $('d-list').innerHTML='<div class="muted" style="padding:20px;text-align:center">No deliveries in this period.</div>'; return; }
   const SZ={small:'Small',medium:'Medium',large:'Large'};
   $('d-list').innerHTML=rows.map(r=>`<div class="rec">
     <div class="r1"><span class="nm2">${esc(r.supplier)}</span><span class="tag">${SZ[r.size]||'Medium'}</span>${r.ref?`<span class="tag">Ref ${esc(r.ref)}</span>`:''}</div>
     <div class="meta">📦 ${esc(r.desc)}</div>
-    <div class="meta">${r.forWho?('👤 For '+esc(r.forWho)+' · '):''}${r.location?('📍 '+esc(r.location)+' · '):''}🕐 ${recTime(r.createdAt)}</div>
+    <div class="meta">${r.forWho?('👤 For '+esc(r.forWho)+' · '):''}${r.location?('📍 '+esc(r.location)+' · '):''}🕐 ${recWhen(r.createdAt)}</div>
   </div>`).join('');
 }
 
