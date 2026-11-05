@@ -82,21 +82,28 @@ body.console .wrap{max-width:1200px}
 .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:10px;align-items:start}
 .col{min-width:0}
 /* big section cards + form-left / list-right panes */
-.bigcards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
-.bigcard{border-radius:16px;padding:18px 18px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:14px;box-shadow:0 4px 14px rgba(26,43,58,.12);border:3px solid transparent;transition:transform .07s}
-.bigcard:active{transform:scale(.99)}
-.bigcard.on{border-color:#fff;box-shadow:0 0 0 3px var(--navy),0 8px 20px rgba(26,43,58,.22)}
-.bigcard .bc-ic{font-size:32px;line-height:1}
-.bigcard .bc-t{font:900 19px Lato}
-.bigcard .bc-s{font-size:12px;opacity:.85;margin-top:2px}
-.bigcard .bc-n{margin-left:auto;font:900 28px Lato}
+/* kiosk welcome banner */
+.hd-hello{background:linear-gradient(120deg,#1a2b3a 0%,#2c4155 55%,#b98a52 135%);border-radius:18px;padding:24px;color:#fff;margin-top:14px;text-align:center;box-shadow:0 6px 18px rgba(26,43,58,.16)}
+.hd-hello .hello-logo{height:56px;margin:0 auto 12px;display:block}
+.hd-hello .h1{font-family:'Cormorant Garamond',serif;font-size:27px;font-weight:700;letter-spacing:.3px}
+.hd-hello .h2{font-size:14px;opacity:.9;margin-top:3px;font-weight:600}
+/* kiosk cards: icon on top, label under, tap to open full-page */
+.bigcards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px}
+.bigcard{position:relative;border-radius:20px;padding:28px 20px;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;min-height:180px;justify-content:center;box-shadow:0 8px 20px rgba(26,43,58,.16);border:3px solid transparent;transition:transform .09s,box-shadow .09s}
+.bigcard:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(26,43,58,.22)}
+.bigcard:active{transform:scale(.98)}
+.bigcard .bc-t{font:900 23px Lato}
+.bigcard .bc-s{font-size:13px;opacity:.88}
+.bigcard .bc-n{position:absolute;top:14px;right:18px;font:900 22px Lato;opacity:.92}
 .bc-req{background:linear-gradient(135deg,#1a2b3a,#2c4155)}
 .bc-del{background:linear-gradient(135deg,#b9780a,#935f08)}
 .bc-mnt{background:linear-gradient(135deg,#c45c00,#8f4300)}
-.pane{display:none;grid-template-columns:1fr 2fr;gap:16px;margin-top:16px;align-items:start}
-.pane.on{display:grid}
+/* open section = stacked on one page (form on top, list below) */
+.pane{display:none;margin-top:10px}
+.pane.on{display:block;max-width:940px;margin:10px auto 0}
+.pane-form{margin-bottom:16px}
 .pane-form,.pane-list{min-width:0}
-@media(max-width:900px){ .pane.on{grid-template-columns:1fr} .bigcards{grid-template-columns:1fr} }
+@media(max-width:900px){ .bigcards{grid-template-columns:1fr} }
 .daterow{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:13px}
 .dchip{padding:7px 13px;border-radius:20px;background:#fff;border:1.5px solid var(--line);font:800 12px Lato;cursor:pointer;color:var(--muted);white-space:nowrap}
 .dchip.on{background:var(--navy);border-color:var(--navy);color:#fff}
@@ -125,8 +132,13 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;
 .ql:hover{border-color:var(--gold)}
 .ql .qi{font-size:16px;line-height:1}
 .ql.fire{background:#fdeceb;border-color:#f0c4c0;color:var(--red)}
-.bigcard .bc-ic{width:46px;height:46px;flex:0 0 46px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:28px}
-.bigcard .bc-ic svg{width:27px;height:27px;stroke:#fff;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.hd-back{display:flex;align-items:center;gap:13px;margin-top:16px;margin-bottom:2px}
+.hd-back.hide{display:none}
+.hd-back .bk{display:inline-flex;align-items:center;gap:7px;padding:11px 16px;border-radius:12px;background:rgba(255,255,255,.95);border:1.5px solid var(--line);font:800 13px Lato;color:var(--navy);cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.hd-back .bk:hover{border-color:var(--gold)}
+.hd-back .sct{font:900 21px Lato;color:var(--navy)}
+.bigcard .bc-ic{width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.18);display:grid;place-items:center}
+.bigcard .bc-ic svg{width:34px;height:34px;stroke:#fff;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .ovl{position:fixed;inset:0;background:rgba(16,26,36,.55);z-index:140;display:none;align-items:center;justify-content:center;padding:18px}
 .ovl.on{display:flex}
 .sheet{background:#fff;border-radius:18px;max-width:600px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.32)}
@@ -232,16 +244,6 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;
       <button type="button" class="ql fire" onclick="openFire()"><span class="qi">🔥</span>Fire &amp; Emergency</button>
     </div>
 
-    <!-- Dashboard across the top -->
-    <div class="dash">
-      <div class="tile" style="cursor:pointer" onclick="bTile('open')"><div class="v" id="t-pend" style="color:#5b6b7b">0</div><div class="k">Pending</div></div>
-      <div class="tile" style="cursor:pointer" onclick="bTile('urgent')"><div class="v" id="t-urg" style="color:var(--red)">0</div><div class="k">Urgent</div></div>
-      <div class="tile" style="cursor:pointer" onclick="bTile('in_progress')"><div class="v" id="t-ip" style="color:var(--amber)">0</div><div class="k">In progress</div></div>
-      <div class="tile" style="cursor:pointer" onclick="bTile('done')"><div class="v" id="t-done" style="color:var(--green)">0</div><div class="k">Done</div></div>
-      <div class="tile" style="cursor:pointer" onclick="showSection('maintenance')"><div class="v" id="t-mnt" style="color:#c45c00">0</div><div class="k">Maintenance open</div></div>
-      <div class="tile" style="cursor:pointer" onclick="showSection('deliveries')"><div class="v" id="t-del" style="color:var(--amber)">0</div><div class="k">Deliveries</div></div>
-    </div>
-
     <!-- Date filter: view previous days or a range (handy for invoice checking) -->
     <div class="daterow" id="date-row">
       <span style="font:800 11px Lato;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-right:2px">📅 Period</span>
@@ -256,15 +258,38 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;
       </span>
     </div>
 
-    <!-- Three big section cards — tap one to open it -->
-    <div class="bigcards">
-      <div class="bigcard bc-req on" id="card-requests" onclick="showSection('requests')"><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div style="flex:1"><div class="bc-t">Guest Requests</div><div class="bc-s">Housekeeping</div></div><div class="bc-n" id="bc-req-n">0</div></div>
-      <div class="bigcard bc-del" id="card-deliveries" onclick="showSection('deliveries')"><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg></div><div style="flex:1"><div class="bc-t">Deliveries</div><div class="bc-s">Parcels in</div></div><div class="bc-n" id="bc-del-n">0</div></div>
-      <div class="bigcard bc-mnt" id="card-maintenance" onclick="showSection('maintenance')"><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div><div style="flex:1"><div class="bc-t">Maintenance <span style="font-size:13px;opacity:.75">🔒</span></div><div class="bc-s">Repairs &amp; faults · code needed</div></div><div class="bc-n" id="bc-mnt-n">0</div></div>
+    <!-- HOME: welcome + three big kiosk cards (tap one to open it full-page) + stats -->
+    <div id="hd-home">
+      <div class="hd-hello">
+        <img src="/assets/logos/logo---white-transparent.png" alt="Brandon Hall Hotel and Spa" class="hello-logo" onerror="this.style.display='none'">
+        <div class="h1">Welcome to Brandon Hall Hotel &amp; Spa</div>
+        <div class="h2">🖥️ HosDesk · Reception — tap a card below to get started</div>
+      </div>
+
+      <div class="bigcards">
+        <div class="bigcard bc-req" id="card-requests" onclick="showSection('requests')"><div class="bc-n" id="bc-req-n">0</div><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="bc-t">Guest Requests</div><div class="bc-s">Housekeeping</div></div>
+        <div class="bigcard bc-del" id="card-deliveries" onclick="showSection('deliveries')"><div class="bc-n" id="bc-del-n">0</div><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg></div><div class="bc-t">Deliveries</div><div class="bc-s">Parcels in</div></div>
+        <div class="bigcard bc-mnt" id="card-maintenance" onclick="showSection('maintenance')"><div class="bc-n" id="bc-mnt-n">0</div><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div><div class="bc-t">Maintenance 🔒</div><div class="bc-s">Repairs &amp; faults · code needed</div></div>
+      </div>
+
+      <div class="dash" style="margin-top:18px">
+        <div class="tile" style="cursor:pointer" onclick="bTile('open')"><div class="v" id="t-pend" style="color:#5b6b7b">0</div><div class="k">Pending</div></div>
+        <div class="tile" style="cursor:pointer" onclick="bTile('urgent')"><div class="v" id="t-urg" style="color:var(--red)">0</div><div class="k">Urgent</div></div>
+        <div class="tile" style="cursor:pointer" onclick="bTile('in_progress')"><div class="v" id="t-ip" style="color:var(--amber)">0</div><div class="k">In progress</div></div>
+        <div class="tile" style="cursor:pointer" onclick="bTile('done')"><div class="v" id="t-done" style="color:var(--green)">0</div><div class="k">Done</div></div>
+        <div class="tile" style="cursor:pointer" onclick="showSection('maintenance')"><div class="v" id="t-mnt" style="color:#c45c00">0</div><div class="k">Maintenance open</div></div>
+        <div class="tile" style="cursor:pointer" onclick="showSection('deliveries')"><div class="v" id="t-del" style="color:var(--amber)">0</div><div class="k">Deliveries</div></div>
+      </div>
+    </div>
+
+    <!-- SECTION header bar (shown when a card is open) -->
+    <div class="hd-back hide" id="hd-back">
+      <button class="bk" onclick="goHome()">← Back to cards</button>
+      <span class="sct" id="hd-sec-title"></span>
     </div>
 
     <!-- Guest Requests: log (left) · all requests (right) -->
-    <div class="pane on" id="pane-requests">
+    <div class="pane" id="pane-requests">
       <div class="pane-form">
         <button class="btn btn-go" onclick="openLogForm()">➕ Log a request</button>
         <div class="chips" id="b-chips" style="margin-top:12px"></div>
@@ -580,21 +605,28 @@ function closeCodeGate(){ $('ovl-code').classList.remove('on'); }
 function checkCode(){ const v=($('cg-in').value||'').trim(); if(v==='3132'){ MNT_UNLOCKED=true; closeCodeGate(); showSection('maintenance'); } else { $('cg-err').textContent='Incorrect code — try again'; $('cg-in').value=''; try{ $('cg-in').focus(); }catch(e){} } }
 function openFire(){ $('ovl-fire').classList.add('on'); }
 function closeFire(){ $('ovl-fire').classList.remove('on'); }
-// Open one of the three big section cards; its form (left) + list (right) show, the others hide.
+// Tap a big card → that section takes over the whole page. goHome() returns to the cards.
+const SEC_TITLES={requests:'🧹 Guest Requests', deliveries:'📦 Deliveries', maintenance:'🔧 Maintenance'};
 function showSection(x){
   if(x==='maintenance' && !MNT_UNLOCKED){ openCodeGate(); return; }
-  ['requests','deliveries','maintenance'].forEach(s=>{
-    const p=$('pane-'+s); if(p) p.classList.toggle('on', s===x);
-    const c=$('card-'+s); if(c) c.classList.toggle('on', s===x);
-  });
-  try{ const p=$('pane-'+x); if(p) p.scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(e){}
+  ['requests','deliveries','maintenance'].forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.toggle('on', s===x); });
+  const home=$('hd-home'); if(home) home.classList.add('hide');
+  const t=$('hd-sec-title'); if(t) t.textContent=SEC_TITLES[x]||'';
+  const bk=$('hd-back'); if(bk) bk.classList.remove('hide');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function goHome(){
+  ['requests','deliveries','maintenance'].forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.remove('on'); });
+  const home=$('hd-home'); if(home) home.classList.remove('hide');
+  const bk=$('hd-back'); if(bk) bk.classList.add('hide');
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 // Dashboard tile tapped → open the requests section and switch its filter.
 function bTile(f){ showSection('requests'); bSetFilter(f); }
 // Show ALL requests (every fix).
 function bShowAll(){ showSection('requests'); bSetFilter('all'); }
 // Back → return to the default overview (today, open/to-do).
-function recBack(){ B_FILTER='open'; M_FILTER_ALL=false; setRange('today'); showSection('requests'); try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); } }
+function recBack(){ B_FILTER='open'; M_FILTER_ALL=false; setRange('today'); goHome(); }
 
 /* ---- Date filter: view previous days or a range ---- */
 let DATE_FROM=todayISO(), DATE_TO=todayISO();
