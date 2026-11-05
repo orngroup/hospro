@@ -74,18 +74,21 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
 .sec-req{background:linear-gradient(135deg,#1a2b3a,#2c4155)}
 .sec-vis{background:linear-gradient(135deg,#2a6a4a,#1f5038)}
 .sec-del{background:linear-gradient(135deg,#b9780a,#935f08)}
+.sec-mnt{background:linear-gradient(135deg,#c45c00,#8f4300)}
 /* logo + wide 3-column reception console */
 .top .logo{height:48px;margin:0 auto 10px;display:block}
 body.console .wrap{max-width:1200px}
-.dash{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:14px}
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;align-items:start}
+.dash{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-top:14px}
+.cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:10px;align-items:start}
 .col{min-width:0}
 .daterow{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:13px}
 .dchip{padding:7px 13px;border-radius:20px;background:#fff;border:1.5px solid var(--line);font:800 12px Lato;cursor:pointer;color:var(--muted);white-space:nowrap}
 .dchip.on{background:var(--navy);border-color:var(--navy);color:#fff}
 .daterow input[type=date]{padding:7px 9px;border:1.5px solid var(--line);border-radius:9px;font:13px Lato;color:var(--ink);background:#fff}
 body.console #scr-form{max-width:560px;margin:0 auto}
-@media(max-width:980px){ .cols{grid-template-columns:1fr} .dash{grid-template-columns:repeat(3,1fr)} }
+@media(max-width:1200px){ .cols{grid-template-columns:1fr 1fr} }
+@media(max-width:860px){ .cols{grid-template-columns:1fr} }
+@media(max-width:980px){ .dash{grid-template-columns:repeat(3,1fr)} }
 @media(max-width:520px){ .dash{grid-template-columns:repeat(2,1fr)} }
 .sz{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
 .szb{padding:12px;border:2px solid var(--line);border-radius:12px;background:#fff;font:800 14px Lato;color:var(--muted);cursor:pointer;text-align:center;touch-action:manipulation}
@@ -180,6 +183,7 @@ body.console #scr-form{max-width:560px;margin:0 auto}
       <div class="tile" style="cursor:pointer" onclick="bTile('urgent')"><div class="v" id="t-urg" style="color:var(--red)">0</div><div class="k">Urgent</div></div>
       <div class="tile" style="cursor:pointer" onclick="bTile('in_progress')"><div class="v" id="t-ip" style="color:var(--amber)">0</div><div class="k">In progress</div></div>
       <div class="tile" style="cursor:pointer" onclick="bTile('done')"><div class="v" id="t-done" style="color:var(--green)">0</div><div class="k">Done</div></div>
+      <div class="tile" style="cursor:pointer" onclick="(document.getElementById('m-list')||{}).scrollIntoView&&document.getElementById('m-list').scrollIntoView({behavior:'smooth',block:'start'})"><div class="v" id="t-mnt" style="color:#c45c00">0</div><div class="k">Maintenance open</div></div>
       <div class="tile" style="cursor:pointer" onclick="(document.getElementById('d-list')||{}).scrollIntoView&&document.getElementById('d-list').scrollIntoView({behavior:'smooth',block:'start'})"><div class="v" id="t-del" style="color:var(--amber)">0</div><div class="k">Deliveries</div></div>
     </div>
 
@@ -235,6 +239,42 @@ body.console #scr-form{max-width:560px;margin:0 auto}
         </div>
         <div class="sechd">Today's deliveries</div>
         <div id="d-list"></div>
+      </div>
+
+      <!-- Column 3 · Maintenance (logs straight to the HosFIX maintenance app) -->
+      <div class="col">
+        <div class="sec sec-mnt" style="cursor:pointer" onclick="mShowAll()">🔧 Maintenance <span style="margin-left:auto;font-size:12px;font-weight:700;opacity:.85">See all ›</span></div>
+        <div class="card">
+          <div id="m-dup" class="hide" style="background:#fdeceb;border:1px solid #f0c4c0;color:#b3261e;border-radius:11px;padding:11px 13px;font:700 13px Lato;margin-bottom:12px"></div>
+          <label class="fl">Area</label>
+          <select id="m-area" onchange="mAreaChange()"><option value="">Select area…</option></select>
+          <label class="fl" style="margin-top:12px">Room / location</label>
+          <select id="m-room" class="hide" onchange="mRoomChange()"><option value="">Select…</option></select>
+          <input id="m-loc" type="text" class="hide" placeholder="e.g. Room 111" oninput="mRoomChange()">
+          <label class="fl" style="margin-top:12px">Is the room occupied?</label>
+          <div class="sz" id="m-occ" style="grid-template-columns:1fr 1fr 1fr">
+            <button type="button" class="szb" onclick="mSetOcc('occupied')">🚪 Occupied</button>
+            <button type="button" class="szb" onclick="mSetOcc('vacant')">✅ Vacant</button>
+            <button type="button" class="szb on" onclick="mSetOcc('unknown')">❔ Not sure</button>
+          </div>
+          <label class="fl" style="margin-top:12px">What's wrong?</label>
+          <input id="m-title" type="text" placeholder="e.g. Leaking tap / no heating">
+          <label class="fl" style="margin-top:12px">More detail <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
+          <textarea id="m-desc" placeholder="Anything useful for the team…"></textarea>
+          <label class="fl" style="margin-top:12px">Priority</label>
+          <div class="prio" id="m-prio">
+            <button type="button" class="pb on-n" id="mp-n" onclick="mSetPrio('normal')">Normal</button>
+            <button type="button" class="pb" id="mp-u" onclick="mSetPrio('urgent')">🔴 Urgent</button>
+          </div>
+          <label class="fl" style="margin-top:12px">Photo</label>
+          <div class="photo-zone" id="m-photo-zone" style="border:1.5px dashed var(--line);border-radius:11px;padding:16px;text-align:center;color:var(--muted);cursor:pointer">📷 Tap to add photo(s)</div>
+          <div id="m-photo-prev" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+          <label class="fl" style="margin-top:12px">Reported by <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
+          <input id="m-by" type="text" list="staff-list" placeholder="Who reported it (default: Front desk)">
+          <button class="btn btn-go" style="margin-top:14px;background:#c45c00" onclick="mSubmit()">🔧 Send to maintenance →</button>
+        </div>
+        <div class="sechd">Maintenance issues</div>
+        <div id="m-list"></div>
       </div>
 
     </div>
@@ -388,10 +428,11 @@ async function loadStaff(){
 }
 async function startBoard(){
   document.body.classList.add('console');
-  $('top-tt').textContent='📋 Reception Console';
+  $('top-tt').textContent='🖥️ HosDesk — Reception';
   showScreen('scr-board');
   await loadStaff(); fillStaffDatalist(); fillSupplierDatalist();
   try{ dSyncInputs(); }catch(e){}
+  try{ mInitAreas(); }catch(e){}
   // Section 1 — requests (live)
   $('b-chips').innerHTML=B_FILTERS.map(([f,l])=>`<button class="chip ${B_FILTER===f?'on':''}" onclick="bSetFilter('${f}')">${l}</button>`).join('');
   if(db){
@@ -406,9 +447,13 @@ async function startBoard(){
     // Section 2 — deliveries (live)
     if(D_UNSUB) D_UNSUB();
     D_UNSUB=db.collection('hoshouse_deliveries').onSnapshot(snap=>{ D_ROWS=snap.docs.map(d=>d.data()).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); renderDeliveries(); }, e=>{ $('d-list').innerHTML='<div class="muted" style="padding:16px;text-align:center">Could not load deliveries.</div>'; });
+    // Section 3 — maintenance (live, shared with the HosFIX app via hosfix_jobs)
+    if(M_UNSUB) M_UNSUB();
+    M_UNSUB=db.collection('hosfix_jobs').onSnapshot(snap=>{ M_ROWS=snap.docs.map(d=>d.data()).filter(j=>j && !j.demoHidden).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); mRender(); mDupCheck(); }, e=>{ $('m-list').innerHTML='<div class="muted" style="padding:16px;text-align:center">Could not load maintenance.</div>'; });
   } else {
     B_ROWS=JSON.parse(localStorage.getItem('hoshouse_requests')||'[]'); bRender();
     D_ROWS=JSON.parse(localStorage.getItem('hoshouse_deliveries')||'[]'); renderDeliveries();
+    M_ROWS=[]; mRender();
   }
   try{ if('Notification' in window && Notification.permission==='default') Notification.requestPermission(); }catch(e){}
 }
@@ -419,7 +464,7 @@ function bTile(f){ bSetFilter(f); try{ const el=$('rec-back'); if(el) el.style.d
 // Header tab tapped → show ALL requests (every fix) with a back button.
 function bShowAll(){ bSetFilter('all'); try{ const el=$('rec-back'); if(el) el.style.display='inline-block'; }catch(e){} try{ const el=$('b-list'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){} }
 // Back → return to the default overview (today, open/to-do) and hide the back button.
-function recBack(){ B_FILTER='open'; setRange('today'); try{ const el=$('rec-back'); if(el) el.style.display='none'; }catch(e){} try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); } }
+function recBack(){ B_FILTER='open'; M_FILTER_ALL=false; setRange('today'); try{ const el=$('rec-back'); if(el) el.style.display='none'; }catch(e){} try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); } }
 
 /* ---- Date filter: view previous days or a range ---- */
 let DATE_FROM=todayISO(), DATE_TO=todayISO();
@@ -427,7 +472,7 @@ function dInRange(iso){ const d=String(iso||'').slice(0,10); return !!d && d>=DA
 function dShift(n){ const dt=new Date(); dt.setDate(dt.getDate()+n); return dt.toLocaleDateString('en-CA'); }
 function dMarkChip(id){ ['today','yesterday','7','month'].forEach(x=>{ const bq=$('dc-'+x); if(bq) bq.classList.toggle('on', x===id); }); }
 function dSyncInputs(){ if($('d-from')) $('d-from').value=DATE_FROM; if($('d-to')) $('d-to').value=DATE_TO; }
-function dRefresh(){ try{ bRender(); }catch(e){} try{ renderDeliveries(); }catch(e){} }
+function dRefresh(){ try{ bRender(); }catch(e){} try{ renderDeliveries(); }catch(e){} try{ mRender(); }catch(e){} }
 function setRange(r){
   const t=todayISO();
   if(r==='today'){ DATE_FROM=t; DATE_TO=t; }
@@ -486,7 +531,7 @@ function toggleUrgent(id,cur){ const u=cur==='urgent'?'normal':'urgent'; patch(i
    Write to:  hoshouse_visitors   ·   hoshouse_deliveries
    ============================================================ */
 let V_UNSUB=null, V_ROWS=[], D_UNSUB=null, D_ROWS=[], _delSize='medium';
-function stopVD(){ if(V_UNSUB){ V_UNSUB(); V_UNSUB=null; } if(D_UNSUB){ D_UNSUB(); D_UNSUB=null; } }
+function stopVD(){ if(V_UNSUB){ V_UNSUB(); V_UNSUB=null; } if(D_UNSUB){ D_UNSUB(); D_UNSUB=null; } if(typeof M_UNSUB!=='undefined'&&M_UNSUB){ M_UNSUB(); M_UNSUB=null; } }
 function fillStaffDatalist(){ const dl=$('staff-list'); if(dl) dl.innerHTML=B_STAFF.map(s=>`<option value="${esc(s.name)}">`).join(''); }
 /* Regular suppliers — pre-loaded; reception can still type anything else.
    Edit this list to match Brandon Hall's own suppliers. */
@@ -555,6 +600,103 @@ function renderDeliveries(){
 
 /* ---- entry: the reception link opens the console straight away (no login);
         guests (QR / plain link) see just the request form ---- */
+/* ============================================================
+   MAINTENANCE — reception logs a job straight into the HosFIX app
+   Writes to the shared collection: hosfix_jobs  (lands with Glenn)
+   Reception logs & tracks here; the maintenance team action it in HosFIX.
+   ============================================================ */
+let M_UNSUB=null, M_ROWS=[], M_FILTER_ALL=false;
+let MFS={ area:'', location:'', occ:'unknown', prio:'normal', photos:[] };
+const HFX_NAMES={ glenn:'Glenn', raj:'Raj', ajay:'Ajay', pete:'Pete', herman:'Herman', jomy:'Jomy', ruth:'Ruth' };
+const MAINT_PROP={"bedrooms":{"label":"Bedrooms","icon":"🛏️","rooms":[]},"meeting_events":{"label":"Meeting & Events","icon":"🎪","rooms":["Wolston Suite","Brandon Suite","Brandon Suite 1","Brandon Suite 2","Beech Room","Hunt Room","Warwick Room","Boardroom","Event Lawn","Marquee Area"]},"food_beverage":{"label":"Food & Beverage","icon":"🍽️","rooms":["Restaurant","Bar","Private Dining","Terrace","Kitchen"]},"spa":{"label":"Spa & Leisure","icon":"💆","rooms":["Spa","Pool","Gym","Treatment Room 1","Treatment Room 2","Sauna","Steam Room"]},"public_areas":{"label":"Public Areas","icon":"🏛️","rooms":["Reception","Lobby","Corridors (Ground)","Corridors (First)","Corridors (Second)","Lift","Car Park","Gardens","Woodlands","Main Entrance","Staff Areas","Cellar/Store"]},"external":{"label":"External / Grounds","icon":"🌳","rooms":["Car Park","Gardens","Woodlands","External Walls","Roof","Outbuildings"]},"maintenance":{"label":"Maintenance Areas","icon":"🔧","rooms":["Boiler Room","Plant Room","Electrical Cupboard","Linen Store","Bin Store","Cellar"]}};
+function mBedrooms(){ try{ const rr=((HH&&HH.cfg&&HH.cfg())||{}).rooms; if(Array.isArray(rr)&&rr.length) return rr.map(x=>'Room '+String(x.room)).filter(Boolean); }catch(e){} const a=[]; for(let i=1;i<=120;i++) a.push('Room '+i); return a; }
+function mInitAreas(){
+  MAINT_PROP.bedrooms.rooms=mBedrooms();
+  const sel=$('m-area'); if(sel && sel.options.length<=1){ sel.innerHTML='<option value="">Select area…</option>'+Object.keys(MAINT_PROP).map(k=>`<option value="${k}">${MAINT_PROP[k].icon} ${esc(MAINT_PROP[k].label)}</option>`).join(''); }
+}
+function mAreaChange(){
+  MFS.area=$('m-area').value; MFS.location='';
+  const rsel=$('m-room'), rtxt=$('m-loc');
+  const rooms=(MAINT_PROP[MFS.area]||{}).rooms||[];
+  if(rooms.length){ rsel.innerHTML='<option value="">Select…</option>'+rooms.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join(''); rsel.classList.remove('hide'); rtxt.classList.add('hide'); }
+  else { rsel.classList.add('hide'); rtxt.classList.remove('hide'); }
+  mDupCheck();
+}
+function mRoomChange(){ const rsel=$('m-room'), rtxt=$('m-loc'); MFS.location=(!rsel.classList.contains('hide')?rsel.value:(rtxt.value||'').trim()); mDupCheck(); }
+function mSetOcc(v){ MFS.occ=v; document.querySelectorAll('#m-occ .szb').forEach(b=>b.classList.remove('on')); const map={occupied:0,vacant:1,unknown:2}; const btns=document.querySelectorAll('#m-occ .szb'); if(btns[map[v]]) btns[map[v]].classList.add('on'); }
+function mSetPrio(p){ MFS.prio=p; $('mp-n').className='pb'+(p==='normal'?' on-n':''); $('mp-u').className='pb'+(p==='urgent'?' on-u':''); }
+function mCompress(dataUrl,maxW,q,cb){ try{ const img=new Image(); img.onload=function(){ let w=img.width,h=img.height; if(w>maxW){ h=Math.round(h*maxW/w); w=maxW; } const c=document.createElement('canvas'); c.width=w;c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); try{ cb(c.toDataURL('image/jpeg',q)); }catch(e){ cb(dataUrl); } }; img.onerror=function(){ cb(dataUrl); }; img.src=dataUrl; }catch(e){ cb(dataUrl); } }
+function mRenderPhotos(){ const pv=$('m-photo-prev'); if(!pv) return; pv.innerHTML=(MFS.photos||[]).map((p,i)=>`<div style="position:relative;display:inline-block"><img src="${p}" style="width:66px;height:66px;border-radius:10px;object-fit:cover"><button type="button" onclick="MFS.photos.splice(${i},1);mRenderPhotos()" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#b3261e;color:#fff;font-size:12px;cursor:pointer">×</button></div>`).join(''); const z=$('m-photo-zone'); if(z) z.textContent=(MFS.photos||[]).length?('✓ '+MFS.photos.length+' photo'+(MFS.photos.length>1?'s':'')+' — tap to add more'):'📷 Tap to add photo(s)'; }
+(function(){ const z=$('m-photo-zone'); if(!z) return;
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.capture='environment'; inp.multiple=true; inp.style.cssText='position:fixed;left:-9999px;top:0';
+  document.body.appendChild(inp);
+  z.addEventListener('click',()=>inp.click());
+  inp.addEventListener('change',function(){ [].slice.call(this.files).forEach(function(f){ const rd=new FileReader(); rd.onload=e=>mCompress(e.target.result,900,0.6,function(c){ MFS.photos=MFS.photos||[]; MFS.photos.push(c); mRenderPhotos(); }); rd.readAsDataURL(f); }); inp.value=''; });
+})();
+function mOpenJobs(){ return M_ROWS.filter(j=>j.status!=='complete' && j.status!=='cancelled'); }
+function mDupCheck(){
+  const box=$('m-dup'); if(!box) return;
+  const loc=MFS.location;
+  if(!loc){ box.classList.add('hide'); return; }
+  const open=mOpenJobs().filter(j=>String(j.location||'')===String(loc));
+  if(!open.length){ box.classList.add('hide'); return; }
+  const j=open[0]; const when=recWhen(j.createdAt);
+  box.innerHTML='⚠️ '+esc(loc)+' already has '+(open.length>1?(open.length+' open jobs'):'an open job')+': “'+esc(j.title||'maintenance')+'”'+(when?(' · logged '+when):'')+'. You can still log this one.';
+  box.classList.remove('hide');
+}
+function mSubmit(){
+  const location=MFS.location || (($('m-room')&&!$('m-room').classList.contains('hide'))?$('m-room').value:($('m-loc')?$('m-loc').value.trim():''));
+  const title=($('m-title').value||'').trim();
+  if(!MFS.area){ toast('Pick an area'); return; }
+  if(!location){ toast('Pick the room / location'); return; }
+  if(!title){ toast('Say what needs fixing'); return; }
+  const by=($('m-by').value||'').trim()||'Front desk';
+  const now=new Date().toISOString();
+  const area=MFS.area, areaLabel=(MAINT_PROP[area]||{}).label||area;
+  const doc={ id:'mnt_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+    title, area, areaLabel, location:String(location), workType:'', description:($('m-desc').value||'').trim(),
+    status:'not-started', priority:(MFS.prio==='urgent'?'urgent':'medium'), assignees:['glenn'],
+    occupancy:MFS.occ||'', cost:0, module:'maintenance', photos:(MFS.photos||[]).slice(), voiceNote:null, materials:[], receipts:[],
+    notes:[{text:'Logged at reception (HosDesk)'+(by?(' — reported by '+by):''), by:by, at:todayISO()}],
+    createdAt:now, updatedAt:now, createdBy:'reception', reportedBy:by, source:'reception', approvedBy:null, approvedAt:null, completedAt:null };
+  try{
+    if(db){ db.collection('hosfix_jobs').doc(doc.id).set(doc); }
+    else { const a=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]'); a.unshift(doc); localStorage.setItem('hosfix_jobs',JSON.stringify(a)); M_ROWS.unshift(doc); mRender(); }
+  }catch(e){ console.warn('mSubmit',e); toast('Could not send — check connection'); return; }
+  // reset form
+  MFS={ area:'', location:'', occ:'unknown', prio:'normal', photos:[] };
+  $('m-area').value=''; const rs=$('m-room'); if(rs){ rs.classList.add('hide'); rs.value=''; } const rt=$('m-loc'); if(rt){ rt.classList.add('hide'); rt.value=''; }
+  $('m-title').value=''; $('m-desc').value=''; $('m-by').value=''; mSetOcc('unknown'); mSetPrio('normal'); mRenderPhotos(); mDupCheck();
+  toast('🔧 Sent to maintenance ✓');
+}
+function mStatusBadge(j){
+  if(j.status==='complete') return '<span class="bdg d">✓ Done</span>';
+  if(j.status==='in-progress') return '<span class="bdg ip">In progress</span>';
+  const who=(j.assignees||[]).filter(a=>a!=='glenn'&&a!=='raj'&&a!=='ajay');
+  return who.length?'<span class="bdg p" style="background:#eef2fb;color:#1F3864">Allocated</span>':(j.priority==='urgent'?'<span class="bdg u">Urgent · new</span>':'<span class="bdg p">New</span>');
+}
+function mWho(j){ const a=(j.assignees||[]).map(id=>HFX_NAMES[id]||id); return a.length?('👤 '+esc(a.join(', '))):''; }
+function mRender(){
+  const openCount=mOpenJobs().length;
+  try{ const el=$('t-mnt'); if(el) el.textContent=openCount; }catch(e){}
+  if(!$('m-list')) return;
+  let rows=M_ROWS.filter(j=>dInRange(j.createdAt));
+  if(!M_FILTER_ALL) rows=rows.filter(j=>j.status!=='complete');
+  rows.sort((a,b)=>{ const o={'not-started':0,'in-progress':1,'complete':2}; const ao=(a.priority==='urgent'&&a.status!=='complete')?-1:(o[a.status]!=null?o[a.status]:0); const bo=(b.priority==='urgent'&&b.status!=='complete')?-1:(o[b.status]!=null?o[b.status]:0); return ao-bo||(b.createdAt||'').localeCompare(a.createdAt||''); });
+  if(!rows.length){ $('m-list').innerHTML='<div class="muted" style="padding:22px;text-align:center">No maintenance issues'+(M_FILTER_ALL?' in this period':' open')+' ✓</div>'; return; }
+  const BORD={'not-started':'#c45c00','in-progress':'#b9780a','complete':'#2E6B5E'};
+  $('m-list').innerHTML=rows.map(j=>{
+    const col=(j.priority==='urgent'&&j.status!=='complete')?'#b3261e':(BORD[j.status]||'#c45c00');
+    return `<div class="req" style="border-left-color:${col}">
+      <div class="r1"><span class="rm">${esc(j.location||j.areaLabel||'—')}</span><span class="ty">${esc(j.title||'')}</span>${mStatusBadge(j)}</div>
+      ${j.description?`<div class="meta">${esc(j.description)}</div>`:''}
+      <div class="meta">${esc(j.reportedBy||j.source||'')} · ${recWhen(j.createdAt)} ${mWho(j)?('· '+mWho(j)):''}</div>
+    </div>`;
+  }).join('');
+}
+function mShowAll(){ M_FILTER_ALL=true; mRender(); try{ const el=$('rec-back'); if(el) el.style.display='inline-block'; }catch(e){} try{ $('m-list').scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){} }
+
+/* entry: reception link opens the console straight away */
 if(STAFF) startBoard();
 </script>
 </body>
