@@ -94,7 +94,7 @@ body.console .wrap{max-width:1200px}
 .hd-hello .h1{font-family:'Cormorant Garamond',serif;font-size:27px;font-weight:700;letter-spacing:.3px}
 .hd-hello .h2{font-size:14px;opacity:.9;margin-top:3px;font-weight:600}
 /* kiosk cards: icon on top, label under, tap to open full-page */
-.bigcards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px}
+.bigcards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:16px}
 .bigcard{position:relative;border-radius:20px;padding:28px 20px;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;min-height:180px;justify-content:center;box-shadow:0 8px 20px rgba(26,43,58,.16);border:3px solid transparent;transition:transform .09s,box-shadow .09s}
 .bigcard:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(26,43,58,.22)}
 .bigcard:active{transform:scale(.98)}
@@ -104,13 +104,16 @@ body.console .wrap{max-width:1200px}
 .bc-req{background:linear-gradient(135deg,#1a2b3a,#2c4155)}
 .bc-del{background:linear-gradient(135deg,#b9780a,#935f08)}
 .bc-mnt{background:linear-gradient(135deg,#c45c00,#8f4300)}
+.bc-hand{background:linear-gradient(135deg,#2a6a4a,#1f5038)}
 /* open section = full page: form 1/3 left, list 2/3 right */
 .pane{display:none;margin-top:12px}
 .pane.on{display:grid;grid-template-columns:1fr 2fr;gap:18px;align-items:start}
 .pane-form,.pane-list{min-width:0}
 .pane-list{background:#f4f6f9;border:1px solid var(--line);border-radius:14px;padding:14px 14px 6px}
 .pane-list .sechd:first-child{margin-top:2px}
-@media(max-width:900px){ .pane.on{grid-template-columns:1fr} .bigcards{grid-template-columns:1fr} }
+@media(max-width:1100px){ .bigcards{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:900px){ .pane.on{grid-template-columns:1fr} }
+@media(max-width:560px){ .bigcards{grid-template-columns:1fr} }
 .daterow{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:13px}
 .dchip{padding:7px 13px;border-radius:20px;background:#fff;border:1.5px solid var(--line);font:800 12px Lato;cursor:pointer;color:var(--muted);white-space:nowrap}
 .dchip.on{background:var(--navy);border-color:var(--navy);color:#fff}
@@ -280,6 +283,7 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         <div class="bigcard bc-req" id="card-requests" onclick="showSection('requests')"><div class="bc-n" id="bc-req-n">0</div><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="bc-t">Guest Requests</div><div class="bc-s">Housekeeping</div></div>
         <div class="bigcard bc-del" id="card-deliveries" onclick="showSection('deliveries')"><div class="bc-n" id="bc-del-n">0</div><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg></div><div class="bc-t">Deliveries</div><div class="bc-s">Parcels in</div></div>
         <div class="bigcard bc-mnt" id="card-maintenance" onclick="showSection('maintenance')"><div class="bc-n" id="bc-mnt-n">0</div><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div><div class="bc-t">Maintenance 🔒</div><div class="bc-s">Repairs &amp; faults · code needed</div></div>
+        <div class="bigcard bc-hand" id="card-handover" onclick="showSection('handover')"><div class="bc-n" id="bc-hand-n">0</div><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div><div class="bc-t">Shift Handover 🔒</div><div class="bc-s">Reception · code needed</div></div>
       </div>
 
       <div class="dash" style="margin-top:18px">
@@ -368,6 +372,23 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         </div>
       </div>
       <div class="pane-list"><div class="sechd" style="margin-top:0;display:flex;align-items:center">Maintenance issues<button type="button" id="m-toggle" onclick="mToggleAll()" style="margin-left:auto;background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:6px 11px;font:700 12px Lato;color:var(--navy);cursor:pointer">Show completed</button></div><div id="m-list"></div></div>
+    </div>
+
+    <!-- Shift Handover: write-up (left) · recent handovers (right) -->
+    <div class="pane" id="pane-handover">
+      <div class="pane-form">
+        <div class="card">
+          <label class="fl">Handing over from</label>
+          <select id="h-from"><option value="">Select…</option><option>Joy</option><option>Alice</option><option>Patrik</option><option>Manjusa</option></select>
+          <label class="fl" style="margin-top:12px">Handing over to</label>
+          <select id="h-to"><option value="">Select…</option><option>Joy</option><option>Alice</option><option>Patrik</option><option>Manjusa</option></select>
+          <label class="fl" style="margin-top:12px">Handover notes</label>
+          <textarea id="h-notes" rows="7" placeholder="Anything the next shift needs to know — outstanding tasks, guest issues, deliveries expected, VIPs/arrivals, messages to pass on, cash/float, keys…"></textarea>
+          <div class="muted" style="margin-top:10px;font-size:12px">📅 Date &amp; time are recorded automatically.</div>
+          <button class="btn btn-go" style="margin-top:14px;background:#2a6a4a" onclick="hSubmit()">🔄 Save handover →</button>
+        </div>
+      </div>
+      <div class="pane-list"><div class="sechd" style="margin-top:0">Recent handovers</div><div id="h-list"></div></div>
     </div>
   </div>
 
@@ -599,6 +620,7 @@ async function startBoard(){
     // Section 3 — maintenance (live, shared with the HosFIX app via hosfix_jobs)
     if(M_UNSUB) M_UNSUB();
     M_UNSUB=db.collection('hosfix_jobs').onSnapshot(snap=>{ const prevM=M_ROWS.length; M_ROWS=snap.docs.map(d=>d.data()).filter(j=>j && !j.demoHidden).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); if(M_READY && M_ROWS.length>prevM) notifyNewMaint(); M_READY=true; mRender(); mDupCheck(); }, e=>{ $('m-list').innerHTML='<div class="muted" style="padding:16px;text-align:center">Could not load maintenance.</div>'; });
+    H_UNSUB=db.collection('hoshouse_handovers').onSnapshot(snap=>{ H_ROWS=snap.docs.map(d=>d.data()).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); hRender(); }, e=>{ const el=$('h-list'); if(el) el.innerHTML='<div class="muted" style="padding:16px;text-align:center">Could not load handovers.</div>'; });
   } else {
     B_ROWS=JSON.parse(localStorage.getItem('hoshouse_requests')||'[]'); bRender();
     D_ROWS=JSON.parse(localStorage.getItem('hoshouse_deliveries')||'[]'); renderDeliveries();
@@ -611,27 +633,30 @@ async function startBoard(){
     window.addEventListener('pointerdown',prime,{once:true});
   }catch(e){}
 }
-function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } stopVD(); B_READY=false; M_READY=false; }
+function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } if(H_UNSUB){ H_UNSUB(); H_UNSUB=null; } stopVD(); B_READY=false; M_READY=false; }
 function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l])=>`<button class="chip ${B_FILTER===ff?'on':''}" onclick="bSetFilter('${ff}')">${l}</button>`).join(''); bRender(); }
-// Maintenance is gated by a staff code until go-live (remove the gate block below + ovl-code to open it to all).
-let MNT_UNLOCKED=false;
-function openCodeGate(){ const i=$('cg-in'); if(i) i.value=''; const e=$('cg-err'); if(e) e.textContent=''; $('ovl-code').classList.add('on'); setTimeout(()=>{ try{ $('cg-in').focus(); }catch(e){} },80); }
+// Maintenance and Shift Handover are gated by a staff code (remove a name from GATED to open that section to all).
+const SECTIONS=['requests','deliveries','maintenance','handover'];
+const GATED={maintenance:true, handover:true};
+const UNLOCKED={};
+let GATE_TARGET=null;
+function openCodeGate(target){ GATE_TARGET=target||'maintenance'; const i=$('cg-in'); if(i) i.value=''; const e=$('cg-err'); if(e) e.textContent=''; $('ovl-code').classList.add('on'); setTimeout(()=>{ try{ $('cg-in').focus(); }catch(e){} },80); }
 function closeCodeGate(){ $('ovl-code').classList.remove('on'); }
-function checkCode(){ const v=($('cg-in').value||'').trim(); if(v==='3132'){ MNT_UNLOCKED=true; closeCodeGate(); showSection('maintenance'); } else { $('cg-err').textContent='Incorrect code — try again'; $('cg-in').value=''; try{ $('cg-in').focus(); }catch(e){} } }
+function checkCode(){ const v=($('cg-in').value||'').trim(); if(v==='3132'){ const t=GATE_TARGET; if(t) UNLOCKED[t]=true; closeCodeGate(); showSection(t); } else { $('cg-err').textContent='Incorrect code — try again'; $('cg-in').value=''; try{ $('cg-in').focus(); }catch(e){} } }
 function openFire(){ $('ovl-fire').classList.add('on'); }
 function closeFire(){ $('ovl-fire').classList.remove('on'); }
 // Tap a big card → that section takes over the whole page. goHome() returns to the cards.
-const SEC_TITLES={requests:'🧹 Guest Requests', deliveries:'📦 Deliveries', maintenance:'🔧 Maintenance'};
+const SEC_TITLES={requests:'🧹 Guest Requests', deliveries:'📦 Deliveries', maintenance:'🔧 Maintenance', handover:'🔄 Shift Handover'};
 function showSection(x){
-  if(x==='maintenance' && !MNT_UNLOCKED){ openCodeGate(); return; }
-  ['requests','deliveries','maintenance'].forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.toggle('on', s===x); });
+  if(GATED[x] && !UNLOCKED[x]){ openCodeGate(x); return; }
+  SECTIONS.forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.toggle('on', s===x); });
   const home=$('hd-home'); if(home) home.classList.add('hide');
   const t=$('hd-sec-title'); if(t) t.textContent=SEC_TITLES[x]||'';
   const bk=$('hd-back'); if(bk) bk.classList.remove('hide');
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function goHome(){
-  ['requests','deliveries','maintenance'].forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.remove('on'); });
+  SECTIONS.forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.remove('on'); });
   const home=$('hd-home'); if(home) home.classList.remove('hide');
   const bk=$('hd-back'); if(bk) bk.classList.add('hide');
   window.scrollTo({top:0,behavior:'smooth'});
@@ -649,7 +674,35 @@ function dInRange(iso){ const d=String(iso||'').slice(0,10); return !!d && d>=DA
 function dShift(n){ const dt=new Date(); dt.setDate(dt.getDate()+n); return dt.toLocaleDateString('en-CA'); }
 function dMarkChip(id){ ['today','yesterday','7','month'].forEach(x=>{ const bq=$('dc-'+x); if(bq) bq.classList.toggle('on', x===id); }); }
 function dSyncInputs(){ if($('d-from')) $('d-from').value=DATE_FROM; if($('d-to')) $('d-to').value=DATE_TO; }
-function dRefresh(){ try{ bRender(); }catch(e){} try{ renderDeliveries(); }catch(e){} try{ mRender(); }catch(e){} }
+function dRefresh(){ try{ bRender(); }catch(e){} try{ renderDeliveries(); }catch(e){} try{ mRender(); }catch(e){} try{ hRender(); }catch(e){} }
+
+/* ---- Shift handover: reception notes passed from one shift to the next ---- */
+let H_UNSUB=null, H_ROWS=[];
+function hEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function hSubmit(){
+  const from=($('h-from').value||'').trim(), to=($('h-to').value||'').trim(), notes=($('h-notes').value||'').trim();
+  if(!from || !to){ toast('Pick who is handing over, and to who'); return; }
+  if(from===to){ toast('From and To can’t be the same person'); return; }
+  if(!notes){ toast('Add a few handover notes'); return; }
+  const now=new Date().toISOString();
+  const doc={ id:'ho_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), from, to, notes, createdAt:now, updatedAt:now, by:'reception' };
+  try{ if(db){ db.collection('hoshouse_handovers').doc(doc.id).set(doc); } else { H_ROWS.unshift(doc); hRender(); } }catch(e){ toast('Could not save — check connection'); return; }
+  $('h-from').value=''; $('h-to').value=''; $('h-notes').value='';
+  toast('🔄 Handover saved');
+}
+function hRender(){
+  const list=$('h-list'); if(!list) return;
+  const rows=H_ROWS.filter(r=> dInRange(r.createdAt) );
+  try{ const el=$('bc-hand-n'); if(el) el.textContent=rows.length; }catch(e){}
+  if(!rows.length){ list.innerHTML='<div class="muted" style="padding:16px;text-align:center">No handovers in this period.</div>'; return; }
+  list.innerHTML=rows.map(r=>(
+    '<div class="card" style="border-left:4px solid #2a6a4a;margin-bottom:10px">'
+    +'<div style="font:900 15px Lato;color:var(--navy)">'+hEsc(r.from)+' <span style="color:#2a6a4a">→</span> '+hEsc(r.to)+'</div>'
+    +'<div class="muted" style="font-size:12px;margin:3px 0 8px">'+recWhen(r.createdAt)+'</div>'
+    +'<div style="font-size:14px;line-height:1.5;white-space:pre-wrap">'+hEsc(r.notes)+'</div>'
+    +'</div>'
+  )).join('');
+}
 function setRange(r){
   const t=todayISO();
   if(r==='today'){ DATE_FROM=t; DATE_TO=t; }
