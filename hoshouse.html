@@ -242,6 +242,7 @@
 <div id="hhOverlay" style="display:none"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="hoshouse-config.js"></script>
 <script>
@@ -345,7 +346,7 @@
     }).join('');
   }
   function reqPatch(id,f){ f.updatedAt=new Date().toISOString(); try{ if(HH&&HH.db) HH.db.collection('hoshouse_requests').doc(id).set(f,{merge:true}); }catch(e){ try{hhToast('Could not save — check connection');}catch(x){} } }
-  function reqAllocate(id,hk){ const s=REQ_STAFF.find(x=>x.id===hk); reqPatch(id,{assignedTo:hk||'',assignedName:s?s.name:''}); }
+  function reqAllocate(id,hk){ const s=REQ_STAFF.find(x=>x.id===hk); reqPatch(id,{assignedTo:hk||'',assignedName:s?s.name:''}); if(hk){ const r=(REQ_LIST||[]).find(x=>x.id===id)||{}; try{ hhPush(hk,'🧹 New task for you',(r.room?('Room '+r.room+' — '):'')+'open HosHouse to see it', r.priority==='urgent'); }catch(e){} } }
   function reqStart(id){ reqPatch(id,{status:'in_progress',startedAt:new Date().toISOString()}); }
   function reqTake(id){ reqPatch(id,{assignedTo:(ME&&ME.id)||'',assignedName:(ME&&ME.name)||'',status:'in_progress',startedAt:new Date().toISOString()}); try{hhToast('Taken — marked in progress');}catch(e){} }
   function reqDone(id){ reqPatch(id,{status:'done',completedAt:new Date().toISOString(),completedBy:(ME&&ME.name)||''}); try{hhToast('✓ Completed');}catch(e){} }
@@ -408,12 +409,25 @@
     t.textContent=msg; t.style.opacity='1'; clearTimeout(window._hhToastT);
     window._hhToastT=setTimeout(()=>{ if(t) t.style.opacity='0'; }, 4500);
   }
+  let HH_AC=null;
+  function hhUnlockAudio(){ try{ const C=window.AudioContext||window.webkitAudioContext; if(C){ if(!HH_AC) HH_AC=new C(); if(HH_AC.state==='suspended') HH_AC.resume(); } }catch(e){} }
+  function hhChime(){ try{ const C=window.AudioContext||window.webkitAudioContext; if(!C) return; if(!HH_AC) HH_AC=new C(); if(HH_AC.state==='suspended') HH_AC.resume(); const now=HH_AC.currentTime; [[880,0],[1175,0.18]].forEach(([f,t])=>{ const o=HH_AC.createOscillator(), g=HH_AC.createGain(); o.type='sine'; o.frequency.value=f; g.gain.setValueAtTime(0.0001,now+t); g.gain.exponentialRampToValueAtTime(0.35,now+t+0.03); g.gain.exponentialRampToValueAtTime(0.0001,now+t+0.4); o.connect(g); g.connect(HH_AC.destination); o.start(now+t); o.stop(now+t+0.42); }); }catch(e){} }
   function hhNotify(title, body){
     hhToast(title+' — '+body);
-    try{ if('Notification' in window && Notification.permission==='granted'){ new Notification(title,{ body, icon:'icon-192.png', tag:'hh-'+Date.now() }); } }catch(e){}
-    try{ if(navigator.vibrate) navigator.vibrate(120); }catch(e){}
+    const opts={ body, icon:'icon-192.png', badge:'icon-192.png', tag:'hh-'+Date.now(), vibrate:[250,120,250], renotify:true };
+    try{
+      if('Notification' in window && Notification.permission==='granted'){
+        if(navigator.serviceWorker && navigator.serviceWorker.ready){
+          navigator.serviceWorker.ready.then(r=>{ try{ r.showNotification(title,opts); }catch(e){ try{ new Notification(title,opts); }catch(_){} } }).catch(()=>{ try{ new Notification(title,opts); }catch(e){} });
+        } else { new Notification(title,opts); }
+      }
+    }catch(e){}
+    try{ if(navigator.vibrate) navigator.vibrate([250,120,250]); }catch(e){}
+    hhChime();
   }
   function requestNotifyPerm(){ try{ if('Notification' in window && Notification.permission==='default'){ Notification.requestPermission(); } }catch(e){} }
+  // Unlock sound + ask permission on the first tap (browsers need a gesture for audio)
+  try{ window.addEventListener('pointerdown', function _hhp(){ hhUnlockAudio(); requestNotifyPerm(); window.removeEventListener('pointerdown',_hhp); }, {once:true}); }catch(e){}
   // compare each live update to the last snapshot and raise notifications
   function hhNotifyDiff(list){
     const snap={}; list.forEach(r=>{ snap[r.room]={hk:r.housekeeper||'', status:r.status||'pending', name:r.housekeeperName||'', urgent:!!r.urgent}; });
@@ -454,6 +468,7 @@
     if(String(s.pin)!==pinBuf){ $('lgmsg').textContent='Wrong PIN.'; pinBuf=''; $('pindisp').textContent=''; return; }
     ME=s; try{ localStorage.setItem('hh_pref',id); sessionStorage.setItem('hh_me',id); }catch(e){}
     startList();
+    try{ hhFcmRegister(ME.id); }catch(e){}
   }
   function logout(){ try{ sessionStorage.removeItem('hh_me'); }catch(e){} if(unwatch) unwatch(); if(starUnwatch){ try{ starUnwatch(); }catch(e){} } ME=null; pinBuf=''; $('pindisp').textContent=''; showScreen('scr-login'); }
 
@@ -1668,9 +1683,44 @@
     await HH.loadCfg();   // load shared staff list first so names are current
     buildLogin();
     const saved=sessionStorage.getItem('hh_me');
-    if(saved && HH.staffById(saved)){ ME=HH.staffById(saved); startList(); }
+    if(saved && HH.staffById(saved)){ ME=HH.staffById(saved); startList(); try{ hhFcmRegister(ME.id); }catch(e){} }
   })();
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('/hoshouse-sw.js').catch(()=>{}); }
+
+  /* ===== Firebase Cloud Messaging — notify housekeepers even when HosHouse is closed =====
+     Reuses the same Cloud Function + token store as HosFIX (no server change needed):
+       /register  stores this device's token against the housekeeper's id
+       /notify    pushes to a housekeeper's registered devices                        */
+  const HH_VAPID    = "BEBKqO0IojcBixBGbEb8hH-aCuy9J6MwQct5dp08xs6J2CjpPEStpSNoJuDpqHcvWuYpRviNVzfDKy4gQUigQPI";
+  const HH_FCM_BASE = "https://europe-west1-brandonhall-7bdef.cloudfunctions.net";
+  let HH_MSG=null;
+  function hhMsgInit(){ try{ if(!HH_MSG && window.firebase && firebase.messaging) HH_MSG=firebase.messaging(); }catch(e){ HH_MSG=null; } return HH_MSG; }
+  async function hhFcmRegister(userId){
+    if(!userId || !('Notification' in window) || !('serviceWorker' in navigator)) return false;
+    try{
+      if(Notification.permission==='default'){ try{ await Notification.requestPermission(); }catch(e){} }
+      if(Notification.permission!=='granted') return false;
+      if(!hhMsgInit()) return false;
+      const sw  = await navigator.serviceWorker.ready;
+      const tok = await HH_MSG.getToken({ vapidKey: HH_VAPID, serviceWorkerRegistration: sw });
+      if(!tok) return false;
+      try{ localStorage.setItem('hh_fcm_token', tok); }catch(e){}
+      const r = await fetch(HH_FCM_BASE+'/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId, token:tok }) });
+      return !!(r && r.ok);
+    }catch(e){ return false; }
+  }
+  // Push a short alert to one housekeeper's phone (works with their app closed, once they've opened HosHouse once to register)
+  async function hhPush(userId, title, body, urgent){
+    if(!userId) return;
+    try{
+      await fetch(HH_FCM_BASE+'/notify', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ event: urgent?'job_urgent':'job_assigned',
+          job:{ id:'hh_'+Date.now(), title:(title||'Housekeeping'), location:(body||''), priority:(urgent?'urgent':'normal'), module:'housekeeping' },
+          assignees:[userId], senderId:(ME&&ME.id)||'', adminIds:[] }) });
+    }catch(e){}
+  }
+  // Foreground pushes (app open) — fold into the existing in-app chime/toast
+  try{ if(hhMsgInit()) HH_MSG.onMessage(p=>{ const d=(p&&(p.data||p.notification))||{}; try{ hhNotify(d.title||'HosHouse', d.body||'New update'); }catch(e){} }); }catch(e){}
 </script>
 </body>
 </html>

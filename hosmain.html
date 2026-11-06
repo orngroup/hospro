@@ -1012,14 +1012,8 @@ function renderDashboard(){
 // ── JOBS LIST ─────────────────────────────────────────────────────────────────
 function renderJobs(){
   let jobs=myJobs();
-  // Sort: urgent first, then by date desc
-  jobs.sort((a,b)=>{
-    const order={urgent:0,'not-started':1,'in-progress':2,complete:3};
-    const as=a.priority==='urgent'?0:order[a.status]??1;
-    const bs=b.priority==='urgent'?0:order[b.status]??1;
-    if(as!==bs) return as-bs;
-    return new Date(b.createdAt||0)-new Date(a.createdAt||0);
-  });
+  // Sort: newest first (by date desc) so the latest jobs are always at the top
+  jobs.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
 
   // Filter
   if(FILTER==='new') jobs=jobs.filter(j=>j.status!=='complete' && !(j.assignees||[]).some(a=>FIXER_TIER.includes(a)));
@@ -2534,7 +2528,8 @@ function hfSeedJobs(){
 }
 // Manager control: clear the WHOLE board on demand (archives, never deletes).
 function hfClearAllJobs(){
-  if(!confirm('Clear ALL jobs from the board?\n\nThey are hidden from everyone, not deleted. New reports still come through as normal.')) return;
+  const ans=prompt('⚠ This HIDES EVERY job from the board, for everyone.\n\nJobs are not deleted and can be restored, but the board will look empty.\n\nType  CLEAR  (capitals) to confirm, or cancel to keep everything:');
+  if(!ans || ans.trim().toUpperCase()!=='CLEAR'){ try{ toast('Cancelled — nothing changed'); }catch(e){} return; }
   const n=hfArchive(()=>true);
   try{ VIEW='jobs'; FILTER='all'; render(); }catch(e){}
   try{ toast('✓ Board cleared ('+n+' archived)'); }catch(e){}
