@@ -445,7 +445,7 @@
         id, title: opts.title || (loc?(loc+' — '+(desc||'Maintenance').slice(0,48)):(desc||'Maintenance').slice(0,56)),
         area, areaLabel:AREALAB[area]||area, location:loc, workType:opts.workType||'',
         description:fullDesc, status:'not-started', priority:opts.priority||'medium',
-        assignees:(opts.assignees&&opts.assignees.length)?opts.assignees:['herman','pete'],
+        assignees:(opts.assignees&&opts.assignees.length)?opts.assignees:['glenn'],
         cost:0, module:'maintenance', photos:photos, materials:[], notes:[],
         createdAt:now, updatedAt:now, createdBy:src, reportedBy:by,
         source:src, room:room, roomType:opts.roomType||'', reportedDate:opts.date||now.slice(0,10),

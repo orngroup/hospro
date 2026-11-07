@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#b3261e">
+<link rel="manifest" href="/hosrep-manifest.json">
+<link rel="apple-touch-icon" href="/assets/hosfix-rep-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/hosfix-rep-192.png">
+<meta name="apple-mobile-web-app-title" content="Report an Issue">
+<title>Report an Issue — Brandon Hall</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--red:#b3261e;--navy:#1a2b3a;--gold:#c9a978;--line:#e4e9ef;--ink:#1a2b3a;--muted:#5b6b7b;--bg:#eef1f5}
+html,body{height:100%;font-family:'Lato',sans-serif;background:var(--bg);color:var(--ink)}
+body{min-height:100vh;padding:0 0 calc(24px + env(safe-area-inset-bottom,0px))}
+.top{background:linear-gradient(160deg,#b3261e 0%,#7a1612 100%);color:#fff;text-align:center;
+  padding:calc(22px + env(safe-area-inset-top,0px)) 18px 20px;border-bottom:3px solid var(--gold)}
+.top .nm{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;letter-spacing:.4px}
+.top .sub{font-size:11px;letter-spacing:3px;color:#f0c9c5;text-transform:uppercase;margin-top:3px;font-weight:700}
+.top .tt{font-size:15px;margin-top:10px;font-weight:700;display:inline-block;background:rgba(255,255,255,.15);padding:6px 16px;border-radius:20px}
+.wrap{max-width:560px;margin:0 auto;padding:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 2px 10px rgba(26,43,58,.06)}
+.fl{display:block;font:800 12px Lato;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:6px}
+input[type=text],select,textarea,input[list]{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;font:400 16px Lato;color:var(--ink);background:#fff}
+select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235b6b7b' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 14px center}
+textarea{min-height:92px;resize:vertical}
+.hide{display:none!important}
+.sz{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.szb{padding:12px 6px;border:1.5px solid var(--line);border-radius:11px;background:#fff;font:700 14px Lato;color:var(--ink);cursor:pointer;text-align:center}
+.szb.on{border-color:var(--navy);background:var(--navy);color:#fff}
+.prio{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pb{padding:13px;border:1.5px solid var(--line);border-radius:11px;background:#fff;font:800 15px Lato;cursor:pointer}
+.pb.on-n{border-color:#2a6a4a;background:#e8f3ee;color:#1f5038}
+.pb.on-u{border-color:var(--red);background:#fdeceb;color:var(--red)}
+.photo-zone{border:1.5px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--muted);cursor:pointer;font-weight:700}
+.prev{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.prev .pi{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.prev .pi img{width:100%;height:100%;object-fit:cover}
+.prev .pi button{position:absolute;top:2px;right:2px;width:20px;height:20px;border:none;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:12px;cursor:pointer;line-height:1}
+.btn{width:100%;padding:16px;border:none;border-radius:14px;font:900 17px Lato;cursor:pointer;margin-top:16px;color:#fff;background:var(--red)}
+.btn:active{transform:scale(.99)}
+.muted{color:var(--muted);font-size:13px}
+.ok{text-align:center;padding:30px 18px}
+.ok .big{font-size:60px;line-height:1}
+.ok .h{font:900 24px Lato;color:#1f5038;margin:12px 0 6px}
+.ok .btn{background:var(--navy);max-width:300px;margin:20px auto 0}
+.dup{background:#fff7e6;border:1px solid #f3dca0;color:#8a5a00;border-radius:12px;padding:11px 13px;font:700 13px Lato;margin-bottom:12px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(26,43,58,.95);color:#fff;padding:11px 18px;border-radius:22px;font:800 14px Lato;z-index:99;opacity:0;transition:.2s;pointer-events:none}
+.toast.show{opacity:1}
+.offline{background:#fdeceb;color:var(--red);text-align:center;font:700 13px Lato;padding:8px}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="nm">Brandon Hall</div>
+    <div class="sub">Maintenance</div>
+    <div class="tt">🔧 Report an Issue</div>
+  </div>
+
+  <div id="offline" class="offline hide">⚠ You’re offline — your report will send when you reconnect.</div>
+
+  <div class="wrap">
+    <!-- WHO ARE YOU (first open only; remembered on this phone) -->
+    <div id="who-card" class="card hide" style="text-align:center">
+      <div style="font-size:42px">👋</div>
+      <div style="font:900 21px Lato;color:var(--navy);margin:8px 0 4px">Who’s reporting?</div>
+      <div class="muted" style="margin-bottom:14px">Pick your name — we’ll remember it on this phone so you don’t have to again.</div>
+      <select id="who-sel" onchange="hosWhoSel()" style="text-align:left"></select>
+      <input id="who-other" type="text" class="hide" placeholder="Type your name" style="margin-top:10px">
+      <button class="btn" onclick="hosWhoGo()">Continue →</button>
+    </div>
+
+    <!-- FORM -->
+    <div id="form-card" class="card">
+      <div id="r-asbar" style="display:flex;align-items:center;gap:8px;background:#f3f6f9;border:1px solid var(--line);border-radius:12px;padding:10px 13px;margin-bottom:14px;font-weight:700;font-size:14px">
+        <span>👤 Reporting as <span id="r-asname" style="color:var(--navy)">—</span></span>
+        <button type="button" onclick="hosChangeName()" style="margin-left:auto;background:none;border:none;color:var(--red);font:800 13px Lato;cursor:pointer;text-decoration:underline">change</button>
+      </div>
+      <div id="dup" class="dup hide"></div>
+
+      <label class="fl">Area</label>
+      <select id="r-area" onchange="rAreaChange()">
+        <option value="">Select area…</option>
+        <option value="bedrooms">Bedrooms / guest rooms</option>
+        <option value="public">Public areas (reception, lounge, bar, corridors)</option>
+        <option value="restaurant">Restaurant / function rooms</option>
+        <option value="spa">Spa, pool &amp; leisure</option>
+        <option value="kitchen">Kitchen</option>
+        <option value="boh">Back of house / offices</option>
+        <option value="exterior">Exterior / grounds / car park</option>
+        <option value="other">Other</option>
+      </select>
+
+      <label class="fl" style="margin-top:14px">Room / location</label>
+      <input id="r-loc" type="text" list="roomlist" placeholder="e.g. Room 111, Ladies WC, Pool plant room" oninput="rDupCheck()">
+      <datalist id="roomlist"></datalist>
+
+      <label class="fl" style="margin-top:14px">What’s wrong?</label>
+      <input id="r-title" type="text" placeholder="e.g. Leaking tap, no hot water, light out">
+
+      <label class="fl" style="margin-top:14px">More detail <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
+      <textarea id="r-desc" placeholder="Anything useful for the team…"></textarea>
+
+      <label class="fl" style="margin-top:14px">How urgent?</label>
+      <div class="prio" id="r-prio">
+        <button type="button" class="pb on-n" id="rp-n" onclick="rSetPrio('normal')">Normal</button>
+        <button type="button" class="pb" id="rp-u" onclick="rSetPrio('urgent')">🔴 Urgent</button>
+      </div>
+
+      <label class="fl" style="margin-top:14px">Photo <span style="font-weight:400;text-transform:none;color:#9aa7b5">(optional)</span></label>
+      <div class="photo-zone" id="r-photo-zone">📷 Tap to add a photo</div>
+      <input id="r-photo-input" type="file" accept="image/*" capture="environment" class="hide" multiple>
+      <div id="r-prev" class="prev"></div>
+
+      <button class="btn" id="r-submit" onclick="rSubmit()">🔧 Send to maintenance →</button>
+      <div class="muted" style="text-align:center;margin-top:10px">Goes straight to the maintenance team. Date &amp; time recorded automatically.</div>
+    </div>
+
+    <!-- SUCCESS -->
+    <div id="ok-card" class="ok card hide">
+      <div class="big">✅</div>
+      <div class="h">Reported — thank you!</div>
+      <div class="muted" id="ok-sub">The maintenance team has it.</div>
+      <button class="btn" onclick="rReset()">Report another issue</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+"use strict";
+var db=null;
+try{ firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }catch(e){ console.warn('firebase init', e); }
+
+var $=function(id){ return document.getElementById(id); };
+function toast(m){ var t=$('toast'); if(!t) return; t.textContent=m; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(function(){ t.classList.remove('show'); }, 2200); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+/* ---- Reporter identity: pick your name once, remembered on this phone ---- */
+var HOSREP_STAFF = {
+  'Reception / Front Desk': ['Patrik Vlach','Joy','Alice Grace','Manjusha','Manju','Alan (Night Porter)'],
+  'Housekeeping': ['Ruth Addison','Aryan','Lara Jervis','Rahul Reghunath','Jitendra','Manoj','Tushar Ambekar','Allen','Hassen','Satya','Ayomidipupo','Yaya','Edwin','Dushyanth','Anisha'],
+  'Food & Beverage / Kitchen': ['Jomy','David (Head Chef)'],
+  'Maintenance': ['Glenn Randell','Pete','Herman Charles'],
+  'Management / Office': ['Raj Kumar','Ajay Kawa','Alia Taub','Laith Hardy','Veronica','Natalie Freeman','Nicola Cartwright']
+};
+var HOSREP_ME = '';
+function hosBuildWho(){
+  var sel=$('who-sel'); if(!sel) return;
+  var h='<option value="">Select your name…</option>';
+  Object.keys(HOSREP_STAFF).forEach(function(grp){
+    h+='<optgroup label="'+grp+'">';
+    HOSREP_STAFF[grp].forEach(function(n){ h+='<option value="'+n+'">'+n+'</option>'; });
+    h+='</optgroup>';
+  });
+  h+='<option value="__other">Other… (type my name)</option>';
+  sel.innerHTML=h;
+}
+function hosWhoSel(){ var o=$('who-other'); if(!o) return; var other=$('who-sel').value==='__other'; o.classList.toggle('hide', !other); if(other){ try{ o.focus(); }catch(e){} } }
+function hosWhoGo(){
+  var v=$('who-sel').value;
+  if(v==='__other'){ v=($('who-other').value||'').trim(); }
+  if(!v){ toast('Pick your name to continue'); return; }
+  HOSREP_ME=v; try{ localStorage.setItem('hosrep_me', v); }catch(e){}
+  $('r-asname').textContent=v;
+  $('who-card').classList.add('hide'); $('form-card').classList.remove('hide'); $('ok-card').classList.add('hide');
+  window.scrollTo(0,0);
+}
+function hosChangeName(){
+  try{ localStorage.removeItem('hosrep_me'); }catch(e){}
+  HOSREP_ME=''; var sel=$('who-sel'); if(sel) sel.value=''; var o=$('who-other'); if(o){ o.value=''; o.classList.add('hide'); }
+  $('form-card').classList.add('hide'); $('ok-card').classList.add('hide'); $('who-card').classList.remove('hide');
+  window.scrollTo(0,0);
+}
+function hosInit(){
+  hosBuildWho();
+  var saved=''; try{ saved=localStorage.getItem('hosrep_me')||''; }catch(e){}
+  if(saved){ HOSREP_ME=saved; $('r-asname').textContent=saved; $('who-card').classList.add('hide'); $('form-card').classList.remove('hide'); }
+  else { $('who-card').classList.remove('hide'); $('form-card').classList.add('hide'); }
+}
+hosInit();
+
+var AREA_LABELS={ bedrooms:'Bedrooms', public:'Public areas', restaurant:'Restaurant / functions', spa:'Spa & leisure', kitchen:'Kitchen', boh:'Back of house', exterior:'Exterior / grounds', other:'Other' };
+var RPRIO='normal', RPHOTOS=[], ROPEN=[];
+
+/* ---- offline banner ---- */
+function netCheck(){ var o=$('offline'); if(o) o.classList.toggle('hide', navigator.onLine!==false); }
+window.addEventListener('online', netCheck); window.addEventListener('offline', netCheck); netCheck();
+
+/* ---- room suggestions (1..160) for the datalist ---- */
+(function(){ var dl=$('roomlist'); if(!dl) return; var h=''; for(var i=1;i<=160;i++){ h+='<option value="Room '+i+'">'; } dl.innerHTML=h; })();
+
+function rAreaChange(){ rDupCheck(); }
+function rSetPrio(p){ RPRIO=p; $('rp-n').classList.toggle('on-n', p==='normal'); $('rp-u').classList.toggle('on-u', p==='urgent'); }
+
+/* ---- live open-jobs listener, only to warn about duplicate rooms ---- */
+if(db){
+  try{
+    db.collection('hosfix_jobs').onSnapshot(function(snap){
+      ROPEN = snap.docs.map(function(d){ return d.data(); }).filter(function(j){ return j && !j.demoHidden && j.status!=='complete'; });
+      rDupCheck();
+    }, function(){});
+  }catch(e){}
+}
+function normLoc(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,' '); }
+function rDupCheck(){
+  var box=$('dup'); if(!box) return;
+  var loc=normLoc($('r-loc').value);
+  if(!loc){ box.classList.add('hide'); return; }
+  var same=ROPEN.filter(function(j){ return normLoc(j.location)===loc; });
+  if(same.length){
+    box.classList.remove('hide');
+    box.innerHTML='⚠ There '+(same.length===1?'is already <b>1 open issue</b>':'are already <b>'+same.length+' open issues</b>')+' for this room. Yours will be grouped with '+(same.length===1?'it':'them')+'.';
+  } else { box.classList.add('hide'); }
+}
+
+/* ---- photo (optional, compressed) ---- */
+$('r-photo-zone').addEventListener('click', function(){ $('r-photo-input').click(); });
+$('r-photo-input').addEventListener('change', function(e){
+  var files=Array.prototype.slice.call(e.target.files||[]);
+  files.forEach(function(f){ if(RPHOTOS.length>=4){ return; } rCompress(f, function(dataUrl){ if(dataUrl){ RPHOTOS.push(dataUrl); rRenderPhotos(); } }); });
+  e.target.value='';
+});
+function rCompress(file, cb){
+  try{
+    var img=new Image(), url=URL.createObjectURL(file);
+    img.onload=function(){
+      var max=1280, w=img.width, h=img.height;
+      if(w>h && w>max){ h=Math.round(h*max/w); w=max; } else if(h>max){ w=Math.round(w*max/h); h=max; }
+      var c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      try{ cb(c.toDataURL('image/jpeg',0.6)); }catch(err){ cb(null); }
+    };
+    img.onerror=function(){ cb(null); };
+    img.src=url;
+  }catch(e){ cb(null); }
+}
+function rRenderPhotos(){
+  var box=$('r-prev'); if(!box) return;
+  box.innerHTML=RPHOTOS.map(function(p,i){ return '<div class="pi"><img src="'+p+'"><button onclick="rDelPhoto('+i+')">✕</button></div>'; }).join('');
+}
+function rDelPhoto(i){ RPHOTOS.splice(i,1); rRenderPhotos(); }
+
+/* ---- submit → hosfix_jobs (lands with Glenn to allocate) ---- */
+function rSubmit(){
+  var area=$('r-area').value;
+  var loc=($('r-loc').value||'').trim();
+  var title=($('r-title').value||'').trim();
+  if(!area){ toast('Pick an area'); return; }
+  if(!loc){ toast('Add the room / location'); return; }
+  if(!title){ toast('Say what needs fixing'); return; }
+  var by=HOSREP_ME||'';
+  var now=new Date().toISOString();
+  var doc={
+    id:'rep_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+    title:title, area:area, areaLabel:(AREA_LABELS[area]||area), location:loc, workType:'',
+    description:($('r-desc').value||'').trim(),
+    status:'not-started', priority:(RPRIO==='urgent'?'urgent':'medium'), assignees:['glenn'],
+    occupancy:'', cost:0, module:'maintenance', photos:RPHOTOS.slice(), voiceNote:null, materials:[], receipts:[],
+    notes:[{ text:'Reported via HosREP web form'+(by?(' — by '+by):''), by:(by||'HosREP'), at:todayISO() }],
+    createdAt:now, updatedAt:now, createdBy:'hosrep', reportedBy:(by||''), source:'hosrep',
+    approvedBy:null, approvedAt:null, completedAt:null
+  };
+  var btn=$('r-submit'); if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
+  try{
+    if(db){
+      db.collection('hosfix_jobs').doc(doc.id).set(doc).then(function(){ rShowOk(doc); }).catch(function(){
+        if(btn){ btn.disabled=false; btn.textContent='🔧 Send to maintenance →'; }
+        toast('Could not send — check your connection and try again');
+      });
+    } else {
+      toast('Could not reach maintenance — try again');
+      if(btn){ btn.disabled=false; btn.textContent='🔧 Send to maintenance →'; }
+    }
+  }catch(e){
+    if(btn){ btn.disabled=false; btn.textContent='🔧 Send to maintenance →'; }
+    toast('Could not send — try again');
+  }
+}
+function rShowOk(doc){
+  var same=ROPEN.filter(function(j){ return normLoc(j.location)===normLoc(doc.location); }).length;
+  $('ok-sub').innerHTML = same>0
+    ? 'Added to the other open issue'+(same>1?'s':'')+' for <b>'+doc.location+'</b>.'
+    : 'The maintenance team has it.';
+  $('form-card').classList.add('hide');
+  $('ok-card').classList.remove('hide');
+  window.scrollTo(0,0);
+}
+function rReset(){
+  $('r-area').value=''; $('r-loc').value=''; $('r-title').value=''; $('r-desc').value='';
+  RPRIO='normal'; rSetPrio('normal'); RPHOTOS=[]; rRenderPhotos();
+  var box=$('dup'); if(box) box.classList.add('hide');
+  var btn=$('r-submit'); if(btn){ btn.disabled=false; btn.textContent='🔧 Send to maintenance →'; }
+  $('ok-card').classList.add('hide'); $('form-card').classList.remove('hide');
+  window.scrollTo(0,0);
+}
+
+/* install helper (so it can be saved to the home screen) */
+if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('/hosrep-sw.js').catch(function(){}); }catch(e){} }
+</script>
+</body>
+</html>

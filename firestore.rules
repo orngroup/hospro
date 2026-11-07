@@ -65,7 +65,17 @@ service cloud.firestore {
       allow create: if true;
     }
 
-    // Guest Wi-Fi welcome page (brandon.hospro.co.uk/wifi): guests can add
+    // Christmas competition entries from the website quiz
+    // (www.brandonhallhotelandspa.com/christmas-competition/): anyone may enter,
+    // only staff can see, edit or remove entries.
+    match /competition/{doc} {
+      allow read, update, delete: if isStaff();
+      allow create: if request.resource.data.campaign == 'xmas2026'
+        && request.resource.data.size() <= 20
+        && request.resource.data.email is string && request.resource.data.email.size() < 200;
+    }
+
+    // Guest Wi-Fi welcome page (brandonhallhotelandspa.com/wifi): guests can add
     // their own sign-up; only staff can read, edit or delete.
     match /wifi_signups/{doc} {
       allow read, update, delete: if isStaff();
@@ -151,12 +161,22 @@ service cloud.firestore {
     match /hoshouse_rooms/{doc}  { allow read, write: if true; }
     match /hoshouse_config/{doc} { allow read, write: if true; }
     match /hoshouse_photos/{doc} { allow read, create, update: if true; allow delete: if isStaff(); }
+    // Front Desk / Guest requests (hoshouse-request.html): anyone can log a request,
+    // the staff board reads & updates; only signed-in staff can delete.
+    match /hoshouse_requests/{doc} { allow read, create, update: if true; allow delete: if isStaff(); }
+    // Reception console (hoshouse-request.html) — visitor log & delivery log:
+    // anyone on the console can add/update; only signed-in staff can delete.
+    match /hoshouse_visitors/{doc}   { allow read, create, update: if true; allow delete: if isStaff(); }
+    match /hoshouse_deliveries/{doc} { allow read, create, update: if true; allow delete: if isStaff(); }
+    // Reception shift handover notes (hoshouse-request.html): anyone on the
+    // console can add/read; only signed-in staff can delete.
+    match /hoshouse_handovers/{doc}  { allow read, create, update: if true; allow delete: if isStaff(); }
 
     // ── HosFIRE ──
     function isFire() {
       return isStaff() || (request.auth != null
         && request.auth.token.firebase.sign_in_provider == 'password'
-        && request.auth.token.email in ['glenn.randell@brandonhall.portal']);
+        && request.auth.token.email in ['glenn.randell@brandonhall.portal', 'fire.kiosk@brandonhall.portal']);
     }
     function isFireAdmin() {
       return isFire() && request.auth.token.email in [
@@ -191,17 +211,48 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Online staff fire training (HosFIRE Training): add only, never edit or delete.
+    match /hosfire_training/{doc} {
+      allow read: if isFire();
+      allow create: if isFire()
+        && request.resource.data.byEmail == request.auth.token.email
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
 
-    // ── HosPRO Mobile (app.html) — shared, app-level sign-in like HosHOUSE / HosFIX ──
-    match /hospro_app/{doc}      { allow read, write: if true; }            // user directory & PIN overrides
-    match /hosfix_photos/{doc}   { allow read, create, update: if true; allow delete: if isStaff(); }
-    match /hosfix_timelogs/{doc} { allow read, create: if true; allow update, delete: if isStaff(); }
-    match /hosrec_requests/{doc} { allow read, create, update: if true; allow delete: if isStaff(); }
-    match /hosrec_incidents/{doc}{ allow read, create, update: if true; allow delete: if false; }
-    match /hosrec_fire/{doc}     { allow read, create, update: if true; allow delete: if false; }
-    match /fb_daily/{doc}        { allow read, create, update: if true; allow delete: if isStaff(); }
-    match /fb_checks/{doc}       { allow read, create, update: if true; allow delete: if isStaff(); }
-    match /fb_menus/{doc}        { allow read, write: if true; }
+    // Landlord pack (/landlord): readable only by someone who knows the
+    // password (the document id is derived from it); never listable.
+    match /hosfire_share/{id} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if isFireAdmin();
+    }
+
+    // ── HosPRO Mobile (app.html) — app-level sign-in, open like HosHOUSE / HosFIX ──
+    match /hospro_app/{doc}       { allow read, write: if true; }            // user directory & PIN changes
+    match /hosfix_photos/{doc}    { allow read, create, update: if true; allow delete: if isStaff(); }
+    match /hosfix_timelogs/{doc}  { allow read, create: if true; allow update, delete: if isStaff(); }
+    match /hosrec_requests/{doc}  { allow read, create, update: if true; allow delete: if isStaff(); }
+    match /hosrec_incidents/{doc} { allow read, create, update: if true; allow delete: if false; }
+    match /hosrec_fire/{doc}      { allow read, create, update: if true; allow delete: if false; }
+    match /fb_daily/{doc}         { allow read, create, update: if true; allow delete: if isStaff(); }
+    match /fb_checks/{doc}        { allow read, create, update: if true; allow delete: if isStaff(); }
+    match /fb_menus/{doc}         { allow read, write: if true; }
+
+    // ── THE BARN HOTEL (thebarnhotel.hospro.co.uk) — own collections, prefixed barn_ ──
+    // HosDesk + HosFix for The Barn: open like the Brandon Hall HosDesk/HosFix
+    // collections above; jobs are archived, never deleted.
+    match /barn_fix_jobs/{jobId} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
+    match /barn_fix_photos/{doc}   { allow read, create, update: if true; allow delete: if false; }
+    match /barn_fix_timelogs/{doc} { allow read, create, update: if true; allow delete: if false; }
+    match /barn_deliveries/{doc}   { allow read, create, update: if true; allow delete: if false; }
+    match /barn_visitors/{doc}     { allow read, create, update: if true; allow delete: if false; }
+    match /barn_requests/{doc}     { allow read, create, update: if true; allow delete: if false; }
+    match /barn_handovers/{doc}    { allow read, create, update: if true; allow delete: if false; }
+    match /barn_config/{doc}       { allow read, write: if true; }
 
     match /{document=**} {
       allow read, write: if false;

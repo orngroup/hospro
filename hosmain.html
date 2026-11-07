@@ -1055,6 +1055,7 @@ function promptSyncLink(){
   checkSyncHash();
 }
 
+function hfRoomCount(j){ if(!j || !j.location) return 0; const k=String(j.location).trim().toLowerCase(); return JOBS.filter(x=>x && !x.demoHidden && x.status!=='complete' && String(x.location||'').trim().toLowerCase()===k).length; }
 function jobCard(j){
   const cls=j.priority==='urgent'&&j.status!=='complete'?'s-urgent':
     j.status==='complete'?'s-complete':j.status==='in-progress'?'s-in-progress':
@@ -1070,6 +1071,7 @@ function jobCard(j){
       ${j.workType?`<span>· ${WORK_TYPES.find(w=>w.id===j.workType)?.label||j.workType}</span>`:''}
       ${j.priority==='urgent'&&j.status!=='complete'?`<span class="j-badge urgent">🔴 Urgent</span>`:''}
       ${unassigned?`<span class="j-badge" style="background:#fff3e8;color:#c45c00">⏳ Unassigned</span>`:''}
+      ${(j.status!=='complete'&&hfRoomCount(j)>1)?`<span class="j-badge" style="background:#eef2ff;color:#3730a3" title="Other open issues in this room">🔁 ${hfRoomCount(j)} in this room</span>`:''}
       ${occ}
       ${j.voiceNote?`<span title="Voice note">🎙️</span>`:''}
       ${(j.photos&&j.photos.length)?`<span title="Photos">📷${j.photos.length}</span>`:''}

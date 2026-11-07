@@ -105,6 +105,11 @@ body.console .wrap{max-width:1200px}
 .bc-del{background:linear-gradient(135deg,#b9780a,#935f08)}
 .bc-mnt{background:linear-gradient(135deg,#c45c00,#8f4300)}
 .bc-hand{background:linear-gradient(135deg,#2a6a4a,#1f5038)}
+.roomgrp{border:1.5px solid #f0d6bd;border-radius:14px;padding:8px;margin-bottom:12px;background:#fff9f3}
+.roomgrp-hd{display:flex;align-items:center;gap:8px;font:900 14px Lato;color:#8f4300;padding:6px 6px 8px}
+.roomgrp-n{margin-left:auto;background:#c45c00;color:#fff;border-radius:20px;padding:3px 11px;font:900 12px Lato}
+.roomgrp .req{margin-bottom:8px}
+.roomgrp .req:last-child{margin-bottom:2px}
 .hchecks{display:flex;flex-direction:column;gap:2px;margin-top:4px}
 .hchecks label{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13.5px;color:var(--ink);cursor:pointer;background:#fff}
 .hchecks label:hover{border-color:#2a6a4a}
@@ -995,6 +1000,7 @@ function mStatusBadge(j){
   return who.length?'<span class="bdg p" style="background:#eef2fb;color:#1F3864">Allocated</span>':(j.priority==='urgent'?'<span class="bdg u">Urgent · new</span>':'<span class="bdg p">New</span>');
 }
 function mWho(j){ const a=(j.assignees||[]).map(id=>HFX_NAMES[id]||id); return a.length?('👤 '+esc(a.join(', '))):''; }
+function mNormLoc(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,' '); }
 function mRender(){
   const openCount=mOpenJobs().length;
   try{ const el=$('t-mnt'); if(el) el.textContent=openCount; }catch(e){}
@@ -1005,12 +1011,25 @@ function mRender(){
   rows.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
   if(!rows.length){ $('m-list').innerHTML='<div class="muted" style="padding:22px;text-align:center">No maintenance issues'+(M_FILTER_ALL?' in this period':' open')+' ✓</div>'; return; }
   const BORD={'not-started':'#c45c00','in-progress':'#b9780a','complete':'#2E6B5E'};
-  $('m-list').innerHTML=rows.map(j=>{
+  const rowHtml=j=>{
     const col=(j.priority==='urgent'&&j.status!=='complete')?'#b3261e':(BORD[j.status]||'#c45c00');
     return `<div class="req" style="border-left-color:${col}">
       <div class="r1"><span class="rm">${esc(j.location||j.areaLabel||'—')}</span><span class="ty">${esc(j.title||'')}</span>${mStatusBadge(j)}</div>
       ${j.description?`<div class="meta">${esc(j.description)}</div>`:''}
       <div class="meta">${esc(j.reportedBy||j.source||'')} · ${recWhen(j.createdAt)} ${mWho(j)?('· '+mWho(j)):''}</div>
+    </div>`;
+  };
+  // group issues for the same room together (newest room first)
+  const order=[], groups={};
+  rows.forEach(j=>{ const k=mNormLoc(j.location||j.areaLabel||'—')||'—'; if(!groups[k]){ groups[k]=[]; order.push(k); } groups[k].push(j); });
+  $('m-list').innerHTML=order.map(k=>{
+    const g=groups[k];
+    if(g.length===1) return rowHtml(g[0]);
+    const loc=g[0].location||g[0].areaLabel||'—';
+    const open=g.filter(j=>j.status!=='complete').length;
+    return `<div class="roomgrp">
+      <div class="roomgrp-hd">📍 ${esc(loc)}<span class="roomgrp-n">${g.length} issue${g.length>1?'s':''}${(open&&open<g.length)?(' · '+open+' open'):''}</span></div>
+      ${g.map(rowHtml).join('')}
     </div>`;
   }).join('');
 }
