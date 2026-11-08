@@ -39,7 +39,27 @@ a{color:var(--gold-dk)}
 .kpi .k{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-top:7px}
 .kpi.good .v{color:var(--ok)} .kpi.warn .v{color:var(--warn)}
 /* panels */
-.grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-top:16px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:16px}
+/* donut */
+.donutwrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.dlegend{display:flex;flex-direction:column;gap:7px;min-width:140px;flex:1}
+.dlg{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.dlg .sw{width:11px;height:11px;border-radius:3px;flex:0 0 11px}
+.dlg .lv{margin-left:auto;font-weight:800;color:var(--navy)}
+/* our-events timeline */
+.ge{position:relative;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px 16px}
+.ge-head{position:relative;height:20px;margin-left:168px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.ge-month{position:absolute;top:0;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.ge-row{display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:center;height:32px}
+.ge-name{font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ge-name small{color:var(--muted);font-weight:600}
+.ge-track{position:relative;height:22px}
+.ge-bar{position:absolute;top:1px;height:20px;border-radius:6px;min-width:9px;display:flex;align-items:center;padding:0 7px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.ge-lines{position:absolute;left:184px;right:16px;top:14px;bottom:16px;pointer-events:none}
+.ge-vline{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.ge-now{position:absolute;top:0;bottom:0;width:2px;background:var(--gold)}
+.ge-now span{position:absolute;bottom:-2px;left:4px;font-size:10px;font-weight:800;color:var(--gold-dk);white-space:nowrap}
+@media(max-width:620px){ .ge-row{grid-template-columns:110px 1fr} .ge-head{margin-left:118px} .ge-lines{left:134px} }
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
 .panel h3{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--navy);margin-bottom:12px}
 .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:13px}
@@ -125,6 +145,7 @@ select.status{min-width:118px;font-weight:700}
   <div class="viewtabs">
     <button class="vtab on" data-v="plan" onclick="setView('plan')">📋 Action plan</button>
     <button class="vtab" data-v="social" onclick="setView('social')">📣 Social calendar</button>
+    <button class="vtab" data-v="ours" onclick="setView('ours')">🎄 Our events</button>
     <button class="vtab" data-v="events" onclick="setView('events')">🎟 Local events</button>
   </div>
 
@@ -139,6 +160,7 @@ select.status{min-width:118px;font-weight:700}
   </div>
 
   <div class="grid2">
+    <div class="panel"><h3>Estimated budget by channel</h3><div class="donutwrap"><div id="bychanchart"></div></div></div>
     <div class="panel"><h3>Estimated budget by owner</h3><div id="byowner"></div></div>
     <div class="panel"><h3>By status</h3><div class="statline" id="bystatus"></div>
       <h3 style="margin-top:16px">By channel</h3><div class="statline" id="bychannel"></div>
@@ -193,6 +215,25 @@ select.status{min-width:118px;font-weight:700}
     <div class="toolbar" id="sc-filters" style="margin-top:14px"></div>
     <div id="sc-list"></div>
     <p class="foot">Social posts imported from Buffer (Facebook &amp; Instagram) and de-duplicated across channels and schedules. This is a read-only view of the planned calendar — schedule and edit the live posts in Buffer. Images shown are the planned creative.</p>
+  </div>
+
+  <div id="oursView" style="display:none">
+    <p class="lead" style="margin-top:16px">Brandon Hall's own festive programme, now until mid-January. Timeline first, full details in the table below.</p>
+    <div class="statline" id="ou-stats" style="margin-top:10px"></div>
+    <div class="ge" id="ou-chart" style="margin-top:14px"></div>
+    <div class="tablewrap" style="margin-top:16px">
+      <table style="min-width:760px">
+        <thead><tr>
+          <th style="min-width:150px">Dates</th>
+          <th style="min-width:220px">Event</th>
+          <th>Type</th>
+          <th>From</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="ou-rows"></tbody>
+      </table>
+    </div>
+    <p class="foot">Prices are per person from the festive brochure and may change — confirm on the website. Links go to the relevant booking page.</p>
   </div>
 
   <div id="eventsView" style="display:none">
@@ -271,7 +312,7 @@ var SEED=[
 var ROWS=[], CAT='all', SEEDED=false;
 
 function recalc(){
-  var est=0, appr=0, wait=0, live=0, owner={}, status={}, chan={};
+  var est=0, appr=0, wait=0, live=0, owner={}, status={}, chan={}, chanB={};
   ROWS.forEach(function(r){
     est+=(+r.est||0);
     if(r.status==='approved'||r.status==='live'||r.status==='done') appr+=(+r.appr|| +r.est||0);
@@ -280,6 +321,7 @@ function recalc(){
     owner[r.owner]=(owner[r.owner]||0)+(+r.est||0);
     status[r.status]=(status[r.status]||0)+1;
     chan[r.cat]=(chan[r.cat]||0)+1;
+    chanB[r.cat]=(chanB[r.cat]||0)+(+r.est||0);
   });
   $('k-count').textContent=ROWS.length;
   $('k-est').textContent=gbp(est);
@@ -300,6 +342,40 @@ function recalc(){
   $('bychannel').innerHTML=Object.keys(chan).map(function(c){
     return '<span class="statpill">'+esc(CATS[c]||c)+' · '+chan[c]+'</span>';
   }).join('');
+  // donut: estimated budget by channel
+  var CCOL={event:'#2747a6',advertising:'#b45309',digital:'#1f5038',package:'#6b21a8'};
+  var dparts=['event','advertising','digital','package'].filter(function(c){return chanB[c];}).map(function(c){
+    return {label:CATS[c]||c, v:chanB[c], color:CCOL[c]};
+  });
+  $('bychanchart').innerHTML = donutSVG(dparts,148) + donutLegend(dparts);
+}
+function donutSVG(parts,size){
+  var total=parts.reduce(function(s,p){return s+p.v;},0);
+  if(!total) return '<div class="c-meta">No budget entered yet.</div>';
+  var r=size/2, ir=r*0.62, cx=r, cy=r, a=-Math.PI/2, svg='';
+  var nz=parts.filter(function(p){return p.v>0;});
+  if(nz.length===1){
+    svg='<circle cx="'+cx+'" cy="'+cy+'" r="'+((r+ir)/2)+'" fill="none" stroke="'+nz[0].color+'" stroke-width="'+(r-ir)+'"></circle>';
+  } else {
+    parts.forEach(function(p){
+      if(!p.v) return;
+      var ang=p.v/total*Math.PI*2, a2=a+ang, large=ang>Math.PI?1:0;
+      var x1=cx+r*Math.cos(a),y1=cy+r*Math.sin(a),x2=cx+r*Math.cos(a2),y2=cy+r*Math.sin(a2);
+      var xi1=cx+ir*Math.cos(a),yi1=cy+ir*Math.sin(a),xi2=cx+ir*Math.cos(a2),yi2=cy+ir*Math.sin(a2);
+      svg+='<path d="M'+x1+' '+y1+' A'+r+' '+r+' 0 '+large+' 1 '+x2+' '+y2+' L'+xi2+' '+yi2+' A'+ir+' '+ir+' 0 '+large+' 0 '+xi1+' '+yi1+' Z" fill="'+p.color+'"></path>';
+      a=a2;
+    });
+  }
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="flex:0 0 '+size+'px">'+svg+
+    '<text x="'+cx+'" y="'+(cy-3)+'" text-anchor="middle" font-size="12" fill="#5a6472" font-weight="700">Total</text>'+
+    '<text x="'+cx+'" y="'+(cy+15)+'" text-anchor="middle" font-size="16" fill="#1a2b3a" font-weight="800">'+gbp(total)+'</text></svg>';
+}
+function donutLegend(parts){
+  var total=parts.reduce(function(s,p){return s+p.v;},0)||1;
+  return '<div class="dlegend">'+parts.map(function(p){
+    return '<div class="dlg"><span class="sw" style="background:'+p.color+'"></span>'+esc(p.label)+
+      '<span class="lv">'+gbp(p.v)+' · '+Math.round(p.v/total*100)+'%</span></div>';
+  }).join('')+'</div>';
 }
 
 function rowHtml(r){
@@ -401,8 +477,10 @@ function setView(v){
   document.getElementById('planView').style.display   = (v==='plan')?'':'none';
   document.getElementById('socialView').style.display = (v==='social')?'':'none';
   var ev=document.getElementById('eventsView'); if(ev) ev.style.display = (v==='events')?'':'none';
+  var ou=document.getElementById('oursView'); if(ou) ou.style.display = (v==='ours')?'':'none';
   if(v==='social') renderSocial();
   if(v==='events') renderEvents();
+  if(v==='ours') renderOurs();
   if(window.scrollTo) window.scrollTo(0,0);
 }
 function scSetFilter(f,el){ SC_FILTER=f; document.querySelectorAll('#sc-filters .chip').forEach(function(x){x.classList.remove('on');}); el.classList.add('on'); renderSocial(); }
@@ -489,6 +567,59 @@ function renderEvents(){
   document.getElementById('ev-rows').innerHTML=rows;
   document.getElementById('ev-listings').innerHTML=EV_LISTINGS.map(function(x){
     return '<a href="'+esc(x.url)+'" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px"><div style="font-weight:800;font-size:13px;color:var(--navy)">'+esc(x.name)+' ↗</div><div style="font-size:12px;color:var(--muted)">'+esc(x.note||'')+'</div></a>';
+  }).join('');
+}
+
+var OUR_EVENTS=[
+ {name:"Christmas competition quiz", start:"2026-11-08", end:"2026-12-24", cat:"Campaign", color:"#1a2b3a", price:"Free to enter", url:"https://www.brandonhallhotelandspa.com/christmas-competition/", note:"Win a night for two with dinner"},
+ {name:"Festive Afternoon Tea", start:"2026-11-23", end:"2026-12-24", cat:"Dining", color:"#4DA69C", price:"from £40pp", url:"https://www.brandonhallhotelandspa.com/christmas/", note:"Daily 12–4pm; mulled wine £45; children's tea"},
+ {name:"Christmas light switch-on", start:"2026-11-27", end:"2026-11-27", cat:"Event", color:"#BB9979", price:"Free (Eventbrite)", url:"https://www.brandonhallhotelandspa.com/christmas/", note:"Fri 27 Nov, 6–9pm"},
+ {name:"Santa Sundays", start:"2026-11-29", end:"2026-12-20", cat:"Dining", color:"#4DA69C", price:"from £40pp", url:"https://www.brandonhallhotelandspa.com/christmas/", note:"Sundays 29 Nov, 6/13/20 Dec"},
+ {name:"Festive dining — The Clarendon", start:"2026-12-01", end:"2026-12-31", cat:"Dining", color:"#4DA69C", price:"à la carte", url:"https://www.brandonhallhotelandspa.com/dining/", note:"Festive menu throughout December"},
+ {name:"Christmas Party Nights", start:"2026-12-03", end:"2026-12-19", cat:"Party", color:"#9d7d5f", price:"from £45pp", url:"https://www.brandonhallhotelandspa.com/christmas/", note:"Thu/Fri/Sat, Woodlands Suite; DJ"},
+ {name:"Joiner Party Nights", start:"2026-12-04", end:"2026-12-18", cat:"Party", color:"#9d7d5f", price:"from £45pp", url:"https://www.brandonhallhotelandspa.com/christmas/", note:"Fri 4 & Fri 18 Dec, live band"},
+ {name:"Christmas Day lunch", start:"2026-12-25", end:"2026-12-25", cat:"Dining", color:"#4DA69C", price:"£80pp", url:"https://www.brandonhallhotelandspa.com/christmas/", note:"Four courses, Buck's Fizz; children £45"},
+ {name:"New Year's Eve masquerade gala", start:"2026-12-31", end:"2026-12-31", cat:"Party", color:"#BB9979", price:"£85 / £195pp", url:"https://www.brandonhallhotelandspa.com/christmas/", note:"The Score live + DJ; £195 w/ stay & brunch"},
+ {name:"New Year's Day brunch", start:"2027-01-01", end:"2027-01-01", cat:"Dining", color:"#4DA69C", price:"NYE package", url:"https://www.brandonhallhotelandspa.com/christmas/", note:"For overnight gala guests"}
+];
+var OU_A=new Date('2026-11-08T00:00'), OU_B=new Date('2027-01-18T00:00');
+function ouPct(d){ var t=(new Date(d+'T00:00')-OU_A)/(OU_B-OU_A)*100; return Math.max(0,Math.min(100,t)); }
+function ouFmt(a,b){
+  var M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function one(s){var p=s.split('-');return (+p[2])+' '+M[+p[1]-1]+' '+p[0];}
+  if(!b||b===a) return one(a);
+  var pa=a.split('-'),pb=b.split('-');
+  if(pa[0]===pb[0]&&pa[1]===pb[1]) return (+pa[2])+'–'+(+pb[2])+' '+M[+pa[1]-1]+' '+pa[0];
+  if(pa[0]===pb[0]) return (+pa[2])+' '+M[+pa[1]-1]+' – '+(+pb[2])+' '+M[+pb[1]-1]+' '+pa[0];
+  return one(a)+' – '+one(b);
+}
+function renderOurs(){
+  var sorted=OUR_EVENTS.slice().sort(function(a,b){return a.start.localeCompare(b.start);});
+  document.getElementById('ou-stats').innerHTML=
+    '<span class="statpill">'+sorted.length+' events on</span>'+
+    '<span class="statpill" style="color:#9d7d5f;border-color:#9d7d5f33">Party nights</span>'+
+    '<span class="statpill" style="color:#3A8A81;border-color:#3A8A8133">Festive dining</span>'+
+    '<span class="statpill" style="color:#8a5a00;border-color:#BB997955">8 Nov → mid-Jan</span>';
+  // month axis + now line
+  var months=[['NOV','2026-11-08'],['DEC','2026-12-01'],['JAN','2027-01-01']];
+  var head=months.map(function(m){ return '<span class="ge-month" style="left:'+ouPct(m[1]).toFixed(2)+'%">'+m[0]+'</span>'; }).join('');
+  var rows=sorted.map(function(e){
+    var l=ouPct(e.start), w=Math.max(1.8, ouPct(e.end)-l);
+    return '<div class="ge-row"><div class="ge-name" title="'+esc(e.name)+'">'+esc(e.name)+'</div>'+
+      '<div class="ge-track"><div class="ge-bar" style="left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:'+e.color+'" title="'+esc(e.name+' · '+ouFmt(e.start,e.end))+'"></div></div></div>';
+  }).join('');
+  var today=new Date(), ty=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  var lines='<div class="ge-vline" style="left:'+ouPct('2026-12-01').toFixed(2)+'%"></div>'+
+            '<div class="ge-vline" style="left:'+ouPct('2027-01-01').toFixed(2)+'%"></div>'+
+            '<div class="ge-now" style="left:'+ouPct(ty).toFixed(2)+'%"><span>today</span></div>';
+  document.getElementById('ou-chart').innerHTML='<div class="ge-head">'+head+'</div>'+rows+'<div class="ge-lines">'+lines+'</div>';
+  // table
+  document.getElementById('ou-rows').innerHTML=sorted.map(function(e){
+    return '<tr><td style="white-space:nowrap;font-weight:700">'+esc(ouFmt(e.start,e.end))+'</td>'+
+      '<td><div class="c-title">'+esc(e.name)+'</div>'+(e.note?'<div class="c-meta">'+esc(e.note)+'</div>':'')+'</td>'+
+      '<td><span class="cat" style="background:'+e.color+'22;color:'+e.color+'">'+esc(e.cat)+'</span></td>'+
+      '<td style="white-space:nowrap;font-weight:700">'+esc(e.price||'')+'</td>'+
+      '<td style="white-space:nowrap">'+(e.url?'<a href="'+esc(e.url)+'" target="_blank" rel="noopener" style="color:var(--gold-dk);font-weight:700">Book ↗</a>':'')+'</td></tr>';
   }).join('');
 }
 
