@@ -123,8 +123,9 @@ select.status{min-width:118px;font-weight:700}
   </div>
 
   <div class="viewtabs">
-    <button class="vtab on" data-v="plan" onclick="setView('plan',this)">📋 Action plan</button>
-    <button class="vtab" data-v="social" onclick="setView('social',this)">📣 Social calendar</button>
+    <button class="vtab on" data-v="plan" onclick="setView('plan')">📋 Action plan</button>
+    <button class="vtab" data-v="social" onclick="setView('social')">📣 Social calendar</button>
+    <button class="vtab" data-v="events" onclick="setView('events')">🎟 Local events</button>
   </div>
 
   <div id="planView">
@@ -152,7 +153,7 @@ select.status{min-width:118px;font-weight:700}
     <div class="chip" data-cat="digital" onclick="setCat('digital',this)">Digital</div>
     <div class="chip" data-cat="package" onclick="setCat('package',this)">Packages</div>
     <div class="spacer"></div>
-    <a class="btn btn-ghost" href="index.html#localEvents" style="text-decoration:none">📅 Local events</a>
+    <button class="btn btn-ghost" onclick="setView('events')">🎟 Local events</button>
     <button class="btn btn-ghost" onclick="addRow()">＋ Add line</button>
     <button class="btn btn-gold" onclick="copyShare()">🔗 Share link</button>
   </div>
@@ -192,6 +193,29 @@ select.status{min-width:118px;font-weight:700}
     <div class="toolbar" id="sc-filters" style="margin-top:14px"></div>
     <div id="sc-list"></div>
     <p class="foot">Social posts imported from Buffer (Facebook &amp; Instagram) and de-duplicated across channels and schedules. This is a read-only view of the planned calendar — schedule and edit the live posts in Buffer. Images shown are the planned creative.</p>
+  </div>
+
+  <div id="eventsView" style="display:none">
+    <p class="lead" style="margin-top:16px">Concerts, shows, sport and exhibitions near Brandon Hall (within ~20 miles). Use these to sell room + dinner packages to people heading to them.</p>
+    <div class="statline" id="ev-stats" style="margin-top:10px"></div>
+    <div class="toolbar" id="ev-filters" style="margin-top:14px"></div>
+    <div class="tablewrap" style="margin-top:12px">
+      <table style="min-width:820px">
+        <thead><tr>
+          <th style="min-width:130px">Date</th>
+          <th style="min-width:230px">Event</th>
+          <th>Venue</th>
+          <th>Type</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="ev-rows"></tbody>
+      </table>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>Listings sites — check weekly</h3>
+      <div id="ev-listings" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px"></div>
+    </div>
+    <p class="foot">Dates are a guide — always confirm on the venue's own site before promoting a package. Miles are straight-line from Brandon Hall (CV8 3FW).</p>
   </div>
 </div>
 
@@ -372,12 +396,14 @@ function scFmtDate(d){ if(!d) return ''; var p=d.split('-'); if(p.length<3) retu
 function scMonth(d){ var p=(d||'').split('-'); if(p.length<2) return 'Undated';
   var mo=['January','February','March','April','May','June','July','August','September','October','November','December'][+p[1]-1];
   return mo+' '+p[0]; }
-function setView(v,el){
-  document.querySelectorAll('.vtab').forEach(function(x){x.classList.remove('on');});
-  if(el) el.classList.add('on');
+function setView(v){
+  document.querySelectorAll('.vtab').forEach(function(x){ x.classList.toggle('on', x.getAttribute('data-v')===v); });
   document.getElementById('planView').style.display   = (v==='plan')?'':'none';
   document.getElementById('socialView').style.display = (v==='social')?'':'none';
+  var ev=document.getElementById('eventsView'); if(ev) ev.style.display = (v==='events')?'':'none';
   if(v==='social') renderSocial();
+  if(v==='events') renderEvents();
+  if(window.scrollTo) window.scrollTo(0,0);
 }
 function scSetFilter(f,el){ SC_FILTER=f; document.querySelectorAll('#sc-filters .chip').forEach(function(x){x.classList.remove('on');}); el.classList.add('on'); renderSocial(); }
 function renderSocial(){
@@ -418,6 +444,54 @@ function renderSocial(){
 }
 
 /* default view = plan; social renders on first open */
+var EVENTS=[{"name":"Horse of the Year Show 2026","venue":"NEC Birmingham / bp pulse LIVE","start":"2026-10-07","end":"2026-10-11","url":"https://www.thenec.co.uk/whats-on/","category":"Equestrian"},{"name":"Coventry City v Newcastle United (Premier League)","venue":"Coventry Building Society Arena","start":"2026-10-12","end":"2026-10-12","url":"https://www.teamtalk.com/coventry-city/fixtures","category":"Football","note":"Date from one secondary source; confirm with the club"},{"name":"The Motorhome and Caravan Show","venue":"NEC Birmingham","start":"2026-10-13","end":"2026-10-18","url":"https://www.thenec.co.uk/whats-on/","category":"Exhibition"},{"name":"Westlife (3 nights)","venue":"bp pulse LIVE","start":"2026-10-16","end":"2026-10-18","url":"https://www.bppulselive.co.uk/whats-on","category":"Concert"},{"name":"Coventry City v Fulham (Premier League)","venue":"Coventry Building Society Arena","start":"2026-10-24","end":"2026-10-24","url":"https://www.teamtalk.com/coventry-city/fixtures","category":"Football"},{"name":"The Haunted Castle (Halloween)","venue":"Warwick Castle","start":"2026-10-24","end":"2026-11-01","url":"https://www.warwick-castle.com/explore/events/","category":"Seasonal"},{"name":"Coventry City v Sunderland (Premier League)","venue":"Coventry Building Society Arena","start":"2026-10-31","end":"2026-10-31","url":"https://www.teamtalk.com/coventry-city/fixtures","category":"Football"},{"name":"Stan Mellor Chase Day","venue":"Warwick Racecourse","start":"2026-11-03","end":"2026-11-03","url":"https://www.thejockeyclub.co.uk/warwick/events-tickets/","category":"Racing"},{"name":"Cake International / Simply Christmas / Creative Craft Show","venue":"NEC Birmingham","start":"2026-11-05","end":"2026-11-08","url":"https://www.thenec.co.uk/whats-on/","category":"Exhibition"},{"name":"Round Table Fireworks Spectacular","venue":"Kenilworth Castle","start":"2026-11-07","end":"2026-11-07","url":"https://www.english-heritage.org.uk/visit/whats-on/kenilworth-castle-roundtable-fireworks-spectacular/","category":"Seasonal"},{"name":"Bill Bailey","venue":"Coventry Building Society Arena","start":"2026-11-13","end":"2026-11-13","url":"https://www.coventrybuildingsocietyarena.co.uk/whats-on","category":"Comedy"},{"name":"Lancaster Insurance Classic Motor Show","venue":"NEC Birmingham","start":"2026-11-13","end":"2026-11-15","url":"https://www.thenec.co.uk/whats-on/","category":"Exhibition"},{"name":"Christmas at the Castle","venue":"Warwick Castle","start":"2026-11-21","end":"2027-01-03","url":"https://www.warwick-castle.com/explore/events/","category":"Seasonal"},{"name":"Motorcycle Live","venue":"NEC Birmingham","start":"2026-11-21","end":"2026-11-29","url":"https://www.thenec.co.uk/whats-on/","category":"Exhibition"},{"name":"Festive Good Food Show","venue":"NEC Birmingham","start":"2026-11-26","end":"2026-11-29","url":"https://www.goodfoodshow.com/","category":"Exhibition"},{"name":"The Three Musketeers (RSC Christmas show)","venue":"Royal Shakespeare Theatre, Stratford-upon-Avon","start":"2026-11-28","end":"2027-01-09","url":"https://www.rsc.org.uk/whats-on","category":"Theatre"},{"name":"Sleeping Beauty (pantomime)","venue":"Birmingham Hippodrome","start":"2026-12-19","end":"2027-01-31","url":"https://www.birminghamhippodrome.com/","category":"Theatre"},{"name":"Carols at the Castle","venue":"Warwick Castle","start":"2026-12-19","end":"2026-12-19","url":"https://www.warwick-castle.com/explore/events/","category":"Seasonal"},{"name":"Coventry Rugby v Hartpury (Boxing Day)","venue":"Nick Newbold Stadium","start":"2026-12-26","end":"2026-12-26","url":"https://coventryrugby.co.uk/news/coventry-rugby-s-2026-27-elior-champ-rugby-fixtures-announced","category":"Rugby"},{"name":"Coventry Blaze v Cardiff Devils (Boxing Day)","venue":"Skydome Arena","start":"2026-12-26","end":"2026-12-26","url":"https://coventryblaze.co.uk/26-27-fixtures-released/","category":"Ice hockey"},{"name":"New Year's Eve Raceday","venue":"Warwick Racecourse","start":"2026-12-31","end":"2026-12-31","url":"https://www.thejockeyclub.co.uk/warwick/events-tickets/","category":"Racing"},{"name":"Coventry Blaze v Nottingham Panthers (New Year's Day derby)","venue":"Skydome Arena","start":"2027-01-01","end":"2027-01-01","url":"https://coventryblaze.co.uk/26-27-fixtures-released/","category":"Ice hockey"},{"name":"William Hill Classic Chase Day","venue":"Warwick Racecourse","start":"2027-01-16","end":"2027-01-16","url":"https://www.thejockeyclub.co.uk/warwick/events-tickets/","category":"Racing"},{"name":"Strictly Come Dancing Live Tour","venue":"Utilita Arena Birmingham","start":"2027-01-22","end":"2027-01-24","url":"https://www.thenec.co.uk/whats-on/","category":"Live show"},{"name":"Jack Whitehall - Bad Influence Tour","venue":"Coventry Building Society Arena","start":"2027-01-27","end":"2027-01-27","url":"https://www.coventrybuildingsocietyarena.co.uk/whats-on","category":"Comedy"},{"name":"Kingmaker Chase Day","venue":"Warwick Racecourse","start":"2027-02-13","end":"2027-02-13","url":"https://www.thejockeyclub.co.uk/warwick/events-tickets/","category":"Racing"},{"name":"Caravan, Camping and Motorhome Show","venue":"NEC Birmingham","start":"2027-02-16","end":"2027-02-21","url":"https://www.thenec.co.uk/whats-on/","category":"Exhibition"},{"name":"Crufts 2027","venue":"NEC Birmingham","start":"2027-03-04","end":"2027-03-07","url":"https://www.crufts.org.uk/","category":"Exhibition"},{"name":"YONEX All England Open Badminton Championships","venue":"Utilita Arena Birmingham","start":"2027-03-04","end":"2027-03-14","url":"https://www.thenec.co.uk/whats-on/","category":"Sport"},{"name":"Practical Classics Classic Car & Restoration Show","venue":"NEC Birmingham","start":"2027-03-19","end":"2027-03-21","url":"https://necrestorationshow.com","category":"Exhibition"},{"name":"The Enemy - 20th anniversary homecoming","venue":"Coventry Building Society Arena","start":"2027-03-20","end":"2027-03-20","url":"https://www.coventrybuildingsocietyarena.co.uk/whats-on","category":"Concert"},{"name":"Coventry Rugby v Ealing Trailfinders (Easter)","venue":"Nick Newbold Stadium","start":"2027-03-27","end":"2027-03-27","url":"https://coventryrugby.co.uk/news/coventry-rugby-s-2026-27-elior-champ-rugby-fixtures-announced","category":"Rugby"},{"name":"Coventry Half Marathon","venue":"Coventry city centre","start":"2027-04-11","end":"2027-04-11","url":"https://www.timeoutdoors.com/events/coventry-half-marathon/half-marathon","category":"Sport"},{"name":"BBC Gardeners' World Live (new venue)","venue":"Packington Estate, Meriden","start":"2027-06-17","end":"2027-06-20","url":"https://www.oswestry.life/article/new-home-for-bbc-gardeners-world-live-and-good-food-show-summer/","category":"Exhibition"},{"name":"Good Food Festival (replaces Good Food Show Summer)","venue":"Packington Estate, Meriden","start":"2027-06-17","end":"2027-06-20","url":"https://www.goodfoodshow.com/","category":"Festival"},{"name":"Men's Ashes 3rd Test - England v Australia","venue":"Edgbaston Stadium","start":"2027-07-08","end":"2027-07-12","url":"https://www.edgbaston.com/media-article/mens-and-womens-ashes-cricket-to-headline-2027-summer-at-edgbaston","category":"Cricket"},{"name":"Invictus Games Birmingham 2027","venue":"NEC Birmingham","start":"2027-07-10","end":"2027-07-17","url":"https://www.invictusgamesfoundation.org/news/invictus-games-birmingham-2027-dates-confirmed","category":"Sport"},{"name":"Women's Ashes 3rd ODI","venue":"Edgbaston Stadium","start":"2027-07-20","end":"2027-07-20","url":"https://www.edgbaston.com/media-article/mens-and-womens-ashes-cricket-to-headline-2027-summer-at-edgbaston","category":"Cricket"},{"name":"The Long Road festival","venue":"Stanford Hall, Lutterworth","start":"2027-08-26","end":"2027-08-29","url":"https://thefestivals.uk/?p=42926","category":"Festival"},{"name":"England v New Zealand 1st ODI","venue":"Edgbaston Stadium","start":"2027-09-14","end":"2027-09-14","url":"https://www.edgbaston.com/media-article/mens-and-womens-ashes-cricket-to-headline-2027-summer-at-edgbaston","category":"Cricket"}];
+var EV_LISTINGS=[{"name":"Visit Coventry - Events","url":"https://visitcoventry.co.uk/whats-on/events/","note":"Official city tourism events hub (verified)"},{"name":"Visit Coventry - Gigs & Concerts","url":"https://visitcoventry.co.uk/whats-on/events/gigs-concerts/","note":"Music listings for Coventry"},{"name":"Shakespeare's England - What's On","url":"https://www.shakespeares-england.co.uk/whats-on/","note":"Official Warwickshire tourism listings; filter by town/date (verified)"},{"name":"Shakespeare's England - Christmas","url":"https://www.shakespeares-england.co.uk/whats-on/christmas/","note":"Festive events across Warwickshire"},{"name":"Coventry City Council - Events","url":"https://www.coventry.gov.uk/events","note":"Council events incl. Christmas market, Godiva Festival, Big Wheel"},{"name":"Warwick District Council - Events","url":"https://www.warwickdc.gov.uk/events","note":"Leamington, Warwick and Kenilworth events incl. Peace Festival"},{"name":"Ents24 - What's on near Coventry","url":"https://www.ents24.com/whatson/coventry","note":"Aggregated gig/show listings with date filter (verified)"},{"name":"Ents24 - What's on near Warwick","url":"https://www.ents24.com/whatson/warwick","note":"Verified"},{"name":"Ents24 - What's on near Leamington Spa","url":"https://www.ents24.com/whatson/leamington-spa","note":"Not fetched"},{"name":"Skiddle - Coventry events","url":"https://www.skiddle.com/whats-on/events/Coventry/","note":"Club nights, gigs, festivals; site blocks automated fetch"},{"name":"Songkick - Coventry Building Society Arena","url":"https://www.songkick.com/venues/3849-coventry-building-society-arena","note":"Concert tracker for the stadium (verified)"},{"name":"Stereoboard - Coventry venues","url":"https://www.stereoboard.com/venues/coventry","note":"Gig listings by venue"},{"name":"Coventry Telegraph - What's On","url":"https://www.coventrytelegraph.net/whats-on/","note":"Local news on shows/events (theatre-news subsection verified)"},{"name":"What's On Live - Warwickshire","url":"https://www.whatsonlive.co.uk/warwickshire/","note":"Regional arts and entertainment magazine"},{"name":"NEC Group - What's On (all NEC Group venues)","url":"https://www.thenec.co.uk/whats-on/","note":"Covers NEC, bp pulse LIVE and Utilita Arena Birmingham (verified)"},{"name":"Visit Leicester - What's On","url":"https://www.visitleicester.info/whats-on","note":"For Hinckley, Lutterworth, Bosworth and Leicester"}];
+
+var EV_FILTER='upcoming';
+function evFmt(a,b){
+  function one(s){var p=s.split('-');return (+p[2])+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+p[1]-1]+' '+p[0];}
+  if(!b||b===a) return one(a);
+  var pa=a.split('-'),pb=b.split('-');
+  if(pa[0]===pb[0]&&pa[1]===pb[1]) return (+pa[2])+'–'+(+pb[2])+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+pa[1]-1]+' '+pa[0];
+  return one(a)+' – '+one(b);
+}
+function evToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function evSetFilter(f,el){EV_FILTER=f;document.querySelectorAll('#ev-filters .chip').forEach(function(x){x.classList.remove('on');});el.classList.add('on');renderEvents();}
+function renderEvents(){
+  var today=evToday();
+  var cats={}; EVENTS.forEach(function(e){cats[e.category]=(cats[e.category]||0)+1;});
+  var chips=[['upcoming','Upcoming'],['all','All dates']];
+  Object.keys(cats).sort().forEach(function(c){chips.push([c,c]);});
+  document.getElementById('ev-filters').innerHTML=chips.map(function(c){
+    return '<div class="chip'+(EV_FILTER===c[0]?' on':'')+'" onclick="evSetFilter(\''+c[0].replace(/'/g,"\\'")+'\',this)">'+esc(c[1])+'</div>';
+  }).join('');
+  var list=EVENTS.filter(function(e){
+    var up=(e.end||e.start)>=today;
+    if(EV_FILTER==='upcoming') return up;
+    if(EV_FILTER==='all') return true;
+    return e.category===EV_FILTER && (EV_FILTER==='all'||up || (e.end||e.start)>=today || true);
+  }).slice().sort(function(a,b){return a.start.localeCompare(b.start);});
+  var soon=list.filter(function(e){return (new Date(e.start+'T12:00')-new Date())/864e5<=60 && (e.end||e.start)>=today;}).length;
+  document.getElementById('ev-stats').innerHTML=
+    '<span class="statpill">'+list.length+' dates</span>'+
+    '<span class="statpill" style="color:#b45309;border-color:#b4530933">Next 60 days · '+soon+'</span>'+
+    '<span class="statpill">Within ~20 miles of Brandon Hall</span>';
+  var rows=list.map(function(e){
+    var days=Math.round((new Date(e.start+'T12:00')-new Date())/864e5);
+    var soonTag=(days>=0&&days<=30)?'<div style="font-size:11px;color:#b45309;font-weight:700">in '+days+' day'+(days===1?'':'s')+'</div>':'';
+    var det=e.url?'<a href="'+esc(e.url)+'" target="_blank" rel="noopener" style="color:var(--gold-dk);font-weight:700">Details ↗</a>':'';
+    return '<tr><td style="white-space:nowrap;font-weight:700">'+esc(evFmt(e.start,e.end))+soonTag+'</td>'+
+      '<td><div class="c-title">'+esc(e.name)+'</div>'+(e.note?'<div class="c-meta">'+esc(e.note)+'</div>':'')+'</td>'+
+      '<td>'+esc(e.venue)+'</td>'+
+      '<td><span class="cat" style="background:#eef1f5;color:#374151">'+esc(e.category||'')+'</span></td>'+
+      '<td style="white-space:nowrap">'+det+'</td></tr>';
+  }).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:22px">No dates in this view.</td></tr>';
+  document.getElementById('ev-rows').innerHTML=rows;
+  document.getElementById('ev-listings').innerHTML=EV_LISTINGS.map(function(x){
+    return '<a href="'+esc(x.url)+'" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px"><div style="font-weight:800;font-size:13px;color:var(--navy)">'+esc(x.name)+' ↗</div><div style="font-size:12px;color:var(--muted)">'+esc(x.note||'')+'</div></a>';
+  }).join('');
+}
+
 start();
 </script>
 </body>
