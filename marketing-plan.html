@@ -18,11 +18,13 @@
   --paper:#f3f5f8; --line:#e3e7ee; --card:#ffffff; --ok:#2a7a53; --warn:#c07a3e; --red:#b3261e;
 }
 body{font-family:'Manrope',system-ui,sans-serif;color:var(--ink);background:var(--paper);line-height:1.45;-webkit-text-size-adjust:100%}
-.wrap{max-width:1240px;margin:0 auto;padding:0 18px 60px}
+.wrap{max-width:1680px;margin:0 auto;padding:0 24px 60px}
 a{color:var(--gold-dk)}
 /* header */
 .top{background:linear-gradient(140deg,#15283a,#223b54);color:#fff;border-bottom:3px solid var(--gold)}
-.top-in{max-width:1240px;margin:0 auto;padding:20px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.top-in{max-width:1680px;margin:0 auto;padding:20px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.backbtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:20px;padding:7px 15px;font-size:12.5px;font-weight:700;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.backbtn:hover{background:rgba(255,255,255,.24)}
 .top .brand{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;letter-spacing:.3px}
 .top .brand b{color:var(--gold)}
 .top .sub{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#c9d4e2;font-weight:700;margin-top:2px}
@@ -57,7 +59,7 @@ a{color:var(--gold-dk)}
 .spacer{flex:1}
 /* table */
 .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
-table{width:100%;border-collapse:collapse;min-width:980px}
+table{width:100%;border-collapse:collapse;min-width:1120px}
 th{background:var(--navy);color:#fff;text-align:left;padding:11px 12px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;position:sticky;top:0}
 td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:top}
 tr:last-child td{border-bottom:none}
@@ -71,7 +73,7 @@ tr:hover td{background:#f8fafc}
 .cat-digital{background:#e8f3ee;color:#1f5038}
 .cat-package{background:#f3e8fd;color:#6b21a8}
 select,input[type=number],input[type=date]{border:1.5px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:13px;background:#fff;color:var(--ink);max-width:100%}
-input[type=number]{width:92px}
+input[type=number]{width:72px}
 select.owner{min-width:104px}
 select.status{min-width:118px;font-weight:700}
 .st-draft{color:#5a6472} .st-submitted{color:#b45309} .st-approved{color:#1f5038} .st-live{color:#1d4ed8} .st-done{color:#2a7a53} .st-hold{color:#b3261e}
@@ -90,6 +92,7 @@ select.status{min-width:118px;font-weight:700}
 </head>
 <body>
 <div class="top"><div class="top-in">
+  <a class="backbtn" href="index.html#mod:hosstudio">← Marketing</a>
   <div><div class="brand">Brandon <b>Hall</b></div><div class="sub">Hotel &amp; Spa</div></div>
   <div class="spacer"></div>
   <div class="pill">📣 HosMarketing · Action Plan</div>
@@ -125,6 +128,7 @@ select.status{min-width:118px;font-weight:700}
     <div class="chip" data-cat="digital" onclick="setCat('digital',this)">Digital</div>
     <div class="chip" data-cat="package" onclick="setCat('package',this)">Packages</div>
     <div class="spacer"></div>
+    <a class="btn btn-ghost" href="index.html#localEvents" style="text-decoration:none">📅 Local events</a>
     <button class="btn btn-ghost" onclick="addRow()">＋ Add line</button>
     <button class="btn btn-gold" onclick="copyShare()">🔗 Share link</button>
   </div>
@@ -138,16 +142,16 @@ select.status{min-width:118px;font-weight:700}
   <div class="tablewrap" style="margin-top:12px">
     <table id="tbl">
       <thead><tr>
-        <th style="min-width:230px">Campaign / venue</th>
+        <th style="min-width:210px">Campaign / venue</th>
         <th>Channel</th>
         <th>Dates</th>
         <th>Owner</th>
         <th>Est £</th>
-        <th>Approved £</th>
+        <th>Appr. £</th>
         <th>Status</th>
         <th>Deadline</th>
-        <th style="min-width:150px">Contact</th>
-        <th style="min-width:160px"></th>
+        <th style="min-width:120px">Contact</th>
+        <th style="width:84px"></th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table>
@@ -257,7 +261,7 @@ function rowHtml(r){
     +'<td><select class="status st-'+r.status+'" onchange="edit(\''+r.id+'\',\'status\',this.value)">'+statusOpts+'</select></td>'
     +'<td><input type="date" value="'+esc(r.deadline||'')+'" onchange="edit(\''+r.id+'\',\'deadline\',this.value)"></td>'
     +'<td class="contact">'+contact+'</td>'
-    +'<td><button class="rowbtn approve" onclick="approve(\''+r.id+'\')">✓ Approve</button><button class="rowbtn del" onclick="delRow(\''+r.id+'\')">✕</button></td>'
+    +'<td style="white-space:nowrap"><button class="rowbtn approve" title="Approve" onclick="approve(\''+r.id+'\')">✓</button><button class="rowbtn del" title="Remove" onclick="delRow(\''+r.id+'\')">✕</button></td>'
     +'</tr>';
 }
 function render(){
