@@ -113,22 +113,20 @@
   window.renderMarketingLanding = function(box, m){
     if(window.WifiGuests){ WifiGuests.load(); WifiGuests.onChange(()=>{ const b=document.getElementById("mk-stats"); if(b) b.innerHTML=statsHtml(); }); }
     const CARDS = [
+      ["mktPlan","📣","Marketing Plan","Venue & event action plan — budgets, owners, approvals & shareable link","marketing-plan.html"],
       ["wifiDb","👥","Guest Database","Every individual from the free Wi-Fi — dashboard, filters, newsletter export"],
       ["guestMap","🗺️","Guest Map","Heatmap of where guests come from"],
       ["newsletters","✉️","Newsletter Templates","Branded emails to edit, preview and send via Mailchimp"],
-      ["marketing","📣","Campaigns","Marketing library and campaign assets"],
-      ["socialReq","📨","Social Requests","Post requests from the team"],
-      ["social","📱","Social Media","Posts and content scheduling"],
       ["brochure","📄","Brochure Builder","Sales brochures and collateral"],
       ["menu","🍽","Menu Builder","Menus in the house style"],
       ["brandLogos","🎨","Logos & Brand","Official logos, colours and guidelines (HosBRAND)"],
       ["brandPhotography","📷","Photography","Approved hotel images (HosBRAND)"],
       ["corpdb","🏢","Corporate Database","Company accounts and contacts (HosVENUE)"],
-    ].filter(([t])=>typeof RENDER_MAP==="undefined" || RENDER_MAP[t]).filter(([t])=>typeof hpCanTab!=="function" || hpCanTab(t));
+    ].filter(([t,,,,href])=>href || typeof RENDER_MAP==="undefined" || RENDER_MAP[t]).filter(([t,,,,href])=>href || typeof hpCanTab!=="function" || hpCanTab(t));
     box.innerHTML = `<div class="hp-sec-h">Guest database at a glance</div><div id="mk-stats" class="hp-glance">${statsHtml()}</div>
       <div class="hp-sec-h">Marketing tools</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px">${CARDS.map(([tab,icon,label,desc],i)=>`
-        <button class="hp-rel" onclick="switchTab('${tab}')" style="--acc:${m.colour};${i<3?"border-color:"+m.colour+";":""}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px">${CARDS.map(([tab,icon,label,desc,href],i)=>`
+        <button class="hp-rel" onclick="${href?`location.href='${href}'`:`switchTab('${tab}')`}" style="--acc:${m.colour};${i<3?"border-color:"+m.colour+";":""}">
           <span style="font-size:22px">${icon}</span>
           <span class="hp-rel-t">${label}</span><span class="hp-rel-w">${desc}</span></button>`).join("")}</div>`;
     function statsHtml(){

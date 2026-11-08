@@ -380,6 +380,7 @@ function hpTabLabel(tab){
 /* Breadcrumb / module bar: ← Back to module · Home › Module › Tab */
 function hpSetSubnav(mod, tab){
   const sn=document.getElementById("sf-subnav"); if(!sn) return;
+  if(mod && mod.id==="hosstudio"){ sn.style.display="none"; sn.innerHTML=""; return; }
   let items=(mod && mod.id && typeof MODULE_SUBCARDS!=="undefined" && MODULE_SUBCARDS[mod.id]) || [];
   const fixray = HP_FIXRAY_MODE && mod && (mod.id==="hosfix"||mod.id==="hoscom");
   if(fixray) items=items.filter(sc=>!HP_FIXRAY_HIDDEN_TABS.has(sc.tab));
@@ -497,7 +498,7 @@ async function hpRevTry(){
 /* ── HosMARKETING lock (temporary, while the guest database is checked) ───────
    Only Ajay can open HosMARKETING, after entering the PIN. Stored as a SHA-256
    fingerprint; unlock lasts until the tab is closed or he signs out. */
-const HP_MKT_LOCK = true;
+const HP_MKT_LOCK = false;
 const HP_MKT_OWNER = "ajay.kawa";
 const HP_MKT_PW_HASH = "656d5be9b84397105deefd04cb2e83f4f3d448bccfaa953d6f62021b50f6488a";
 function hpMktUnlocked(){ try{ return !!(SESSION && SESSION._key===HP_MKT_OWNER && sessionStorage.getItem("hosmkt_ok")===HP_MKT_PW_HASH); }catch(e){ return false; } }
@@ -5544,7 +5545,7 @@ function renderModuleLanding(moduleId){
       <div style="font-size:11px;font-weight:700;color:#2F7A72;display:flex;align-items:center;gap:4px">Open <span>→</span></div>`;
     card.onmouseover = ()=>{ card.style.background="#fff"; card.style.borderColor=m.colour; card.style.transform="translateY(-4px)"; card.style.boxShadow=`0 12px 28px rgba(0,0,0,.12)`; };
     card.onmouseout  = ()=>{ card.style.background="rgba(255,255,255,.92)"; card.style.borderColor="rgba(255,255,255,.9)"; card.style.transform=""; card.style.boxShadow="0 2px 10px rgba(0,0,0,.08)"; };
-    card.onclick = () => switchTab(sc.tab);
+    card.onclick = () => sc.href ? (window.location.href=sc.href) : switchTab(sc.tab);
     grid.appendChild(card);
   });
 
