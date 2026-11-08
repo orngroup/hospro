@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="theme-color" content="#1a2b3a">
+<title>Marketing Action Plan · Brandon Hall Hotel &amp; Spa</title>
+<meta property="og:title" content="Brandon Hall — Marketing Action Plan">
+<meta property="og:description" content="Venue & event marketing action plan, budgets and approvals.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1a2b3a; --navy-dk:#101d33; --gold:#BB9979; --gold-dk:#9d7d5f;
+  --teal:#4DA69C; --teal-dk:#3A8A81; --ink:#1a2230; --muted:#5a6472;
+  --paper:#f3f5f8; --line:#e3e7ee; --card:#ffffff; --ok:#2a7a53; --warn:#c07a3e; --red:#b3261e;
+}
+body{font-family:'Manrope',system-ui,sans-serif;color:var(--ink);background:var(--paper);line-height:1.45;-webkit-text-size-adjust:100%}
+.wrap{max-width:1240px;margin:0 auto;padding:0 18px 60px}
+a{color:var(--gold-dk)}
+/* header */
+.top{background:linear-gradient(140deg,#15283a,#223b54);color:#fff;border-bottom:3px solid var(--gold)}
+.top-in{max-width:1240px;margin:0 auto;padding:20px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.top .brand{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;letter-spacing:.3px}
+.top .brand b{color:var(--gold)}
+.top .sub{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#c9d4e2;font-weight:700;margin-top:2px}
+.top .spacer{flex:1}
+.top .pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:7px 14px;font-size:12.5px;font-weight:700}
+.top-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:700;margin:0}
+.lead{color:var(--muted);font-size:14px;margin-top:4px;max-width:760px}
+/* KPI tiles */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:22px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 16px;box-shadow:0 1px 4px rgba(26,43,58,.05)}
+.kpi .v{font-size:24px;font-weight:800;color:var(--navy);line-height:1}
+.kpi .k{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-top:7px}
+.kpi.good .v{color:var(--ok)} .kpi.warn .v{color:var(--warn)}
+/* panels */
+.grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-top:16px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.panel h3{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--navy);margin-bottom:12px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:13px}
+.bar-row .nm{width:92px;flex:0 0 92px;font-weight:700;color:var(--ink)}
+.bar-track{flex:1;background:#eef1f5;border-radius:8px;height:18px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--teal-dk));border-radius:8px}
+.bar-row .amt{width:72px;text-align:right;font-weight:700;color:var(--navy)}
+.statline{display:flex;flex-wrap:wrap;gap:8px}
+.statpill{border-radius:20px;padding:6px 12px;font-size:12.5px;font-weight:700;border:1px solid var(--line);background:#fff}
+/* toolbar */
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:22px 0 10px}
+.chip{border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:8px 14px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.btn{border:none;border-radius:10px;padding:9px 15px;font-size:13.5px;font-weight:700;cursor:pointer}
+.btn-gold{background:var(--gold);color:#fff} .btn-navy{background:var(--navy);color:#fff}
+.btn-ghost{background:#fff;border:1.5px solid var(--line);color:var(--navy)}
+.spacer{flex:1}
+/* table */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+table{width:100%;border-collapse:collapse;min-width:980px}
+th{background:var(--navy);color:#fff;text-align:left;padding:11px 12px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;position:sticky;top:0}
+td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+.c-title{font-weight:700;color:var(--navy)}
+.c-meta{color:var(--muted);font-size:12px;margin-top:2px}
+.c-note{color:var(--muted);font-size:12px;margin-top:4px;font-style:italic}
+.cat{display:inline-block;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:800;letter-spacing:.3px}
+.cat-event{background:#e7eefc;color:#2747a6}
+.cat-advertising{background:#fdeee2;color:#b45309}
+.cat-digital{background:#e8f3ee;color:#1f5038}
+.cat-package{background:#f3e8fd;color:#6b21a8}
+select,input[type=number],input[type=date]{border:1.5px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:13px;background:#fff;color:var(--ink);max-width:100%}
+input[type=number]{width:92px}
+select.owner{min-width:104px}
+select.status{min-width:118px;font-weight:700}
+.st-draft{color:#5a6472} .st-submitted{color:#b45309} .st-approved{color:#1f5038} .st-live{color:#1d4ed8} .st-done{color:#2a7a53} .st-hold{color:#b3261e}
+.poundwrap{white-space:nowrap}
+.rowbtn{border:none;background:#eef1f5;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;color:var(--navy);margin-right:4px}
+.rowbtn.approve{background:#e8f3ee;color:#1f5038}
+.rowbtn.del{background:#fdeceb;color:#b3261e}
+.contact a{font-size:12px}
+.note-input{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:12.5px;resize:vertical;min-height:34px}
+.banner{background:#fff7e6;border:1px solid #f3dca0;color:#8a5a00;border-radius:12px;padding:12px 14px;font-size:13px;margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.foot{color:var(--muted);font-size:12px;margin-top:20px;line-height:1.6}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(26,43,58,.95);color:#fff;padding:11px 18px;border-radius:22px;font-weight:700;font-size:14px;z-index:99;opacity:0;transition:.2s;pointer-events:none}
+.toast.show{opacity:1}
+@media(max-width:900px){ .kpis{grid-template-columns:repeat(2,1fr)} .grid2{grid-template-columns:1fr} .top-title{font-size:24px} }
+</style>
+</head>
+<body>
+<div class="top"><div class="top-in">
+  <div><div class="brand">Brandon <b>Hall</b></div><div class="sub">Hotel &amp; Spa</div></div>
+  <div class="spacer"></div>
+  <div class="pill">📣 HosMarketing · Action Plan</div>
+</div></div>
+
+<div class="wrap">
+  <div style="margin-top:22px">
+    <h1 class="top-title">Venue &amp; Event Marketing Action Plan</h1>
+    <p class="lead">Autumn/Winter 2026 campaign to capture demand from major NEC &amp; Coventry events, plus local Coventry advertising. Owners, budgets and deadlines below — managers can review, set budgets and approve. Changes save live to the portal and this link can be shared for sign-off.</p>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis">
+    <div class="kpi"><div class="v" id="k-count">0</div><div class="k">Campaigns</div></div>
+    <div class="kpi"><div class="v poundwrap" id="k-est">£0</div><div class="k">Estimated budget</div></div>
+    <div class="kpi good"><div class="v poundwrap" id="k-appr">£0</div><div class="k">Approved budget</div></div>
+    <div class="kpi warn"><div class="v" id="k-wait">0</div><div class="k">Awaiting approval</div></div>
+    <div class="kpi"><div class="v" id="k-live">0</div><div class="k">Live now</div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel"><h3>Estimated budget by owner</h3><div id="byowner"></div></div>
+    <div class="panel"><h3>By status</h3><div class="statline" id="bystatus"></div>
+      <h3 style="margin-top:16px">By channel</h3><div class="statline" id="bychannel"></div>
+    </div>
+  </div>
+
+  <!-- toolbar -->
+  <div class="toolbar">
+    <div class="chip on" data-cat="all" onclick="setCat('all',this)">All</div>
+    <div class="chip" data-cat="event" onclick="setCat('event',this)">Events</div>
+    <div class="chip" data-cat="advertising" onclick="setCat('advertising',this)">Advertising</div>
+    <div class="chip" data-cat="digital" onclick="setCat('digital',this)">Digital</div>
+    <div class="chip" data-cat="package" onclick="setCat('package',this)">Packages</div>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost" onclick="addRow()">＋ Add line</button>
+    <button class="btn btn-gold" onclick="copyShare()">🔗 Share link</button>
+  </div>
+
+  <div id="seedbanner" class="banner" style="display:none">
+    <span>📋 <b>Starter plan ready</b> — events and Coventry advertising options are pre-filled below but not yet saved to the portal.</span>
+    <span class="spacer"></span>
+    <button class="btn btn-navy" onclick="saveStarter()">Save starter plan to portal →</button>
+  </div>
+
+  <div class="tablewrap" style="margin-top:12px">
+    <table id="tbl">
+      <thead><tr>
+        <th style="min-width:230px">Campaign / venue</th>
+        <th>Channel</th>
+        <th>Dates</th>
+        <th>Owner</th>
+        <th>Est £</th>
+        <th>Approved £</th>
+        <th>Status</th>
+        <th>Deadline</th>
+        <th style="min-width:150px">Contact</th>
+        <th style="min-width:160px"></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <p class="foot">
+    <b>Note on budgets:</b> all £ figures are planning estimates to confirm with the supplier/council before booking — they are fully editable here. Coventry City Council advertising (bridges, boundary signs, digital screens, banners, flags, roundabouts): <a href="mailto:commercialopportunities@coventry.gov.uk">commercialopportunities@coventry.gov.uk</a> · <a href="https://myaccount.coventry.gov.uk/service/commercial_opportunities_enquiry" target="_blank" rel="noopener">enquiry form</a>.<br>
+    Owners: Nicola, Natalie, Lauren, Ajay, Raj. Budget sign-off: Raj / Ajay. This plan saves to the Brandon Hall portal (HosMarketing) and updates live for everyone with the link.
+  </p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+"use strict";
+var db=null; try{ firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }catch(e){ console.warn('fb',e); }
+var $=function(id){return document.getElementById(id);};
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(window._t);window._t=setTimeout(function(){t.classList.remove('show');},2000);}
+function gbp(n){ n=Math.round(+n||0); return '£'+n.toLocaleString('en-GB'); }
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+var OWNERS=['Nicola','Natalie','Lauren','Ajay','Raj','—'];
+var STATUSES=[['draft','Draft'],['submitted','For approval'],['approved','Approved'],['live','Live'],['done','Done'],['hold','On hold']];
+var CATS={event:'Event',advertising:'Advertising',digital:'Digital',package:'Package'};
+
+/* ---------- starter plan (events + Coventry advertising + digital + packages) ---------- */
+var SEED=[
+ // EVENTS
+ {id:'mp-disney',  cat:'event', title:'Disney On Ice — Discover the Magic', venue:'bp pulse LIVE, NEC Birmingham', dates:'6–8 Nov 2026', owner:'Natalie', est:400, appr:0, status:'live',      deadline:'2026-11-05', contact:'', note:'Family arena run — push family rooms + swim/breakfast package.'},
+ {id:'mp-classic', cat:'event', title:'Lancaster Classic Motor Show',       venue:'NEC Birmingham',               dates:'13–15 Nov 2026', owner:'Natalie', est:600, appr:0, status:'submitted', deadline:'2026-11-10', contact:'', note:'UK’s biggest classic car show, international crowd. Corporate + enthusiast packages.'},
+ {id:'mp-bailey',  cat:'event', title:'Bill Bailey (Encore tour)',          venue:'CBS Arena, Coventry',          dates:'13 Nov 2026',    owner:'Lauren',  est:300, appr:0, status:'submitted', deadline:'2026-11-10', contact:'', note:'Regional overnight visitors — spa & show combo for couples/groups.'},
+ {id:'mp-hoys',    cat:'event', title:'Horse of the Year Show',             venue:'bp pulse LIVE, NEC Birmingham', dates:'7–11 Oct 2026', owner:'Natalie', est:0,   appr:0, status:'done',      deadline:'2026-10-01', contact:'', note:'Past — keep as template for 2027 multi-night equestrian stays.'},
+ {id:'mp-motor',   cat:'event', title:'Motorhome & Caravan Show',           venue:'NEC Birmingham',               dates:'13–18 Oct 2026', owner:'Natalie', est:0,   appr:0, status:'done',      deadline:'2026-10-08', contact:'', note:'Past — target exhibitor manual listing for 2027.'},
+ {id:'mp-westlife',cat:'event', title:'Westlife 25 Anniversary Tour',       venue:'Utilita Arena, Birmingham',    dates:'16–18 Oct 2026', owner:'Lauren',  est:0,   appr:0, status:'done',      deadline:'2026-10-10', contact:'', note:'Past — concert combo template.'},
+ {id:'mp-eds',     cat:'event', title:'Engineering Design Show',            venue:'CBS Arena, Coventry',          dates:'7–8 Oct 2026',   owner:'Natalie', est:0,   appr:0, status:'done',      deadline:'2026-10-01', contact:'', note:'Past — reuse B2B exhibitor outreach template for NEC trade shows.'},
+ // ADVERTISING (Coventry City Council OOH) — owner Nicola
+ {id:'mp-bridge',  cat:'advertising', title:'Ring Road bridge banner',       venue:'Holyhead Rd / J5 Coventry Ring Road', dates:'Monthly', owner:'Nicola', est:750,  appr:0, status:'draft', deadline:'2026-11-21', contact:'commercialopportunities@coventry.gov.uk', note:'~36,000 vehicles every morning rush hour. Only 2 bridges available.'},
+ {id:'mp-boundary',cat:'advertising', title:'City boundary welcome signs',   venue:'23 Coventry entry points',            dates:'Monthly', owner:'Nicola', est:400,  appr:0, status:'draft', deadline:'2026-11-21', contact:'commercialopportunities@coventry.gov.uk', note:'One business per sign — strong local brand presence at gateways.'},
+ {id:'mp-d48',     cat:'advertising', title:'Large digital D48 screens',     venue:'Warwick Rd (rail/Central Six) & Millennium Place', dates:'2-week slot', owner:'Nicola', est:1500, appr:0, status:'draft', deadline:'2026-11-21', contact:'commercialopportunities@coventry.gov.uk', note:'Dual-sided full-motion screens, high city-centre footfall.'},
+ {id:'mp-adshel',  cat:'advertising', title:'Adshel Live 6-sheet digital',   venue:'CV1–CV6 (Bauer Media, 16+ screens)', dates:'2-week slot', owner:'Lauren', est:500, appr:0, status:'draft', deadline:'2026-11-21', contact:'commercialopportunities@coventry.gov.uk', note:'Digital 6-sheets, update creative by time/date/location.'},
+ {id:'mp-lamppost',cat:'advertising', title:'Lamppost banners',              venue:'340 city sites',                     dates:'Campaign', owner:'Nicola', est:150, appr:0, status:'draft', deadline:'2026-11-28', contact:'commercialopportunities@coventry.gov.uk', note:'High-visibility banners at commuter/neighbourhood locations (per banner).'},
+ {id:'mp-6sheet',  cat:'advertising', title:'6-sheet poster panels',         venue:'65 Coventry sites',                  dates:'2-week slot', owner:'Nicola', est:350, appr:0, status:'draft', deadline:'2026-11-28', contact:'commercialopportunities@coventry.gov.uk', note:'Each poster ~100k+ views/week.'},
+ {id:'mp-flags',   cat:'advertising', title:'City centre flags',             venue:'CBS Arena / Broadgate / Millennium Place (10 each)', dates:'Campaign', owner:'Nicola', est:500, appr:0, status:'draft', deadline:'2026-11-28', contact:'commercialopportunities@coventry.gov.uk', note:'Large standalone flags in 3 key locations.'},
+ {id:'mp-round',   cat:'advertising', title:'Roundabout sponsorship',        venue:'37 Coventry sites',                  dates:'Annual', owner:'Nicola', est:1800, appr:0, status:'draft', deadline:'2026-12-05', contact:'commercialopportunities@coventry.gov.uk', note:'Cost-effective, constant local-driver visibility.'},
+ // DIGITAL
+ {id:'mp-social',  cat:'digital', title:'Geo-targeted social ads',          venue:'Facebook / Instagram / LinkedIn', dates:'Rolling, per event week', owner:'Lauren', est:1000, appr:0, status:'submitted', deadline:'2026-11-10', contact:'', note:'Target interests (classic cars, artists) + West Midlands travellers on exact event dates.'},
+ {id:'mp-seo',     cat:'digital', title:'SEO / event landing pages',        venue:'brandonhallhotelandspa.com',      dates:'This week', owner:'Ajay', est:0, appr:0, status:'draft', deadline:'2026-11-12', contact:'', note:'"Hotels near NEC / CBS Arena events" pages. In-house.'},
+ {id:'mp-gbp',     cat:'digital', title:'Google Business Profile updates',  venue:'Google listing',                  dates:'Weekly', owner:'Lauren', est:0, appr:0, status:'draft', deadline:'2026-11-12', contact:'', note:'Post event/offer updates for NEC & CBS crowds.'},
+ {id:'mp-b2b',     cat:'digital', title:'B2B exhibitor outreach emails',    venue:'Exhibitor marketing/ops contacts', dates:'Rolling', owner:'Natalie', est:0, appr:0, status:'draft', deadline:'2026-11-14', contact:'', note:'Corporate rate code for exhibitor teams at NEC trade shows.'},
+ {id:'mp-linkedin',cat:'digital', title:'LinkedIn corporate posts',         venue:'GM/Director profiles + company page', dates:'Tue–Thu AM', owner:'Ajay', est:0, appr:0, status:'draft', deadline:'2026-11-14', contact:'', note:'Reach corporate travel planners & company directors.'},
+ // PACKAGES
+ {id:'mp-unwind',  cat:'package', title:'"Unwind Post-Show" package',       venue:'Restaurant + room',               dates:'Set up now', owner:'Nicola', est:0, appr:0, status:'draft', deadline:'2026-11-12', contact:'', note:'Breakfast + late dinner + welcome drink. For trade-show / classic-car crowd.'},
+ {id:'mp-spacombo',cat:'package', title:'Spa & Concert combo',              venue:'Spa + thermal suite',             dates:'Set up now', owner:'Nicola', est:0, appr:0, status:'draft', deadline:'2026-11-12', contact:'', note:'Pre-show treatment / thermal suite + late room service. For Westlife/Bill Bailey type.'},
+ {id:'mp-earlybrk',cat:'package', title:'Early-bird breakfast (6:30 AM)',   venue:'Restaurant',                      dates:'Event days', owner:'Nicola', est:0, appr:0, status:'draft', deadline:'2026-11-12', contact:'', note:'Grab-and-go / 6:30 AM open for exhibitors. Ops to confirm.'},
+ {id:'mp-transport',cat:'package',title:'Pre-booked arena transport',       venue:'Local taxi partner',              dates:'Set up now', owner:'Natalie', est:0, appr:0, status:'draft', deadline:'2026-11-14', contact:'', note:'Fixed-rate transfers to CBS Arena / NEC, chargeable to room.'}
+];
+
+var ROWS=[], CAT='all', SEEDED=false;
+
+function recalc(){
+  var est=0, appr=0, wait=0, live=0, owner={}, status={}, chan={};
+  ROWS.forEach(function(r){
+    est+=(+r.est||0);
+    if(r.status==='approved'||r.status==='live'||r.status==='done') appr+=(+r.appr|| +r.est||0);
+    if(r.status==='submitted') wait++;
+    if(r.status==='live') live++;
+    owner[r.owner]=(owner[r.owner]||0)+(+r.est||0);
+    status[r.status]=(status[r.status]||0)+1;
+    chan[r.cat]=(chan[r.cat]||0)+1;
+  });
+  $('k-count').textContent=ROWS.length;
+  $('k-est').textContent=gbp(est);
+  $('k-appr').textContent=gbp(appr);
+  $('k-wait').textContent=wait;
+  $('k-live').textContent=live;
+  // by owner bars
+  var maxO=Math.max(1,...Object.values(owner));
+  $('byowner').innerHTML=OWNERS.filter(function(o){return owner[o];}).sort(function(a,b){return owner[b]-owner[a];}).map(function(o){
+    return '<div class="bar-row"><div class="nm">'+esc(o)+'</div><div class="bar-track"><div class="bar-fill" style="width:'+Math.round(owner[o]/maxO*100)+'%"></div></div><div class="amt">'+gbp(owner[o])+'</div></div>';
+  }).join('')||'<div class="c-meta">No budget yet.</div>';
+  // by status
+  var SLB={}; STATUSES.forEach(function(s){SLB[s[0]]=s[1];});
+  var SC={draft:'#5a6472',submitted:'#b45309',approved:'#1f5038',live:'#1d4ed8',done:'#2a7a53',hold:'#b3261e'};
+  $('bystatus').innerHTML=STATUSES.filter(function(s){return status[s[0]];}).map(function(s){
+    return '<span class="statpill" style="color:'+SC[s[0]]+';border-color:'+SC[s[0]]+'33">'+esc(s[1])+' · '+status[s[0]]+'</span>';
+  }).join('');
+  $('bychannel').innerHTML=Object.keys(chan).map(function(c){
+    return '<span class="statpill">'+esc(CATS[c]||c)+' · '+chan[c]+'</span>';
+  }).join('');
+}
+
+function rowHtml(r){
+  var ownerOpts=OWNERS.map(function(o){return '<option'+(o===r.owner?' selected':'')+'>'+o+'</option>';}).join('');
+  var statusOpts=STATUSES.map(function(s){return '<option value="'+s[0]+'"'+(s[0]===r.status?' selected':'')+'>'+s[1]+'</option>';}).join('');
+  var contact=r.contact? (/@/.test(r.contact)?'<a href="mailto:'+esc(r.contact)+'">'+esc(r.contact)+'</a>':esc(r.contact)) : '<span class="c-meta">—</span>';
+  return '<tr data-id="'+esc(r.id)+'">'
+    +'<td><div class="c-title">'+esc(r.title)+'</div><div class="c-meta">'+esc(r.venue||'')+'</div>'
+       +'<textarea class="note-input" oninput="edit(\''+r.id+'\',\'note\',this.value)" placeholder="Notes…">'+esc(r.note||'')+'</textarea></td>'
+    +'<td><span class="cat cat-'+r.cat+'">'+esc(CATS[r.cat]||r.cat)+'</span></td>'
+    +'<td>'+esc(r.dates||'')+'</td>'
+    +'<td><select class="owner" onchange="edit(\''+r.id+'\',\'owner\',this.value)">'+ownerOpts+'</select></td>'
+    +'<td class="poundwrap">£<input type="number" min="0" step="50" value="'+(+r.est||0)+'" onchange="edit(\''+r.id+'\',\'est\',this.value)"></td>'
+    +'<td class="poundwrap">£<input type="number" min="0" step="50" value="'+(+r.appr||0)+'" onchange="edit(\''+r.id+'\',\'appr\',this.value)"></td>'
+    +'<td><select class="status st-'+r.status+'" onchange="edit(\''+r.id+'\',\'status\',this.value)">'+statusOpts+'</select></td>'
+    +'<td><input type="date" value="'+esc(r.deadline||'')+'" onchange="edit(\''+r.id+'\',\'deadline\',this.value)"></td>'
+    +'<td class="contact">'+contact+'</td>'
+    +'<td><button class="rowbtn approve" onclick="approve(\''+r.id+'\')">✓ Approve</button><button class="rowbtn del" onclick="delRow(\''+r.id+'\')">✕</button></td>'
+    +'</tr>';
+}
+function render(){
+  var list=ROWS.filter(function(r){return CAT==='all'||r.cat===CAT;});
+  $('rows').innerHTML=list.map(rowHtml).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:26px">No lines in this view.</td></tr>';
+  recalc();
+}
+function setCat(c,el){ CAT=c; document.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on');}); el.classList.add('on'); render(); }
+
+function findRow(id){ for(var i=0;i<ROWS.length;i++){ if(ROWS[i].id===id) return ROWS[i]; } return null; }
+function edit(id,field,val){
+  var r=findRow(id); if(!r) return;
+  if(field==='est'||field==='appr') val=Math.max(0,Math.round(+val||0));
+  r[field]=val; r.updatedAt=new Date().toISOString();
+  if(field==='status'){ render(); } else { recalc(); }
+  save(r);
+}
+function approve(id){
+  var r=findRow(id); if(!r) return;
+  r.status='approved'; if(!(+r.appr>0)) r.appr=+r.est||0; r.updatedAt=new Date().toISOString();
+  render(); save(r); toast('Approved: '+r.title);
+}
+function addRow(){
+  var id='mp-'+Date.now().toString(36);
+  var r={id:id,cat:(CAT==='all'?'advertising':CAT),title:'New line',venue:'',dates:'',owner:'—',est:0,appr:0,status:'draft',deadline:'',contact:'',note:'',updatedAt:new Date().toISOString()};
+  ROWS.unshift(r); render(); save(r); toast('Line added — edit the details');
+}
+function delRow(id){
+  var r=findRow(id); if(!r) return;
+  if(!confirm('Remove "'+r.title+'" from the plan?')) return;
+  ROWS=ROWS.filter(function(x){return x.id!==id;}); render();
+  try{ if(db) db.collection('mkt_plan').doc(id).delete(); }catch(e){}
+}
+function save(r){
+  if(SEEDED) return; // starter not yet published — don't write piecemeal
+  try{ if(db) db.collection('mkt_plan').doc(r.id).set(r,{merge:true}); }catch(e){}
+}
+function saveStarter(){
+  if(!db){ toast('No connection'); return; }
+  var batch=db.batch();
+  ROWS.forEach(function(r){ batch.set(db.collection('mkt_plan').doc(r.id), r, {merge:true}); });
+  batch.commit().then(function(){ SEEDED=false; $('seedbanner').style.display='none'; toast('Starter plan saved to the portal'); }).catch(function(){ toast('Could not save — try again'); });
+}
+function copyShare(){
+  var url=location.href.split('#')[0];
+  try{ navigator.clipboard.writeText(url).then(function(){ toast('Share link copied'); }, function(){ prompt('Copy this link:', url); }); }
+  catch(e){ prompt('Copy this link:', url); }
+}
+
+/* ---------- load ---------- */
+function start(){
+  if(!db){ ROWS=SEED.slice(); SEEDED=true; $('seedbanner').style.display='flex'; render(); return; }
+  db.collection('mkt_plan').onSnapshot(function(snap){
+    if(snap.empty && !ROWS.length){
+      ROWS=SEED.slice(); SEEDED=true; $('seedbanner').style.display='flex'; render(); return;
+    }
+    if(!snap.empty){
+      SEEDED=false; $('seedbanner').style.display='none';
+      ROWS=snap.docs.map(function(d){return d.data();}).sort(function(a,b){
+        var ord={event:0,advertising:1,digital:2,package:3};
+        if(ord[a.cat]!==ord[b.cat]) return (ord[a.cat]||9)-(ord[b.cat]||9);
+        return (a.deadline||'').localeCompare(b.deadline||'');
+      });
+      render();
+    }
+  }, function(e){ console.warn(e); if(!ROWS.length){ ROWS=SEED.slice(); SEEDED=true; $('seedbanner').style.display='flex'; render(); } });
+}
+start();
+</script>
+</body>
+</html>
