@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clear Maintenance Jobs — HosPRO</title>
+<style>
+  :root{ --navy:#1a2b3a; --line:#e3e8ee; --red:#b3261e; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Lato,Arial,sans-serif;background:#eef1f5;color:var(--navy);padding:24px}
+  .wrap{max-width:560px;margin:0 auto}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 2px 10px rgba(26,43,58,.08)}
+  h1{font-size:20px;margin:0 0 6px}
+  .sub{color:#5b6b7b;font-size:13px;margin-bottom:16px}
+  .warn{background:#fdeceb;border:1px solid #f0c4c0;color:var(--red);border-radius:11px;padding:12px 14px;font-size:13px;font-weight:700;margin-bottom:16px;line-height:1.5}
+  .count{font-size:40px;font-weight:900;text-align:center;margin:10px 0}
+  .count .k{display:block;font-size:12px;font-weight:700;color:#5b6b7b;text-transform:uppercase;letter-spacing:.5px}
+  button{width:100%;border:none;border-radius:12px;padding:14px;font:800 15px Lato,Arial,sans-serif;cursor:pointer}
+  .del{background:var(--red);color:#fff}
+  .del:disabled{opacity:.45;cursor:not-allowed}
+  .ghost{background:#f3f5f8;color:var(--navy);border:1px solid var(--line);margin-top:10px}
+  #log{margin-top:16px;font-size:13px;white-space:pre-wrap;background:#f7f9fb;border:1px solid var(--line);border-radius:10px;padding:12px;max-height:240px;overflow:auto;display:none}
+  code{background:#f1f4f7;padding:1px 5px;border-radius:5px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>🗑️ Clear all maintenance jobs</h1>
+    <div class="sub">One-time tool — permanently deletes every job in <code>hosfix_jobs</code> (the shared HosDesk / HosFIX maintenance list).</div>
+
+    <div class="warn">
+      ⚠️ This is permanent and cannot be undone.<br><br>
+      Deletion is blocked by the live security rules. Before this will work you must temporarily change one line in Firebase Console → Firestore → Rules:<br><br>
+      In the <code>hosfix_jobs</code> block, change<br>
+      <code>allow delete: if false;</code> → <code>allow delete: if true;</code><br>
+      then <b>Publish</b>, run the delete below, and <b>change it back to <code>if false;</code></b> and Publish again.
+    </div>
+
+    <div class="count"><span id="n">…</span><span class="k">jobs in maintenance</span></div>
+
+    <button class="del" id="btn" disabled onclick="runDelete()">Delete all jobs permanently</button>
+    <button class="ghost" onclick="loadCount()">↻ Refresh count</button>
+
+    <div id="log"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+var db=null;
+try{ if(!firebase.apps.length) firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }catch(e){ alert('Firebase init failed: '+e.message); }
+var $=id=>document.getElementById(id);
+function logLine(s){ const l=$('log'); l.style.display='block'; l.textContent+=s+'\n'; l.scrollTop=l.scrollHeight; }
+async function loadCount(){
+  $('n').textContent='…'; $('btn').disabled=true;
+  try{
+    const snap=await db.collection('hosfix_jobs').get();
+    $('n').textContent=snap.size;
+    $('btn').disabled=snap.size===0;
+    $('btn').textContent='Delete all '+snap.size+' jobs permanently';
+  }catch(e){ $('n').textContent='!'; logLine('Could not count: '+(e.message||e)); }
+}
+async function runDelete(){
+  const snap=await db.collection('hosfix_jobs').get();
+  if(snap.empty){ logLine('Nothing to delete.'); return; }
+  if(!confirm('Permanently delete '+snap.size+' maintenance jobs? This cannot be undone.')) return;
+  $('btn').disabled=true;
+  logLine('Deleting '+snap.size+' jobs…');
+  let ok=0, fail=0;
+  // batch in chunks of 400
+  const docs=snap.docs;
+  for(let i=0;i<docs.length;i+=400){
+    const batch=db.batch();
+    const chunk=docs.slice(i,i+400);
+    chunk.forEach(d=>batch.delete(d.ref));
+    try{ await batch.commit(); ok+=chunk.length; logLine('  deleted '+ok+' / '+docs.length); }
+    catch(e){ fail+=chunk.length; logLine('  ✗ batch failed: '+(e.message||e)); logLine('  (Have you set "allow delete: if true;" and Published?)'); break; }
+  }
+  logLine(fail? ('Done with errors — '+ok+' deleted, '+fail+' failed.') : ('✓ All '+ok+' jobs deleted. Now change the rule back to "allow delete: if false;" and Publish.'));
+  loadCount();
+}
+loadCount();
+</script>
+</body>
+</html>
