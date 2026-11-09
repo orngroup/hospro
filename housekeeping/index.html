@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Housekeeping — Brandon Hall</title>
+<meta name="theme-color" content="#0E7C66">
+<link rel="icon" href="../assets/favicon.png">
+<style>
+:root{--g:#0E7C66;--g2:#0A5E4D;--gbg:#E3F3EE;--ink:#14243A;--muted:#5E6E82;--line:#DCE4EE;--red:#C62828;--bg:#F3F6F5}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+.top{background:linear-gradient(135deg,var(--g),var(--g2));color:#fff;padding:calc(env(safe-area-inset-top) + 14px) 16px 14px;display:flex;align-items:center;gap:12px}
+.top img{height:40px;background:#fff;border-radius:8px;padding:4px 8px}.top b{font-size:20px}.top small{display:block;color:#CDEBE2;font-size:13px}
+.wrap{max-width:760px;margin:0 auto;padding:16px 14px 50px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:12px}
+h1{font-size:24px;margin:0 0 6px;color:var(--g2)}
+.muted{color:var(--muted);font-size:14px}
+input{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:10px;font:inherit;font-size:20px;text-align:center;letter-spacing:.3em}
+.btn{display:block;width:100%;border:none;border-radius:12px;padding:15px;font-weight:800;font-size:17px;background:var(--g);color:#fff;margin-top:12px;cursor:pointer}
+.big{display:flex;align-items:center;gap:14px;text-decoration:none;color:var(--ink);background:#fff;border:2px solid var(--line);border-radius:16px;padding:18px;margin-bottom:12px}
+.big .ic{font-size:34px;width:52px;text-align:center}.big b{display:block;font-size:20px;color:var(--g2)}.big span{font-size:14px;color:var(--muted)}
+.big.main{border-color:var(--g);background:var(--gbg)}
+.err{color:var(--red);font-weight:700;margin-top:8px}
+details summary{cursor:pointer;font-weight:800;color:var(--g2);font-size:18px}
+.loop{display:grid;gap:8px;margin-top:12px}.loop>div{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.loop i{font-style:normal;background:var(--g);color:#fff;font-weight:800;border-radius:50%;width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center}
+.loop b{color:var(--g2)}.loop span{display:block;font-size:14px;color:var(--muted)}
+.chk h3{font-size:16px;margin:14px 0 6px;color:var(--g2)}.chk label{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--line);font-size:15px}
+.chk input{width:20px;height:20px;flex:none;margin-top:2px}
+.pbtn{display:inline-block;margin-top:12px;border:1.5px solid var(--g);color:var(--g2);border-radius:10px;padding:8px 14px;font-weight:700;text-decoration:none;background:#fff;cursor:pointer;font-size:15px}
+.doc{display:flex;justify-content:space-between;padding:11px 0;color:var(--g2);font-weight:700;text-decoration:none}
+@media print{.top,.np{display:none!important}body{background:#fff}.card{border:none;padding:0}details{display:block}}
+</style>
+</head>
+<body>
+<div class="top np"><img src="../assets/marketing/logos/logo-blue-crop.png" alt="Brandon Hall"><div><b>Housekeeping</b><small>Brandon Hall Hotel and Spa — training and room standards</small></div></div>
+<div class="wrap" id="app">
+  <div class="card"><h1>Housekeeping</h1><p>For the Brandon Hall housekeeping and laundry team. Enter the staff code to continue.</p>
+    <input id="code" type="password" inputmode="numeric" autocomplete="off" placeholder="Staff code" autofocus>
+    <button class="btn" id="go">Open</button><div class="err" id="e"></div></div>
+</div>
+<script src="../hosfire-defs.js?v=20261109b"></script>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const h = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const Q2 = /[?&]demo=1/.test(location.search) ? "&demo=1" : "";
+  const okd = () => { try { return sessionStorage.getItem("hf_fire_ok") === "1"; } catch (e) { return false; } };
+  function show() {
+    $("#app").innerHTML = `
+    <a class="big main" href="../hosfire-training.html?course=coshh${Q2}"><div class="ic">🧴</div><div><b>COSHH and safe cleaning</b><span>Chemicals, labels, PPE, spills and storage · about 15 minutes · every year. Complete before using any cleaning chemicals.</span></div></a>
+    <a class="big main" href="../hosfire-training.html?course=hkstd${Q2}"><div class="ic">🛏</div><div><b>Room standards</b><span>The 5-step housekeeping loop and the room inspection checklist · about 15 minutes · every year</span></div></a>
+    <div class="card"><details open><summary>🔁 The 5-step housekeeping loop</summary>
+      <p class="muted" style="margin-top:8px">Every room goes through the same five steps. A room is ready for a guest only when it has passed all five.</p>
+      <div class="loop">${HF_HK_LOOP.map(([n, a, b, c]) => `<div><i>${n}</i><div><b>${h(a)} — ${h(b)}</b><span>${h(c)}</span></div></div>`).join("")}</div></details></div>
+    <div class="card chk" id="chk"><details><summary>✅ Room inspection checklist</summary>
+      <p class="muted" style="margin-top:8px">Supervisors: inspect every room inside-out, in this order. Tick as you go — the ticks are not saved; print the checklist for a paper record.</p>
+      ${HF_HK_INSPECT.map(([t, items]) => `<h3>${h(t)}</h3>${items.map((i) => `<label><input type="checkbox">${h(i)}</label>`).join("")}`).join("")}
+      <p style="margin-top:12px"><b>Pass?</b> Release the room as Clean and Ready. <b>Anything wrong?</b> Return it to the housekeeper, and report any fault to maintenance with the room number before the room is released.</p>
+      <button class="pbtn np" id="pr">🖨 Print the checklist</button> <button class="pbtn np" id="rs">Clear ticks</button></details></div>
+    <div class="card np"><details><summary>📄 Policy and documents</summary>
+      <a class="doc" href="BHH-HK-01-Housekeeping-COSHH-Policy.pdf" target="_blank" rel="noopener">BHH-HK-01 Housekeeping COSHH and Safe Cleaning Policy <span class="muted">PDF</span></a></details></div>
+    <p class="muted np" style="text-align:center">Your training is saved with your name, score, signature and the time, and shows on the housekeeping training record in HosFIRE. Fire safety training is on the <a href="../fire/">Fire safety page</a>.</p>`;
+    $("#pr").onclick = () => { $("#chk details").open = true; window.print(); };
+    $("#rs").onclick = () => document.querySelectorAll("#chk input").forEach((x) => (x.checked = false));
+  }
+  $("#code").onkeydown = (e) => { if (e.key === "Enter") $("#go").click(); };
+  $("#go").onclick = () => {
+    if ($("#code").value.trim() !== (typeof HF_KIOSK_CODE !== "undefined" ? HF_KIOSK_CODE : "999")) { $("#e").textContent = "That code is not right."; return; }
+    try { sessionStorage.setItem("hf_fire_ok", "1"); } catch (e) {}
+    show();
+  };
+  if (okd()) show();
+})();
+</script>
+</body>
+</html>

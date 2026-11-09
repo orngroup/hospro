@@ -169,7 +169,8 @@ const HF_COURSES = [
   ["drill", "Last drill taken part in", 12],
   ["reception", "Reception alarm procedure briefing", 12, ["reception", "nights"]],   // reception and night staff only
   ["monthly", "Monthly fire refresher", 1],
-  ["coshh", "Housekeeping COSHH", 12, ["housekeeping"]]   // housekeeping only — online module, renewed every 12 months
+  ["coshh", "Housekeeping COSHH", 12, ["housekeeping"]],  // housekeeping only — online module, renewed every 12 months
+  ["hkstd", "Room standards", 12, ["housekeeping"]]        // housekeeping only — 5-step loop and room inspection, renewed every 12 months
 ];
 const courseApplies = (t, c) => !c[3] || c[3].includes((t && t.dept) || "other");
 
@@ -341,6 +342,52 @@ const HF_KIOSK_CODE = "999";
    training at induction and repeated periodically), HM Government
    "Fire safety risk assessment: sleeping accommodation" and fire and
    rescue service guidance. Hotel details come from Site facts. */
+/* ── Housekeeping room standards — the 5-step loop and room inspection (online module) ──
+   Hotel-industry norm: Assign → Clean → Check → Report → Release, with an
+   "inside-out" supervisor inspection before a room is released to reception. */
+const HF_HK_LOOP = [
+  ["1", "Assign", "Designate rooms", "Every room has a clear status (departure, stay-over, priority arrival) and a named housekeeper before the shift starts."],
+  ["2", "Clean", "Follow the routine", "Strip linen, remove rubbish, disinfect surfaces, deep-clean the bathroom and replenish guest amenities — in the same order every time."],
+  ["3", "Check", "Quality audit", "The supervisor inspects the room against the Brandon Hall standard using the inside-out checklist."],
+  ["4", "Report", "Maintenance tracking", "Any defect (leaking tap, blown bulb, damaged fabric) is reported straight away with the room number — never cleaned around."],
+  ["5", "Release", "Status update", "Only after passing every check is the room marked Clean and Ready, so reception can check the guest in."]
+];
+const HF_HK_INSPECT = [
+  ["The doorway test", ["Knock three times and announce \"Housekeeping\" before entering", "Air is fresh: no damp, chemical or stale smell", "All lights work; curtains and blinds open and hang straight"]],
+  ["The bedding standard", ["Linen spotless, wrinkle-free and tightly tucked", "No stains, hairs or marks on sheets, duvet cover or pillowcases", "Pillows, duvet, runner and cushions aligned and straight", "Mattress protector and seams checked — no stains or signs of bed bugs"]],
+  ["The bathroom audit", ["Toilet clean inside and out, including the seat hinges and base", "Shower, bath, screen and grout free of hair, soap scum and water marks", "Sink, plughole, taps and chrome polished; mirror smear-free", "Towels: correct number in the set, clean and folded to the Brandon Hall standard", "Amenities, toilet roll and tissues fully replenished; glasses replaced, clean and covered"]],
+  ["High-touch surfaces", ["TV and remote, telephone and alarm clock disinfected and working", "Light switches, door handles and air-conditioning or heating controls wiped and working", "Kettle emptied and rinsed; tea and coffee tray complete; cups and glasses clean", "Minibar (if fitted), safe (open and empty on departures) and hairdryer checked"]],
+  ["Floor and perimeter", ["Carpet and floors vacuumed or mopped, including corners and edges", "Under the bed, behind doors and curtains free of dust and debris", "Wardrobe, drawers and safe empty of previous guests' items (lost property logged)", "Skirting, window sills and furniture tops dust-free"]],
+  ["The 5-second final look", ["Stand at the doorway for five seconds and see the room as an arriving guest would", "Nothing out of place; room smells fresh; temperature comfortable"]]
+];
+const HF_TRAIN_HKSTD = {
+  key: "hkstd", title: "Housekeeping room standards", mins: 15, pass: 8,
+  slides: [
+    ["The 5-step housekeeping loop", ["Every room at Brandon Hall goes through the same five steps: Assign, Clean, Check, Report, Release.", "Following the same loop every time means every guest gets the same standard, whoever cleaned the room.", "A room is only ready for a guest when it has passed all five steps — not when the cleaning is finished.", "This course covers each step and the checklist your supervisor uses to inspect your rooms."]],
+    ["Step 1 — Assign: know your rooms", ["Before your shift starts you are given your rooms and their status.", "Departure: the guest has checked out — a full clean and fresh linen.", "Stay-over: the guest is staying — service the room, but never move, open or throw away the guest's belongings.", "Priority arrival (early check-in, VIP, accessible room): do these first so reception can check the guest in.", "Do Not Disturb: don't enter. If a room has had Do Not Disturb all day, or for more than 24 hours, tell your supervisor — it is a guest welfare check."]],
+    ["Entering a guest room", ["Knock three times and announce \"Housekeeping\". Wait, then knock and announce again before using your key.", "If the guest is in, apologise and ask when would suit them. Never clean with a guest asleep in the room.", "Keep the door open and your trolley across the doorway while you work.", "Your master key stays on you at all times — never leave it in a door, on the trolley or lend it to anyone. Never let anyone into a room, even if they say it is theirs: send them to reception."]],
+    ["Step 2 — Clean: the routine", ["Work in the same order every time: air the room (lights on, curtains open, window open), strip linen and remove rubbish, clean the bathroom, dust, make the bed, replenish, then vacuum last.", "Clean top to bottom, dry to wet and clean to dirty, so dust and dirt fall onto areas you have not yet cleaned.", "Use the colour-coded cloths: red is for toilets only and is never used anywhere else.", "Glasses and cups are never washed in the guest bathroom — replace them with clean ones from your trolley or pantry."]],
+    ["The bed standard", ["Fresh linen for every departure; stay-overs follow the hotel's linen change policy and the guest's choice.", "Sheets spotless and wrinkle-free, corners tightly tucked; pillows, duvet, bed runner and cushions straight and aligned.", "Check the mattress protector and seams when you strip the bed. Small black spots or tiny insects can be bed bugs: stop, don't move anything out of the room, and tell your supervisor straight away.", "Stained or damaged linen goes in a separate bag and is reported, not put back on the bed."]],
+    ["The bathroom standard", ["Toilet clean inside and out, including under the rim, the seat hinges and the base.", "Shower, bath, screen and grout free of hair, soap scum and water spots; plughole clear of hair.", "Sink, taps and chrome polished dry; mirror smear-free.", "Towels: the correct set, clean, and folded the Brandon Hall way. Toilet roll, tissues and amenities fully replenished.", "Look for loose sealant, mould, dripping taps or slow drains — these are reported (step 4)."]],
+    ["High-touch surfaces", ["These are the things every guest touches. Disinfect them on every clean: TV remote, telephone, light switches, door handles, kettle, air-conditioning or heating controls, safe keypad, hairdryer and minibar.", "Check that each one works as you clean it — a guest should never find a TV that won't turn on or a kettle that doesn't boil.", "Empty and rinse the kettle; restock the tea and coffee tray.", "Departures: leave the safe open and check it is empty."]],
+    ["Floors, corners and lost property", ["Vacuum or mop last, working from the far corner back to the door, including edges and under the bed.", "Check under the bed, behind doors and curtains, in the wardrobe, drawers and safe for anything left behind.", "Lost property: hand it to your supervisor the same shift with the room number, date and your name so it can be logged. Never keep or throw away guest items.", "Remove anything left by the previous guest before the room is inspected."]],
+    ["Step 3 — Check, and Step 4 — Report", ["Your supervisor inspects rooms using the inside-out checklist: the doorway test, bedding, bathroom, high-touch surfaces, floor and perimeter, then the 5-second final look.", "The 5-second final look: stand at the doorway for five seconds and see the room exactly as the arriving guest will.", "Report every defect the moment you find it — leaking taps, blown bulbs, broken furniture, damaged or stained fabrics, faulty electrics — with the room number, and a photo if you can.", "Never clean around a fault. If something is unsafe (exposed wires, broken glass, water leak), keep the room closed and tell your supervisor immediately."]],
+    ["Step 5 — Release the room", ["A room is marked Clean and Ready only after it has passed inspection and any fault has been fixed or signed off.", "Update the room status in the system straight away so reception can check guests in — a clean room that is not released is a guest waiting in the lobby.", "Priority arrivals are released first; tell your supervisor if one is running late.", "End of shift: trolley restocked, chemicals back in the locked store, linen bags to the laundry, keys returned and signed in."]]
+  ],
+  quiz: [
+    ["What are the five steps of the housekeeping loop, in order?", ["Assign, Clean, Check, Report, Release", "Clean, Release, Check, Assign, Report", "Report, Clean, Assign, Release, Check"], 0],
+    ["A room is a stay-over. What must you never do?", ["Move, open or throw away the guest's belongings", "Make the bed", "Replenish the amenities"], 0],
+    ["How should you enter a guest room?", ["Knock three times, announce \"Housekeeping\", wait, knock and announce again, then enter", "Use your key straight away to save time", "Knock once and go in"], 0],
+    ["A room has had Do Not Disturb on for more than 24 hours. What do you do?", ["Tell your supervisor — it is a guest welfare check", "Go in to clean it anyway", "Ignore it until the guest checks out"], 0],
+    ["What is the red cloth used for?", ["Toilets only — never anywhere else", "The bathroom mirror", "Kettles and cups"], 0],
+    ["You see small black spots and tiny insects on the mattress seams. What do you do?", ["Stop, don't move anything out of the room, and tell your supervisor straight away", "Change the sheets and carry on", "Spray air freshener"], 0],
+    ["Which order is correct when cleaning a room?", ["Top to bottom, and vacuum last", "Vacuum first, then dust", "Make the bed before stripping the linen"], 0],
+    ["You find a dripping tap while cleaning. What do you do?", ["Report it with the room number before the room is released", "Leave it — maintenance will find it", "Tell the next guest"], 0],
+    ["What is the 5-second final look?", ["Standing at the doorway for five seconds to see the room as the arriving guest will", "Checking your phone before leaving", "A five-second wipe of the mirror"], 0],
+    ["When can a room be marked Clean and Ready?", ["Only after it has passed inspection and any fault has been dealt with", "As soon as you finish cleaning", "When reception asks for it"], 0]
+  ]
+};
+
 /* ── Housekeeping COSHH and safe cleaning — online module (policy BHH-HK-01) ── */
 const HF_TRAIN_COSHH = {
   key: "coshh", title: "Housekeeping COSHH and safe cleaning", mins: 15, pass: 8,

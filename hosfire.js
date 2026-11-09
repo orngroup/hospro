@@ -258,7 +258,7 @@ function enter(k) {
 /* ============================================================ NAV */
 const TABS = [
   ["dash", "Dashboard"], ["procs", "Procedures"], ["checks", "Record a check"], ["log", "Logbook"], ["rota", "Weekly tests"], ["back", "Back-records"], ["actions", "Actions"],
-  ["audit", "Audit readiness"], ["venues", "Venues & events"], ["certs", "Certificates"], ["docs", "Documents"], ["training", "Training"], ["drills", "Drills, PEEPs, permits"],
+  ["audit", "Audit readiness"], ["coshh", "Housekeeping training"], ["venues", "Venues & events"], ["certs", "Certificates"], ["docs", "Documents"], ["training", "Training"], ["drills", "Drills, PEEPs, permits"],
   ["diary", "Diary"], ["regs", "Regulations"], ["pack", "Inspector pack"], ["settings", "Settings"]
 ];
 /* Side navigation, grouped into sections */
@@ -266,7 +266,7 @@ const NAV = [
   ["Overview", [["focus", "🎯", "Inspection focus"], ["dash", "📊", "Dashboard"], ["procs", "🔥", "Procedures"], ["audit", "✅", "Audit readiness"], ["diary", "📅", "Diary"]]],
   ["Checks and records", [["checks", "📝", "Record a check"], ["rota", "🔔", "Weekly tests"], ["log", "📖", "Logbook"], ["back", "🗂", "Back-records"], ["drills", "🚪", "Drills, PEEPs, permits"]]],
   ["Actions and contractors", [["actions", "📋", "Actions"], ["certs", "📜", "Certificates"], ["ext", "🧯", "Extinguishers"], ["venues", "💍", "Venues & events"]]],
-  ["People", [["training", "🎓", "Training"]]],
+  ["People", [["training", "🎓", "Training"], ["coshh", "🧴", "Housekeeping"]]],
   ["Library", [["sign", "✍️", "Documents to Sign"], ["docs", "📁", "Documents"], ["regs", "⚖️", "Regulations"], ["pack", "🖨", "Inspector pack"], ["folder", "📘", "Hotel fire folder"], ["landlord", "🏠", "Landlord pack"], ["fra", "🧾", "FRA request"]]],
   ["Admin", [["settings", "⚙️", "Settings"]]]
 ];
@@ -1460,9 +1460,9 @@ function tCert(x) {
     <div style="letter-spacing:.16em;text-transform:uppercase;color:#C62828;font-weight:800;margin-top:12px">${hod ? "Head of department confirmation" : "Certificate of completion"}</div>
     <h2 style="margin:10px 0 4px;color:#163C6A">${h(x.title)}</h2>
     <p style="font-size:22px;margin:14px 0 4px"><b>${h(x.name)}</b></p><p class="muted" style="margin:0">${h(dept)}</p>
-    <p style="margin:14px 0">${hod ? "confirmed" : "completed this fire safety training"} on <b>${h(fd(x.date))}</b>${hod ? "" : `<br>Score ${x.score} out of ${x.total}`}</p>
+    <p style="margin:14px 0">${hod ? "confirmed" : `completed this ${x.module === "coshh" ? "health and safety" : x.module === "hkstd" ? "housekeeping" : "fire safety"} training`} on <b>${h(fd(x.date))}</b>${hod ? "" : `<br>Score ${x.score} out of ${x.total}`}${x.module === "coshh" || x.module === "hkstd" ? `<br><span class="muted">Valid for 12 months</span>` : ""}</p>
     ${x.sig ? `<img src="${x.sig}" style="height:70px;border-bottom:1px solid #9AA5B1;padding:0 30px"><div class="muted">Signature</div>` : ""}
-    <p class="muted" style="margin-top:16px;font-size:12px">${h(HF_HOTEL.name)} · recorded in HosFIRE ${x.createdAt ? "at " + new Date(ms(x.createdAt)).toLocaleString("en-GB") : ""} · Fire Safety Manager: ${h(HF_FIRE_MANAGER.name)}</p></div>`;
+    <p class="muted" style="margin-top:16px;font-size:12px">${h(HF_HOTEL.name)} · recorded in HosFIRE ${x.createdAt ? "at " + new Date(ms(x.createdAt)).toLocaleString("en-GB") : ""} · ${x.module === "coshh" ? "Policy BHH-HK-01 Housekeeping COSHH and Safe Cleaning" : x.module === "hkstd" ? "Housekeeping room standards: the 5-step loop and room inspection" : "Fire Safety Manager: " + h(HF_FIRE_MANAGER.name)}</p></div>`;
   const m = modal(`${html}<div class="row" style="margin-top:12px"><button class="btn red" id="tc-pr">🖨 Print certificate</button><button class="btn ghost" data-close>Close</button></div>`);
   $("#tc-pr", m).onclick = () => { $("#print").innerHTML = `<div style="padding:30mm 20mm">${html}</div>`; m.close(); printPortrait(); };
 }
@@ -2769,6 +2769,70 @@ BIND.fra = (v) => {
       await put("config", "fra_request", { draft: JSON.parse(JSON.stringify(d)), ...S.f.frMeta });
       audit("FRA request page published for the fire officer"); msg.textContent = ""; toast("FRA page published"); render();
     } catch (e) { msg.textContent = "Could not publish: " + e.message; }
+  };
+};
+
+/* ============================================================
+   HOUSEKEEPING — COSHH and room standards training (BHH-HK-01, 5-step loop)
+   ============================================================ */
+const HK_COURSES = [["coshh", "COSHH"], ["hkstd", "Room standards"]];
+function hkData() {
+  const T = (S.data.tlog || []).filter((x) => x.module === "coshh" || x.module === "hkstd");
+  const same = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+  const CC = HF_COURSES.find((c) => c[0] === "coshh");
+  const hk = reg("training").filter((t) => courseApplies(t, CC)).sort((a, b) => natRef(a.name, b.name));
+  const rows = hk.map((t) => ({ t, c: Object.fromEntries(HK_COURSES.map(([k]) => { const d = (t.courses || {})[k], cs = courseState(d, 12), last = T.filter((x) => x.module === k && same(x.name, t.name)).sort((a, b) => ms(b.createdAt) - ms(a.createdAt))[0]; return [k, { d, cs, last }]; })) }));
+  return { T, hk, rows, same };
+}
+const HK_LAB = { ok: ["In date", "p-ok"], soon: ["Due within 30 days", "p-amb"], expired: ["Expired", "p-red"], missing: ["Not done", "p-red"] };
+VIEWS.coshh = () => {
+  const { T, hk, rows, same } = hkData();
+  const good = (k) => rows.filter((r) => ["ok", "soon"].includes(r.c[k].cs.st)).length;
+  const bothDone = rows.filter((r) => HK_COURSES.every(([k]) => ["ok", "soon"].includes(r.c[k].cs.st))).length;
+  const pol = reg("doc").find((r) => /BHH-HK-01|COSHH/i.test(r.title || ""));
+  const base = location.href.split("#")[0].replace(/[^/]*$/, "");
+  const tile = (lab, v, col, extra = "") => `<div class="card"><div class="muted">${lab}</div><div style="font-size:30px;font-weight:800;color:${col}">${v}</div>${extra}</div>`;
+  const bar = (n) => { const pc = hk.length ? Math.round((n / hk.length) * 100) : 0; return `<div style="height:8px;background:#E6EAF0;border-radius:5px;overflow:hidden;margin-top:6px"><i style="display:block;height:100%;width:${pc}%;background:${n === hk.length ? "var(--ok)" : "var(--amber)"}"></i></div>`; };
+  const outstanding = (k) => rows.filter((r) => !["ok", "soon"].includes(r.c[k].cs.st)).map((r) => h(r.t.name));
+  const cell = (x) => `<span class="pill ${HK_LAB[x.cs.st][1]}">${HK_LAB[x.cs.st][0]}</span><div class="muted" style="font-size:12px;margin-top:3px">${x.d ? fds(x.d) + (x.cs.exp ? " → " + fds(x.cs.exp) : "") : ""}${x.last ? ` · ${x.last.score}/${x.last.total}` : ""}</div>${x.last ? `<button class="btn sm ghost" style="margin-top:4px" data-tcert="${x.last.id}">🎓 Certificate</button>` : ""}`;
+  const others = T.filter((x) => !hk.some((t) => same(t.name, x.name)));
+  return `<h2>Housekeeping <span class="fl">training</span></h2>
+  <p class="lead">Housekeeping and laundry team: COSHH and safe cleaning (policy BHH-HK-01) and room standards (the 5-step loop and room inspection). Both are online, signed by the member of staff, and renewed every 12 months.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:12px">
+    ${tile("Both courses in date", `${bothDone}/${hk.length}`, bothDone === hk.length && hk.length ? "var(--ok)" : "var(--amber)", bar(bothDone))}
+    ${tile("🧴 COSHH in date", `${good("coshh")}/${hk.length}`, good("coshh") === hk.length && hk.length ? "var(--ok)" : "var(--amber)", bar(good("coshh")))}
+    ${tile("🛏 Room standards in date", `${good("hkstd")}/${hk.length}`, good("hkstd") === hk.length && hk.length ? "var(--ok)" : "var(--amber)", bar(good("hkstd")))}
+    <div class="card"><div class="muted">Policy BHH-HK-01</div><div style="margin-top:6px">${pol && pol.file ? `<button class="btn sm" id="ch-pol">📄 Open the policy</button>` : `<a class="btn sm ghost" href="housekeeping/BHH-HK-01-Housekeeping-COSHH-Policy.pdf" target="_blank" rel="noopener">📄 Open the policy</a>`}</div></div>
+  </div>
+  <div class="card" style="margin-bottom:12px;border-left:6px solid #0E7C66"><div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
+    <div style="flex:1;min-width:260px"><label>Housekeeping staff page — training, 5-step loop and inspection checklist (staff code 999)</label><input readonly value="${h(base + "housekeeping/")}" onclick="this.select()"></div>
+    <button class="btn ghost" id="ch-hub">Open the staff page</button><button class="btn ghost" id="ch-chk">🖨 Inspection checklist</button><button class="btn ghost" id="ch-print">🖨 Print the record</button></div>
+    ${outstanding("coshh").length || outstanding("hkstd").length ? `<p style="margin:10px 0 0">${outstanding("coshh").length ? `<b>COSHH still to do:</b> ${outstanding("coshh").join(", ")}<br>` : ""}${outstanding("hkstd").length ? `<b>Room standards still to do:</b> ${outstanding("hkstd").join(", ")}` : ""}</p>` : hk.length ? '<p style="margin:10px 0 0;color:var(--ok);font-weight:700">Everyone in housekeeping is in date for both courses.</p>' : ""}</div>
+  <div class="card"><h3 style="margin-top:0">Housekeeping team — training record</h3>
+    <div class="tw"><table><tr><th>Name</th><th>Role</th><th>🧴 COSHH and safe cleaning</th><th>🛏 Room standards</th></tr>
+    ${rows.map(({ t, c }) => `<tr><td><b>${h(t.name)}</b></td><td>${h(t.role || "")}</td><td>${cell(c.coshh)}</td><td>${cell(c.hkstd)}</td></tr>`).join("") || '<tr><td colspan="4" class="muted">No housekeeping staff on the training list yet. Staff are added automatically when they complete a course and choose Housekeeping, or add them in Training.</td></tr>'}</table></div>
+    ${others.length ? `<p class="muted">Also completed by staff outside housekeeping: ${others.map((x) => `<a href="#" data-tcert="${x.id}">${h(x.name)} (${x.module === "coshh" ? "COSHH" : "room standards"})</a>`).join(", ")}</p>` : ""}</div>
+  <div class="card"><h3 style="margin-top:0">The 5-step housekeeping loop</h3><div class="tw"><table><tr><th>Step</th><th>Action</th><th>What it means</th></tr>${HF_HK_LOOP.map(([n, a, b, c]) => `<tr><td><b>${n}. ${h(a)}</b></td><td>${h(b)}</td><td>${h(c)}</td></tr>`).join("")}</table></div></div>`;
+};
+function hkChecklistHTML() {
+  return `<div style="font-family:inherit;font-size:10.5pt"><h2 style="color:#0E7C66;margin:0">Room inspection checklist</h2><p style="margin:2px 0 8px">${h(HF_HOTEL.name)} · Housekeeping · inside-out sequence</p>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:8px"><tr>${["Room", "Status (departure / stay-over / priority)", "Cleaned by", "Inspected by", "Date and time"].map((x) => `<td style="border:1px solid #999;padding:4px 6px;height:34px;vertical-align:top;font-size:8.5pt;color:#555">${x}</td>`).join("")}</tr></table>
+  ${HF_HK_INSPECT.map(([t, items]) => `<div style="break-inside:avoid;margin-bottom:6px"><div style="background:#E3F3EE;color:#0E7C66;font-weight:800;padding:3px 6px">${h(t)}</div><table style="width:100%;border-collapse:collapse">${items.map((i) => `<tr><td style="border-bottom:1px solid #ddd;padding:3px 6px">${h(i)}</td><td style="border-bottom:1px solid #ddd;width:44px;text-align:center">☐ OK</td><td style="border-bottom:1px solid #ddd;width:52px;text-align:center">☐ Fix</td></tr>`).join("")}</table></div>`).join("")}
+  <table style="width:100%;border-collapse:collapse;margin-top:8px"><tr><td style="border:1px solid #999;padding:4px 6px;height:56px;vertical-align:top;font-size:8.5pt;color:#555">Defects reported to maintenance (what, where, time)</td></tr></table>
+  <p style="margin-top:8px"><b>Result:</b> ☐ Pass — released Clean and Ready at ______ &nbsp;&nbsp; ☐ Fail — returned to housekeeper &nbsp;&nbsp; ☐ Out of order &nbsp;&nbsp; Inspector's signature ____________________</p></div>`;
+}
+BIND.coshh = (v) => {
+  $$("[data-tcert]", v).forEach((el) => (el.onclick = (e) => { e.preventDefault(); const x = (S.data.tlog || []).find((y) => y.id === el.dataset.tcert); if (x) tCert(x); }));
+  $("#ch-hub", v).onclick = () => window.open(`housekeeping/${DEMO ? "?demo=1" : ""}`, "_blank", "noopener");
+  const pb = $("#ch-pol", v); if (pb) pb.onclick = () => openFile(reg("doc").find((r) => /BHH-HK-01|COSHH/i.test(r.title || "")).file);
+  $("#ch-chk", v).onclick = () => { $("#print").innerHTML = hkChecklistHTML(); printPortrait(); };
+  $("#ch-print", v).onclick = () => {
+    const { rows } = hkData(), td = (x) => `<td style="padding:4px;border-bottom:1px solid #ddd">${x}</td>`;
+    const c = (x) => `${{ ok: "In date", soon: "Due soon", expired: "Expired", missing: "Not done" }[x.cs.st]}${x.d ? " · " + fds(x.d) : ""}${x.last ? " · " + x.last.score + "/" + x.last.total : ""}`;
+    $("#print").innerHTML = `<div style="font-family:inherit"><h2 style="color:#0E7C66;margin:0">Housekeeping training record</h2><p>${h(HF_HOTEL.name)} · COSHH (policy BHH-HK-01) and room standards · printed ${fds(today())}</p>
+      <table style="width:100%;border-collapse:collapse;font-size:10pt"><tr>${["Name", "Role", "COSHH", "Room standards"].map((x) => `<th style="text-align:left;border-bottom:2px solid #0E7C66;padding:4px">${x}</th>`).join("")}</tr>
+      ${rows.map(({ t, c: cc }) => `<tr>${td(h(t.name))}${td(h(t.role || ""))}${td(c(cc.coshh))}${td(c(cc.hkstd))}</tr>`).join("")}</table></div>`;
+    printPortrait();
   };
 };
 
