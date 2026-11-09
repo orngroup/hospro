@@ -297,6 +297,25 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         <div class="bigcard bc-hand" id="card-handover" onclick="showSection('handover')"><div class="bc-n" id="bc-hand-n">0</div><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div><div class="bc-t">Shift Handover 🔒</div><div class="bc-s">Reception · code needed</div></div>
       </div>
 
+      <button onclick="openPriorityRoom()" style="width:100%;margin-top:12px;border:none;border-radius:14px;padding:15px;background:linear-gradient(135deg,#b3261e,#d9534f);color:#fff;font:800 15px Lato;cursor:pointer;box-shadow:0 2px 10px rgba(179,38,30,.28)">⚡ Priority room → alert housekeeping</button>
+
+      <!-- Priority room modal -->
+      <div id="prio-ov" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:flex-start;justify-content:center;padding:60px 16px 0">
+        <div style="background:#fff;border-radius:16px;padding:22px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.25)">
+          <div style="font:900 18px Lato;color:var(--navy);margin-bottom:4px">⚡ Priority room</div>
+          <div class="muted" style="font-size:13px;margin-bottom:14px">Flags the room as priority in HosHouse and alerts housekeeping — even when their app is closed.</div>
+          <label class="fl">Room number</label>
+          <input id="prio-room" type="text" inputmode="numeric" placeholder="e.g. 214" style="margin-bottom:12px">
+          <label class="fl">Why / for who (optional)</label>
+          <textarea id="prio-reason" rows="3" placeholder="e.g. Early check-in waiting · VIP arrival 2pm" style="margin-bottom:14px"></textarea>
+          <div style="display:flex;gap:10px">
+            <button onclick="closePriorityRoom()" style="flex:1;border:1px solid var(--line);background:#f3f5f8;border-radius:11px;padding:12px;font:700 14px Lato;cursor:pointer">Cancel</button>
+            <button onclick="submitPriorityRoom()" style="flex:2;border:none;background:#b3261e;color:#fff;border-radius:11px;padding:12px;font:800 14px Lato;cursor:pointer">⚡ Set priority &amp; alert</button>
+          </div>
+          <div id="prio-msg" style="font-size:13px;min-height:16px;margin-top:8px"></div>
+        </div>
+      </div>
+
       <div class="dash" style="margin-top:18px">
         <div class="tile" style="cursor:pointer" onclick="bTile('open')"><div class="v" id="t-pend" style="color:#5b6b7b">0</div><div class="k">Pending</div></div>
         <div class="tile" style="cursor:pointer" onclick="bTile('urgent')"><div class="v" id="t-urg" style="color:var(--red)">0</div><div class="k">Urgent</div></div>
@@ -390,19 +409,30 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
       <div class="pane-form">
         <div class="card">
           <label class="fl">Handing over from</label>
-          <select id="h-from"><option value="">Select…</option><option>Joy</option><option>Alice</option><option>Patrik</option><option>Manjusa</option></select>
+          <select id="h-from"><option value="">Select…</option><option>Joy</option><option>Alice</option><option>Patrik</option><option>Manjusha</option><option>Manju</option><option>Alan</option><option>Amal</option><option>Rowan</option><option>Veronica</option><option>Other</option></select>
           <label class="fl" style="margin-top:12px">Handing over to</label>
-          <select id="h-to"><option value="">Select…</option><option>Joy</option><option>Alice</option><option>Patrik</option><option>Manjusa</option></select>
+          <select id="h-to"><option value="">Select…</option><option>Joy</option><option>Alice</option><option>Patrik</option><option>Manjusha</option><option>Manju</option><option>Alan</option><option>Amal</option><option>Rowan</option><option>Veronica</option><option>Other</option></select>
           <label class="fl" style="margin-top:12px">Shift date</label>
           <input id="h-date" type="date">
+          <label class="fl" style="margin-top:12px">Shift</label>
+          <select id="h-shift"><option value="">Select…</option><option>Early</option><option>Late</option><option>Night</option></select>
           <div style="display:flex;gap:10px;margin-top:12px">
             <div style="flex:1"><label class="fl">Shift started</label><input id="h-start" type="time"></div>
             <div style="flex:1"><label class="fl">Shift finished</label><input id="h-end" type="time"></div>
           </div>
           <label class="fl" style="margin-top:14px">Shift checklist</label>
           <div id="h-checks" class="hchecks"></div>
-          <label class="fl" style="margin-top:14px">Handover notes</label>
-          <textarea id="h-notes" rows="5" placeholder="Anything the next shift needs to know — outstanding tasks, guest issues, deliveries expected, VIPs/arrivals, messages to pass on…"></textarea>
+          <label class="fl" style="margin-top:14px">Handover items</label>
+          <div class="muted" style="font-size:12px;margin-bottom:6px">Add each thing the next shift needs to know, one at a time. Tick ⚑ for anything important or needing action.</div>
+          <div id="h-items" style="margin-bottom:8px"></div>
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <input id="h-item-room" type="text" placeholder="Room" style="width:76px">
+            <textarea id="h-item-text" rows="2" placeholder="e.g. 149 asked for a 6:30 takeaway breakfast — 2 sausage" style="flex:1"></textarea>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;cursor:pointer"><input type="checkbox" id="h-item-imp" style="width:18px;height:18px"> ⚑ Important / action needed</label>
+          <button type="button" class="btn" style="background:#eef1f5;color:#1a2b3a;border:1px solid var(--line)" onclick="hAddItem()">＋ Add item</button>
+          <label class="fl" style="margin-top:14px">Anything else (optional)</label>
+          <textarea id="h-notes" rows="3" placeholder="General notes for the next shift…"></textarea>
           <div class="muted" style="margin-top:10px;font-size:12px">📅 The date &amp; time you log this are also recorded automatically.</div>
           <button class="btn btn-go" style="margin-top:14px;background:#2a6a4a" onclick="hSubmit()">🔄 Save handover →</button>
         </div>
@@ -669,7 +699,7 @@ function closeFire(){ $('ovl-fire').classList.remove('on'); }
 const SEC_TITLES={requests:'🧹 Guest Requests', deliveries:'📦 Deliveries', maintenance:'🔧 Maintenance', handover:'🔄 Shift Handover'};
 function showSection(x){
   if(GATED[x] && !UNLOCKED[x]){ openCodeGate(x); return; }
-  if(x==='handover'){ try{ hBuildChecks(); const dt=$('h-date'); if(dt && !dt.value) dt.value=todayISO(); }catch(e){} }
+  if(x==='handover'){ try{ hBuildChecks(); hRenderItems(); const dt=$('h-date'); if(dt && !dt.value) dt.value=todayISO(); }catch(e){} }
   SECTIONS.forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.toggle('on', s===x); });
   const home=$('hd-home'); if(home) home.classList.add('hide');
   const t=$('hd-sec-title'); if(t) t.textContent=SEC_TITLES[x]||'';
@@ -698,7 +728,25 @@ function dSyncInputs(){ if($('d-from')) $('d-from').value=DATE_FROM; if($('d-to'
 function dRefresh(){ try{ bRender(); }catch(e){} try{ renderDeliveries(); }catch(e){} try{ mRender(); }catch(e){} try{ hRender(); }catch(e){} }
 
 /* ---- Shift handover: reception shift-to-shift handover with checklist ---- */
-let H_UNSUB=null, H_ROWS=[], H_BUILT=false;
+let H_UNSUB=null, H_ROWS=[], H_BUILT=false, H_ITEMS=[];
+function hAddItem(){
+  const txt=($('h-item-text').value||'').trim();
+  const room=($('h-item-room').value||'').trim();
+  const imp=!!($('h-item-imp')&&$('h-item-imp').checked);
+  if(!txt){ toast('Type the item first'); return; }
+  H_ITEMS.push({ room, text:txt, important:imp });
+  $('h-item-text').value=''; $('h-item-room').value=''; if($('h-item-imp')) $('h-item-imp').checked=false;
+  hRenderItems(); $('h-item-text').focus();
+}
+function hRemoveItem(i){ H_ITEMS.splice(i,1); hRenderItems(); }
+function hRenderItems(){
+  const box=$('h-items'); if(!box) return;
+  if(!H_ITEMS.length){ box.innerHTML='<div class="muted" style="font-size:12px;padding:4px 0">No items added yet.</div>'; return; }
+  box.innerHTML=H_ITEMS.map((it,i)=>'<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:9px;margin-bottom:6px;'
+    +(it.important?'background:#fff3b0':'background:#f3f5f8')+'">'
+    +'<div style="flex:1;font-size:13px;line-height:1.45">'+(it.important?'⚑ ':'')+(it.room?('<b>'+hEsc(it.room)+'</b> — '):'')+hEsc(it.text)+'</div>'
+    +'<button type="button" onclick="hRemoveItem('+i+')" style="border:none;background:none;color:#b3261e;font-size:16px;cursor:pointer;line-height:1">×</button></div>').join('');
+}
 // Standard reception shift-handover checklist
 const H_CHECKS=[
   {id:'float',       label:'Cash float counted & correct'},
@@ -722,7 +770,10 @@ function hBuildChecks(){
 }
 function hResetForm(){
   $('h-from').value=''; $('h-to').value=''; const n=$('h-notes'); if(n) n.value='';
+  const sh=$('h-shift'); if(sh) sh.value='';
   const st=$('h-start'); if(st) st.value=''; const en=$('h-end'); if(en) en.value='';
+  const it=$('h-item-text'); if(it) it.value=''; const ir=$('h-item-room'); if(ir) ir.value=''; const im=$('h-item-imp'); if(im) im.checked=false;
+  H_ITEMS=[]; hRenderItems();
   const dt=$('h-date'); if(dt) dt.value=todayISO();
   H_CHECKS.forEach(c=>{ const el=$('hc-'+c.id); if(el) el.checked=false; });
 }
@@ -732,9 +783,13 @@ function hSubmit(){
   if(from===to){ toast('From and To can’t be the same person'); return; }
   const checks={}; H_CHECKS.forEach(c=>{ const el=$('hc-'+c.id); checks[c.id]=!!(el && el.checked); });
   const anyCheck=Object.values(checks).some(Boolean);
-  if(!notes && !anyCheck){ toast('Add some notes or tick the checklist'); return; }
+  // if something's typed in the item box but not yet added, include it
+  const pend=($('h-item-text')&&$('h-item-text').value||'').trim();
+  if(pend){ H_ITEMS.push({ room:($('h-item-room').value||'').trim(), text:pend, important:!!($('h-item-imp')&&$('h-item-imp').checked) }); }
+  if(!notes && !anyCheck && !H_ITEMS.length){ toast('Add at least one item, some notes, or tick the checklist'); return; }
   const now=new Date().toISOString();
-  const doc={ id:'ho_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), from, to, notes,
+  const doc={ id:'ho_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), from, to, notes, items:H_ITEMS.slice(),
+    shift:($('h-shift')&&$('h-shift').value)||'',
     shiftDate:($('h-date')&&$('h-date').value)||todayISO(), startTime:($('h-start')&&$('h-start').value)||'', endTime:($('h-end')&&$('h-end').value)||'',
     checks, createdAt:now, updatedAt:now, by:'reception' };
   try{ if(db){ db.collection('hoshouse_handovers').doc(doc.id).set(doc); } else { H_ROWS.unshift(doc); hRender(); } }catch(e){ toast('Could not save — check connection'); return; }
@@ -744,8 +799,9 @@ function hSubmit(){
 function hShiftLine(r){
   let d; try{ d=r.shiftDate? new Date(r.shiftDate+'T00:00:00') : new Date(r.createdAt); }catch(e){ d=new Date(r.createdAt); }
   const dateStr=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  const shift=r.shift? (' · '+hEsc(r.shift)+' shift') : '';
   const times=(r.startTime||r.endTime)? (' · ⏱ '+(r.startTime||'?')+'–'+(r.endTime||'?')) : '';
-  return '📅 '+dateStr+times;
+  return '📅 '+dateStr+shift+times;
 }
 function hRender(){
   const list=$('h-list'); if(!list) return;
@@ -757,17 +813,26 @@ function hRender(){
     const done=H_CHECKS.filter(c=>chk[c.id]);
     const miss=H_CHECKS.filter(c=>!chk[c.id]);
     let checkHtml='';
-    if(done.length || miss.length){
+    if(done.length){
       checkHtml='<div style="margin:8px 0 2px;font:800 11px Lato;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Checklist · '+done.length+'/'+H_CHECKS.length+'</div>';
       checkHtml+='<div>'+done.map(c=>'<span class="h-done">✓ '+hEsc(c.label)+'</span>').join('')+'</div>';
       if(miss.length) checkHtml+='<div style="margin-top:3px"><span style="font:800 11px Lato;color:#b3261e">Outstanding: </span>'+miss.map(c=>'<span class="h-miss">'+hEsc(c.label)+'</span>').join('')+'</div>';
+    }
+    const items=Array.isArray(r.items)?r.items:[];
+    let itemsHtml='';
+    if(items.length){
+      itemsHtml='<ul style="margin:8px 0 2px;padding-left:4px;list-style:none">'+items.map(it=>{
+        const imp=it.important;
+        const room=it.room?('<b>'+hEsc(it.room)+'</b> — '):'';
+        return '<li style="font-size:14px;line-height:1.5;margin-bottom:5px;padding:4px 8px;border-radius:6px;'+(imp?'background:#fff3b0;font-weight:600':'')+'">'+(imp?'⚑ ':'• ')+room+hEsc(it.text)+'</li>';
+      }).join('')+'</ul>';
     }
     const notesHtml=r.notes? '<div style="font-size:14px;line-height:1.5;white-space:pre-wrap;margin-top:8px">'+hEsc(r.notes)+'</div>' : '';
     return '<div class="card" style="border-left:4px solid #2a6a4a;margin-bottom:10px">'
       +'<div style="font:900 15px Lato;color:var(--navy)">'+hEsc(r.from)+' <span style="color:#2a6a4a">→</span> '+hEsc(r.to)+'</div>'
       +'<div class="muted" style="font-size:12px;margin:3px 0 2px">'+hShiftLine(r)+'</div>'
       +'<div class="muted" style="font-size:11px;margin-bottom:4px">Logged '+recWhen(r.createdAt)+'</div>'
-      +checkHtml+notesHtml
+      +itemsHtml+checkHtml+notesHtml
       +'</div>';
   }).join('');
 }
@@ -834,7 +899,8 @@ function bRender(){
     return `<div class="req s-${st}">
       <div class="r1"><span class="rm">Room ${esc(r.room)}</span><span class="ty">${reqItems(r)}</span>${bdg}</div>
       ${r.detail?`<div class="meta">${esc(r.detail)}</div>`:''}
-      <div class="meta">${esc(r.source==='reception'?'Front desk':'Guest')} · ${recWhen(r.createdAt)} ${r.assignedName?('· 👤 '+esc(r.assignedName)):''} ${resp}</div>
+      <div class="meta">${esc(r.source==='reception'?'Front desk':'Guest')} · ${recWhen(r.createdAt)} ${r.assignedName?('· 👤 '+esc(r.assignedName)):''}${r.startedAt?(' · ▶ '+recTime(r.startedAt)):''}${r.completedAt?(' · ✓ '+recTime(r.completedAt)):''} ${resp}</div>
+      <div class="meta"><a onclick="hdReqAddPhoto('${r.id}')" style="color:#8a6a44;cursor:pointer;font-weight:700">＋ photo</a>${(r.photos&&r.photos.length)?` · <a onclick="hdReqPhotos('${r.id}')" style="color:#2747a6;cursor:pointer;font-weight:700">📷 ${r.photos.length} photo${r.photos.length>1?'s':''}</a>`:''}</div>
       ${r.status!=='done'?`<div class="acts">
         <select class="rsel" onchange="allocate('${r.id}',this.value)">${staffOpts(r.assignedTo)}</select>
         <button class="sbtn urg ${r.priority==='urgent'?'on':''}" onclick="toggleUrgent('${r.id}','${r.priority}')">${r.priority==='urgent'?'● Urgent':'⚑ Urgent'}</button>
@@ -848,6 +914,50 @@ async function patch(id,fields){ fields.updatedAt=new Date().toISOString(); try{
 function allocate(id,hk){ const s=B_STAFF.find(x=>x.id===hk); patch(id,{assignedTo:hk||'',assignedName:s?s.name:''}); toast(s?('Allocated to '+s.name.split(' ')[0]):'Unassigned'); }
 function setStatus(id,status){ const f={status}; const now=new Date().toISOString(); if(status==='in_progress') f.startedAt=now; if(status==='done') f.completedAt=now; patch(id,f); toast(status==='done'?'✓ Completed':'Marked in progress'); }
 function toggleUrgent(id,cur){ const u=cur==='urgent'?'normal':'urgent'; patch(id,{priority:u}); toast(u==='urgent'?'Marked urgent':'Urgent removed'); }
+
+/* ---- Priority room → mark urgent in HosHouse + background alert to housekeeping ---- */
+const FCM_BASE="https://europe-west1-brandonhall-7bdef.cloudfunctions.net";
+function openPriorityRoom(){ const ov=$('prio-ov'); if(!ov) return; $('prio-room').value=''; $('prio-reason').value=''; const m=$('prio-msg'); if(m) m.textContent=''; ov.style.display='flex'; setTimeout(()=>{ const r=$('prio-room'); if(r) r.focus(); },50); }
+function closePriorityRoom(){ const ov=$('prio-ov'); if(ov) ov.style.display='none'; }
+async function submitPriorityRoom(){
+  const room=($('prio-room').value||'').trim().replace(/[^0-9A-Za-z]/g,'');
+  const reason=($('prio-reason').value||'').trim();
+  const msg=$('prio-msg');
+  if(!room){ if(msg){ msg.style.color='var(--red)'; msg.textContent='Enter a room number.'; } return; }
+  if(msg){ msg.style.color='var(--muted)'; msg.textContent='Setting priority…'; }
+  const date=todayISO(), id=date+'__'+room, now=new Date().toISOString();
+  let exists=false, hk='';
+  try{ if(db){ const d=await db.collection('hoshouse_rooms').doc(id).get(); if(d.exists){ exists=true; hk=(d.data()||{}).housekeeper||''; } } }catch(e){}
+  const patch={ urgent:true, priorityNote:reason, priorityBy:'Reception', priorityAt:now, updatedAt:now };
+  if(!exists){ Object.assign(patch,{ date, room:String(room), status:'pending', type:'Departure', notes:reason||'Priority — set by reception', createdAt:now }); }
+  try{ if(db){ await db.collection('hoshouse_rooms').doc(id).set(patch,{merge:true}); } else { toast('Offline — cannot set priority'); return; } }
+  catch(e){ if(msg){ msg.style.color='var(--red)'; msg.textContent='Could not set — check connection.'; } return; }
+  const ids=['ruth','laith','ajay']; if(hk && ids.indexOf(hk)<0) ids.push(hk);
+  try{ fetch(FCM_BASE+'/notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ event:'message', userIds:ids, title:'🚨 Priority room '+room, body:(reason||'Reception flagged this room as priority — please prioritise.'), url:'/hoshouse.html', urgent:true, kind:'urgent' })}); }catch(e){}
+  closePriorityRoom();
+  toast('⚡ Room '+room+' set to priority · housekeeping alerted');
+}
+
+/* ---- Photo viewer (lightbox) for jobs & requests ---- */
+function hdLightbox(photos){
+  photos=(photos||[]).filter(Boolean);
+  if(!photos.length){ toast('No photos on this one'); return; }
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:3000;display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px;overflow:auto';
+  ov.innerHTML='<div style="color:#fff;font:700 14px Lato;align-self:flex-end;cursor:pointer;padding:6px 12px;background:rgba(255,255,255,.15);border-radius:20px" onclick="this.parentNode.remove()">✕ Close</div>'
+    +photos.map(p=>'<img src="'+p+'" style="max-width:100%;max-height:82vh;border-radius:10px;object-fit:contain">').join('');
+  ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+  document.body.appendChild(ov);
+}
+function hdJobPhotos(id){ const j=(M_ROWS||[]).find(x=>x.id===id); hdLightbox(j&&j.photos); }
+function hdReqPhotos(id){ const r=(B_ROWS||[]).find(x=>x.id===id); hdLightbox(r&&r.photos); }
+let _reqPhotoInput=null;
+function hdReqAddPhoto(id){
+  if(!_reqPhotoInput){ _reqPhotoInput=document.createElement('input'); _reqPhotoInput.type='file'; _reqPhotoInput.accept='image/*'; _reqPhotoInput.capture='environment'; _reqPhotoInput.style.cssText='position:fixed;left:-9999px;top:0'; document.body.appendChild(_reqPhotoInput); }
+  _reqPhotoInput.value='';
+  _reqPhotoInput.onchange=function(){ const f=this.files&&this.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=e=>mCompress(e.target.result,900,0.6,function(c){ const r=(B_ROWS||[]).find(x=>x.id===id); const photos=((r&&r.photos)||[]).concat([c]).slice(0,4); patch(id,{photos}); toast('📷 Photo added'); }); rd.readAsDataURL(f); };
+  _reqPhotoInput.click();
+}
 
 /* ============================================================
    VISITOR LOG + DELIVERY LOG (reception console tabs)
@@ -1016,7 +1126,7 @@ function mRender(){
     return `<div class="req" style="border-left-color:${col}">
       <div class="r1"><span class="rm">${esc(j.location||j.areaLabel||'—')}</span><span class="ty">${esc(j.title||'')}</span>${mStatusBadge(j)}</div>
       ${j.description?`<div class="meta">${esc(j.description)}</div>`:''}
-      <div class="meta">${esc(j.reportedBy||j.source||'')} · ${recWhen(j.createdAt)} ${mWho(j)?('· '+mWho(j)):''}</div>
+      <div class="meta">${esc(j.reportedBy||j.source||'')} · 🕐 ${recWhen(j.createdAt)}${j.startedAt?(' · ▶ '+recTime(j.startedAt)):''}${j.completedAt?(' · ✓ '+recWhen(j.completedAt)):''} ${mWho(j)?('· '+mWho(j)):''}${(j.photos&&j.photos.length)?` · <a onclick="hdJobPhotos('${j.id}')" style="color:#2747a6;cursor:pointer;font-weight:700">📷 ${j.photos.length}</a>`:''}</div>
     </div>`;
   };
   // group issues for the same room together (newest room first)

@@ -326,7 +326,7 @@
     if(!ok){ set('Couldn’t set up alerts on this phone. On iPhone, open HosHouse from the Home-Screen icon (not Safari), then try again.'); return; }
     set('Sending a test alert…');
     try{
-      const r=await fetch(HH_FCM_BASE+'/notify',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ event:'test', testUser:ME.id }) });
+      const r=await fetch(HH_FCM_BASE+'/notify',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ event:'test', testUser:ME.id, title:'🔔 HosHouse test alert', body:'If you can see this, alerts are working on this phone.', url:'/hoshouse.html' }) });
       const j=await r.json().catch(()=>({})); const res=(j.results||[])[0];
       if(res && res.sent>0) set('✓ Sent! Lock your phone — the alert should arrive in a few seconds with sound.');
       else set('Registered, but the test didn’t arrive ('+((res&&res.reason)||'unknown')+'). Close HosHouse fully, reopen it and try again.');
