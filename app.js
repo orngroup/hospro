@@ -8000,6 +8000,32 @@ function spGetRota(){
   return n.rota;
 }
 function spSaveRota(d)  {localStorage.setItem('sp_rota',   JSON.stringify(d)); if(typeof spQueuePublish==='function') spQueuePublish();}
+/* Pull the live published rota (hospro_public/rota) into this device so the
+   management Weekly Rota reflects imports and HOD approvals made elsewhere.
+   Live wins per date; local-only weeks are kept; missing staff are added. */
+let __rotaSyncDone=false;
+async function spSyncFromLive(){
+  try{
+    const db=(typeof hpPublicDb==='function')?hpPublicDb():null;
+    if(!db) return;
+    const snap=await db.collection('hospro_public').doc('rota').get();
+    if(!snap || !snap.exists) return;
+    const live=snap.data()||{};
+    let changed=false;
+    const local=JSON.parse(localStorage.getItem('sp_rota')||'{}');
+    Object.keys(live.rota||{}).forEach(dk=>{ local[dk]=live.rota[dk]; changed=true; });
+    if(changed) localStorage.setItem('sp_rota', JSON.stringify(local));
+    if(Array.isArray(live.staff)){
+      const staff=spGetStaff(); const have={}; staff.forEach(s=>{ if(s&&s.id) have[s.id]=1; });
+      let sc=false;
+      live.staff.forEach(s=>{ if(s&&s.id&&!have[s.id]){ staff.push({id:s.id,name:s.name||s.id,role:s.role||'',dept:s.dept||'',staffCode:String(s.staffCode||''),rate:0}); sc=true; } });
+      if(sc && typeof spSaveStaff==='function') spSaveStaff(staff);
+    }
+    if(changed && document.getElementById('view') && typeof renderRotaWeek==='function' && String(location.hash||'').toLowerCase().indexOf('rota')>=0){
+      renderRotaWeek(document.getElementById('view'));
+    }
+  }catch(e){ /* silent — offline or no rule */ }
+}
 function spGetFC(){
   const s=localStorage.getItem('sp_fc'); const raw=s?JSON.parse(s):JSON.parse(JSON.stringify(SP_FC_SEED));
   try{ if(localStorage.getItem('sp_fc_patch_v')!==SP_ROTA_PATCH_VER){
@@ -8190,6 +8216,7 @@ async function hpFillOnSiteNow(){
 
 // ── WEEKLY ROTA ───────────────────────────────────────────────────────────────
 function renderRotaWeek(v){
+  if(!__rotaSyncDone){ __rotaSyncDone=true; try{ spSyncFromLive(); }catch(e){} }
   const rota=spGetRota(), fc=spGetFC(), staff=spActiveStaff();
   const days=spWeekDates(spWeekOffset), todayK=spDK(new Date());
   const pending=JSON.parse(localStorage.getItem('sp_rota_pending')||'{}');
