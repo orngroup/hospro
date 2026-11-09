@@ -168,7 +168,8 @@ const HF_COURSES = [
   ["procedure", "Fire procedure briefing signed", 12],
   ["drill", "Last drill taken part in", 12],
   ["reception", "Reception alarm procedure briefing", 12, ["reception", "nights"]],   // reception and night staff only
-  ["monthly", "Monthly fire refresher", 1]
+  ["monthly", "Monthly fire refresher", 1],
+  ["coshh", "Housekeeping COSHH", 12, ["housekeeping"]]   // housekeeping only — online module, renewed every 12 months
 ];
 const courseApplies = (t, c) => !c[3] || c[3].includes((t && t.dept) || "other");
 
@@ -340,6 +341,35 @@ const HF_KIOSK_CODE = "999";
    training at induction and repeated periodically), HM Government
    "Fire safety risk assessment: sleeping accommodation" and fire and
    rescue service guidance. Hotel details come from Site facts. */
+/* ── Housekeeping COSHH and safe cleaning — online module (policy BHH-HK-01) ── */
+const HF_TRAIN_COSHH = {
+  key: "coshh", title: "Housekeeping COSHH and safe cleaning", mins: 15, pass: 8,
+  slides: [
+    ["Why this matters", ["Cleaning chemicals can burn skin and eyes, cause breathing problems and skin disease (dermatitis), and give off dangerous gas if mixed.", "The law (the Control of Substances Hazardous to Health Regulations 2002, known as COSHH) says the hotel must assess every chemical you use, control the risks and train you.", "You must follow the training, use the protective equipment provided and report any problem straight away.", "Only use chemicals you have been trained to use, for the job they are meant for."]],
+    ["Read the label — know the symbols", ["Every chemical has a label and a safety data sheet (SDS). The SDS folder is kept with the chemical store.", "Red diamond symbols warn you of the danger: corrosive (burns skin and eyes), irritant/harmful (exclamation mark), flammable (flame), serious health hazard, and toxic.", "If a product has no label, or the label can't be read, don't use it — give it to your supervisor.", "Never use a product you don't recognise or that isn't on the approved list."]],
+    ["Never mix chemicals", ["Never mix bleach (chlorine) with toilet cleaners, descalers or anything acidic — it gives off chlorine gas, which can seriously harm your lungs.", "Never mix bleach with ammonia or glass cleaners.", "Never mix two different products together, and never put one product on top of another in a toilet or sink. Rinse with water between products.", "If you smell a strong or unusual smell: stop, leave the room, close the door, open a window only if safe, and tell your supervisor."]],
+    ["Diluting and filling bottles", ["Use the wall dispenser or the dilution shown on the label — more chemical does not clean better, it only makes it more dangerous.", "Only fill bottles that are correctly labelled for that product. Never use an unlabelled bottle.", "Never put chemicals into food or drink containers (water bottles, cups).", "Wear gloves and eye protection when filling or decanting, and wipe up any drips straight away."]],
+    ["Protect yourself — PPE", ["Wear the gloves provided for all cleaning with chemicals, and for toilets, bathrooms and anything dirty.", "Wear eye protection (goggles or safety glasses) when diluting, decanting, using strong toilet or descaling products, or spraying at or above head height.", "Use an apron where splashes are likely.", "Check your gloves before use; replace them if they are torn. Report if PPE is missing or doesn't fit."]],
+    ["Look after your skin", ["Frequent wet work and chemicals can cause dermatitis: red, dry, itchy or cracked skin, usually on the hands.", "Wear gloves, dry your hands properly, and use the moisturising cream provided after work.", "Check your hands regularly. Tell your supervisor about any redness, itching, cracking or rash — the earlier it is treated, the better.", "Your supervisor will carry out regular skin checks. This is to protect you."]],
+    ["Fresh air and safe spraying", ["Open a window or turn on the bathroom extractor fan when cleaning, especially with strong products.", "Spray onto the cloth rather than into the air where you can, and never spray towards your face or other people.", "Aerosols (polish, air freshener) are flammable: keep them away from heat and never use them near a naked flame.", "Never clean with chemicals in a small closed space without ventilation."]],
+    ["Storage and your trolley", ["Chemicals are kept in the locked chemical (COSHH) store, upright, with lids closed, away from heat and food.", "Keep acids and bleach products apart.", "Your trolley carries only the small labelled bottles you need for the shift. Never leave a trolley with chemicals unattended in a corridor or open room — children and guests could reach them.", "Never leave chemicals in a guest room. Return everything to the store at the end of your shift."]],
+    ["Spills and accidents", ["Small spill: put on gloves (and goggles), stop people walking through it, soak it up with paper or the spill kit, and put out a wet floor sign. Tell your supervisor.", "Large spill or a strong smell: leave the area, keep others away and tell your supervisor or the duty manager straight away.", "Chemical in the eye: rinse with clean running water for at least 15 minutes, holding the eye open, and get first aid.", "On the skin: rinse with plenty of water and remove contaminated clothing. Swallowed: do not make the person sick; rinse the mouth with water and get medical help. Take the label or safety data sheet with you."]],
+    ["Bodily fluids, sharps and guests", ["Blood, vomit and other bodily fluids: use the body fluid (biohazard) kit, wear gloves and an apron, and follow the instructions on the kit.", "Never pick up needles or broken glass with your hands — use the sharps kit or call your supervisor. Never push rubbish down into a bin with your hand.", "Put out wet floor signs while floors are wet and remove them when dry.", "Report every accident, injury, spill and near miss to your supervisor so it can be recorded. If you are pregnant, or have asthma or a skin condition, tell your supervisor so extra precautions can be taken."]]
+  ],
+  quiz: [
+    ["What does COSHH stand for?", ["Control of Substances Hazardous to Health", "Cleaning of Surfaces in Hotels and Homes", "Chemical Order and Storage Handbook"], 0],
+    ["Why must you never mix bleach with a toilet cleaner or descaler?", ["It gives off chlorine gas, which can seriously harm your lungs", "It makes the bleach weaker", "It leaves stains"], 0],
+    ["A spray bottle has no label. What do you do?", ["Don't use it — give it to your supervisor", "Smell it to work out what it is", "Use it on the toilets only"], 0],
+    ["Where can you find full information about a chemical's dangers and first aid?", ["On the label and in the safety data sheet (SDS)", "On the hotel website", "Only from the supplier's rep"], 0],
+    ["How should you dilute a product?", ["Use the dispenser or the dilution on the label", "Add extra so it cleans better", "Guess by the colour"], 0],
+    ["Chemical splashes in your eye. What do you do first?", ["Rinse with clean running water for at least 15 minutes and get first aid", "Rub your eye", "Wait to see if it stops stinging"], 0],
+    ["When must you wear eye protection?", ["When diluting or decanting, using strong toilet or descaling products, or spraying above head height", "Never — gloves are enough", "Only in the laundry"], 0],
+    ["Where should chemicals be kept at the end of your shift?", ["In the locked chemical store, upright with lids on", "On the trolley in the corridor", "Under the sink in a guest bathroom"], 0],
+    ["Your hands are red, itchy and cracking. What should you do?", ["Tell your supervisor — it could be dermatitis", "Ignore it — it's normal", "Stop wearing gloves"], 0],
+    ["You find a needle while cleaning a room. What do you do?", ["Don't touch it with your hands — use the sharps kit or call your supervisor", "Pick it up carefully and put it in the bin", "Leave it for the guest"], 0]
+  ]
+};
+
 const HF_TRAIN_INDUCTION = {
   key: "induction", title: "Fire safety induction", mins: 15, pass: 8,
   slides: [
