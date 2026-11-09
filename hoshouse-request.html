@@ -417,6 +417,12 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
           <input id="m-by" type="text" list="staff-list" placeholder="Who reported it (default: Front desk)">
           <button class="btn btn-go" style="margin-top:14px;background:#c45c00" onclick="mSubmit()">🔧 Send to maintenance →</button>
         </div>
+        <div class="card" style="margin-top:14px;border:1px solid #f0c4c0;background:#fffafa">
+          <div style="font:800 13px Lato;color:#b3261e;margin-bottom:4px">⚠️ Admin — clear maintenance list</div>
+          <div class="muted" style="font-size:12px;margin-bottom:10px">Permanently deletes <b>every</b> maintenance job. One-time clean-up — needs the Firestore delete rule temporarily set to <code>if true</code>.</div>
+          <button type="button" style="width:100%;border:1px solid #b3261e;background:#fff;color:#b3261e;border-radius:11px;padding:11px;font:800 13px Lato;cursor:pointer" onclick="clearAllMaintenance()">🗑️ Delete all maintenance jobs</button>
+          <div id="mclr-msg" style="font-size:12px;min-height:14px;margin-top:8px"></div>
+        </div>
       </div>
       <div class="pane-list"><div class="sechd" style="margin-top:0;display:flex;align-items:center">Maintenance issues<button type="button" id="m-toggle" onclick="mToggleAll()" style="margin-left:auto;background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:6px 11px;font:700 12px Lato;color:var(--navy);cursor:pointer">Show completed</button></div><div id="m-list"></div></div>
     </div>
@@ -1245,6 +1251,27 @@ function renderDeliveries(){
    ============================================================ */
 let M_UNSUB=null, M_ROWS=[], M_FILTER_ALL=false, M_READY=false;
 let MFS={ area:'', location:'', occ:'unknown', prio:'normal', photos:[] };
+async function clearAllMaintenance(){
+  const msg=$('mclr-msg');
+  if(!db){ if(msg){ msg.style.color='var(--red)'; msg.textContent='Offline — cannot clear.'; } return; }
+  let snap;
+  try{ snap=await db.collection('hosfix_jobs').get(); }
+  catch(e){ if(msg){ msg.style.color='var(--red)'; msg.textContent='Could not read jobs — check connection.'; } return; }
+  const n=snap.size;
+  if(!n){ if(msg){ msg.style.color='var(--muted)'; msg.textContent='Nothing to clear — the list is already empty.'; } return; }
+  if(!confirm('Permanently delete ALL '+n+' maintenance jobs?\n\nThis cannot be undone.')) return;
+  if(!confirm('Are you sure? This wipes the entire maintenance list for HosDesk and HosFIX.')) return;
+  if(msg){ msg.style.color='var(--muted)'; msg.textContent='Deleting '+n+' jobs…'; }
+  const docs=snap.docs; let ok=0;
+  for(let i=0;i<docs.length;i+=400){
+    const batch=db.batch();
+    docs.slice(i,i+400).forEach(d=>batch.delete(d.ref));
+    try{ await batch.commit(); ok+=Math.min(400,docs.length-i); if(msg) msg.textContent='Deleted '+ok+' / '+n+'…'; }
+    catch(e){ if(msg){ msg.style.color='var(--red)'; msg.textContent='Delete blocked — set the hosfix_jobs delete rule to "if true" and Publish, then try again.'; } return; }
+  }
+  if(msg){ msg.style.color='#1d7a4d'; msg.textContent='✓ All '+ok+' jobs deleted. Now set the delete rule back to "if false" and Publish.'; }
+  toast('✓ Maintenance list cleared ('+ok+' jobs)');
+}
 const HFX_NAMES={ glenn:'Glenn', raj:'Raj', ajay:'Ajay', pete:'Pete', herman:'Herman', jomy:'Jomy', ruth:'Ruth' };
 const MAINT_PROP={"bedrooms":{"label":"Bedrooms","icon":"🛏️","rooms":[]},"meeting_events":{"label":"Meeting & Events","icon":"🎪","rooms":["Wolston Suite","Brandon Suite","Brandon Suite 1","Brandon Suite 2","Beech Room","Hunt Room","Warwick Room","Boardroom","Event Lawn","Marquee Area"]},"food_beverage":{"label":"Food & Beverage","icon":"🍽️","rooms":["Restaurant","Bar","Private Dining","Terrace","Kitchen"]},"spa":{"label":"Spa & Leisure","icon":"💆","rooms":["Spa","Pool","Gym","Treatment Room 1","Treatment Room 2","Sauna","Steam Room"]},"public_areas":{"label":"Public Areas","icon":"🏛️","rooms":["Reception","Lobby","Corridors (Ground)","Corridors (First)","Corridors (Second)","Lift","Car Park","Gardens","Woodlands","Main Entrance","Staff Areas","Cellar/Store"]},"external":{"label":"External / Grounds","icon":"🌳","rooms":["Car Park","Gardens","Woodlands","External Walls","Roof","Outbuildings"]},"maintenance":{"label":"Maintenance Areas","icon":"🔧","rooms":["Boiler Room","Plant Room","Electrical Cupboard","Linen Store","Bin Store","Cellar"]}};
 function mBedrooms(){ try{ const rr=((HH&&HH.cfg&&HH.cfg())||{}).rooms; if(Array.isArray(rr)&&rr.length) return rr.map(x=>'Room '+String(x.room)).filter(Boolean); }catch(e){} const a=[]; for(let i=1;i<=120;i++) a.push('Room '+i); return a; }
