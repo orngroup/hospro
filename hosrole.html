@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a2b3a">
+<title>HosDesk · My Day — Brandon Hall</title>
+<link rel="apple-touch-icon" href="assets/logos/logo---white-transparent.png">
+<style>
+:root{--navy:#1a2b3a;--navy2:#24384b;--gold:#BB9979;--gold-dk:#8a6a44;--teal:#4DA69C;--ink:#243244;--muted:#6b7686;--line:#e4e8ee;--bg:#eef1f5;--card:#fff;--ok:#1f7a53}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Manrope','Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+.top{background:linear-gradient(135deg,#1a2b3a,#24384b);color:#fff;padding:16px 18px;display:flex;align-items:center;gap:14px}
+.top img{height:44px}
+.top .t{line-height:1.15}
+.top .t b{font-size:17px;font-weight:800;letter-spacing:.2px}
+.top .t span{display:block;font-size:12px;opacity:.75;margin-top:2px}
+.top .pill{margin-left:auto;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:6px 13px;font-size:12px;font-weight:700}
+.wrap{max-width:760px;margin:0 auto;padding:18px 16px 70px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(20,30,45,.04)}
+.lead{font-size:14px;color:var(--muted);line-height:1.55;margin:0}
+h1{font-size:21px;font-weight:800;color:var(--navy);margin:0 0 6px}
+h2{font-size:13px;font-weight:800;color:var(--gold-dk);text-transform:uppercase;letter-spacing:.6px;margin:0 0 10px}
+label{display:block;font-size:13px;font-weight:700;color:var(--navy);margin:0 0 5px}
+.hint{font-size:12px;color:var(--muted);font-weight:500;margin:0 0 7px}
+input[type=text],select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:inherit;font-size:14px;color:var(--ink);background:#fcfdfe}
+textarea{min-height:74px;resize:vertical;line-height:1.5}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(187,153,121,.16)}
+.fld{margin-bottom:15px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:560px){.row2{grid-template-columns:1fr}}
+.names{display:flex;flex-wrap:wrap;gap:8px}
+.nm{border:1.5px solid var(--line);background:#fff;border-radius:22px;padding:9px 15px;font-size:14px;font-weight:700;color:var(--navy);cursor:pointer}
+.nm.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.me{display:flex;align-items:center;gap:10px;font-size:14px}
+.me b{color:var(--navy)}
+.me button{background:none;border:none;color:var(--gold-dk);font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline}
+.btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:11px;padding:13px 20px;font:inherit;font-size:15px;font-weight:800;cursor:pointer}
+.btn-go{background:var(--gold);color:#fff;width:100%;justify-content:center}
+.btn-go:disabled{opacity:.5;cursor:not-allowed}
+.ok{background:#eef8f2;border:1px solid #bfe6d2;color:var(--ok);border-radius:12px;padding:16px;text-align:center;font-weight:700}
+.foot{text-align:center;font-size:12px;color:var(--muted);margin-top:18px}
+.foot a{color:var(--gold-dk);font-weight:700;cursor:pointer;text-decoration:none}
+.resp{border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:10px}
+.resp .rh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.resp .rn{font-weight:800;color:var(--navy)}
+.resp .rr{font-size:12px;color:var(--gold-dk);font-weight:700}
+.resp .rd{font-size:12px;color:var(--muted);margin-left:auto}
+.resp dl{margin:0;font-size:13px}
+.resp dt{font-weight:700;color:var(--navy);margin-top:7px}
+.resp dd{margin:2px 0 0;color:var(--ink);white-space:pre-wrap;line-height:1.5}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="top">
+  <img src="assets/logos/logo---white-transparent.png" alt="Brandon Hall" onerror="this.style.display='none'">
+  <div class="t"><b>HosDesk · My Day</b><span>Brandon Hall Hotel &amp; Spa — reception</span></div>
+  <div class="pill">Reception</div>
+</div>
+
+<div class="wrap">
+  <!-- FORM -->
+  <div id="formView">
+    <div class="card">
+      <h1>What do you do during your shift?</h1>
+      <p class="lead">Tell us, in your own words, what a reception shift looks like for you — your routine, your main tasks and what you're responsible for. There are no wrong answers; this helps us understand each role and support the team. It only takes a few minutes.</p>
+    </div>
+
+    <div class="card">
+      <h2>Your name</h2>
+      <div id="nameBox"></div>
+    </div>
+
+    <div class="card" id="qCard">
+      <h2>Your role</h2>
+      <div class="row2">
+        <div class="fld"><label>Your job title</label><input type="text" id="roleTitle" placeholder="e.g. Receptionist, Night Porter, Duty Manager"></div>
+        <div class="fld"><label>Typical shift</label>
+          <select id="shift">
+            <option value="">Choose…</option>
+            <option>Early / morning</option><option>Day</option><option>Late / evening</option>
+            <option>Night</option><option>Varies</option>
+          </select>
+        </div>
+      </div>
+
+      <h2 style="margin-top:6px">Your day, start to finish</h2>
+      <div class="fld"><label>Start of shift — what do you do first?</label><p class="hint">Handover, checks, setting up the desk, emails…</p><textarea id="startTasks"></textarea></div>
+      <div class="fld"><label>Through the morning</label><textarea id="morning"></textarea></div>
+      <div class="fld"><label>Through the afternoon</label><textarea id="afternoon"></textarea></div>
+      <div class="fld"><label>End of shift / evening</label><p class="hint">Cashing up, handover, locking up, night checks…</p><textarea id="evening"></textarea></div>
+
+      <h2 style="margin-top:6px">Tasks &amp; responsibilities</h2>
+      <div class="fld"><label>Your main responsibilities</label><p class="hint">What are you accountable for on shift?</p><textarea id="responsibilities"></textarea></div>
+      <div class="fld"><label>Regular tasks (daily / weekly)</label><p class="hint">Things you do every shift or on set days.</p><textarea id="recurring"></textarea></div>
+      <div class="fld"><label>Systems &amp; tools you use</label><p class="hint">PMS, HosDesk, email, phone, card machine, spreadsheets…</p><textarea id="systems"></textarea></div>
+      <div class="fld"><label>Anything that slows you down or could be better?</label><p class="hint">Optional — be honest, it helps us fix things.</p><textarea id="challenges"></textarea></div>
+
+      <button class="btn btn-go" id="go" onclick="submitForm()">Submit my day</button>
+    </div>
+
+    <div class="foot">
+      <a onclick="openResponses()">View responses</a> · staff &amp; management only
+    </div>
+  </div>
+
+  <!-- THANKS -->
+  <div id="thanksView" class="hide">
+    <div class="card">
+      <div class="ok">✓ Thank you — your day has been recorded.</div>
+      <p class="lead" style="text-align:center;margin-top:12px">We really appreciate you taking the time. If you remember anything else, you can add another entry.</p>
+      <button class="btn btn-go" style="margin-top:6px" onclick="resetForm()">Add another entry</button>
+    </div>
+  </div>
+
+  <!-- RESPONSES (gated) -->
+  <div id="respView" class="hide">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px">
+        <h1 style="margin:0">Responses</h1>
+        <button class="btn" style="margin-left:auto;background:var(--navy);color:#fff;padding:9px 15px;font-size:13px" onclick="backToForm()">← Back</button>
+      </div>
+      <p class="lead" id="respCount" style="margin-top:8px"></p>
+    </div>
+    <div id="respList"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+var firebaseConfig={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:"brandonhall-7bdef.firebaseapp.com",projectId:"brandonhall-7bdef",storageBucket:"brandonhall-7bdef.firebasestorage.app",messagingSenderId:"391317900568",appId:"1:391317900568:web:643c9d6691f7f16d65226d"};
+var db=null;
+try{ firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }catch(e){ console.warn('firebase',e); }
+
+var STAFF=["Patrik Vlach","Joy","Alice","Manjusha","Manju","Alan"];
+var ME=localStorage.getItem('hosrole_me')||"";
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function $(id){return document.getElementById(id);}
+
+function renderNames(){
+  var h=STAFF.map(function(n){return '<button class="nm'+(n===ME?' on':'')+'" onclick="pickName(\''+esc(n).replace(/'/g,"\\'")+'\')">'+esc(n)+'</button>';}).join('');
+  h+='<button class="nm'+(ME&&STAFF.indexOf(ME)<0?' on':'')+'" onclick="otherName()">'+ (ME&&STAFF.indexOf(ME)<0?esc(ME):'Other…') +'</button>';
+  $('nameBox').innerHTML = ME
+    ? '<div class="me">Filling in as <b>'+esc(ME)+'</b> <button onclick="changeName()">change</button></div>'
+    : '<div class="names">'+h+'</div>';
+}
+function pickName(n){ ME=n; localStorage.setItem('hosrole_me',n); renderNames(); }
+function otherName(){ var v=prompt('Your name:'); if(v&&v.trim()) pickName(v.trim()); }
+function changeName(){ ME=''; localStorage.removeItem('hosrole_me'); renderNames(); }
+
+function submitForm(){
+  if(!ME){ alert('Please choose your name first.'); return; }
+  var role=$('roleTitle').value.trim();
+  if(!role){ alert('Please add your job title.'); $('roleTitle').focus(); return; }
+  var rec={
+    id:'role_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    name:ME, roleTitle:role, shift:$('shift').value,
+    startTasks:$('startTasks').value.trim(), morning:$('morning').value.trim(),
+    afternoon:$('afternoon').value.trim(), evening:$('evening').value.trim(),
+    responsibilities:$('responsibilities').value.trim(), recurring:$('recurring').value.trim(),
+    systems:$('systems').value.trim(), challenges:$('challenges').value.trim(),
+    createdAt: Date.now(), submittedBy: ME
+  };
+  $('go').disabled=true; $('go').textContent='Saving…';
+  var done=function(){ $('formView').classList.add('hide'); $('thanksView').classList.remove('hide'); window.scrollTo(0,0); };
+  if(db){
+    db.collection('hosdesk_roles').doc(rec.id).set(rec)
+      .then(done)
+      .catch(function(e){ alert('Could not save: '+e.message+'\nPlease try again.'); $('go').disabled=false; $('go').textContent='Submit my day'; });
+  } else {
+    // offline fallback: keep locally so nothing is lost
+    try{ var a=JSON.parse(localStorage.getItem('hosrole_pending')||'[]'); a.push(rec); localStorage.setItem('hosrole_pending',JSON.stringify(a)); }catch(e){}
+    done();
+  }
+}
+function resetForm(){
+  ['roleTitle','shift','startTasks','morning','afternoon','evening','responsibilities','recurring','systems','challenges'].forEach(function(id){$(id).value='';});
+  $('go').disabled=false; $('go').textContent='Submit my day';
+  $('thanksView').classList.add('hide'); $('formView').classList.remove('hide'); window.scrollTo(0,0);
+}
+
+function openResponses(){
+  var c=prompt('Enter the reception access code to view responses:');
+  if(c!=='3132'){ if(c!=null) alert('Incorrect code.'); return; }
+  $('formView').classList.add('hide'); $('thanksView').classList.add('hide');
+  $('respView').classList.remove('hide'); window.scrollTo(0,0);
+  loadResponses();
+}
+function backToForm(){ $('respView').classList.add('hide'); $('formView').classList.remove('hide'); }
+
+function respCard(r){
+  var when=r.createdAt?new Date(r.createdAt).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+  var fields=[['Shift',r.shift],['Start of shift',r.startTasks],['Morning',r.morning],['Afternoon',r.afternoon],['End of shift',r.evening],['Responsibilities',r.responsibilities],['Regular tasks',r.recurring],['Systems & tools',r.systems],['Could be better',r.challenges]];
+  var dl=fields.filter(function(f){return f[1];}).map(function(f){return '<dt>'+esc(f[0])+'</dt><dd>'+esc(f[1])+'</dd>';}).join('');
+  return '<div class="resp"><div class="rh"><span class="rn">'+esc(r.name||'—')+'</span><span class="rr">'+esc(r.roleTitle||'')+'</span><span class="rd">'+esc(when)+'</span></div><dl>'+dl+'</dl></div>';
+}
+function loadResponses(){
+  $('respList').innerHTML='<p class="lead">Loading…</p>';
+  if(!db){
+    var a=[]; try{a=JSON.parse(localStorage.getItem('hosrole_pending')||'[]');}catch(e){}
+    $('respCount').textContent=a.length+' response(s) — stored on this device only (offline).';
+    $('respList').innerHTML=a.length?a.reverse().map(respCard).join(''):'<p class="lead">No responses yet.</p>';
+    return;
+  }
+  db.collection('hosdesk_roles').get().then(function(snap){
+    var rows=[]; snap.forEach(function(d){rows.push(d.data());});
+    rows.sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
+    $('respCount').textContent=rows.length+' response'+(rows.length===1?'':'s')+' from the team.';
+    $('respList').innerHTML=rows.length?rows.map(respCard).join(''):'<p class="lead">No responses yet.</p>';
+  }).catch(function(e){ $('respList').innerHTML='<p class="lead">Could not load: '+esc(e.message)+'</p>'; });
+}
+
+renderNames();
+</script>
+</body>
+</html>
