@@ -13095,7 +13095,22 @@ function spPayRows(days){
   });
 }
 
+const SP_PAY_CODE='2642';  // Payroll tab access code — change here if needed
 function renderRotaPayroll(v){
+  if(!window.__payUnlocked){
+    v.innerHTML=`<div style="max-width:400px;margin:56px auto;text-align:center;font-family:Lato,system-ui,sans-serif">
+      <div style="font-size:42px">🔒</div>
+      <h2 style="color:#1a2b3a;margin:6px 0 2px">Payroll — restricted</h2>
+      <p style="color:#5b6b7b;font-size:14px;margin:0 0 16px">Enter the payroll access code to view wages &amp; hours.</p>
+      <input id="pay-code" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="••••" style="width:190px;padding:13px;font-size:20px;text-align:center;letter-spacing:6px;border:1px solid #cbd5e1;border-radius:11px;outline:none">
+      <div id="pay-code-err" style="color:#b3261e;font-size:13px;min-height:17px;margin:9px 0 4px"></div>
+      <button id="pay-code-go" style="background:#2B726A;color:#fff;border:none;border-radius:11px;padding:12px 30px;font-weight:800;font-size:15px;cursor:pointer">Unlock</button>
+    </div>`;
+    const go=()=>{ const el=document.getElementById('pay-code'); if(el && el.value.trim()===SP_PAY_CODE){ window.__payUnlocked=true; renderRotaPayroll(v); } else { const e=document.getElementById('pay-code-err'); if(e) e.textContent='Incorrect code — try again'; if(el){ el.value=''; el.focus(); } } };
+    const b=document.getElementById('pay-code-go'); if(b) b.onclick=go;
+    const i=document.getElementById('pay-code'); if(i){ i.onkeydown=(ev)=>{ if(ev.key==='Enter') go(); }; setTimeout(()=>{ try{ i.focus(); }catch(e){} },60); }
+    return;
+  }
   const P=spPayPeriod(), rows=spPayRows(P.days), ps=spPaySettings();
   const deptName=id=>(SP_DEPTS.find(d=>d.id===id)||{}).name||id;
   const deptCol=id=>(SP_DEPTS.find(d=>d.id===id)||{}).colour||'#6b7280';

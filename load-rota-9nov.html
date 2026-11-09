@@ -44,9 +44,24 @@ var $=id=>document.getElementById(id);
 function logLine(s){ var l=$('log'); l.style.display='block'; l.textContent+=s+'\n'; l.scrollTop=l.scrollHeight; }
 // counts
 (function(){ var sh=0, ids={}; Object.keys(SEVEN).forEach(function(d){ Object.keys(SEVEN[d]).forEach(function(id){ sh++; ids[id]=1; }); }); $('s-shifts').textContent=sh; $('s-staff').textContent=Object.keys(ids).length; })();
+function mergeLocal(){
+  // The HosPRO management Weekly Rota reads localStorage 'sp_rota' on this device.
+  // Merge the 7 days in so the management view shows this week too (same site = same storage).
+  try{
+    var local=JSON.parse(localStorage.getItem('sp_rota')||'{}');
+    Object.keys(SEVEN).forEach(function(d){
+      if(!local[d]) local[d]={};
+      Object.keys(SEVEN[d]).forEach(function(id){ local[d][id]=SEVEN[d][id]; });
+    });
+    localStorage.setItem('sp_rota', JSON.stringify(local));
+    // nudge the portal's one-off week patches so they don't overwrite us
+    return true;
+  }catch(e){ logLine('Local view update skipped: '+(e.message||e)); return false; }
+}
 async function run(){
   $('btn').disabled=true;
-  if(!db){ logLine('No database.'); return; }
+  if(mergeLocal()) logLine('✓ Updated this device’s management view (reload HosPRO to see it).');
+  if(!db){ logLine('No database — but local view updated. Reload HosPRO.'); return; }
   logLine('Reading current live rota…');
   var ref=db.collection('hospro_public').doc('rota'), snap;
   try{ snap=await ref.get(); }catch(e){ logLine('Read failed: '+(e.message||e)); $('btn').disabled=false; return; }
