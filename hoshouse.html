@@ -162,6 +162,7 @@
   <header><div><div class="t">🧹 My rooms</div><div class="u" id="hdr-date"></div></div>
     <div style="display:flex;gap:14px;align-items:center">
       <div class="u" id="hdr-team" onclick="showTeam()" style="cursor:pointer;display:none">👁 Team</div>
+      <div class="u" onclick="hhAlerts()" style="cursor:pointer" title="Alerts">🔔</div>
       <div class="u" id="hdr-user" onclick="logout()" style="cursor:pointer">Sign out</div>
     </div></header>
   <div class="wrap" id="listWrap"></div>
@@ -171,6 +172,7 @@
 <div class="screen" id="scr-team">
   <header><div><div class="t">🏨 Housekeeping Overview</div><div class="u" id="tm-date"></div></div>
     <div style="display:flex;gap:14px;align-items:center">
+      <div class="u" onclick="hhAlerts()" style="cursor:pointer" title="Alerts">🔔</div>
       <div class="u" onclick="showAdmin()" style="cursor:pointer">⚙ Manage</div>
       <div class="u" onclick="showScreen('scr-list');renderList()" style="cursor:pointer">← My rooms</div>
     </div></header>
@@ -214,6 +216,7 @@
 <div id="hhOverlay" style="display:none"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="hoshouse-config.js"></script>
 <script>
@@ -275,6 +278,60 @@
     try{ if(navigator.vibrate) navigator.vibrate(120); }catch(e){}
   }
   function requestNotifyPerm(){ try{ if('Notification' in window && Notification.permission==='default'){ Notification.requestPermission(); } }catch(e){} }
+
+  // ── Push alerts (work when HosHouse is closed) — bell + "Test my alerts" ──────
+  const HH_VAPID   = "BEBKqO0IojcBixBGbEb8hH-aCuy9J6MwQct5dp08xs6J2CjpPEStpSNoJuDpqHcvWuYpRviNVzfDKy4gQUigQPI";
+  const HH_FCM_BASE= "https://europe-west1-brandonhall-7bdef.cloudfunctions.net";
+  let hhMsg=null;
+  function hhFbMsg(){ if(hhMsg) return hhMsg; try{ hhMsg=firebase.messaging(); }catch(e){ hhMsg=null; } return hhMsg; }
+  async function fcmEnsureRegistered(force){
+    try{
+      if(!ME || !('Notification' in window) || Notification.permission!=='granted') return false;
+      const msg=hhFbMsg(); if(!msg) return false;
+      const reg=await navigator.serviceWorker.ready;
+      const tok=await msg.getToken({ vapidKey:HH_VAPID, serviceWorkerRegistration:reg });
+      if(!tok) return false;
+      if(!force && localStorage.getItem('hh_fcm_'+ME.id)===tok) return true;
+      const r=await fetch(HH_FCM_BASE+'/register',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:ME.id, token:tok }) });
+      const j=await r.json().catch(()=>({}));
+      if(r.ok && j.ok){ try{ localStorage.setItem('hh_fcm_'+ME.id, tok); }catch(e){} return true; }
+    }catch(e){ console.warn('fcm reg', e); }
+    return false;
+  }
+  function hhAlerts(){
+    const perm=('Notification' in window)?Notification.permission:'unsupported';
+    const status = perm==='granted' ? 'Alerts are allowed on this phone.'
+      : perm==='denied' ? 'Alerts are blocked — turn them on for HosHouse in your phone settings.'
+      : 'Not set up yet — tap the button below.';
+    const bg=document.createElement('div'); bg.id='hh-alert-ov';
+    bg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:70px 16px 0';
+    bg.innerHTML='<div style="background:#fff;border-radius:14px;padding:20px;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.25)">'
+      +'<div style="font-size:16px;font-weight:800;color:#1a2b3a;margin-bottom:6px">🔔 Alerts</div>'
+      +'<div style="font-size:13px;color:#6b7280;line-height:1.5;margin-bottom:12px">Get a banner, sound and vibrate when rooms change — even with HosHouse closed. On iPhone, open HosHouse from the Home-Screen icon (not Safari) first.</div>'
+      +'<div id="hh-alert-msg" style="font-size:13px;font-weight:600;color:#1a2b3a;min-height:18px;margin-bottom:10px">'+status+'</div>'
+      +'<button onclick="hhTestAlerts()" style="width:100%;padding:12px;border:none;border-radius:10px;background:#b89056;color:#fff;font:800 14px inherit;cursor:pointer">🔔 Test my alerts</button>'
+      +'<button onclick="var o=document.getElementById(\'hh-alert-ov\');o&&o.remove()" style="width:100%;padding:10px;border:none;border-radius:10px;background:#f1f3f6;color:#333;font:700 13px inherit;cursor:pointer;margin-top:8px">Close</button>'
+      +'</div>';
+    bg.onclick=e=>{ if(e.target===bg) bg.remove(); };
+    const old=document.getElementById('hh-alert-ov'); if(old) old.remove();
+    document.body.appendChild(bg);
+  }
+  async function hhTestAlerts(){
+    const set=t=>{ const b=document.getElementById('hh-alert-msg'); if(b) b.textContent=t; };
+    if(!('Notification' in window)){ set('This device can’t show alerts.'); return; }
+    if(Notification.permission==='default'){ const p=await Notification.requestPermission(); if(p!=='granted'){ set('Alerts are blocked. Allow notifications for HosHouse in your phone settings.'); return; } }
+    if(Notification.permission!=='granted'){ set('Alerts are blocked. Allow notifications for HosHouse in your phone settings.'); return; }
+    set('Setting up…');
+    const ok=await fcmEnsureRegistered(true);
+    if(!ok){ set('Couldn’t set up alerts on this phone. On iPhone, open HosHouse from the Home-Screen icon (not Safari), then try again.'); return; }
+    set('Sending a test alert…');
+    try{
+      const r=await fetch(HH_FCM_BASE+'/notify',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ event:'test', testUser:ME.id }) });
+      const j=await r.json().catch(()=>({})); const res=(j.results||[])[0];
+      if(res && res.sent>0) set('✓ Sent! Lock your phone — the alert should arrive in a few seconds with sound.');
+      else set('Registered, but the test didn’t arrive ('+((res&&res.reason)||'unknown')+'). Close HosHouse fully, reopen it and try again.');
+    }catch(e){ set('Couldn’t reach the alert server. Check internet and try again.'); }
+  }
   // compare each live update to the last snapshot and raise notifications
   function hhNotifyDiff(list){
     const snap={}; list.forEach(r=>{ snap[r.room]={hk:r.housekeeper||'', status:r.status||'pending', name:r.housekeeperName||'', urgent:!!r.urgent}; });
@@ -324,6 +381,7 @@
     $('hdr-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
     $('hdr-team').style.display = ME.lead ? 'block' : 'none';   // leads get the team overview
     requestNotifyPerm();
+    try{ fcmEnsureRegistered(false); }catch(e){}
     if(unwatch) unwatch();
     if(starUnwatch){ try{ starUnwatch(); }catch(e){} }
     starUnwatch=watchStars();
