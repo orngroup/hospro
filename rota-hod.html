@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en-GB"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Department Rota — HosPRO</title>
+<style>
+:root{--navy:#1a2b3a;--teal:#2B726A;--line:#e3e8ee;--muted:#5b6b7b;--amber:#b06a00}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,Segoe UI,Lato,Arial,sans-serif;background:#eef1f5;color:var(--navy)}
+.top{background:var(--navy);color:#fff;padding:16px 18px;display:flex;align-items:center;gap:12px}
+.top .logo{font-weight:900;letter-spacing:.5px}
+.top .sp{margin-left:auto;font-size:13px;opacity:.85}
+.wrap{max-width:1000px;margin:0 auto;padding:18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 2px 10px rgba(26,43,58,.08)}
+h1{font-size:21px;margin:0 0 4px} .sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+label.fl{display:block;font:800 11px Lato;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:12px 0 5px}
+select,input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px;background:#fff;outline:none}
+.pin{letter-spacing:8px;text-align:center;font-size:22px}
+button{border:none;border-radius:11px;padding:13px;font:800 15px Lato;cursor:pointer}
+.go{background:var(--teal);color:#fff;width:100%} .go:disabled{opacity:.5;cursor:not-allowed}
+.err{color:#b3261e;font-size:13px;min-height:16px;margin-top:8px}
+.hide{display:none}
+.wkbar{display:flex;align-items:center;gap:8px;margin:14px 0}
+.wkbar button{background:#f3f5f8;border:1px solid var(--line);color:var(--navy);padding:9px 12px;font-size:13px}
+.wkbar .wk{font-weight:800;flex:1;text-align:center;font-size:15px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:720px}
+th,td{border-bottom:1px solid var(--line);padding:6px;font-size:12px;text-align:center}
+th{background:#f5f7f9;color:var(--navy);font-weight:800;position:sticky;top:0}
+td.name,th.name{text-align:left;position:sticky;left:0;background:#fff;min-width:150px;font-weight:700}
+th.name{background:#f5f7f9}
+td input{padding:8px 6px;font-size:12px;text-align:center;border:1px solid #dde3ea;border-radius:7px}
+td input.off{background:#f5f7f9;color:#64748b}
+td input.work{background:#dcfce7;color:#166534;border-color:#86efac}
+td input.leave{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
+.foot{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.foot .go{flex:1;min-width:180px}
+.note{background:#eef4fb;border:1px solid #cfe0f3;color:#1f4e85;border-radius:10px;padding:10px 13px;font-size:12.5px;margin:12px 0}
+.ok{background:#e8f6ee;border:1px solid #bfe3cd;color:#1d7a4d;border-radius:12px;padding:16px;text-align:center;font-weight:700}
+</style></head><body>
+<div class="top"><span class="logo">HosPRO</span><span>· Department Rota</span><span class="sp" id="top-dept"></span></div>
+<div class="wrap">
+
+  <!-- LOGIN -->
+  <div class="card" id="login">
+    <h1 id="login-h">Department rota login</h1>
+    <p class="sub" id="login-sub">Select your department and enter your 4-digit code.</p>
+    <div id="dept-pick-wrap">
+      <label class="fl">Department</label>
+      <select id="dept-pick"></select>
+    </div>
+    <label class="fl">Your 4-digit code</label>
+    <input id="code" class="pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="err" id="login-err"></div>
+    <button class="go" onclick="doLogin()">Log in</button>
+  </div>
+
+  <!-- EDITOR -->
+  <div class="card hide" id="editor">
+    <h1 id="ed-h">Welcome</h1>
+    <p class="sub">Set each person's shift for the week, then submit for approval. Times like <b>09:00-17:00</b>, or <b>off</b> / <b>holiday</b> / <b>sick</b> / <b>on call</b>.</p>
+    <div class="wkbar">
+      <button onclick="shiftWeek(-1)">← Prev</button>
+      <div class="wk" id="wk-label"></div>
+      <button onclick="shiftWeek(1)">Next →</button>
+    </div>
+    <div class="note" id="draft-note"></div>
+    <div class="scroll"><table id="grid"></table></div>
+    <div class="err" id="ed-err"></div>
+    <div class="foot">
+      <button class="go" onclick="submitDraft()" id="submit-btn">✓ Submit to management for approval</button>
+      <button onclick="logout()" style="background:#f3f5f8;border:1px solid var(--line);color:var(--navy)">Log out</button>
+    </div>
+  </div>
+
+  <!-- DONE -->
+  <div class="card hide" id="done">
+    <div class="ok" id="done-msg">✓ Submitted.</div>
+    <div class="foot"><button class="go" onclick="backToEdit()">← Back to the rota</button></div>
+  </div>
+
+</div>
+
+<datalist id="shift-opts"></datalist>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+const DEPTS=[{id:'admin',name:'Admin / Events'},{id:'reception',name:'Reception'},{id:'nights',name:'Nights'},{id:'maintenance',name:'Maintenance'},{id:'kitchen',name:'Kitchen'},{id:'bar',name:'Bar'},{id:'restaurant',name:'Restaurant F&B'},{id:'housekeeping',name:'Housekeeping'}];
+const DEPT_CODES={admin:'4101',reception:'4102',nights:'4103',maintenance:'4104',kitchen:'4105',bar:'4106',restaurant:'4107',housekeeping:'4108'};
+const SHIFTS={admin:['07:30-15:30','08:00-16:00','09:00-17:30','09:00-15:00'],reception:['07:00-15:00','10:00-18:00','15:00-23:00'],nights:['23:00-07:00'],maintenance:['08:00-17:00','09:00-17:00'],kitchen:['05:30-14:00','06:00-14:00','07:30-14:00','13:00-22:00','17:00-23:00','09:00-17:00'],bar:['12:00-20:00','15:00-23:00','17:00-23:00'],restaurant:['06:00-12:30','07:00-13:00','12:00-18:00','15:00-23:00','17:00-22:00'],housekeeping:['07:00-12:00','08:00-16:00','09:00-16:00','09:00-17:00']};
+const LEAVE=['off','holiday','sick','on call','in lieu'];
+var db=null; try{ if(!firebase.apps.length) firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }catch(e){}
+var $=id=>document.getElementById(id);
+var DEPT=null, LIVE=null, STAFF=[], WK=0, VALS={}, DRAFT_WEEK=null;
+
+// populate dept select + datalist
+DEPTS.forEach(d=>{ var o=document.createElement('option'); o.value=d.id; o.textContent=d.name; $('dept-pick').appendChild(o); });
+// URL ?dept= → welcome screen
+(function(){
+  var p=new URLSearchParams(location.search), d=(p.get('dept')||'').toLowerCase();
+  if(d && DEPT_CODES[d]){
+    var name=(DEPTS.find(x=>x.id===d)||{}).name||d;
+    $('dept-pick-wrap').classList.add('hide');
+    $('login-h').textContent='Welcome, '+name;
+    $('login-sub').textContent='Enter your 4-digit code to edit the '+name+' rota.';
+    $('dept-pick').value=d;
+  }
+})();
+function deptName(id){ return (DEPTS.find(x=>x.id===id)||{}).name||id; }
+function monday(off){ var t=new Date(), d=new Date(t); d.setDate(t.getDate()-((t.getDay()||7)-1)+off*7); d.setHours(12,0,0,0); return d; }
+function dk(d){ return d.toLocaleDateString('en-CA'); }
+function weekDates(off){ var m=monday(off); return Array.from({length:7},(_,i)=>{var x=new Date(m);x.setDate(m.getDate()+i);return x;}); }
+function wkLabel(off){ var ds=weekDates(off); return 'w/c '+ds[0].toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }
+function normShift(v){ v=(v||'').trim(); if(!v) return 'off'; var low=v.toLowerCase(); if(low==='unavailable') return 'off'; if(LEAVE.indexOf(low)>=0) return low; return v.replace(/–|—/g,'-').replace(/\s{2,}/g,' & '); }
+function cls(v){ v=(v||'').toLowerCase(); if(!v||v==='off') return 'off'; if(LEAVE.indexOf(v)>=0) return 'leave'; return 'work'; }
+
+async function doLogin(){
+  var dept=$('dept-pick').value, code=($('code').value||'').trim();
+  if(!dept){ $('login-err').textContent='Choose a department.'; return; }
+  if(code!==DEPT_CODES[dept]){ $('login-err').textContent='Incorrect code for '+deptName(dept)+'.'; $('code').value=''; $('code').focus(); return; }
+  DEPT=dept;
+  $('login-err').textContent='Loading…';
+  if(!db){ $('login-err').textContent='Offline — try again.'; return; }
+  try{
+    var snap=await db.collection('hospro_public').doc('rota').get();
+    LIVE=snap.exists?(snap.data()||{}):{staff:[],rota:{}};
+  }catch(e){ $('login-err').textContent='Could not load rota — check connection.'; return; }
+  STAFF=(LIVE.staff||[]).filter(s=>s.dept===dept).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(!STAFF.length){ $('login-err').textContent='No staff found for '+deptName(dept)+' yet.'; return; }
+  // datalist
+  $('shift-opts').innerHTML=(SHIFTS[dept]||[]).concat(LEAVE).map(s=>'<option value="'+s+'">').join('');
+  $('login').classList.add('hide'); $('editor').classList.remove('hide');
+  $('ed-h').textContent='Welcome, '+deptName(dept);
+  $('top-dept').textContent=deptName(dept);
+  WK=0; await loadWeek();
+}
+async function loadWeek(){
+  $('wk-label').textContent=wkLabel(WK);
+  var dates=weekDates(WK), wkKey=dk(dates[0]);
+  VALS={};
+  // try an existing draft for this dept+week
+  var draft=null;
+  try{ var ds=await db.collection('rota_drafts').doc(DEPT+'__'+wkKey).get(); if(ds.exists) draft=ds.data(); }catch(e){}
+  $('draft-note').textContent = draft ? ('A draft for this week was last saved '+(draft.by||'')+' — '+fmtWhen(draft.submittedAt)+'. You can update and re-submit.') : 'Prefilled from the current live rota. Change what you need.';
+  STAFF.forEach(s=>{ VALS[s.id]={}; dates.forEach(d=>{
+    var k=dk(d), v;
+    if(draft && draft.shifts && draft.shifts[k] && draft.shifts[k][s.id]!==undefined) v=draft.shifts[k][s.id];
+    else { var cell=(LIVE.rota&&LIVE.rota[k]&&LIVE.rota[k][s.id]); v=(cell&&typeof cell==='object')?cell.shift:cell; }
+    VALS[s.id][k]=normShift(v||'off');
+  }); });
+  renderGrid(dates);
+}
+function renderGrid(dates){
+  var head='<tr><th class="name">Team member</th>'+dates.map(d=>'<th>'+d.toLocaleDateString('en-GB',{weekday:'short'})+'<br><span style="font-weight:400">'+d.getDate()+'</span></th>').join('')+'</tr>';
+  var body=STAFF.map(s=>{
+    var tds=dates.map(d=>{ var k=dk(d), v=VALS[s.id][k]||'off';
+      return '<td><input list="shift-opts" class="'+cls(v)+'" value="'+(v==='off'?'':v)+'" placeholder="off" data-sid="'+s.id+'" data-k="'+k+'" oninput="onCell(this)"></td>'; }).join('');
+    return '<tr><td class="name">'+esc(s.name)+'<div style="font-weight:400;color:var(--muted);font-size:10px">'+esc(s.role||'')+'</div></td>'+tds+'</tr>';
+  }).join('');
+  $('grid').innerHTML=head+body;
+}
+function onCell(el){ var v=normShift(el.value); VALS[el.dataset.sid][el.dataset.k]=v; el.className=cls(v); }
+async function shiftWeek(n){ WK+=n; await loadWeek(); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtWhen(iso){ if(!iso) return ''; try{ return new Date(iso).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+
+async function submitDraft(){
+  if(!db){ $('ed-err').textContent='Offline — cannot submit.'; return; }
+  $('submit-btn').disabled=true; $('ed-err').textContent='';
+  var dates=weekDates(WK), wkKey=dk(dates[0]), shifts={};
+  dates.forEach(d=>{ var k=dk(d); shifts[k]={}; STAFF.forEach(s=>{ shifts[k][s.id]=VALS[s.id][k]||'off'; }); });
+  var doc={ dept:DEPT, deptName:deptName(DEPT), week:wkKey, weekLabel:wkLabel(WK), shifts:shifts,
+    by:deptName(DEPT)+' HOD', submittedAt:new Date().toISOString(), status:'submitted' };
+  try{
+    await db.collection('rota_drafts').doc(DEPT+'__'+wkKey).set(doc);
+    DRAFT_WEEK=WK;
+    $('editor').classList.add('hide'); $('done').classList.remove('hide');
+    $('done-msg').innerHTML='✓ '+deptName(DEPT)+' rota for '+wkLabel(WK)+' submitted for approval.<br><span style="font-weight:400;font-size:13px">Veronica, Alia or Ajay will review and publish it. You can update and re-submit any time.</span>';
+  }catch(e){ $('ed-err').textContent='Could not submit — check connection.'; $('submit-btn').disabled=false; }
+}
+function backToEdit(){ $('done').classList.add('hide'); $('editor').classList.remove('hide'); $('submit-btn').disabled=false; if(DRAFT_WEEK!==null){ WK=DRAFT_WEEK; loadWeek(); } }
+function logout(){ location.reload(); }
+</script></body></html>
