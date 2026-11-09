@@ -94,7 +94,7 @@ body.console .wrap{max-width:1200px}
 .hd-hello .h1{font-family:'Cormorant Garamond',serif;font-size:27px;font-weight:700;letter-spacing:.3px}
 .hd-hello .h2{font-size:14px;opacity:.9;margin-top:3px;font-weight:600}
 /* kiosk cards: icon on top, label under, tap to open full-page */
-.bigcards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:16px}
+.bigcards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px}
 .bigcard{position:relative;border-radius:20px;padding:28px 20px;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;min-height:180px;justify-content:center;box-shadow:0 8px 20px rgba(26,43,58,.16);border:3px solid transparent;transition:transform .09s,box-shadow .09s}
 .bigcard:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(26,43,58,.22)}
 .bigcard:active{transform:scale(.98)}
@@ -105,6 +105,8 @@ body.console .wrap{max-width:1200px}
 .bc-del{background:linear-gradient(135deg,#b9780a,#935f08)}
 .bc-mnt{background:linear-gradient(135deg,#c45c00,#8f4300)}
 .bc-hand{background:linear-gradient(135deg,#2a6a4a,#1f5038)}
+.bc-room{background:linear-gradient(135deg,#3a5a99,#273f6e)}
+.bc-dir{background:linear-gradient(135deg,#6b4a86,#4a3260)}
 .roomgrp{border:1.5px solid #f0d6bd;border-radius:14px;padding:8px;margin-bottom:12px;background:#fff9f3}
 .roomgrp-hd{display:flex;align-items:center;gap:8px;font:900 14px Lato;color:#8f4300;padding:6px 6px 8px}
 .roomgrp-n{margin-left:auto;background:#c45c00;color:#fff;border-radius:20px;padding:3px 11px;font:900 12px Lato}
@@ -295,6 +297,8 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         <div class="bigcard bc-del" id="card-deliveries" onclick="showSection('deliveries')"><div class="bc-n" id="bc-del-n">0</div><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg></div><div class="bc-t">Deliveries</div><div class="bc-s">Parcels in</div></div>
         <div class="bigcard bc-mnt" id="card-maintenance" onclick="showSection('maintenance')"><div class="bc-n" id="bc-mnt-n">0</div><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div><div class="bc-t">Maintenance 🔒</div><div class="bc-s">Repairs &amp; faults · code needed</div></div>
         <div class="bigcard bc-hand" id="card-handover" onclick="showSection('handover')"><div class="bc-n" id="bc-hand-n">0</div><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div><div class="bc-t">Shift Handover 🔒</div><div class="bc-s">Reception · code needed</div></div>
+        <div class="bigcard bc-room" id="card-roomcheck" onclick="showSection('roomcheck')"><div class="bc-ic"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/><path d="M9 11h4M11 9v4"/></svg></div><div class="bc-t">Room Check</div><div class="bc-s">Is a room cleaned &amp; ready?</div></div>
+        <div class="bigcard bc-dir" id="card-directory" onclick="showSection('directory')"><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="12" cy="9" r="2"/><path d="M9 14c0-1.5 1.3-2.5 3-2.5s3 1 3 2.5"/></svg></div><div class="bc-t">Staff Directory</div><div class="bc-s">By department · phone numbers</div></div>
       </div>
 
       <button onclick="openPriorityRoom()" style="width:100%;margin-top:12px;border:none;border-radius:14px;padding:15px;background:linear-gradient(135deg,#b3261e,#d9534f);color:#fff;font:800 15px Lato;cursor:pointer;box-shadow:0 2px 10px rgba(179,38,30,.28)">⚡ Priority room → alert housekeeping</button>
@@ -438,6 +442,36 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         </div>
       </div>
       <div class="pane-list"><div class="sechd" style="margin-top:0">Recent handovers</div><div id="h-list"></div></div>
+    </div>
+
+    <!-- Room Check: search a room → its cleaning record for the last 7 days -->
+    <div class="pane" id="pane-roomcheck">
+      <div class="pane-form">
+        <div class="card">
+          <label class="fl">Check a room</label>
+          <div class="muted" style="font-size:12px;margin-bottom:8px">See when it was last cleaned and whether it's ready — handy before moving a guest.</div>
+          <div style="display:flex;gap:8px">
+            <input id="rc-room" type="text" inputmode="numeric" placeholder="Room number — e.g. 214" onkeydown="if(event.key==='Enter')roomCheckSearch()" style="flex:1">
+            <button class="btn btn-go" style="width:auto;padding:0 20px;margin:0" onclick="roomCheckSearch()">Check</button>
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:12px">Shows the last 7 days of housekeeping records for that room — same detail as tapping the room in HosHouse.</div>
+        </div>
+      </div>
+      <div class="pane-list"><div class="sechd" style="margin-top:0" id="rc-title">Room records</div><div id="rc-out"><div class="muted" style="padding:10px 2px">Enter a room number above to see its cleaning history.</div></div></div>
+    </div>
+
+    <!-- Staff Directory: by department, with phone numbers -->
+    <div class="pane" id="pane-directory">
+      <div class="pane-form">
+        <div class="card">
+          <label class="fl">Find someone</label>
+          <input id="dir-search" type="text" placeholder="Name, role or department…" oninput="renderDirectory()">
+          <label class="fl" style="margin-top:12px">Department</label>
+          <select id="dir-dept" onchange="renderDirectory()"><option value="">All departments</option></select>
+          <div class="muted" style="font-size:12px;margin-top:12px">Tap a phone number to call. Tap ✎ to add or update a number — it's saved for everyone on HosDesk.</div>
+        </div>
+      </div>
+      <div class="pane-list"><div class="sechd" style="margin-top:0">Staff directory</div><div id="dir-out"></div></div>
     </div>
   </div>
 
@@ -685,7 +719,7 @@ async function startBoard(){
 function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } if(H_UNSUB){ H_UNSUB(); H_UNSUB=null; } stopVD(); B_READY=false; M_READY=false; }
 function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l])=>`<button class="chip ${B_FILTER===ff?'on':''}" onclick="bSetFilter('${ff}')">${l}</button>`).join(''); bRender(); }
 // Maintenance and Shift Handover are gated by a staff code (remove a name from GATED to open that section to all).
-const SECTIONS=['requests','deliveries','maintenance','handover'];
+const SECTIONS=['requests','deliveries','maintenance','handover','roomcheck','directory'];
 const GATED={maintenance:true, handover:true};
 const UNLOCKED={};
 let GATE_TARGET=null;
@@ -696,10 +730,12 @@ function checkCode(){ const v=($('cg-in').value||'').trim(); if(v==='3132'){ con
 function openFire(){ $('ovl-fire').classList.add('on'); }
 function closeFire(){ $('ovl-fire').classList.remove('on'); }
 // Tap a big card → that section takes over the whole page. goHome() returns to the cards.
-const SEC_TITLES={requests:'🧹 Guest Requests', deliveries:'📦 Deliveries', maintenance:'🔧 Maintenance', handover:'🔄 Shift Handover'};
+const SEC_TITLES={requests:'🧹 Guest Requests', deliveries:'📦 Deliveries', maintenance:'🔧 Maintenance', handover:'🔄 Shift Handover', roomcheck:'🔍 Room Check', directory:'📇 Staff Directory'};
 function showSection(x){
   if(GATED[x] && !UNLOCKED[x]){ openCodeGate(x); return; }
   if(x==='handover'){ try{ hBuildChecks(); hRenderItems(); const dt=$('h-date'); if(dt && !dt.value) dt.value=todayISO(); }catch(e){} }
+  if(x==='directory'){ try{ dirInit(); }catch(e){} }
+  if(x==='roomcheck'){ try{ const r=$('rc-room'); if(r){ r.value=''; setTimeout(()=>r.focus(),60); } }catch(e){} }
   SECTIONS.forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.toggle('on', s===x); });
   const home=$('hd-home'); if(home) home.classList.add('hide');
   const t=$('hd-sec-title'); if(t) t.textContent=SEC_TITLES[x]||'';
@@ -936,6 +972,117 @@ async function submitPriorityRoom(){
   try{ fetch(FCM_BASE+'/notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ event:'message', userIds:ids, title:'🚨 Priority room '+room, body:(reason||'Reception flagged this room as priority — please prioritise.'), url:'/hoshouse.html', urgent:true, kind:'urgent' })}); }catch(e){}
   closePriorityRoom();
   toast('⚡ Room '+room+' set to priority · housekeeping alerted');
+}
+
+/* ===================== Room Check — last 7 days of a room's cleaning record ===================== */
+function rcDateList(){ const out=[]; const d=new Date(); for(let i=0;i<7;i++){ const x=new Date(d); x.setDate(d.getDate()-i); out.push(x.toLocaleDateString('en-CA')); } return out; }
+function rcDayLabel(iso){ try{ const dt=new Date(iso+'T12:00:00'); const t=todayISO(); const y=rcDateList()[1]; if(iso===t) return 'Today'; if(iso===y) return 'Yesterday'; return dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }catch(e){ return iso; } }
+function rcTime(ms){ if(!ms) return ''; try{ return new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+async function roomCheckSearch(){
+  const room=($('rc-room').value||'').trim().replace(/[^0-9A-Za-z]/g,'');
+  const out=$('rc-out'), ttl=$('rc-title');
+  if(!room){ out.innerHTML='<div class="muted" style="padding:10px 2px">Enter a room number above.</div>'; return; }
+  if(ttl) ttl.textContent='Room '+room+' · last 7 days';
+  out.innerHTML='<div class="muted" style="padding:10px 2px">Looking up room '+esc(room)+'…</div>';
+  if(!db){ out.innerHTML='<div class="muted" style="padding:10px 2px">Offline — cannot look up records.</div>'; return; }
+  const days=rcDateList();
+  let recs=[];
+  try{
+    const snaps=await Promise.all(days.map(dt=>db.collection('hoshouse_rooms').doc(dt+'__'+room).get()));
+    snaps.forEach((s,i)=>{ if(s.exists){ const r=s.data()||{}; r._date=days[i]; recs.push(r); } });
+  }catch(e){ out.innerHTML='<div class="muted" style="padding:10px 2px">Could not load — check connection.</div>'; return; }
+  // Derive a plain-language readiness verdict per record
+  const verdict=r=>{
+    if(r.status==='done') return {t:'✓ Cleaned &amp; ready',c:'#1d7a4d',bg:'#e8f6ee',bd:'#bfe3cd'};
+    if(r.status==='in_progress') return {t:'● Being cleaned now',c:'#b06a00',bg:'#fff5e6',bd:'#f2d9ab'};
+    if(r.status==='blocked') return r.blockReason==='dnd'
+      ? {t:'⛔ Do Not Disturb — guest in room',c:'#b3261e',bg:'#fdeceb',bd:'#f0c4c0'}
+      : {t:'⛔ Service refused',c:'#b3261e',bg:'#fdeceb',bd:'#f0c4c0'};
+    return {t:'○ Not yet cleaned',c:'#5b6b7b',bg:'#f1f4f7',bd:'#dde3ea'};
+  };
+  const line=(ic,lab,val)=> (val&&String(val).trim())?`<div style="font-size:13px;margin-top:4px">${ic} <b>${lab}:</b> ${esc(val)}</div>`:'';
+  let html='';
+  days.forEach(dt=>{
+    const r=recs.find(x=>x._date===dt);
+    if(!r){ html+=`<div class="card" style="margin-bottom:10px;opacity:.72"><div style="display:flex;align-items:center;gap:10px"><div style="font:800 14px Lato;color:var(--navy);min-width:92px">${rcDayLabel(dt)}</div><div class="muted" style="font-size:13px">— no housekeeping record</div></div></div>`; return; }
+    const v=verdict(r);
+    const dur=r.durationSec?Math.round(r.durationSec/60)+' min':'';
+    html+=`<div class="card" style="flex-direction:column;align-items:stretch;gap:6px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="font:800 14px Lato;color:var(--navy);min-width:92px">${rcDayLabel(dt)}</div>
+        ${r.type?`<span class="pill" style="background:#eef1f5;color:#1a2b3a;border-radius:999px;padding:3px 10px;font:700 12px Lato">${esc(r.type)}</span>`:''}
+        ${(r.urgent&&r.status!=='done')?'<span style="background:#fdeceb;color:#b3261e;border-radius:999px;padding:3px 10px;font:800 11px Lato">🚨 PRIORITY</span>':''}
+        <span style="margin-left:auto;background:${v.bg};border:1px solid ${v.bd};color:${v.c};border-radius:999px;padding:4px 11px;font:800 12px Lato">${v.t}</span>
+      </div>
+      ${(r.housekeeperName)?`<div style="font-size:13px">👤 <b>Housekeeper:</b> ${esc(r.housekeeperName)}</div>`:''}
+      ${r.startAt?`<div style="font-size:13px">▶ <b>Started:</b> ${rcTime(r.startAt)}</div>`:''}
+      ${r.finishAt?`<div style="font-size:13px">✓ <b>Finished:</b> ${rcTime(r.finishAt)}${dur?(' · '+dur):''}</div>`:''}
+      ${line('📝','Note',r.notes)}
+      ${line('🔧','To maintenance',r.maintenance)}
+      ${line('🎒','Lost property',r.lostProperty)}
+    </div>`;
+  });
+  const anyDone=recs.some(r=>r.status==='done');
+  const banner=anyDone
+    ? '<div style="background:#e8f6ee;border:1px solid #bfe3cd;color:#1d7a4d;border-radius:11px;padding:10px 13px;font:700 13px Lato;margin-bottom:12px">This room has been cleaned in the last 7 days — see which day below.</div>'
+    : '<div style="background:#fff5e6;border:1px solid #f2d9ab;color:#b06a00;border-radius:11px;padding:10px 13px;font:700 13px Lato;margin-bottom:12px">No completed clean found in the last 7 days.</div>';
+  out.innerHTML=banner+html;
+}
+
+/* ===================== Staff Directory — by department, with phone numbers ===================== */
+const STAFF_REG=[{"id":"aghil_joy_8","n":"Aghil Joy","d":"reception","r":"Receptionist"},{"id":"alice_asumeng_7","n":"Alice Asumeng","d":"reception","r":"Receptionist"},{"id":"manjusha_ushadevi_6","n":"Manjusha Ushadevi","d":"reception","r":"Reception Supervisor"},{"id":"patrik_vlach_5","n":"Patrik Vlach","d":"reception","r":"Front Office Manager"},{"id":"alan_wilkins_9","n":"Alan Wilkins","d":"nights","r":"Nights Supervisor"},{"id":"amal_premkumar_10","n":"Amal Premkumar","d":"nights","r":"Night Porter"},{"id":"allen_37","n":"Allen Thomas","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"anisha_54","n":"Anisha","d":"housekeeping","r":"Housekeeping"},{"id":"aryan_31","n":"Aryan","d":"housekeeping","r":"Housekeeping"},{"id":"ayomidipupo_yoemi_46","n":"Ayomidipupo Yoemi","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"becky_57","n":"Becky","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"christopher_62","n":"Christopher","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"chutharat_59","n":"Chutharat","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"dushyanth_39","n":"Dushyanth Vuyyuru","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"edwin_53","n":"Edwin","d":"housekeeping","r":"Housekeeping"},{"id":"hassen_38","n":"Haseen Muskaan","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"jitendra_34","n":"Jitendra Dasnur","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"laith_hardy_55","n":"Laith Hardy","d":"housekeeping","r":"Manager — covering Housekeeping"},{"id":"lara_jervis_32","n":"Lara Jervis","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"manoj_35","n":"Mani Sonti","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"marie_61","n":"Marie","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"rahul_reghunath_33","n":"Rahul Reghunath","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"ruth_addison_30","n":"Ruth Addison","d":"housekeeping","r":"Head Housekeeper"},{"id":"satya_51","n":"Satya","d":"housekeeping","r":"Housekeeping (training)"},{"id":"tushar_ambekar_36","n":"Tushar Ambekar","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"yaya_52","n":"Yaya","d":"housekeeping","r":"Housekeeping"},{"id":"yeswanth_58","n":"Yeswanth","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"glenn_randell_11","n":"Glenn Randell","d":"maintenance","r":"Maintenance Manager"},{"id":"herman_charles_13","n":"Herman Charles","d":"maintenance","r":"Multi-trader"},{"id":"pete_12","n":"Pete","d":"maintenance","r":"Multi-trader (Elec)"},{"id":"ashleigh_49","n":"Ashleigh","d":"kitchen","r":"Chef"},{"id":"david_head_chef_47","n":"David (Head Chef)","d":"kitchen","r":"Head Chef"},{"id":"david_marshall_16","n":"David Marshall","d":"kitchen","r":"Kitchen Porter"},{"id":"devendra_subedi_14","n":"Devendra Subedi","d":"kitchen","r":"Junior Sous Chef"},{"id":"matt_48","n":"Matt","d":"kitchen","r":"Chef"},{"id":"nathan_field_17","n":"Nathan Field","d":"kitchen","r":"Kitchen Porter"},{"id":"noah_50","n":"Noah","d":"kitchen","r":"Kitchen Team"},{"id":"sajeed_15","n":"Sajeed","d":"kitchen","r":"Breakfast Team"},{"id":"stelios_60","n":"Stelios","d":"kitchen","r":"Chef"},{"id":"anael_nkunga_22","n":"Anael Nkunga","d":"restaurant","r":"F&B Team Member"},{"id":"arthur_27","n":"Arthur Bennett","d":"restaurant","r":"F&B Team Member"},{"id":"betel_elias_44","n":"Betel Elias","d":"restaurant","r":"F&B Team Member"},{"id":"caitlin_playdon_40","n":"Caitlin Playdon","d":"restaurant","r":"F&B Team Member"},{"id":"cameron_mcgregor_42","n":"Cameron McGregor","d":"restaurant","r":"F&B Team Member"},{"id":"catarina_li_20","n":"Catarina Li","d":"restaurant","r":"Assistant Manager"},{"id":"darren_28","n":"Darren Younge","d":"restaurant","r":"F&B Team Member"},{"id":"dhruvilsinh_chauhan_24","n":"Dhruvilsinh Chauhan","d":"restaurant","r":"Breakfast Team Member"},{"id":"jaimie_leigh_watts_41","n":"Jaimie-Leigh Watts","d":"restaurant","r":"F&B Team Member"},{"id":"jayan_26","n":"Jayan Gerget","d":"restaurant","r":"F&B Team Member"},{"id":"lily_mae_mcdonald_43","n":"Lily-Mae Mcdonald","d":"restaurant","r":"F&B Team Member"},{"id":"manjinder_shergill_21","n":"Manjinder Kaur Shergill","d":"restaurant","r":"F&B Supervisor"},{"id":"nevin_29","n":"Nevin Babu","d":"restaurant","r":"F&B Team Member"},{"id":"olivia_hale_45","n":"Olivia Hale","d":"restaurant","r":"F&B Team Member"},{"id":"reuven_25","n":"Reuven Shergill","d":"restaurant","r":"F&B Team Member"},{"id":"sheba_tychicus_23","n":"Sheba Tychicus","d":"restaurant","r":"F&B Team Member"},{"id":"jomy_mathai_joy_18","n":"Jomy Mathai Joy","d":"bar","r":"Bar Supervisor"},{"id":"rowan_wilkins_19","n":"Rowan Wilkins","d":"bar","r":"Bar Team Member"},{"id":"lauren_damms_ingla_56","n":"Lauren Damms-Ingla","d":"admin","r":"Admin / Reception"},{"id":"natalie_freeman_4","n":"Natalie Freeman","d":"admin","r":"Event Executive"},{"id":"nicola_3","n":"Nicola Cartwright","d":"admin","r":"Sales Manager"},{"id":"veronica_webb_2","n":"Veronica Webb","d":"admin","r":"Finance Assistant"}];
+const DEPT_ORDER=['reception','nights','housekeeping','maintenance','kitchen','restaurant','bar','admin'];
+const DEPT_LABELS={reception:'Reception',nights:'Nights',housekeeping:'Housekeeping',maintenance:'Maintenance',kitchen:'Kitchen',restaurant:'Food & Beverage',bar:'Bar',admin:'Admin & Management'};
+let DIR_PHONES={}, DIR_READY=false;
+async function dirInit(){
+  // populate dept filter once
+  const sel=$('dir-dept');
+  if(sel && sel.options.length<=1){ DEPT_ORDER.forEach(d=>{ const o=document.createElement('option'); o.value=d; o.textContent=DEPT_LABELS[d]; sel.appendChild(o); }); }
+  if(!DIR_READY){
+    renderDirectory(); // show names straight away
+    try{ if(db){ const snap=await db.collection('hoshouse_staffdir').get(); snap.forEach(doc=>{ const p=(doc.data()||{}).phone; if(p) DIR_PHONES[doc.id]=p; }); } }catch(e){}
+    DIR_READY=true;
+  }
+  renderDirectory();
+}
+function dirTel(p){ return String(p||'').replace(/[^0-9+]/g,''); }
+function renderDirectory(){
+  const out=$('dir-out'); if(!out) return;
+  const q=(($('dir-search')&&$('dir-search').value)||'').trim().toLowerCase();
+  const dept=($('dir-dept')&&$('dir-dept').value)||'';
+  let html='';
+  DEPT_ORDER.forEach(d=>{
+    if(dept && d!==dept) return;
+    let people=STAFF_REG.filter(s=>s.d===d);
+    if(q) people=people.filter(s=>(s.n.toLowerCase().includes(q)||(s.r||'').toLowerCase().includes(q)||DEPT_LABELS[d].toLowerCase().includes(q)));
+    if(!people.length) return;
+    people.sort((a,b)=>a.n.localeCompare(b.n));
+    html+=`<div class="sechd" style="margin:16px 0 8px;color:var(--navy)">${DEPT_LABELS[d]} <span class="muted" style="font-weight:600;font-size:12px">· ${people.length}</span></div>`;
+    people.forEach(s=>{
+      const ph=DIR_PHONES[s.id]||'';
+      const phHtml=ph
+        ? `<a href="tel:${dirTel(ph)}" style="font:800 14px Lato;color:#1d7a4d;text-decoration:none;white-space:nowrap">📞 ${esc(ph)}</a>`
+        : `<span class="muted" style="font-size:12px">No number</span>`;
+      html+=`<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding:12px 14px">
+        <div style="flex:1;min-width:0"><div style="font:800 14px Lato;color:var(--navy)">${esc(s.n)}</div><div class="muted" style="font-size:12px">${esc(s.r||'')}</div></div>
+        <div style="text-align:right">${phHtml}</div>
+        <button onclick="dirEditPhone('${s.id}')" title="Add or edit number" style="flex:0 0 auto;width:34px;height:34px;border:1px solid var(--line);background:#f3f5f8;border-radius:9px;font-size:15px;cursor:pointer">✎</button>
+      </div>`;
+    });
+  });
+  if(!html) html='<div class="muted" style="padding:10px 2px">No one matches that search.</div>';
+  out.innerHTML=html;
+}
+async function dirEditPhone(id){
+  const s=STAFF_REG.find(x=>x.id===id); if(!s) return;
+  const cur=DIR_PHONES[id]||'';
+  const v=prompt('Phone number for '+s.n+':', cur);
+  if(v===null) return;
+  const phone=v.trim();
+  if(phone) DIR_PHONES[id]=phone; else delete DIR_PHONES[id];
+  renderDirectory();
+  try{ if(db){ await db.collection('hoshouse_staffdir').doc(id).set({phone:phone, name:s.n, dept:s.d, updatedAt:new Date().toISOString()},{merge:true}); toast(phone?'✓ Number saved':'Number removed'); } else { toast('Offline — number not saved'); } }
+  catch(e){ toast('Could not save number'); }
 }
 
 /* ---- Photo viewer (lightbox) for jobs & requests ---- */
