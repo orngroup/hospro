@@ -108,6 +108,8 @@ body.console .wrap{max-width:1200px}
 .bc-room{background:linear-gradient(135deg,#3a5a99,#273f6e)}
 .bc-dir{background:linear-gradient(135deg,#6b4a86,#4a3260)}
 .bc-tv{background:linear-gradient(135deg,#0f766e,#0b4f4a)}
+.bc-priority{background:linear-gradient(135deg,#c0392b,#8f1d17)}
+.bc-night{background:linear-gradient(135deg,#312e81,#1e1b4b)}
 .roomgrp{border:1.5px solid #f0d6bd;border-radius:14px;padding:8px;margin-bottom:12px;background:#fff9f3}
 .roomgrp-hd{display:flex;align-items:center;gap:8px;font:900 14px Lato;color:#8f4300;padding:6px 6px 8px}
 .roomgrp-n{margin-left:auto;background:#c45c00;color:#fff;border-radius:20px;padding:3px 11px;font:900 12px Lato}
@@ -301,38 +303,8 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         <div class="bigcard bc-room" id="card-roomcheck" onclick="showSection('roomcheck')"><div class="bc-ic"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/><path d="M9 11h4M11 9v4"/></svg></div><div class="bc-t">Room Check 🔒</div><div class="bc-s">Is a room cleaned &amp; ready?</div></div>
         <div class="bigcard bc-dir" id="card-directory" onclick="showSection('directory')"><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="12" cy="9" r="2"/><path d="M9 14c0-1.5 1.3-2.5 3-2.5s3 1 3 2.5"/></svg></div><div class="bc-t">Staff Directory</div><div class="bc-s">By department · phone numbers</div></div>
         <div class="bigcard bc-tv" id="card-hostv" onclick="showSection('hostv')"><div class="bc-n" id="bc-tv-n">0%</div><div class="bc-ic"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg></div><div class="bc-t">HosTV 🔒</div><div class="bc-s">Bedroom TV audit</div></div>
-      </div>
-
-      <button onclick="openPriorityRoom()" style="width:100%;margin-top:12px;border:none;border-radius:14px;padding:15px;background:linear-gradient(135deg,#b3261e,#d9534f);color:#fff;font:800 15px Lato;cursor:pointer;box-shadow:0 2px 10px rgba(179,38,30,.28)">⚡ Priority room → alert housekeeping <span style="font-weight:700;opacity:.85">🔒 · Coming soon</span></button>
-
-      <!-- Priority room modal -->
-      <div id="prio-ov" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:flex-start;justify-content:center;padding:60px 16px 0">
-        <div style="background:#fff;border-radius:16px;padding:22px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.25)">
-          <div style="font:900 18px Lato;color:var(--navy);margin-bottom:4px">⚡ Priority room</div>
-          <div style="background:#fff5e6;border:1px solid #f2d9ab;color:#b06a00;border-radius:10px;padding:8px 11px;font:700 12px Lato;margin-bottom:12px">🔒 Coming soon — preview only while we finish testing.</div>
-          <div class="muted" style="font-size:13px;margin-bottom:14px">Flags the room as priority in HosHouse and alerts housekeeping — even when their app is closed.</div>
-          <label class="fl">Room number(s)</label>
-          <input id="prio-room" type="text" inputmode="text" placeholder="e.g. 214 — or 214, 216, 218 for several" style="margin-bottom:12px">
-          <div class="muted" style="font-size:11px;margin:-6px 0 12px">Separate several rooms with commas.</div>
-          <label class="fl">Reason</label>
-          <select id="prio-reason-sel" style="margin-bottom:12px">
-            <option value="">Select a reason…</option>
-            <option>Early check-in waiting</option>
-            <option>VIP arrival</option>
-            <option>Guest complaint — re-clean</option>
-            <option>Room move</option>
-            <option>Maintenance follow-up</option>
-            <option>Inspection</option>
-            <option>Other</option>
-          </select>
-          <label class="fl">Notes (optional)</label>
-          <textarea id="prio-reason" rows="3" placeholder="e.g. VIP arrival 2pm · guest waiting in lounge" style="margin-bottom:14px"></textarea>
-          <div style="display:flex;gap:10px">
-            <button onclick="closePriorityRoom()" style="flex:1;border:1px solid var(--line);background:#f3f5f8;border-radius:11px;padding:12px;font:700 14px Lato;cursor:pointer">Cancel</button>
-            <button onclick="submitPriorityRoom()" style="flex:2;border:none;background:#b3261e;color:#fff;border-radius:11px;padding:12px;font:800 14px Lato;cursor:pointer">⚡ Set priority &amp; alert</button>
-          </div>
-          <div id="prio-msg" style="font-size:13px;min-height:16px;margin-top:8px"></div>
-        </div>
+        <div class="bigcard bc-priority" id="card-priority" onclick="showSection('priority')"><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></div><div class="bc-t">HosPriority 🔒</div><div class="bc-s">Flag rooms · alert housekeeping</div></div>
+        <div class="bigcard bc-night" id="card-night" onclick="showSection('night')"><div class="bc-ic"><svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></div><div class="bc-t">HosNIGHT 🔒</div><div class="bc-s">Night porter log &amp; rounds</div></div>
       </div>
 
       <div class="dash" style="margin-top:18px">
@@ -518,6 +490,49 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         </div>
       </div>
       <div class="pane-list"><div class="sechd" style="margin-top:0" id="tv-title">Bedroom TVs</div><div id="tv-out"></div></div>
+    </div>
+
+    <!-- HosPriority: pick rooms on a grid, add reason, alert housekeeping -->
+    <div class="pane" id="pane-priority">
+      <div class="pane-form">
+        <div class="card">
+          <div style="font:800 13px Lato;color:#b3261e;margin-bottom:6px">⚡ Flag priority rooms</div>
+          <div class="muted" style="font-size:12px;margin-bottom:10px">Tap the rooms below to select them, choose a reason, then alert housekeeping — the rooms turn priority in HosHouse and a push goes out even if their app is closed.</div>
+          <div id="prio-selinfo" style="font:800 13px Lato;color:var(--navy);margin-bottom:8px">No rooms selected</div>
+          <label class="fl">Reason</label>
+          <div id="prio-reasons" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px"></div>
+          <button type="button" onclick="prioAddReason()" style="background:#f3f5f8;border:1px dashed #b9c2cd;color:var(--navy);border-radius:999px;padding:6px 13px;font:800 12px Lato;cursor:pointer">＋ Add reason</button>
+          <label class="fl" style="margin-top:12px">Notes (optional)</label>
+          <textarea id="prio-notes" rows="2" placeholder="e.g. VIP arrival 2pm · guest waiting in lounge"></textarea>
+          <div id="prio-msg" style="font-size:12px;min-height:14px;margin:8px 0"></div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-go" style="flex:2;margin:0;background:#b3261e" onclick="prioSubmit()">⚡ Set priority &amp; alert housekeeping</button>
+            <button type="button" onclick="prioClear()" style="flex:1;background:#f3f5f8;border:1px solid var(--line);color:var(--navy);border-radius:11px;font:800 14px Lato;cursor:pointer">Clear</button>
+          </div>
+        </div>
+      </div>
+      <div class="pane-list"><div class="sechd" style="margin-top:0">Pick rooms</div><input id="prio-search" type="text" inputmode="numeric" placeholder="Jump to a room…" oninput="prioRender()" style="margin-bottom:10px"><div id="prio-grid"></div></div>
+    </div>
+
+    <!-- HosNIGHT: night porter rounds + notes log -->
+    <div class="pane" id="pane-night">
+      <div class="pane-form">
+        <div class="card">
+          <div style="font:800 13px Lato;color:#312e81;margin-bottom:6px">🌙 Night porter log</div>
+          <div class="muted" style="font-size:12px;margin-bottom:10px" id="night-dateline">Tonight</div>
+          <label class="fl">Night porter on duty</label>
+          <input id="night-porter" type="text" placeholder="Your name" oninput="nightSaveMeta()">
+          <div class="sechd" style="margin:14px 0 6px">Evening security rounds</div>
+          <div id="night-rounds"></div>
+          <div class="sechd" style="margin:16px 0 6px">Notes · comments · issues</div>
+          <div style="display:flex;gap:8px">
+            <input id="night-note" type="text" placeholder="Add a note or issue…" onkeydown="if(event.key==='Enter')nightAddNote()" style="flex:1">
+            <button type="button" onclick="nightAddNote()" style="background:#312e81;color:#fff;border:none;border-radius:10px;padding:0 16px;font:800 14px Lato;cursor:pointer">Add</button>
+          </div>
+          <div id="night-notes" style="margin-top:10px"></div>
+        </div>
+      </div>
+      <div class="pane-list"><div class="sechd" style="margin-top:0">Recent nights</div><div id="night-history"></div></div>
     </div>
   </div>
 
@@ -787,24 +802,26 @@ async function startBoard(){
 function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } if(H_UNSUB){ H_UNSUB(); H_UNSUB=null; } stopVD(); B_READY=false; M_READY=false; }
 function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l])=>`<button class="chip ${B_FILTER===ff?'on':''}" onclick="bSetFilter('${ff}')">${l}</button>`).join(''); bRender(); }
 // Maintenance and Shift Handover are gated by a staff code (remove a name from GATED to open that section to all).
-const SECTIONS=['requests','deliveries','maintenance','handover','roomcheck','directory','hostv'];
-const GATED={maintenance:true, handover:true, roomcheck:true, hostv:true};
+const SECTIONS=['requests','deliveries','maintenance','handover','roomcheck','directory','hostv','priority','night'];
+const GATED={maintenance:true, handover:true, roomcheck:true, hostv:true, priority:true, night:true};
 const UNLOCKED={};
 let GATE_TARGET=null;
-const GATE_LABELS={maintenance:{t:'Maintenance — staff code', s:'Enter the code to open the maintenance log.'}, handover:{t:'Shift Handover — staff code', s:'Enter the code to open the shift handover.'}, roomcheck:{t:'Room Check — staff code', s:'Enter the code to open Room Check.'}, directory:{t:'Staff Directory — staff code', s:'Enter the code to open the staff directory.'}, priority:{t:'Priority Room — staff code', s:'Enter the code to flag a priority room.'}, hostv:{t:'HosTV — staff code', s:'Enter the code to open the TV audit.'}};
+const GATE_LABELS={maintenance:{t:'Maintenance — staff code', s:'Enter the code to open the maintenance log.'}, handover:{t:'Shift Handover — staff code', s:'Enter the code to open the shift handover.'}, roomcheck:{t:'Room Check — staff code', s:'Enter the code to open Room Check.'}, directory:{t:'Staff Directory — staff code', s:'Enter the code to open the staff directory.'}, priority:{t:'HosPriority — staff code', s:'Enter the code to flag priority rooms.'}, hostv:{t:'HosTV — staff code', s:'Enter the code to open the TV audit.'}, night:{t:'HosNIGHT — staff code', s:'Enter the code to open the night porter log.'}};
 function openCodeGate(target){ GATE_TARGET=target||'maintenance'; const lab=GATE_LABELS[GATE_TARGET]||{t:'Staff code',s:'Enter the code to open this section.'}; const tt=$('cg-title'); if(tt) tt.textContent=lab.t; const sb=$('cg-sub'); if(sb) sb.textContent=lab.s; const i=$('cg-in'); if(i) i.value=''; const e=$('cg-err'); if(e) e.textContent=''; $('ovl-code').classList.add('on'); setTimeout(()=>{ try{ $('cg-in').focus(); }catch(e){} },80); }
 function closeCodeGate(){ $('ovl-code').classList.remove('on'); }
-function checkCode(){ const v=($('cg-in').value||'').trim(); if(v==='3132'){ const t=GATE_TARGET; if(t) UNLOCKED[t]=true; closeCodeGate(); if(t==='priority'){ openPriorityRoom(true); } else { showSection(t); } } else { $('cg-err').textContent='Incorrect code — try again'; $('cg-in').value=''; try{ $('cg-in').focus(); }catch(e){} } }
+function checkCode(){ const v=($('cg-in').value||'').trim(); if(v==='3132'){ const t=GATE_TARGET; if(t) UNLOCKED[t]=true; closeCodeGate(); showSection(t); } else { $('cg-err').textContent='Incorrect code — try again'; $('cg-in').value=''; try{ $('cg-in').focus(); }catch(e){} } }
 function openFire(){ $('ovl-fire').classList.add('on'); }
 function closeFire(){ $('ovl-fire').classList.remove('on'); }
 // Tap a big card → that section takes over the whole page. goHome() returns to the cards.
-const SEC_TITLES={requests:'🧹 Guest Requests', deliveries:'📦 Deliveries', maintenance:'🔧 Maintenance', handover:'🔄 Shift Handover', roomcheck:'🔍 Room Check', directory:'📇 Staff Directory', hostv:'📺 HosTV — TV audit'};
+const SEC_TITLES={requests:'🧹 Guest Requests', deliveries:'📦 Deliveries', maintenance:'🔧 Maintenance', handover:'🔄 Shift Handover', roomcheck:'🔍 Room Check', directory:'📇 Staff Directory', hostv:'📺 HosTV — TV audit', priority:'⚡ HosPriority', night:'🌙 HosNIGHT — Night porter'};
 function showSection(x){
   if(GATED[x] && !UNLOCKED[x]){ openCodeGate(x); return; }
   if(x==='handover'){ try{ hBuildChecks(); hRenderItems(); const dt=$('h-date'); if(dt && !dt.value) dt.value=todayISO(); }catch(e){} }
   if(x==='directory'){ try{ dirInit(); }catch(e){} }
   if(x==='roomcheck'){ try{ const r=$('rc-room'); if(r){ r.value=''; setTimeout(()=>r.focus(),60); } }catch(e){} }
   if(x==='hostv'){ try{ tvInit(); }catch(e){} }
+  if(x==='priority'){ try{ prioInit(); }catch(e){} }
+  if(x==='night'){ try{ nightInit(); }catch(e){} }
   SECTIONS.forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.toggle('on', s===x); });
   const home=$('hd-home'); if(home) home.classList.add('hide');
   const t=$('hd-sec-title'); if(t) t.textContent=SEC_TITLES[x]||'';
@@ -1022,29 +1039,47 @@ function toggleUrgent(id,cur){ const u=cur==='urgent'?'normal':'urgent'; patch(i
 
 /* ---- Priority room → mark urgent in HosHouse + background alert to housekeeping ---- */
 const FCM_BASE="https://europe-west1-brandonhall-7bdef.cloudfunctions.net";
-function openPriorityRoom(force){
-  if(!force && !UNLOCKED['priority']){ openCodeGate('priority'); return; }
-  const ov=$('prio-ov'); if(!ov) return;
-  $('prio-room').value=''; $('prio-reason').value=''; const sel=$('prio-reason-sel'); if(sel) sel.value='';
-  const m=$('prio-msg'); if(m) m.textContent='';
-  ov.style.display='flex'; setTimeout(()=>{ const r=$('prio-room'); if(r) r.focus(); },50);
+/* ===================== HosPriority — pick rooms on a grid, alert housekeeping ===================== */
+let PRIO_SEL={}, PRIO_REASON='', PRIO_REASONS=['Arrival','Walk-in','Early check-in','VIP arrival','Room move','Re-clean','Inspection'];
+function prioAllRooms(){ return (typeof HOSTV_SEED!=='undefined'?HOSTV_SEED:[]).map(s=>({room:String(s.r),floor:s.f||'—'})); }
+function prioInit(){ PRIO_SEL={}; PRIO_REASON=''; const s=$('prio-search'); if(s) s.value=''; const n=$('prio-notes'); if(n) n.value=''; const m=$('prio-msg'); if(m) m.textContent=''; prioRenderReasons(); prioRender(); prioSelInfo(); }
+function prioRenderReasons(){
+  const wrap=$('prio-reasons'); if(!wrap) return;
+  wrap.innerHTML=PRIO_REASONS.map(r=>{ const on=(PRIO_REASON===r);
+    return '<button type="button" onclick="prioPickReason(\''+r.replace(/'/g,"\\'")+'\')" style="border:1px solid '+(on?'#b3261e':'#d8dee6')+';background:'+(on?'#fdeceb':'#fff')+';color:'+(on?'#b3261e':'#44525f')+';border-radius:999px;padding:6px 13px;font:800 12px Lato;cursor:pointer">'+esc(r)+'</button>';
+  }).join('');
 }
-function closePriorityRoom(){ const ov=$('prio-ov'); if(ov) ov.style.display='none'; }
-async function submitPriorityRoom(){
-  const raw=($('prio-room').value||'').trim();
-  const rooms=raw.split(',').map(s=>s.replace(/[^0-9A-Za-z]/g,'').trim()).filter(Boolean);
-  const reasonSel=(($('prio-reason-sel')&&$('prio-reason-sel').value)||'').trim();
-  const notes=($('prio-reason').value||'').trim();
-  const reason=[reasonSel, notes].filter(Boolean).join(' — ');
+function prioPickReason(r){ PRIO_REASON=(PRIO_REASON===r?'':r); prioRenderReasons(); }
+function prioAddReason(){ const v=prompt('Add a reason (e.g. Group arrival, Complaint):',''); if(v===null) return; const t=v.trim(); if(!t) return; if(PRIO_REASONS.indexOf(t)<0) PRIO_REASONS.push(t); PRIO_REASON=t; prioRenderReasons(); }
+function prioSelInfo(){ const el=$('prio-selinfo'); if(!el) return; const sel=Object.keys(PRIO_SEL).filter(k=>PRIO_SEL[k]); el.textContent=sel.length?(sel.length+' room'+(sel.length>1?'s':'')+' selected: '+sel.join(', ')):'No rooms selected'; }
+function prioRender(){
+  const out=$('prio-grid'); if(!out) return;
+  const q=(($('prio-search')&&$('prio-search').value)||'').trim();
+  let rooms=prioAllRooms(); if(q) rooms=rooms.filter(r=>r.room.indexOf(q)>=0);
+  const floors={}; rooms.forEach(r=>{ (floors[r.floor]=floors[r.floor]||[]).push(r); });
+  const order=Object.keys(floors).sort((a,b)=>a==='G'?-1:b==='G'?1:a.localeCompare(b));
+  if(!rooms.length){ out.innerHTML='<div class="muted" style="padding:10px 2px">No rooms match.</div>'; return; }
+  out.innerHTML=order.map(fl=>{
+    const chips=floors[fl].map(r=>{ const on=PRIO_SEL[r.room];
+      return '<button type="button" onclick="prioToggle(\''+r.room+'\')" style="border:2px solid '+(on?'#b3261e':'#dde3ea')+';background:'+(on?'#b3261e':'#fff')+';color:'+(on?'#fff':'#1a2b3a')+';border-radius:11px;padding:10px 6px;font:800 14px Lato;cursor:pointer">'+esc(r.room)+'</button>';
+    }).join('');
+    return '<div class="sechd" style="margin:12px 0 7px;color:var(--navy)">Floor '+esc(fl)+'</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:7px">'+chips+'</div>';
+  }).join('');
+}
+function prioToggle(room){ PRIO_SEL[room]=!PRIO_SEL[room]; if(!PRIO_SEL[room]) delete PRIO_SEL[room]; prioRender(); prioSelInfo(); }
+function prioClear(){ PRIO_SEL={}; PRIO_REASON=''; const n=$('prio-notes'); if(n) n.value=''; prioRenderReasons(); prioRender(); prioSelInfo(); const m=$('prio-msg'); if(m) m.textContent=''; }
+async function prioSubmit(){
+  const rooms=Object.keys(PRIO_SEL).filter(k=>PRIO_SEL[k]);
+  const notes=($('prio-notes').value||'').trim();
+  const reason=[PRIO_REASON, notes].filter(Boolean).join(' — ');
   const msg=$('prio-msg');
-  if(!rooms.length){ if(msg){ msg.style.color='var(--red)'; msg.textContent='Enter at least one room number.'; } return; }
+  if(!rooms.length){ if(msg){ msg.style.color='var(--red)'; msg.textContent='Tap at least one room to select it.'; } return; }
   if(!db){ if(msg){ msg.style.color='var(--red)'; msg.textContent='Offline — cannot set priority.'; } return; }
-  if(msg){ msg.style.color='var(--muted)'; msg.textContent='Setting priority…'; }
+  if(msg){ msg.style.color='var(--muted)'; msg.textContent='Setting priority on '+rooms.length+' room'+(rooms.length>1?'s':'')+'…'; }
   const date=todayISO(), now=new Date().toISOString();
   const hkSet=[];
   for(const room of rooms){
-    const id=date+'__'+room;
-    let exists=false, hk='';
+    const id=date+'__'+room; let exists=false, hk='';
     try{ const d=await db.collection('hoshouse_rooms').doc(id).get(); if(d.exists){ exists=true; hk=(d.data()||{}).housekeeper||''; } }catch(e){}
     if(hk && hkSet.indexOf(hk)<0) hkSet.push(hk);
     const patch={ urgent:true, priorityNote:reason, priorityBy:'Reception', priorityAt:now, updatedAt:now };
@@ -1056,8 +1091,68 @@ async function submitPriorityRoom(){
   const roomList=rooms.join(', ');
   const title=(rooms.length>1?'🚨 Priority rooms '+roomList:'🚨 Priority room '+roomList);
   try{ fetch(FCM_BASE+'/notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ event:'message', userIds:ids, title:title, body:(reason||'Reception flagged this as priority — please prioritise.'), url:'/hoshouse.html', urgent:true, kind:'urgent' })}); }catch(e){}
-  closePriorityRoom();
-  toast('⚡ '+(rooms.length>1?('Rooms '+roomList+' set to priority'):('Room '+roomList+' set to priority'))+' · housekeeping alerted');
+  if(msg){ msg.style.color='#1d7a4d'; msg.textContent='✓ '+rooms.length+' room'+(rooms.length>1?'s':'')+' set to priority · housekeeping alerted'; }
+  toast('⚡ '+roomList+' set to priority');
+  PRIO_SEL={}; prioRender(); prioSelInfo();
+}
+
+/* ===================== HosNIGHT — night porter rounds + notes ===================== */
+const NIGHT_ROUNDS=['Round 1 — Building & fire exits','Round 2 — Public areas & bar','Round 3 — Perimeter & car park'];
+let NIGHT_DOC=null, NIGHT_READY=false;
+function nightBlank(date){ return { date:date, porter:'', rounds:NIGHT_ROUNDS.map(()=>({done:false,at:'',by:'',note:''})), notes:[], updatedAt:'' }; }
+function nightInit(){
+  const date=todayISO();
+  if(!NIGHT_DOC || NIGHT_DOC.date!==date) NIGHT_DOC=nightBlank(date);
+  const dl=$('night-dateline'); if(dl){ try{ dl.textContent='Night of '+new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); }catch(e){ dl.textContent=date; } }
+  $('night-porter').value=NIGHT_DOC.porter||'';
+  nightRenderRounds(); nightRenderNotes();
+  if(db){ db.collection('hosnight_logs').doc(date).get().then(s=>{ if(s.exists){ const d=s.data()||{}; NIGHT_DOC={ date:date, porter:d.porter||'', rounds:(Array.isArray(d.rounds)&&d.rounds.length===3)?d.rounds:nightBlank(date).rounds, notes:Array.isArray(d.notes)?d.notes:[], updatedAt:d.updatedAt||'' }; $('night-porter').value=NIGHT_DOC.porter||''; nightRenderRounds(); nightRenderNotes(); } }).catch(()=>{}); nightHistory(); }
+}
+function nightRenderRounds(){
+  const wrap=$('night-rounds'); if(!wrap) return;
+  wrap.innerHTML=NIGHT_ROUNDS.map((lab,i)=>{ const r=NIGHT_DOC.rounds[i]||{}; const on=r.done;
+    return '<div style="border:1px solid '+(on?'#bfe3cd':'var(--line)')+';background:'+(on?'#e8f6ee':'#fff')+';border-radius:12px;padding:12px;margin-bottom:9px">'
+      +'<div style="display:flex;align-items:center;gap:11px">'
+      +'<button type="button" onclick="nightTick('+i+')" style="width:30px;height:30px;border-radius:9px;border:2px solid '+(on?'#1d7a4d':'#c3cad3')+';background:'+(on?'#1d7a4d':'#fff')+';color:#fff;font-weight:900;font-size:16px;cursor:pointer;flex:0 0 auto">'+(on?'✓':'')+'</button>'
+      +'<div style="flex:1"><div style="font:800 13.5px Lato;color:var(--navy)">'+esc(lab)+'</div>'+(on&&r.at?'<div class="muted" style="font-size:11px">done '+esc(r.at)+(r.by?(' · '+esc(r.by)):'')+'</div>':'<div class="muted" style="font-size:11px">not done yet</div>')+'</div>'
+      +'</div>'
+      +'<input type="text" value="'+esc(r.note||'')+'" placeholder="Note for this round (optional)" onchange="nightRoundNote('+i+',this.value)" style="width:100%;margin-top:8px;padding:8px 10px;border:1px solid #dde3ea;border-radius:8px;font-size:12.5px">'
+      +'</div>';
+  }).join('');
+}
+function nightRenderNotes(){
+  const wrap=$('night-notes'); if(!wrap) return;
+  const ns=NIGHT_DOC.notes||[];
+  if(!ns.length){ wrap.innerHTML='<div class="muted" style="font-size:12px">No notes yet tonight.</div>'; return; }
+  wrap.innerHTML=ns.slice().reverse().map(n=>'<div style="border-left:3px solid #312e81;background:#f7f8fc;border-radius:6px;padding:8px 11px;margin-bottom:7px"><div style="font-size:13px">'+esc(n.text)+'</div><div class="muted" style="font-size:11px;margin-top:2px">'+esc(n.at||'')+(n.by?(' · '+esc(n.by)):'')+'</div></div>').join('');
+}
+function nightTick(i){
+  const r=NIGHT_DOC.rounds[i]; if(!r) return; r.done=!r.done;
+  if(r.done){ r.at=nightNow(); r.by=($('night-porter').value||'').trim(); } else { r.at=''; r.by=''; }
+  nightRenderRounds(); nightSave();
+}
+function nightRoundNote(i,v){ if(NIGHT_DOC.rounds[i]){ NIGHT_DOC.rounds[i].note=(v||'').trim(); nightSave(); } }
+function nightSaveMeta(){ NIGHT_DOC.porter=($('night-porter').value||'').trim(); nightSave(); }
+function nightAddNote(){
+  const el=$('night-note'); const t=(el.value||'').trim(); if(!t) return;
+  NIGHT_DOC.notes.push({ text:t, at:nightNow(), by:($('night-porter').value||'').trim() });
+  el.value=''; nightRenderNotes(); nightSave();
+}
+function nightNow(){ try{ return new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+let _nightT=null;
+function nightSave(){ if(!db) return; NIGHT_DOC.updatedAt=new Date().toISOString(); clearTimeout(_nightT); _nightT=setTimeout(()=>{ db.collection('hosnight_logs').doc(NIGHT_DOC.date).set(NIGHT_DOC,{merge:true}).catch(()=>{}); },500); }
+async function nightHistory(){
+  const wrap=$('night-history'); if(!wrap || !db) return;
+  try{
+    const days=[]; const d=new Date(); for(let i=1;i<=5;i++){ const x=new Date(d); x.setDate(d.getDate()-i); days.push(x.toLocaleDateString('en-CA')); }
+    const snaps=await Promise.all(days.map(dk=>db.collection('hosnight_logs').doc(dk).get()));
+    let html='';
+    snaps.forEach((s,i)=>{ if(s.exists){ const v=s.data()||{}; const done=(v.rounds||[]).filter(r=>r.done).length; const nn=(v.notes||[]).length;
+      let lab=days[i]; try{ lab=new Date(days[i]+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }catch(e){}
+      html+='<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:11px 13px"><div style="flex:1"><div style="font:800 13px Lato;color:var(--navy)">'+esc(lab)+'</div><div class="muted" style="font-size:11px">'+(v.porter?esc(v.porter):'—')+'</div></div><span style="background:#e8f6ee;color:#1d7a4d;border-radius:999px;padding:3px 9px;font:800 11px Lato">'+done+'/3 rounds</span>'+(nn?'<span style="background:#eef1f5;color:#44525f;border-radius:999px;padding:3px 9px;font:800 11px Lato">'+nn+' note'+(nn>1?'s':'')+'</span>':'')+'</div>';
+    }});
+    wrap.innerHTML=html||'<div class="muted" style="font-size:12px">No earlier nights logged.</div>';
+  }catch(e){}
 }
 
 /* ===================== Room Check — last 7 days of a room's cleaning record ===================== */
