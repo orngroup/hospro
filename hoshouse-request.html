@@ -281,22 +281,10 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
       <a class="ql" href="https://www.google.com/maps/search/?api=1&amp;query=Brandon%20Hall%20Hotel%20%26%20Spa%2C%20Main%20Street%2C%20Brandon%2C%20Coventry%20CV8%203FW" target="_blank" rel="noopener"><span class="qi">📍</span>Google Maps</a>
       <a class="ql" href="https://shakespeares-england.co.uk/places/" target="_blank" rel="noopener"><span class="qi">🗺️</span>Local Information</a>
       <a class="ql" href="https://shakespeares-england.co.uk/whats-on/" target="_blank" rel="noopener"><span class="qi">🎟️</span>Local Events &amp; Tourist Board</a>
+      <a class="ql" href="https://guestline.eu.auth0.com/login?state=hKFo2SB1Tm10UXUtUGIxdWZ2OGIwakFRVnhvQmtkTE41ZmxIWKFupWxvZ2luo3RpZNkgNmdrV2N4UE5ua05kOEsxeE5PWGNGNHk3cno1Zks2Zm-jY2lk2SBhM1RTRmg3OVpzWXBFcnZFSU5Pa2VvekhiSVBZUTNvYw&amp;client=a3TSFh79ZsYpErvEINOkeozHbIPYQ3oc&amp;protocol=oauth2&amp;useRefreshTokensFallback=true&amp;issuer=https%3A%2F%2Fguestline.eu.auth0.com%2F&amp;scope=openid%20profile%20email%20offline_access&amp;audience=https%3A%2F%2Fguestline.app&amp;redirect_uri=https%3A%2F%2Fpms.eu.guestline.net%2Frezlynx%2FRLXWebForms%2Fsys%2Fwfrm_sys_LogOn.aspx%3Fsso_autoLogon%3Dtrue%26siteId%3DBRANDHALL&amp;siteid=BRANDHALL&amp;rezlynxlogin=true&amp;siteidrequired=true&amp;sso_autologon=true&amp;siteId=BRANDHALL&amp;siteIdRequired=true&amp;response_type=code&amp;response_mode=query&amp;nonce=cXZySlRLMHR1Rl9PRlFiYlpZcW9paGFLcHN4QVNTZlZMbkJGNk9KTWpmRA%3D%3D&amp;code_challenge=fIHeDxFIfh5Ktjczx3JfxWSJ4zUdsTicSZyN6-DMPvs&amp;code_challenge_method=S256&amp;auth0Client=eyJuYW1lIjoiYXV0aDAtc3BhLWpzIiwidmVyc2lvbiI6IjEuMjIuNiJ9" target="_blank" rel="noopener"><span class="qi">🛎️</span>Guestline (PMS)</a>
       <button type="button" class="ql fire" onclick="openFire()"><span class="qi">🔥</span>Fire &amp; Emergency</button>
     </div>
 
-    <!-- Date filter: view previous days or a range (handy for invoice checking) -->
-    <div class="daterow" id="date-row">
-      <span style="font:800 11px Lato;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-right:2px">📅 Period</span>
-      <button class="dchip on" id="dc-today" onclick="setRange('today')">Today</button>
-      <button class="dchip" id="dc-yesterday" onclick="setRange('yesterday')">Yesterday</button>
-      <button class="dchip" id="dc-7" onclick="setRange('7')">Last 7 days</button>
-      <button class="dchip" id="dc-month" onclick="setRange('month')">This month</button>
-      <span style="display:flex;align-items:center;gap:6px;margin-left:auto">
-        <input type="date" id="d-from" onchange="setCustomRange()">
-        <span style="color:var(--muted);font-weight:800">→</span>
-        <input type="date" id="d-to" onchange="setCustomRange()">
-      </span>
-    </div>
 
     <!-- HOME: welcome + three big kiosk cards (tap one to open it full-page) + stats -->
     <div id="hd-home">
@@ -853,7 +841,7 @@ function recBack(){ B_FILTER='open'; M_FILTER_ALL=false; setRange('today'); goHo
 
 /* ---- Date filter: view previous days or a range ---- */
 let DATE_FROM=todayISO(), DATE_TO=todayISO();
-function dInRange(iso){ const d=String(iso||'').slice(0,10); return !!d && d>=DATE_FROM && d<=DATE_TO; }
+function dInRange(iso){ return true; }  /* date filter removed from home — each card filters its own view */
 function dShift(n){ const dt=new Date(); dt.setDate(dt.getDate()+n); return dt.toLocaleDateString('en-CA'); }
 function dMarkChip(id){ ['today','yesterday','7','month'].forEach(x=>{ const bq=$('dc-'+x); if(bq) bq.classList.toggle('on', x===id); }); }
 function dSyncInputs(){ if($('d-from')) $('d-from').value=DATE_FROM; if($('d-to')) $('d-to').value=DATE_TO; }
