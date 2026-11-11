@@ -1213,8 +1213,9 @@
         <button class="go" style="background:var(--red)" title="Can't clean this room right now" onclick="cannotStart('${r.room}')">Can't start</button>
         ${voiceBtn(r)}${plus(r)}${blockedNote(r)}${note(r)}</div>`;
     };
-    const urgentFirst=(a,b)=>((b.urgent?1:0)-(a.urgent?1:0))||((+a.room||0)-(+b.room||0));
-    pending.sort(urgentFirst); inprog.sort(urgentFirst);
+    // Housekeeper sees rooms strictly lowest room number → highest (urgent rooms keep their red badge but stay in numeric order).
+    const byRoom=(a,b)=>((+a.room||0)-(+b.room||0))||String(a.room).localeCompare(String(b.room));
+    pending.sort(byRoom); inprog.sort(byRoom); doneMine.sort(byRoom); unassigned.sort(byRoom);
     const myAvg=doneMine.length?Math.round(doneMine.reduce((a,r)=>a+(r.durationSec||0)/60,0)/doneMine.length):0;
     const left=pending.length+inprog.length;
     const rated=starsFor(ME.id);
