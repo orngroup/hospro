@@ -299,7 +299,7 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         <div class="bigcard" id="card-directory" onclick="showSection('directory')"><div class="bc-banner"><div class="bc-t">HosSTAFF</div><div class="bc-s">By department · phone numbers</div></div></div>
         <div class="bigcard" id="card-hostv" onclick="showSection('hostv')"><div class="bc-n" id="bc-tv-n">0%</div><div class="bc-banner"><div class="bc-t">HosTV 🔒</div><div class="bc-s">Bedroom TV audit</div></div></div>
         <div class="bigcard" id="card-priority" onclick="showSection('priority')"><div class="bc-banner"><div class="bc-t">HosPRIORITY 🔒</div><div class="bc-s">Flag rooms · alert housekeeping</div></div></div>
-        <div class="bigcard" id="card-night" onclick="showSection('night')"><div class="bc-banner"><div class="bc-t">HosNIGHT 🔒</div><div class="bc-s">Night porter log &amp; rounds</div></div></div>
+        <div class="bigcard" id="card-night" onclick="showSection('notes')"><div class="bc-banner"><div class="bc-t">HosNOTES</div><div class="bc-s">Reception notes board</div></div></div>
       </div>
 
       <div class="dash" style="margin-top:18px">
@@ -429,7 +429,30 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
           <button class="btn btn-go" style="margin-top:14px;background:#2a6a4a" onclick="hSubmit()">🔄 Save handover →</button>
         </div>
       </div>
-      <div class="pane-list"><div class="sechd" style="margin-top:0">Recent handovers</div><div id="h-list"></div></div>
+      <div class="pane-list">
+        <div class="sechd" style="margin-top:0">Shift Checklists</div>
+        <div class="muted" style="font-size:12px;margin-bottom:10px">Pick the shift, then tick each task off for the day — it records your initials and the time.</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <button type="button" onclick="clWeek(-1)" style="background:#f3f5f8;border:1px solid var(--line);color:var(--navy);border-radius:9px;padding:8px 11px;font:700 13px Lato;cursor:pointer">← Prev</button>
+          <div style="flex:1;text-align:center;font:800 14px Lato;color:var(--navy)" id="sc-wk"></div>
+          <button type="button" onclick="clWeek(1)" style="background:#f3f5f8;border:1px solid var(--line);color:var(--navy);border-radius:9px;padding:8px 11px;font:700 13px Lato;cursor:pointer">Next →</button>
+        </div>
+        <div id="sc-shiftsel" style="display:flex;gap:7px;margin-bottom:12px"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <label class="fl" style="margin:0">Your initials</label>
+          <input id="sc-ini" type="text" maxlength="4" placeholder="e.g. MU" style="text-transform:uppercase;width:120px" oninput="clIni(this.value)">
+        </div>
+        <div id="sc-gridttl" class="sechd" style="margin:4px 0 6px">Checklist</div>
+        <div class="scroll" style="overflow-x:auto;border:1px solid var(--line);border-radius:12px"><table id="sc-grid" style="border-collapse:collapse;width:100%;min-width:660px"></table></div>
+        <div class="sechd" style="margin:16px 0 6px">Checklist notes</div>
+        <div style="display:flex;gap:8px">
+          <input id="sc-note" type="text" placeholder="Add a note…" onkeydown="if(event.key==='Enter')clAddNote('shift')" style="flex:1">
+          <button type="button" onclick="clAddNote('shift')" style="background:#312e81;color:#fff;border:none;border-radius:10px;padding:0 16px;font:800 14px Lato;cursor:pointer">Add</button>
+        </div>
+        <div id="sc-notes" style="margin-top:10px"></div>
+        <div class="sechd" style="margin:18px 0 6px">Recent handovers</div>
+        <div id="h-list"></div>
+      </div>
     </div>
 
     <!-- Room Check: search a room → its cleaning record for the last 7 days -->
@@ -471,7 +494,9 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
             <div style="min-width:90px;text-align:right"><div style="font:900 20px Lato;color:#b06a00" id="tv-sum-part">0</div><div class="muted" style="font-size:12px">in progress</div></div>
           </div>
           <div style="height:9px;background:#e8edf2;border-radius:6px;overflow:hidden;margin:10px 0 2px"><div id="tv-bar" style="height:100%;width:0;background:#0f766e;transition:width .3s"></div></div>
-          <label class="fl" style="margin-top:12px">Find a room</label>
+          <div style="font:800 11px Lato;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:14px 0 7px">Breakdown — rooms passing each check</div>
+          <div id="tv-breakdown" style="display:grid;grid-template-columns:1fr 1fr;gap:7px"></div>
+          <label class="fl" style="margin-top:14px">Find a room</label>
           <input id="tv-search" type="text" inputmode="numeric" placeholder="Room number…" oninput="tvRender()">
           <label class="fl" style="margin-top:12px">Show</label>
           <select id="tv-filter" onchange="tvRender()">
@@ -509,25 +534,30 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
       <div class="pane-list"><div class="sechd" style="margin-top:0">Pick rooms</div><input id="prio-search" type="text" inputmode="numeric" placeholder="Jump to a room…" oninput="prioRender()" style="margin-bottom:10px"><div id="prio-grid"></div></div>
     </div>
 
-    <!-- HosNIGHT: night porter rounds + notes log -->
-    <div class="pane" id="pane-night">
+    <!-- HosNOTES: reception notes board — leave a note for everyone or a specific person -->
+    <div class="pane" id="pane-notes">
       <div class="pane-form">
         <div class="card">
-          <div style="font:800 13px Lato;color:#312e81;margin-bottom:6px">🌙 Night porter log</div>
-          <div class="muted" style="font-size:12px;margin-bottom:10px" id="night-dateline">Tonight</div>
-          <label class="fl">Night porter on duty</label>
-          <input id="night-porter" type="text" placeholder="Your name" oninput="nightSaveMeta()">
-          <div class="sechd" style="margin:14px 0 6px">Evening security rounds</div>
-          <div id="night-rounds"></div>
-          <div class="sechd" style="margin:16px 0 6px">Notes · comments · issues</div>
-          <div style="display:flex;gap:8px">
-            <input id="night-note" type="text" placeholder="Add a note or issue…" onkeydown="if(event.key==='Enter')nightAddNote()" style="flex:1">
-            <button type="button" onclick="nightAddNote()" style="background:#312e81;color:#fff;border:none;border-radius:10px;padding:0 16px;font:800 14px Lato;cursor:pointer">Add</button>
-          </div>
-          <div id="night-notes" style="margin-top:10px"></div>
+          <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:4px">📝 Leave a note</div>
+          <div class="muted" style="font-size:12px;margin-bottom:12px">A quick message board for the reception team — leave a note for everyone, or for one person. Anyone can read it and mark it done.</div>
+          <label class="fl">From</label>
+          <select id="nt-from"><option value="">Select…</option></select>
+          <label class="fl" style="margin-top:12px">To</label>
+          <select id="nt-to"><option value="Everyone">👥 Everyone</option></select>
+          <label class="fl" style="margin-top:12px">Note</label>
+          <textarea id="nt-text" rows="3" placeholder="e.g. Room 212 VIP arriving late — please leave a welcome card at the desk"></textarea>
+          <label style="display:flex;align-items:center;gap:8px;margin:10px 0;font-size:13px;cursor:pointer"><input type="checkbox" id="nt-imp" style="width:18px;height:18px"> ⚑ Important / needs action</label>
+          <div id="nt-msg" style="font-size:12px;min-height:14px;margin-bottom:6px"></div>
+          <button class="btn btn-go" style="margin-top:2px;background:#1a2b3a" onclick="notesPost()">📝 Post note →</button>
         </div>
       </div>
-      <div class="pane-list"><div class="sechd" style="margin-top:0">Recent nights</div><div id="night-history"></div></div>
+      <div class="pane-list">
+        <div style="display:flex;align-items:center;gap:8px;margin-top:0;margin-bottom:10px">
+          <div class="sechd" style="margin:0;flex:1">Reception notes</div>
+          <select id="nt-filter" onchange="notesRenderNow()" style="width:auto;padding:7px 10px;font-size:13px"><option value="open">Open</option><option value="all">All</option><option value="done">Done</option></select>
+        </div>
+        <div id="nt-list"><div class="muted" style="padding:10px 2px">Loading…</div></div>
+      </div>
     </div>
   </div>
 
@@ -797,26 +827,26 @@ async function startBoard(){
 function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } if(H_UNSUB){ H_UNSUB(); H_UNSUB=null; } stopVD(); B_READY=false; M_READY=false; }
 function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l])=>`<button class="chip ${B_FILTER===ff?'on':''}" onclick="bSetFilter('${ff}')">${l}</button>`).join(''); bRender(); }
 // Maintenance and Shift Handover are gated by a staff code (remove a name from GATED to open that section to all).
-const SECTIONS=['requests','deliveries','maintenance','handover','roomcheck','directory','hostv','priority','night'];
-const GATED={maintenance:true, handover:true, roomcheck:true, hostv:true, priority:true, night:true};
+const SECTIONS=['requests','deliveries','maintenance','handover','roomcheck','directory','hostv','priority','notes'];
+const GATED={maintenance:true, handover:true, roomcheck:true, hostv:true, priority:true};
 const UNLOCKED={};
 let GATE_TARGET=null;
-const GATE_LABELS={maintenance:{t:'HosFIX — staff code', s:'Enter the code to open the maintenance log.'}, handover:{t:'HosSHIFT — staff code', s:'Enter the code to open the shift handover.'}, roomcheck:{t:'HosROOM — staff code', s:'Enter the code to open Room Check.'}, directory:{t:'HosSTAFF — staff code', s:'Enter the code to open the staff directory.'}, priority:{t:'HosPRIORITY — staff code', s:'Enter the code to flag priority rooms.'}, hostv:{t:'HosTV — staff code', s:'Enter the code to open the TV audit.'}, night:{t:'HosNIGHT — staff code', s:'Enter the code to open the night porter log.'}};
+const GATE_LABELS={maintenance:{t:'HosFIX — staff code', s:'Enter the code to open the maintenance log.'}, handover:{t:'HosSHIFT — staff code', s:'Enter the code to open the shift handover.'}, roomcheck:{t:'HosROOM — staff code', s:'Enter the code to open Room Check.'}, directory:{t:'HosSTAFF — staff code', s:'Enter the code to open the staff directory.'}, priority:{t:'HosPRIORITY — staff code', s:'Enter the code to flag priority rooms.'}, hostv:{t:'HosTV — staff code', s:'Enter the code to open the TV audit.'}};
 function openCodeGate(target){ GATE_TARGET=target||'maintenance'; const lab=GATE_LABELS[GATE_TARGET]||{t:'Staff code',s:'Enter the code to open this section.'}; const tt=$('cg-title'); if(tt) tt.textContent=lab.t; const sb=$('cg-sub'); if(sb) sb.textContent=lab.s; const i=$('cg-in'); if(i) i.value=''; const e=$('cg-err'); if(e) e.textContent=''; $('ovl-code').classList.add('on'); setTimeout(()=>{ try{ $('cg-in').focus(); }catch(e){} },80); }
 function closeCodeGate(){ $('ovl-code').classList.remove('on'); }
 function checkCode(){ const v=($('cg-in').value||'').trim(); if(v==='3132'){ const t=GATE_TARGET; if(t) UNLOCKED[t]=true; closeCodeGate(); showSection(t); } else { $('cg-err').textContent='Incorrect code — try again'; $('cg-in').value=''; try{ $('cg-in').focus(); }catch(e){} } }
 function openFire(){ $('ovl-fire').classList.add('on'); }
 function closeFire(){ $('ovl-fire').classList.remove('on'); }
 // Tap a big card → that section takes over the whole page. goHome() returns to the cards.
-const SEC_TITLES={requests:'🧹 HosGUEST — Guest requests', deliveries:'📦 HosPARCEL — Deliveries', maintenance:'🔧 HosFIX — Maintenance', handover:'🔄 HosSHIFT — Handover', roomcheck:'🔍 HosROOM — Room check', directory:'📇 HosSTAFF — Directory', hostv:'📺 HosTV — TV audit', priority:'⚡ HosPRIORITY', night:'🌙 HosNIGHT — Night porter'};
+const SEC_TITLES={requests:'🧹 HosGUEST — Guest requests', deliveries:'📦 HosPARCEL — Deliveries', maintenance:'🔧 HosFIX — Maintenance', handover:'🔄 HosSHIFT — Handover', roomcheck:'🔍 HosROOM — Room check', directory:'📇 HosSTAFF — Directory', hostv:'📺 HosTV — TV audit', priority:'⚡ HosPRIORITY', notes:'📝 HosNOTES — Reception notes'};
 function showSection(x){
   if(GATED[x] && !UNLOCKED[x]){ openCodeGate(x); return; }
-  if(x==='handover'){ try{ hBuildChecks(); hRenderItems(); const dt=$('h-date'); if(dt && !dt.value) dt.value=todayISO(); }catch(e){} }
+  if(x==='handover'){ try{ hBuildChecks(); hRenderItems(); const dt=$('h-date'); if(dt && !dt.value) dt.value=todayISO(); clInit(); }catch(e){} }
   if(x==='directory'){ try{ dirInit(); }catch(e){} }
   if(x==='roomcheck'){ try{ const r=$('rc-room'); if(r){ r.value=''; setTimeout(()=>r.focus(),60); } }catch(e){} }
   if(x==='hostv'){ try{ tvInit(); }catch(e){} }
   if(x==='priority'){ try{ prioInit(); }catch(e){} }
-  if(x==='night'){ try{ nightInit(); }catch(e){} }
+  if(x==='notes'){ try{ notesInit(); }catch(e){} }
   SECTIONS.forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.toggle('on', s===x); });
   const home=$('hd-home'); if(home) home.classList.add('hide');
   const t=$('hd-sec-title'); if(t) t.textContent=SEC_TITLES[x]||'';
@@ -1091,64 +1121,192 @@ async function prioSubmit(){
   PRIO_SEL={}; prioRender(); prioSelInfo();
 }
 
-/* ===================== HosNIGHT — night porter rounds + notes ===================== */
-const NIGHT_ROUNDS=['Round 1 — Building & fire exits','Round 2 — Public areas & bar','Round 3 — Perimeter & car park'];
-let NIGHT_DOC=null, NIGHT_READY=false;
-function nightBlank(date){ return { date:date, porter:'', rounds:NIGHT_ROUNDS.map(()=>({done:false,at:'',by:'',note:''})), notes:[], updatedAt:'' }; }
-function nightInit(){
-  const date=todayISO();
-  if(!NIGHT_DOC || NIGHT_DOC.date!==date) NIGHT_DOC=nightBlank(date);
-  const dl=$('night-dateline'); if(dl){ try{ dl.textContent='Night of '+new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); }catch(e){ dl.textContent=date; } }
-  $('night-porter').value=NIGHT_DOC.porter||'';
-  nightRenderRounds(); nightRenderNotes();
-  if(db){ db.collection('hosnight_logs').doc(date).get().then(s=>{ if(s.exists){ const d=s.data()||{}; NIGHT_DOC={ date:date, porter:d.porter||'', rounds:(Array.isArray(d.rounds)&&d.rounds.length===3)?d.rounds:nightBlank(date).rounds, notes:Array.isArray(d.notes)?d.notes:[], updatedAt:d.updatedAt||'' }; $('night-porter').value=NIGHT_DOC.porter||''; nightRenderRounds(); nightRenderNotes(); } }).catch(()=>{}); nightHistory(); }
-}
-function nightRenderRounds(){
-  const wrap=$('night-rounds'); if(!wrap) return;
-  wrap.innerHTML=NIGHT_ROUNDS.map((lab,i)=>{ const r=NIGHT_DOC.rounds[i]||{}; const on=r.done;
-    return '<div style="border:1px solid '+(on?'#bfe3cd':'var(--line)')+';background:'+(on?'#e8f6ee':'#fff')+';border-radius:12px;padding:12px;margin-bottom:9px">'
-      +'<div style="display:flex;align-items:center;gap:11px">'
-      +'<button type="button" onclick="nightTick('+i+')" style="width:30px;height:30px;border-radius:9px;border:2px solid '+(on?'#1d7a4d':'#c3cad3')+';background:'+(on?'#1d7a4d':'#fff')+';color:#fff;font-weight:900;font-size:16px;cursor:pointer;flex:0 0 auto">'+(on?'✓':'')+'</button>'
-      +'<div style="flex:1"><div style="font:800 13.5px Lato;color:var(--navy)">'+esc(lab)+'</div>'+(on&&r.at?'<div class="muted" style="font-size:11px">done '+esc(r.at)+(r.by?(' · '+esc(r.by)):'')+'</div>':'<div class="muted" style="font-size:11px">not done yet</div>')+'</div>'
-      +'</div>'
-      +'<input type="text" value="'+esc(r.note||'')+'" placeholder="Note for this round (optional)" onchange="nightRoundNote('+i+',this.value)" style="width:100%;margin-top:8px;padding:8px 10px;border:1px solid #dde3ea;border-radius:8px;font-size:12.5px">'
-      +'</div>';
-  }).join('');
-}
-function nightRenderNotes(){
-  const wrap=$('night-notes'); if(!wrap) return;
-  const ns=NIGHT_DOC.notes||[];
-  if(!ns.length){ wrap.innerHTML='<div class="muted" style="font-size:12px">No notes yet tonight.</div>'; return; }
-  wrap.innerHTML=ns.slice().reverse().map(n=>'<div style="border-left:3px solid #312e81;background:#f7f8fc;border-radius:6px;padding:8px 11px;margin-bottom:7px"><div style="font-size:13px">'+esc(n.text)+'</div><div class="muted" style="font-size:11px;margin-top:2px">'+esc(n.at||'')+(n.by?(' · '+esc(n.by)):'')+'</div></div>').join('');
-}
-function nightTick(i){
-  const r=NIGHT_DOC.rounds[i]; if(!r) return; r.done=!r.done;
-  if(r.done){ r.at=nightNow(); r.by=($('night-porter').value||'').trim(); } else { r.at=''; r.by=''; }
-  nightRenderRounds(); nightSave();
-}
-function nightRoundNote(i,v){ if(NIGHT_DOC.rounds[i]){ NIGHT_DOC.rounds[i].note=(v||'').trim(); nightSave(); } }
-function nightSaveMeta(){ NIGHT_DOC.porter=($('night-porter').value||'').trim(); nightSave(); }
-function nightAddNote(){
-  const el=$('night-note'); const t=(el.value||'').trim(); if(!t) return;
-  NIGHT_DOC.notes.push({ text:t, at:nightNow(), by:($('night-porter').value||'').trim() });
-  el.value=''; nightRenderNotes(); nightSave();
-}
-function nightNow(){ try{ return new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
-let _nightT=null;
-function nightSave(){ if(!db) return; NIGHT_DOC.updatedAt=new Date().toISOString(); clearTimeout(_nightT); _nightT=setTimeout(()=>{ db.collection('hosnight_logs').doc(NIGHT_DOC.date).set(NIGHT_DOC,{merge:true}).catch(()=>{}); },500); }
-async function nightHistory(){
-  const wrap=$('night-history'); if(!wrap || !db) return;
+/* ===================== Shift Checklists — Early / Late / Night, weekly ===================== */
+const CL_EARLY=[
+ 'Receive handover from the night shift and read the handover sheet',
+ 'Put music on',
+ 'Print the actual residents report when starting your shift; add live-in staff manually on the report',
+ 'Sort departing balances',
+ 'Allocate today’s arrivals before 9am; check for requests, record them on the handover and inform housekeeping',
+ 'Ask guests how their stay was at check-out; if happy, ask for a Tripadvisor or Booking.com review',
+ 'At 11:20 check all rooms have checked out; if not, call the room — no answer, ask HK to check',
+ 'Record everything, however small, on the handover',
+ 'Check future 3-day arrivals via Guestline (upper floor, quiet room, pet-friendly, rooms together, extra bed, special occasion); allocate if needed & untick allow-moves',
+ 'Call back all the missed calls',
+ 'Check all GDS bookings — if there is an allowance, add a note on Guestline',
+ 'Prepare all the key cards and reg cards for today’s arrivals',
+ 'Booking.com & Expedia — respond to reviews/requests, note requests on Guestline; check kids going to executive rooms, add extra bed from upsell inventory',
+ 'Check and deal with emails and tick them; scroll to past days — all emails must be done',
+ 'Inform the afternoon shift what went on via the handover sheet',
+ 'Take a picture and send on Reception chat'
+];
+const CL_LATE=[
+ 'Receive handover from the early shift + read the handover sheet',
+ 'Print the actual residents list first thing when starting your shift',
+ 'Double-check arriving bookings (requests, payments) and allocate new ones accordingly',
+ 'Check all GDS bookings — if there is an allowance, add a note on Guestline',
+ 'Call back all the missed calls',
+ 'Give kitchen, bar and restaurant the DBB list, allowance list and res diary — printed by 5pm',
+ 'Give kitchen the special yes / maybe / no dinner list — one at 17:45 and one at 20:00',
+ 'Check future 3-day arrivals via Guestline (upper floor, quiet room, pet-friendly, rooms together, extra bed, special occasion); allocate if needed & untick allow-moves',
+ 'When taking a payment / pre-authorisation, attach the PDQ receipt to the registration card',
+ 'Booking.com & Expedia — respond to queries/requests; record key details (birthdays, weddings, pets, rooms together) on handover + private notes',
+ 'Fill reg-card details into the respective booking; if unfinished, leave the rest and ask the nights team to complete',
+ 'Reply to Booking.com and Expedia reviews',
+ 'Check and deal with emails and tick them; scroll to past emails — all must be done',
+ 'On finishing: print the operator shift, close PDQ shifts, staple PDQ reports to the operator shift and file in today’s folder',
+ 'Take a picture and send on Reception chat'
+];
+const CL_NIGHT=[
+ 'Receive handover from the late shift + read the handover sheet',
+ 'Print fire reports first thing when starting your shift',
+ 'Double-check late arriving bookings (requests, payments) and allocate new ones + print reg cards for late arrivals',
+ 'When taking a payment / pre-authorisation, attach the PDQ receipt to the invoice',
+ 'Clean the bar, clear and wipe the tables after bar staff have left, and sweep the floor',
+ 'Fill reg-card details into the respective booking if not completed by the late shift',
+ 'File any reg cards except following-day departures',
+ '1st fire walk at around 01:00',
+ 'Mark no-shows, check them in with a NO SHOW note, place reg cards aside and inform the early shift',
+ 'Clean the coffee machine (Thursday and Sunday)',
+ '2nd fire walk between 04:00 and 05:00',
+ 'Replenish the water and cups at reception',
+ 'Take a picture and send on Reception chat'
+];
+const CL_SHIFTS=[
+ {key:'early', label:'☀️ Early', title:'☀️ Early Shift Checklist', col:'#b06a00', tasks:CL_EARLY},
+ {key:'late',  label:'🌆 Late',  title:'🌆 Late Shift Checklist',  col:'#312e81', tasks:CL_LATE},
+ {key:'night', label:'🌙 Night', title:'🌙 Night Shift Checklist', col:'#1a2b3a', tasks:CL_NIGHT}
+];
+function clShiftDef(k){ return CL_SHIFTS.find(function(s){return s.key===k;})||CL_SHIFTS[0]; }
+let CL_WK=0, CL_DOC=null, CL_INI='', CL_SHIFT='';
+function clDefaultShift(){ try{ var h=new Date().getHours(); return h<14?'early':(h<22?'late':'night'); }catch(e){ return 'early'; } }
+function clMonday(off){ var t=new Date(), d=new Date(t); d.setDate(t.getDate()-((t.getDay()||7)-1)+off*7); d.setHours(12,0,0,0); return d; }
+function clDK(d){ return d.toLocaleDateString('en-CA'); }
+function clWeekDates(off){ var m=clMonday(off); return Array.from({length:7},function(_,i){var x=new Date(m);x.setDate(m.getDate()+i);return x;}); }
+function clWkKey(off){ return clDK(clMonday(off)); }
+function clWkLabel(off){ var ds=clWeekDates(off); return 'w/c '+ds[0].toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }
+function clNow(){ try{ return new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function clInit(){ try{ CL_INI=localStorage.getItem('hosnight_ini')||''; }catch(e){} var b=$('sc-ini'); if(b)b.value=CL_INI; if(!CL_SHIFT) CL_SHIFT=clDefaultShift(); if(CL_DOC && CL_DOC.week===clWkKey(CL_WK)){ clRenderAll(); } else { clLoad(); } }
+function clIni(v){ CL_INI=(v||'').trim().toUpperCase(); try{ localStorage.setItem('hosnight_ini',CL_INI); }catch(e){} var b=$('sc-ini'); if(b&&b.value!==CL_INI)b.value=CL_INI; }
+function clSetShift(k){ CL_SHIFT=k; clRenderAll(); }
+async function clLoad(){
+  var wk=clWkKey(CL_WK);
+  CL_DOC={ week:wk, weekLabel:clWkLabel(CL_WK), grid:{}, notes:[] };
+  clRenderAll();
+  if(!db) return;
   try{
-    const days=[]; const d=new Date(); for(let i=1;i<=5;i++){ const x=new Date(d); x.setDate(d.getDate()-i); days.push(x.toLocaleDateString('en-CA')); }
-    const snaps=await Promise.all(days.map(dk=>db.collection('hosnight_logs').doc(dk).get()));
-    let html='';
-    snaps.forEach((s,i)=>{ if(s.exists){ const v=s.data()||{}; const done=(v.rounds||[]).filter(r=>r.done).length; const nn=(v.notes||[]).length;
-      let lab=days[i]; try{ lab=new Date(days[i]+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }catch(e){}
-      html+='<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:11px 13px"><div style="flex:1"><div style="font:800 13px Lato;color:var(--navy)">'+esc(lab)+'</div><div class="muted" style="font-size:11px">'+(v.porter?esc(v.porter):'—')+'</div></div><span style="background:#e8f6ee;color:#1d7a4d;border-radius:999px;padding:3px 9px;font:800 11px Lato">'+done+'/3 rounds</span>'+(nn?'<span style="background:#eef1f5;color:#44525f;border-radius:999px;padding:3px 9px;font:800 11px Lato">'+nn+' note'+(nn>1?'s':'')+'</span>':'')+'</div>';
-    }});
-    wrap.innerHTML=html||'<div class="muted" style="font-size:12px">No earlier nights logged.</div>';
+    var s=await db.collection('hosnight_logs').doc('wk_'+wk).get();
+    if(s.exists){ var d=s.data()||{}; CL_DOC={ week:wk, weekLabel:CL_DOC.weekLabel, grid:(d.grid&&typeof d.grid==='object')?d.grid:{}, notes:Array.isArray(d.notes)?d.notes:[] }; }
+    clRenderAll();
   }catch(e){}
 }
+function clWeek(n){ CL_WK+=n; clLoad(); }
+function clRenderShiftSel(){
+  var el=$('sc-shiftsel'); if(!el) return;
+  el.innerHTML=CL_SHIFTS.map(function(s){ var on=(s.key===CL_SHIFT);
+    return '<button type="button" onclick="clSetShift(\''+s.key+'\')" style="flex:1;border-radius:10px;padding:9px 6px;font:800 13px Lato;cursor:pointer;border:1px solid '+(on?s.col:'var(--line)')+';background:'+(on?s.col:'#f3f5f8')+';color:'+(on?'#fff':'var(--navy)')+'">'+s.label+'</button>';
+  }).join('');
+}
+function clRenderAll(){
+  if(!CL_SHIFT) CL_SHIFT=clDefaultShift();
+  if($('sc-wk')) $('sc-wk').textContent=clWkLabel(CL_WK);
+  clRenderShiftSel();
+  if($('sc-grid')) clGrid('sc-grid','sc-gridttl',clShiftDef(CL_SHIFT));
+  if($('sc-notes')) clNotes('sc-notes');
+}
+function clGrid(tableId,titleId,shift){
+  var tbl=$(tableId); if(!tbl) return;
+  var ds=clWeekDates(CL_WK), tasks=shift.tasks, sk=shift.key;
+  var head='<tr><th style="position:sticky;left:0;background:#f5f7f9;z-index:3;text-align:left;min-width:220px;padding:8px 10px;border-bottom:1px solid var(--line);font:800 12px Lato;color:var(--navy)">Task</th>'+
+    ds.map(function(d){return '<th style="background:#f5f7f9;padding:8px 6px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);font:800 12px Lato;color:var(--navy);min-width:60px">'+d.toLocaleDateString('en-GB',{weekday:'short'})+'<br><span style="font-weight:400;color:var(--muted)">'+d.getDate()+'</span></th>';}).join('')+'</tr>';
+  var t=$(titleId); if(t) t.textContent=shift.title+' · '+clWkLabel(CL_WK);
+  var body=tasks.map(function(task,ti){
+    var cells=ds.map(function(d){ var k=clDK(d), key=sk+'_'+ti+'__'+k, c=CL_DOC.grid[key], on=c&&c.done;
+      return '<td onclick="clCell('+ti+',\''+k+'\')" style="border-left:1px solid var(--line);border-bottom:1px solid #eef1f4;text-align:center;cursor:pointer;background:'+(on?'#e8f6ee':'#fff')+';font:800 12px Lato;color:#1d7a4d;height:40px;vertical-align:middle">'+(on?esc(c.by||'✓'):'')+'</td>';
+    }).join('');
+    return '<tr><td style="position:sticky;left:0;background:#fff;z-index:2;text-align:left;padding:7px 10px;border-bottom:1px solid #eef1f4;font-size:11.5px;line-height:1.3;color:#223"><b style="color:'+shift.col+'">'+(ti+1)+'.</b> '+esc(task)+'</td>'+cells+'</tr>';
+  }).join('');
+  tbl.innerHTML=head+body;
+}
+function clCell(ti, dk){
+  if(!CL_INI){ var el=$('sc-ini'); try{ el.focus(); }catch(e){} if(typeof toast==='function') toast('Enter your initials first'); return; }
+  var key=CL_SHIFT+'_'+ti+'__'+dk, c=CL_DOC.grid[key];
+  if(c&&c.done){ delete CL_DOC.grid[key]; } else { CL_DOC.grid[key]={done:true, by:CL_INI, at:clNow()}; }
+  clRenderAll(); clSave();
+}
+function clNotes(wrapId){
+  var wrap=$(wrapId); if(!wrap) return; var ns=CL_DOC.notes||[];
+  if(!ns.length){ wrap.innerHTML='<div class="muted" style="font-size:12px">No notes this week.</div>'; return; }
+  wrap.innerHTML=ns.slice().reverse().map(function(n){return '<div style="border-left:3px solid #312e81;background:#f7f8fc;border-radius:6px;padding:8px 11px;margin-bottom:7px"><div style="font-size:13px">'+esc(n.text)+'</div><div class="muted" style="font-size:11px;margin-top:2px">'+esc(n.at||'')+(n.by?(' · '+esc(n.by)):'')+(n.day?(' · '+esc(n.day)):'')+'</div></div>';}).join('');
+}
+function clAddNote(which){
+  var el=$('sc-note'); if(!el) return; var t=(el.value||'').trim(); if(!t) return;
+  var day=''; try{ day=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric'}); }catch(e){}
+  CL_DOC.notes.push({ text:t, at:clNow(), by:CL_INI, day:day });
+  el.value=''; clRenderAll(); clSave();
+}
+let _clT=null;
+function clSave(){ if(!db||!CL_DOC) return; clearTimeout(_clT); var snap={ week:CL_DOC.week, weekLabel:CL_DOC.weekLabel, grid:CL_DOC.grid, notes:CL_DOC.notes, updatedAt:new Date().toISOString() }; _clT=setTimeout(function(){ db.collection('hosnight_logs').doc('wk_'+CL_DOC.week).set(snap).catch(function(){}); },500); }
+
+/* ===================== HosNOTES — reception notes board ===================== */
+const NT_TEAM=['Patrik','Joy','Alison','Alice','Manjusha','Manju','Alan','Amal','Rowan','Veronica'];
+let NT_ROWS=[], NT_UNSUB=null;
+function notesInit(){
+  var f=$('nt-from'), to=$('nt-to');
+  if(f && f.options.length<=1){ NT_TEAM.forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n; f.appendChild(o); }); var oo=document.createElement('option'); oo.value='Other'; oo.textContent='Other'; f.appendChild(oo); }
+  if(to && to.options.length<=1){ NT_TEAM.forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n; to.appendChild(o); }); }
+  try{ var last=localStorage.getItem('hosnotes_from')||''; if(last && f){ f.value=last; } }catch(e){}
+  if(!db){ $('nt-list').innerHTML='<div class="muted" style="padding:10px 2px">Offline — notes will show when connected.</div>'; return; }
+  if(NT_UNSUB){ try{ NT_UNSUB(); }catch(e){} NT_UNSUB=null; }
+  NT_UNSUB=db.collection('hosnotes').onSnapshot(function(qs){
+    NT_ROWS=[]; qs.forEach(function(d){ var v=d.data()||{}; v._id=d.id; NT_ROWS.push(v); });
+    NT_ROWS.sort(function(a,b){ return String(b.created||'').localeCompare(String(a.created||'')); });
+    notesRenderNow();
+  }, function(){ $('nt-list').innerHTML='<div class="muted" style="padding:10px 2px">Could not load notes — check connection.</div>'; });
+}
+function notesFmt(iso){ if(!iso) return ''; try{ return new Date(iso).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function notesRenderNow(){
+  var wrap=$('nt-list'); if(!wrap) return;
+  var filt=($('nt-filter')&&$('nt-filter').value)||'open';
+  var rows=NT_ROWS.filter(function(r){ if(filt==='open') return !r.done; if(filt==='done') return !!r.done; return true; });
+  if(!rows.length){ wrap.innerHTML='<div class="muted" style="padding:10px 2px">No '+(filt==='done'?'completed ':filt==='open'?'open ':'')+'notes.</div>'; return; }
+  wrap.innerHTML=rows.map(function(r){
+    var toAll=(!r.to||r.to==='Everyone');
+    var toPill='<span style="background:'+(toAll?'#eef1f5':'#e8f1fb')+';color:'+(toAll?'#334':'#1f4e85')+';border-radius:999px;padding:2px 9px;font:800 11px Lato">'+(toAll?'👥 Everyone':('→ '+esc(r.to)))+'</span>';
+    var imp=r.important?'<span style="background:#fde8e8;color:#b3261e;border-radius:999px;padding:2px 9px;font:800 11px Lato;margin-left:6px">⚑ Important</span>':'';
+    var done=r.done;
+    var bar=done?'#9aa7b5':(r.important?'#b3261e':'#1a2b3a');
+    return '<div style="border:1px solid var(--line);border-left:4px solid '+bar+';border-radius:10px;padding:11px 13px;margin-bottom:9px;background:'+(done?'#f7f8f9':'#fff')+'">'+
+      '<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px"><span style="font:800 13px Lato;color:var(--navy)">'+esc(r.from||'—')+'</span>'+toPill+imp+(done?'<span style="margin-left:auto;font:800 11px Lato;color:#1d7a4d">✓ Done</span>':'')+'</div>'+
+      '<div style="font-size:13.5px;line-height:1.4;color:#223;white-space:pre-wrap'+(done?';text-decoration:line-through;color:#8794a1':'')+'">'+esc(r.text||'')+'</div>'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-top:8px">'+
+        '<span class="muted" style="font-size:11px">'+esc(notesFmt(r.created))+(done&&r.doneBy?(' · done by '+esc(r.doneBy)):'')+'</span>'+
+        '<span style="margin-left:auto;display:flex;gap:8px">'+
+          (done?'<button type="button" onclick="notesReopen(\''+r._id+'\')" style="background:#f3f5f8;border:1px solid var(--line);color:var(--navy);border-radius:8px;padding:5px 11px;font:700 12px Lato;cursor:pointer">Reopen</button>':'<button type="button" onclick="notesDone(\''+r._id+'\')" style="background:#1d7a4d;border:none;color:#fff;border-radius:8px;padding:5px 11px;font:700 12px Lato;cursor:pointer">✓ Done</button>')+
+          '<button type="button" onclick="notesDelete(\''+r._id+'\')" style="background:#fff;border:1px solid #e3b9b9;color:#b3261e;border-radius:8px;padding:5px 11px;font:700 12px Lato;cursor:pointer">Delete</button>'+
+        '</span>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+async function notesPost(){
+  var from=($('nt-from').value||'').trim(), to=($('nt-to').value||'Everyone'), text=($('nt-text').value||'').trim(), imp=$('nt-imp').checked;
+  var msg=$('nt-msg');
+  if(!from){ msg.style.color='var(--red)'; msg.textContent='Choose who the note is from.'; return; }
+  if(!text){ msg.style.color='var(--red)'; msg.textContent='Write a note first.'; return; }
+  if(!db){ msg.style.color='var(--red)'; msg.textContent='Offline — try again when connected.'; return; }
+  msg.style.color='var(--muted)'; msg.textContent='Posting…';
+  try{ localStorage.setItem('hosnotes_from',from); }catch(e){}
+  try{
+    await db.collection('hosnotes').add({ from:from, to:to, text:text, important:!!imp, done:false, created:new Date().toISOString() });
+    $('nt-text').value=''; $('nt-imp').checked=false;
+    msg.style.color='#1d7a4d'; msg.textContent='✓ Note posted.';
+    setTimeout(function(){ if(msg) msg.textContent=''; },1800);
+  }catch(e){ msg.style.color='var(--red)'; msg.textContent='Could not post — check connection / rules.'; }
+}
+async function notesDone(id){ if(!db) return; try{ await db.collection('hosnotes').doc(id).set({done:true, doneBy:(CL_INI||''), doneAt:new Date().toISOString()},{merge:true}); }catch(e){} }
+async function notesReopen(id){ if(!db) return; try{ await db.collection('hosnotes').doc(id).set({done:false},{merge:true}); }catch(e){} }
+async function notesDelete(id){ if(!db) return; if(!confirm('Delete this note?')) return; try{ await db.collection('hosnotes').doc(id).delete(); }catch(e){} }
 
 /* ===================== Room Check — last 7 days of a room's cleaning record ===================== */
 function rcDateList(){ const out=[]; const d=new Date(); for(let i=0;i<3;i++){ const x=new Date(d); x.setDate(d.getDate()-i); out.push(x.toLocaleDateString('en-CA')); } return out; }
@@ -1315,6 +1473,21 @@ function tvRender(){
   $('tv-sum-part').textContent=part;
   $('tv-bar').style.width=(total?Math.round(done/total*100):0)+'%';
   const bn=$('bc-tv-n'); if(bn) bn.textContent=(total?Math.round(done/total*100):0)+'%';
+  // Per-check breakdown — how many rooms pass each of the 7 checks
+  const bd=$('tv-breakdown');
+  if(bd){
+    const SHORT=['Terrestrial','Smart TV','Wi-Fi Secure','Wi-Fi Guest','Wi-Fi Staff','Samsung login','Apps working'];
+    bd.innerHTML=TV_KEYS.map((k,i)=>{
+      const n=all.filter(r=>r.checks&&r.checks[i]).length;
+      const pct=total?Math.round(n/total*100):0;
+      const col=pct>=90?'#1d7a4d':pct>=50?'#b06a00':'#b3261e';
+      return '<div style="border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff">'
+        +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font:900 17px Lato;color:'+col+'">'+n+'</span><span class="muted" style="font-size:11px">/ '+total+'</span><span style="margin-left:auto;font:800 11px Lato;color:'+col+'">'+pct+'%</span></div>'
+        +'<div style="font-size:11px;color:var(--navy);font-weight:700;margin-top:1px">'+SHORT[i]+'</div>'
+        +'<div style="height:5px;background:#eef1f4;border-radius:4px;overflow:hidden;margin-top:5px"><div style="height:100%;width:'+pct+'%;background:'+col+'"></div></div>'
+        +'</div>';
+    }).join('');
+  }
   const q=(($('tv-search')&&$('tv-search').value)||'').trim();
   const f=($('tv-filter')&&$('tv-filter').value)||'all';
   let rooms=all;
