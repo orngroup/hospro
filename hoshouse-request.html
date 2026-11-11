@@ -321,6 +321,7 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
 
     <!-- HOME: welcome + three big kiosk cards (tap one to open it full-page) + stats -->
     <div id="hd-home">
+      <div id="home-alert" style="display:none;align-items:center;gap:12px;background:#fde8e8;border:2px solid #b3261e;color:#b3261e;border-radius:14px;padding:12px 16px;margin-top:14px;font-family:Lato;font-size:13.5px;animation:sbflash 1.2s steps(1,end) infinite"></div>
       <div class="home-split">
         <aside class="notice-rail" id="notice-rail">
           <div class="nr-head"><span class="dot"></span>📝 Notes board</div>
@@ -447,10 +448,11 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
           <div style="font:800 15px Lato;color:#1a2b3a;margin-bottom:2px">🕐 Today's shift</div>
           <div class="muted" style="font-size:12px;margin-bottom:12px" id="so-date">—</div>
 
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-            <label class="fl" style="margin:0">Your initials</label>
-            <input id="so-ini" type="text" maxlength="4" placeholder="e.g. AK" style="text-transform:uppercase;width:110px" oninput="clIni(this.value)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap">
+            <label class="fl" style="margin:0">Your name</label>
+            <select id="so-who" onchange="clIni(this.value)" style="flex:1;min-width:150px"><option value="">Select…</option></select>
           </div>
+          <div id="so-shiftnow" class="muted" style="font-size:12px;margin-bottom:12px"></div>
 
           <div style="display:flex;gap:10px">
             <button type="button" id="so-start" onclick="soStamp('start')" style="flex:1;text-align:left;border:1px solid var(--line);background:#f7f8fc;border-radius:12px;padding:10px 12px;cursor:pointer;font-family:Lato"></button>
@@ -458,16 +460,17 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
           </div>
 
           <div class="sechd" style="margin:16px 0 6px">Key tasks — tap to log the time</div>
-          <div class="muted" style="font-size:12px;margin-bottom:10px">Tapping stamps your initials &amp; the time, e.g. <b>AK 07.15am</b>. These feed the Music / Arrivals / Check-Out banners on the home screen.</div>
+          <div class="muted" style="font-size:12px;margin-bottom:10px">Tapping stamps your name &amp; the time, e.g. <b>AK 07.15am</b>. These feed the Music / Arrivals / Check-Out banners on the home screen.</div>
           <div id="so-tasks"></div>
 
           <div class="sechd" style="margin:18px 0 6px">Handover notes</div>
-          <div class="muted" style="font-size:12px;margin-bottom:6px">The running handover for today — saved for the next shift to read.</div>
-          <textarea id="so-handover" rows="7" placeholder="Anything the next shift needs to know — arrivals, VIPs, maintenance, outstanding tasks…" oninput="soDirty()"></textarea>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-            <button class="btn btn-go" style="flex:1;margin:0;background:#2a6a4a" onclick="soSaveHandover()">💾 Save handover</button>
-            <span id="so-hmsg" class="muted" style="font-size:12px;min-width:66px;text-align:right"></span>
+          <div class="muted" style="font-size:12px;margin-bottom:6px">Add as many notes as you like — each is saved separately for the next shift. Notes stay editable after the shift is submitted.</div>
+          <div style="display:flex;gap:8px;align-items:stretch">
+            <textarea id="so-handover" rows="2" placeholder="Add a handover note…" style="flex:1;min-width:0"></textarea>
+            <button type="button" style="flex:0 0 auto;width:auto;margin:0;background:#2a6a4a;color:#fff;border:none;border-radius:11px;padding:0 18px;font:800 14px Lato;cursor:pointer" onclick="soAddNote()">＋ Add</button>
           </div>
+          <div id="so-hmsg" class="muted" style="font-size:12px;min-height:14px;margin-top:4px"></div>
+          <div id="so-hnotes" style="margin-top:8px"></div>
         </div>
       </div>
       <div class="pane-list">
@@ -479,12 +482,13 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
           <button type="button" onclick="clWeek(1)" style="background:#f3f5f8;border:1px solid var(--line);color:var(--navy);border-radius:9px;padding:8px 11px;font:700 13px Lato;cursor:pointer">Next →</button>
         </div>
         <div id="sc-shiftsel" style="display:flex;gap:7px;margin-bottom:12px"></div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <label class="fl" style="margin:0">Your initials</label>
-          <input id="sc-ini" type="text" maxlength="4" placeholder="e.g. MU" style="text-transform:uppercase;width:120px" oninput="clIni(this.value)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <label class="fl" style="margin:0">Your name</label>
+          <select id="sc-who" onchange="clIni(this.value)" style="flex:1;min-width:150px"><option value="">Select…</option></select>
         </div>
         <div id="sc-gridttl" class="sechd" style="margin:4px 0 6px">Checklist</div>
         <div class="scroll" style="overflow-x:auto;border:1px solid var(--line);border-radius:12px"><table id="sc-grid" style="border-collapse:collapse;width:100%;min-width:660px"></table></div>
+        <div id="sc-submitbar" style="margin-top:12px"></div>
         <div class="sechd" style="margin:16px 0 6px">Checklist notes</div>
         <div style="display:flex;gap:8px">
           <input id="sc-note" type="text" placeholder="Add a note…" onkeydown="if(event.key==='Enter')clAddNote('shift')" style="flex:1">
@@ -588,7 +592,10 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
           <label class="fl" style="margin-top:12px">Note</label>
           <textarea id="nt-text" rows="3" placeholder="e.g. Room 212 VIP arriving late — please leave a welcome card at the desk"></textarea>
           <label style="display:flex;align-items:center;gap:8px;margin:10px 0;font-size:13px;cursor:pointer"><input type="checkbox" id="nt-imp" style="width:18px;height:18px"> ⚑ Important / needs action</label>
-          <div id="nt-msg" style="font-size:12px;min-height:14px;margin-bottom:6px"></div>
+          <label class="fl" style="margin-top:4px">Attachments <span style="font-weight:400;text-transform:none;color:#9aa7b5">(photos — optional)</span></label>
+          <input id="nt-file" type="file" accept="image/*" multiple onchange="ntPickFiles(this.files)" style="font-size:13px">
+          <div id="nt-atts" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+          <div id="nt-msg" style="font-size:12px;min-height:14px;margin:6px 0"></div>
           <button class="btn btn-go" style="margin-top:2px;background:#1a2b3a" onclick="notesPost()">📝 Post note →</button>
         </div>
       </div>
@@ -637,6 +644,11 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
       <button onclick="tvClose()" style="width:100%;background:#f3f5f8;border:1px solid var(--line);color:var(--navy);border-radius:11px;padding:11px;font:800 14px Lato;cursor:pointer">Close</button>
     </div>
   </div>
+</div>
+<!-- Image lightbox (HosNOTES attachments) -->
+<div id="img-ov" style="display:none;position:fixed;inset:0;background:rgba(8,12,18,.86);z-index:1400;align-items:center;justify-content:center;padding:20px" onclick="ntCloseLightbox()">
+  <img id="img-ov-img" src="" style="max-width:96%;max-height:92vh;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5)">
+  <button type="button" onclick="ntCloseLightbox()" style="position:absolute;top:16px;right:16px;background:#fff;border:none;border-radius:10px;width:40px;height:40px;font-size:18px;cursor:pointer">✕</button>
 </div>
 <datalist id="staff-list"></datalist>
 <datalist id="supplier-list"></datalist>
@@ -871,8 +883,8 @@ async function startBoard(){
     D_ROWS=JSON.parse(localStorage.getItem('hoshouse_deliveries')||'[]'); renderDeliveries();
     M_ROWS=[]; mRender();
   }
-  try{ soSubscribe(); notesSubscribe(); }catch(e){}
-  try{ renderStatusBanners(); if(!window._sbTimer) window._sbTimer=setInterval(function(){ try{ renderStatusBanners(); }catch(e){} }, 30000); }catch(e){}
+  try{ soSubscribe(); notesSubscribe(); clHomeSubscribe(); }catch(e){}
+  try{ renderStatusBanners(); renderHomeAlert(); if(!window._sbTimer) window._sbTimer=setInterval(function(){ try{ renderStatusBanners(); renderHomeAlert(); }catch(e){} }, 30000); }catch(e){}
   try{ if('Notification' in window && Notification.permission==='default') Notification.requestPermission(); }catch(e){}
   // Unlock sound + ask permission on the first tap (browsers need a gesture for audio)
   try{
@@ -913,7 +925,7 @@ function goHome(){
   SECTIONS.forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.remove('on'); });
   const home=$('hd-home'); if(home) home.classList.remove('hide');
   const bk=$('hd-back'); if(bk) bk.classList.add('hide');
-  try{ renderStatusBanners(); renderNoticeRail(); }catch(e){}
+  try{ renderStatusBanners(); renderNoticeRail(); renderHomeAlert(); }catch(e){}
   window.scrollTo({top:0,behavior:'smooth'});
 }
 // Dashboard tile tapped → open the requests section and switch its filter.
@@ -1230,30 +1242,36 @@ const CL_NIGHT=[
  'Take a picture and send on Reception chat'
 ];
 const CL_SHIFTS=[
- {key:'early', label:'☀️ Early', title:'☀️ Early Shift Checklist', col:'#b06a00', tasks:CL_EARLY},
- {key:'late',  label:'🌆 Late',  title:'🌆 Late Shift Checklist',  col:'#312e81', tasks:CL_LATE},
- {key:'night', label:'🌙 Night', title:'🌙 Night Shift Checklist', col:'#1a2b3a', tasks:CL_NIGHT}
+ {key:'early', label:'☀️ Early', title:'☀️ Early Shift Checklist', col:'#b06a00', tasks:CL_EARLY, start:[7,0],  hours:'7am–3pm'},
+ {key:'late',  label:'🌆 Late',  title:'🌆 Late Shift Checklist',  col:'#312e81', tasks:CL_LATE,  start:[15,0], hours:'3pm–11pm'},
+ {key:'night', label:'🌙 Night', title:'🌙 Night Shift Checklist', col:'#1a2b3a', tasks:CL_NIGHT, start:[23,0], hours:'11pm–7am'}
 ];
+const CL_PEOPLE=['Patrik','Joy','Alison','Alice','Manjusha','Manju','Alan','Amal','Rowan','Veronica'];
 function clShiftDef(k){ return CL_SHIFTS.find(function(s){return s.key===k;})||CL_SHIFTS[0]; }
+function clShiftName(k){ return clShiftDef(k).title.replace(/^[^ ]+ /,''); }
 let CL_WK=0, CL_DOC=null, CL_INI='', CL_SHIFT='';
-function clDefaultShift(){ try{ var h=new Date().getHours(); return h<14?'early':(h<22?'late':'night'); }catch(e){ return 'early'; } }
+function clDefaultShift(){ try{ var h=new Date().getHours(); return (h>=7&&h<15)?'early':(h>=15&&h<23)?'late':'night'; }catch(e){ return 'early'; } }
+function clShiftByTime(){ return clDefaultShift(); }
+function clFillPeople(){ ['sc-who','so-who'].forEach(function(id){ var s=$(id); if(s && s.options.length<=1){ CL_PEOPLE.forEach(function(n){ var o=document.createElement('option'); o.value=n; o.textContent=n; s.appendChild(o); }); } }); }
+function clShort(n){ n=(n||'').trim(); if(!n) return ''; var p=n.split(/\s+/); if(p.length>1) return (p[0].charAt(0)+p[1].charAt(0)).toUpperCase(); return n.length<=7?n:n.slice(0,7); }
 function clMonday(off){ var t=new Date(), d=new Date(t); d.setDate(t.getDate()-((t.getDay()||7)-1)+off*7); d.setHours(12,0,0,0); return d; }
 function clDK(d){ return d.toLocaleDateString('en-CA'); }
 function clWeekDates(off){ var m=clMonday(off); return Array.from({length:7},function(_,i){var x=new Date(m);x.setDate(m.getDate()+i);return x;}); }
 function clWkKey(off){ return clDK(clMonday(off)); }
 function clWkLabel(off){ var ds=clWeekDates(off); return 'w/c '+ds[0].toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }
 function clNow(){ try{ return new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
-function clInit(){ try{ CL_INI=localStorage.getItem('hosnight_ini')||''; }catch(e){} var b=$('sc-ini'); if(b)b.value=CL_INI; if(!CL_SHIFT) CL_SHIFT=clDefaultShift(); if(CL_DOC && CL_DOC.week===clWkKey(CL_WK)){ clRenderAll(); } else { clLoad(); } }
-function clIni(v){ CL_INI=(v||'').trim().toUpperCase(); try{ localStorage.setItem('hosnight_ini',CL_INI); }catch(e){} ['sc-ini','so-ini'].forEach(function(id){ var b=$(id); if(b&&b.value!==CL_INI)b.value=CL_INI; }); }
+function clSubmitted(dk,sk){ return CL_DOC && CL_DOC.submitted && CL_DOC.submitted[dk+'_'+sk]; }
+function clInit(){ clFillPeople(); try{ CL_INI=localStorage.getItem('hosnight_ini')||''; }catch(e){} ['sc-who','so-who'].forEach(function(id){ var b=$(id); if(b)b.value=CL_INI; }); if(!CL_SHIFT) CL_SHIFT=clDefaultShift(); if(CL_DOC && CL_DOC.week===clWkKey(CL_WK)){ clRenderAll(); } else { clLoad(); } }
+function clIni(v){ CL_INI=(v||'').trim(); try{ localStorage.setItem('hosnight_ini',CL_INI); }catch(e){} ['sc-who','so-who'].forEach(function(id){ var b=$(id); if(b&&b.value!==CL_INI)b.value=CL_INI; }); }
 function clSetShift(k){ CL_SHIFT=k; clRenderAll(); }
 async function clLoad(){
   var wk=clWkKey(CL_WK);
-  CL_DOC={ week:wk, weekLabel:clWkLabel(CL_WK), grid:{}, notes:[] };
+  CL_DOC={ week:wk, weekLabel:clWkLabel(CL_WK), grid:{}, notes:[], submitted:{} };
   clRenderAll();
   if(!db) return;
   try{
     var s=await db.collection('hosnight_logs').doc('wk_'+wk).get();
-    if(s.exists){ var d=s.data()||{}; CL_DOC={ week:wk, weekLabel:CL_DOC.weekLabel, grid:(d.grid&&typeof d.grid==='object')?d.grid:{}, notes:Array.isArray(d.notes)?d.notes:[] }; }
+    if(s.exists){ var d=s.data()||{}; CL_DOC={ week:wk, weekLabel:CL_DOC.weekLabel, grid:(d.grid&&typeof d.grid==='object')?d.grid:{}, notes:Array.isArray(d.notes)?d.notes:[], submitted:(d.submitted&&typeof d.submitted==='object')?d.submitted:{} }; }
     clRenderAll();
   }catch(e){}
 }
@@ -1269,7 +1287,33 @@ function clRenderAll(){
   if($('sc-wk')) $('sc-wk').textContent=clWkLabel(CL_WK);
   clRenderShiftSel();
   if($('sc-grid')) clGrid('sc-grid','sc-gridttl',clShiftDef(CL_SHIFT));
+  clRenderSubmit();
   if($('sc-notes')) clNotes('sc-notes');
+  try{ soRender(); }catch(e){}
+}
+function clRenderSubmit(){
+  var el=$('sc-submitbar'); if(!el) return;
+  if(CL_WK!==0){ el.innerHTML='<div class="muted" style="font-size:12px">Submit (end of shift) applies to today only — you\'re viewing another week.</div>'; return; }
+  var tdk=clDK(new Date()), sub=clSubmitted(tdk, CL_SHIFT), nm=clShiftName(CL_SHIFT);
+  if(sub){
+    el.innerHTML='<div style="background:#e8f6ee;border:1px solid #bfe3cd;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font:800 13px Lato;color:#13532f">✓ '+esc(nm)+' submitted</span><span class="muted" style="font-size:12px">by '+esc(sub.by||'')+' · '+esc(sub.at||'')+'</span><button type="button" onclick="clReopen()" style="margin-left:auto;background:#fff;border:1px solid var(--line);color:var(--navy);border-radius:9px;padding:7px 13px;font:700 12px Lato;cursor:pointer">Reopen</button></div><div class="muted" style="font-size:11px;margin-top:6px">Ticks, times &amp; key tasks are locked. Handover notes stay open.</div>';
+  } else {
+    el.innerHTML='<div style="display:flex;gap:10px"><button type="button" onclick="clSaveNow()" style="flex:1;background:#f3f5f8;border:1px solid var(--line);color:var(--navy);border-radius:11px;padding:11px;font:800 13px Lato;cursor:pointer">💾 Save progress</button><button type="button" onclick="clSubmitShift()" style="flex:1;background:#2a6a4a;border:none;color:#fff;border-radius:11px;padding:11px;font:800 13px Lato;cursor:pointer">✓ Submit — end of shift</button></div>';
+  }
+}
+function clSaveNow(){ clSave(true); if(typeof toast==='function') toast('✓ Saved'); var m=$('so-hmsg'); }
+function clSubmitShift(){
+  if(!CL_INI){ var el=$('sc-who'); try{ el.focus(); }catch(e){} if(typeof toast==='function') toast('Select your name first'); return; }
+  if(!confirm('Submit the '+clShiftName(CL_SHIFT)+' for today?\n\nTicks, shift times and key tasks will lock. Handover notes stay editable.')) return;
+  if(!CL_DOC.submitted) CL_DOC.submitted={};
+  CL_DOC.submitted[clDK(new Date())+'_'+CL_SHIFT]={by:CL_INI, at:clNow(), ts:Date.now()};
+  clRenderAll(); clSave(true);
+}
+function clReopen(){
+  if(!CL_DOC || !CL_DOC.submitted) return;
+  if(!confirm('Reopen this shift for editing?')) return;
+  delete CL_DOC.submitted[clDK(new Date())+'_'+CL_SHIFT];
+  clRenderAll(); clSave(true);
 }
 function clGrid(tableId,titleId,shift){
   var tbl=$(tableId); if(!tbl) return;
@@ -1278,15 +1322,19 @@ function clGrid(tableId,titleId,shift){
     ds.map(function(d){return '<th style="background:#f5f7f9;padding:8px 6px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);font:800 12px Lato;color:var(--navy);min-width:60px">'+d.toLocaleDateString('en-GB',{weekday:'short'})+'<br><span style="font-weight:400;color:var(--muted)">'+d.getDate()+'</span></th>';}).join('')+'</tr>';
   var t=$(titleId); if(t) t.textContent=shift.title+' · '+clWkLabel(CL_WK);
   var body=tasks.map(function(task,ti){
-    var cells=ds.map(function(d){ var k=clDK(d), key=sk+'_'+ti+'__'+k, c=CL_DOC.grid[key], on=c&&c.done;
-      return '<td onclick="clCell('+ti+',\''+k+'\')" style="border-left:1px solid var(--line);border-bottom:1px solid #eef1f4;text-align:center;cursor:pointer;background:'+(on?'#e8f6ee':'#fff')+';font:800 12px Lato;color:#1d7a4d;height:40px;vertical-align:middle">'+(on?esc(c.by||'✓'):'')+'</td>';
+    var cells=ds.map(function(d){ var k=clDK(d), key=sk+'_'+ti+'__'+k, c=CL_DOC.grid[key], on=c&&c.done, locked=clSubmitted(k,sk);
+      var inner = on
+        ? ('<div style="font:800 11px Lato;color:#1d7a4d">'+esc(clShort(c.by||'✓'))+'</div>'+(c.at?('<div style="font-size:9px;color:#3f8a63;margin-top:1px">'+esc(c.at)+'</div>'):''))
+        : (locked?'<span style="color:#c3cad3;font-size:11px">–</span>':'');
+      return '<td onclick="clCell('+ti+',\''+k+'\')" style="border-left:1px solid var(--line);border-bottom:1px solid #eef1f4;text-align:center;cursor:'+(locked?'default':'pointer')+';background:'+(on?'#e8f6ee':locked?'#f6f7f9':'#fff')+';height:44px;vertical-align:middle;padding:2px 3px">'+inner+'</td>';
     }).join('');
     return '<tr><td style="position:sticky;left:0;background:#fff;z-index:2;text-align:left;padding:7px 10px;border-bottom:1px solid #eef1f4;font-size:11.5px;line-height:1.3;color:#223"><b style="color:'+shift.col+'">'+(ti+1)+'.</b> '+esc(task)+'</td>'+cells+'</tr>';
   }).join('');
   tbl.innerHTML=head+body;
 }
 function clCell(ti, dk){
-  if(!CL_INI){ var el=$('sc-ini'); try{ el.focus(); }catch(e){} if(typeof toast==='function') toast('Enter your initials first'); return; }
+  if(!CL_INI){ var el=$('sc-who'); try{ el.focus(); }catch(e){} if(typeof toast==='function') toast('Select your name first'); return; }
+  if(clSubmitted(dk, CL_SHIFT)){ if(typeof toast==='function') toast('Shift submitted — tap Reopen to edit'); return; }
   var key=CL_SHIFT+'_'+ti+'__'+dk, c=CL_DOC.grid[key];
   if(c&&c.done){ delete CL_DOC.grid[key]; } else { CL_DOC.grid[key]={done:true, by:CL_INI, at:clNow()}; }
   clRenderAll(); clSave();
@@ -1303,7 +1351,7 @@ function clAddNote(which){
   el.value=''; clRenderAll(); clSave();
 }
 let _clT=null;
-function clSave(){ if(!db||!CL_DOC) return; clearTimeout(_clT); var snap={ week:CL_DOC.week, weekLabel:CL_DOC.weekLabel, grid:CL_DOC.grid, notes:CL_DOC.notes, updatedAt:new Date().toISOString() }; _clT=setTimeout(function(){ db.collection('hosnight_logs').doc('wk_'+CL_DOC.week).set(snap).catch(function(){}); },500); }
+function clSave(now){ if(!db||!CL_DOC) return; clearTimeout(_clT); var snap={ week:CL_DOC.week, weekLabel:CL_DOC.weekLabel, grid:CL_DOC.grid, notes:CL_DOC.notes, submitted:CL_DOC.submitted||{}, updatedAt:new Date().toISOString() }; var go=function(){ db.collection('hosnight_logs').doc('wk_'+CL_DOC.week).set(snap).catch(function(){}); }; if(now){ go(); } else { _clT=setTimeout(go,500); } }
 
 /* ===================== Today's shift ops — stamps + handover + home banners ===================== */
 const SO_TASKS=[
@@ -1332,16 +1380,19 @@ function soSaveDoc(patch){
   SO_MAP[key]=cur; renderStatusBanners(); soRender(); soRenderRecent();
   if(db){ db.collection('hosshift_ops').doc(key).set(cur,{merge:true}).catch(function(){}); }
 }
-function soNeedInitials(){ if(!CL_INI){ var b=$('so-ini'); try{ b.focus(); }catch(e){} if(typeof toast==='function') toast('Enter your initials first'); return true; } return false; }
+function soLocked(){ try{ return !!(CL_DOC && CL_DOC.submitted && CL_DOC.submitted[soDateKey()+'_'+CL_SHIFT]); }catch(e){ return false; } }
+function soNeedWho(){ if(!CL_INI){ var b=$('so-who'); try{ b.focus(); }catch(e){} if(typeof toast==='function') toast('Select your name first'); return true; } return false; }
 function soStamp(which){
-  if(soNeedInitials()) return;
+  if(soLocked()){ if(typeof toast==='function') toast('Shift submitted — reopen to edit'); return; }
+  if(soNeedWho()) return;
   var t=soToday(), cur=t[which], p={};
   if(cur && cur.at){ if(!confirm('Clear the logged '+(which==='start'?'start':'finish')+' time?')) return; p[which]=null; }
   else { p[which]={at:soStampStr(), by:CL_INI, ts:Date.now()}; }
   soSaveDoc(p);
 }
 function soTask(key){
-  if(soNeedInitials()) return;
+  if(soLocked()){ if(typeof toast==='function') toast('Shift submitted — reopen to edit'); return; }
+  if(soNeedWho()) return;
   var t=soToday(), cur=t[key], p={};
   if(cur && cur.at){ if(!confirm('Clear this log?')) return; p[key]=null; }
   else { p[key]={at:soStampStr(), by:CL_INI, ts:Date.now()}; }
@@ -1349,39 +1400,54 @@ function soTask(key){
 }
 function soTimeBtn(which,label){
   var t=soToday(), c=t[which], el=$(which==='start'?'so-start':'so-end'); if(!el) return;
-  if(c && c.at){ el.style.background='#e8f6ee'; el.style.borderColor='#bfe3cd'; el.innerHTML='<div style="font:800 11px Lato;color:#1d7a4d">'+label+'</div><div style="font:900 15px Lato;color:#13532f">'+esc(c.by||'')+' · '+esc(c.at)+'</div>'; }
+  if(c && c.at){ el.style.background='#e8f6ee'; el.style.borderColor='#bfe3cd'; el.innerHTML='<div style="font:800 11px Lato;color:#1d7a4d">'+label+'</div><div style="font:900 14px Lato;color:#13532f">'+esc(c.at)+' · '+esc(c.by||'')+'</div>'; }
   else { el.style.background='#f7f8fc'; el.style.borderColor='var(--line)'; el.innerHTML='<div style="font:800 11px Lato;color:#5b6b7b">'+label+'</div><div style="font:900 14px Lato;color:#1a2b3a">Tap to log</div>'; }
 }
 function soRender(){
   var dd=$('so-date'); if(dd){ try{ dd.textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }catch(e){} }
+  var sn=$('so-shiftnow'); if(sn){ var ksk=clShiftByTime(), ksd=clShiftDef(ksk); sn.innerHTML='On now: <b style="color:'+ksd.col+'">'+esc(clShiftName(ksk))+'</b> ('+ksd.hours+')'; }
+  var locked=soLocked();
   soTimeBtn('start','Shift started'); soTimeBtn('end','Shift finished');
   var wrap=$('so-tasks');
   if(wrap){
     var t=soToday();
     wrap.innerHTML=SO_TASKS.map(function(s){ var c=t[s.key], done=c&&c.at, over=!done && soPast(s.dl);
       var bg=done?'#e8f6ee':over?'#fde8e8':'#f7f8fc', bd=done?'#bfe3cd':over?'#f0b4b0':'var(--line)', cc=done?'#13532f':over?'#b3261e':'#1a2b3a';
-      var right=done?('<span style="font:900 14px Lato;color:#13532f">'+esc(c.by||'')+' '+esc(c.at)+'</span>'):over?('<span style="font:800 12px Lato;color:#b3261e">⚠ overdue</span>'):('<span style="font:800 12px Lato;color:#5b6b7b">tap to log</span>');
-      return '<div onclick="soTask(\''+s.key+'\')" style="display:flex;align-items:center;gap:11px;border:1px solid '+bd+';background:'+bg+';border-radius:12px;padding:12px 13px;margin-bottom:8px;cursor:pointer"><span style="font:900 17px Lato;color:'+cc+'">'+(done?'✓':'○')+'</span><div style="flex:1"><div style="font:800 14px Lato;color:'+cc+'">'+s.label+'</div><div class="muted" style="font-size:11px">by '+s.dltxt+'</div></div>'+right+'</div>';
+      var right=done?('<span style="font:900 13px Lato;color:#13532f;text-align:right">'+esc(c.at)+'<br><span style="font-size:11px">'+esc(c.by||'')+'</span></span>'):over?('<span style="font:800 12px Lato;color:#b3261e">⚠ overdue</span>'):('<span style="font:800 12px Lato;color:#5b6b7b">tap to log</span>');
+      return '<div onclick="soTask(\''+s.key+'\')" style="display:flex;align-items:center;gap:11px;border:1px solid '+bd+';background:'+bg+';border-radius:12px;padding:12px 13px;margin-bottom:8px;cursor:'+(locked?'default':'pointer')+'"><span style="font:900 17px Lato;color:'+cc+'">'+(done?'✓':'○')+'</span><div style="flex:1"><div style="font:800 14px Lato;color:'+cc+'">'+s.label+'</div><div class="muted" style="font-size:11px">by '+s.dltxt+'</div></div>'+right+'</div>';
     }).join('');
   }
-  var ta=$('so-handover'); if(ta && !SO_HDIRTY){ ta.value=soToday().handover||''; }
+  soRenderNotes();
 }
-function soDirty(){ SO_HDIRTY=true; }
-function soSaveHandover(){
-  var ta=$('so-handover'); if(!ta) return; var msg=$('so-hmsg');
-  SO_HDIRTY=false;
-  soSaveDoc({handover:(ta.value||''), handoverBy:CL_INI, handoverAt:new Date().toISOString()});
-  if(msg){ msg.style.color='#1d7a4d'; msg.textContent='✓ Saved'; setTimeout(function(){ if(msg) msg.textContent=''; },1800); }
+function soAddNote(){
+  if(soNeedWho()) return;
+  var ta=$('so-handover'); if(!ta) return; var txt=(ta.value||'').trim(); if(!txt) return;
+  var t=soToday(), notes=Array.isArray(t.handoverNotes)?t.handoverNotes.slice():[];
+  var day=''; try{ day=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric'}); }catch(e){}
+  notes.push({ text:txt, by:CL_INI, at:clNow(), day:day, ts:Date.now() });
+  ta.value=''; soSaveDoc({handoverNotes:notes});
+  var msg=$('so-hmsg'); if(msg){ msg.style.color='#1d7a4d'; msg.textContent='✓ Note added'; setTimeout(function(){ if(msg) msg.textContent=''; },1500); }
+}
+function soDelNote(i){
+  var t=soToday(), notes=Array.isArray(t.handoverNotes)?t.handoverNotes.slice():[];
+  if(i<0||i>=notes.length) return; if(!confirm('Delete this handover note?')) return;
+  notes.splice(i,1); soSaveDoc({handoverNotes:notes});
+}
+function soRenderNotes(){
+  var el=$('so-hnotes'); if(!el) return;
+  var notes=soToday().handoverNotes||[];
+  if(!notes.length){ el.innerHTML='<div class="muted" style="font-size:12px">No handover notes yet today.</div>'; return; }
+  el.innerHTML=notes.map(function(n,i){ return '<div style="border-left:3px solid #2a6a4a;background:#f3f8f4;border-radius:7px;padding:8px 11px;margin-bottom:7px"><div style="font-size:13px;white-space:pre-wrap;color:#223">'+esc(n.text)+'</div><div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span class="muted" style="font-size:11px">'+esc(n.by||'')+(n.at?(' · '+esc(n.at)):'')+'</span><button type="button" onclick="soDelNote('+i+')" style="margin-left:auto;background:none;border:none;color:#b3261e;font-size:11px;cursor:pointer;font-weight:700">Delete</button></div></div>'; }).join('');
 }
 function soRenderRecent(){
   var el=$('h-list'); if(!el) return;
-  var rows=Object.keys(SO_MAP).sort().reverse().map(function(k){ return SO_MAP[k]; }).filter(function(r){ return r && (r.handover||(r.start&&r.start.at)||(r.end&&r.end.at)); });
+  var rows=Object.keys(SO_MAP).sort().reverse().map(function(k){ return SO_MAP[k]; }).filter(function(r){ return r && ((r.handoverNotes&&r.handoverNotes.length)||(r.start&&r.start.at)||(r.end&&r.end.at)); });
   if(!rows.length){ el.innerHTML='<div class="muted" style="font-size:12px">No handovers logged yet.</div>'; return; }
   el.innerHTML=rows.slice(0,8).map(function(r){
     var dlabel=r.date; try{ dlabel=new Date(r.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }catch(e){}
     var times=((r.start&&r.start.at)?('🟢 '+esc(r.start.at)):'')+((r.end&&r.end.at)?(' → '+esc(r.end.at)):'');
-    var body=r.handover?('<div style="font-size:12.5px;line-height:1.4;color:#223;white-space:pre-wrap;margin-top:4px">'+esc(r.handover)+'</div>'):'';
-    return '<div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff"><div style="display:flex;align-items:center;gap:8px"><span style="font:800 13px Lato;color:var(--navy)">'+esc(dlabel)+'</span><span class="muted" style="font-size:11px;margin-left:auto">'+times+(r.handoverBy?(' · '+esc(r.handoverBy)):'')+'</span></div>'+body+'</div>';
+    var body=(r.handoverNotes||[]).map(function(n){ return '<div style="font-size:12.5px;line-height:1.4;color:#223;white-space:pre-wrap;margin-top:4px">• '+esc(n.text)+' <span class="muted" style="font-size:10px">('+esc(n.by||'')+(n.at?(' '+esc(n.at)):'')+')</span></div>'; }).join('');
+    return '<div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff"><div style="display:flex;align-items:center;gap:8px"><span style="font:800 13px Lato;color:var(--navy)">'+esc(dlabel)+'</span><span class="muted" style="font-size:11px;margin-left:auto">'+times+'</span></div>'+body+'</div>';
   }).join('');
 }
 function renderStatusBanners(){
@@ -1396,9 +1462,46 @@ function renderStatusBanners(){
   });
 }
 
+/* ===================== Home alert — checklist not started 15 min after shift start ===================== */
+let CL_HOME_SUB=null, CL_HOME={grid:{},submitted:{}};
+function clHomeSubscribe(){ if(!db) return; var wk=clWkKey(0); if(CL_HOME_SUB){ try{ CL_HOME_SUB(); }catch(e){} } CL_HOME_SUB=db.collection('hosnight_logs').doc('wk_'+wk).onSnapshot(function(s){ var d=s.exists?(s.data()||{}):{}; CL_HOME={grid:d.grid||{}, submitted:d.submitted||{}}; try{ renderHomeAlert(); }catch(e){} }, function(){}); }
+function clStartedOn(sk, dateKey){ var g=CL_HOME.grid||{}, pre=sk+'_', suf='__'+dateKey; return Object.keys(g).some(function(key){ return key.indexOf(pre)===0 && key.indexOf(suf)>0 && g[key] && g[key].done; }); }
+function renderHomeAlert(){
+  var el=$('home-alert'); if(!el) return;
+  var now=new Date(), sk=clShiftByTime(), sd=clShiftDef(sk);
+  var startRef=new Date(); startRef.setHours(sd.start[0],sd.start[1],0,0);
+  var checkDate=clDK(now), subDate=clDK(now);
+  if(sk==='night' && now.getHours()<7){ startRef.setDate(startRef.getDate()-1); checkDate=clDK(startRef); subDate=checkDate; }
+  var mins=(now-startRef)/60000;
+  var started=clStartedOn(sk, checkDate);
+  var submitted=!!(CL_HOME.submitted && CL_HOME.submitted[subDate+'_'+sk]);
+  if(!started && !submitted && mins>=15 && mins<=16*60){
+    el.style.display='flex';
+    el.innerHTML='<span style="font-size:20px">⚠️</span><div style="flex:1;color:#7a1510"><b>'+esc(clShiftName(sk).replace(' Checklist',''))+' checklist not started.</b> Shift began about '+Math.floor(mins)+' min ago — open HosSHIFT to start ticking.</div><button type="button" onclick="showSection(\'handover\')" style="background:#fff;border:none;border-radius:9px;padding:9px 14px;font:800 12px Lato;color:#b3261e;cursor:pointer;white-space:nowrap">Open HosSHIFT →</button>';
+  } else { el.style.display='none'; el.innerHTML=''; }
+}
+
 /* ===================== HosNOTES — reception notes board ===================== */
 const NT_TEAM=['Patrik','Joy','Alison','Alice','Manjusha','Manju','Alan','Amal','Rowan','Veronica'];
-let NT_ROWS=[], NT_UNSUB=null;
+let NT_ROWS=[], NT_UNSUB=null, NT_ATTS=[], NT_EDIT=null, NT_EDIT_ATTS=null;
+/* Attachments — compress images client-side so they fit in the note document */
+function ntCompress(file, cb){
+  try{
+    var r=new FileReader();
+    r.onload=function(){ var img=new Image(); img.onload=function(){ var mx=1000, w=img.width, h=img.height; if(w>h){ if(w>mx){ h=Math.round(h*mx/w); w=mx; } } else { if(h>mx){ w=Math.round(w*mx/h); h=mx; } } var cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h); try{ cb(cv.toDataURL('image/jpeg',0.6)); }catch(e){ cb(null); } }; img.onerror=function(){ cb(null); }; img.src=r.result; };
+    r.onerror=function(){ cb(null); };
+    r.readAsDataURL(file);
+  }catch(e){ cb(null); }
+}
+function ntPickFiles(files){
+  if(!files) return; var arr=Array.prototype.slice.call(files);
+  arr.forEach(function(f){ if(!/^image\//.test(f.type||'')) return; if(NT_ATTS.length>=3){ return; } ntCompress(f,function(d){ if(d && NT_ATTS.length<3){ NT_ATTS.push({name:(f.name||'photo'), dataUrl:d}); ntRenderAtts(); } }); });
+  var inp=$('nt-file'); if(inp) inp.value='';
+}
+function ntRenderAtts(){ var w=$('nt-atts'); if(!w) return; w.innerHTML=NT_ATTS.map(function(a,i){ return '<div style="position:relative"><img src="'+a.dataUrl+'" style="width:58px;height:58px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"><button type="button" onclick="ntDelAtt('+i+')" style="position:absolute;top:-7px;right:-7px;background:#b3261e;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:1;cursor:pointer">✕</button></div>'; }).join(''); }
+function ntDelAtt(i){ NT_ATTS.splice(i,1); ntRenderAtts(); }
+function ntLightbox(src){ var o=$('img-ov'); if(!o) return; var im=$('img-ov-img'); if(im) im.src=src; o.style.display='flex'; }
+function ntCloseLightbox(){ var o=$('img-ov'); if(o) o.style.display='none'; }
 function notesSubscribe(){
   if(!db || NT_UNSUB) return;
   NT_UNSUB=db.collection('hosnotes').onSnapshot(function(qs){
@@ -1446,18 +1549,36 @@ function notesRenderNow(){
     var imp=r.important?'<span style="background:#fde8e8;color:#b3261e;border-radius:999px;padding:2px 9px;font:800 11px Lato;margin-left:6px">⚑ Important</span>':'';
     var done=r.done;
     var bar=done?'#9aa7b5':(r.important?'#b3261e':'#1a2b3a');
+    var editing=(NT_EDIT===r._id);
+    var atts=(r.attachments&&r.attachments.length)?('<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">'+r.attachments.map(function(a){ return '<img src="'+a.dataUrl+'" onclick="ntLightbox(this.src)" style="width:72px;height:72px;object-fit:cover;border-radius:9px;border:1px solid var(--line);cursor:pointer">'; }).join('')+'</div>'):'';
+    var edited=r.editedAt?'<span class="muted" style="font-size:10px;font-style:italic"> · edited</span>':'';
+    var bodyOrEditor = editing
+      ? '<textarea id="nt-edit-text" rows="3" style="width:100%;margin-top:4px">'+esc(r.text||'')+'</textarea>'
+        +'<label style="display:flex;align-items:center;gap:7px;margin:7px 0;font-size:12.5px;cursor:pointer"><input type="checkbox" id="nt-edit-imp" '+(r.important?'checked':'')+' style="width:16px;height:16px"> ⚑ Important</label>'
+        +'<div style="display:flex;gap:8px"><button type="button" onclick="notesSaveEdit(\''+r._id+'\')" style="background:#1d7a4d;border:none;color:#fff;border-radius:8px;padding:6px 13px;font:700 12px Lato;cursor:pointer">Save</button><button type="button" onclick="notesCancelEdit()" style="background:#f3f5f8;border:1px solid var(--line);color:var(--navy);border-radius:8px;padding:6px 13px;font:700 12px Lato;cursor:pointer">Cancel</button></div>'
+      : '<div style="font-size:13.5px;line-height:1.4;color:#223;white-space:pre-wrap'+(done?';text-decoration:line-through;color:#8794a1':'')+'">'+esc(r.text||'')+'</div>'+atts;
     return '<div style="border:1px solid var(--line);border-left:4px solid '+bar+';border-radius:10px;padding:11px 13px;margin-bottom:9px;background:'+(done?'#f7f8f9':'#fff')+'">'+
       '<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px"><span style="font:800 13px Lato;color:var(--navy)">'+esc(r.from||'—')+'</span>'+toPill+imp+(done?'<span style="margin-left:auto;font:800 11px Lato;color:#1d7a4d">✓ Done</span>':'')+'</div>'+
-      '<div style="font-size:13.5px;line-height:1.4;color:#223;white-space:pre-wrap'+(done?';text-decoration:line-through;color:#8794a1':'')+'">'+esc(r.text||'')+'</div>'+
-      '<div style="display:flex;align-items:center;gap:10px;margin-top:8px">'+
-        '<span class="muted" style="font-size:11px">'+esc(notesFmt(r.created))+(done&&r.doneBy?(' · done by '+esc(r.doneBy)):'')+'</span>'+
+      bodyOrEditor+
+      (editing?'':'<div style="display:flex;align-items:center;gap:10px;margin-top:8px">'+
+        '<span class="muted" style="font-size:11px">'+esc(notesFmt(r.created))+edited+(done&&r.doneBy?(' · done by '+esc(r.doneBy)):'')+'</span>'+
         '<span style="margin-left:auto;display:flex;gap:8px">'+
+          '<button type="button" onclick="notesEdit(\''+r._id+'\')" style="background:#f3f5f8;border:1px solid var(--line);color:var(--navy);border-radius:8px;padding:5px 11px;font:700 12px Lato;cursor:pointer">Edit</button>'+
           (done?'<button type="button" onclick="notesReopen(\''+r._id+'\')" style="background:#f3f5f8;border:1px solid var(--line);color:var(--navy);border-radius:8px;padding:5px 11px;font:700 12px Lato;cursor:pointer">Reopen</button>':'<button type="button" onclick="notesDone(\''+r._id+'\')" style="background:#1d7a4d;border:none;color:#fff;border-radius:8px;padding:5px 11px;font:700 12px Lato;cursor:pointer">✓ Done</button>')+
           '<button type="button" onclick="notesDelete(\''+r._id+'\')" style="background:#fff;border:1px solid #e3b9b9;color:#b3261e;border-radius:8px;padding:5px 11px;font:700 12px Lato;cursor:pointer">Delete</button>'+
         '</span>'+
-      '</div>'+
+      '</div>')+
     '</div>';
   }).join('');
+}
+function notesEdit(id){ NT_EDIT=id; notesRenderNow(); }
+function notesCancelEdit(){ NT_EDIT=null; notesRenderNow(); }
+async function notesSaveEdit(id){
+  var ta=$('nt-edit-text'); if(!ta) return; var txt=(ta.value||'').trim(); if(!txt){ return; }
+  var imp=$('nt-edit-imp')?$('nt-edit-imp').checked:false;
+  NT_EDIT=null;
+  if(db){ try{ await db.collection('hosnotes').doc(id).set({text:txt, important:!!imp, editedAt:new Date().toISOString()},{merge:true}); }catch(e){} }
+  notesRenderNow();
 }
 async function notesPost(){
   var from=($('nt-from').value||'').trim(), to=($('nt-to').value||'Everyone'), text=($('nt-text').value||'').trim(), imp=$('nt-imp').checked;
@@ -1467,12 +1588,14 @@ async function notesPost(){
   if(!db){ msg.style.color='var(--red)'; msg.textContent='Offline — try again when connected.'; return; }
   msg.style.color='var(--muted)'; msg.textContent='Posting…';
   try{ localStorage.setItem('hosnotes_from',from); }catch(e){}
+  var doc={ from:from, to:to, text:text, important:!!imp, done:false, created:new Date().toISOString() };
+  if(NT_ATTS.length) doc.attachments=NT_ATTS.map(function(a){ return {name:a.name, dataUrl:a.dataUrl}; });
   try{
-    await db.collection('hosnotes').add({ from:from, to:to, text:text, important:!!imp, done:false, created:new Date().toISOString() });
-    $('nt-text').value=''; $('nt-imp').checked=false;
+    await db.collection('hosnotes').add(doc);
+    $('nt-text').value=''; $('nt-imp').checked=false; NT_ATTS=[]; ntRenderAtts();
     msg.style.color='#1d7a4d'; msg.textContent='✓ Note posted.';
     setTimeout(function(){ if(msg) msg.textContent=''; },1800);
-  }catch(e){ msg.style.color='var(--red)'; msg.textContent='Could not post — check connection / rules.'; }
+  }catch(e){ msg.style.color='var(--red)'; msg.textContent='Could not post — a photo may be too large, or check connection.'; }
 }
 async function notesDone(id){ if(!db) return; try{ await db.collection('hosnotes').doc(id).set({done:true, doneBy:(CL_INI||''), doneAt:new Date().toISOString()},{merge:true}); }catch(e){} }
 async function notesReopen(id){ if(!db) return; try{ await db.collection('hosnotes').doc(id).set({done:false},{merge:true}); }catch(e){} }
