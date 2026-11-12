@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HosME — My staff portal · Brandon Hall</title>
+<meta name="theme-color" content="#1a2b3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HosME">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjM4IiBmaWxsPSIjMWEyYjNhIi8+PHRleHQgeD0iOTAiIHk9IjExNSIgZm9udC1zaXplPSI3MCIgZm9udC1mYW1pbHk9Ikdlb3JnaWEiIGZpbGw9IiNjNWE0NWMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkJIPC90ZXh0Pjwvc3ZnPg==">
+<style>
+  :root{--navy:#1a2b3a;--teal:#2B726A;--gold:#c5a45c;--ink:#1a2b3a;--mut:#64707f;--line:#e3e7ee;--bg:#eef1f5}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,"Segoe UI",Lato,system-ui,sans-serif;background:var(--bg);color:var(--ink);
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  .wrap{max-width:460px;margin:0 auto;padding:18px 16px 40px}
+  .brand{display:flex;align-items:center;gap:11px;margin:6px 2px 18px}
+  .logo{width:46px;height:46px;border-radius:12px;background:var(--navy);display:flex;align-items:center;justify-content:center;color:var(--gold);font:700 20px Georgia,serif}
+  .brand h1{font:700 19px/1 Georgia,serif;margin:0}.brand div span{font-size:12px;color:var(--mut)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+  label{display:block;font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin:0 0 6px}
+  input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:13px 14px;font:600 16px system-ui;color:var(--ink);background:#fff}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal)}
+  .btn{width:100%;border:none;border-radius:12px;padding:15px;font:800 16px system-ui;cursor:pointer;background:var(--teal);color:#fff;margin-top:4px}
+  .btn:active{transform:translateY(1px)}
+  .btn.navy{background:var(--navy)}.btn.ghost{background:#fff;color:var(--teal);border:1.5px solid var(--line)}
+  .hello{font:700 22px/1.1 Georgia,serif;margin:0 0 2px}.sub{color:var(--mut);font-size:13px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{background:#f6f8fa;border:1px solid var(--line);border-radius:13px;padding:13px}
+  .stat .n{font:900 24px system-ui;line-height:1}.stat .l{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px;margin-top:4px;font-weight:700}
+  .stat .h{font-size:11px;color:var(--mut);margin-top:3px}
+  .row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f1f4f7;font-size:14px}
+  .row:last-child{border-bottom:none}.row b{font-weight:700}
+  .pill{display:inline-block;border-radius:999px;padding:3px 11px;font:800 11px system-ui}
+  .pill.aw{background:#fff3cd;color:#8a6100}.pill.ap{background:#e8f6ee;color:#1d7a4d}.pill.de{background:#fde8e8;color:#b3261e}
+  .muted{color:var(--mut);font-size:13px;text-align:center;padding:14px}
+  .err{background:#fde8e8;color:#b3261e;border-radius:10px;padding:10px 12px;font-size:13px;margin-top:10px;display:none}
+  .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .hdr h3{margin:0;font:700 15px system-ui}
+  .link{color:var(--teal);font-weight:700;font-size:13px;text-decoration:none;background:none;border:none;cursor:pointer}
+  .seg{display:flex;gap:7px;margin-bottom:10px}
+  .seg button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:10px;font:700 13px system-ui;color:var(--ink);cursor:pointer}
+  .seg button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .note{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.5}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="logo">BH</div>
+    <div><h1>HosME</h1><div><span>Brandon Hall Hotel &amp; Spa · my staff portal</span></div></div>
+  </div>
+  <div id="app"></div>
+</div>
+
+<script>
+const FBCONF={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:"brandonhall-7bdef.firebaseapp.com",projectId:"brandonhall-7bdef",storageBucket:"brandonhall-7bdef.firebasestorage.app",messagingSenderId:"391317900568",appId:"1:391317900568:web:643c9d6691f7f16d65226d"};
+firebase.initializeApp(FBCONF); const db=firebase.firestore();
+
+let ROSTER=[], ME=null, MYREQ=[], reqUnsub=null, busy=false;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const DEPTNAME={reception:'Reception',admin:'Admin / Events',nights:'Nights',maintenance:'Maintenance',kitchen:'Kitchen',bar:'Bar',restaurant:'Food & Beverage',housekeeping:'Housekeeping',spa:'Spa'};
+function d1(h){ return (h==null||h==='')?'—':(Math.round(h/8*10)/10); }           // hours→days @8h fallback
+function days(h,dayHrs){ const dh=dayHrs||8; return (h==null)?'—':(Math.round(h/dh*10)/10); }
+function fmtH(h){ return (h==null||h==='')?'—':(Math.round(h*10)/10)+'h'; }
+
+async function loadRoster(){
+  try{ const s=await db.collection('clock_roster').doc('hr').get(); if(s.exists){ ROSTER=(s.data()||{}).staff||[]; } }catch(e){ console.warn(e); }
+}
+function findStaff(code){
+  const c=String(code||'').trim().toLowerCase();
+  return ROSTER.find(s=>String(s.code||'').toLowerCase()===c) || null;
+}
+
+// ---------- LOGIN ----------
+function viewLogin(prefill){
+  $('app').innerHTML=`
+    <div class="card">
+      <label for="emp">Your employee number</label>
+      <input id="emp" inputmode="numeric" autocomplete="off" placeholder="e.g. 12685" value="${esc(prefill||'')}">
+      <button class="btn" onclick="doLogin()">Sign in</button>
+      <div class="err" id="loginErr"></div>
+      <div class="note">Enter the employee number from your payslip. We'll remember you on this phone so next time it just says “welcome back”.</div>
+    </div>
+    <div class="note" style="text-align:center">Tip: tap <b>Share → Add to Home Screen</b> to keep HosME as an app.</div>`;
+  const i=$('emp'); if(i){ i.focus(); i.addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); }); }
+}
+async function doLogin(){
+  const code=($('emp').value||'').trim();
+  if(!code){ return; }
+  if(!ROSTER.length) await loadRoster();
+  const s=findStaff(code);
+  if(!s){ const e=$('loginErr'); e.style.display='block'; e.textContent='That employee number wasn’t found. Check your payslip or ask reception.'; return; }
+  try{ localStorage.setItem('hosme_code', s.code); }catch(e){}
+  ME=s; watchRequests(); viewHome();
+}
+function logout(){ try{ localStorage.removeItem('hosme_code'); }catch(e){} if(reqUnsub){try{reqUnsub();}catch(e){} reqUnsub=null;} ME=null; MYREQ=[]; viewLogin(''); }
+
+// ---------- HOME ----------
+function viewHome(){
+  const s=ME, dh=s.dayHrs||8;
+  const remainD=days(s.outstandingHrs,dh), takenD=days(s.takenHrs,dh), entD=days(s.entHrs,dh), schedD=days(s.scheduledHrs,dh);
+  $('app').innerHTML=`
+    <div class="card">
+      <div class="hdr"><div><div class="hello">Welcome back, ${esc((s.name||'').split(' ')[0])} 👋</div>
+        <div class="sub">${esc(s.role||'')} · ${esc(DEPTNAME[s.dept]||s.dept||'')}</div></div>
+        <button class="link" onclick="logout()">Not you?</button></div>
+      <div class="row"><span>Employee no.</span><b>${esc(s.code)}</b></div>
+      <div class="row"><span>Contract</span><b>${esc(s.contractType||'')}${s.weeklyHours?(' · '+s.weeklyHours+'h/wk'):''}</b></div>
+      ${s.start?`<div class="row"><span>Start date</span><b>${esc(s.start)}</b></div>`:''}
+    </div>
+
+    <div class="card">
+      <div class="hdr"><h3>My holiday</h3><span class="sub">as at ${esc(s.asAt||'12 Nov 2026')}</span></div>
+      <div class="grid">
+        <div class="stat"><div class="n" style="color:#1d7a4d">${remainD}</div><div class="l">Days left to take</div><div class="h">${fmtH(s.outstandingHrs)}</div></div>
+        <div class="stat"><div class="n" style="color:#334">${takenD}</div><div class="l">Days taken</div><div class="h">${fmtH(s.takenHrs)}</div></div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="row"><span>Annual entitlement</span><b>${entD} days <span style="color:var(--mut);font-weight:600">(${fmtH(s.entHrs)})</span></b></div>
+        <div class="row"><span>Already booked in</span><b>${schedD===0?'0':schedD} days</b></div>
+        <div class="row"><span>Projected year-end balance</span><b>${fmtH(s.yearEndHrs)}</b></div>
+      </div>
+      <div class="note">“Days left to take” is your remaining holiday. Booked leave is deducted once your manager approves it.</div>
+    </div>
+
+    <div class="card">
+      <div class="hdr"><h3>Request time off</h3></div>
+      <button class="btn navy" onclick="viewRequest()">+ New leave request</button>
+    </div>
+
+    <div class="card">
+      <div class="hdr"><h3>My requests</h3></div>
+      <div id="myreq"></div>
+    </div>`;
+  renderMyReq();
+}
+
+// ---------- MY REQUESTS ----------
+function watchRequests(){
+  if(reqUnsub){ try{reqUnsub();}catch(e){} }
+  try{
+    reqUnsub=db.collection('leave_requests').where('staffCode','==',String(ME.code)).onSnapshot(qs=>{
+      MYREQ=[]; qs.forEach(d=>{ const v=d.data()||{}; v._id=d.id; MYREQ.push(v); });
+      MYREQ.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+      renderMyReq();
+    }, e=>console.warn('req',e&&e.code));
+  }catch(e){}
+}
+function renderMyReq(){
+  const el=$('myreq'); if(!el) return;
+  if(!MYREQ.length){ el.innerHTML='<div class="muted">No requests yet.</div>'; return; }
+  el.innerHTML=MYREQ.map(r=>{
+    const st=r.status==='approved'?'<span class="pill ap">Approved</span>':r.status==='declined'?'<span class="pill de">Declined</span>':'<span class="pill aw">Awaiting approval</span>';
+    return `<div class="row"><span><b>${esc(r.from)}</b> → <b>${esc(r.to)}</b><br><span class="sub">${esc(r.type||'Annual')} · ${r.days} day${r.days==1?'':'s'}</span></span><span style="text-align:right">${st}</span></div>`;
+  }).join('');
+}
+
+// ---------- REQUEST FORM ----------
+function viewRequest(){
+  const today=new Date().toISOString().slice(0,10);
+  $('app').innerHTML=`
+    <div class="card">
+      <div class="hdr"><div class="hello" style="font-size:19px">New leave request</div><button class="link" onclick="viewHome()">← Back</button></div>
+      <label>Type</label>
+      <select id="rtype"><option>Annual leave</option><option>Lieu day</option><option>Unpaid leave</option><option>Other</option></select>
+      <div style="height:12px"></div>
+      <div class="grid">
+        <div><label>From</label><input id="rfrom" type="date" min="${today}" value="${today}" onchange="calcDays()"></div>
+        <div><label>To</label><input id="rto" type="date" min="${today}" value="${today}" onchange="calcDays()"></div>
+      </div>
+      <div style="height:12px"></div>
+      <label>Days (edit if you only want part-days)</label>
+      <input id="rdays" inputmode="decimal" value="1">
+      <div style="height:12px"></div>
+      <label>Note to your manager (optional)</label>
+      <textarea id="rnote" rows="2" placeholder="e.g. family event"></textarea>
+      <button class="btn" onclick="submitReq()" id="subBtn">Send request</button>
+      <div class="err" id="reqErr"></div>
+      <div class="note">Your request goes to the management team (Veronica / Alia) for approval. You'll see the status update here.</div>
+    </div>`;
+  calcDays();
+}
+function calcDays(){
+  const f=$('rfrom').value, t=$('rto').value; if(!f||!t) return;
+  const a=new Date(f), b=new Date(t); if(b<a){ $('rto').value=f; return; }
+  const n=Math.round((b-a)/86400000)+1;
+  $('rdays').value=n;
+}
+async function submitReq(){
+  if(busy) return;
+  const f=$('rfrom').value, t=$('rto').value, type=$('rtype').value, note=($('rnote').value||'').trim();
+  const d=parseFloat($('rdays').value||'0');
+  const e=$('reqErr'); e.style.display='none';
+  if(!f||!t){ e.style.display='block'; e.textContent='Please choose both dates.'; return; }
+  if(new Date(t)<new Date(f)){ e.style.display='block'; e.textContent='The “to” date is before the “from” date.'; return; }
+  if(!(d>0)){ e.style.display='block'; e.textContent='Please enter how many days.'; return; }
+  busy=true; const b=$('subBtn'); if(b){ b.textContent='Sending…'; b.disabled=true; }
+  try{
+    await db.collection('leave_requests').add({
+      staffId:ME.id||'', staffCode:String(ME.code), name:ME.name||'', dept:ME.dept||'',
+      from:f, to:t, days:d, type:type, reason:(type+(note?(' — '+note):'')),
+      status:'awaiting', createdAt:new Date().toISOString()
+    });
+    busy=false; viewHome();
+  }catch(err){
+    busy=false; if(b){ b.textContent='Send request'; b.disabled=false; }
+    e.style.display='block'; e.textContent='Could not send ('+(err&&err.code||'error')+'). Please try again.';
+  }
+}
+
+// ---------- BOOT ----------
+(async function(){
+  $('app').innerHTML='<div class="card"><div class="muted">Loading…</div></div>';
+  await loadRoster();
+  let saved=''; try{ saved=localStorage.getItem('hosme_code')||''; }catch(e){}
+  if(saved){ const s=findStaff(saved); if(s){ ME=s; watchRequests(); viewHome(); return; } }
+  viewLogin(saved);
+})();
+</script>
+</body>
+</html>

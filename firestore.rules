@@ -160,6 +160,15 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isStaff();
     }
+    // HosME staff app — leave requests. Staff create via their employee number
+    // (status must start as 'awaiting'); only management can approve/decline/delete.
+    match /leave_requests/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.size() <= 20
+        && request.resource.data.keys().hasAll(['staffCode','from','to','status'])
+        && request.resource.data.status == 'awaiting';
+      allow update, delete: if isStaff();
+    }
     match /clock_punches/{doc} {
       allow read: if isStaff();
       allow create: if request.resource.data.size() <= 20
