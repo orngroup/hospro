@@ -398,19 +398,10 @@ function hpSetSubnav(mod, tab){
   sn.style.display="flex";
   sn.style.setProperty("--mod", mod.colour||"#2B726A");
   sn.style.setProperty("--tint", mod.tint||"#E2F1EE");
-  // ── Sectioned modules (e.g. HosPEOPLE): the green bar shows one chip per
-  //    section — the cards themselves live grouped on the module landing. ──
+  // ── Sectioned modules (e.g. HosPEOPLE): no green bar at all — the sections
+  //    and their cards live on the module landing page instead. ──
   const sectioned = !fixray && items.length && items.every(x=>x.section);
-  if(sectioned){
-    const curSec = tab ? hpSectionOf(mod.id, tab) : null;
-    const seen=[], secs=[];
-    items.forEach(sc=>{ if(seen.indexOf(sc.section)<0){ seen.push(sc.section); secs.push({name:sc.section, icon:sc.icon||""}); } });
-    sn.innerHTML=secs.map(s=>`<button type="button" class="sf-sn${s.name===curSec?' on':''}" data-section="${s.name}" title="${s.name}">
-      <span class="sf-sn-i">${s.icon}</span><span class="sf-sn-t">${s.name}</span></button>`).join("");
-    sn.querySelectorAll("button.sf-sn").forEach(b=>b.onclick=()=>hpGotoSection(mod.id, b.dataset.section));
-    const on2=sn.querySelector(".sf-sn.on"); if(on2 && on2.scrollIntoView) try{ on2.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){}
-    return;
-  }
+  if(sectioned){ sn.style.display="none"; sn.innerHTML=""; return; }
   sn.innerHTML=items.map(sc=>{ const ok=hpCanTab(sc.tab); return `<button type="button" class="sf-sn${sc.tab===tab?' on':''}" data-tab="${sc.tab}" data-locked="${ok?'':'1'}" title="${ok?sc.label:sc.label+' — restricted'}" style="${ok?'':'opacity:.45;cursor:not-allowed'}">
       <span class="sf-sn-i">${ok?(sc.icon||""):"🔒"}</span><span class="sf-sn-t">${sc.short||sc.label}</span></button>`; }).join("");
   if(fixray) sn.innerHTML+=`<a class="sf-sn" href="${HP_FIXRAY_URL}" target="_blank" rel="noopener" style="text-decoration:none"><span class="sf-sn-i">🔧</span><span class="sf-sn-t">📱 Open HosFIX app ↗</span></a>`;
@@ -5573,22 +5564,27 @@ function renderModuleLanding(moduleId){
   };
   const gridWrap = () => { const g=document.createElement("div"); g.className="hp-subgrid"; g.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px"; return g; };
 
-  // ── Sectioned modules: group the cards under section headings (with anchors
-  //    the green-bar section chips scroll to). Other modules keep the sub-nav bar only. ──
+  // ── Sectioned modules (e.g. HosPEOPLE): three columns on the page — one per
+  //    section (Staff / Rota / Attendance) — with the cards stacked inside each.
+  //    No top nav bar. Columns collapse to 2 then 1 on narrower screens. ──
   const hasSections = subcards.length && subcards.every(x=>x.section);
   if(hasSections){
     const seen=[];
     subcards.forEach(sc=>{ if(seen.indexOf(sc.section)<0) seen.push(sc.section); });
+    const row=document.createElement("div");
+    row.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:20px;align-items:start;margin:4px 0 8px";
     seen.forEach(secName=>{
-      const sec=document.createElement("div");
-      sec.id="hpsec-"+hpSlug(secName);
-      sec.style.cssText="margin:0 0 26px;scroll-margin-top:16px";
-      sec.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin:0 0 12px"><span style="width:8px;height:22px;border-radius:4px;background:${m.colour};display:inline-block"></span><span style="font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:700;color:#fff">${secName}</span></div>`;
-      const g=gridWrap();
-      subcards.filter(sc=>sc.section===secName).forEach(sc=>g.appendChild(makeCard(sc)));
-      sec.appendChild(g);
-      content.appendChild(sec);
+      const col=document.createElement("div");
+      col.id="hpsec-"+hpSlug(secName);
+      col.style.cssText="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px 16px;scroll-margin-top:16px";
+      col.innerHTML=`<div style="display:flex;align-items:center;gap:9px;margin:0 2px 14px"><span style="width:9px;height:26px;border-radius:4px;background:${m.colour};display:inline-block"></span><span style="font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:700;color:#fff;letter-spacing:.3px;text-transform:uppercase">${secName}</span></div>`;
+      const stack=document.createElement("div");
+      stack.style.cssText="display:flex;flex-direction:column;gap:13px";
+      subcards.filter(sc=>sc.section===secName).forEach(sc=>stack.appendChild(makeCard(sc)));
+      col.appendChild(stack);
+      row.appendChild(col);
     });
+    content.appendChild(row);
   }
 
   try{ content.appendChild(hpLandingExtras(m)); }catch(e){ console.warn('[HosPRO] landing extras failed',e); }
@@ -13751,7 +13747,7 @@ async function spLoadQRClockins(){
    reference photo per person from clock_faces. Lives inside HosPEOPLE
    so there is no separate page, login or sign-out.
    ============================================================ */
-const HT = { off:0, unsub:null, rota:{staff:[],rota:{}}, punches:[], faces:{}, facesName:{}, loaded:false };
+const HT = { off:0, unsub:null, rota:{staff:[],rota:{}}, depts:[], punches:[], faces:{}, facesName:{}, loaded:false };
 const HT_DEPTS=[
  {id:'reception',name:'Reception',col:'#4a86c7'},{id:'admin',name:'Admin / Events',col:'#be185d'},
  {id:'nights',name:'Nights',col:'#1a2b3a'},{id:'maintenance',name:'Maintenance',col:'#b8860b'},
@@ -13770,7 +13766,7 @@ function htHrs(m){ if(m==null) return '—'; return (m/60).toFixed(1)+'h'; }
 function htStop(){ if(HT.unsub){ try{ HT.unsub(); }catch(e){} HT.unsub=null; } }
 
 function renderHosTime(v){
-  v.innerHTML=`<div style="max-width:1080px;margin:0 auto;padding:20px 24px;font-family:Lato,system-ui,sans-serif">
+  v.innerHTML=`<div style="max-width:1400px;margin:0 auto;padding:22px 30px;font-family:Lato,system-ui,sans-serif">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
       <div style="width:46px;height:46px;border-radius:12px;background:#1d7a4d;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 3px 10px rgba(29,122,77,.35)">🟢</div>
       <div><div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a;line-height:1">HosTIME</div>
@@ -13779,8 +13775,8 @@ function renderHosTime(v){
     </div>
     <style>@keyframes htpulse{0%{box-shadow:0 0 0 0 rgba(29,122,77,.5)}70%{box-shadow:0 0 0 7px rgba(29,122,77,0)}100%{box-shadow:0 0 0 0 rgba(29,122,77,0)}}
       .ht-ctrl button,.ht-ctrl select{border:1px solid #e3e7ee;background:#fff;border-radius:10px;padding:9px 13px;font:700 13px Lato;cursor:pointer;color:#1a2b3a}
-      .ht-tile{background:#fff;border:1px solid #e3e7ee;border-radius:14px;padding:14px 16px}
-      .ht-tile .n{font:900 26px Lato}.ht-tile .l{font-size:11.5px;color:#64707f;text-transform:uppercase;letter-spacing:.4px;margin-top:2px;font-weight:700}
+      .ht-tile{background:#fff;border:1px solid #e3e7ee;border-radius:16px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+      .ht-tile .n{font:900 32px Lato;line-height:1}.ht-tile .l{font-size:12px;color:#64707f;text-transform:uppercase;letter-spacing:.5px;margin-top:5px;font-weight:700}
       .ht-tbl{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e3e7ee;border-radius:12px;overflow:hidden}
       .ht-tbl th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:#64707f;text-align:left;padding:9px 11px;background:#f6f8fa;border-bottom:1px solid #e3e7ee}
       .ht-tbl td{padding:9px 11px;border-bottom:1px solid #f1f4f7;font-size:13px;vertical-align:middle}
@@ -13794,12 +13790,9 @@ function renderHosTime(v){
       <button onclick="htToday()">Today</button>
       <select id="ht-deptf" onchange="htRender()"><option value="all">All departments</option></select>
     </div>
-    <div id="ht-tiles" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px"></div>
+    <div id="ht-tiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px"></div>
     <div id="ht-body"></div>
   </div>`;
-  // dept filter options
-  const sel=document.getElementById('ht-deptf');
-  if(sel){ HT_DEPTS.filter(d=>d.id).forEach(d=>{ const o=document.createElement('option'); o.value=d.id; o.textContent=d.name; sel.appendChild(o); }); }
   // overlay for photo lightbox (once)
   if(!document.getElementById('ht-ov')){
     const ov=document.createElement('div'); ov.id='ht-ov';
@@ -13812,9 +13805,27 @@ function renderHosTime(v){
 }
 async function htBoot(){
   if(typeof FB==="undefined" || !FB.db){ const b=document.getElementById('ht-body'); if(b) b.innerHTML='<div style="background:#fff;border:1px solid #e3e7ee;border-radius:12px;padding:26px;text-align:center;color:#64707f">Not connected to the live database yet — try again in a moment.</div>'; return; }
-  try{ const rs=await FB.db.collection('hospro_public').doc('rota').get(); if(rs.exists){ const d=rs.data()||{}; HT.rota={staff:d.staff||[], rota:d.rota||{}}; } }catch(e){}
+  try{ const rs=await FB.db.collection('hospro_public').doc('rota').get(); if(rs.exists){ const d=rs.data()||{}; HT.rota={staff:d.staff||[], rota:d.rota||{}}; HT.depts=d.depts||[]; } }catch(e){}
+  htFillDeptFilter();
   await htLoadFaces();
   htWatch();
+}
+// Full department list — every department in the published rota, in order,
+// plus any department a staff record or clock-in references but the list misses.
+function htDeptList(){
+  const seen={}, out=[];
+  (HT.depts||[]).forEach(d=>{ const id=String(d.id||''); if(!(id in seen)){ seen[id]=1; out.push({id:id, name:d.name||HT_DEPT_NAME[id]||(id?id:'Other')}); } });
+  (HT.rota.staff||[]).forEach(s=>{ const id=String(s.dept||''); if(id && !(id in seen)){ seen[id]=1; out.push({id:id, name:HT_DEPT_NAME[id]||id}); } });
+  HT.punches.forEach(p=>{ const id=String(p.dept||''); if(id && !(id in seen)){ seen[id]=1; out.push({id:id, name:HT_DEPT_NAME[id]||id}); } });
+  if(!('' in seen)) out.push({id:'', name:'Other / unassigned'});
+  return out;
+}
+function htDeptCol(id){ return HT_DEPT_COL[id] || '#64707f'; }
+function htFillDeptFilter(){
+  const sel=document.getElementById('ht-deptf'); if(!sel) return;
+  const cur=sel.value; sel.innerHTML='<option value="all">All departments</option>';
+  htDeptList().forEach(d=>{ const o=document.createElement('option'); o.value=d.id; o.textContent=d.name; sel.appendChild(o); });
+  if(cur) sel.value=cur;
 }
 async function htLoadFaces(){
   HT.faces={}; HT.facesName={};
@@ -13865,13 +13876,21 @@ function htRender(){
   const abs=rows.filter(r=>r.shift&&!r.inP).length;
   const extra=rows.filter(r=>(r.inP||r.outP)&&!r.shift).length;
   if(tiles) tiles.innerHTML=htTile(onNow,'On shift now','#1d7a4d')+htTile(fin,'Finished today','#334')+htTile(abs,'Rostered, not in','#b3261e')+htTile(extra,'Not on rota','#8a6100');
-  const order={}; HT_DEPTS.forEach((d,i)=>order[d.id]=i);
-  const byDept={}; rows.forEach(r=>{ const d=(r.dept in HT_DEPT_NAME)?r.dept:''; (byDept[d]=byDept[d]||[]).push(r); });
+  const deptList=htDeptList();
+  const knownIds={}; deptList.forEach(d=>knownIds[d.id]=1);
+  const byDept={}; rows.forEach(r=>{ const d=(r.dept in knownIds)?r.dept:''; (byDept[d]=byDept[d]||[]).push(r); });
   let html='';
-  Object.keys(byDept).sort((a,b)=>(order[a]==null?99:order[a])-(order[b]==null?99:order[b])).forEach(d=>{
+  deptList.forEach(dd=>{
+    const d=dd.id;
     if(deptf!=='all' && d!==deptf) return;
-    const list=byDept[d].sort((a,b)=>{ const s={on:0,abs:1,fin:2,extra:3}; return (s[a.status]-s[b.status])||a.name.localeCompare(b.name); });
-    html+='<div style="margin-bottom:18px"><h2 style="font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:9px;color:#1a2b3a"><span style="width:11px;height:11px;border-radius:50%;background:'+(HT_DEPT_COL[d]||'#64707f')+'"></span>'+spEsc(HT_DEPT_NAME[d]||'Other')+' <span style="font-size:12px;color:#64707f;font-weight:600">'+list.filter(r=>r.status==='on').length+' on · '+list.length+' total</span></h2>';
+    const list=(byDept[d]||[]).sort((a,b)=>{ const s={on:0,abs:1,fin:2,extra:3}; return (s[a.status]-s[b.status])||a.name.localeCompare(b.name); });
+    const dot='<span style="width:11px;height:11px;border-radius:50%;background:'+htDeptCol(d)+';display:inline-block"></span>';
+    if(!list.length){
+      // keep every department visible even when nobody is in / rostered
+      if(deptf==='all') html+='<div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;padding:11px 14px;background:#fff;border:1px solid #eef1f5;border-radius:12px;color:#64707f;font-size:13px">'+dot+'<b style="color:#1a2b3a">'+spEsc(dd.name)+'</b> <span style="margin-left:auto;font-size:12px">No one rostered or clocked in</span></div>';
+      return;
+    }
+    html+='<div style="margin-bottom:18px"><h2 style="font-size:15.5px;display:flex;align-items:center;gap:8px;margin-bottom:9px;color:#1a2b3a">'+dot+spEsc(dd.name)+' <span style="font-size:12px;color:#64707f;font-weight:600">'+list.filter(r=>r.status==='on').length+' on · '+list.length+' total</span></h2>';
     html+='<table class="ht-tbl"><tr><th>Name</th><th>Status</th><th>Rostered</th><th>In</th><th>Out</th><th>Worked</th><th>Photo</th></tr>';
     list.forEach(r=>{
       const chip = r.status==='on'?'<span class="ht-chip" style="background:#e8f6ee;color:#1d7a4d">● On shift</span>':r.status==='fin'?'<span class="ht-chip" style="background:#eef1f5;color:#334">Finished</span>':r.status==='abs'?'<span class="ht-chip" style="background:#fde8e8;color:#b3261e">Not clocked in</span>':'<span class="ht-chip" style="background:#fff3cd;color:#8a6100">Not on rota</span>';

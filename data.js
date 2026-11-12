@@ -1214,16 +1214,16 @@ const MODULE_SUBCARDS = {
     {tab:"hubHR",        label:"HR Documents",         icon:"👤", desc:"Policies, handbooks and HR records"},
   ],
   "hospeople": [
+    // ── Staff ──
+    {tab:"staffProfiles", section:"Staff", label:"Staff Profiles",    short:"Profiles",  icon:"👤", desc:"All staff profiles & HR records"},
+    {tab:"staffLeaveAdmin",section:"Staff",label:"Leave Management",  short:"Leave",     icon:"🌴", desc:"Approve & manage leave requests"},
+    {tab:"rotaPayroll",   section:"Staff", label:"Payroll & Clock-in",short:"Payroll",   icon:"💷", desc:"Weekly & monthly costs, fingerprint compare"},
     // ── Rota ──
     {tab:"rotaDash",      section:"Rota", label:"Shift Dashboard",   short:"Dashboard", icon:"📊", desc:"Today's staffing overview"},
     {tab:"rotaWeek",      section:"Rota", label:"Weekly Rota",       short:"Rota",      icon:"📋", desc:"View & edit weekly shifts"},
     {tab:"rotaForecast",  section:"Rota", label:"Occupancy Forecast",short:"Forecast",  icon:"📈", desc:"Forecast & staff planning"},
     {tab:"rotaMonthly",   section:"Rota", label:"Monthly Plan",      short:"Monthly",   icon:"📅", desc:"Monthly occupancy overview"},
     {tab:"rotaSettings",  section:"Rota", label:"Shift Settings",    short:"Settings",  icon:"⚙️", desc:"Staff & department configuration"},
-    // ── Staff ──
-    {tab:"staffProfiles", section:"Staff", label:"Staff Profiles",    short:"Profiles",  icon:"👤", desc:"All staff profiles & HR records"},
-    {tab:"staffLeaveAdmin",section:"Staff",label:"Leave Management",  short:"Leave",     icon:"🌴", desc:"Approve & manage leave requests"},
-    {tab:"rotaPayroll",   section:"Staff", label:"Payroll & Clock-in",short:"Payroll",   icon:"💷", desc:"Weekly & monthly costs, fingerprint compare"},
     // ── Attendance ──
     {tab:"rotaTime",      section:"Attendance", label:"HosTIME — Live attendance", short:"HosTIME", icon:"🟢", desc:"Live QR clock-ins vs rota, right now"},
     {tab:"rotaAttend",    section:"Attendance", label:"Attendance",   short:"Attendance",icon:"🕒", desc:"Rota vs clock log — lateness, time lost & cost"},
