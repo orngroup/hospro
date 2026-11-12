@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a2b3a">
+<title>HosTIME — Live attendance · Brandon Hall Hotel &amp; Spa</title>
+<style>
+  :root{ --navy:#1a2b3a; --ink:#1a2230; --muted:#64707f; --line:#e3e7ee; --green:#1d7a4d; --amber:#b06a00; --red:#b3261e; --blue:#1f4e85; }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
+  body{background:#eef1f5;color:var(--ink)}
+  .top{background:var(--navy);color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+  .top .logo{font-weight:900;font-size:17px;letter-spacing:.3px}
+  .top .tag{font-size:11px;color:#8fb7b1;letter-spacing:1.5px;text-transform:uppercase;font-weight:700}
+  .wrap{max-width:1040px;margin:0 auto;padding:16px}
+  .ctrl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .ctrl button,.ctrl select{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 13px;font:700 13px system-ui;cursor:pointer;color:var(--navy)}
+  .ctrl .date{font:800 15px system-ui;min-width:160px;text-align:center}
+  .live{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-left:auto}
+  .live .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(29,122,77,.5);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(29,122,77,.5)}70%{box-shadow:0 0 0 7px rgba(29,122,77,0)}100%{box-shadow:0 0 0 0 rgba(29,122,77,0)}}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .tile .n{font:900 26px system-ui}.tile .l{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;font-weight:700}
+  .dept{margin-bottom:18px}
+  .dept h2{font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .dept h2 .dot{width:11px;height:11px;border-radius:50%}
+  .dept h2 .c{font-size:12px;color:var(--muted);font-weight:600}
+  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:left;padding:9px 11px;background:#f6f8fa;border-bottom:1px solid var(--line)}
+  td{padding:9px 11px;border-bottom:1px solid #f1f4f7;font-size:13px;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  td.nm{font-weight:700}
+  .chip{display:inline-block;border-radius:999px;padding:3px 10px;font:800 11px system-ui}
+  .c-on{background:#e8f6ee;color:var(--green)} .c-fin{background:#eef1f5;color:#334} .c-abs{background:#fde8e8;color:var(--red)} .c-extra{background:#fff3cd;color:#8a6100}
+  .late{color:var(--red);font-weight:700} .early{color:var(--muted)} .ok{color:var(--green);font-weight:700}
+  .ph{width:34px;height:34px;border-radius:8px;object-fit:cover;border:1px solid var(--line);cursor:pointer;margin-right:3px}
+  .muted{color:var(--muted)}
+  .empty{background:#fff;border:1px solid var(--line);border-radius:12px;padding:26px;text-align:center;color:var(--muted)}
+  /* login */
+  .login{max-width:380px;margin:60px auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:0 10px 40px rgba(26,43,58,.12)}
+  .login h1{font-size:19px;margin-bottom:4px}.login p{font-size:13px;color:var(--muted);margin-bottom:16px}
+  .login label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin:12px 0 5px}
+  .login input{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px;font-size:15px}
+  .login button{width:100%;margin-top:16px;background:var(--navy);color:#fff;border:none;border-radius:11px;padding:13px;font:800 15px system-ui;cursor:pointer}
+  .login .err{color:var(--red);font-size:13px;min-height:16px;margin-top:8px}
+  #ov{display:none;position:fixed;inset:0;background:rgba(8,12,18,.86);z-index:60;align-items:center;justify-content:center;padding:20px}
+  #ov img{max-width:92%;max-height:88vh;border-radius:12px}
+  @media(max-width:620px){ .tiles{grid-template-columns:repeat(2,1fr)} table{font-size:12px} th:nth-child(6),td:nth-child(6){display:none} }
+</style>
+</head>
+<body>
+<div class="top"><span class="logo">HosTIME</span><span class="tag">Live attendance</span>
+  <span class="live" id="liveind" style="display:none"><span class="dot"></span>Live</span>
+  <button id="logout" onclick="doLogout()" style="display:none;margin-left:10px;background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:9px;padding:7px 12px;font:700 12px system-ui;cursor:pointer">Log out</button>
+</div>
+
+<div id="loginView" class="login" style="display:none">
+  <h1>HosTIME</h1>
+  <p>Sign in with your HosPEOPLE / HosPRO staff login to view live attendance.</p>
+  <label>Email</label>
+  <input id="li-email" type="email" autocomplete="username" placeholder="you@brandonhall.portal">
+  <label>Password</label>
+  <input id="li-pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+  <button onclick="doLogin()">Sign in</button>
+  <div class="err" id="li-err"></div>
+</div>
+
+<div id="app" class="wrap" style="display:none">
+  <div class="ctrl">
+    <button onclick="navDay(-1)">←</button>
+    <div class="date" id="dlabel">—</div>
+    <button onclick="navDay(1)">→</button>
+    <button onclick="goToday()">Today</button>
+    <select id="deptf" onchange="render()"><option value="all">All departments</option></select>
+    <span class="live" id="liveind2"><span class="dot"></span>Updating live</span>
+  </div>
+  <div class="tiles" id="tiles"></div>
+  <div id="body"></div>
+</div>
+
+<div id="ov" onclick="this.style.display='none'"><img id="ovimg" src="" alt=""></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const CFG={ apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0", authDomain:"brandonhall-7bdef.firebaseapp.com",
+  projectId:"brandonhall-7bdef", storageBucket:"brandonhall-7bdef.firebasestorage.app",
+  messagingSenderId:"391317900568", appId:"1:391317900568:web:643c9d6691f7f16d65226d" };
+let db=null, auth=null;
+try{ firebase.initializeApp(CFG); db=firebase.firestore(); auth=firebase.auth(); }catch(e){}
+
+const DEPTS=[
+ {id:'reception',name:'Reception',col:'#4a86c7'},{id:'admin',name:'Admin / Events',col:'#be185d'},
+ {id:'nights',name:'Nights',col:'#1a2b3a'},{id:'maintenance',name:'Maintenance',col:'#b8860b'},
+ {id:'kitchen',name:'Kitchen',col:'#c45c00'},{id:'bar',name:'Bar',col:'#8b5c8f'},
+ {id:'restaurant',name:'Food & Beverage',col:'#2a6a4a'},{id:'housekeeping',name:'Housekeeping',col:'#4a9d7f'},
+ {id:'spa',name:'Spa',col:'#9d7fb8'},{id:'',name:'Other',col:'#64707f'}];
+const DEPT_NAME={}, DEPT_COL={}; DEPTS.forEach(function(d){ DEPT_NAME[d.id]=d.name; DEPT_COL[d.id]=d.col; });
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+function normName(n){ return String(n||'').toLowerCase().replace(/[^a-z]/g,''); }
+function dk(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+/* ---- auth ---- */
+if(auth){ auth.onAuthStateChanged(function(u){
+  if(u && !u.isAnonymous){ $('loginView').style.display='none'; $('app').style.display='block'; $('logout').style.display='inline-block'; $('liveind').style.display='flex'; boot(); }
+  else { $('loginView').style.display='block'; $('app').style.display='none'; $('logout').style.display='none'; $('liveind').style.display='none'; }
+}); } else { $('loginView').style.display='block'; }
+function doLogin(){ var e=($('li-email').value||'').trim(), p=$('li-pass').value||''; var err=$('li-err'); err.textContent='';
+  if(!e||!p){ err.textContent='Enter your email and password.'; return; }
+  auth.signInWithEmailAndPassword(e,p).catch(function(ex){ err.textContent='Could not sign in — check your details.'; }); }
+function doLogout(){ if(auth) auth.signOut(); }
+
+/* ---- data ---- */
+let ROTA={staff:[],rota:{}}, PUNCHES=[], UNSUB=null, OFF=0, BOOTED=false;
+async function boot(){
+  if(BOOTED) return; BOOTED=true;
+  var sel=$('deptf'); DEPTS.filter(function(d){return d.id;}).forEach(function(d){ var o=document.createElement('option'); o.value=d.id; o.textContent=d.name; sel.appendChild(o); });
+  try{ var rs=await db.collection('hospro_public').doc('rota').get(); if(rs.exists){ var d=rs.data()||{}; ROTA={staff:d.staff||[], rota:d.rota||{}}; } }catch(e){}
+  watch();
+}
+function curDate(){ var d=new Date(); d.setDate(d.getDate()+OFF); return d; }
+function watch(){
+  if(UNSUB){ try{ UNSUB(); }catch(e){} UNSUB=null; }
+  var day=dk(curDate());
+  $('dlabel').textContent=curDate().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  if(!db){ return; }
+  UNSUB=db.collection('clock_punches').where('date','==',day).onSnapshot(function(qs){
+    PUNCHES=[]; qs.forEach(function(doc){ var v=doc.data()||{}; v._id=doc.id; PUNCHES.push(v); });
+    render();
+  }, function(){ $('body').innerHTML='<div class="empty">Could not load punches — check your access.</div>'; });
+}
+function navDay(n){ OFF+=n; watch(); }
+function goToday(){ OFF=0; watch(); }
+
+/* rota helpers */
+function rotaStaffByName(){ var m={}; (ROTA.staff||[]).forEach(function(s){ m[normName(s.name)]=s; }); return m; }
+function shiftText(v){ return String((v&&typeof v==='object')?(v.shift||'off'):(v||'off')); }
+function parseRange(r){ var m=String(r).match(/(\d{1,2})[:.](\d{2})\s*-\s*(\d{1,2})[:.](\d{2})/); if(!m) return null; var a=(+m[1])*60+(+m[2]), b=(+m[3])*60+(+m[4]); if(b<a) b+=1440; return {a:a,b:b}; }
+function rosteredMins(shift){ var tot=0; String(shift).split('&').forEach(function(part){ var r=parseRange(part); if(r) tot+=r.b-r.a; }); return tot; }
+function rosteredStart(shift){ var first=null; String(shift).split('&').forEach(function(part){ var r=parseRange(part); if(r&&(first===null||r.a<first)) first=r.a; }); return first; }
+function hhmm(mins){ if(mins==null) return '—'; mins=((mins%1440)+1440)%1440; return String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0'); }
+function hrs(mins){ if(mins==null) return '—'; return (mins/60).toFixed(1)+'h'; }
+
+function render(){
+  var deptf=$('deptf')?$('deptf').value:'all';
+  var staffByName=rotaStaffByName();
+  var day=dk(curDate());
+  // group punches by person (name)
+  var byPerson={};
+  PUNCHES.forEach(function(p){ var k=normName(p.name)||p.staffCode; if(!byPerson[k]) byPerson[k]={name:p.name,code:p.staffCode,dept:p.dept||'',punches:[]}; byPerson[k].punches.push(p); if(p.dept&&!byPerson[k].dept) byPerson[k].dept=p.dept; });
+  // rostered people for the day
+  var rosteredKeys={};
+  (ROTA.staff||[]).forEach(function(s){ var v=(ROTA.rota||{})[day]&&(ROTA.rota||{})[day][s.id]; var sh=shiftText(v); if(sh && ['off','holiday','sick','in lieu'].indexOf(sh.toLowerCase())<0){ rosteredKeys[normName(s.name)]={shift:sh,dept:s.dept||'',name:s.name,code:s.staffCode||''}; } });
+  // union
+  var keys={}; Object.keys(byPerson).forEach(function(k){keys[k]=1;}); Object.keys(rosteredKeys).forEach(function(k){keys[k]=1;});
+  var rows=Object.keys(keys).map(function(k){
+    var pp=byPerson[k], ros=rosteredKeys[k];
+    var punches=(pp&&pp.punches||[]).slice().sort(function(a,b){ return String(a.ts).localeCompare(String(b.ts)); });
+    var ins=punches.filter(function(x){return x.type==='in';}), outs=punches.filter(function(x){return x.type==='out';});
+    var inP=ins[0]||null, outP=outs[outs.length-1]||null;
+    var name=(pp&&pp.name)||(ros&&ros.name)||k;
+    var dept=(pp&&pp.dept)||(ros&&ros.dept)||'';
+    var inMin=inP?inP.mins:null, outMin=outP?outP.mins:null;
+    var worked=(inMin!=null&&outMin!=null)?(((outMin-inMin)+1440)%1440):null;
+    var rosMin=ros?rosteredMins(ros.shift):null, rosStart=ros?rosteredStart(ros.shift):null;
+    var status = inP&&!outP ? 'on' : (inP&&outP ? 'fin' : (ros ? 'abs' : 'extra'));
+    var late = (ros&&rosStart!=null&&inMin!=null) ? (inMin-rosStart) : null;
+    return {k:k,name:name,dept:dept,shift:ros?ros.shift:'',inP:inP,outP:outP,inMin:inMin,outMin:outMin,worked:worked,rosMin:rosMin,late:late,status:status,punches:punches};
+  });
+  // tiles
+  var onNow=rows.filter(function(r){return r.inP&&!r.outP;}).length;
+  var fin=rows.filter(function(r){return r.inP&&r.outP;}).length;
+  var abs=rows.filter(function(r){return r.shift&&!r.inP;}).length;
+  var extra=rows.filter(function(r){return (r.inP||r.outP)&&!r.shift;}).length;
+  $('tiles').innerHTML=''+
+    tile(onNow,'On shift now','#1d7a4d')+tile(fin,'Finished today','#334')+tile(abs,'Rostered, not in','#b3261e')+tile(extra,'Not on rota','#8a6100');
+  // group by dept
+  var order={}; DEPTS.forEach(function(d,i){order[d.id]=i;});
+  var byDept={}; rows.forEach(function(r){ var d=(r.dept in DEPT_NAME)?r.dept:''; (byDept[d]=byDept[d]||[]).push(r); });
+  var html='';
+  Object.keys(byDept).sort(function(a,b){return (order[a]==null?99:order[a])-(order[b]==null?99:order[b]);}).forEach(function(d){
+    if(deptf!=='all' && d!==deptf) return;
+    var list=byDept[d].sort(function(a,b){ var s={on:0,abs:1,fin:2,extra:3}; return (s[a.status]-s[b.status])||a.name.localeCompare(b.name); });
+    html+='<div class="dept"><h2><span class="dot" style="background:'+(DEPT_COL[d]||'#64707f')+'"></span>'+esc(DEPT_NAME[d]||'Other')+' <span class="c">'+list.filter(function(r){return r.status==='on';}).length+' on · '+list.length+' total</span></h2>';
+    html+='<table><tr><th>Name</th><th>Status</th><th>Rostered</th><th>In</th><th>Out</th><th>Worked</th><th>Photos</th></tr>';
+    list.forEach(function(r){
+      var chip = r.status==='on'?'<span class="chip c-on">● On shift</span>':r.status==='fin'?'<span class="chip c-fin">Finished</span>':r.status==='abs'?'<span class="chip c-abs">Not clocked in</span>':'<span class="chip c-extra">Not on rota</span>';
+      var inTxt = r.inP ? (esc(r.inP.time)+(r.late!=null?(r.late>5?(' <span class="late">+'+r.late+'m late</span>'):(r.late< -0?' <span class="early">'+Math.abs(r.late)+'m early</span>':' <span class="ok">on time</span>')):'')) : '<span class="muted">—</span>';
+      var photos=r.punches.filter(function(x){return x.photo;}).map(function(x){ return '<img class="ph" src="'+x.photo+'" title="'+esc(x.type==='in'?'In '+x.time:'Out '+x.time)+'" onclick="lb(this.src)">'; }).join('');
+      html+='<tr><td class="nm">'+esc(r.name)+'</td><td>'+chip+'</td><td>'+(r.shift?esc(r.shift):'<span class="muted">not rostered</span>')+(r.rosMin?(' <span class="muted">· '+hrs(r.rosMin)+'</span>'):'')+'</td><td>'+inTxt+'</td><td>'+(r.outP?esc(r.outP.time):'<span class="muted">—</span>')+'</td><td>'+(r.worked!=null?('<b>'+hrs(r.worked)+'</b>'):'<span class="muted">—</span>')+'</td><td>'+(photos||'<span class="muted">—</span>')+'</td></tr>';
+    });
+    html+='</table></div>';
+  });
+  $('body').innerHTML = html || '<div class="empty">No clock-ins or rostered staff for this day yet.</div>';
+}
+function tile(n,l,c){ return '<div class="tile"><div class="n" style="color:'+c+'">'+n+'</div><div class="l">'+l+'</div></div>'; }
+function lb(src){ $('ovimg').src=src; $('ov').style.display='flex'; }
+</script>
+</body>
+</html>

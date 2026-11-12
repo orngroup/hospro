@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a2b3a">
+<title>HosTIME · Clock in / out · Brandon Hall Hotel &amp; Spa</title>
+<style>
+  :root{ --navy:#1a2b3a; --teal:#2B726A; --teal-dk:#215a54; --amber:#9a4b2e; --paper:#f4f7f8; --line:#e3e7ee; --ink:#1a2230; --muted:#64707f; }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
+  body{background:linear-gradient(160deg,#1a2b3a,#22384d);min-height:100dvh;display:flex;align-items:flex-start;justify-content:center;padding:16px;color:var(--ink)}
+  .card{background:#fff;border-radius:22px;width:100%;max-width:440px;box-shadow:0 24px 60px rgba(0,0,0,.4);overflow:hidden;margin-top:max(8px,env(safe-area-inset-top))}
+  .top{background:var(--navy);color:#fff;padding:20px 22px;text-align:center}
+  .top .tag{font-size:11px;letter-spacing:2px;color:#8fb7b1;font-weight:700;text-transform:uppercase}
+  .top h1{font-size:19px;font-weight:800;margin-top:3px}
+  .top .dept{display:inline-block;margin-top:9px;background:rgba(255,255,255,.14);border-radius:999px;padding:5px 14px;font-size:13px;font-weight:800;letter-spacing:.3px}
+  .top .clock{font-size:34px;font-weight:800;letter-spacing:1px;margin-top:11px;font-variant-numeric:tabular-nums}
+  .top .date{font-size:12.5px;color:#aebccd;margin-top:1px}
+  .body{padding:20px 22px 24px}
+  .lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+  input[type=text]{width:100%;padding:15px 16px;border:1.5px solid var(--line);border-radius:13px;font-size:20px;background:#fff;color:var(--ink);text-align:center;font-weight:800;letter-spacing:2px}
+  input:focus{outline:none;border-color:var(--teal)}
+  .who{background:#eef6f3;border:1px solid #cce6dd;border-radius:12px;padding:11px 14px;margin-top:12px;font-size:15px;font-weight:700;color:#1d6b4f;display:none}
+  .who b{font-weight:800}
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+  .big{padding:22px 12px;border:none;border-radius:16px;font-size:18px;font-weight:800;color:#fff;cursor:pointer;transition:.15s;line-height:1.15}
+  .big:active{transform:scale(.98)}
+  .big:disabled{opacity:.45;cursor:default}
+  .in{background:#2B726A}.in:active{background:var(--teal-dk)}
+  .out{background:#9a4b2e}.out:active{background:#7d3b22}
+  .big small{display:block;font-size:11.5px;font-weight:600;opacity:.9;margin-top:4px}
+  .msg{margin-top:16px;padding:14px 16px;border-radius:12px;font-size:14.5px;font-weight:600;text-align:center;display:none}
+  .msg.ok{display:block;background:#e6f4ee;color:#1d6b4f;border:1px solid #b9e0cd}
+  .msg.err{display:block;background:#fdecec;color:#a3272a;border:1px solid #f1c7c7}
+  .msg.info{display:block;background:#eef2f8;color:#2f4a6b;border:1px solid #d3deee}
+  .confirm{display:none;text-align:center;padding-top:6px}
+  .confirm img{width:130px;height:130px;object-fit:cover;border-radius:16px;border:3px solid #cce6dd;margin:6px auto 12px;display:block}
+  .confirm .big-ok{font-size:22px;font-weight:800;color:#1d6b4f}
+  .confirm .sub{font-size:14px;color:var(--muted);margin-top:4px}
+  .confirm button{margin-top:18px;width:100%;padding:14px;border:1.5px solid var(--line);background:#fff;color:var(--navy);border-radius:12px;font-size:15px;font-weight:800;cursor:pointer}
+  .foot{text-align:center;font-size:11.5px;color:var(--muted);margin-top:16px;line-height:1.5}
+  .spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(47,74,107,.3);border-top-color:#2f4a6b;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="top">
+    <div class="tag">Brandon Hall Hotel &amp; Spa</div>
+    <h1>HosTIME · Clock in / out</h1>
+    <div class="dept" id="dept">—</div>
+    <div class="clock" id="clock">--:--</div>
+    <div class="date" id="date"></div>
+  </div>
+  <div class="body">
+    <div id="load" class="msg info">Loading…</div>
+
+    <div id="form" class="hidden">
+      <div class="lbl">Enter your employee number</div>
+      <input id="emp" type="text" inputmode="text" autocomplete="off" placeholder="e.g. 12941" oninput="lookup()">
+      <div class="who" id="who"></div>
+      <div class="btns">
+        <button class="big in"  id="btnIn"  onclick="go('in')"  disabled>▶ Start Shift<small>clock in</small></button>
+        <button class="big out" id="btnOut" onclick="go('out')" disabled>⏹ End Shift<small>clock out</small></button>
+      </div>
+      <div id="msg" class="msg"></div>
+    </div>
+
+    <div id="confirm" class="confirm">
+      <img id="cphoto" alt="">
+      <div class="big-ok" id="ctitle">✓ Clocked in</div>
+      <div class="sub" id="csub"></div>
+      <button onclick="reset()">Done</button>
+    </div>
+
+    <div class="foot" id="foot">Scan the QR sticker in your department.<br>Enter your employee number, choose Start or End Shift, and take a quick photo.</div>
+  </div>
+</div>
+
+<input id="cam" type="file" accept="image/*" capture="user" class="hidden">
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const CFG={ apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0", authDomain:"brandonhall-7bdef.firebaseapp.com",
+  projectId:"brandonhall-7bdef", storageBucket:"brandonhall-7bdef.firebasestorage.app",
+  messagingSenderId:"391317900568", appId:"1:391317900568:web:643c9d6691f7f16d65226d" };
+let db=null, ROSTER=null, PERSON=null;
+try{ firebase.initializeApp(CFG); db=firebase.firestore(); firebase.auth().signInAnonymously().catch(function(){}); }catch(e){}
+
+const DEPTS={ admin:'Admin / Events', reception:'Reception', nights:'Nights', maintenance:'Maintenance', kitchen:'Kitchen', bar:'Bar', restaurant:'Food & Beverage', fb:'Food & Beverage', housekeeping:'Housekeeping', spa:'Spa', frontofhouse:'Front of House' };
+const DEPT = (new URLSearchParams(location.search).get('dept')||'').toLowerCase();
+const DEPT_NAME = DEPTS[DEPT] || (DEPT ? DEPT.charAt(0).toUpperCase()+DEPT.slice(1) : 'All departments');
+document.getElementById('dept').textContent = DEPT_NAME;
+
+function $(id){ return document.getElementById(id); }
+function tick(){ const d=new Date();
+  $('clock').textContent=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  $('date').textContent=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); }
+tick(); setInterval(tick,10000);
+
+async function load(){
+  const lm=$('load');
+  if(!db){ lm.className='msg err'; lm.textContent='No connection. Check Wi-Fi and reload.'; return; }
+  try{
+    const d=await db.collection('clock_roster').doc('current').get();
+    if(!d.exists){ lm.className='msg err'; lm.textContent='Clock-in not set up yet. Ask a manager to publish the roster from HosPEOPLE.'; return; }
+    ROSTER=d.data()||{};
+    lm.classList.add('hidden'); $('form').classList.remove('hidden');
+    $('emp').focus();
+  }catch(e){ lm.className='msg err'; lm.textContent='Could not load. Reload and try again.'; }
+}
+load();
+
+function findByCode(code){
+  code=String(code||'').trim().toLowerCase();
+  if(!code) return null;
+  return (ROSTER.staff||[]).find(function(s){ return String(s.code||'').trim().toLowerCase()===code; })||null;
+}
+function lookup(){
+  const v=$('emp').value;
+  PERSON=findByCode(v);
+  const who=$('who');
+  if(PERSON){ who.style.display='block'; who.innerHTML='👋 Hi <b>'+esc(PERSON.name)+'</b> — tap Start or End Shift.'; $('btnIn').disabled=false; $('btnOut').disabled=false; }
+  else { who.style.display='none'; $('btnIn').disabled=true; $('btnOut').disabled=true; }
+  const m=$('msg'); m.className='msg'; m.textContent='';
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+function show(cls,txt){ const m=$('msg'); m.className='msg '+cls; m.innerHTML=txt; }
+
+let PENDING=null, busy=false;
+function go(type){
+  if(busy) return;
+  if(!PERSON){ show('err','Enter a valid employee number first.'); return; }
+  PENDING=type;
+  const cam=$('cam'); cam.value='';
+  cam.onchange=function(){ const f=cam.files&&cam.files[0]; cam.onchange=null; if(!f){ return; } submit(f); };
+  cam.click();
+}
+
+function compress(file, cb){
+  try{
+    const r=new FileReader();
+    r.onload=function(){ const img=new Image(); img.onload=function(){ let w=img.width,h=img.height; const M=520; if(w>h){ if(w>M){ h=Math.round(h*M/w); w=M; } } else { if(h>M){ w=Math.round(w*M/h); h=M; } } const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); x.drawImage(img,0,0,w,h);
+      // burn a date/time + name stamp
+      const stamp=new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'  ·  '+(PERSON?PERSON.name:'');
+      x.font='700 15px system-ui,Arial'; const tw=x.measureText(stamp).width;
+      x.fillStyle='rgba(0,0,0,.55)'; x.fillRect(0,h-26,Math.min(w,tw+18),26);
+      x.fillStyle='#fff'; x.fillText(stamp,9,h-8);
+      try{ cb(c.toDataURL('image/jpeg',0.55)); }catch(e){ cb(null); } };
+      img.onerror=function(){ cb(null); }; img.src=r.result; };
+    r.onerror=function(){ cb(null); }; r.readAsDataURL(file);
+  }catch(e){ cb(null); }
+}
+function getPos(){ return new Promise(function(res){ if(!navigator.geolocation) return res(null); navigator.geolocation.getCurrentPosition(function(p){ res(p.coords); }, function(){ res(null); }, {enableHighAccuracy:true,timeout:7000,maximumAge:60000}); }); }
+
+async function submit(file){
+  if(busy) return; busy=true;
+  show('info','<span class="spin"></span>Saving…');
+  compress(file, async function(photo){
+    const pos=await getPos();
+    const now=new Date();
+    const rec={ staffCode:PERSON.code, name:PERSON.name, type:PENDING, dept:DEPT||'', deptName:DEPT_NAME,
+      date: now.toISOString().slice(0,10),
+      time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
+      ts: now.toISOString(), mins: now.getHours()*60+now.getMinutes(),
+      lat: pos?pos.latitude:null, lng: pos?pos.longitude:null,
+      photo: photo||'', source:'qr-hostime' };
+    try{
+      await db.collection('clock_punches').add(rec);
+      $('form').classList.add('hidden'); $('foot').classList.add('hidden');
+      const c=$('confirm'); c.style.display='block';
+      if(photo){ $('cphoto').src=photo; $('cphoto').style.display='block'; } else { $('cphoto').style.display='none'; }
+      $('ctitle').textContent = PENDING==='in' ? '✓ Shift started' : '✓ Shift ended';
+      $('ctitle').style.color = PENDING==='in' ? '#1d6b4f' : '#9a4b2e';
+      $('csub').innerHTML = '<b>'+esc(PERSON.name)+'</b><br>'+(PENDING==='in'?'Clocked in':'Clocked out')+' at '+rec.time+' · '+DEPT_NAME;
+      // auto-reset after 8s
+      clearTimeout(window._rt); window._rt=setTimeout(reset, 8000);
+    }catch(e){ show('err','Could not save — try again, or tell a manager.'); }
+    busy=false;
+  });
+}
+function reset(){
+  clearTimeout(window._rt);
+  $('confirm').style.display='none';
+  $('form').classList.remove('hidden'); $('foot').classList.remove('hidden');
+  $('emp').value=''; PERSON=null; PENDING=null; lookup(); $('emp').focus();
+}
+</script>
+</body>
+</html>
