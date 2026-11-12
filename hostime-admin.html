@@ -120,6 +120,7 @@ async function boot(){
   if(BOOTED) return; BOOTED=true;
   var sel=$('deptf'); DEPTS.filter(function(d){return d.id;}).forEach(function(d){ var o=document.createElement('option'); o.value=d.id; o.textContent=d.name; sel.appendChild(o); });
   try{ var rs=await db.collection('hospro_public').doc('rota').get(); if(rs.exists){ var d=rs.data()||{}; ROTA={staff:d.staff||[], rota:d.rota||{}}; } }catch(e){}
+  await loadFaces();
   watch();
 }
 function curDate(){ var d=new Date(); d.setDate(d.getDate()+OFF); return d; }
@@ -169,7 +170,8 @@ function render(){
     var rosMin=ros?rosteredMins(ros.shift):null, rosStart=ros?rosteredStart(ros.shift):null;
     var status = inP&&!outP ? 'on' : (inP&&outP ? 'fin' : (ros ? 'abs' : 'extra'));
     var late = (ros&&rosStart!=null&&inMin!=null) ? (inMin-rosStart) : null;
-    return {k:k,name:name,dept:dept,shift:ros?ros.shift:'',inP:inP,outP:outP,inMin:inMin,outMin:outMin,worked:worked,rosMin:rosMin,late:late,status:status,punches:punches};
+    var code=(pp&&pp.code)||(ros&&ros.code)||'';
+    return {k:k,code:code,name:name,dept:dept,shift:ros?ros.shift:'',inP:inP,outP:outP,inMin:inMin,outMin:outMin,worked:worked,rosMin:rosMin,late:late,status:status,punches:punches};
   });
   // tiles
   var onNow=rows.filter(function(r){return r.inP&&!r.outP;}).length;
@@ -190,13 +192,16 @@ function render(){
     list.forEach(function(r){
       var chip = r.status==='on'?'<span class="chip c-on">● On shift</span>':r.status==='fin'?'<span class="chip c-fin">Finished</span>':r.status==='abs'?'<span class="chip c-abs">Not clocked in</span>':'<span class="chip c-extra">Not on rota</span>';
       var inTxt = r.inP ? (esc(r.inP.time)+(r.late!=null?(r.late>5?(' <span class="late">+'+r.late+'m late</span>'):(r.late< -0?' <span class="early">'+Math.abs(r.late)+'m early</span>':' <span class="ok">on time</span>')):'')) : '<span class="muted">—</span>';
-      var photos=r.punches.filter(function(x){return x.photo;}).map(function(x){ return '<img class="ph" src="'+x.photo+'" title="'+esc(x.type==='in'?'In '+x.time:'Out '+x.time)+'" onclick="lb(this.src)">'; }).join('');
+      var face = FACES_NAME[r.k] || (r.code&&FACES[String(r.code)]) || '';
+      var photos = face ? ('<img class="ph" src="'+face+'" title="'+esc(r.name)+' — reference photo" onclick="lb(this.src)">') : '';
       html+='<tr><td class="nm">'+esc(r.name)+'</td><td>'+chip+'</td><td>'+(r.shift?esc(r.shift):'<span class="muted">not rostered</span>')+(r.rosMin?(' <span class="muted">· '+hrs(r.rosMin)+'</span>'):'')+'</td><td>'+inTxt+'</td><td>'+(r.outP?esc(r.outP.time):'<span class="muted">—</span>')+'</td><td>'+(r.worked!=null?('<b>'+hrs(r.worked)+'</b>'):'<span class="muted">—</span>')+'</td><td>'+(photos||'<span class="muted">—</span>')+'</td></tr>';
     });
     html+='</table></div>';
   });
   $('body').innerHTML = html || '<div class="empty">No clock-ins or rostered staff for this day yet.</div>';
 }
+let FACES={}, FACES_NAME={};
+async function loadFaces(){ try{ var qs=await db.collection('clock_faces').get(); qs.forEach(function(d){ var v=d.data()||{}; if(v.photo){ FACES[String(v.staffCode||d.id)]=v.photo; if(v.name) FACES_NAME[normName(v.name)]=v.photo; } }); }catch(e){} }
 function tile(n,l,c){ return '<div class="tile"><div class="n" style="color:'+c+'">'+n+'</div><div class="l">'+l+'</div></div>'; }
 function lb(src){ $('ovimg').src=src; $('ov').style.display='flex'; }
 </script>

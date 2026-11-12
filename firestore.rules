@@ -138,6 +138,15 @@ service cloud.firestore {
       allow read, update, delete: if isStaff();
     }
 
+    // HosMarketing — Venue & Event Action Plan (marketing-plan.html): shareable
+    // for review/approval, so anyone with the link can read & update; only
+    // signed-in staff can delete a line.
+    match /mkt_plan/{id} { allow read, create, update: if true; allow delete: if isStaff(); }
+
+    // Reception daily-tasks self-assessment (hosrole.html): anyone on the
+    // reception console can submit/read; only signed-in staff can delete.
+    match /hosdesk_roles/{id} { allow read, create, update: if true; allow delete: if isStaff(); }
+
     match /hoshub/{doc}       { allow read, write: if isStaff(); }
     match /hoshub_docs/{doc}  { allow read, write: if isStaff(); }
 
@@ -157,6 +166,14 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['staffCode','date','ts','type']);
       allow update, delete: if isStaff();
     }
+    // HosTIME reference photos — one per employee (their first clock-in). The clock page checks if
+    // one exists and only stores it the first time, to save storage; managers can read/replace them.
+    match /clock_faces/{code} {
+      allow read: if true;
+      allow create: if request.resource.data.size() <= 8
+        && request.resource.data.keys().hasAll(['staffCode','photo']);
+      allow update, delete: if isStaff();
+    }
 
     match /hoshouse_rooms/{doc}  { allow read, write: if true; }
     match /hoshouse_config/{doc} { allow read, write: if true; }
@@ -171,6 +188,24 @@ service cloud.firestore {
     // Reception shift handover notes (hoshouse-request.html): anyone on the
     // console can add/read; only signed-in staff can delete.
     match /hoshouse_handovers/{doc}  { allow read, create, update: if true; allow delete: if isStaff(); }
+    // Staff directory phone numbers (hoshouse-request.html → Staff Directory):
+    // anyone on the console can view/add/update a number; only signed-in staff can delete.
+    match /hoshouse_staffdir/{doc}   { allow read, create, update: if true; allow delete: if isStaff(); }
+    // HOD rota drafts (rota-hod.html → rota-approve.html): department heads submit a
+    // draft week; approvers read all and publish to hospro_public/rota. Code-gated in-app.
+    match /rota_drafts/{id}          { allow read, create, update, delete: if true; }
+    // HosTV bedroom TV audit (hoshouse-request.html → HosTV): anyone on the console
+    // can view and tick off a room; only signed-in staff can delete.
+    match /hostv_rooms/{id}          { allow read, create, update: if true; allow delete: if isStaff(); }
+    // HosSHIFT shift checklists (hoshouse-request.html → HosSHIFT): Early/Late/Night
+    // checklists ticked per day; anyone on the console can add/update, staff can delete.
+    match /hosnight_logs/{id}        { allow read, create, update: if true; allow delete: if isStaff(); }
+    // HosNOTES reception notes board (hoshouse-request.html → HosNOTES): reception team
+    // leave notes for everyone or a named person; anyone on the console can post/update/delete.
+    match /hosnotes/{id}             { allow read, create, update, delete: if true; }
+    // HosSHIFT daily ops (hoshouse-request.html → HosSHIFT): per-day shift start/finish times,
+    // Music/Arrivals/Check-out timestamps and the running handover note that feed the home banners.
+    match /hosshift_ops/{id}         { allow read, create, update: if true; allow delete: if isStaff(); }
 
     // ── HosFIRE ──
     function isFire() {
@@ -253,6 +288,8 @@ service cloud.firestore {
     match /barn_requests/{doc}     { allow read, create, update: if true; allow delete: if false; }
     match /barn_handovers/{doc}    { allow read, create, update: if true; allow delete: if false; }
     match /barn_config/{doc}       { allow read, write: if true; }
+    // BarnHUB uploaded-document index (the files themselves are in Storage under barn_hub/)
+    match /barn_hub_docs/{doc}     { allow read, create, update: if true; allow delete: if false; }
 
     match /{document=**} {
       allow read, write: if false;

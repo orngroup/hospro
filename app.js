@@ -5203,6 +5203,7 @@ function renderHome(v){
     { label:'Financial Overview', icon:'📊', url:'pl/',               colour:'#2a6a4a', fin:true },
     { label:'Daily F&B entry',    icon:'🍽', url:'fb-entry.html',      colour:'#8b5c8f' },
     { label:'Staff clock-in',     icon:'⏱', url:'clock.html',         colour:'#4a86c7' },
+    { label:'HosTIME — live',     icon:'🟢', url:'hostime-admin.html', colour:'#1a2b3a' },
   ];
   const qStyle = c => `display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#fff;border:1px solid #e4e9ef;border-left:3px solid ${c};border-radius:9px;font:700 12px Lato;color:#1a2b3a;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,.05);cursor:pointer`;
   quick.innerHTML = `<span style="font-size:11px;font-weight:700;color:#8fa3b8;text-transform:uppercase;letter-spacing:.6px;margin-right:4px">Quick links</span>` +
@@ -13230,6 +13231,7 @@ function renderRotaPayroll(v){
         <div><div style="font-size:16px;font-weight:800;color:#1a2b3a">Clock-in vs rota</div>
           <div style="font-size:12.5px;color:#4b5563">Load live QR clock-ins, or upload a CSV from the fingerprint system. We match each person and day against the rota and show every difference.</div></div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <a href="hostime-admin.html" target="_blank" rel="noopener" style="padding:9px 14px;border-radius:8px;background:#1a2b3a;color:#fff;font:700 12px Lato;cursor:pointer;border:none;text-decoration:none">🟢 HosTIME — live attendance</a>
           <button onclick="spLoadQRClockins()" style="padding:9px 14px;border-radius:8px;background:#2B726A;color:#fff;font:700 12px Lato;cursor:pointer;border:none">📲 Load QR clock-ins</button>
           <button onclick="spClockRosterModal()" style="padding:9px 14px;border-radius:8px;background:#1F7A8C;color:#fff;font:700 12px Lato;cursor:pointer;border:none">🖨 Clock-in QR &amp; PINs</button>
           <label style="padding:9px 14px;border-radius:8px;background:#1a2b3a;color:#fff;font:700 12px Lato;cursor:pointer">📤 Upload CSV<input type="file" accept=".csv,.txt,text/csv" style="display:none" onchange="spCmpLoad(this.files[0])"></label>
