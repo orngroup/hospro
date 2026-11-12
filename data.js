@@ -1225,8 +1225,7 @@ const MODULE_SUBCARDS = {
     {tab:"rotaMonthly",   section:"Rota", label:"Monthly Plan",      short:"Monthly",   icon:"📅", desc:"Monthly occupancy overview"},
     {tab:"rotaSettings",  section:"Rota", label:"Shift Settings",    short:"Settings",  icon:"⚙️", desc:"Staff & department configuration"},
     // ── Attendance ──
-    {tab:"rotaTime",      section:"Attendance", label:"HosTIME — Live attendance", short:"HosTIME", icon:"🟢", desc:"Live QR clock-ins vs rota, right now"},
-    {tab:"rotaAttend",    section:"Attendance", label:"Attendance",   short:"Attendance",icon:"🕒", desc:"Rota vs clock log — lateness, time lost & cost"},
+    {tab:"rotaTime",      section:"Attendance", label:"HosTIME — Live attendance", short:"HosTIME", icon:"🟢", desc:"Clock-ins vs rota — in/out, difference & hours worked"},
   ],
   "hosrev": [
     {tab:"revDash",     label:"HosREV Dashboard",  short:"Dashboard", icon:"💹", desc:"Morning brief & decisions needed"},

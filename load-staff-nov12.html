@@ -33,7 +33,18 @@ async function run(){
     ROTA_ADD.forEach(s=>{ if(haveId[s.id]||haveCode[String(s.staffCode)]) return; staff.push(s); haveId[s.id]=1; haveCode[String(s.staffCode)]=1; added++; log('  + '+s.staffCode+' '+s.name+' ('+s.dept+')'); });
     if(added){ await db.collection('hospro_public').doc('rota').set({staff},{merge:true}); log('  ✓ '+added+' added to rota.'); }
     else log('  (all already present)');
-    log('\nDONE. Staff app + HosPEOPLE now have all 52 staff and their leave.');
+
+    // Merge everyone into clock_roster/current so the QR clock page (hostime.html) finds them
+    log('Making sure every staff member can clock in (clock_roster/current)...');
+    const cs=await db.collection('clock_roster').doc('current').get();
+    const cd=cs.exists?(cs.data()||{}):{}; const cstaff=Array.isArray(cd.staff)?cd.staff.slice():[];
+    const haveC={}; cstaff.forEach(s=>{ if(s.code!=null)haveC[String(s.code).toLowerCase()]=1; });
+    let cadd=0;
+    ROSTER.forEach(s=>{ const c=String(s.code).toLowerCase(); if(haveC[c]) return; cstaff.push({code:String(s.code),name:s.name,dept:s.dept||'',role:s.role||''}); haveC[c]=1; cadd++; });
+    if(cadd){ await db.collection('clock_roster').doc('current').set({staff:cstaff},{merge:true}); log('  ✓ '+cadd+' added to the clock-in roster.'); }
+    else log('  (everyone already on the clock-in roster)');
+
+    log('\nDONE. Staff app, clock-in and HosPEOPLE now have all '+ROSTER.length+' staff and their leave.');
   }catch(e){ log('ERROR: '+(e&&e.message||e)); }
 }
 </script></body></html>

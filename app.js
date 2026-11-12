@@ -13806,6 +13806,15 @@ function htShiftText(v){ return String((v&&typeof v==='object')?(v.shift||'off')
 function htParseRange(r){ const m=String(r).match(/(\d{1,2})[:.](\d{2})\s*-\s*(\d{1,2})[:.](\d{2})/); if(!m) return null; let a=(+m[1])*60+(+m[2]), b=(+m[3])*60+(+m[4]); if(b<a) b+=1440; return {a:a,b:b}; }
 function htRosMins(shift){ let tot=0; String(shift).split('&').forEach(p=>{ const r=htParseRange(p); if(r) tot+=r.b-r.a; }); return tot; }
 function htRosStart(shift){ let first=null; String(shift).split('&').forEach(p=>{ const r=htParseRange(p); if(r&&(first===null||r.a<first)) first=r.a; }); return first; }
+function htRosEnd(shift){ let last=null; String(shift).split('&').forEach(p=>{ const r=htParseRange(p); if(r&&(last===null||r.b>last)) last=r.b; }); return last; }
+function htClock(m){ if(m==null) return ''; m=((m%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+function htDiffChip(label, mins, lateIsBad){
+  if(mins==null) return '';
+  var good = lateIsBad ? (mins<=5 && mins>=-5) : (mins>=-5);
+  var col = (Math.abs(mins)<=5) ? '#1d7a4d' : (lateIsBad ? (mins>5?'#b3261e':'#8a6100') : (mins<-5?'#b3261e':'#1d7a4d'));
+  var txt = Math.abs(mins)<=5 ? 'on time' : (mins>0 ? '+'+mins+'m' : mins+'m');
+  return '<span style="font-size:11px"><span style="color:#64707f">'+label+'</span> <b style="color:'+col+'">'+txt+'</b></span>';
+}
 function htHrs(m){ if(m==null) return '—'; return (m/60).toFixed(1)+'h'; }
 function htStop(){ if(HT.unsub){ try{ HT.unsub(); }catch(e){} HT.unsub=null; } }
 
@@ -13909,11 +13918,12 @@ function htRender(){
     const dept=(pp&&pp.dept)||(ros&&ros.dept)||'';
     const inMin=inP?inP.mins:null, outMin=outP?outP.mins:null;
     const worked=(inMin!=null&&outMin!=null)?(((outMin-inMin)+1440)%1440):null;
-    const rosMin=ros?htRosMins(ros.shift):null, rosStart=ros?htRosStart(ros.shift):null;
+    const rosMin=ros?htRosMins(ros.shift):null, rosStart=ros?htRosStart(ros.shift):null, rosEnd=ros?htRosEnd(ros.shift):null;
     const status = inP&&!outP ? 'on' : (inP&&outP ? 'fin' : (ros ? 'abs' : 'extra'));
     const late = (ros&&rosStart!=null&&inMin!=null) ? (inMin-rosStart) : null;
+    const endDiff = (ros&&rosEnd!=null&&outMin!=null) ? (outMin-rosEnd) : null;
     const code=(pp&&pp.code)||(ros&&ros.code)||'';
-    return {k:k,code:code,name:name,dept:dept,shift:ros?ros.shift:'',inP:inP,outP:outP,worked:worked,rosMin:rosMin,late:late,status:status};
+    return {k:k,code:code,name:name,dept:dept,shift:ros?ros.shift:'',inP:inP,outP:outP,inMin:inMin,outMin:outMin,worked:worked,rosMin:rosMin,rosStart:rosStart,rosEnd:rosEnd,late:late,endDiff:endDiff,status:status};
   });
   const onNow=rows.filter(r=>r.inP&&!r.outP).length;
   const fin=rows.filter(r=>r.inP&&r.outP).length;
@@ -13935,13 +13945,22 @@ function htRender(){
       return;
     }
     html+='<div style="margin-bottom:18px"><h2 style="font-size:15.5px;display:flex;align-items:center;gap:8px;margin-bottom:9px;color:#1a2b3a">'+dot+spEsc(dd.name)+' <span style="font-size:12px;color:#64707f;font-weight:600">'+list.filter(r=>r.status==='on').length+' on · '+list.length+' total</span></h2>';
-    html+='<table class="ht-tbl"><tr><th>Name</th><th>Status</th><th>Rostered</th><th>In</th><th>Out</th><th>Worked</th><th>Photo</th></tr>';
+    html+='<table class="ht-tbl"><tr><th>Name</th><th>Status</th><th>Rota time</th><th>Clocked in / out</th><th>Difference</th><th>Total in day</th><th>Photo</th></tr>';
     list.forEach(r=>{
       const chip = r.status==='on'?'<span class="ht-chip" style="background:#e8f6ee;color:#1d7a4d">● On shift</span>':r.status==='fin'?'<span class="ht-chip" style="background:#eef1f5;color:#334">Finished</span>':r.status==='abs'?'<span class="ht-chip" style="background:#fde8e8;color:#b3261e">Not clocked in</span>':'<span class="ht-chip" style="background:#fff3cd;color:#8a6100">Not on rota</span>';
-      const inTxt = r.inP ? (spEsc(r.inP.time)+(r.late!=null?(r.late>5?(' <span style="color:#b3261e;font-weight:700">+'+r.late+'m late</span>'):(r.late<0?' <span style="color:#64707f">'+Math.abs(r.late)+'m early</span>':' <span style="color:#1d7a4d;font-weight:700">on time</span>')):'')) : '<span style="color:#64707f">—</span>';
+      // Rota time column — scheduled start–end
+      const rotaCell = r.shift ? ('<b>'+spEsc(htClock(r.rosStart))+'</b> – <b>'+spEsc(htClock(r.rosEnd))+'</b>'+(r.rosMin?(' <span style="color:#64707f;font-size:11px">('+htHrs(r.rosMin)+')</span>'):'')) : '<span style="color:#64707f">not rostered</span>';
+      // Clocked column — actual in → out
+      const inC = r.inP ? spEsc(r.inP.time) : '<span style="color:#64707f">—</span>';
+      const outC = r.outP ? spEsc(r.outP.time) : (r.inP?'<span style="color:#1d7a4d;font-weight:700">still in</span>':'<span style="color:#64707f">—</span>');
+      const clockedCell = '<b>'+inC+'</b> → <b>'+outC+'</b>';
+      // Difference column — start variance (late in bad) + end variance (early out bad)
+      const dIn = r.inP ? htDiffChip('in',r.late,true) : '';
+      const dOut = r.outP ? htDiffChip('out',r.endDiff,false) : '';
+      const diffCell = (dIn||dOut) ? ((dIn||'')+(dIn&&dOut?'<br>':'')+(dOut||'')) : '<span style="color:#64707f">—</span>';
       const face = HT.facesName[r.k] || (r.code&&HT.faces[String(r.code)]) || '';
       const photo = face ? ('<img class="ht-ph" src="'+face+'" title="'+spEsc(r.name)+' — reference photo" onclick="htLb(this.src)">') : '<span style="color:#64707f">—</span>';
-      html+='<tr><td style="font-weight:700">'+spEsc(r.name)+'</td><td>'+chip+'</td><td>'+(r.shift?spEsc(r.shift):'<span style="color:#64707f">not rostered</span>')+(r.rosMin?(' <span style="color:#64707f">· '+htHrs(r.rosMin)+'</span>'):'')+'</td><td>'+inTxt+'</td><td>'+(r.outP?spEsc(r.outP.time):'<span style="color:#64707f">—</span>')+'</td><td>'+(r.worked!=null?('<b>'+htHrs(r.worked)+'</b>'):'<span style="color:#64707f">—</span>')+'</td><td>'+photo+'</td></tr>';
+      html+='<tr><td style="font-weight:700">'+spEsc(r.name)+'</td><td>'+chip+'</td><td>'+rotaCell+'</td><td>'+clockedCell+'</td><td>'+diffCell+'</td><td>'+(r.worked!=null?('<b style="font-size:14px">'+htHrs(r.worked)+'</b>'):'<span style="color:#64707f">—</span>')+'</td><td>'+photo+'</td></tr>';
     });
     html+='</table></div>';
   });
