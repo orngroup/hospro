@@ -334,7 +334,7 @@ const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, bev
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
     fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
-    rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings, rotaPayroll:renderRotaPayroll, localEvents:renderLocalEvents, fbTracker:renderFBTracker,
+    rotaDash:renderRotaDash, rotaWeek:renderRotaWeek, rotaForecast:renderRotaForecast, rotaMonthly:renderRotaMonthly, rotaSettings:renderRotaSettings, rotaPayroll:renderRotaPayroll, rotaTime:renderHosTime, localEvents:renderLocalEvents, fbTracker:renderFBTracker,
     staffDash:renderStaffDash, staffProfiles:renderStaffProfiles, staffLeave:renderStaffLeave, staffLeaveAdmin:renderStaffLeaveAdmin, staffDocs:renderStaffDocs,
     brandDocs:renderBrandDocs, brandLogos:renderBrandLogos, brandCollateral:renderBrandCollateral, brandPhotography:renderBrandPhotography,
     hubDocs:renderHubDocs, hubContracts:renderHubContracts, hubSuppliers:renderHubSuppliers, hubFinance:renderHubFinance, hubHR:renderHubHR,
@@ -377,6 +377,16 @@ function hpTabLabel(tab){
   }
   return tab;
 }
+/* Section helpers — for modules whose subcards are grouped into sections */
+function hpSlug(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""); }
+function hpSectionOf(modId, tab){
+  const items=(typeof MODULE_SUBCARDS!=="undefined" && MODULE_SUBCARDS[modId])||[];
+  const sc=items.find(x=>x.tab===tab); return sc?sc.section:null;
+}
+function hpGotoSection(modId, section){
+  renderModuleLanding(modId);
+  setTimeout(()=>{ const el=document.getElementById("hpsec-"+hpSlug(section)); if(el && el.scrollIntoView){ try{ el.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){ el.scrollIntoView(); } } }, 70);
+}
 /* Breadcrumb / module bar: ← Back to module · Home › Module › Tab */
 function hpSetSubnav(mod, tab){
   const sn=document.getElementById("sf-subnav"); if(!sn) return;
@@ -388,6 +398,19 @@ function hpSetSubnav(mod, tab){
   sn.style.display="flex";
   sn.style.setProperty("--mod", mod.colour||"#2B726A");
   sn.style.setProperty("--tint", mod.tint||"#E2F1EE");
+  // ── Sectioned modules (e.g. HosPEOPLE): the green bar shows one chip per
+  //    section — the cards themselves live grouped on the module landing. ──
+  const sectioned = !fixray && items.length && items.every(x=>x.section);
+  if(sectioned){
+    const curSec = tab ? hpSectionOf(mod.id, tab) : null;
+    const seen=[], secs=[];
+    items.forEach(sc=>{ if(seen.indexOf(sc.section)<0){ seen.push(sc.section); secs.push({name:sc.section, icon:sc.icon||""}); } });
+    sn.innerHTML=secs.map(s=>`<button type="button" class="sf-sn${s.name===curSec?' on':''}" data-section="${s.name}" title="${s.name}">
+      <span class="sf-sn-i">${s.icon}</span><span class="sf-sn-t">${s.name}</span></button>`).join("");
+    sn.querySelectorAll("button.sf-sn").forEach(b=>b.onclick=()=>hpGotoSection(mod.id, b.dataset.section));
+    const on2=sn.querySelector(".sf-sn.on"); if(on2 && on2.scrollIntoView) try{ on2.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){}
+    return;
+  }
   sn.innerHTML=items.map(sc=>{ const ok=hpCanTab(sc.tab); return `<button type="button" class="sf-sn${sc.tab===tab?' on':''}" data-tab="${sc.tab}" data-locked="${ok?'':'1'}" title="${ok?sc.label:sc.label+' — restricted'}" style="${ok?'':'opacity:.45;cursor:not-allowed'}">
       <span class="sf-sn-i">${ok?(sc.icon||""):"🔒"}</span><span class="sf-sn-t">${sc.short||sc.label}</span></button>`; }).join("");
   if(fixray) sn.innerHTML+=`<a class="sf-sn" href="${HP_FIXRAY_URL}" target="_blank" rel="noopener" style="text-decoration:none"><span class="sf-sn-i">🔧</span><span class="sf-sn-t">📱 Open HosFIX app ↗</span></a>`;
@@ -733,7 +756,7 @@ function openRoom(r){
   $("#rm-quote").onclick=()=>{ closeModal(); alert("To build a quote, start from an enquiry in the Sales Pipeline."); switchTab("pipeline"); };
   $("#rm-enq").onclick=()=>{ closeModal(); startNewEnquiry({room:r.id,event:evId}); };
 }
-function switchTab(t){ if(HH_KIOSK && t!=='hhHub') t='hhHub'; if(t!=='hhHub'){ try{ hhStopLive(); }catch(e){} try{ hhReqStop(); }catch(e){} } CURRENT_TAB=t; render(); }
+function switchTab(t){ if(HH_KIOSK && t!=='hhHub') t='hhHub'; if(t!=='hhHub'){ try{ hhStopLive(); }catch(e){} try{ hhReqStop(); }catch(e){} } if(t!=='rotaTime'){ try{ htStop(); }catch(e){} } CURRENT_TAB=t; render(); }
 
 /* ============================================================ PACKAGES */
 /* Packages are editable and persist to localStorage + Firebase (meta/packages).
@@ -5203,13 +5226,15 @@ function renderHome(v){
     { label:'Financial Overview', icon:'📊', url:'pl/',               colour:'#2a6a4a', fin:true },
     { label:'Daily F&B entry',    icon:'🍽', url:'fb-entry.html',      colour:'#8b5c8f' },
     { label:'Staff clock-in',     icon:'⏱', url:'clock.html',         colour:'#4a86c7' },
-    { label:'HosTIME — live',     icon:'🟢', url:'hostime-admin.html', colour:'#1a2b3a' },
+    { label:'HosTIME — live',     icon:'🟢', tab:'rotaTime',           colour:'#1d7a4d' },
   ];
   const qStyle = c => `display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#fff;border:1px solid #e4e9ef;border-left:3px solid ${c};border-radius:9px;font:700 12px Lato;color:#1a2b3a;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,.05);cursor:pointer`;
   quick.innerHTML = `<span style="font-size:11px;font-weight:700;color:#8fa3b8;text-transform:uppercase;letter-spacing:.6px;margin-right:4px">Quick links</span>` +
     qLinks.map(q=> (q.fin && !finOK)
       ? `<span title="Finance team only — Ajay, Raj or Alia" style="${qStyle(q.colour)};opacity:.45;filter:grayscale(1);cursor:not-allowed">${q.icon} ${q.label} 🔒</span>`
-      : `<a href="${q.url}" target="_blank" rel="noopener" style="${qStyle(q.colour)}">${q.icon} ${q.label}</a>`).join('');
+      : q.tab
+        ? `<a href="#${q.tab}" onclick="switchTab('${q.tab}');return false;" style="${qStyle(q.colour)}">${q.icon} ${q.label}</a>`
+        : `<a href="${q.url}" target="_blank" rel="noopener" style="${qStyle(q.colour)}">${q.icon} ${q.label}</a>`).join('');
   // Admin & User Setup — Directors only
   if(typeof hpIsAdmin==="function" && hpIsAdmin()){
     const adm=document.createElement('button');
@@ -5529,28 +5554,43 @@ function renderModuleLanding(moduleId){
     setTimeout(()=>{ const b=document.getElementById('hp-start-enq'); if(b) b.onclick=()=>startNewEnquiry(); },0);
   }
 
-  // Sub-cards grid — larger cards, 3-4 per row max for readability
-  const grid = document.createElement("div");
-  grid.className = "hp-subgrid";
-  grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px";
-
-  subcards.forEach(sc => {
+  // ── Card builder ──
+  const makeCard = (sc) => {
+    const ok = hpCanTab(sc.tab);
     const card = document.createElement("button");
-    card.style.cssText = "display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:22px;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border:2px solid rgba(255,255,255,.9);border-radius:16px;cursor:pointer;text-align:left;transition:all .18s;box-shadow:0 2px 10px rgba(0,0,0,.08);width:100%";
+    card.style.cssText = "display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:22px;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border:2px solid rgba(255,255,255,.9);border-radius:16px;cursor:pointer;text-align:left;transition:all .18s;box-shadow:0 2px 10px rgba(0,0,0,.08);width:100%"+(ok?"":";opacity:.55");
     card.innerHTML = `
-      <div style="width:50px;height:50px;border-radius:13px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 3px 10px ${m.colour}55">${sc.icon}</div>
+      <div style="width:50px;height:50px;border-radius:13px;background:${m.colour};display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 3px 10px ${m.colour}55">${ok?sc.icon:"🔒"}</div>
       <div style="flex:1">
         <div style="font-size:15px;font-weight:700;color:#1a2b3a;line-height:1.2">${sc.label}</div>
         <div style="font-size:12px;color:#374151;margin-top:5px;line-height:1.5">${sc.desc}</div>
       </div>
-      <div style="font-size:11px;font-weight:700;color:#2F7A72;display:flex;align-items:center;gap:4px">Open <span>→</span></div>`;
+      <div style="font-size:11px;font-weight:700;color:#2F7A72;display:flex;align-items:center;gap:4px">${ok?"Open <span>→</span>":"Restricted"}</div>`;
     card.onmouseover = ()=>{ card.style.background="#fff"; card.style.borderColor=m.colour; card.style.transform="translateY(-4px)"; card.style.boxShadow=`0 12px 28px rgba(0,0,0,.12)`; };
     card.onmouseout  = ()=>{ card.style.background="rgba(255,255,255,.92)"; card.style.borderColor="rgba(255,255,255,.9)"; card.style.transform=""; card.style.boxShadow="0 2px 10px rgba(0,0,0,.08)"; };
-    card.onclick = () => sc.href ? (window.location.href=sc.href) : switchTab(sc.tab);
-    grid.appendChild(card);
-  });
+    card.onclick = () => ok ? (sc.href ? (window.location.href=sc.href) : switchTab(sc.tab)) : toast("🔒 That area is restricted. Ask Raj or Ajay if you need access.");
+    return card;
+  };
+  const gridWrap = () => { const g=document.createElement("div"); g.className="hp-subgrid"; g.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px"; return g; };
 
-  /* card grid replaced by the module sub-nav bar */
+  // ── Sectioned modules: group the cards under section headings (with anchors
+  //    the green-bar section chips scroll to). Other modules keep the sub-nav bar only. ──
+  const hasSections = subcards.length && subcards.every(x=>x.section);
+  if(hasSections){
+    const seen=[];
+    subcards.forEach(sc=>{ if(seen.indexOf(sc.section)<0) seen.push(sc.section); });
+    seen.forEach(secName=>{
+      const sec=document.createElement("div");
+      sec.id="hpsec-"+hpSlug(secName);
+      sec.style.cssText="margin:0 0 26px;scroll-margin-top:16px";
+      sec.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin:0 0 12px"><span style="width:8px;height:22px;border-radius:4px;background:${m.colour};display:inline-block"></span><span style="font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:700;color:#fff">${secName}</span></div>`;
+      const g=gridWrap();
+      subcards.filter(sc=>sc.section===secName).forEach(sc=>g.appendChild(makeCard(sc)));
+      sec.appendChild(g);
+      content.appendChild(sec);
+    });
+  }
+
   try{ content.appendChild(hpLandingExtras(m)); }catch(e){ console.warn('[HosPRO] landing extras failed',e); }
   wrap.appendChild(content);
   v.appendChild(wrap);
@@ -13231,7 +13271,7 @@ function renderRotaPayroll(v){
         <div><div style="font-size:16px;font-weight:800;color:#1a2b3a">Clock-in vs rota</div>
           <div style="font-size:12.5px;color:#4b5563">Load live QR clock-ins, or upload a CSV from the fingerprint system. We match each person and day against the rota and show every difference.</div></div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <a href="hostime-admin.html" target="_blank" rel="noopener" style="padding:9px 14px;border-radius:8px;background:#1a2b3a;color:#fff;font:700 12px Lato;cursor:pointer;border:none;text-decoration:none">🟢 HosTIME — live attendance</a>
+          <button onclick="switchTab('rotaTime')" style="padding:9px 14px;border-radius:8px;background:#1d7a4d;color:#fff;font:700 12px Lato;cursor:pointer;border:none">🟢 HosTIME — live attendance</button>
           <button onclick="spLoadQRClockins()" style="padding:9px 14px;border-radius:8px;background:#2B726A;color:#fff;font:700 12px Lato;cursor:pointer;border:none">📲 Load QR clock-ins</button>
           <button onclick="spClockRosterModal()" style="padding:9px 14px;border-radius:8px;background:#1F7A8C;color:#fff;font:700 12px Lato;cursor:pointer;border:none">🖨 Clock-in QR &amp; PINs</button>
           <label style="padding:9px 14px;border-radius:8px;background:#1a2b3a;color:#fff;font:700 12px Lato;cursor:pointer">📤 Upload CSV<input type="file" accept=".csv,.txt,text/csv" style="display:none" onchange="spCmpLoad(this.files[0])"></label>
@@ -13702,6 +13742,147 @@ async function spLoadQRClockins(){
       data, map:{code:0,name:1,date:2,punch:3}, result:null };
     spCmpRun(); spCmpRender();
   }catch(e){ if(out) out.innerHTML='<div style="color:#b3261e;font-size:13px">Could not load clock-ins: '+e.message+'</div>'; }
+}
+
+/* ============================================================
+   HosTIME — LIVE ATTENDANCE (in-app dashboard)
+   Reads clock_punches (written by the QR clock page hostime.html),
+   matches each person/day against the published rota, and shows one
+   reference photo per person from clock_faces. Lives inside HosPEOPLE
+   so there is no separate page, login or sign-out.
+   ============================================================ */
+const HT = { off:0, unsub:null, rota:{staff:[],rota:{}}, punches:[], faces:{}, facesName:{}, loaded:false };
+const HT_DEPTS=[
+ {id:'reception',name:'Reception',col:'#4a86c7'},{id:'admin',name:'Admin / Events',col:'#be185d'},
+ {id:'nights',name:'Nights',col:'#1a2b3a'},{id:'maintenance',name:'Maintenance',col:'#b8860b'},
+ {id:'kitchen',name:'Kitchen',col:'#c45c00'},{id:'bar',name:'Bar',col:'#8b5c8f'},
+ {id:'restaurant',name:'Food & Beverage',col:'#2a6a4a'},{id:'housekeeping',name:'Housekeeping',col:'#4a9d7f'},
+ {id:'spa',name:'Spa',col:'#9d7fb8'},{id:'',name:'Other',col:'#64707f'}];
+const HT_DEPT_NAME={}, HT_DEPT_COL={}; HT_DEPTS.forEach(d=>{ HT_DEPT_NAME[d.id]=d.name; HT_DEPT_COL[d.id]=d.col; });
+function htNorm(n){ return String(n||'').toLowerCase().replace(/[^a-z]/g,''); }
+function htDK(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function htCurDate(){ const d=new Date(); d.setDate(d.getDate()+HT.off); return d; }
+function htShiftText(v){ return String((v&&typeof v==='object')?(v.shift||'off'):(v||'off')); }
+function htParseRange(r){ const m=String(r).match(/(\d{1,2})[:.](\d{2})\s*-\s*(\d{1,2})[:.](\d{2})/); if(!m) return null; let a=(+m[1])*60+(+m[2]), b=(+m[3])*60+(+m[4]); if(b<a) b+=1440; return {a:a,b:b}; }
+function htRosMins(shift){ let tot=0; String(shift).split('&').forEach(p=>{ const r=htParseRange(p); if(r) tot+=r.b-r.a; }); return tot; }
+function htRosStart(shift){ let first=null; String(shift).split('&').forEach(p=>{ const r=htParseRange(p); if(r&&(first===null||r.a<first)) first=r.a; }); return first; }
+function htHrs(m){ if(m==null) return '—'; return (m/60).toFixed(1)+'h'; }
+function htStop(){ if(HT.unsub){ try{ HT.unsub(); }catch(e){} HT.unsub=null; } }
+
+function renderHosTime(v){
+  v.innerHTML=`<div style="max-width:1080px;margin:0 auto;padding:20px 24px;font-family:Lato,system-ui,sans-serif">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      <div style="width:46px;height:46px;border-radius:12px;background:#1d7a4d;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 3px 10px rgba(29,122,77,.35)">🟢</div>
+      <div><div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#1a2b3a;line-height:1">HosTIME</div>
+        <div style="font-size:12.5px;color:#64707f;letter-spacing:.3px">Live attendance — QR clock-ins vs rota</div></div>
+      <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#64707f;margin-left:auto"><span class="ht-dot" style="width:9px;height:9px;border-radius:50%;background:#1d7a4d;box-shadow:0 0 0 0 rgba(29,122,77,.5);animation:htpulse 2s infinite"></span>Updating live</span>
+    </div>
+    <style>@keyframes htpulse{0%{box-shadow:0 0 0 0 rgba(29,122,77,.5)}70%{box-shadow:0 0 0 7px rgba(29,122,77,0)}100%{box-shadow:0 0 0 0 rgba(29,122,77,0)}}
+      .ht-ctrl button,.ht-ctrl select{border:1px solid #e3e7ee;background:#fff;border-radius:10px;padding:9px 13px;font:700 13px Lato;cursor:pointer;color:#1a2b3a}
+      .ht-tile{background:#fff;border:1px solid #e3e7ee;border-radius:14px;padding:14px 16px}
+      .ht-tile .n{font:900 26px Lato}.ht-tile .l{font-size:11.5px;color:#64707f;text-transform:uppercase;letter-spacing:.4px;margin-top:2px;font-weight:700}
+      .ht-tbl{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e3e7ee;border-radius:12px;overflow:hidden}
+      .ht-tbl th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:#64707f;text-align:left;padding:9px 11px;background:#f6f8fa;border-bottom:1px solid #e3e7ee}
+      .ht-tbl td{padding:9px 11px;border-bottom:1px solid #f1f4f7;font-size:13px;vertical-align:middle}
+      .ht-tbl tr:last-child td{border-bottom:none}
+      .ht-chip{display:inline-block;border-radius:999px;padding:3px 10px;font:800 11px Lato}
+      .ht-ph{width:34px;height:34px;border-radius:8px;object-fit:cover;border:1px solid #e3e7ee;cursor:pointer}</style>
+    <div class="ht-ctrl" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+      <button onclick="htNavDay(-1)">←</button>
+      <div id="ht-dlabel" style="font:800 15px Lato;min-width:150px;text-align:center;color:#1a2b3a">—</div>
+      <button onclick="htNavDay(1)">→</button>
+      <button onclick="htToday()">Today</button>
+      <select id="ht-deptf" onchange="htRender()"><option value="all">All departments</option></select>
+    </div>
+    <div id="ht-tiles" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px"></div>
+    <div id="ht-body"></div>
+  </div>`;
+  // dept filter options
+  const sel=document.getElementById('ht-deptf');
+  if(sel){ HT_DEPTS.filter(d=>d.id).forEach(d=>{ const o=document.createElement('option'); o.value=d.id; o.textContent=d.name; sel.appendChild(o); }); }
+  // overlay for photo lightbox (once)
+  if(!document.getElementById('ht-ov')){
+    const ov=document.createElement('div'); ov.id='ht-ov';
+    ov.style.cssText='display:none;position:fixed;inset:0;background:rgba(8,12,18,.86);z-index:4000;align-items:center;justify-content:center;padding:20px';
+    ov.onclick=()=>{ ov.style.display='none'; };
+    ov.innerHTML='<img id="ht-ovimg" src="" alt="" style="max-width:92%;max-height:88vh;border-radius:12px">';
+    document.body.appendChild(ov);
+  }
+  htBoot();
+}
+async function htBoot(){
+  if(typeof FB==="undefined" || !FB.db){ const b=document.getElementById('ht-body'); if(b) b.innerHTML='<div style="background:#fff;border:1px solid #e3e7ee;border-radius:12px;padding:26px;text-align:center;color:#64707f">Not connected to the live database yet — try again in a moment.</div>'; return; }
+  try{ const rs=await FB.db.collection('hospro_public').doc('rota').get(); if(rs.exists){ const d=rs.data()||{}; HT.rota={staff:d.staff||[], rota:d.rota||{}}; } }catch(e){}
+  await htLoadFaces();
+  htWatch();
+}
+async function htLoadFaces(){
+  HT.faces={}; HT.facesName={};
+  try{ const qs=await FB.db.collection('clock_faces').get(); qs.forEach(d=>{ const vv=d.data()||{}; if(vv.photo){ HT.faces[String(vv.staffCode||d.id)]=vv.photo; if(vv.name) HT.facesName[htNorm(vv.name)]=vv.photo; } }); }catch(e){}
+}
+function htWatch(){
+  htStop();
+  const day=htDK(htCurDate());
+  const dl=document.getElementById('ht-dlabel'); if(dl) dl.textContent=htCurDate().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  if(typeof FB==="undefined" || !FB.db) return;
+  HT.unsub=FB.db.collection('clock_punches').where('date','==',day).onSnapshot(qs=>{
+    HT.punches=[]; qs.forEach(doc=>{ const vv=doc.data()||{}; vv._id=doc.id; HT.punches.push(vv); });
+    htRender();
+  }, ()=>{ const b=document.getElementById('ht-body'); if(b) b.innerHTML='<div style="background:#fff;border:1px solid #e3e7ee;border-radius:12px;padding:26px;text-align:center;color:#64707f">Could not load clock-ins — check your access.</div>'; });
+}
+function htNavDay(n){ HT.off+=n; htWatch(); }
+function htToday(){ HT.off=0; htWatch(); }
+function htTile(n,l,c){ return '<div class="ht-tile"><div class="n" style="color:'+c+'">'+n+'</div><div class="l">'+l+'</div></div>'; }
+function htLb(src){ const ov=document.getElementById('ht-ov'), im=document.getElementById('ht-ovimg'); if(ov&&im){ im.src=src; ov.style.display='flex'; } }
+function htRender(){
+  const tiles=document.getElementById('ht-tiles'), body=document.getElementById('ht-body'); if(!body) return;
+  const deptf=(document.getElementById('ht-deptf')||{}).value||'all';
+  const day=htDK(htCurDate());
+  // group punches by person (name)
+  const byPerson={};
+  HT.punches.forEach(p=>{ const k=htNorm(p.name)||p.staffCode; if(!byPerson[k]) byPerson[k]={name:p.name,code:p.staffCode,dept:p.dept||'',punches:[]}; byPerson[k].punches.push(p); if(p.dept&&!byPerson[k].dept) byPerson[k].dept=p.dept; });
+  // rostered people for the day
+  const rosteredKeys={};
+  (HT.rota.staff||[]).forEach(s=>{ const v=(HT.rota.rota||{})[day]&&(HT.rota.rota||{})[day][s.id]; const sh=htShiftText(v); if(sh && ['off','holiday','sick','in lieu'].indexOf(sh.toLowerCase())<0){ rosteredKeys[htNorm(s.name)]={shift:sh,dept:s.dept||'',name:s.name,code:s.staffCode||''}; } });
+  const keys={}; Object.keys(byPerson).forEach(k=>keys[k]=1); Object.keys(rosteredKeys).forEach(k=>keys[k]=1);
+  const rows=Object.keys(keys).map(k=>{
+    const pp=byPerson[k], ros=rosteredKeys[k];
+    const punches=((pp&&pp.punches)||[]).slice().sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+    const ins=punches.filter(x=>x.type==='in'), outs=punches.filter(x=>x.type==='out');
+    const inP=ins[0]||null, outP=outs[outs.length-1]||null;
+    const name=(pp&&pp.name)||(ros&&ros.name)||k;
+    const dept=(pp&&pp.dept)||(ros&&ros.dept)||'';
+    const inMin=inP?inP.mins:null, outMin=outP?outP.mins:null;
+    const worked=(inMin!=null&&outMin!=null)?(((outMin-inMin)+1440)%1440):null;
+    const rosMin=ros?htRosMins(ros.shift):null, rosStart=ros?htRosStart(ros.shift):null;
+    const status = inP&&!outP ? 'on' : (inP&&outP ? 'fin' : (ros ? 'abs' : 'extra'));
+    const late = (ros&&rosStart!=null&&inMin!=null) ? (inMin-rosStart) : null;
+    const code=(pp&&pp.code)||(ros&&ros.code)||'';
+    return {k:k,code:code,name:name,dept:dept,shift:ros?ros.shift:'',inP:inP,outP:outP,worked:worked,rosMin:rosMin,late:late,status:status};
+  });
+  const onNow=rows.filter(r=>r.inP&&!r.outP).length;
+  const fin=rows.filter(r=>r.inP&&r.outP).length;
+  const abs=rows.filter(r=>r.shift&&!r.inP).length;
+  const extra=rows.filter(r=>(r.inP||r.outP)&&!r.shift).length;
+  if(tiles) tiles.innerHTML=htTile(onNow,'On shift now','#1d7a4d')+htTile(fin,'Finished today','#334')+htTile(abs,'Rostered, not in','#b3261e')+htTile(extra,'Not on rota','#8a6100');
+  const order={}; HT_DEPTS.forEach((d,i)=>order[d.id]=i);
+  const byDept={}; rows.forEach(r=>{ const d=(r.dept in HT_DEPT_NAME)?r.dept:''; (byDept[d]=byDept[d]||[]).push(r); });
+  let html='';
+  Object.keys(byDept).sort((a,b)=>(order[a]==null?99:order[a])-(order[b]==null?99:order[b])).forEach(d=>{
+    if(deptf!=='all' && d!==deptf) return;
+    const list=byDept[d].sort((a,b)=>{ const s={on:0,abs:1,fin:2,extra:3}; return (s[a.status]-s[b.status])||a.name.localeCompare(b.name); });
+    html+='<div style="margin-bottom:18px"><h2 style="font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:9px;color:#1a2b3a"><span style="width:11px;height:11px;border-radius:50%;background:'+(HT_DEPT_COL[d]||'#64707f')+'"></span>'+spEsc(HT_DEPT_NAME[d]||'Other')+' <span style="font-size:12px;color:#64707f;font-weight:600">'+list.filter(r=>r.status==='on').length+' on · '+list.length+' total</span></h2>';
+    html+='<table class="ht-tbl"><tr><th>Name</th><th>Status</th><th>Rostered</th><th>In</th><th>Out</th><th>Worked</th><th>Photo</th></tr>';
+    list.forEach(r=>{
+      const chip = r.status==='on'?'<span class="ht-chip" style="background:#e8f6ee;color:#1d7a4d">● On shift</span>':r.status==='fin'?'<span class="ht-chip" style="background:#eef1f5;color:#334">Finished</span>':r.status==='abs'?'<span class="ht-chip" style="background:#fde8e8;color:#b3261e">Not clocked in</span>':'<span class="ht-chip" style="background:#fff3cd;color:#8a6100">Not on rota</span>';
+      const inTxt = r.inP ? (spEsc(r.inP.time)+(r.late!=null?(r.late>5?(' <span style="color:#b3261e;font-weight:700">+'+r.late+'m late</span>'):(r.late<0?' <span style="color:#64707f">'+Math.abs(r.late)+'m early</span>':' <span style="color:#1d7a4d;font-weight:700">on time</span>')):'')) : '<span style="color:#64707f">—</span>';
+      const face = HT.facesName[r.k] || (r.code&&HT.faces[String(r.code)]) || '';
+      const photo = face ? ('<img class="ht-ph" src="'+face+'" title="'+spEsc(r.name)+' — reference photo" onclick="htLb(this.src)">') : '<span style="color:#64707f">—</span>';
+      html+='<tr><td style="font-weight:700">'+spEsc(r.name)+'</td><td>'+chip+'</td><td>'+(r.shift?spEsc(r.shift):'<span style="color:#64707f">not rostered</span>')+(r.rosMin?(' <span style="color:#64707f">· '+htHrs(r.rosMin)+'</span>'):'')+'</td><td>'+inTxt+'</td><td>'+(r.outP?spEsc(r.outP.time):'<span style="color:#64707f">—</span>')+'</td><td>'+(r.worked!=null?('<b>'+htHrs(r.worked)+'</b>'):'<span style="color:#64707f">—</span>')+'</td><td>'+photo+'</td></tr>';
+    });
+    html+='</table></div>';
+  });
+  body.innerHTML = html || '<div style="background:#fff;border:1px solid #e3e7ee;border-radius:12px;padding:26px;text-align:center;color:#64707f">No clock-ins or rostered staff for this day yet.</div>';
 }
 
 // ── Staff rota link + publishing the rota for staff phones ───

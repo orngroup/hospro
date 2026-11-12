@@ -964,7 +964,7 @@ FLOW_MODULES = [
   { id:"hosbrand",  name:"HosBRAND",   caption:"Brand. Collateral. Downloads.",        icon:"📁", colour:"#7A6538", tint:"#F4EEDF",
     tabs:["brandLogos","brandCollateral","brandPhotography","brandDocs"] },
   { id:"hospeople", name:"HosPEOPLE",  caption:"People. Shifts. HR. Leave.",           icon:"👥", colour:"#2B726A", tint:"#E2F1EE",
-    tabs:["rotaDash","rotaWeek","rotaPayroll","rotaAttend","rotaForecast","rotaMonthly","rotaSettings","staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs"] },
+    tabs:["rotaDash","rotaWeek","rotaPayroll","rotaTime","rotaAttend","rotaForecast","rotaMonthly","rotaSettings","staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs"] },
   { id:"hoshub",    name:"HosHUB",     caption:"Documents. Contracts. Finance. HR.",   icon:"📂", colour:"#55744F", tint:"#E8F0E5",
     tabs:["hubDocs","hubContracts","hubSuppliers","hubFinance","hubHR"] },
   { id:"hosrev",    name:"HosREV",     caption:"Revenue. Rates. Competitors. Margin.", icon:"💹", colour:"#1F7A8C", tint:"#E2F0F3",
@@ -1214,15 +1214,19 @@ const MODULE_SUBCARDS = {
     {tab:"hubHR",        label:"HR Documents",         icon:"👤", desc:"Policies, handbooks and HR records"},
   ],
   "hospeople": [
-    {tab:"rotaDash",      label:"Shift Dashboard",   icon:"📊", desc:"Today's staffing overview"},
-    {tab:"rotaWeek",      label:"Weekly Rota",       icon:"📋", desc:"View & edit weekly shifts"},
-    {tab:"rotaPayroll",   label:"Payroll & Clock-in", short:"Payroll", icon:"💷", desc:"Weekly & monthly costs, fingerprint compare"},
-    {tab:"rotaAttend",    label:"Attendance",        short:"Attendance", icon:"🕒", desc:"Rota vs clock log — lateness, time lost & cost"},
-    {tab:"rotaForecast",  label:"Occupancy Forecast",icon:"📈", desc:"Forecast & staff planning"},
-    {tab:"rotaMonthly",   label:"Monthly Plan",      icon:"📅", desc:"Monthly occupancy overview"},
-    {tab:"staffProfiles", label:"Staff Profiles",    icon:"👤", desc:"All 38 staff profiles & HR records"},
-    {tab:"staffLeaveAdmin",label:"Leave Management", icon:"🌴", desc:"Approve & manage leave requests"},
-    {tab:"rotaSettings",  label:"Shift Settings",    icon:"⚙️", desc:"Staff & department configuration"},
+    // ── Rota ──
+    {tab:"rotaDash",      section:"Rota", label:"Shift Dashboard",   short:"Dashboard", icon:"📊", desc:"Today's staffing overview"},
+    {tab:"rotaWeek",      section:"Rota", label:"Weekly Rota",       short:"Rota",      icon:"📋", desc:"View & edit weekly shifts"},
+    {tab:"rotaForecast",  section:"Rota", label:"Occupancy Forecast",short:"Forecast",  icon:"📈", desc:"Forecast & staff planning"},
+    {tab:"rotaMonthly",   section:"Rota", label:"Monthly Plan",      short:"Monthly",   icon:"📅", desc:"Monthly occupancy overview"},
+    {tab:"rotaSettings",  section:"Rota", label:"Shift Settings",    short:"Settings",  icon:"⚙️", desc:"Staff & department configuration"},
+    // ── Staff ──
+    {tab:"staffProfiles", section:"Staff", label:"Staff Profiles",    short:"Profiles",  icon:"👤", desc:"All staff profiles & HR records"},
+    {tab:"staffLeaveAdmin",section:"Staff",label:"Leave Management",  short:"Leave",     icon:"🌴", desc:"Approve & manage leave requests"},
+    {tab:"rotaPayroll",   section:"Staff", label:"Payroll & Clock-in",short:"Payroll",   icon:"💷", desc:"Weekly & monthly costs, fingerprint compare"},
+    // ── Attendance ──
+    {tab:"rotaTime",      section:"Attendance", label:"HosTIME — Live attendance", short:"HosTIME", icon:"🟢", desc:"Live QR clock-ins vs rota, right now"},
+    {tab:"rotaAttend",    section:"Attendance", label:"Attendance",   short:"Attendance",icon:"🕒", desc:"Rota vs clock log — lateness, time lost & cost"},
   ],
   "hosrev": [
     {tab:"revDash",     label:"HosREV Dashboard",  short:"Dashboard", icon:"💹", desc:"Morning brief & decisions needed"},
