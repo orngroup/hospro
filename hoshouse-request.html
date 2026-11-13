@@ -496,6 +496,8 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
           </div>
           <div id="so-hmsg" class="muted" style="font-size:12px;min-height:14px;margin-top:4px"></div>
           <div id="so-hnotes" style="margin-top:8px"></div>
+          <button type="button" onclick="soSaveHandover()" style="width:100%;margin-top:14px;background:#2a6a4a;color:#fff;border:none;border-radius:11px;padding:12px;font:800 14px Lato;cursor:pointer">💾 Save handover</button>
+          <div class="muted" style="font-size:11px;margin-top:6px;text-align:center">Saves the shift times &amp; handover notes. The checklist on the right has its own Save.</div>
         </div>
       </div>
       <div class="pane-list">
@@ -1488,6 +1490,14 @@ function soAddNote(){
   notes.push({ text:txt, by:CL_INI, at:clNow(), day:day, shift:clShiftByTime(), ts:Date.now() });
   ta.value=''; soSaveDoc({handoverNotes:notes});
   var msg=$('so-hmsg'); if(msg){ msg.style.color='#1d7a4d'; msg.textContent='✓ Note added'; setTimeout(function(){ if(msg) msg.textContent=''; },1500); }
+}
+function soSaveHandover(){
+  if(soNeedWho()) return;
+  var ta=$('so-handover'); var txt=ta?(ta.value||'').trim():'';
+  if(txt){ soAddNote(); }      // commit any typed note (also persists the shift doc)
+  else { soSaveDoc({}); }      // otherwise flush — persists name, start/end & key-task stamps
+  var msg=$('so-hmsg'); if(msg){ msg.style.color='#1d7a4d'; msg.textContent='✓ Handover saved'; setTimeout(function(){ if(msg) msg.textContent=''; },1800); }
+  if(typeof toast==='function') toast('✓ Handover saved');
 }
 function soDelNote(i){
   if(!shiftDelAuth()) return;
