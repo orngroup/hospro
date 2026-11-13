@@ -9828,10 +9828,12 @@ async function hhAllocateAll(){
   if(!rooms.length){ toast('No rooms waiting to allocate for '+date+' — add the day\'s rooms first.'); return; }
   await hhLoadStaff();
   const crew=(window._hhCrew||await hhLoadCrew(date)); const crewIds=new Set(crew.map(c=>c.hkId));
-  const actives=hhStaffList().filter(s=>(s.status||'active')==='active');
+  // Show EVERY current housekeeper in the list (only departed "left" staff are hidden),
+  // so nobody is missing from Assign. Holiday staff appear but aren't auto-selected.
+  const actives=hhStaffList().filter(s=>(s.status||'active')!=='left');
   // default selection = active, non-manager people who are on today's crew (or everyone active if no crew ticked)
-  const anyCrewNonLead=actives.some(s=>!s.lead && crewIds.has(s.id));
-  window._hhAllocSel=actives.filter(s=>!s.lead && (anyCrewNonLead? crewIds.has(s.id): true)).map(s=>s.id);
+  const anyCrewNonLead=actives.some(s=>!s.lead && (s.status||'active')==='active' && crewIds.has(s.id));
+  window._hhAllocSel=actives.filter(s=>!s.lead && (s.status||'active')==='active' && (anyCrewNonLead? crewIds.has(s.id): true)).map(s=>s.id);
   window._hhAllocRooms=rooms; window._hhAllocDate=date;
   const chk=s=>{ const on=window._hhAllocSel.indexOf(s.id)>=0;
     return `<label style="display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1.5px solid ${on?'#2E6B5E':'#d7dde4'};background:${on?'#eaf4f0':'#fff'};border-radius:9px;cursor:pointer;font:700 12px Lato;color:${on?'#1f5a4e':'#45586b'}">
@@ -10987,7 +10989,7 @@ async function hhBulkOpen(){
       <div style="display:flex;gap:8px">
         <button onclick="closeModal()" style="padding:9px 15px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font:600 13px Lato;cursor:pointer">Cancel</button>
         <button onclick="hhBulkConfirm(false)" style="padding:9px 16px;border:1.5px solid #1F3864;border-radius:8px;background:#fff;color:#1F3864;font:800 13px Lato;cursor:pointer">Confirm selection</button>
-        <button onclick="hhBulkConfirm(true)" style="padding:9px 18px;border:none;border-radius:8px;background:#1F3864;color:#fff;font:800 13px Lato;cursor:pointer">Confirm &amp; allocate →</button>
+        <button onclick="hhBulkConfirm(true)" style="padding:9px 18px;border:none;border-radius:8px;background:#1F3864;color:#fff;font:800 13px Lato;cursor:pointer">👤 Assign →</button>
       </div>
     </div>`);
   hhBulkRender();

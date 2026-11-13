@@ -272,10 +272,45 @@
     t.textContent=msg; t.style.opacity='1'; clearTimeout(window._hhToastT);
     window._hhToastT=setTimeout(()=>{ if(t) t.style.opacity='0'; }, 4500);
   }
+  // Audible chime — the universal alert that works on EVERY device (incl. iPhone/Mac)
+  // while HosHouse is open. Browsers need a user gesture before audio can play, so we
+  // unlock the audio context on the first tap (see hhUnlockAudio below).
+  function hhChime(){
+    try{
+      var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+      if(!window._hhAC) window._hhAC=new AC();
+      var ac=window._hhAC; if(ac.state==='suspended'){ try{ ac.resume(); }catch(e){} }
+      var o=ac.createOscillator(), g=ac.createGain(); o.type='sine';
+      o.connect(g); g.connect(ac.destination);
+      var t=ac.currentTime;
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.3,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.55);
+      o.frequency.setValueAtTime(880,t); o.frequency.setValueAtTime(1175,t+0.15);
+      o.start(t); o.stop(t+0.57);
+    }catch(e){}
+  }
+  var _hhAudioReady=false;
+  function hhUnlockAudio(){ if(_hhAudioReady) return; _hhAudioReady=true; try{ var AC=window.AudioContext||window.webkitAudioContext; if(AC){ if(!window._hhAC) window._hhAC=new AC(); if(window._hhAC.state==='suspended') window._hhAC.resume(); } }catch(e){} }
+  try{ ['touchend','click','keydown'].forEach(function(ev){ document.addEventListener(ev, hhUnlockAudio, {once:false, passive:true}); }); }catch(e){}
+
+  // OS notification. iOS Safari does NOT support `new Notification()` — only the
+  // service worker's showNotification works there (and it works on macOS & Android
+  // too), so prefer that and fall back to the constructor only where it exists.
+  function hhOSNotify(title, body){
+    try{
+      if(!('Notification' in window) || Notification.permission!=='granted') return;
+      if('serviceWorker' in navigator && navigator.serviceWorker.ready){
+        navigator.serviceWorker.ready.then(function(reg){
+          try{ reg.showNotification(title,{ body:body, icon:'icon-192.png', badge:'icon-192.png', tag:'hh-'+Date.now(), vibrate:[120,60,120], renotify:true }); }
+          catch(e){ try{ new Notification(title,{ body:body, icon:'icon-192.png' }); }catch(_){} }
+        }).catch(function(){ try{ new Notification(title,{ body:body, icon:'icon-192.png' }); }catch(_){} });
+      } else { try{ new Notification(title,{ body:body, icon:'icon-192.png' }); }catch(_){} }
+    }catch(e){}
+  }
   function hhNotify(title, body){
-    hhToast(title+' — '+body);
-    try{ if('Notification' in window && Notification.permission==='granted'){ new Notification(title,{ body, icon:'icon-192.png', tag:'hh-'+Date.now() }); } }catch(e){}
-    try{ if(navigator.vibrate) navigator.vibrate(120); }catch(e){}
+    hhToast(title+' — '+body);   // always-visible in-app banner (every platform)
+    hhChime();                   // audible alert while HosHouse is open (incl. iPhone & Mac)
+    hhOSNotify(title, body);     // OS notification via service worker (iOS PWA, macOS, Android)
+    try{ if(navigator.vibrate) navigator.vibrate([120,60,120]); }catch(e){}
   }
   function requestNotifyPerm(){ try{ if('Notification' in window && Notification.permission==='default'){ Notification.requestPermission(); } }catch(e){} }
 
@@ -307,7 +342,7 @@
     bg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:70px 16px 0';
     bg.innerHTML='<div style="background:#fff;border-radius:14px;padding:20px;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.25)">'
       +'<div style="font-size:16px;font-weight:800;color:#1a2b3a;margin-bottom:6px">🔔 Alerts</div>'
-      +'<div style="font-size:13px;color:#6b7280;line-height:1.5;margin-bottom:12px">Get a banner, sound and vibrate when rooms change — even with HosHouse closed. On iPhone, open HosHouse from the Home-Screen icon (not Safari) first.</div>'
+      +'<div style="font-size:13px;color:#6b7280;line-height:1.5;margin-bottom:12px">Get a banner, chime and vibrate when rooms change. While HosHouse is open you\'ll always get an in-app banner and chime. For alerts when it\'s <b>closed</b>: on <b>iPhone/iPad</b> add HosHouse to your Home Screen (Share → Add to Home Screen) and open it from that icon, then tap Test; on a <b>Mac</b> use Safari or Chrome and choose Allow when asked.</div>'
       +'<div id="hh-alert-msg" style="font-size:13px;font-weight:600;color:#1a2b3a;min-height:18px;margin-bottom:10px">'+status+'</div>'
       +'<button onclick="hhTestAlerts()" style="width:100%;padding:12px;border:none;border-radius:10px;background:#b89056;color:#fff;font:800 14px inherit;cursor:pointer">🔔 Test my alerts</button>'
       +'<button onclick="var o=document.getElementById(\'hh-alert-ov\');o&&o.remove()" style="width:100%;padding:10px;border:none;border-radius:10px;background:#f1f3f6;color:#333;font:700 13px inherit;cursor:pointer;margin-top:8px">Close</button>'
@@ -321,7 +356,10 @@
     if(!('Notification' in window)){ set('This device can’t show alerts.'); return; }
     if(Notification.permission==='default'){ const p=await Notification.requestPermission(); if(p!=='granted'){ set('Alerts are blocked. Allow notifications for HosHouse in your phone settings.'); return; } }
     if(Notification.permission!=='granted'){ set('Alerts are blocked. Allow notifications for HosHouse in your phone settings.'); return; }
-    set('Setting up…');
+    // Immediate local test — works on every device (iPhone, Mac, Android) right now,
+    // so the user sees an alert even if background push isn't available on this device.
+    hhUnlockAudio(); hhNotify('🔔 HosHouse test alert','If you can see or hear this, alerts work on this device.');
+    set('✓ That banner, chime and notification just fired locally. Now setting up alerts for when HosHouse is closed…');
     const ok=await fcmEnsureRegistered(true);
     if(!ok){ set('Couldn’t set up alerts on this phone. On iPhone, open HosHouse from the Home-Screen icon (not Safari), then try again.'); return; }
     set('Sending a test alert…');
@@ -513,7 +551,8 @@
     const B=_bulk; if(!B) return;
     const n=Object.keys(B.picks).length;
     if(!n){ leadMsg('Select at least one room first.'); return; }
-    const actives=HH.staff.filter(s=>(s.status||'active')==='active' && !s.lead);
+    // Show every current housekeeper (only departed "left" staff are hidden), so none are missing.
+    const actives=HH.staff.filter(s=>(s.status||'active')!=='left' && !s.lead);
     // how many rooms each housekeeper already has on today (not done)
     const load={}; (rooms||[]).forEach(r=>{ if(r.housekeeper && r.status!=='done'){ load[r.housekeeper]=(load[r.housekeeper]||0)+1; } });
     const initial=s=>esc(String(s.name||'?').trim().charAt(0).toUpperCase());
