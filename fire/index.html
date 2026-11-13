@@ -39,7 +39,7 @@ details summary{cursor:pointer;font-weight:800;color:var(--blue2);font-size:18px
     <button class="btn" id="go">Open</button><div class="err" id="e"></div></div>
 </div>
 
-<script src="../hosfire-defs.js?v=20261109b"></script>
+<script src="../hosfire-defs.js?v=20261112a"></script>
 <script>
 (() => {
   const $ = (s) => document.querySelector(s);
@@ -56,7 +56,7 @@ details summary{cursor:pointer;font-weight:800;color:var(--blue2);font-size:18px
     <a class="big main" href="../hosfire-checks.html${Q}"><div class="ic">✅</div><div><b>Do fire checks</b><span>Daily check, weekly alarm test, monthly checks, extinguishers, fire alarm events</span></div></a>
     <a class="big" href="../hosfire-checks.html?c=drill${Q2}"><div class="ic">🚨</div><div><b>Record a fire drill</b><span>Day or night drill: times, who took part, what went wrong</span></div></a>
     <a class="big" href="../hosfire-training.html${Q}"><div class="ic">🎓</div><div><b>Fire training</b><span>New starter induction (15 minutes) and this month's refresher (3 minutes)</span></div></a>
-    <a class="big" href="../housekeeping/${Q}" style="border-color:#0E7C66"><div class="ic">🧴</div><div><b style="color:#0E7C66">Housekeeping training</b><span>COSHH and room standards — the housekeeping team page</span></div></a>
+    <a class="big" href="../housekeeping/${Q}" style="border-color:#0E7C66"><div class="ic">🧴</div><div><b style="color:#0E7C66">Housekeeping training</b><span>COSHH, hygiene and room cleaning standards — the housekeeping team page</span></div></a>
     <div class="card"><details><summary>🔥 Reception fire alarm procedure</summary><ol style="margin-top:12px">${steps.map(([t, d]) => `<li><b>${h(t)}.</b> ${h(d)}</li>`).join("")}</ol>
       <p class="muted" style="margin-top:10px">Main fire alarm panel: ${h(S.mainPanel || "")}. Fire alarm faults: Leader Systems ${h(S.leaderPhone || "")}.</p>
       <div class="docs"><a href="manuals/reception-fire-alarm-procedure.pdf" target="_blank" rel="noopener">Reception Fire Alarm Activation Procedure (PDF)<span>2 pages</span></a></div></details></div>

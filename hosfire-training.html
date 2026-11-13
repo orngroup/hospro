@@ -46,7 +46,7 @@ canvas{width:100%;height:170px;border:1.5px dashed var(--line);border-radius:10p
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="hosfire-defs.js?v=20261109b"></script>
+<script src="hosfire-defs.js?v=20261112a"></script>
 <script>
 (() => {
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -56,7 +56,7 @@ const MON = ["January","February","March","April","May","June","July","August","
 const fd = (s) => { const [y, m, d] = s.split("-"); return `${+d} ${MON[+m - 1]} ${y}`; };
 const DEMO = /[?&]demo=1/.test(location.search), DK = "hosfire_demo_v1";
 const DEPTS = [["reception", "Reception"], ["nights", "Nights"], ["restaurant", "Restaurant / F&B"], ["bar", "Bar"], ["kitchen", "Kitchen"], ["housekeeping", "Housekeeping"], ["maintenance", "Maintenance"], ["spa", "Spa"], ["admin", "Management / office"], ["other", "Other"]];
-const QS = new URLSearchParams(location.search), HKC = ["coshh", "hkstd"], HKMODE = ["coshh", "hkstd", "housekeeping"].includes((QS.get("course") || "").toLowerCase()), COURSE = (QS.get("course") || "").toLowerCase(), QDEPT = ((QS.get("dept") || "").toLowerCase() || (HKMODE ? "housekeeping" : "")), HOD = QS.get("hod") === "1";
+const QS = new URLSearchParams(location.search), HKC = ["coshh", "hkstd", "hk"], HKMODE = ["coshh", "hkstd", "hk", "housekeeping"].includes((QS.get("course") || "").toLowerCase()), COURSE = (QS.get("course") || "").toLowerCase(), QDEPT = ((QS.get("dept") || "").toLowerCase() || (HKMODE ? "housekeeping" : "")), HOD = QS.get("hod") === "1";
 const SHOW_COSHH = HKMODE || QDEPT === "housekeeping";
 const isHK = (m) => HKC.includes(m);
 const deptLabel = (k) => (DEPTS.find((d) => d[0] === k) || [k, k])[1];
@@ -100,7 +100,7 @@ function viewWho() {
   setNav("");
   const names = st.regs.map((r) => r.name).sort();
   const topic = hfMonthlyTopic();
-  app.innerHTML = `${HKMODE ? `<div class="card" style="border-left:6px solid #0E7C66;padding:12px 16px"><b>Housekeeping training</b> <span class="muted">— COSHH and safe cleaning, and room standards</span></div>` : DEPTS.some((d) => d[0] === QDEPT) ? `<div class="card" style="border-left:6px solid var(--red);padding:12px 16px"><b>${h(deptLabel(QDEPT))} team</b> <span class="muted">— fire safety training</span></div>` : ""}<div class="card"><h2>Who are you?</h2>
+  app.innerHTML = `${HKMODE ? `<div class="card" style="border-left:6px solid #0E7C66;padding:12px 16px"><b>Housekeeping training</b> <span class="muted">— COSHH, hygiene and room cleaning standards</span></div>` : DEPTS.some((d) => d[0] === QDEPT) ? `<div class="card" style="border-left:6px solid var(--red);padding:12px 16px"><b>${h(deptLabel(QDEPT))} team</b> <span class="muted">— fire safety training</span></div>` : ""}<div class="card"><h2>Who are you?</h2>
     <label>Your full name</label><input id="nm" list="names" placeholder="Start typing your name" value="${h(st.name)}"><datalist id="names">${names.map((n) => `<option value="${h(n)}">`).join("")}</datalist>
     <div id="newp" class="hide"><p class="muted">You're not on the training list yet — that's fine, you'll be added.</p>
       <label>Department</label><select id="dp"><option value="">Choose…</option>${DEPTS.map(([k, l]) => `<option value="${k}" ${k === QDEPT ? "selected" : ""}>${l}</option>`).join("")}</select>
@@ -128,8 +128,9 @@ function viewWho() {
 
 const COSHH_BTN = `<button class="mod req" data-m="coshh" style="border-color:#0E7C66"><b>Housekeeping COSHH and safe cleaning <span class="pill" style="background:#E3F3EE;color:#0E7C66">Housekeeping — every year</span></b><span class="muted">10 short sections and a 10-question check · about 15 minutes. Complete before using any cleaning chemicals.</span></button>`;
 const HKSTD_BTN = `<button class="mod req" data-m="hkstd" style="border-color:#0E7C66"><b>Housekeeping room standards <span class="pill" style="background:#E3F3EE;color:#0E7C66">Housekeeping — every year</span></b><span class="muted">The 5-step loop (assign, clean, check, report, release) and the room inspection checklist · 10 short sections and a 10-question check · about 15 minutes.</span></button>`;
-const HK_BTNS = () => (COURSE === "hkstd" ? HKSTD_BTN + COSHH_BTN : COSHH_BTN + HKSTD_BTN);
-const COURSE_OF = () => (st.mod === "coshh" ? HF_TRAIN_COSHH : st.mod === "hkstd" ? HF_TRAIN_HKSTD : HF_TRAIN_INDUCTION);
+const HK_BTN = `<button class="mod req" data-m="hk" style="border-color:#0E7C66"><b>Housekeeping standards: COSHH, hygiene and room cleaning <span class="pill" style="background:#E3F3EE;color:#0E7C66">Housekeeping — every year</span></b><span class="muted">Our products and colour-coded cloths, never mixing chemicals, hygiene, linen, the cleaning sequence and reporting faults · 14 short sections and a 20-question check · about 25 minutes. New starters: before your first shift.</span></button>`;
+const HK_BTNS = () => HK_BTN;
+const COURSE_OF = () => (st.mod === "hk" ? HF_TRAIN_HK : st.mod === "coshh" ? HF_TRAIN_COSHH : st.mod === "hkstd" ? HF_TRAIN_HKSTD : HF_TRAIN_INDUCTION);
 function viewSlide() {
   const C = COURSE_OF(), S = C.slides, i = st.step, [t, pts] = S[i];
   app.innerHTML = `<div class="muted">${h(C.title)} · section ${i + 1} of ${S.length}</div><div class="prog"><i style="width:${Math.round(((i + 1) / (S.length + 2)) * 100)}%"></i></div>
@@ -188,7 +189,7 @@ function viewSign() {
     <p>${st.mod === "hod" ? "Please sign to record your confirmation." : "Please confirm and sign to record your training."}</p>
     <label>Name</label><input value="${h(st.name)}" disabled><label>Date</label><input value="${fd(today())}" disabled>
     <label>Your signature — draw it with your finger</label><canvas id="cv"></canvas><button class="btn ghost" id="clr" style="margin-top:6px;padding:8px">Clear</button>
-    <label style="text-transform:none;font-size:15px;color:var(--ink);display:flex;gap:10px;align-items:flex-start;margin-top:14px"><input type="checkbox" id="ok" style="width:auto;margin-top:4px">I, ${h(st.name)}, ${st.mod === "hod" ? `confirm the statements above as head of the ${h(deptLabel(QDEPT))} department.` : st.mod === "coshh" ? "have completed this training myself and understand how to use, store and dispose of cleaning chemicals safely, and when to wear protective equipment." : st.mod === "hkstd" ? "have completed this training myself and will follow the Brandon Hall 5-step housekeeping loop and room standards." : "have completed this fire safety training myself and understand the hotel's fire procedures."}</label>
+    <label style="text-transform:none;font-size:15px;color:var(--ink);display:flex;gap:10px;align-items:flex-start;margin-top:14px"><input type="checkbox" id="ok" style="width:auto;margin-top:4px">I, ${h(st.name)}, ${st.mod === "hod" ? `confirm the statements above as head of the ${h(deptLabel(QDEPT))} department.` : st.mod === "hk" ? "have completed this training myself and will use our products and colour-coded cloths correctly, never mix chemicals, follow the hygiene and linen rules, and follow the Brandon Hall cleaning procedures." : st.mod === "coshh" ? "have completed this training myself and understand how to use, store and dispose of cleaning chemicals safely, and when to wear protective equipment." : st.mod === "hkstd" ? "have completed this training myself and will follow the Brandon Hall 5-step housekeeping loop and room standards." : "have completed this fire safety training myself and understand the hotel's fire procedures."}</label>
     <div class="err" id="e"></div></div>`;
   const c = $("#cv"), ctx = c.getContext("2d"); let down = false, drawn = false; const r = window.devicePixelRatio || 1; c.width = c.clientWidth * r; c.height = c.clientHeight * r; ctx.scale(r, r); ctx.lineWidth = 2.4; ctx.lineCap = "round"; ctx.strokeStyle = "#14243A";
   const pos = (e) => { const b = c.getBoundingClientRect(), t = e.touches ? e.touches[0] : e; return [t.clientX - b.left, t.clientY - b.top]; };
@@ -207,10 +208,10 @@ function viewSign() {
 
 async function save(sig) {
   const d = today(), k = st.mod, topic = k === "monthly" ? hfMonthlyTopic()[0] : "";
-  const note = `${k === "hod" ? "HOD manual confirmation" : k === "coshh" ? "HosFIRE online Housekeeping COSHH training" : k === "hkstd" ? "HosFIRE online Housekeeping room standards training" : k === "induction" ? "HosFIRE online fire safety induction" : "HosFIRE monthly refresher — " + topic}: ${st.score}/${st.total}, signed online ${fd(d)}`;
+  const note = `${k === "hod" ? "HOD manual confirmation" : k === "hk" ? "HosFIRE online Housekeeping standards (COSHH, hygiene and room cleaning)" : k === "coshh" ? "HosFIRE online Housekeeping COSHH training" : k === "hkstd" ? "HosFIRE online Housekeeping room standards training" : k === "induction" ? "HosFIRE online fire safety induction" : "HosFIRE monthly refresher — " + topic}: ${st.score}/${st.total}, signed online ${fd(d)}`;
   const log = { module: k, topic, title: st.label, name: st.name, dept: st.dept, start: st.start || "", date: d, score: st.score, total: st.total, passed: true, sig, device: navigator.userAgent.slice(0, 120), byName: st.name, byEmail: DEMO ? "demo" : HF_KIOSK.email };
   if (k === "hod") { log.dept = st.hodDept; log.title = st.label; }
-  const keys = k === "induction" ? ["induction", "refresher", "procedure"] : k === "hod" ? [] : isHK(k) ? [k] : ["monthly"];
+  const keys = k === "induction" ? ["induction", "refresher", "procedure"] : k === "hod" ? [] : k === "hk" ? ["coshh", "hkstd"] : isHK(k) ? [k] : ["monthly"];
   const reg = st.reg, courses = Object.assign({}, (reg && reg.courses) || {}), ev = Object.assign({}, (reg && reg.ev) || {});
   keys.forEach((c) => { courses[c] = d; ev[c] = { confirmed: true, note, by: "HosFIRE Training" }; });
   const id = reg ? reg.id : "trn-web-" + st.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -231,14 +232,14 @@ const addMonthsT = (d, n) => { const x = new Date(d + "T12:00:00"); x.setMonth(x
 function viewDone() {
   setNav(`<button class="btn ghost" id="pr">Print certificate</button><button class="btn" id="again">Finish</button>`);
   app.innerHTML = `<div class="card cert"><img src="assets/marketing/logos/logo-blue-transparent.png" alt=""><div class="muted" style="letter-spacing:.15em;text-transform:uppercase;color:var(--red);font-weight:800">Certificate of completion</div>
-    <h1>${h(st.label)}</h1><p style="font-size:20px"><b>${h(st.name)}</b></p><p>${st.mod === "hod" ? `confirmed as head of department on <b>${fd(today())}</b>` : `completed this ${st.mod === "coshh" ? "health and safety" : st.mod === "hkstd" ? "housekeeping" : "fire safety"} training on <b>${fd(today())}</b><br>Score ${st.score} out of ${st.total}${isHK(st.mod) ? `<br><span class="muted">Valid for 12 months · renew by ${fd(addMonthsT(today(), 12))}</span>` : ""}`}</p>
-    <p class="muted">Brandon Hall Hotel and Spa · recorded in HosFIRE${st.mod === "coshh" ? " · Policy BHH-HK-01 Housekeeping COSHH and Safe Cleaning" : st.mod === "hkstd" ? " · Housekeeping room standards: the 5-step loop and room inspection" : ` · Fire Safety Manager: ${h(HF_FIRE_MANAGER.name)}`}</p></div>
-    <div class="card noprint"><b>Thank you — your training is recorded.</b><p class="muted">${st.mod === "hod" ? "Thank you. Now share the training QR code in your manual with your team and check the Training Coordinator's list of who is outstanding." : st.mod === "hkstd" ? "Ask your supervisor to walk a room inspection with you using the inside-out checklist, and show you how to report a fault and release a room." : st.mod === "coshh" ? "Ask your supervisor to show you the chemical store, the safety data sheet folder, the spill kit, the body fluid kit and where the PPE is kept." : st.mod === "induction" ? "Next: the monthly refresher, every month. Ask your manager where the fire exits, call points and extinguishers are in your area, and where to find the fire action notice." : "See you next month."}</p></div>`;
+    <h1>${h(st.label)}</h1><p style="font-size:20px"><b>${h(st.name)}</b></p><p>${st.mod === "hod" ? `confirmed as head of department on <b>${fd(today())}</b>` : `completed this ${st.mod === "hk" ? "housekeeping health, safety and standards" : st.mod === "coshh" ? "health and safety" : st.mod === "hkstd" ? "housekeeping" : "fire safety"} training on <b>${fd(today())}</b><br>Score ${st.score} out of ${st.total}${isHK(st.mod) ? `<br><span class="muted">Valid for 12 months · renew by ${fd(addMonthsT(today(), 12))}</span>` : ""}`}</p>
+    <p class="muted">Brandon Hall Hotel and Spa · recorded in HosFIRE${st.mod === "hk" ? " · Policy BHH-HK-01 Housekeeping Health, Safety and COSHH · Guide BHH-HK-02" : st.mod === "coshh" ? " · Policy BHH-HK-01 Housekeeping COSHH and Safe Cleaning" : st.mod === "hkstd" ? " · Housekeeping room standards: the 5-step loop and room inspection" : ` · Fire Safety Manager: ${h(HF_FIRE_MANAGER.name)}`}</p></div>
+    <div class="card noprint"><b>Thank you — your training is recorded.</b><p class="muted">${st.mod === "hod" ? "Thank you. Now share the training QR code in your manual with your team and check the Training Coordinator's list of who is outstanding." : st.mod === "hk" ? "Ask your supervisor to show you the chemical store, the products and cloths on your trolley, the PPE and spill kit, and to walk a room inspection with you." : st.mod === "hkstd" ? "Ask your supervisor to walk a room inspection with you using the inside-out checklist, and show you how to report a fault and release a room." : st.mod === "coshh" ? "Ask your supervisor to show you the chemical store, the safety data sheet folder, the spill kit, the body fluid kit and where the PPE is kept." : st.mod === "induction" ? "Next: the monthly refresher, every month. Ask your manager where the fire exits, call points and extinguishers are in your area, and where to find the fire action notice." : "See you next month."}</p></div>`;
   $("#pr").onclick = () => window.print();
   $("#again").onclick = () => { st.name = ""; st.reg = null; viewWho(); window.scrollTo(0, 0); };
 }
 
-if (HKMODE) { const tp = $(".top"); tp.querySelector("b").innerHTML = "Housekeeping Training"; tp.querySelector("small").textContent = "Brandon Hall Hotel and Spa — COSHH and room standards"; const a = tp.querySelector("a"); a.href = "housekeeping/" + (DEMO ? "?demo=1" : ""); a.textContent = "⌂ Housekeeping home"; document.title = "Housekeeping training — Brandon Hall"; }
+if (HKMODE) { const tp = $(".top"); tp.querySelector("b").innerHTML = "Housekeeping Training"; tp.querySelector("small").textContent = "Brandon Hall Hotel and Spa — COSHH, hygiene and room standards"; const a = tp.querySelector("a"); a.href = "housekeeping/" + (DEMO ? "?demo=1" : ""); a.textContent = "⌂ Housekeeping home"; document.title = "Housekeeping training — Brandon Hall"; }
 viewCode();
 try { if (sessionStorage.getItem("hf_fire_ok") === "1") $("#go").click(); } catch (e) {}
 })();

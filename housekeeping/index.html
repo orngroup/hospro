@@ -29,6 +29,9 @@ details summary{cursor:pointer;font-weight:800;color:var(--g2);font-size:18px}
 .chk h3{font-size:16px;margin:14px 0 6px;color:var(--g2)}.chk label{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--line);font-size:15px}
 .chk input{width:20px;height:20px;flex:none;margin-top:2px}
 .pbtn{display:inline-block;margin-top:12px;border:1.5px solid var(--g);color:var(--g2);border-radius:10px;padding:8px 14px;font-weight:700;text-decoration:none;background:#fff;cursor:pointer;font-size:15px}
+.cl,.pr{display:grid;gap:8px;margin-top:12px}.cl>div,.pr>div{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.cl i{width:26px;height:26px;border-radius:6px;border:1px solid #999;flex:none}.cl b,.pr b{color:var(--g2);display:block}.cl span,.pr span{display:block;font-size:14px;color:var(--muted)}.pr>div{display:block}
+.warn{background:#FDECEA;color:#8E1B1B;border-radius:10px;padding:10px 12px;font-weight:700;font-size:15px;margin-top:12px}.rl{padding-left:20px;margin:12px 0 0}.rl li{margin-bottom:8px;font-size:15px}
 .doc{display:flex;justify-content:space-between;padding:11px 0;color:var(--g2);font-weight:700;text-decoration:none}
 @media print{.top,.np{display:none!important}body{background:#fff}.card{border:none;padding:0}details{display:block}}
 </style>
@@ -40,7 +43,7 @@ details summary{cursor:pointer;font-weight:800;color:var(--g2);font-size:18px}
     <input id="code" type="password" inputmode="numeric" autocomplete="off" placeholder="Staff code" autofocus>
     <button class="btn" id="go">Open</button><div class="err" id="e"></div></div>
 </div>
-<script src="../hosfire-defs.js?v=20261109b"></script>
+<script src="../hosfire-defs.js?v=20261112a"></script>
 <script>
 (() => {
   const $ = (s) => document.querySelector(s);
@@ -49,9 +52,21 @@ details summary{cursor:pointer;font-weight:800;color:var(--g2);font-size:18px}
   const okd = () => { try { return sessionStorage.getItem("hf_fire_ok") === "1"; } catch (e) { return false; } };
   function show() {
     $("#app").innerHTML = `
-    <a class="big main" href="../hosfire-training.html?course=coshh${Q2}"><div class="ic">🧴</div><div><b>COSHH and safe cleaning</b><span>Chemicals, labels, PPE, spills and storage · about 15 minutes · every year. Complete before using any cleaning chemicals.</span></div></a>
-    <a class="big main" href="../hosfire-training.html?course=hkstd${Q2}"><div class="ic">🛏</div><div><b>Room standards</b><span>The 5-step housekeeping loop and the room inspection checklist · about 15 minutes · every year</span></div></a>
-    <div class="card"><details open><summary>🔁 The 5-step housekeeping loop</summary>
+    <a class="big main" href="../hosfire-training.html?course=hk${Q2}"><div class="ic">🧴</div><div><b>Housekeeping training</b><span>COSHH, hygiene and room cleaning standards — one course, about 25 minutes, every year. New starters: before your first shift.</span></div></a>
+    <div class="card"><details open><summary>🎨 Colour-coded cloths</summary>
+      <div class="cl">${HF_HK_CLOTHS.map(([c, col, u]) => `<div><i style="background:${col}"></i><div><b>${h(c)}</b><span>${h(u)}</span></div></div>`).join("")}</div>
+      <p class="muted" style="margin-top:10px">Never use guest towels, pillowcases or linen as cleaning cloths. Replace used or heavily soiled cloths with clean ones.</p></details></div>
+    <div class="card"><details><summary>🧴 Our products — what each one is for</summary>
+      <div class="pr">${HF_HK_PRODUCTS.map(([n, t, u]) => `<div><b>${h(n)}</b><span>${h(u)}</span></div>`).join("")}</div>
+      <p class="warn">⚠ Never mix chemicals. Bleach, Mould Ex and Topclin must never meet a toilet cleaner or the descaler — rinse with water in between. Strong smell or feeling dizzy? Leave, close the door, tell your supervisor.</p></details></div>
+    <div class="card"><details><summary>🧼 Hygiene and linen rules</summary><ul class="rl">
+      <li>Right colour cloth for each area — never carry germs from the toilet to the basin, bedroom or cups.</li>
+      <li>Wash or sanitise your hands and change gloves between tasks — always after the toilet.</li>
+      <li>Clean and dirty linen kept apart. Clean linen never on the floor — if it touches the floor, it goes to the laundry.</li>
+      <li>Cups: Fairy Liquid at the designated sink, dried with a clean designated tea towel — never in the guest basin.</li>
+      <li>Close and secure every chemical and storage cupboard door after use.</li>
+      <li>Follow the hotel procedure, not personal habits. See something wrong? If safe, politely stop it and tell your supervisor.</li></ul></details></div>
+    <div class="card"><details><summary>🔁 The 5-step housekeeping loop</summary>
       <p class="muted" style="margin-top:8px">Every room goes through the same five steps. A room is ready for a guest only when it has passed all five.</p>
       <div class="loop">${HF_HK_LOOP.map(([n, a, b, c]) => `<div><i>${n}</i><div><b>${h(a)} — ${h(b)}</b><span>${h(c)}</span></div></div>`).join("")}</div></details></div>
     <div class="card chk" id="chk"><details><summary>✅ Room inspection checklist</summary>
@@ -60,7 +75,9 @@ details summary{cursor:pointer;font-weight:800;color:var(--g2);font-size:18px}
       <p style="margin-top:12px"><b>Pass?</b> Release the room as Clean and Ready. <b>Anything wrong?</b> Return it to the housekeeper, and report any fault to maintenance with the room number before the room is released.</p>
       <button class="pbtn np" id="pr">🖨 Print the checklist</button> <button class="pbtn np" id="rs">Clear ticks</button></details></div>
     <div class="card np"><details><summary>📄 Policy and documents</summary>
-      <a class="doc" href="BHH-HK-01-Housekeeping-COSHH-Policy.pdf" target="_blank" rel="noopener">BHH-HK-01 Housekeeping COSHH and Safe Cleaning Policy <span class="muted">PDF</span></a></details></div>
+      <a class="doc" href="BHH-HK-QR-Quick-Recap.pdf" target="_blank" rel="noopener">Housekeeping quick recap (1 page) <span class="muted">PDF</span></a>
+      <a class="doc" href="BHH-HK-02-Housekeeping-Training-Step-Guide.pdf" target="_blank" rel="noopener">BHH-HK-02 Housekeeping training step guide (2 pages) <span class="muted">PDF</span></a>
+      <a class="doc" href="BHH-HK-01-Housekeeping-COSHH-Policy.pdf" target="_blank" rel="noopener">BHH-HK-01 Housekeeping Health, Safety and COSHH Policy <span class="muted">PDF</span></a></details></div>
     <p class="muted np" style="text-align:center">Your training is saved with your name, score, signature and the time, and shows on the housekeeping training record in HosFIRE. Fire safety training is on the <a href="../fire/">Fire safety page</a>.</p>`;
     $("#pr").onclick = () => { $("#chk details").open = true; window.print(); };
     $("#rs").onclick = () => document.querySelectorAll("#chk input").forEach((x) => (x.checked = false));

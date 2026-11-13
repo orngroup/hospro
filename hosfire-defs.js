@@ -169,8 +169,8 @@ const HF_COURSES = [
   ["drill", "Last drill taken part in", 12],
   ["reception", "Reception alarm procedure briefing", 12, ["reception", "nights"]],   // reception and night staff only
   ["monthly", "Monthly fire refresher", 1],
-  ["coshh", "Housekeeping COSHH", 12, ["housekeeping"]],  // housekeeping only — online module, renewed every 12 months
-  ["hkstd", "Room standards", 12, ["housekeeping"]]        // housekeeping only — 5-step loop and room inspection, renewed every 12 months
+  ["coshh", "Housekeeping COSHH", 12, ["housekeeping"]],  // housekeeping only — recorded by the combined housekeeping module (HF_TRAIN_HK), renewed every 12 months
+  ["hkstd", "Room standards", 12, ["housekeeping"]]        // housekeeping only — recorded by the combined housekeeping module (HF_TRAIN_HK), renewed every 12 months
 ];
 const courseApplies = (t, c) => !c[3] || c[3].includes((t && t.dept) || "other");
 
@@ -342,6 +342,73 @@ const HF_KIOSK_CODE = "999";
    training at induction and repeated periodically), HM Government
    "Fire safety risk assessment: sleeping accommodation" and fire and
    rescue service guidance. Hotel details come from Site facts. */
+/* ── Housekeeping standards: COSHH, hygiene and room cleaning — ONE combined online module (v2, 12 Nov 2026) ──
+   Built from Laith Hardy's input (products used by the team, microfibre colour coding, hygiene and accountability).
+   Completing it records BOTH "coshh" and "hkstd" in the training register, so the housekeeping record stays in one place. */
+const HF_HK_CLOTHS = [
+  ["Red / pink", "#D93A5B", "Toilets and WCs only — never anywhere else"],
+  ["Orange", "#F08A24", "Bathrooms: basins, bathtubs, tiles and shower screens"],
+  ["Blue", "#2F6FD6", "Wet cleaning of mirrors, with the glass spray"],
+  ["Green", "#2E9B57", "Buffing mirrors dry to remove smudges and residue"],
+  ["Yellow", "#F2C230", "Dusting bedroom surfaces and furniture"],
+  ["Tea towel", "#FFFFFF", "Clean, designated tea towels only — for washing and drying tea and coffee cups"]
+];
+const HF_HK_PRODUCTS = [
+  ["Ecolab Diesin Max", "Multipurpose bathroom and floor cleaner", "Bathroom surfaces and floors"],
+  ["Ecolab Pro Glass Multi Surface Cleaner", "Glass and multi-surface spray", "Mirrors, glass and shiny surfaces (blue cloth, then buff with green)"],
+  ["Sysco Glass and Surface Spray", "Glass and surface spray", "Mirrors, glass and shiny surfaces (blue cloth, then buff with green)"],
+  ["Ecolab Toilet Cleaner", "Toilet cleaner", "Toilets and WCs only (red / pink cloth)"],
+  ["Sysco Toilet Cleaner", "Toilet cleaner", "Toilets and WCs only (red / pink cloth)"],
+  ["Ecolab Mould Ex", "Mould remover", "Mould on sealant and grout only — ventilate, gloves and eye protection"],
+  ["Topclin Mould Remover Spray", "Mould remover", "Mould on sealant and grout only — ventilate, gloves and eye protection"],
+  ["Brakes Bleach", "Bleach", "Only when your supervisor tells you to. Never mixed with anything"],
+  ["Descaler (tarnish remover)", "Descaler", "Limescale and tarnish on taps, shower heads and chrome"],
+  ["Ecolab Pro White Cotton Air Freshener", "Air freshener", "A light spray into the air after cleaning — never to hide a smell"],
+  ["Sysco Keystone Air Freshener", "Air freshener", "A light spray into the air after cleaning — never to hide a smell"],
+  ["Fairy Liquid", "Washing-up liquid", "Washing tea and coffee cups at the designated sink"]
+];
+const HF_TRAIN_HK = {
+  key: "hk", title: "Housekeeping standards: COSHH, hygiene and room cleaning", mins: 25, pass: 16,
+  slides: [
+    ["Why this matters", ["This course sets one standard for everyone in housekeeping — existing staff and new starters.", "It protects our guests (a clean, safe room), protects you (safe use of chemicals) and protects the hotel.", "We follow the hotel's procedures, not personal cleaning habits. If everyone cleans the same way, every room is the same standard.", "The course takes about 25 minutes and ends with a 20-question check. The pass mark is 16."]],
+    ["The 5-step housekeeping loop", ["1 Assign — you get your rooms and their status: departure, stay-over or priority arrival.", "2 Clean — you clean in the set order, with the right product and the right cloth.", "3 Check — your supervisor inspects the room.", "4 Report — every fault is reported to maintenance before the room is released.", "5 Release — only then is the room marked Clean and Ready for reception."]],
+    ["Entering a guest room", ["Do Not Disturb on? Don't enter. Still on in the afternoon? Tell your supervisor — it is a guest welfare check.", "Knock three times and say \"Housekeeping\". Wait, knock and announce again, then enter.", "Keep the door open and your trolley across the doorway.", "Your master key stays on you at all times. Never let anyone into a room — send them to reception."]],
+    ["Our cleaning products — what each one is for", ["Bathroom and floors: Ecolab Diesin Max.", "Mirrors and glass: Ecolab Pro Glass or Sysco Glass and Surface Spray.", "Toilets only: Ecolab Toilet Cleaner or Sysco Toilet Cleaner.", "Mould on sealant and grout: Ecolab Mould Ex or Topclin Mould Remover.", "Limescale and tarnish on taps and chrome: the descaler.", "Bleach (Brakes): only when your supervisor tells you to.", "Air freshener (Ecolab Pro White Cotton or Sysco Keystone): a light spray into the air after cleaning. Cups: Fairy Liquid at the designated sink.", "Always use the product made for the job, and follow the instructions on the label and dispenser."]],
+    ["Never mix chemicals", ["Never use two products together, or one straight after the other on the same surface, without rinsing with water in between.", "Bleach, Mould Ex and Topclin must NEVER meet a toilet cleaner or the descaler. Together they can give off a poisonous gas.", "Never pour a product into another product's bottle, and never use food or drink containers.", "Strong smell, stinging eyes, coughing or feeling dizzy? Stop, leave the room, close the door and tell your supervisor straight away."]],
+    ["Safe handling and PPE", ["Read the label before you use a product. Use the amount on the label or dispenser — more does not clean better.", "Wear gloves for all cleaning. Wear eye protection when using mould remover, bleach or descaler, when filling bottles, and when spraying at or above head height.", "Spray onto the cloth, not into the air towards your face. Open the window or switch on the fan in bathrooms.", "Chemical in your eye: rinse with clean water for at least 15 minutes and tell your supervisor. On your skin: rinse well. Swallowed: don't make the person sick — get a first aider and take the product label."]],
+    ["Storage and cupboards", ["All chemicals live in the locked chemical store. Close and secure every housekeeping chemical and storage cupboard door after use — every time.", "Take only the amount you need for the shift, in correctly labelled bottles.", "Never leave your trolley unattended with chemicals within reach of guests or children. Never leave any product in a guest room.", "Keep aerosol air fresheners away from heat."]],
+    ["Colour-coded microfibre cloths", ["Red / pink: toilets and WCs only.", "Orange: bathrooms — basins, bathtubs, tiles and shower screens.", "Blue: wet cleaning of mirrors, with the glass spray.", "Green: buffing mirrors dry to remove smudges and residue.", "Yellow: dusting bedroom surfaces and furniture.", "Tea towels: clean, designated tea towels only, for washing and drying cups."]],
+    ["Hygiene and cross-contamination", ["Guest towels, pillowcases and bed linen are NEVER used as cleaning cloths.", "Use the right colour cloth for each area, so germs from the toilet never reach the basin, the bedroom or the cups.", "Replace used or heavily soiled cloths with clean ones — a dirty cloth spreads dirt.", "Wash or sanitise your hands and change your gloves when you move between tasks — always after the toilet and before touching the bed, cups or clean linen."]],
+    ["Clean and dirty linen", ["Keep clean and dirty linen apart. Dirty linen goes straight into the laundry bag; clean linen stays on the clean shelf of the trolley.", "Clean linen must never be placed on the floor. If it touches the floor, it goes to the laundry and you use a fresh piece.", "When stripping a bed, shake the linen out gently to check for guest items, and check the mattress for stains or signs of bed bugs.", "Stained or damaged linen is bagged separately and reported."]],
+    ["The cleaning sequence", ["Always work top to bottom, dry to wet, and clean to dirty. Vacuum last.", "1 Lights on, curtains and window open. 2 Strip the bed. 3 Empty bins; remove used cups. 4 Apply the bathroom products so they can work.", "5 Make the bed. 6 Dust with the yellow cloth. 7 Disinfect high-touch points (remote, phone, switches, handles, kettle, controls). 8 Cups and tea tray.", "9 Clean the bathroom, toilet last. 10 Replenish. 11 Vacuum. 12 Final check and report."]],
+    ["Bathroom, mirrors and cups", ["Bathroom: Diesin Max with the orange cloth for the basin, bath, tiles and shower screen. Remove all hair from plugholes.", "Toilet: toilet cleaner with the red / pink cloth — inside, under the rim, seat, hinges and base. Done last.", "Mirrors: glass spray with the blue cloth, then buff dry with the green cloth.", "Cups: washed with Fairy Liquid at the designated sink — never in the guest basin — and dried with a clean, designated tea towel."]],
+    ["Report it before you release it", ["Report every fault to maintenance with the room number before the room is released: leaking taps, blown bulbs, damaged fabrics, faulty TV, kettle or heating.", "If something is unsafe (broken glass, exposed wires, a leak), keep the room closed and tell your supervisor.", "Lost property goes to your supervisor the same shift, with the room number, date and your name.", "Needles or bodily fluids: don't touch them. Tell your supervisor — use the sharps and body fluid kits."]],
+    ["Our standards, everyone's job", ["Follow the hotel procedure even if your own way feels quicker. The procedure is there for safety and consistency.", "If you see a colleague doing something wrong (wrong cloth, mixed chemicals, linen on the floor): if it is safe, politely stop them, and tell your supervisor so it can be put right.", "If you are not sure which product or cloth to use, ask before you clean.", "Stand in the doorway for five seconds before you leave. Would you be happy to stay in this room?"]]
+  ],
+  quiz: [
+    ["Which cloth is used for toilets and WCs?", ["Red / pink — toilets and WCs only", "Orange", "Yellow"], 0],
+    ["Which cloth do you use to wet-clean a mirror with the glass spray?", ["Blue", "Red / pink", "Yellow"], 0],
+    ["Which cloth do you use to buff a mirror dry to remove smudges?", ["Green", "Orange", "Red / pink"], 0],
+    ["Which cloth is used for dusting bedroom surfaces and furniture?", ["Yellow", "Blue", "Red / pink"], 0],
+    ["Which cloth is used for bathtubs and shower screens?", ["Orange", "Yellow", "Green"], 0],
+    ["What do you dry tea and coffee cups with?", ["A clean, designated tea towel", "A guest hand towel", "Any microfibre cloth"], 0],
+    ["Which product is for cleaning toilets?", ["Ecolab Toilet Cleaner or Sysco Toilet Cleaner", "Ecolab Pro Glass", "Fairy Liquid"], 0],
+    ["Which product do you use on mirrors and glass?", ["Ecolab Pro Glass or Sysco Glass and Surface Spray", "Ecolab Mould Ex", "Toilet cleaner"], 0],
+    ["There is black mould on the shower sealant. What do you use?", ["Mould Ex or Topclin Mould Remover, with the window open, gloves and eye protection", "Toilet cleaner mixed with bleach", "Air freshener"], 0],
+    ["Which of these must NEVER be used together?", ["Bleach or mould remover with a toilet cleaner or descaler", "Fairy Liquid and hot water", "Glass spray and a green cloth"], 0],
+    ["While cleaning, you notice a strong smell and feel dizzy. What do you do?", ["Stop, leave the room, close the door and tell your supervisor", "Open a window and carry on", "Spray air freshener"], 0],
+    ["How should air freshener be used?", ["A light spray into the air after cleaning — never to hide a bad smell", "Sprayed onto the bed and pillows", "Used instead of cleaning the bathroom"], 0],
+    ["Can you use a pillowcase or guest towel to dust or wipe?", ["Never — guest linen and towels are never cleaning cloths", "Yes, if it is going to the laundry anyway", "Only for the mirror"], 0],
+    ["A clean sheet falls on the floor while you make the bed. What do you do?", ["Send it to the laundry and use a fresh sheet", "Shake it and put it on the bed", "Use it if the floor looks clean"], 0],
+    ["You have just cleaned the toilet. What do you do before making the bed or touching cups?", ["Remove your gloves, wash or sanitise your hands, and put on fresh gloves", "Nothing — carry on", "Wipe your gloves on a towel"], 0],
+    ["How should clean and dirty linen be handled?", ["Kept apart — dirty straight into the laundry bag, clean on the clean trolley shelf", "Kept together on the trolley", "Dirty linen piled on the floor until you finish"], 0],
+    ["You have taken a product from the chemical cupboard. What must you do?", ["Close and secure the cupboard door", "Leave it open for the next person", "Leave it open until the end of your shift"], 0],
+    ["You find a dripping tap in a departure room. What do you do?", ["Report it to maintenance with the room number before the room is released", "Leave it — the next guest will report it", "Release the room and mention it tomorrow"], 0],
+    ["You see a colleague use the toilet cloth on the basin. What do you do?", ["If it is safe, politely stop them, and tell your supervisor so it is put right", "Ignore it — it is not your room", "Do the same, to keep up"], 0],
+    ["Your own way of cleaning is quicker than the hotel procedure. What should you do?", ["Follow the hotel procedure — it is there for safety and consistency", "Use your own way if nobody notices", "Mix both ways"], 0]
+  ]
+};
+
 /* ── Housekeeping room standards — the 5-step loop and room inspection (online module) ──
    Hotel-industry norm: Assign → Clean → Check → Report → Release, with an
    "inside-out" supervisor inspection before a room is released to reception. */
