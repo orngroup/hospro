@@ -956,7 +956,7 @@ FLOW_MODULES = [
   { id:"hoscom",    name:"HosCOM", caption:"Compliance. Checks. Safety. Tasks.",  icon:"🛡", colour:"#4B5288", tint:"#E8EAF4",
     tabs:["compDash","compTasks","compActions","compReport","tasks"] },
   { id:"hossales",  name:"HosSALES",   caption:"Sales. Events. Dining. Revenue.",      icon:"💼", colour:"#6E4E7A", tint:"#EFE7F2",
-    tabs:["pipeline","quotes","profit","contracts","payments","dining","beverage","fbTracker","localEvents","chat"] },
+    tabs:["pipeline","eventPack","quotes","profit","contracts","payments","dining","beverage","fbTracker","localEvents","chat"] },
   { id:"hosvenue",  name:"HosVENUE",   caption:"Venue. Rooms. Corporate. Stays.",      icon:"🏛", colour:"#3B6585", tint:"#E4EDF4",
     tabs:["showround","rooms","groupconfig","packages","corpdb","corprates","precheckin","feedback"] },
   { id:"hosstudio", name:"HosMARKETING", caption:"Guests. Newsletters. Campaigns. Creative.", icon:"📣", colour:"#9C4F63", tint:"#F6E6EA",
@@ -1172,6 +1172,7 @@ const MODULE_SUBCARDS = {
   ],
   "hossales": [
     {tab:"pipeline",  label:"Sales Pipeline",      icon:"📊", desc:"Active leads & deals"},
+    {tab:"eventPack", label:"Event Pack",          icon:"🎁", desc:"Table numbers, menus, signs & TV screens from one form"},
     {tab:"quotes",    label:"Quotes & Proposals",  icon:"📄", desc:"Create & manage quotes"},
     {tab:"profit",    label:"Profit Tool",         icon:"💰", desc:"P&L and margin calculator"},
     {tab:"contracts", label:"Agreements",          icon:"📝", desc:"Signed contracts & agreements"},

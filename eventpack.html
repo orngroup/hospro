@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Event Pack · HosSALES · Brandon Hall Hotel and Spa</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{--navy:#2C3E50;--gold:#BB9979;--orange:#AB3C0C;--cream:#E9DFD3;--earth:#EDF1EB;--ink:#2C3E50;--mut:#6b7684;--line:#e4e8ee;--bg:#eef1f4}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Lato,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  .serif{font-family:'Cormorant Garamond',Georgia,serif}
+  .topbar{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20}
+  .topbar img{height:34px}
+  .topbar h1{font-size:19px;margin:0;font-weight:700}
+  .topbar .sub{font-size:12px;color:#c7d0da}
+  .status{margin-left:auto;font-size:12px;color:#c7d0da;display:flex;align-items:center;gap:14px}
+  .pill{background:#fff2;border:1px solid #ffffff33;border-radius:999px;padding:3px 11px;font-weight:700}
+  .wrap{display:grid;grid-template-columns:minmax(360px,440px) 1fr;gap:0;min-height:calc(100vh - 58px)}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .form{background:#fff;border-right:1px solid var(--line);padding:18px 20px 60px;overflow:auto;max-height:calc(100vh - 58px)}
+  .preview{padding:20px;overflow:auto;max-height:calc(100vh - 58px)}
+  details.sec{border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden;background:#fff}
+  details.sec>summary{list-style:none;cursor:pointer;padding:13px 15px;font-weight:800;font-size:14px;background:#f7f9fb;display:flex;align-items:center;gap:8px}
+  details.sec>summary::-webkit-details-marker{display:none}
+  details.sec[open]>summary{border-bottom:1px solid var(--line)}
+  .secbody{padding:14px 15px}
+  label{display:block;font-size:11.5px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.3px;margin:10px 0 5px}
+  input[type=text],input[type=date],input[type=time],input[type=number],select,textarea{width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 11px;font:500 14px Lato;color:var(--ink);background:#fff}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+  textarea{resize:vertical;min-height:60px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btn{border:none;border-radius:9px;padding:10px 15px;font:800 13px Lato;cursor:pointer;background:var(--navy);color:#fff}
+  .btn.gold{background:var(--gold)}.btn.ghost{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
+  .btn.sm{padding:6px 10px;font-size:12px}
+  .btn:disabled{opacity:.5;cursor:default}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:#f2f5f8;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700}
+  .muted{color:var(--mut);font-size:12px}
+  .swatch{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);cursor:pointer;padding:0}
+  .logoprev{display:flex;gap:10px;margin-top:8px}
+  .logoprev div{flex:1;border-radius:9px;padding:12px;text-align:center;border:1px solid var(--line)}
+  .logoprev img{max-height:46px;max-width:100%}
+  .course{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:9px;background:#fbfcfd}
+  .dish{display:grid;grid-template-columns:1fr 1.4fr auto;gap:6px;margin-bottom:6px}
+  .dish input{padding:7px 9px;font-size:13px}
+  .previewTabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .previewTabs button{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 13px;font:700 12.5px Lato;cursor:pointer;color:var(--navy)}
+  .previewTabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .stage{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;justify-content:center;overflow:auto}
+  .genbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  /* ---- shared print-item styles (scaled on screen, full size in PDF) ---- */
+  .doc{background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.12)}
+  .navyhead{background:var(--navy);color:#fff;text-align:center;padding:8mm}
+  .navyhead img{height:14mm}
+  /* table number card */
+  .tn{width:63mm;height:91mm;background:var(--navy);color:#fff;display:flex;flex-direction:column;align-items:center;border-radius:2mm;overflow:hidden}
+  .tn .lg{padding:6mm 0 2mm}.tn .lg img{height:12mm}
+  .tn .tl{font:700 4mm Lato;letter-spacing:3mm;text-transform:uppercase;color:var(--gold);margin-left:3mm}
+  .tn .no{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:44mm;line-height:1;flex:1;display:flex;align-items:center}
+  .tn .strip{background:#fff;width:100%;padding:3mm;text-align:center;min-height:14mm;display:flex;align-items:center;justify-content:center;gap:4mm}
+  .tn .strip img{max-height:9mm;max-width:40%}
+  .tn .strip .wm{color:var(--navy);font:700 3mm Lato}
+  /* a4 sheet */
+  .a4{width:210mm;min-height:297mm;background:#fff;padding:12mm 10mm}
+  .grid3{display:grid;grid-template-columns:repeat(3,63mm);gap:7mm 10mm;justify-content:center}
+  .cut{outline:0.2mm dashed #c9c9c9}
+  /* menu */
+  .menu{width:210mm;min-height:297mm;background:var(--earth);padding:16mm}
+  .menu .panel{background:#fff;border:0.6mm solid var(--gold);padding:14mm 16mm;min-height:100%;text-align:center}
+  .menu h1{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:16mm;margin:4mm 0 1mm;color:var(--navy)}
+  .menu .sub{color:var(--gold);font:700 4mm Lato;letter-spacing:2mm;text-transform:uppercase}
+  .menu .cl{color:var(--mut);font-size:3.6mm;margin:2mm 0 8mm}
+  .menu .course-t{font-family:'Cormorant Garamond',serif;color:var(--gold);font-size:6mm;margin:7mm 0 2mm}
+  .menu .d-n{font-family:'Cormorant Garamond',serif;font-size:5mm;color:var(--navy)}
+  .menu .d-d{font-size:3.4mm;color:#555;margin-bottom:3mm}
+  .menu .allerg{font-size:3mm;color:var(--mut);margin-top:10mm;border-top:0.3mm solid #ddd;padding-top:4mm}
+  .menu .foot{margin-top:6mm;display:flex;justify-content:center;gap:6mm;align-items:center}.menu .foot img{height:10mm}
+  /* welcome letter */
+  .letter{width:210mm;min-height:297mm;background:#fff;padding:0}
+  .letter .lh{background:var(--navy);color:#fff;text-align:center;padding:10mm}.letter .lh img{height:16mm}
+  .letter .lb{padding:14mm 20mm;font-size:4mm;line-height:1.7;color:#2a2a2a}
+  .letter .lb h2{font-family:'Cormorant Garamond',serif;color:var(--navy);font-weight:700;font-size:7mm;text-align:center;margin:0 0 7mm}
+  /* welcome sign A3 */
+  .sign{width:420mm;height:297mm;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center}
+  .sign .inner{border:2mm solid var(--gold);outline:0.6mm solid var(--gold);outline-offset:4mm;padding:30mm 40mm;text-align:center;width:88%;height:82%}
+  .sign img{height:34mm;margin-bottom:12mm}
+  .sign .wel{font-family:'Cormorant Garamond',serif;font-size:20mm;line-height:1.1}
+  .sign .cli{font-family:'Cormorant Garamond',serif;font-size:34mm;color:var(--gold);font-weight:700;margin:6mm 0}
+  .sign .subl{font-size:7mm;letter-spacing:2mm;text-transform:uppercase;color:#d9e0e7}
+  .sign .strip{margin-top:16mm;display:flex;justify-content:center;gap:12mm;align-items:center}.sign .strip img{height:14mm;margin:0}
+  /* tv 16:9 */
+  .tv{width:1920px;height:1080px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-family:Lato}
+  .tv .in{text-align:center;border:10px solid var(--gold);padding:90px 120px;width:86%;height:80%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .tv img{height:150px;margin-bottom:40px}
+  .tv .w{font-family:'Cormorant Garamond',serif;font-size:80px}
+  .tv .c{font-family:'Cormorant Garamond',serif;font-size:150px;color:var(--gold);font-weight:700;margin:10px 0}
+  .tv .s{font-size:34px;letter-spacing:8px;text-transform:uppercase;color:#d9e0e7}
+  .scaleBox{transform-origin:top center}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 18px;border-radius:10px;font-weight:700;font-size:13px;z-index:50;opacity:0;transition:opacity .2s}
+  .toast.show{opacity:1}
+  .hidden{position:fixed;left:-9999px;top:0}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <img src="data:image/png;base64,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" alt="BH">
+  <div><h1 class="serif">Event Pack</h1><div class="sub">HosSALES · Brandon Hall Hotel and Spa</div></div>
+  <div class="status"><span id="savestate">—</span><span class="pill" id="statuspill">Draft</span></div>
+</div>
+<div class="wrap">
+  <div class="form" id="form"></div>
+  <div class="preview" id="preview"></div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="stagePrint" class="hidden"></div>
+
+<script>
+const BRAND={navy:'#2C3E50',gold:'#BB9979',orange:'#AB3C0C',cream:'#E9DFD3',earth:'#EDF1EB'};
+const LOGO='data:image/png;base64,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';
+const FBCONF={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:"brandonhall-7bdef.firebaseapp.com",projectId:"brandonhall-7bdef",storageBucket:"brandonhall-7bdef.firebasestorage.app",messagingSenderId:"391317900568",appId:"1:391317900568:web:643c9d6691f7f16d65226d"};
+firebase.initializeApp(FBCONF); const db=firebase.firestore(); let storage=null; try{ storage=firebase.storage(); }catch(e){}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
+function qp(k){ try{ return new URLSearchParams(location.search).get(k)||''; }catch(e){ return ''; } }
+function uid(){ return 'ep_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function code6(){ return String(Math.floor(100000+Math.random()*900000)); }
+
+// ---------- data model ----------
+function blankPack(){
+  return { id:uid(), enquiryId:qp('enquiry')||'', client:'', eventName:'', date:'', startTime:'', room:'',
+    host:'Alia Taub', hostTitle:'Director of Sales', eventType:'Conference',
+    logos:[], accent:BRAND.gold, tables:10, tableNames:[], guests:[],
+    nameCards:true, menuPerSetting:true,
+    menu:{ allergen:'Please let a member of the team know of any allergies or dietary requirements and we will be glad to help.',
+      courses:[ {t:'To start',dishes:[{n:'',d:''},{n:'',d:''},{n:'',d:''}]},
+                {t:'Main course',dishes:[{n:'',d:''},{n:'',d:''},{n:'',d:''}]},
+                {t:'To finish',dishes:[{n:'',d:''},{n:'',d:''},{n:'Tea, coffee and petits fours',d:''}]} ] },
+    letter:{ mode:'generic', news:'', body:'' },
+    sign:{ headline:'', subline:'We are delighted to have you with us' },
+    screen:{ code:code6(), agenda:'', showAgenda:true, showMenu:true },
+    status:'Draft', createdBy:(qp('by')||'Events team'), createdAt:Date.now(), updatedAt:Date.now(), files:{} };
+}
+var PACK=blankPack(), SAVE_T=null, PREVIEW='tables', ROOMS=['Clarendon Suite','Oak Room','Westwood Suite','Terrace Room','Library','Boardroom','Marquee'];
+
+// ---------- load ----------
+async function boot(){
+  // room list from the venue config if present
+  try{ const r=await db.collection('hoshouse_config').doc('venue').get(); if(r.exists&&(r.data()||{}).eventRooms) ROOMS=(r.data().eventRooms); }catch(e){}
+  const pid=qp('pack');
+  if(pid){ try{ const d=await db.collection('hossales_eventpacks').doc(pid).get(); if(d.exists){ PACK=Object.assign(blankPack(),d.data()); } }catch(e){} }
+  else if(qp('enquiry')){
+    try{ const d=await db.collection('enquiries').doc(qp('enquiry')).get(); if(d.exists){ const e=d.data()||{}; PACK.client=e.company||e.name||''; PACK.date=(e.eventDate||e.date||'').slice(0,10); PACK.room=e.room||''; PACK.eventName=e.eventType||e.subject||''; } }catch(e){}
+  }
+  renderForm(); renderPreview();
+}
+// ---------- autosave ----------
+function touch(){ PACK.updatedAt=Date.now(); $('savestate').textContent='Saving…'; clearTimeout(SAVE_T); SAVE_T=setTimeout(save,900); }
+async function save(){
+  if(PACK.status==='Final'){ $('savestate').textContent='Final — locked'; return; }
+  try{ await db.collection('hossales_eventpacks').doc(PACK.id).set(PACK,{merge:true}); $('savestate').textContent='Saved ✓'; }
+  catch(e){ $('savestate').textContent='Save failed'; }
+  saveScreenDoc();
+  $('statuspill').textContent=PACK.status;
+}
+// Public, screen-safe copy for the TV page (welcome / agenda / menu only — no guest data)
+async function saveScreenDoc(){
+  try{
+    await db.collection('eventpack_screens').doc(PACK.id).set({
+      code:PACK.screen.code, client:PACK.client, headline:PACK.sign.headline, subline:PACK.sign.subline,
+      accent:PACK.accent, logos:PACK.logos||[], eventName:PACK.eventName, date:PACK.date,
+      agenda:(PACK.screen.showAgenda?(PACK.screen.agenda||''):''), showAgenda:!!PACK.screen.showAgenda, showMenu:!!PACK.screen.showMenu,
+      menu:(PACK.screen.showMenu?{courses:PACK.menu.courses.map(c=>({t:c.t,dishes:c.dishes.filter(d=>d.n).map(d=>({n:d.n,d:d.d}))}))}:null),
+      updatedAt:Date.now()
+    },{merge:true});
+  }catch(e){}
+}
+function set(path,val){ const p=path.split('.'); let o=PACK; for(let i=0;i<p.length-1;i++) o=o[p[i]]; o[p[p.length-1]]=val; touch(); }
+
+// ---------- FORM ----------
+function renderForm(){
+  const roomOpts=['<option value="">— choose room —</option>'].concat(ROOMS.map(r=>`<option ${PACK.room===r?'selected':''}>${esc(r)}</option>`)).join('');
+  const etypes=['Conference','Dinner','Awards','Wedding','Private party','Other'];
+  $('form').innerHTML=`
+  <div class="row" style="margin-bottom:12px">
+    <button class="btn gold" onclick="generateAll()">✨ Generate pack</button>
+    <button class="btn ghost sm" onclick="markFinal()">Mark Final</button>
+    <span class="muted" id="packmeta">Pack ${esc(PACK.id)}</span>
+  </div>
+
+  <details class="sec" open><summary>📋 Event details</summary><div class="secbody">
+    <label>Client / company name *</label><input type="text" value="${esc(PACK.client)}" oninput="set('client',this.value);liveHead()">
+    <label>Event name</label><input type="text" placeholder="e.g. Q4 Sales Conference" value="${esc(PACK.eventName)}" oninput="set('eventName',this.value)">
+    <div class="two"><div><label>Date</label><input type="date" value="${esc(PACK.date)}" oninput="set('date',this.value)"></div>
+      <div><label>Start time</label><input type="time" value="${esc(PACK.startTime)}" oninput="set('startTime',this.value)"></div></div>
+    <label>Room</label><select onchange="set('room',this.value)">${roomOpts}</select>
+    <div class="two"><div><label>Host name</label><input type="text" value="${esc(PACK.host)}" oninput="set('host',this.value)"></div>
+      <div><label>Host title</label><input type="text" value="${esc(PACK.hostTitle)}" oninput="set('hostTitle',this.value)"></div></div>
+    <label>Event type</label><select onchange="set('eventType',this.value)">${etypes.map(t=>`<option ${PACK.eventType===t?'selected':''}>${t}</option>`).join('')}</select>
+  </div></details>
+
+  <details class="sec"><summary>🎨 Branding</summary><div class="secbody">
+    <label>Client logo</label>
+    <input type="file" accept="image/*" onchange="uploadLogo(event,0)">
+    <div class="logoprev"><div style="background:#fff">${PACK.logos[0]?`<img src="${PACK.logos[0]}">`:`<span class="muted">on white</span>`}</div>
+      <div style="background:${BRAND.navy}">${PACK.logos[0]?`<img src="${PACK.logos[0]}">`:`<span style="color:#fff" class="muted">on navy</span>`}</div></div>
+    <label>Second logo (optional — parent brand)</label>
+    <input type="file" accept="image/*" onchange="uploadLogo(event,1)">
+    ${PACK.logos[1]?`<div class="logoprev"><div style="background:#fff"><img src="${PACK.logos[1]}"></div><div style="background:${BRAND.navy}"><img src="${PACK.logos[1]}"></div></div>`:''}
+    <label>Accent colour</label>
+    <div class="row"><input type="color" class="swatch" value="${PACK.accent}" oninput="set('accent',this.value);renderPreview()">
+      <button class="btn ghost sm" onclick="set('accent','${BRAND.gold}');renderForm();renderPreview()">Reset to gold</button>
+      <span class="muted">If no logo, the client name is used as a wordmark.</span></div>
+  </div></details>
+
+  <details class="sec"><summary>🪑 Tables &amp; guests</summary><div class="secbody">
+    <label>Number of tables (1–40)</label><input type="number" min="1" max="40" value="${PACK.tables}" oninput="set('tables',Math.max(1,Math.min(40,+this.value||1)));renderPreview()">
+    <label>Table names instead of numbers (one per line, optional)</label>
+    <textarea placeholder="Vauxhall&#10;Astra&#10;Corsa" oninput="set('tableNames',this.value.split('\\n').map(x=>x.trim()).filter(Boolean));renderPreview()">${esc((PACK.tableNames||[]).join('\n'))}</textarea>
+    <label>Guest list — one per line, optional "Name | Table | Dietary"</label>
+    <textarea placeholder="Jane Smith | 3 | VE&#10;John Doe | 3 | GF" oninput="parseGuests(this.value)">${esc((PACK.guests||[]).map(g=>[g.name,g.table,g.diet].filter(Boolean).join(' | ')).join('\n'))}</textarea>
+    <div class="row"><span class="muted" id="guestcount">${(PACK.guests||[]).length} guests</span>
+      <label style="margin:0;display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0"><input type="checkbox" ${PACK.nameCards?'checked':''} onchange="set('nameCards',this.checked)"> name cards per guest</label></div>
+  </div></details>
+
+  <details class="sec"><summary>🍽 Menu</summary><div class="secbody" id="menuBody">${menuForm()}</div></details>
+
+  <details class="sec"><summary>✉️ Welcome letter</summary><div class="secbody">
+    <label>Letter mode</label>
+    <select onchange="set('letter.mode',this.value)"> ${['generic','perTable','perGuest'].map(m=>`<option value="${m}" ${PACK.letter.mode===m?'selected':''}>${({generic:'One generic (Dear Guest)',perTable:'One per table',perGuest:'One per guest (Dear {first name})'})[m]}</option>`).join('')}</select>
+    <label>Recent good news about the client (2–3, one per line)</label>
+    <textarea placeholder="record Q3 results&#10;named Fleet Brand of the Year" oninput="set('letter.news',this.value)">${esc(PACK.letter.news||'')}</textarea>
+    <label>Letter body — leave blank to use the template</label>
+    <textarea style="min-height:160px" oninput="set('letter.body',this.value)" placeholder="(auto-generated from the template — type here to override)">${esc(PACK.letter.body||'')}</textarea>
+    <button class="btn ghost sm" style="margin-top:8px" onclick="set('letter.body',buildLetterBody('[Guest name]'));renderForm();renderPreview()">↻ Fill from template</button>
+  </div></details>
+
+  <details class="sec"><summary>🖥 Signage &amp; screens</summary><div class="secbody">
+    <label>Welcome sign headline</label><input type="text" placeholder="Brandon Hall Hotel and Spa welcomes ${esc(PACK.client||'{Client}')}" value="${esc(PACK.sign.headline)}" oninput="set('sign.headline',this.value);renderPreview()">
+    <label>Sub-line</label><input type="text" value="${esc(PACK.sign.subline)}" oninput="set('sign.subline',this.value);renderPreview()">
+    <label>Agenda for TV (one line per item, e.g. "09:30 Registration")</label>
+    <textarea oninput="set('screen.agenda',this.value)">${esc(PACK.screen.agenda||'')}</textarea>
+    <div class="row">
+      <label style="margin:0;display:flex;gap:6px;text-transform:none;letter-spacing:0"><input type="checkbox" ${PACK.screen.showAgenda?'checked':''} onchange="set('screen.showAgenda',this.checked)"> cycle agenda</label>
+      <label style="margin:0;display:flex;gap:6px;text-transform:none;letter-spacing:0"><input type="checkbox" ${PACK.screen.showMenu?'checked':''} onchange="set('screen.showMenu',this.checked)"> cycle menu</label>
+    </div>
+    <div style="margin-top:10px;background:#f7f9fb;border:1px solid var(--line);border-radius:9px;padding:11px">
+      <div class="muted">TV screen link (open on any smart TV browser):</div>
+      <div style="font-weight:800;font-size:13px;word-break:break-all">brandon.hospro.co.uk/screen.html?pack=${esc(PACK.id)}</div>
+      <div class="muted" style="margin-top:4px">Code to open: <b style="color:var(--navy);font-size:15px;letter-spacing:2px">${esc(PACK.screen.code)}</b></div>
+    </div>
+  </div></details>`;
+  $('statuspill').textContent=PACK.status;
+}
+function menuForm(){
+  return PACK.menu.courses.map((c,ci)=>`<div class="course">
+    <div class="row" style="margin-bottom:6px"><input type="text" value="${esc(c.t)}" oninput="PACK.menu.courses[${ci}].t=this.value;touch();renderPreview()" style="font-weight:800;flex:1">
+      <button class="btn ghost sm" onclick="PACK.menu.courses.splice(${ci},1);touch();renderForm();renderPreview()">✕ course</button></div>
+    ${c.dishes.map((d,di)=>`<div class="dish"><input type="text" placeholder="Dish" value="${esc(d.n)}" oninput="PACK.menu.courses[${ci}].dishes[${di}].n=this.value;touch();renderPreview()">
+      <input type="text" placeholder="one-line description" value="${esc(d.d)}" oninput="PACK.menu.courses[${ci}].dishes[${di}].d=this.value;touch();renderPreview()">
+      <button class="btn ghost sm" onclick="PACK.menu.courses[${ci}].dishes.splice(${di},1);touch();renderForm();renderPreview()">✕</button></div>`).join('')}
+    <button class="btn ghost sm" onclick="PACK.menu.courses[${ci}].dishes.push({n:'',d:''});touch();renderForm();renderPreview()">+ dish</button>
+  </div>`).join('')+
+  `<button class="btn ghost sm" onclick="PACK.menu.courses.push({t:'New course',dishes:[{n:'',d:''}]});touch();renderForm();renderPreview()">+ course</button>
+   <label>Allergen line</label><textarea oninput="set('menu.allergen',this.value);renderPreview()">${esc(PACK.menu.allergen)}</textarea>
+   <label style="margin-top:8px;display:flex;gap:6px;text-transform:none;letter-spacing:0"><input type="checkbox" ${PACK.menuPerSetting?'checked':''} onchange="set('menuPerSetting',this.checked)"> print menu per place setting (vs per table)</label>`;
+}
+function parseGuests(txt){
+  PACK.guests=txt.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{ const p=l.split('|').map(x=>x.trim()); return {name:p[0]||'',table:p[1]||'',diet:p[2]||''}; });
+  const gc=$('guestcount'); if(gc) gc.textContent=PACK.guests.length+' guests'; touch();
+}
+function liveHead(){ const pm=$('packmeta'); if(pm) pm.textContent='Pack '+PACK.id; renderPreview(); }
+
+// ---------- logo upload ----------
+async function uploadLogo(ev,idx){
+  const f=ev.target.files&&ev.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=async()=>{
+    PACK.logos[idx]=rd.result;  // data URL — works offline & in PDFs
+    touch(); renderForm(); renderPreview();
+    if(storage){ try{ const ref=storage.ref('eventpacks/'+PACK.id+'/logo'+idx); await ref.putString(rd.result,'data_url'); const url=await ref.getDownloadURL(); /* keep data URL for rendering; store hosted url in files */ PACK.files['logo'+idx]=url; save(); }catch(e){} }
+  };
+  rd.readAsDataURL(f);
+}
+
+// ---------- letter template ----------
+function buildLetterBody(guestName){
+  const C=PACK.client||'[Client]'; const EV=PACK.eventName?(' '+PACK.eventName):' event';
+  const today=PACK.date?new Date(PACK.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'[Date]';
+  const news=(PACK.letter.news||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  let newsPara='';
+  if(news.length){ newsPara=`<p>It has been a remarkable few months for ${esc(C)}, and we wanted to say congratulations. We have followed the news with real interest: ${news.map(esc).join('; ')}. Achievements like these do not happen by accident, and it is a pleasure to host the people behind them.</p>`; }
+  const nextYear=(new Date().getFullYear()+1);
+  return `<p>${esc(today)}</p>
+<p>Dear ${esc(guestName)},</p>
+<h2>A very warm welcome to Brandon Hall Hotel and Spa</h2>
+<p>On behalf of everyone here, thank you for choosing Brandon Hall Hotel and Spa for ${esc(C)}${esc(EV)}. We are delighted to have you with us and have been looking forward to your visit.</p>
+${newsPara}
+<p>During your stay, our team is here to make everything easy. Your meeting space and dining are arranged, the leisure club with its indoor pool, sauna and gym is open to you, and if there is anything at all you need, please ask any member of the team or call reception on extension 0.</p>
+<p>We very much hope this is the first of many visits. Brandon Hall Hotel and Spa sits ten minutes from Coventry with easy links to the M6, M69 and M45, and we would be glad to become a regular base for ${esc(C)}, whether for meetings, training days, overnight stays or celebrations. I would welcome the chance to talk about how we can support you through ${nextYear} and beyond.</p>
+<p>Enjoy your time with us, and thank you again for being here.</p>
+<p>With warm regards,</p>
+<p style="margin-top:10mm"><b>${esc(PACK.host)}</b><br>${esc(PACK.hostTitle)}<br>Brandon Hall Hotel and Spa</p>`;
+}
+
+// ---------- brand mark (logo or wordmark) ----------
+function brandMark(onNavy){
+  if(PACK.logos[0]) return `<img src="${PACK.logos[0]}" style="max-height:${onNavy?'9mm':'9mm'};max-width:40%">`;
+  return `<span style="font-family:'Cormorant Garamond',serif;font-weight:700;color:${onNavy?'#fff':BRAND.navy}">${esc(PACK.client||'Client')}</span>`;
+}
+function tableLabels(){ const n=Math.max(1,+PACK.tables||1); if(PACK.tableNames&&PACK.tableNames.length) return PACK.tableNames.slice(); const a=[]; for(let i=1;i<=n;i++)a.push(String(i)); return a; }
+
+// ---------- item builders (full-size print HTML) ----------
+function buildTableNumbers(){
+  const labels=tableLabels();
+  let cards=labels.map(l=>`<div class="tn cut"><div class="lg"><img src="${LOGO}"></div><div class="tl">Table</div><div class="no">${esc(l)}</div><div class="strip">${PACK.logos[0]?`<img src="${PACK.logos[0]}">`:''}${PACK.logos[1]?`<img src="${PACK.logos[1]}">`:''}${(!PACK.logos[0]&&!PACK.logos[1])?`<span class="wm">${esc(PACK.client||'')}</span>`:''}</div></div>`).join('');
+  // 6 per sheet (3x2) grid — paginate
+  let pages=''; const per=6;
+  for(let i=0;i<labels.length;i+=per){ const slice=labels.slice(i,i+per).map(l=>`<div class="tn cut"><div class="lg"><img src="${LOGO}"></div><div class="tl">Table</div><div class="no">${esc(l)}</div><div class="strip">${PACK.logos[0]?`<img src="${PACK.logos[0]}">`:''}${PACK.logos[1]?`<img src="${PACK.logos[1]}">`:''}${(!PACK.logos[0]&&!PACK.logos[1])?`<span class="wm">${esc(PACK.client||'')}</span>`:''}</div></div>`).join('');
+    pages+=`<div class="a4" data-page><div class="grid3">${slice}</div></div>`; }
+  return pages;
+}
+function buildMenu(){
+  const title=PACK.eventName||((PACK.eventType==='Dinner')?'Dinner Menu':PACK.eventType+' Menu');
+  const dt=PACK.date?new Date(PACK.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'';
+  const courses=PACK.menu.courses.map(c=>`<div class="course-t">${esc(c.t)}</div>${c.dishes.filter(d=>d.n).map(d=>`<div class="d-n">${esc(d.n)}</div>${d.d?`<div class="d-d">${esc(d.d)}</div>`:''}`).join('')}`).join('');
+  return `<div class="menu" data-page><div class="panel">
+    <img src="${LOGO}" style="height:16mm;filter:none"><div style="color:${BRAND.navy};font-family:'Cormorant Garamond',serif;font-size:4mm;letter-spacing:1mm">BRANDON HALL HOTEL AND SPA</div>
+    <h1>${esc(title)}</h1>
+    <div class="sub" style="color:${PACK.accent}">${esc(PACK.client||'')}</div>
+    <div class="cl">${esc(dt)}</div>
+    ${courses}
+    <div class="allerg">${esc(PACK.menu.allergen)}</div>
+    <div class="foot">${PACK.logos[0]?`<img src="${PACK.logos[0]}">`:''}${PACK.logos[1]?`<img src="${PACK.logos[1]}">`:''}</div>
+  </div></div>`;
+}
+function buildLetters(){
+  const mk=(name)=>`<div class="letter" data-page><div class="lh"><img src="${LOGO}"><div style="font-family:'Cormorant Garamond',serif;font-size:4mm;letter-spacing:1mm;margin-top:3mm">BRANDON HALL HOTEL AND SPA</div></div><div class="lb">${PACK.letter.body&&name==='[Guest name]'?PACK.letter.body:buildLetterBody(name)}</div></div>`;
+  if(PACK.letter.mode==='perGuest' && PACK.guests.length) return PACK.guests.map(g=>mk((g.name||'Guest').split(' ')[0])).join('');
+  if(PACK.letter.mode==='perTable'){ const labels=tableLabels(); return labels.map(l=>mk('Guests on Table '+l)).join(''); }
+  return mk('Guest');
+}
+function buildSign(){
+  const head=PACK.sign.headline||('Brandon Hall Hotel and Spa welcomes '+(PACK.client||''));
+  return `<div class="sign" data-page><div class="inner"><img src="${LOGO}"><div class="wel">welcomes</div><div class="cli" style="color:${PACK.accent}">${esc(PACK.client||'our guests')}</div><div class="subl">${esc(PACK.sign.subline)}</div><div class="strip">${PACK.logos[0]?`<img src="${PACK.logos[0]}">`:''}${PACK.logos[1]?`<img src="${PACK.logos[1]}">`:''}</div></div></div>`;
+}
+function buildTV(){
+  return `<div class="tv" id="tvnode"><div class="in"><img src="${LOGO}"><div class="w">welcomes</div><div class="c" style="color:${PACK.accent}">${esc(PACK.client||'our guests')}</div><div class="s">${esc(PACK.sign.subline)}</div></div></div>`;
+}
+function buildNameCards(){
+  // tent cards, 2 per A4, fold line; name on both faces
+  const gs=PACK.guests.length?PACK.guests:[{name:'Guest',table:'',diet:''}];
+  let pages='';
+  for(let i=0;i<gs.length;i+=2){ const slice=gs.slice(i,i+2).map(g=>{
+    const face=`<div style="height:64mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:13mm;color:${BRAND.navy}">${esc(g.name||'Guest')}</div>
+      ${g.table?`<div style="font-size:4mm;color:${PACK.accent};font-weight:700;margin-top:2mm">Table ${esc(g.table)}</div>`:''}
+      ${PACK.logos[0]?`<img src="${PACK.logos[0]}" style="max-height:8mm;margin-top:4mm">`:''}
+      ${g.diet?`<div style="font-size:3mm;color:#999;margin-top:2mm">${esc(g.diet)}</div>`:''}</div>`;
+    return `<div style="width:190mm;border:0.2mm dashed #ccc;margin:0 auto 6mm">${face}<div style="border-top:0.3mm dashed ${PACK.accent};text-align:center;font-size:2.6mm;color:#bbb">fold</div><div style="transform:rotate(180deg)">${face}</div></div>`;
+  }).join(''); pages+=`<div class="a4" data-page>${slice}</div>`; }
+  return pages;
+}
+
+// ---------- preview ----------
+const ITEMS=[['tables','Table numbers'],['names','Name cards'],['menu','Menu'],['letter','Welcome letter'],['sign','Welcome sign'],['tv','TV screen']];
+function itemHTML(k){ return k==='tables'?buildTableNumbers():k==='names'?buildNameCards():k==='menu'?buildMenu():k==='letter'?buildLetters():k==='sign'?buildSign():buildTV(); }
+function renderPreview(){
+  const tabs=ITEMS.map(([k,l])=>`<button class="${PREVIEW===k?'on':''}" onclick="PREVIEW='${k}';renderPreview()">${l}</button>`).join('');
+  // scale the full-size item to fit
+  const widths={tables:210,names:210,menu:210,letter:210,sign:420,tv:null};
+  const stageW=Math.min(window.innerWidth-($('form').offsetWidth||440)-80, 820);
+  let inner;
+  if(PREVIEW==='tv'){ const sc=Math.min(stageW/1920,0.42); inner=`<div class="scaleBox" style="transform:scale(${sc});width:1920px">${itemHTML('tv')}</div><div style="height:${1080*sc}px"></div>`; }
+  else { const w=widths[PREVIEW]; const sc=Math.min(stageW/(w*3.7795),1); inner=`<div class="scaleBox" style="transform:scale(${sc});width:${w}mm">${itemHTML(PREVIEW)}</div>`; }
+  $('preview').innerHTML=`<div class="previewTabs">${tabs}</div>
+    <div class="genbar"><b style="margin-right:4px">Generate:</b>
+      <button class="btn sm" onclick="genItem('${PREVIEW}')">⬇ this item (PDF)</button>
+      ${PREVIEW==='tv'?`<button class="btn sm" onclick="genTVpng()">⬇ TV (PNG 1920×1080)</button> <a class="btn sm ghost" href="screen.html?pack=${esc(PACK.id)}" target="_blank" style="text-decoration:none">▶ open TV page</a>`:''}
+      ${PREVIEW==='letter'?`<button class="btn sm ghost" onclick="genLetterDocx()">⬇ letter (.doc)</button>`:''}
+      <span style="flex:1"></span><button class="btn gold sm" onclick="generateAll()">✨ Generate full pack (ZIP)</button>
+    </div>
+    <div class="stage" id="stage">${inner}</div>`;
+}
+window.addEventListener('resize',()=>{ clearTimeout(window._rz); window._rz=setTimeout(renderPreview,200); });
+
+// ---------- generation (client-side) ----------
+const {jsPDF}=window.jspdf||{};
+function pageNodes(html){ const w=document.createElement('div'); w.innerHTML=html; return Array.from(w.querySelectorAll('[data-page]')); }
+async function nodeToCanvas(node){ document.getElementById('stagePrint').innerHTML=''; document.getElementById('stagePrint').appendChild(node); const cv=await html2canvas(node,{scale:2,useCORS:true,backgroundColor:null}); document.getElementById('stagePrint').innerHTML=''; return cv; }
+async function itemToPdf(k){
+  const html=itemHTML(k); const nodes=pageNodes(html); if(!nodes.length) return null;
+  const landscape=(k==='sign'); const first=nodes[0];
+  // page size by item
+  const sizes={tables:[210,297],names:[210,297],menu:[210,297],letter:[210,297],sign:[420,297]};
+  const [pw,ph]=sizes[k]||[210,297];
+  const pdf=new jsPDF({orientation:pw>ph?'landscape':'portrait',unit:'mm',format:[pw,ph]});
+  for(let i=0;i<nodes.length;i++){ const cv=await nodeToCanvas(nodes[i]); const img=cv.toDataURL('image/jpeg',0.92); if(i>0) pdf.addPage([pw,ph],pw>ph?'landscape':'portrait'); pdf.addImage(img,'JPEG',0,0,pw,ph); }
+  return pdf;
+}
+function fnameBase(){ return (PACK.client||'Event').replace(/[^a-z0-9]+/ig,'-')+'_'+(PACK.date||''); }
+async function genItem(k){ toast('Generating…'); try{ const pdf=await itemToPdf(k); if(pdf) pdf.save(fnameBase()+'_'+k+'.pdf'); }catch(e){ toast('Generate failed — try again'); console.error(e);} }
+async function genTVpng(){ toast('Rendering TV…'); try{ const n=pageNodes(buildTV())[0]; const cv=await nodeToCanvas(n); const a=document.createElement('a'); a.href=cv.toDataURL('image/png'); a.download=fnameBase()+'_TV_1920x1080.png'; a.click(); }catch(e){ toast('Failed'); } }
+function genLetterDocx(){
+  const body=(PACK.letter.body||buildLetterBody('Guest')).replace(/<h2>/g,'<p style="text-align:center;font-weight:bold;font-size:18pt">').replace(/<\/h2>/g,'</p>');
+  const html=`<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"></head><body style="font-family:Aptos,Calibri,sans-serif;font-size:11pt">${body}</body></html>`;
+  const blob=new Blob(['\ufeff'+html],{type:'application/msword'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fnameBase()+'_welcome-letter.doc'; a.click();
+}
+async function generateAll(){
+  if(!PACK.client){ toast('Add a client name first'); return; }
+  toast('Building full pack…'); const zip=new JSZip();
+  try{
+    for(const k of ['tables','names','menu','letter','sign']){ const pdf=await itemToPdf(k); if(pdf) zip.file(fnameBase()+'_'+k+'.pdf', pdf.output('blob')); }
+    // TV png
+    try{ const n=pageNodes(buildTV())[0]; const cv=await nodeToCanvas(n); const b=await new Promise(r=>cv.toBlob(r,'image/png')); if(b) zip.file(fnameBase()+'_TV_1920x1080.png',b); }catch(e){}
+    // letter docx
+    const body=(PACK.letter.body||buildLetterBody('Guest'));
+    zip.file(fnameBase()+'_welcome-letter.doc','\ufeff<html><head><meta charset="utf-8"></head><body style="font-family:Aptos,Calibri">'+body+'</body></html>');
+    // readme
+    zip.file('README.txt','Event pack for '+PACK.client+' — '+(PACK.date||'')+'\nTV screen: brandon.hospro.co.uk/screen.html?pack='+PACK.id+'  (code '+PACK.screen.code+')\nGenerated by HosSALES Event Pack.');
+    const blob=await zip.generateAsync({type:'blob'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fnameBase()+'_EventPack.zip'; a.click();
+    toast('Pack ready ✓'); logTimeline('Event pack generated');
+  }catch(e){ toast('Pack build failed — try individual items'); console.error(e); }
+}
+function markFinal(){ if(!confirm('Mark this pack Final? It will be locked; editing creates a new version.')) return; PACK.status='Final'; save(); renderForm(); toast('Marked Final'); logTimeline('Event pack marked Final'); }
+async function logTimeline(msg){ if(!PACK.enquiryId) return; try{ await db.collection('enquiries').doc(PACK.enquiryId).collection('timeline').add({ msg:msg+' by '+PACK.createdBy, at:new Date().toISOString() }); }catch(e){} }
+
+boot();
+</script>
+</body>
+</html>

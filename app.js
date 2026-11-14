@@ -330,7 +330,7 @@ function hpRenderFixrayPlaceholder(v, tab){
 }
 
 /* ── Tab registry (single source of truth for the router) ── */
-const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
+const RENDER_MAP = {home:renderHome, rooms:renderRooms, dining:renderDining, beverage:renderBeverage, pipeline:renderPipeline, eventPack:renderEventPack, corprates:renderCorpRates, groupconfig:renderGroupConfig, packages:renderPackages, suppliers:renderSuppliers, quote:renderQuote,
     profit:renderProfit, chat:renderChat, mne:renderMnE, marketing:renderMarketing, social:renderSocial, menu:renderMenuBuilder, brochure:renderBrochureBuilder, tasks:renderTasks, insight:renderInsight, precheckin:renderPrecheckinSetup, corpdb:renderCorpDb, feedback:renderFeedback, contracts:renderContracts, payments:renderPayments, quotes:renderQuotesList, admin:renderAdmin,
     compDash:renderCompDash, compTasks:renderCompTasks, compActions:renderCompActions, compReport:renderCompReport,
     fixDash:renderFixDash, fixAllJobs:renderFixAllJobs, fixProjects:renderFixProjects, fixInventory:renderFixInventory, fixTeam:renderFixTeam,
@@ -1599,6 +1599,19 @@ function pipelineData(){
 }
 function roomIdFromName(name){ const r=ROOMS.find(x=>x.name===name); return r?r.id:""; }
 
+function renderEventPack(v){
+  // Event Pack builder lives in its own page (eventpack.html) and is embedded here.
+  v.innerHTML=`<div style="padding:14px 20px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#fff">Event Pack</div>
+      <div style="font-size:13px;color:#cbb6d6">Table numbers, menus, name cards, welcome letters, signs &amp; TV screens — from one form.</div>
+      <span style="flex:1"></span>
+      <button onclick="window.open('eventpack.html','_blank')" style="padding:8px 14px;border:none;border-radius:8px;background:#BB9979;color:#fff;font:800 12px Lato;cursor:pointer">↗ Open full screen</button>
+      <button onclick="document.getElementById('ep-frame').src='eventpack.html'" style="padding:8px 14px;border:1px solid rgba(255,255,255,.3);border-radius:8px;background:transparent;color:#fff;font:800 12px Lato;cursor:pointer">+ New pack</button>
+    </div>
+    <iframe id="ep-frame" src="eventpack.html" style="width:100%;height:calc(100vh - 150px);border:none;border-radius:12px;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.12)"></iframe>
+  </div>`;
+}
 function renderPipeline(v){
   const ph=head("Sales Pipeline","Track every enquiry from first contact to confirmed — with conversion, traffic-light status and event-type breakdown.");
   v.appendChild(ph);
@@ -2047,6 +2060,9 @@ function openEnquiryDetail(e){
       ${roomName?`<div class="stat"><div class="k">Room</div><div class="v" style="font-size:15px">${roomName}</div></div>`:""}
     </div>
     ${isBob?`<div class="bob-note">📊 From Rezlynx business-on-books (ref ${e.ref}). Editing below promotes it to a managed enquiry.</div>`:""}
+
+    <div style="margin:10px 0"><button onclick="window.open('eventpack.html?enquiry=${e.id}','_blank')" style="padding:9px 15px;border:none;border-radius:9px;background:#BB9979;color:#fff;font:800 12.5px Lato;cursor:pointer">🎁 Create event pack</button>
+      <span style="font-size:11.5px;color:#8a7a93;margin-left:8px">Pre-filled with this client, date &amp; room</span></div>
 
     <div class="sec-title">Manage</div>
     <div class="manage-grid">
@@ -13206,6 +13222,70 @@ function spPayRows(days){
 }
 
 const SP_PAY_CODE='2642';  // Payroll tab access code — change here if needed
+/* ===== Payroll adjustments (additions / deductions) + actual clocked hours =====
+   Adjustments are stored per pay period in payroll_adjustments/<periodKey>.
+   Clocked hours come live from clock_punches (HosTIME) — no uploads needed. */
+let PAYADJ={}, PAYADJ_KEY='', PAYADJ_LOADED=false, PAYCLK={}, PAYCLK_KEY='';
+function payPeriodKey(){ try{ const P=spPayPeriod(); return (spPayMode||'week')+'_'+spDK(P.days[0]); }catch(e){ return 'period'; } }
+function payAdjList(code){ return (PAYADJ[String(code||'')]||[]); }
+function payAdjNet(code){ return payAdjList(code).reduce((s,a)=>s+(a.kind==='deduct'?-(+a.amount||0):(+a.amount||0)),0); }
+function payLoadAdj(){
+  const key=payPeriodKey();
+  if(PAYADJ_KEY===key && PAYADJ_LOADED) return;
+  PAYADJ_KEY=key; PAYADJ={}; PAYADJ_LOADED=false;
+  if(typeof FB==='undefined' || !FB.db){ PAYADJ_LOADED=true; return; }
+  FB.db.collection('payroll_adjustments').doc(key).get().then(d=>{
+    PAYADJ=(d.exists?(d.data()||{}).staff:null)||{}; PAYADJ_LOADED=true;
+    if(CURRENT_TAB==='rotaPayroll' && window.__payUnlocked){ const vv=document.getElementById('view'); if(vv) renderRotaPayroll(vv); }
+  }).catch(()=>{ PAYADJ_LOADED=true; });
+}
+function paySaveAdj(){
+  if(typeof FB==='undefined' || !FB.db) return Promise.resolve();
+  return FB.db.collection('payroll_adjustments').doc(PAYADJ_KEY).set({staff:PAYADJ, updatedAt:Date.now()},{merge:true});
+}
+function payLoadClock(){
+  const P=spPayPeriod(); const a=spDK(P.days[0]), b=spDK(P.days[P.days.length-1]);
+  const key=a+'_'+b;
+  if(PAYCLK_KEY===key && Object.keys(PAYCLK).length) return;
+  PAYCLK_KEY=key; PAYCLK={};
+  if(typeof FB==='undefined' || !FB.db) return;
+  FB.db.collection('clock_punches').where('date','>=',a).where('date','<=',b).get().then(qs=>{
+    const bycd={}; // code|date -> {ins:[],outs:[]}
+    qs.forEach(doc=>{ const p=doc.data()||{}; const k=String(p.staffCode||'')+'|'+p.date; if(!bycd[k]) bycd[k]={ins:[],outs:[]}; if(p.type==='in'&&p.mins!=null) bycd[k].ins.push(p.mins); else if(p.type==='out'&&p.mins!=null) bycd[k].outs.push(p.mins); });
+    const tot={};
+    Object.keys(bycd).forEach(k=>{ const code=k.split('|')[0], o=bycd[k]; if(o.ins.length&&o.outs.length){ const inM=Math.min.apply(null,o.ins), outM=Math.max.apply(null,o.outs); let m=outM-inM; if(m<0) m+=1440; tot[code]=(tot[code]||0)+m/60; } });
+    PAYCLK=tot;
+    if(CURRENT_TAB==='rotaPayroll' && window.__payUnlocked){ const vv=document.getElementById('view'); if(vv) renderRotaPayroll(vv); }
+  }).catch(()=>{});
+}
+function payAdjEdit(code, name){
+  code=String(code||''); const list=payAdjList(code).slice();
+  const rowsHtml=()=> list.length? list.map((a,i)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="flex:1;font-size:13px">${spEsc(a.label||'')}</span>
+      <span style="font-weight:800;color:${a.kind==='deduct'?'#b3261e':'#166534'}">${a.kind==='deduct'?'−':'+'}${spGBP(+a.amount||0)}</span>
+      <button onclick="window._payAdjDel(${i})" style="border:none;background:#fde8e8;color:#b3261e;border-radius:6px;padding:4px 8px;cursor:pointer;font-weight:800">✕</button></div>`).join('') : '<div style="color:#64707f;font-size:13px">No adjustments yet.</div>';
+  const redraw=()=>{ const el=document.getElementById('payadj-list'); if(el) el.innerHTML=rowsHtml(); const n=document.getElementById('payadj-net'); if(n) n.textContent=(list.reduce((s,a)=>s+(a.kind==='deduct'?-(+a.amount||0):(+a.amount||0)),0)>=0?'+':'')+spGBP(list.reduce((s,a)=>s+(a.kind==='deduct'?-(+a.amount||0):(+a.amount||0)),0)); };
+  window._payAdjDel=(i)=>{ list.splice(i,1); redraw(); };
+  window._payAdjAdd=(kind)=>{ const lab=(document.getElementById('payadj-label').value||'').trim(); const amt=+document.getElementById('payadj-amt').value||0; if(!lab||!(amt>0)){ return; } list.push({label:lab,amount:Math.round(amt*100)/100,kind:kind}); document.getElementById('payadj-label').value=''; document.getElementById('payadj-amt').value=''; redraw(); };
+  window._payAdjSave=()=>{ if(list.length) PAYADJ[code]=list; else delete PAYADJ[code]; paySaveAdj().then(()=>{ toast('✓ Adjustments saved'); }).catch(()=>toast('Could not save')); closeModal(); const vv=document.getElementById('view'); if(vv) renderRotaPayroll(vv); };
+  showModal('Pay adjustments — '+name, PAYADJ_KEY.replace('_',' · '), `
+    <div id="payadj-list" style="margin-bottom:12px">${rowsHtml()}</div>
+    <div style="border-top:1px solid #eef1f4;padding-top:12px">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input id="payadj-label" placeholder="Reason (e.g. Bonus, Uniform, Advance)" style="flex:1;padding:9px;border:1px solid #d1d5db;border-radius:8px">
+        <input id="payadj-amt" type="number" min="0" step="0.01" placeholder="£" style="width:90px;padding:9px;border:1px solid #d1d5db;border-radius:8px">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="window._payAdjAdd('add')" style="flex:1;padding:9px;border:none;border-radius:8px;background:#166534;color:#fff;font-weight:800;cursor:pointer">+ Addition</button>
+        <button onclick="window._payAdjAdd('deduct')" style="flex:1;padding:9px;border:none;border-radius:8px;background:#b3261e;color:#fff;font-weight:800;cursor:pointer">− Deduction</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid #eef1f4">
+      <span style="font-size:13px;color:#64707f">Net adjustment: <b id="payadj-net" style="color:#1a2b3a">${(payAdjNet(code)>=0?'+':'')+spGBP(payAdjNet(code))}</b></span>
+      <button onclick="window._payAdjSave()" style="padding:10px 20px;border:none;border-radius:9px;background:#2B726A;color:#fff;font-weight:800;cursor:pointer">Save</button>
+    </div>`);
+}
+
 function renderRotaPayroll(v){
   if(!window.__payUnlocked){
     v.innerHTML=`<div style="max-width:400px;margin:56px auto;text-align:center;font-family:Lato,system-ui,sans-serif">
@@ -13221,10 +13301,12 @@ function renderRotaPayroll(v){
     const i=document.getElementById('pay-code'); if(i){ i.onkeydown=(ev)=>{ if(ev.key==='Enter') go(); }; setTimeout(()=>{ try{ i.focus(); }catch(e){} },60); }
     return;
   }
+  payLoadAdj(); payLoadClock();
   const P=spPayPeriod(), rows=spPayRows(P.days), ps=spPaySettings();
   const deptName=id=>(SP_DEPTS.find(d=>d.id===id)||{}).name||id;
   const deptCol=id=>(SP_DEPTS.find(d=>d.id===id)||{}).colour||'#6b7280';
   const todayK=spDK(new Date());
+  let totAdj=0, totNet=0, totClk=0;
   const heads=P.days.map(d=>{const k=spDK(d),we=d.getDay()===0||d.getDay()===6;return `<th style="padding:6px 3px;min-width:${spPayMode==='week'?84:44}px;text-align:center;font-size:10.5px;color:${k===todayK?'#fff':'#1a2b3a'};background:${k===todayK?'#2B726A':we?'#eef2f5':'#f5f7f9'}">${d.toLocaleDateString('en-GB',{weekday:'short'}).slice(0,spPayMode==='week'?3:2)}<div style="font-weight:400;opacity:.8">${d.getDate()}${spPayMode==='week'?' '+d.toLocaleDateString('en-GB',{month:'short'}):''}</div></th>`;}).join('');
   let body='', curDept=null, tot={hrs:0,gross:0,shifts:0,hol:0,sick:0}, dt=null;
   const flushDept=()=>{ if(!dt) return; body+=`<tr><td style="position:sticky;left:0;background:#f3f6f8;padding:6px 10px;font-size:11px;font-weight:800;color:#1a2b3a">${deptName(curDept)} subtotal</td><td colspan="${P.days.length+2}" style="background:#f3f6f8"></td><td style="background:#f3f6f8;text-align:right;padding:6px 8px;font-size:12px;font-weight:800">${spH(dt.hrs)}</td><td style="background:#f3f6f8" colspan="2"></td><td style="background:#f3f6f8;text-align:right;padding:6px 10px;font-size:12px;font-weight:800">${spGBP(dt.gross)}</td></tr>`; };
@@ -13232,6 +13314,8 @@ function renderRotaPayroll(v){
     if(r.s.dept!==curDept){ flushDept(); curDept=r.s.dept; dt={hrs:0,gross:0};
       body+=`<tr><td colspan="${P.days.length+7}" style="padding:6px 10px;background:${deptCol(curDept)};color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">${deptName(curDept)}</td></tr>`; }
     dt.hrs+=r.hrs; dt.gross+=r.gross; tot.hrs+=r.hrs; tot.gross+=r.gross; tot.shifts+=r.shifts; tot.hol+=r.hol; tot.sick+=r.sick;
+    const _code=String(r.s.staffCode||''); const _clk=PAYCLK[_code]; const _adj=payAdjNet(_code); const _net=(r.gross||0)+_adj;
+    totAdj+=_adj; totNet+=_net; if(_clk!=null) totClk+=_clk;
     const cells=r.daily.map(c=>{
       const lab=c.k==='work'?spH(c.h):c.k==='holiday'?'HOL':c.k==='sick'?'SICK':c.k==='in lieu'?'LIEU':c.k==='on call'?'OC':'';
       const bg=c.k==='work'?'#f0fdf4':c.k==='holiday'?'#eff6ff':c.k==='sick'?'#fef2f2':c.k==='in lieu'?'#faf5ff':'#fff';
@@ -13242,10 +13326,10 @@ function renderRotaPayroll(v){
       <td style="font-size:11px;padding:5px 8px;color:#374151;white-space:nowrap">${spEsc(r.s.contract||'')}</td>
       ${cells}
       <td style="text-align:center;font-size:11px;padding:5px 6px">${r.shifts}</td>
-      <td style="text-align:right;font-size:12px;font-weight:700;padding:5px 8px">${spH(r.hrs)}</td>
+      <td style="text-align:right;font-size:12px;font-weight:700;padding:5px 8px">${spH(r.hrs)}${_clk!=null?`<div style="font-size:9.5px;font-weight:600;color:${Math.abs(_clk-r.hrs)>1?'#b3261e':'#64707f'}" title="Actual hours clocked via HosTIME">clocked ${spH(_clk)}</div>`:''}</td>
       <td style="text-align:right;font-size:11px;padding:5px 8px;color:${r.rate||r.basis==='salary'?'#374151':'#b3261e'}">${r.basis==='salary'?`<span title="${spGBP(r.annual)} a year">Salary</span>`:r.rate?spGBP(r.rate):'No rate'}</td>
       <td style="text-align:center;font-size:11px;padding:5px 6px;color:#374151">${[r.hol?r.hol+' hol':'',r.sick?r.sick+' sick':'',r.lieu?r.lieu+' lieu':''].filter(Boolean).join(' · ')||'—'}</td>
-      <td style="text-align:right;font-size:12px;font-weight:800;padding:5px 10px;color:#1a2b3a">${spGBP(r.gross)}</td>
+      <td style="text-align:right;font-size:12px;font-weight:800;padding:5px 10px;color:#1a2b3a">${spGBP(r.gross)}${_adj!==0?`<div style="font-size:9.5px;font-weight:700;color:${_adj<0?'#b3261e':'#166534'}">${_adj<0?'−':'+'}${spGBP(Math.abs(_adj))}</div><div style="font-size:11px;font-weight:800;color:#2B726A">net ${spGBP(_net)}</div>`:''}<div><button onclick="payAdjEdit('${_code}','${spEsc(r.s.name).replace(/'/g,"\\'")}')" style="margin-top:3px;border:1px solid #d1d5db;background:#f9fafb;border-radius:6px;padding:1px 8px;font-size:10px;cursor:pointer;color:#374151">✎ adj</button></div></td>
     </tr>`;
   });
   flushDept();
@@ -13268,7 +13352,7 @@ function renderRotaPayroll(v){
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px">
-      ${[['Staff with hours',rows.filter(r=>r.hrs>0).length],['Shifts',tot.shifts],['Paid hours',spH(tot.hrs)],['Gross pay',spGBP(tot.gross)],['Holiday / sick days',tot.hol+' / '+tot.sick]].map(([l,n])=>`<div style="background:#fff;border-radius:12px;padding:12px 14px"><div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.4px">${l}</div><div style="font-size:22px;font-weight:800;color:#1a2b3a;margin-top:2px">${n}</div></div>`).join('')}
+      ${[['Staff with hours',rows.filter(r=>r.hrs>0).length],['Paid hours',spH(tot.hrs)],['Gross pay',spGBP(tot.gross)],['Adjustments',(totAdj>=0?'+':'')+spGBP(totAdj)],['Net pay',spGBP(totNet)]].map(([l,n])=>`<div style="background:#fff;border-radius:12px;padding:12px 14px"><div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.4px">${l}</div><div style="font-size:22px;font-weight:800;color:#1a2b3a;margin-top:2px">${n}</div></div>`).join('')}
     </div>
 
     <div style="background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:#1a2b3a">
