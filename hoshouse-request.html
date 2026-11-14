@@ -364,6 +364,7 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         <div class="bigcard" id="card-hostv" onclick="showSection('hostv')"><div class="bc-n" id="bc-tv-n">0%</div><div class="bc-banner"><div class="bc-t">HosTV 🔒</div><div class="bc-s">Bedroom TV audit</div></div></div>
         <div class="bigcard" id="card-priority" onclick="showSection('priority')"><div class="bc-banner"><div class="bc-t">HosPRIORITY 🔒</div><div class="bc-s">Flag rooms · alert housekeeping</div></div></div>
         <div class="bigcard" id="card-night" onclick="showSection('notes')"><div class="bc-banner"><div class="bc-t">HosNOTES</div><div class="bc-s">Reception notes board</div></div></div>
+        <div class="bigcard" id="card-info" onclick="showSection('info')"><div class="bc-n" id="bc-info-n">0</div><div class="bc-banner"><div class="bc-t">HosINFO</div><div class="bc-s">Information for reception · read &amp; sign</div></div></div>
       </div>
         </div>
         <aside class="proc-rail" id="proc-rail">
@@ -632,6 +633,28 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
           <select id="nt-filter" onchange="notesRenderNow()" style="width:auto;padding:7px 10px;font-size:13px"><option value="open">Open</option><option value="all">All</option><option value="done">Done</option></select>
         </div>
         <div id="nt-list"><div class="muted" style="padding:10px 2px">Loading…</div></div>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-info">
+      <div class="pane-form">
+        <div class="card">
+          <div style="font:800 14px Lato;color:#1a2b3a;margin-bottom:4px">ℹ️ Information for Reception</div>
+          <div class="muted" style="font-size:12px;margin-bottom:12px">Standing information every receptionist must read &amp; sign — groups, special arrangements and one-offs that last for weeks. Search by keyword to refresh your memory.</div>
+          <input id="info-search" placeholder="🔍 Search information…" oninput="infoRender()" style="width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;font-size:14px">
+          <button class="btn btn-go" style="margin-top:12px;background:#2a6a4a" onclick="infoAddOpen()">+ Add information</button>
+          <div id="info-addbox" style="display:none;margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fbfcfd">
+            <label class="fl">Title</label><input id="info-title" placeholder="e.g. 16 Nov group — pre-night bookings">
+            <label class="fl" style="margin-top:8px">Information</label><textarea id="info-body" rows="4" placeholder="Full details receptionists need to follow…"></textarea>
+            <label class="fl" style="margin-top:8px">Keywords <span style="font-weight:400;text-transform:none;color:#9aa7b5">(comma separated — helps search)</span></label><input id="info-keys" placeholder="group, 16 november, pre-night, link reservation">
+            <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-go" style="background:#2a6a4a;flex:1" onclick="infoSave()">Save information</button><button class="btn" style="background:#eef1f4;color:#1a2b3a" onclick="infoAddClose()">Cancel</button></div>
+            <div id="info-amsg" class="muted" style="font-size:12px;min-height:14px;margin-top:6px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="pane-list">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div class="sechd" style="margin:0;flex:1">Reception information</div><span class="muted" id="info-count" style="font-size:12px"></span></div>
+        <div id="info-list"><div class="muted" style="padding:10px 2px">Loading…</div></div>
       </div>
     </div>
   </div>
@@ -934,7 +957,7 @@ async function startBoard(){
     D_ROWS=JSON.parse(localStorage.getItem('hoshouse_deliveries')||'[]'); renderDeliveries();
     M_ROWS=[]; mRender();
   }
-  try{ soSubscribe(); notesSubscribe(); clHomeSubscribe(); }catch(e){}
+  try{ soSubscribe(); notesSubscribe(); clHomeSubscribe(); infoSubscribe(); }catch(e){}
   try{ renderStatusBanners(); renderHomeAlert(); if(!window._sbTimer) window._sbTimer=setInterval(function(){ try{ renderStatusBanners(); renderHomeAlert(); }catch(e){} }, 30000); }catch(e){}
   try{ if('Notification' in window && Notification.permission==='default') Notification.requestPermission(); }catch(e){}
   // Unlock sound + ask permission on the first tap (browsers need a gesture for audio)
@@ -946,7 +969,7 @@ async function startBoard(){
 function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } if(H_UNSUB){ H_UNSUB(); H_UNSUB=null; } stopVD(); B_READY=false; M_READY=false; }
 function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l])=>`<button class="chip ${B_FILTER===ff?'on':''}" onclick="bSetFilter('${ff}')">${l}</button>`).join(''); bRender(); }
 // Maintenance and Shift Handover are gated by a staff code (remove a name from GATED to open that section to all).
-const SECTIONS=['requests','deliveries','maintenance','handover','roomcheck','directory','hostv','priority','notes'];
+const SECTIONS=['requests','deliveries','maintenance','handover','roomcheck','directory','hostv','priority','notes','info'];
 const GATED={maintenance:true, handover:true, roomcheck:true, hostv:true, priority:true};
 const UNLOCKED={};
 let GATE_TARGET=null;
@@ -1662,8 +1685,29 @@ function procShow(key){
   var btns=document.querySelectorAll('.proclink'); btns.forEach(function(b){ if(b.getAttribute('onclick')&&b.getAttribute('onclick').indexOf("'"+key+"'")>-1) b.classList.add('on'); });
   var ttl=$('pr-title'); if(ttl) ttl.textContent=pr.t;
   var cls=$('pr-close'); if(cls) cls.style.display='block';
-  var body=$('pr-body'); if(body) body.innerHTML='<ol>'+pr.steps.map(function(s){ return '<li>'+esc(s)+'</li>'; }).join('')+'</ol>';
+  var body=$('pr-body'); if(body) body.innerHTML='<ol>'+pr.steps.map(function(s){ return '<li>'+esc(s)+'</li>'; }).join('')+'</ol>'+
+    '<div id="pr-ack" style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><div class="muted" style="font-size:12px">Loading signatures…</div></div>';
+  procLoadAcks('proc_'+key);
   try{ var rail=$('proc-rail'); if(rail && window.innerWidth<=1100) rail.scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(e){}
+}
+// ── Read & sign (procedures) ──
+function ackRender(elId, refId, acks, signLabel, signFn){
+  var map={}; (acks||[]).forEach(function(a){ if(a&&a.name) map[a.name]=a.at; });
+  var names=Object.keys(map);
+  var el=$(elId); if(!el) return;
+  el.innerHTML='<div style="font:800 12px Lato;color:#1a2b3a;margin-bottom:6px">Read &amp; understood — signatures</div>'+
+    (names.length?'<div style="font-size:12px;color:#2a6a4a;margin-bottom:8px">✓ '+names.map(esc).join(', ')+' <span class="muted">('+names.length+')</span></div>':'<div class="muted" style="font-size:12px;margin-bottom:8px">No one has signed yet.</div>')+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap"><select id="'+elId+'-who" style="flex:1;min-width:110px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font-size:13px"><option value="">Your name…</option>'+CL_PEOPLE.map(function(n){return '<option>'+esc(n)+'</option>';}).join('')+'</select>'+
+    '<button type="button" class="btn btn-go" style="background:#2a6a4a;padding:7px 12px;font-size:12px" onclick="'+signFn+'(\''+refId+'\',\''+elId+'\')">✓ '+signLabel+'</button></div>';
+}
+function procLoadAcks(refId){
+  if(!db){ var el=$('pr-ack'); if(el) el.innerHTML=''; return; }
+  db.collection('hosdesk_acks').doc(refId).get().then(function(s){ var d=s.exists?(s.data()||{}):{}; ackRender('pr-ack', refId, d.acks||[], 'I have read & understood', 'procSign'); }).catch(function(){ ackRender('pr-ack', refId, [], 'I have read & understood', 'procSign'); });
+}
+function procSign(refId, elId){
+  var sel=$(elId+'-who'); var name=sel?sel.value:''; if(!name){ toast('Pick your name first'); return; }
+  var rec={name:name, at:new Date().toISOString()};
+  if(db){ db.collection('hosdesk_acks').doc(refId).set({acks:firebase.firestore.FieldValue.arrayUnion(rec)},{merge:true}).then(function(){ toast('✓ Signed — thank you '+name); procLoadAcks(refId); }).catch(function(){ toast('Could not save'); }); }
 }
 function procClose(){
   PROC_CUR=null;
@@ -1672,6 +1716,60 @@ function procClose(){
   var cls=$('pr-close'); if(cls) cls.style.display='none';
   var body=$('pr-body'); if(body) body.innerHTML='<div class="pr-empty">Tap a procedure above to read it here.</div>';
 }
+
+/* ===================== HosINFO — Information for Reception ===================== */
+var INFO_ROWS=[], INFO_SUB=null, INFO_AUTH=false;
+function infoSubscribe(){
+  if(!db || INFO_SUB) return;
+  INFO_SUB=db.collection('hosinfo').onSnapshot(function(qs){
+    INFO_ROWS=qs.docs.map(function(d){ var v=d.data()||{}; v.id=d.id; return v; }).sort(function(a,b){ return (b.num||0)-(a.num||0); });
+    var n=$('bc-info-n'); if(n) n.textContent=INFO_ROWS.length;
+    infoRender();
+  }, function(){ var l=$('info-list'); if(l) l.innerHTML='<div class="muted" style="padding:10px 2px">Could not load information.</div>'; });
+}
+function infoRender(){
+  var l=$('info-list'); if(!l) return;
+  var q=((($('info-search')||{}).value)||'').trim().toLowerCase();
+  var rows=INFO_ROWS.filter(function(r){ if(!q) return true; var hay=((r.title||'')+' '+(r.body||'')+' '+(r.keywords||'')+' #'+(r.num||'')).toLowerCase(); return hay.indexOf(q)>-1; });
+  var cnt=$('info-count'); if(cnt) cnt.textContent=INFO_ROWS.length+(q?(' · '+rows.length+' match'):(' item'+(INFO_ROWS.length===1?'':'s')));
+  if(!rows.length){ l.innerHTML='<div class="muted" style="padding:10px 2px">'+(q?('No information matches “'+esc(q)+'”.'):'No information yet. Tap “Add information” to post the first.')+'</div>'; return; }
+  l.innerHTML=rows.map(function(r){
+    var acks=r.acks||[]; var map={}; acks.forEach(function(a){ if(a&&a.name) map[a.name]=1; }); var names=Object.keys(map);
+    var keys=(r.keywords||'').split(',').map(function(x){return x.trim();}).filter(Boolean);
+    return '<div class="card" style="margin-bottom:10px">'+
+      '<div style="display:flex;align-items:flex-start;gap:10px">'+
+        '<div style="flex:0 0 auto;background:#2a6a4a;color:#fff;border-radius:9px;min-width:30px;height:30px;display:flex;align-items:center;justify-content:center;font:900 14px Lato">'+(r.num||'•')+'</div>'+
+        '<div style="flex:1;min-width:0"><div style="font:800 15px Lato;color:#1a2b3a">'+esc(r.title||'')+'</div>'+
+          '<div style="font-size:13.5px;color:#2a3340;line-height:1.5;margin:4px 0;white-space:pre-wrap">'+esc(r.body||'')+'</div>'+
+          (keys.length?('<div style="display:flex;gap:5px;flex-wrap:wrap;margin:6px 0">'+keys.map(function(k){return '<span style="background:#eef4f0;color:#2a6a4a;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">'+esc(k)+'</span>';}).join('')+'</div>'):'')+
+          '<div class="muted" style="font-size:11px">Added '+esc((r.createdAt||'').slice(0,10))+(r.createdBy?(' · '+esc(r.createdBy)):'')+'</div>'+
+        '</div>'+
+        '<button type="button" onclick="infoDelete(\''+r.id+'\')" title="Delete" style="background:none;border:none;color:#c0c7d0;cursor:pointer;font-size:15px">🗑</button>'+
+      '</div>'+
+      '<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px">'+
+        (names.length?('<div style="font-size:12px;color:#2a6a4a;margin-bottom:8px">✓ Read by '+names.map(esc).join(', ')+' <span class="muted">('+names.length+')</span></div>'):'<div class="muted" style="font-size:12px;margin-bottom:8px">Not yet signed by anyone.</div>')+
+        '<div style="display:flex;gap:6px;flex-wrap:wrap"><select id="iwho-'+r.id+'" style="flex:1;min-width:110px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font-size:13px"><option value="">Your name…</option>'+CL_PEOPLE.map(function(n){return '<option>'+esc(n)+'</option>';}).join('')+'</select>'+
+        '<button type="button" class="btn btn-go" style="background:#2a6a4a;padding:7px 12px;font-size:12px" onclick="infoSign(\''+r.id+'\')">✓ I have read this</button></div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+function infoSign(id){
+  var sel=$('iwho-'+id); var name=sel?sel.value:''; if(!name){ toast('Pick your name first'); return; }
+  if(db){ db.collection('hosinfo').doc(id).set({acks:firebase.firestore.FieldValue.arrayUnion({name:name, at:new Date().toISOString()})},{merge:true}).then(function(){ toast('✓ Signed — thank you '+name); }).catch(function(){ toast('Could not save'); }); }
+}
+function infoAuth(){ if(INFO_AUTH) return true; var c=prompt('Enter the management code to add or remove information:'); if((c||'').trim()==='3132'){ INFO_AUTH=true; return true; } toast('Incorrect code'); return false; }
+function infoAddOpen(){ if(!infoAuth()) return; var b=$('info-addbox'); if(b) b.style.display='block'; }
+function infoAddClose(){ var b=$('info-addbox'); if(b) b.style.display='none'; ['info-title','info-body','info-keys'].forEach(function(i){ var e=$(i); if(e) e.value=''; }); var m=$('info-amsg'); if(m) m.textContent=''; }
+function infoSave(){
+  if(!infoAuth()) return;
+  var title=((($('info-title')||{}).value)||'').trim(), body=((($('info-body')||{}).value)||'').trim(), keys=((($('info-keys')||{}).value)||'').trim();
+  if(!title||!body){ var m=$('info-amsg'); if(m) m.textContent='Add a title and the information.'; return; }
+  var num=1+INFO_ROWS.reduce(function(mx,r){ return Math.max(mx, r.num||0); },0);
+  var id='info_'+Date.now().toString(36);
+  if(db){ db.collection('hosinfo').doc(id).set({ num:num, title:title, body:body, keywords:keys, acks:[], createdAt:new Date().toISOString(), createdBy:'Reception' }).then(function(){ toast('✓ Information added (#'+num+')'); infoAddClose(); }).catch(function(){ var m=$('info-amsg'); if(m) m.textContent='Could not save.'; }); }
+}
+function infoDelete(id){ if(!infoAuth()) return; if(!confirm('Delete this information?')) return; if(db){ db.collection('hosinfo').doc(id).delete().then(function(){ toast('Deleted'); }).catch(function(){ toast('Could not delete'); }); } }
 
 /* ===================== Staff Rota viewer (reads the live hospro_public/rota) ===================== */
 let ROTA=null, ROTA_VIEW='day', ROTA_OFF=0, ROTA_DEPTF='all';
