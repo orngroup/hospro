@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Brandon Hall – Departmental Costs</title>
+<style>
+:root{
+  --bg:#f5f4f0; --surface:#fcfcfb; --line:#e4e2dc; --line2:#efede8;
+  --ink:#141413; --ink2:#52514e; --ink3:#86847d;
+  --accent:#1f3d36; --accent-soft:#e6efe9;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
+  --good:#1a7f4b; --warn:#b26a00; --bad:#c0392b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Aptos,"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif}
+header{background:var(--accent);color:#fff;padding:20px 28px 0}
+header h1{margin:0;font-size:22px;font-weight:600;letter-spacing:.2px}
+header p{margin:4px 0 14px;color:#c9d8d2;font-size:13.5px}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:transparent;border:0;color:#c9d8d2;font:inherit;font-size:14px;padding:10px 16px;border-radius:8px 8px 0 0;cursor:pointer}
+nav button.on{background:var(--bg);color:var(--ink);font-weight:600}
+main{padding:20px 28px 60px;max-width:1500px;margin:0 auto}
+.tab{display:none}.tab.on{display:block}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:16px}
+.card h2{margin:0 0 2px;font-size:16px;font-weight:600}
+.card .sub{margin:0 0 12px;color:var(--ink2);font-size:13px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:1000px){.g2,.g3{grid-template-columns:1fr}}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.tile .l{font-size:12.5px;color:var(--ink2)}
+.tile .v{font-size:24px;font-weight:600;margin-top:2px}
+.tile .d{font-size:12.5px;color:var(--ink2);margin-top:2px}
+.up{color:var(--bad)}.down{color:var(--good)}
+.filters{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:16px}
+.filters label{display:flex;flex-direction:column;font-size:12px;color:var(--ink2);gap:3px}
+select,input[type=text],input[type=search]{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);min-width:120px;max-width:230px}
+.chips{display:flex;gap:6px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink)}
+.chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn{border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;padding:7px 12px;font:inherit;font-size:13.5px;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--accent)}
+.chk{flex-direction:row!important;align-items:center;gap:6px!important;font-size:13px!important;color:var(--ink)!important}
+.chartbox{position:relative;height:300px}
+.chartbox.tall{height:380px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--ink2);margin:0 0 8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.scroll{overflow:auto;max-width:100%}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:6px 9px;border-bottom:1px solid var(--line2);text-align:left;vertical-align:top}
+th{font-weight:600;color:var(--ink2);font-size:12.5px;background:var(--surface);position:sticky;top:0;white-space:nowrap}
+th.s{cursor:pointer}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.tot td{font-weight:600;border-top:1px solid var(--line)}
+td.desc{max-width:420px;color:var(--ink2)}
+.pill{display:inline-block;font-size:11.5px;border-radius:999px;padding:1px 8px;border:1px solid var(--line);color:var(--ink2);white-space:nowrap}
+.pill.good{background:#e7f4ec;border-color:#bfe0cc;color:var(--good)}
+.pill.warn{background:#fdf1dc;border-color:#f0d49b;color:var(--warn)}
+.pill.bad{background:#fbe6e3;border-color:#efbcb5;color:var(--bad)}
+.finding{border-left:4px solid var(--line);padding:2px 0 2px 14px;margin:0 0 16px}
+.finding.bad{border-color:var(--bad)}.finding.warn{border-color:#e0a030}.finding.good{border-color:var(--good)}
+.finding h3{margin:0 0 3px;font-size:15px}
+.finding p{margin:0 0 4px;color:var(--ink2);font-size:14px}
+.finding .amt{font-weight:600;color:var(--ink)}
+.note{font-size:12.5px;color:var(--ink3);margin:8px 0 0}
+a{color:#1c5cab}
+.bar-cell{display:inline-block;height:8px;border-radius:2px;background:var(--s1);vertical-align:middle;margin-right:6px}
+#tip{position:fixed;pointer-events:none;background:#141413;color:#fff;font-size:12.5px;padding:6px 9px;border-radius:6px;display:none;z-index:9;max-width:320px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Brandon Hall Hotel &amp; Spa — Departmental costs</h1>
+  <p id="hdr">Bar, Restaurant and Rooms cost accounts from Xero · net of VAT</p>
+  <nav id="nav">
+    <button data-t="explore" class="on">Overview &amp; explorer</button>
+    <button data-t="bar">Bar &amp; keg prices</button>
+    <button data-t="rooms">Rooms, linen &amp; housekeeping</button>
+    <button data-t="save">Savings &amp; checks</button>
+    <button data-t="update">Update data</button>
+  </nav>
+</header>
+<main>
+
+<!-- ================= EXPLORER ================= -->
+<section class="tab on" id="t-explore">
+  <div class="filters">
+    <label>Department<div class="chips" id="f-dept"></div></label>
+    <label>Section<select id="f-sec"></select></label>
+    <label>Item type<select id="f-cat"></select></label>
+    <label>Supplier<select id="f-sup"></select></label>
+    <label>From<select id="f-from"></select></label>
+    <label>To<select id="f-to"></select></label>
+    <label>Search<input type="search" id="f-q" placeholder="description or ref"></label>
+    <label class="chk"><input type="checkbox" id="f-ops"> Consumables only (hide equipment, event hire, inter-company)</label>
+    <button class="btn ghost" id="f-reset">Reset</button>
+  </div>
+  <div class="tiles" id="tiles"></div>
+  <div class="grid g2">
+    <div class="card"><h2 id="c1-title">Spend by month</h2><p class="sub" id="c1-sub"></p><div class="legend" id="c1-leg"></div><div class="chartbox"><canvas id="c1"></canvas></div></div>
+    <div class="card"><h2>Spend by section</h2><p class="sub">Where the money goes within the current selection</p><div class="chartbox"><canvas id="c4"></canvas></div></div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h2>Top suppliers</h2><p class="sub">Net spend in the current selection</p><div class="chartbox tall"><canvas id="c2"></canvas></div></div>
+    <div class="card"><h2>Top item types</h2><p class="sub">Net spend in the current selection</p><div class="chartbox tall"><canvas id="c3"></canvas></div></div>
+  </div>
+  <div class="card">
+    <h2>Month-by-month pattern</h2>
+    <p class="sub">Each row across the months, with the change in the latest full month. Rows:
+      <select id="m-dim"><option value="section">Section</option><option value="cat">Item type</option><option value="supplier">Supplier</option><option value="dept">Department</option></select></p>
+    <div class="scroll"><table id="matrix"></table></div>
+    <p class="note" id="m-note"></p>
+  </div>
+  <div class="card">
+    <h2>Transactions <span id="tx-count" class="pill"></span></h2>
+    <p class="sub">Every Xero line in the current selection. Click a heading to sort. <button class="btn ghost" id="csv">Download CSV</button></p>
+    <div class="scroll" style="max-height:520px"><table id="tx"></table></div>
+    <p class="note"><button class="btn ghost" id="more">Show more rows</button></p>
+  </div>
+</section>
+
+<!-- ================= BAR ================= -->
+<section class="tab" id="t-bar">
+  <div class="tiles" id="bar-tiles"></div>
+  <div class="card">
+    <h2>Keg prices: what we pay, whether it has moved, and the open-market price</h2>
+    <p class="sub">Prices read from Heineken invoice lines (ex VAT, after discount). “Market” is the published trade price at Inn Express, a Warwickshire wholesaler, checked 14 November 2026.</p>
+    <div class="scroll"><table id="keg-table"></table></div>
+    <p class="note">Pints per keg: 88 from 50 L, 52.8 from 30 L, before wastage. Invoices that Xero holds without line prices (26 Jun, 18 Sep, 25 Sep, 9 Oct, 23 Oct) were checked by total: each one adds up exactly at these same keg prices.</p>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h2>Keg price paid on each priced invoice</h2><p class="sub">£ per keg ex VAT — flat lines mean no price movement</p><div class="legend" id="kc-leg"></div><div class="chartbox"><canvas id="kc"></canvas></div></div>
+    <div class="card"><h2>Drinks spend by supplier</h2><p class="sub">Bar account, net by month</p><div class="legend" id="bs-leg"></div><div class="chartbox"><canvas id="bs"></canvas></div></div>
+  </div>
+  <div class="card">
+    <h2>Same product, different supplier</h2>
+    <p class="sub">Where the invoices show a unit price for the same line from more than one source</p>
+    <div class="scroll"><table id="cmp-table"></table></div>
+    <p class="note">Matthew Clark invoices are keyed into Xero without unit prices, so they cannot be compared line by line yet.</p>
+  </div>
+  <div class="card">
+    <h2>Every priced drinks line seen on Heineken invoices</h2>
+    <p class="sub">Lowest and highest price paid per unit — a quick consistency check</p>
+    <div class="scroll" style="max-height:420px"><table id="pl-table"></table></div>
+  </div>
+</section>
+
+<!-- ================= ROOMS ================= -->
+<section class="tab" id="t-rooms">
+  <div class="tiles" id="room-tiles"></div>
+  <div class="grid g2">
+    <div class="card"><h2>Rooms account by section</h2><p class="sub">Net by month</p><div class="legend" id="rs-leg"></div><div class="chartbox"><canvas id="rs"></canvas></div></div>
+    <div class="card"><h2>Housekeeping detail</h2><p class="sub">Gloves, cleaning products, paper and tools — net by month</p><div class="legend" id="hk-leg"></div><div class="chartbox"><canvas id="hk"></canvas></div></div>
+  </div>
+  <div class="card">
+    <h2>Linen: is the bill rising because of price or volume?</h2>
+    <p class="sub">Johnsons bedroom linen invoices. “Bed changes” = duvet covers laundered, the best proxy in the data for beds turned.</p>
+    <div class="scroll"><table id="lin-vol"></table></div>
+    <p class="note" id="lin-note"></p>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h2>Linen cost per bed change</h2><p class="sub">Bedroom linen invoice ÷ duvet covers laundered, £</p><div class="chartbox"><canvas id="lc"></canvas></div></div>
+    <div class="card">
+      <h2>Linen unit prices</h2><p class="sub">Per piece, ex VAT. Published comparison: LP Laundry (London) commercial rental list, checked 14 November 2026.</p>
+      <div class="scroll"><table id="lin-price"></table></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Waste management — what it is</h2>
+    <p class="sub">1st Waste Management empties the hotel's bins. It covers the whole property (kitchen, bar and rooms), although Xero posts it to the Rooms account.</p>
+    <div class="scroll"><table id="waste-table"></table></div>
+    <p class="note">Market range from published council and contractor trade rates (Watford, Colchester, West Northamptonshire, Mick George), checked 14 November 2026.</p>
+  </div>
+</section>
+
+<!-- ================= SAVINGS ================= -->
+<section class="tab" id="t-save">
+  <div class="card">
+    <h2>Where we can buy better</h2>
+    <p class="sub">Review of the Xero data to 14 November 2026 against published wholesale prices on that date. Estimates are annualised from the buying pattern in the data.</p>
+    <div id="findings"></div>
+  </div>
+  <div class="card">
+    <h2>Possible duplicate postings to check</h2>
+    <p class="sub">Same amount, same supplier within three days on different invoice numbers — or the same invoice number under two suppliers. Some may be genuine repeat orders or already credited.</p>
+    <div class="scroll"><table id="dup-table"></table></div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h2>Lines that are not really the department's running cost</h2><p class="sub">These inflate the monthly trend and are worth re-coding in Xero</p><div class="scroll"><table id="mis-table"></table></div></div>
+    <div class="card"><h2>Supermarket, Amazon and petty-cash top-ups</h2><p class="sub">Bought at retail prices outside the wholesale accounts, by month</p><div class="scroll"><table id="ret-table"></table></div></div>
+  </div>
+  <div class="card">
+    <h2>Market prices used</h2>
+    <div class="scroll"><table id="bm-table"></table></div>
+  </div>
+</section>
+
+<!-- ================= UPDATE ================= -->
+<section class="tab" id="t-update">
+  <div class="card">
+    <h2>Update the data</h2>
+    <p class="sub">In Xero run <b>Account Transactions</b> for Bar Costs (Drinks), Restaurant Costs and Room Costs (Linen and Materials), export each to Excel, then load the files here.</p>
+    <p><input type="file" id="up" accept=".xlsx" multiple></p>
+    <p id="up-msg" class="note"></p>
+    <p><button class="btn" id="dl" disabled>Download costs-data.js</button></p>
+    <p class="sub">The page refreshes immediately on your screen. To make the update permanent for everyone, replace <code>costs/data/costs-data.js</code> in the GitHub repository with the downloaded file.</p>
+    <p class="note">Each upload replaces all lines for the accounts it contains, so always export the full period. Category rules live in <code>costs-engine.js</code>. The market prices and written findings on the Savings tab are a dated review and do not change with an upload.</p>
+  </div>
+</section>
+</main>
+<div id="tip"></div>
+
+<script src="vendor/chart.umd.min.js"></script>
+<script src="costs-engine.js"></script>
+<script src="data/costs-data.js"></script>
+<script>
+(function(){
+'use strict';
+var E = window.CostsEngine, RAW = window.COSTS_DATA.rows, GEN = window.COSTS_DATA.generated;
+var TX, MONTHS, LASTFULL, PREVFULL, MAXDATE;
+var DEPTCOL = {Bar:'#2a78d6', Restaurant:'#eb6834', Rooms:'#1baf7a'};
+var PAL = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#6250d6','#e34948'];
+var ONEOFF = ['Inter-company charge (to query)','Event hire','Kitchen equipment & repairs','Housekeeping equipment','Bedding & mattresses'];
+var charts = {};
+var F = {dept:'All', sec:'', cat:'', sup:'', from:'', to:'', q:'', ops:false};
+var sortKey = 'date', sortDir = -1, shown = 60;
+
+function $(id){return document.getElementById(id);}
+function gbp(n,dp){return (n<0?'−':'')+'£'+Math.abs(n).toLocaleString('en-GB',{minimumFractionDigits:dp||0,maximumFractionDigits:dp||0});}
+function mlabel(m){var p=m.split('-');return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+p[1]-1]+' '+p[0].slice(2);}
+function dlabel(d){var p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0].slice(2);}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function sum(a,f){var s=0;for(var i=0;i<a.length;i++)s+=f?f(a[i]):a[i];return s;}
+function groupSum(rows,key){var o={};rows.forEach(function(t){o[t[key]]=(o[t[key]]||0)+t.net;});return o;}
+function sorted(o){return Object.keys(o).map(function(k){return [k,o[k]];}).sort(function(a,b){return b[1]-a[1];});}
+function pct(a,b){return b? (a-b)/Math.abs(b)*100 : null;}
+function chg(a,b){if(!a&&!b)return '<span style="color:#c5c3bb">–</span>';var p=pct(a,b);if(p===null||!isFinite(p))return '<span class="pill">new</span>';var c=p>5?'up':p<-5?'down':'';return '<span class="'+c+'">'+(p>0?'+':'−')+Math.abs(p).toFixed(0)+'%</span>';}
+
+function init(){
+  TX = E.normalise(RAW);
+  var ms = {}; TX.forEach(function(t){ms[t.month]=1;});
+  var keys = Object.keys(ms).sort(), first = keys[0], last = keys[keys.length-1];
+  MONTHS = []; var y=+first.slice(0,4), m=+first.slice(5);
+  while(true){var k=y+'-'+(m<10?'0':'')+m; MONTHS.push(k); if(k===last)break; m++; if(m>12){m=1;y++;}}
+  MAXDATE = TX[TX.length-1].date;
+  var dim = new Date(+MAXDATE.slice(0,4), +MAXDATE.slice(5,7), 0).getDate();
+  var li = MONTHS.length-1; if(+MAXDATE.slice(8) < dim-3) li--;
+  LASTFULL = MONTHS[li]; PREVFULL = MONTHS[li-1];
+  $('hdr').textContent = 'Bar, Restaurant and Rooms cost accounts from Xero · net of VAT · '+dlabel(TX[0].date)+' to '+dlabel(MAXDATE)+' · '+RAW.length+' lines · data file dated '+dlabel(GEN);
+  F.from = MONTHS[0]; F.to = MONTHS[MONTHS.length-1];
+}
+
+/* ---------- filters ---------- */
+function filtered(skip){
+  var q = F.q.toLowerCase();
+  return TX.filter(function(t){
+    if(skip!=='dept' && F.dept!=='All' && t.dept!==F.dept) return false;
+    if(skip!=='sec' && F.sec && t.section!==F.sec) return false;
+    if(skip!=='cat' && F.cat && t.cat!==F.cat) return false;
+    if(skip!=='sup' && F.sup && t.supplier!==F.sup) return false;
+    if(t.month<F.from || t.month>F.to) return false;
+    if(F.ops && ONEOFF.indexOf(t.cat)!==-1) return false;
+    if(q && (t.desc+' '+t.ref+' '+t.supplier).toLowerCase().indexOf(q)===-1) return false;
+    return true;
+  });
+}
+function fillSelect(id,vals,cur,all){
+  var h='<option value="">'+all+'</option>';
+  vals.forEach(function(v){h+='<option'+(v===cur?' selected':'')+'>'+esc(v)+'</option>';});
+  $(id).innerHTML=h;
+}
+function buildFilters(){
+  $('f-dept').innerHTML=['All','Bar','Restaurant','Rooms'].map(function(d){return '<button class="chip'+(F.dept===d?' on':'')+'" data-d="'+d+'">'+d+'</button>';}).join('');
+  var u=function(rows,k){var o={};rows.forEach(function(t){o[t[k]]=1;});return Object.keys(o).sort();};
+  fillSelect('f-sec',u(filtered('sec'),'section'),F.sec,'All sections');
+  fillSelect('f-cat',u(filtered('cat'),'cat'),F.cat,'All item types');
+  fillSelect('f-sup',u(filtered('sup'),'supplier'),F.sup,'All suppliers');
+  var mo=function(cur){return MONTHS.map(function(m){return '<option value="'+m+'"'+(m===cur?' selected':'')+'>'+mlabel(m)+'</option>';}).join('');};
+  $('f-from').innerHTML=mo(F.from); $('f-to').innerHTML=mo(F.to);
+}
+
+/* ---------- charts ---------- */
+function mk(id,cfg){ if(charts[id]) charts[id].destroy(); charts[id]=new Chart($(id),cfg); }
+Chart.defaults.font.family='Aptos,"Segoe UI",system-ui,sans-serif'; Chart.defaults.font.size=12; Chart.defaults.color='#52514e';
+var GRID={color:'#ebe9e3',drawTicks:false}, NOGRID={display:false};
+function money(v){return Math.abs(v)>=10000?'£'+(v/1000).toFixed(0)+'K':'£'+v.toLocaleString('en-GB');}
+function tipMoney(c){return (c.dataset.label?c.dataset.label+': ':'')+gbp(c.parsed.y!==undefined&&c.chart.options.indexAxis!=='y'?c.parsed.y:c.parsed.x);}
+function legend(id,names,cols){$(id).innerHTML=names.map(function(n,i){return '<span><i style="background:'+cols[i]+'"></i>'+esc(n)+'</span>';}).join('');}
+
+function stacked(id,legId,rows,key,months,order,colmap){
+  var tot=groupSum(rows,key), names=order||sorted(tot).map(function(x){return x[0];});
+  names=names.filter(function(n){return tot[n]!==undefined;});
+  var other=null; if(names.length>7){other=names.slice(7);names=names.slice(0,7);}
+  var ds=names.map(function(n,i){return {label:n,backgroundColor:colmap?colmap[n]:PAL[i],data:months.map(function(m){return Math.round(sum(rows.filter(function(t){return t.month===m&&t[key]===n;}),function(t){return t.net;}));})};});
+  if(other) ds.push({label:'Other',backgroundColor:'#b9b7af',data:months.map(function(m){return Math.round(sum(rows.filter(function(t){return t.month===m&&other.indexOf(t[key])!==-1;}),function(t){return t.net;}));})});
+  ds.forEach(function(d){d.borderColor='#fcfcfb';d.borderWidth={top:1,bottom:1,left:0,right:0};d.borderRadius=2;d.maxBarThickness=30;});
+  legend(legId,ds.map(function(d){return d.label;}),ds.map(function(d){return d.backgroundColor;}));
+  mk(id,{type:'bar',data:{labels:months.map(mlabel),datasets:ds},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:tipMoney,footer:function(it){return 'Total: '+gbp(sum(it,function(i){return i.parsed.y;}));}}}},
+    scales:{x:{stacked:true,grid:NOGRID},y:{stacked:true,grid:GRID,border:{display:false},ticks:{callback:money}}}}});
+}
+function hbar(id,pairs,col){
+  mk(id,{type:'bar',data:{labels:pairs.map(function(p){return p[0];}),datasets:[{data:pairs.map(function(p){return Math.round(p[1]);}),backgroundColor:col||'#2a78d6',borderRadius:3,maxBarThickness:18}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return gbp(c.parsed.x);}}}},
+    scales:{x:{grid:GRID,border:{display:false},ticks:{callback:money,maxTicksLimit:7,maxRotation:0}},y:{grid:NOGRID,ticks:{autoSkip:false,font:{size:12}}}}}});
+}
+
+/* ---------- explorer ---------- */
+function renderExplore(){
+  buildFilters();
+  var rows=filtered(), months=MONTHS.filter(function(m){return m>=F.from&&m<=F.to;});
+  var total=sum(rows,function(t){return t.net;});
+  var bym=groupSum(rows,'month');
+  var lf=bym[LASTFULL]||0, pf=bym[PREVFULL]||0;
+  var full=months.filter(function(m){return m<=LASTFULL;}), l3=full.slice(-3), p3=full.slice(-6,-3);
+  var a3=l3.length?sum(l3,function(m){return bym[m]||0;})/l3.length:0, b3=p3.length?sum(p3,function(m){return bym[m]||0;})/p3.length:0;
+  var credits=rows.filter(function(t){return t.net<0;});
+  var sup={}; rows.forEach(function(t){sup[t.supplier]=1;});
+  var tiles=[
+    ['Net spend in selection',gbp(total),rows.length+' lines · '+mlabel(F.from)+' to '+mlabel(F.to)],
+    [mlabel(LASTFULL)+' (latest full month)',gbp(lf),chg(lf,pf)+' vs '+mlabel(PREVFULL)+' ('+gbp(pf)+')'],
+    ['Average per month, last 3 full months',gbp(a3),b3?chg(a3,b3)+' vs the 3 months before ('+gbp(b3)+')':''],
+    ['Suppliers used',Object.keys(sup).length,'Top: '+esc((sorted(groupSum(rows,'supplier'))[0]||['–'])[0])],
+    ['Credits and returns',gbp(sum(credits,function(t){return t.net;})),credits.length+' credit lines']
+  ];
+  $('tiles').innerHTML=tiles.map(function(t){return '<div class="tile"><div class="l">'+t[0]+'</div><div class="v">'+t[1]+'</div><div class="d">'+t[2]+'</div></div>';}).join('');
+
+  var byDept=F.dept==='All';
+  $('c1-title').textContent=byDept?'Spend by month and department':'Spend by month and section — '+F.dept;
+  $('c1-sub').textContent=mlabel(MONTHS[MONTHS.length-1])+' is a part month (to '+dlabel(MAXDATE)+'); linen is invoiced at month end';
+  stacked('c1','c1-leg',rows,byDept?'dept':'section',months,byDept?['Bar','Restaurant','Rooms']:null,byDept?DEPTCOL:null);
+  hbar('c4',sorted(groupSum(rows,'section')).slice(0,12),'#6250d6');
+  hbar('c2',sorted(groupSum(rows,'supplier')).slice(0,14),'#2a78d6');
+  hbar('c3',sorted(groupSum(rows,'cat')).slice(0,14),'#1baf7a');
+  renderMatrix(rows,months); renderTx(rows);
+}
+function renderMatrix(rows,months){
+  var dim=$('m-dim').value, tot=groupSum(rows,dim), names=sorted(tot).map(function(x){return x[0];});
+  var cell={}; rows.forEach(function(t){var k=t[dim]+'|'+t.month;cell[k]=(cell[k]||0)+t.net;});
+  var showChg=months.indexOf(LASTFULL)>0;
+  var h='<tr><th>'+{section:'Section',cat:'Item type',supplier:'Supplier',dept:'Department'}[dim]+'</th>'+months.map(function(m){return '<th class="n">'+mlabel(m)+(m>LASTFULL?'*':'')+'</th>';}).join('')+'<th class="n">Total</th>'+(showChg?'<th class="n">'+mlabel(LASTFULL)+' vs '+mlabel(PREVFULL)+'</th>':'')+'</tr>';
+  names.forEach(function(n){
+    h+='<tr><td>'+esc(n)+'</td>'+months.map(function(m){var v=cell[n+'|'+m];return '<td class="n">'+(v?gbp(v):'<span style="color:#c5c3bb">–</span>')+'</td>';}).join('')+'<td class="n"><b>'+gbp(tot[n])+'</b></td>'+(showChg?'<td class="n">'+chg(cell[n+'|'+LASTFULL]||0,cell[n+'|'+PREVFULL]||0)+'</td>':'')+'</tr>';
+  });
+  var bym=groupSum(rows,'month');
+  h+='<tr class="tot"><td>Total</td>'+months.map(function(m){return '<td class="n">'+gbp(bym[m]||0)+'</td>';}).join('')+'<td class="n">'+gbp(sum(rows,function(t){return t.net;}))+'</td>'+(showChg?'<td class="n">'+chg(bym[LASTFULL]||0,bym[PREVFULL]||0)+'</td>':'')+'</tr>';
+  $('matrix').innerHTML=h;
+  $('m-note').textContent='* part month. Red = up more than 5%, green = down more than 5%. Spend has risen with trading through the year, so compare against rooms sold and covers before reading a rise as overspend.';
+}
+function renderTx(rows){
+  var r=rows.slice().sort(function(a,b){var x=a[sortKey],y=b[sortKey];return (x<y?-1:x>y?1:0)*sortDir;});
+  $('tx-count').textContent=r.length+' lines · '+gbp(sum(r,function(t){return t.net;}),2);
+  var cols=[['date','Date'],['dept','Dept'],['section','Section'],['cat','Item type'],['supplier','Supplier'],['desc','Description'],['ref','Ref'],['net','Net'],['vat','VAT']];
+  var h='<tr>'+cols.map(function(c){return '<th class="s'+(c[0]==='net'||c[0]==='vat'?' n':'')+'" data-k="'+c[0]+'">'+c[1]+(sortKey===c[0]?(sortDir>0?' ▲':' ▼'):'')+'</th>';}).join('')+'</tr>';
+  r.slice(0,shown).forEach(function(t){
+    var d=t.desc.length>150?t.desc.slice(0,150)+'…':t.desc;
+    h+='<tr><td>'+dlabel(t.date)+'</td><td>'+t.dept+'</td><td>'+esc(t.section)+'</td><td>'+esc(t.cat)+'</td><td>'+esc(t.supplier)+'</td><td class="desc" title="'+esc(t.desc)+'">'+esc(d)+(t.part?' <span class="pill">'+t.part+'</span>':'')+'</td><td>'+esc(t.ref)+'</td><td class="n">'+gbp(t.net,2)+'</td><td class="n">'+gbp(t.vat,2)+'</td></tr>';
+  });
+  $('tx').innerHTML=h; $('more').style.display=r.length>shown?'':'none';
+  $('tx')._rows=r;
+}
+function csv(){
+  var r=$('tx')._rows||[], q=function(s){return '"'+String(s).replace(/"/g,'""')+'"';};
+  var out=['Date,Department,Section,Item type,Supplier,Description,Reference,Net,VAT,Gross'];
+  r.forEach(function(t){out.push([t.date,t.dept,q(t.section),q(t.cat),q(t.supplier),q(t.desc),q(t.ref),t.net,t.vat,t.gross].join(','));});
+  save('brandon-hall-costs.csv','﻿'+out.join('\r\n'),'text/csv');
+}
+function save(name,text,type){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type}));a.download=name;document.body.appendChild(a);a.click();a.remove();}
+
+/* ---------- bar ---------- */
+var MARKET={moretti:{50:206.29},cruzcampo:{50:177.34},guinness:{50:194.00},neckoil:{50:187.18},orchard:{30:98.41}};
+function renderBar(){
+  var bar=TX.filter(function(t){return t.dept==='Bar';});
+  var pl=E.pricedLines(TX), kegs=pl.filter(function(p){return p.keg;});
+  var g={}; kegs.forEach(function(p){var k=p.keg+'|'+p.size;(g[k]=g[k]||[]).push(p);});
+  var rows=Object.keys(g).map(function(k){var a=g[k],nets=a.map(function(p){return p.net;});
+    return {key:a[0].keg,name:a[0].kegName,size:a[0].size,list:a[a.length-1].list,net:a[a.length-1].net,min:Math.min.apply(null,nets),max:Math.max.apply(null,nets),n:a.length,qty:sum(a,function(p){return p.qty;}),first:a[0].date,last:a[a.length-1].date};
+  }).sort(function(a,b){return b.qty-a.qty;});
+  var h='<tr><th>Keg</th><th>Size</th><th class="n">List price</th><th class="n">Our discount</th><th class="n">We pay</th><th class="n">Cost per pint</th><th>Price movement</th><th class="n">Market (Inn Express)</th><th class="n">We pay vs market</th><th></th></tr>';
+  rows.forEach(function(r){
+    var mk=(MARKET[r.key]||{})[r.size], pints=r.size*1.76, diff=mk?r.net-mk:null;
+    var move=r.min===r.max?'<span class="pill good">No change '+dlabel(r.first)+' – '+dlabel(r.last)+'</span>':'<span class="pill warn">'+gbp(r.min,2)+' to '+gbp(r.max,2)+'</span>';
+    var verdict=diff===null?(r.list===r.net?'<span class="pill bad">No discount applied</span>':''):diff>5?'<span class="pill bad">Paying over market</span>':'<span class="pill good">Below market</span>';
+    if(r.size===100) verdict='<span class="pill bad">No discount — two 50 L kegs would cost '+gbp(133.42*2,2)+'</span>';
+    h+='<tr><td style="white-space:nowrap"><b>'+esc(r.name)+'</b></td><td style="white-space:nowrap">'+r.size+' L</td><td class="n">'+gbp(r.list,2)+'</td><td class="n">'+(r.list>r.net?Math.round((1-r.net/r.list)*100)+'%':'0%')+'</td><td class="n"><b>'+gbp(r.net,2)+'</b></td><td class="n">'+gbp(r.net/pints,2)+'</td><td>'+move+' <span style="color:#86847d">('+r.n+' invoices)</span></td><td class="n">'+(mk?gbp(mk,2):'–')+'</td><td class="n">'+(diff===null?'–':(diff>0?'+':'−')+gbp(Math.abs(diff),2).replace('−',''))+'</td><td>'+verdict+'</td></tr>';
+  });
+  $('keg-table').innerHTML=h;
+
+  // keg chart
+  var dates=[]; kegs.forEach(function(p){if(dates.indexOf(p.date)===-1)dates.push(p.date);}); dates.sort();
+  var series=rows.filter(function(r){return r.size!==100;});
+  var ds=series.map(function(r,i){return {label:r.name+' '+r.size+' L',borderColor:PAL[i],backgroundColor:PAL[i],borderWidth:2,pointRadius:4,pointBorderColor:'#fcfcfb',pointBorderWidth:2,spanGaps:true,
+    data:dates.map(function(d){var m=kegs.filter(function(p){return p.date===d&&p.keg===r.key&&p.size===r.size;});return m.length?m[0].net:null;})};});
+  legend('kc-leg',ds.map(function(d){return d.label;}),ds.map(function(d){return d.borderColor;}));
+  mk('kc',{type:'line',data:{labels:dates.map(dlabel),datasets:ds},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+gbp(c.parsed.y,2);}}}},scales:{x:{grid:NOGRID},y:{beginAtZero:true,grid:GRID,border:{display:false},ticks:{callback:function(v){return '£'+v;}}}}}});
+
+  // supplier chart
+  var months=MONTHS.filter(function(m){return bar.some(function(t){return t.month===m;});});
+  var b2=bar.map(function(t){var s=['Heineken','Matthew Clark','LWC'].indexOf(t.supplier)!==-1?t.supplier:'All other';return {month:t.month,net:t.net,s:s};});
+  stacked('bs','bs-leg',b2,'s',months,['Heineken','Matthew Clark','LWC','All other']);
+
+  // tiles
+  var tot=sum(bar,function(t){return t.net;}), bs=groupSum(bar,'supplier');
+  var kegSpend=sum(bar.filter(function(t){return t.section==='Draught';}),function(t){return t.net;});
+  $('bar-tiles').innerHTML=[
+    ['Bar account, net',gbp(tot),mlabel(bar[0].month)+' to '+mlabel(bar[bar.length-1].month)],
+    ['Draught (kegs, after returns)',gbp(kegSpend),Math.round(kegSpend/tot*100)+'% of bar spend'],
+    ['Heineken',gbp(bs.Heineken||0),'direct account, after credits'],
+    ['Matthew Clark',gbp(bs['Matthew Clark']||0),'wine, spirits, post-mix'],
+    ['LWC',gbp(bs.LWC||0),'since Sep 26']
+  ].map(function(t){return '<div class="tile"><div class="l">'+t[0]+'</div><div class="v">'+t[1]+'</div><div class="d">'+t[2]+'</div></div>';}).join('');
+
+  // comparison (from invoice lines reviewed 14 Nov 2026)
+  var cmp=[
+    ['Coca-Cola glass 24×330 ml','Heineken £32.23','LWC £22.79 (9 Sep)','£22.25–£22.99','bad','Heineken is about £9.40 a case dearer'],
+    ['Coke Zero glass 24×330 ml','Heineken £30.09 (once £27.09)','LWC £19.79 (9 Sep)','about £20–£24','bad','Heineken is about £10 a case dearer'],
+    ['Diet Coke glass 24×330 ml','Heineken £30.18','—','£19.99–£20.49','bad','About £10 a case over trade price'],
+    ['Fever-Tree 24×200 ml (tonic, soda, lemonade)','Heineken £16.94–£17.93','—','£21–£24','good','Heineken is well under trade price — keep'],
+    ['Rémy Martin VSOP 70 cl','Heineken £38.54','LWC £33.42 (9 Sep)','—','warn','LWC £5.12 a bottle cheaper'],
+    ['Gordon’s gin 70 cl','Heineken £15.88','LWC £13.45 (9 Sep)','—','warn','LWC £2.43 a bottle cheaper'],
+    ['Kraken spiced rum 70 cl','Heineken £20.57–£21.57','LWC £20.89 (9 Sep)','—','good','Level']
+  ];
+  $('cmp-table').innerHTML='<tr><th>Product</th><th>Price paid (A)</th><th>Price paid (B)</th><th>Published trade price</th><th>Reading</th></tr>'+cmp.map(function(c){return '<tr><td><b>'+c[0]+'</b></td><td>'+c[1]+'</td><td>'+c[2]+'</td><td>'+c[3]+'</td><td><span class="pill '+c[4]+'">'+c[5]+'</span></td></tr>';}).join('');
+
+  // priced list
+  var pg={}; pl.forEach(function(p){(pg[p.name]=pg[p.name]||[]).push(p);});
+  var prow=Object.keys(pg).map(function(n){var a=pg[n],ns=a.map(function(p){return p.net;});return {n:n,list:a[a.length-1].list,min:Math.min.apply(null,ns),max:Math.max.apply(null,ns),q:sum(a,function(p){return p.qty;}),c:a.length,last:a[a.length-1].date};}).sort(function(a,b){return b.q*b.max-a.q*a.max;});
+  $('pl-table').innerHTML='<tr><th>Line</th><th class="n">Units bought</th><th class="n">List</th><th class="n">Lowest paid</th><th class="n">Highest paid</th><th>Consistent?</th><th>Last seen</th></tr>'+prow.map(function(r){return '<tr><td>'+esc(r.n)+'</td><td class="n">'+r.q+'</td><td class="n">'+gbp(r.list,2)+'</td><td class="n">'+gbp(r.min,2)+'</td><td class="n">'+gbp(r.max,2)+'</td><td>'+(r.c<2?'<span class="pill">seen once</span>':r.min===r.max?'<span class="pill good">same price</span>':'<span class="pill warn">varies '+gbp(r.max-r.min,2)+'</span>')+'</td><td>'+dlabel(r.last)+'</td></tr>';}).join('');
+}
+
+/* ---------- rooms ---------- */
+function renderRooms(){
+  var rm=TX.filter(function(t){return t.dept==='Rooms';}), months=MONTHS.filter(function(m){return rm.some(function(t){return t.month===m;});});
+  var sec=groupSum(rm,'section'), tot=sum(rm,function(t){return t.net;});
+  $('room-tiles').innerHTML=sorted(sec).map(function(s){return '<div class="tile"><div class="l">'+esc(s[0])+'</div><div class="v">'+gbp(s[1])+'</div><div class="d">'+Math.round(s[1]/tot*100)+'% of Rooms account</div></div>';}).join('');
+  stacked('rs','rs-leg',rm,'section',months);
+  var hk=rm.filter(function(t){return t.section==='Housekeeping';});
+  stacked('hk','hk-leg',hk,'cat',months.filter(function(m){return m>='2026-01';}),['Paper & bin liners','Cleaning products','Cleaning tools','Gloves & PPE']);
+
+  var ll=E.linenLines(TX).filter(function(l){return l.bed;});
+  var lm={}; ll.forEach(function(l){(lm[l.month]=lm[l.month]||{})[l.item]=(lm[l.month][l.item]||0)+l.qty;});
+  var inv={}; rm.filter(function(t){return t.cat==='Bedroom linen hire';}).forEach(function(t){inv[t.month]=(inv[t.month]||0)+t.net;});
+  var lmo=Object.keys(lm).sort();
+  var q=function(m,re){var s=0;Object.keys(lm[m]).forEach(function(k){if(re.test(k))s+=lm[m][k];});return s;};
+  var h='<tr><th>Month</th><th class="n">Linen invoice</th><th class="n">Bed changes</th><th class="n">Cost per bed change</th><th class="n">Sheets per bed</th><th class="n">Pillowcases per bed</th><th class="n">Bath sheets per bed</th><th class="n">Hand towels per bed</th></tr>';
+  var cpb=[];
+  lmo.forEach(function(m){
+    var beds=q(m,/D\/Cover/), c=inv[m]/beds; cpb.push(+c.toFixed(2));
+    var f=function(re){return (q(m,re)/beds).toFixed(2);};
+    h+='<tr><td>'+mlabel(m)+'</td><td class="n">'+gbp(inv[m])+'</td><td class="n">'+beds.toLocaleString('en-GB')+'</td><td class="n"><b>'+gbp(c,2)+'</b></td><td class="n">'+f(/(Double|King) Sheet/)+'</td><td class="n">'+f(/P\/Case/)+'</td><td class="n">'+f(/Bath Sheet/)+'</td><td class="n">'+f(/Hand Towel/)+'</td></tr>';
+  });
+  $('lin-vol').innerHTML=h;
+  var f0=lmo[0], f1=lmo[lmo.length-1], b0=q(f0,/D\/Cover/), b1=q(f1,/D\/Cover/);
+  $('lin-note').textContent='Bed changes went from '+b0.toLocaleString('en-GB')+' in '+mlabel(f0)+' to '+b1.toLocaleString('en-GB')+' in '+mlabel(f1)+', so the rising bill is volume, not price. Watch the per-bed columns: if pillowcases or towels per bed creep up (June stands out), linen is being over-issued or sent back unused.';
+  mk('lc',{type:'line',data:{labels:lmo.map(mlabel),datasets:[{data:cpb,borderColor:'#1baf7a',backgroundColor:'#1baf7a',borderWidth:2,pointRadius:4,pointBorderColor:'#fcfcfb',pointBorderWidth:2}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return gbp(c.parsed.y,2)+' per bed change';}}}},scales:{x:{grid:NOGRID},y:{beginAtZero:true,grid:GRID,border:{display:false},ticks:{callback:function(v){return '£'+v;}}}}}});
+
+  var all=E.linenLines(TX), items={}; all.forEach(function(l){(items[l.item]=items[l.item]||[]).push(l);});
+  var LP={'Luna Double Sheet':1.20,'Luna Double D/Cover':1.90,'Luna Super King D/Cover':2.75,'Luna Hand Towel':0.60,'Luna Bath Sheet':1.25};
+  var ph='<tr><th>Item</th><th class="n">First price</th><th class="n">Current price</th><th class="n">Change</th><th class="n">Published London rate</th></tr>';
+  Object.keys(items).forEach(function(k){var a=items[k].sort(function(x,y){return x.date<y.date?-1:1;}),p0=a[0].price,p1=a[a.length-1].price;
+    ph+='<tr><td>'+esc(k)+'</td><td class="n">£'+p0.toFixed(4)+'</td><td class="n"><b>£'+p1.toFixed(4)+'</b></td><td class="n">'+(p1===p0?'–':'+'+((p1/p0-1)*100).toFixed(1)+'% (Apr 26)')+'</td><td class="n">'+(LP[k]?'£'+LP[k].toFixed(2):'–')+'</td></tr>';});
+  $('lin-price').innerHTML=ph;
+
+  var w=rm.filter(function(t){return t.section==='Waste management';});
+  var sch=sum(w.filter(function(t){return t.cat==='Scheduled bin collections';}),function(t){return t.net;}), ex=w.filter(function(t){return t.cat!=='Scheduled bin collections';});
+  $('waste-table').innerHTML='<tr><th>Service</th><th>Frequency</th><th class="n">We pay per empty</th><th class="n">Market range</th><th></th></tr>'+
+   '<tr><td>1,100 L general waste</td><td>6 a week</td><td class="n">£14.75</td><td class="n">£15–£20</td><td><span class="pill good">At or below market</span></td></tr>'+
+   '<tr><td>1,100 L mixed recycling</td><td>4 a week</td><td class="n">£9.50</td><td class="n">£10.90–£13</td><td><span class="pill good">Below market</span></td></tr>'+
+   '<tr><td>240 L food waste</td><td>1 a week</td><td class="n">£9.25</td><td class="n">—</td><td></td></tr>'+
+   '<tr><td>240 L glass</td><td>1 a week</td><td class="n">£6.68</td><td class="n">—</td><td></td></tr>'+
+   '<tr class="tot"><td colspan="2">Scheduled collections to date</td><td class="n">'+gbp(sch)+'</td><td colspan="2">about £620–£645 a month, steady since February</td></tr>'+
+   '<tr class="tot"><td colspan="2">Skips, tonnage and extra charges to date</td><td class="n">'+gbp(sum(ex,function(t){return t.net;}))+'</td><td colspan="2">'+ex.length+' invoices, including a £150 wasted journey and £57.50 for food waste found in a skip</td></tr>';
+}
+
+/* ---------- savings ---------- */
+function renderSave(){
+  var rest=TX.filter(function(t){return t.dept==='Restaurant';});
+  var ic=sum(TX.filter(function(t){return t.cat==='Inter-company charge (to query)';}),function(t){return t.net;});
+  var sysC=TX.filter(function(t){return t.supplier==='Sysco'&&t.net<0;});
+  var sysM={}; rest.filter(function(t){return t.supplier==='Sysco';}).forEach(function(t){sysM[t.month]=(sysM[t.month]||0)+t.net;});
+  var dups=E.possibleDuplicates(TX), dupTot=sum(dups,function(d){return d.a.net;});
+  var Fd=[
+   ['bad','Beavertown Neck Oil is the one keg with no discount','We pay the full list price of £268.43 for a 50 L keg, while Moretti, Cruzcampo, Guinness and Orchard Thieves carry 36–57% off list. Inn Express sells the same keg at £187.18. About ten kegs bought since May.','About £81 a keg — roughly £1,950 a year at the current rate; more if Heineken matches its other discounts.','Ask Heineken to bring Neck Oil into the discount structure, or buy that line from a local wholesaler.'],
+   ['bad','One 100 L Cruzcampo keg was charged with no discount','Invoice 460326247 (29 May): £603.49 for 100 L. Two 50 L kegs at our price would have been £266.84.','£336.65 to query with Heineken as a credit.','Order 50 L kegs only, and ask for the difference back.'],
+   ['bad','Bottled Coke, Diet Coke and Coke Zero from Heineken cost about £10 a case too much','Heineken charges £30–£32 a case of 24 glass bottles; LWC charged £22.79 and £19.79 on 9 September, in line with published trade prices. About 34 cases went through Heineken between July and September.','About £320 overpaid in ten weeks — roughly £1,500 a year if it continued.','Post-mix arrived in October, which is the right move. Keep any bottled Coke on the LWC account only. Leave Fever-Tree with Heineken, where it is cheaper than trade.'],
+   ['warn','Three drinks wholesalers are supplying the same lines','Heineken, Matthew Clark and LWC all delivered spirits, mixers and soft drinks in September and October, at different prices for the same bottle (Rémy Martin £38.54 vs £33.42; Gordon’s £15.88 vs £13.45).','Not yet quantified — the two examples above are 13–15% apart, on about £30,000 a year of wine, spirits and mixers.','Put the wine, spirits and soft-drinks list out to Matthew Clark and LWC for a single price file, and key unit prices into Xero so they can be tracked here.'],
+   ['warn','Alcohol duty rises 4.55% on 1 February 2027','Announced in the 28 October Budget. Heineken raised draught prices 2.7% in February 2026 and is likely to move again.','Each 3% on kegs is about £700 a year.','Agree 2027 keg prices with Heineken now, before the increase letters go out, using the Neck Oil and volume points above as leverage.'],
+   ['good','The core keg deal is good — and has not moved','Moretti £150.26, Cruzcampo £133.42, Guinness £155.82 and Orchard Thieves £83.23 are unchanged on every priced invoice from 29 May to 11 September, and later invoices add up to the same prices. All four are 15–27% below Inn Express.','No action — these are well bought.',''],
+   ['good','Linen and waste rates are competitive; the growth is volume','Johnsons’ piece prices rose once, by 4% in April, and sit far below published per-piece rental lists. Cost per bed change has moved between about £4.60 and £7.20 with no upward trend, while bed changes grew roughly tenfold. Waste collection rates are at or under market.','No rate saving likely. Control lies in pieces issued per bed and in avoiding extra waste charges.',''],
+   ['warn','No waste or window-cleaning invoices are posted after the summer','The last 1st Waste Management invoice in Xero is dated 1 August and the last Superclean window-cleaning invoice 30 July. Until then they ran at about £640 and £400 a month.','If the services are still running, September to November Rooms costs are understated by roughly £1,000 a month.','Check whether the invoices are unposted, coded elsewhere, or the contracts have ended.'],
+   ['bad','Food spend jumped in October, when the suppliers changed','Sysco carried almost everything until October ('+gbp(sysM['2026-09']||0)+' in September). From 15 October, Philip Dennis, A.M. Bailey, E&P Catering Butchers and Flying Fish took most of the order. Sysco raised '+sysC.length+' credit lines for short or missed deliveries ('+gbp(Math.abs(sum(sysC,function(t){return t.net;})))+').','Food spend rose 63% in October (£9,713 to £15,821) while bed changes rose 27% — the month the suppliers changed. Unit prices cannot be compared yet because food invoices are keyed as summaries (“fruit, veg, milk”).','Upload the supplier price lists or a month of invoice PDFs and the like-for-like comparison can be added here.'],
+   ['bad','The Restaurant account contains '+gbp(ic)+' that is not food','“Brandon Hall Hotel Limited — Nov 26” on 1 November, with VAT. It makes November look far above trend. A marquee (£2,993.88), kitchen equipment and repairs are also in this account.','No cash saving, but the food cost trend is overstated until these are re-coded.','Confirm what the inter-company charge is and move it, the marquee and equipment to their own accounts. The “Consumables only” tick-box on the first tab hides them.']
+  ];
+  $('findings').innerHTML=Fd.map(function(f){return '<div class="finding '+f[0]+'"><h3>'+f[1]+'</h3><p>'+f[2]+'</p><p class="amt">'+f[3]+'</p>'+(f[4]?'<p><b>Action:</b> '+f[4]+'</p>':'')+'</div>';}).join('');
+
+  $('dup-table').innerHTML='<tr><th>First posting</th><th>Second posting</th><th>Supplier</th><th>Description</th><th class="n">Amount</th></tr>'+dups.map(function(d){return '<tr><td>'+dlabel(d.a.date)+' · '+esc(d.a.ref)+'</td><td>'+dlabel(d.b.date)+' · '+esc(d.b.ref)+'</td><td>'+esc(d.a.supplier)+(d.b.supplier!==d.a.supplier?' <span class="pill bad">also under '+esc(d.b.supplier)+'</span>':'')+'</td><td class="desc">'+esc(d.a.desc.slice(0,90))+'</td><td class="n">'+gbp(d.a.net,2)+'</td></tr>';}).join('')+'<tr class="tot"><td colspan="4">Total to check</td><td class="n">'+gbp(dupTot,2)+'</td></tr>';
+
+  var mis=TX.filter(function(t){return ['Inter-company charge (to query)','Event hire','Alcohol (coded to restaurant)'].indexOf(t.cat)!==-1||(t.dept==='Restaurant'&&t.cat==='Kitchen equipment & repairs'&&Math.abs(t.net)>400)||(t.dept==='Rooms'&&/beer line/i.test(t.desc));}).sort(function(a,b){return b.net-a.net;});
+  $('mis-table').innerHTML='<tr><th>Date</th><th>Posted to</th><th>Supplier</th><th>What it is</th><th class="n">Net</th></tr>'+mis.map(function(t){return '<tr><td>'+dlabel(t.date)+'</td><td>'+t.dept+'</td><td>'+esc(t.supplier)+'</td><td class="desc">'+esc(t.cat)+' — '+esc(t.desc.slice(0,60))+'</td><td class="n">'+gbp(t.net,2)+'</td></tr>';}).join('')+'<tr class="tot"><td colspan="4">Total</td><td class="n">'+gbp(sum(mis,function(t){return t.net;}),2)+'</td></tr>';
+
+  var ret=TX.filter(function(t){return t.retail;}), rmn=groupSum(ret,'month'), rc={}; ret.forEach(function(t){rc[t.month]=(rc[t.month]||0)+1;});
+  $('ret-table').innerHTML='<tr><th>Month</th><th class="n">Purchases</th><th class="n">Net</th></tr>'+Object.keys(rmn).sort().map(function(m){return '<tr><td>'+mlabel(m)+'</td><td class="n">'+rc[m]+'</td><td class="n">'+gbp(rmn[m],2)+'</td></tr>';}).join('')+'<tr class="tot"><td>Total</td><td class="n">'+ret.length+'</td><td class="n">'+gbp(sum(ret,function(t){return t.net;}),2)+'</td></tr>';
+
+  var bm=[
+   ['Birra Moretti 50 L keg','£150.26','£206.29','Inn Express','https://www.inn-express.com/product-ranges/beer/birra-moretti-50l-keg'],
+   ['Cruzcampo 50 L keg','£133.42','£177.34','Inn Express','https://www.inn-express.com/product-ranges/beer/cruzcampo-50l-keg'],
+   ['Guinness 50 L keg','£155.82','£194.00','Inn Express','https://www.inn-express.com/product-ranges/beer'],
+   ['Orchard Thieves 30 L keg','£83.23','£98.41','Inn Express','https://inn-express.com/product-ranges/cider/orchard-thieves-cider-30l-keg'],
+   ['Beavertown Neck Oil 50 L keg','£268.43','£187.18','Inn Express','https://www.inn-express.com/product-ranges/beer/beavertown-neck-oil-50l-keg'],
+   ['Coca-Cola glass 24×330 ml','£32.23 (Heineken) / £22.79 (LWC)','£22.25–£22.99','Youings, Marfast','https://youings.com/coke-glass-330ml-x-24'],
+   ['Diet Coke glass 24×330 ml','£30.18 (Heineken)','£19.99–£20.49','Marfast','https://marfast.co.uk/drinks/coca-cola-products.html'],
+   ['Fever-Tree 24×200 ml','£16.94–£17.93','£21–£24','The Bottle Club trade, House of Townend','https://trade.thebottleclub.com/products/fever-tree-aromatic-tonic-water-24-x-200-ml-multipack'],
+   ['Linen rental per piece (super king duvet cover)','£1.89','£2.75','LP Laundry, London','https://lplaundry.com/uk-commercial/pricing'],
+   ['1,100 L general waste, per empty','£14.75','£15–£20','Watford BC, Mick George, Colchester CC','https://www.watford.gov.uk/rubbish-recycling-collections/business-waste-recycling/2'],
+   ['Alcohol duty from 1 Feb 2027','—','+4.55%','Budget, 28 Oct 2026','https://www.vinetur.com/en/20261029109992/britain-will-raise-alcohol-duties-by-455-on-feb-1-2027.html']
+  ];
+  $('bm-table').innerHTML='<tr><th>Item</th><th>We pay</th><th>Market</th><th>Source (checked 14 Nov 2026, ex VAT)</th></tr>'+bm.map(function(b){return '<tr><td>'+b[0]+'</td><td>'+b[1]+'</td><td>'+b[2]+'</td><td><a href="'+b[4]+'" target="_blank" rel="noopener">'+b[3]+'</a></td></tr>';}).join('');
+}
+
+/* ---------- update ---------- */
+function loadScript(src,cb){var s=document.createElement('script');s.src=src;s.onload=cb;document.head.appendChild(s);}
+function handleUpload(files){
+  loadScript('vendor/xlsx.full.min.js',function(){
+    var pending=files.length, add=[], msg=[];
+    Array.prototype.forEach.call(files,function(f){
+      var fr=new FileReader();
+      fr.onload=function(){
+        try{
+          var wb=XLSX.read(fr.result,{cellDates:true});
+          var rows=E.rowsFromSheet(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true})).filter(function(r){return E.DEPT[r.account];});
+          add=add.concat(rows); msg.push(f.name+': '+rows.length+' lines'+(rows.length?' ('+rows[0].account+')':' — not recognised as one of the three cost accounts'));
+        }catch(e){msg.push(f.name+': could not be read');}
+        if(--pending===0){
+          if(add.length){
+            var acc={}; add.forEach(function(r){acc[r.account]=1;});
+            RAW=RAW.filter(function(r){return !acc[r.account];}).concat(add);
+            RAW.sort(function(a,b){return (a.account+a.date).localeCompare(b.account+b.date);});
+            GEN=new Date().toISOString().slice(0,10);
+            init(); renderAll(); $('dl').disabled=false;
+          }
+          $('up-msg').innerHTML=msg.map(esc).join('<br>')+(add.length?'<br><b>Dashboard updated on this screen. Download the file below and commit it to make it permanent.</b>':'');
+        }
+      };
+      fr.readAsArrayBuffer(f);
+    });
+  });
+}
+function renderAll(){renderExplore();renderBar();renderRooms();renderSave();}
+
+/* ---------- events ---------- */
+document.addEventListener('click',function(e){
+  var t=e.target;
+  if(t.parentNode&&t.parentNode.id==='nav'){
+    document.querySelectorAll('#nav button').forEach(function(b){b.classList.toggle('on',b===t);});
+    document.querySelectorAll('.tab').forEach(function(s){s.classList.toggle('on',s.id==='t-'+t.dataset.t);});
+    Object.keys(charts).forEach(function(k){charts[k].resize();});
+  }
+  if(t.classList.contains('chip')){F.dept=t.dataset.d;F.sec='';F.cat='';shown=60;renderExplore();}
+  if(t.tagName==='TH'&&t.dataset.k){if(sortKey===t.dataset.k)sortDir=-sortDir;else{sortKey=t.dataset.k;sortDir=(sortKey==='net'||sortKey==='date')?-1:1;}renderExplore();}
+});
+[['f-sec','sec'],['f-cat','cat'],['f-sup','sup'],['f-from','from'],['f-to','to']].forEach(function(p){$(p[0]).addEventListener('change',function(e){F[p[1]]=e.target.value;if(F.from>F.to){if(p[1]==='from')F.to=F.from;else F.from=F.to;}shown=60;renderExplore();});});
+$('f-q').addEventListener('input',function(e){F.q=e.target.value;shown=60;var rows=filtered();renderExploreLight();});
+function renderExploreLight(){var pos=$('f-q').selectionStart;renderExplore();$('f-q').focus();}
+$('f-ops').addEventListener('change',function(e){F.ops=e.target.checked;renderExplore();});
+$('f-reset').addEventListener('click',function(){F={dept:'All',sec:'',cat:'',sup:'',from:MONTHS[0],to:MONTHS[MONTHS.length-1],q:'',ops:false};$('f-q').value='';$('f-ops').checked=false;shown=60;renderExplore();});
+$('m-dim').addEventListener('change',renderExplore);
+$('more').addEventListener('click',function(){shown+=200;renderExplore();});
+$('csv').addEventListener('click',csv);
+$('up').addEventListener('change',function(e){if(e.target.files.length)handleUpload(e.target.files);});
+$('dl').addEventListener('click',function(){save('costs-data.js','/* Xero account transactions — replace this file to update the dashboard */\nwindow.COSTS_DATA = '+JSON.stringify({generated:GEN,rows:RAW})+';\n','text/javascript');});
+
+init(); renderAll();
+})();
+</script>
+</body>
+</html>
