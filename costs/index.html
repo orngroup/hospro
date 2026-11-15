@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Brandon Hall – Departmental Costs</title>
+<title>Brandon Hall – Departmental Profitability and Costs</title>
 <style>
 :root{
   --bg:#f5f4f0; --surface:#fcfcfb; --line:#e4e2dc; --line2:#efede8;
@@ -73,20 +73,30 @@ a{color:#1c5cab}
 </head>
 <body>
 <header>
-  <h1>Brandon Hall Hotel &amp; Spa — Departmental costs</h1>
-  <p id="hdr">Bar, Restaurant and Rooms cost accounts from Xero · net of VAT</p>
+  <h1>Brandon Hall Hotel &amp; Spa — Departmental profitability and costs</h1>
+  <p id="hdr">Management accounts and Xero cost accounts</p>
   <nav id="nav">
-    <button data-t="explore" class="on">Overview &amp; explorer</button>
+    <button data-t="pf-profit" class="on">Profitability</button>
+    <button data-t="pf-labour">Labour</button>
+    <button data-t="pf-kpi">KPIs</button>
+    <button data-t="pf-stock">Purchased vs consumed</button>
+    <button data-t="explore">Supplier costs</button>
     <button data-t="bar">Bar &amp; keg prices</button>
     <button data-t="rooms">Rooms, linen &amp; housekeeping</button>
     <button data-t="save">Savings &amp; checks</button>
+    <button data-t="pf-brief">Alia’s brief</button>
     <button data-t="update">Update data</button>
   </nav>
 </header>
 <main>
 
 <!-- ================= EXPLORER ================= -->
-<section class="tab on" id="t-explore">
+<section class="tab on" id="t-pf-profit"><div id="pf-profit"></div></section>
+<section class="tab" id="t-pf-labour"><div id="pf-labour"></div></section>
+<section class="tab" id="t-pf-kpi"><div id="pf-kpi"></div></section>
+<section class="tab" id="t-pf-stock"><div id="pf-stock"></div></section>
+<section class="tab" id="t-pf-brief"><div id="pf-brief"></div></section>
+<section class="tab" id="t-explore">
   <div class="filters">
     <label>Department<div class="chips" id="f-dept"></div></label>
     <label>Section<select id="f-sec"></select></label>
@@ -216,6 +226,7 @@ a{color:#1c5cab}
 <script src="vendor/chart.umd.min.js"></script>
 <script src="costs-engine.js"></script>
 <script src="data/costs-data.js"></script>
+<script src="profit.js"></script>
 <script>
 (function(){
 'use strict';
@@ -249,7 +260,7 @@ function init(){
   var dim = new Date(+MAXDATE.slice(0,4), +MAXDATE.slice(5,7), 0).getDate();
   var li = MONTHS.length-1; if(+MAXDATE.slice(8) < dim-3) li--;
   LASTFULL = MONTHS[li]; PREVFULL = MONTHS[li-1];
-  $('hdr').textContent = 'Bar, Restaurant and Rooms cost accounts from Xero · net of VAT · '+dlabel(TX[0].date)+' to '+dlabel(MAXDATE)+' · '+RAW.length+' lines · data file dated '+dlabel(GEN);
+  $('hdr').textContent = 'Profitability from the management accounts · supplier costs from Xero, net of VAT, '+dlabel(TX[0].date)+' to '+dlabel(MAXDATE)+' · '+RAW.length+' lines · data file dated '+dlabel(GEN);
   F.from = MONTHS[0]; F.to = MONTHS[MONTHS.length-1];
 }
 
@@ -557,6 +568,7 @@ document.addEventListener('click',function(e){
     document.querySelectorAll('#nav button').forEach(function(b){b.classList.toggle('on',b===t);});
     document.querySelectorAll('.tab').forEach(function(s){s.classList.toggle('on',s.id==='t-'+t.dataset.t);});
     Object.keys(charts).forEach(function(k){charts[k].resize();});
+    if(t.dataset.t.indexOf('pf-')===0) window.Profit.show(t.dataset.t.slice(3));
   }
   if(t.classList.contains('chip')){F.dept=t.dataset.d;F.sec='';F.cat='';shown=60;renderExplore();}
   if(t.tagName==='TH'&&t.dataset.k){if(sortKey===t.dataset.k)sortDir=-sortDir;else{sortKey=t.dataset.k;sortDir=(sortKey==='net'||sortKey==='date')?-1:1;}renderExplore();}
@@ -572,7 +584,8 @@ $('csv').addEventListener('click',csv);
 $('up').addEventListener('change',function(e){if(e.target.files.length)handleUpload(e.target.files);});
 $('dl').addEventListener('click',function(){save('costs-data.js','/* Xero account transactions — replace this file to update the dashboard */\nwindow.COSTS_DATA = '+JSON.stringify({generated:GEN,rows:RAW})+';\n','text/javascript');});
 
-init(); renderAll();
+window.CostsApp={tx:function(){return TX;}};
+init(); renderAll(); window.Profit.show('profit');
 })();
 </script>
 </body>
