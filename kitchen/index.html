@@ -4,48 +4,88 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>Kitchen compliance — Brandon Hall</title>
-<meta name="theme-color" content="#2B3A42">
+<title>HosKitchen — Brandon Hall</title>
+<meta name="theme-color" content="#1E272C">
 <link rel="icon" href="../assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <style>
-:root{--k:#2B3A42;--k2:#1C272D;--or:#D9631E;--orbg:#FCEBDD;--ink:#1C272D;--muted:#5E6E7A;--line:#DCE2E6;--ok:#1E8A55;--okbg:#E5F4EC;--red:#C62828;--redbg:#FDECEA;--amb:#B36B00;--ambbg:#FFF3DF;--bg:#F3F5F6}
-*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
-button,input,select,textarea{font:inherit}.hide{display:none!important}
-.top{position:sticky;top:0;z-index:5;background:linear-gradient(135deg,var(--k),var(--k2));color:#fff;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:4px solid var(--or);display:flex;align-items:center;gap:10px}
-.top img{height:34px;background:#fff;border-radius:6px;padding:3px}.top b{font-size:19px}.top small{display:block;color:#C8D3D9;font-size:12px}.top .g{flex:1}
-.top button{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:9px;padding:7px 11px;font-weight:700;cursor:pointer}
-.wrap{max-width:760px;margin:0 auto;padding:14px 14px 110px}
-.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:10px}
-h2{font-size:20px;margin:0 0 8px;color:var(--k)}h3{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 4px 8px}
-h4{margin:14px 0 6px;color:var(--k);font-size:16px}
+:root{--k:#232D33;--k2:#151C20;--or:#C8662B;--or2:#A8501D;--orbg:#F8E9DE;--gold:#B8925A;--ink:#1E272C;--muted:#66727A;--line:#E4DED6;--ok:#1E8A55;--okbg:#E3F3EA;--red:#C62828;--redbg:#FCEAEA;--amb:#A86200;--ambbg:#FDF1DC;--bg:#F6F2EC;--card:#fff;--serif:"Playfair Display",Georgia,serif}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit}.hide{display:none!important}a{color:var(--or2)}
+.top{position:sticky;top:0;z-index:6;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:calc(env(safe-area-inset-top) + 9px) 16px 9px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+.top img{height:38px}.top .g{flex:1;line-height:1.1}.wm{font-family:var(--serif);font-size:22px;color:var(--k);letter-spacing:.01em}.wm b{color:var(--or)}.top small{display:block;color:var(--muted);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+.top button{background:var(--bg);border:1px solid var(--line);color:var(--k);border-radius:22px;padding:7px 12px;font-weight:700;cursor:pointer;font-size:14px}
+.wrap{max-width:1040px;margin:0 auto;padding:16px 16px 120px}
+.narrow{max-width:760px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:12px;box-shadow:0 1px 2px rgba(30,39,44,.04),0 6px 18px rgba(30,39,44,.05)}
+h2{font-family:var(--serif);font-size:24px;margin:0 0 8px;color:var(--k);font-weight:700}h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:26px 2px 12px;font-weight:700}
+h4{margin:16px 0 6px;color:var(--k);font-size:16px}
 .muted{color:var(--muted);font-size:14px}
-label{display:block;font-weight:700;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 5px}
-input,select,textarea{width:100%;padding:11px;border:1.5px solid var(--line);border-radius:10px;background:#fff}textarea{min-height:64px}
+label{display:block;font-weight:700;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px}
+input,select,textarea{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}input:focus,select:focus,textarea:focus{outline:none;border-color:var(--or);box-shadow:0 0 0 3px rgba(200,102,43,.15)}textarea{min-height:64px}
 .row{display:flex;gap:10px}.row>*{flex:1}
-.btn{display:block;width:100%;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:17px;background:var(--or);color:#fff;margin-top:12px;cursor:pointer}.btn.ghost{background:#fff;color:var(--k);border:1.5px solid var(--line)}.btn:disabled{opacity:.6}
-.btn.sm{display:inline-block;width:auto;padding:8px 12px;font-size:14px;margin:0}
-.fm{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;color:var(--ink)}
+.btn{display:block;width:100%;border:none;border-radius:14px;padding:15px;font-weight:800;font-size:17px;background:linear-gradient(135deg,var(--or),var(--or2));color:#fff;margin-top:14px;cursor:pointer;box-shadow:0 6px 16px rgba(168,80,29,.25)}.btn.ghost{background:#fff;color:var(--k);border:1.5px solid var(--line);box-shadow:none}.btn:disabled{opacity:.6}
+.btn.sm{display:inline-block;width:auto;padding:8px 13px;font-size:14px;margin:0;box-shadow:none}
+.fm{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:9px;cursor:pointer;color:var(--ink);box-shadow:0 1px 2px rgba(30,39,44,.04)}
 .fm .ic{font-size:28px;width:40px;text-align:center}.fm .t{flex:1}.fm b{display:block;color:var(--k);font-size:17px}
-.st{font-size:12px;font-weight:800;border-radius:20px;padding:3px 10px;white-space:nowrap}.st.ok{background:var(--okbg);color:var(--ok)}.st.due{background:var(--redbg);color:var(--red)}.st.part{background:var(--ambbg);color:var(--amb)}.st.n{background:#EEF1F3;color:var(--muted)}
-.item{border-bottom:1px solid var(--line);padding:9px 0}.item .q{margin-bottom:6px}
-.seg{display:flex;gap:6px}.seg button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:8px;font-weight:800;cursor:pointer}
+.st{font-size:12px;font-weight:800;border-radius:20px;padding:4px 10px;white-space:nowrap}.st.ok{background:var(--okbg);color:var(--ok)}.st.due{background:var(--redbg);color:var(--red)}.st.part{background:var(--ambbg);color:var(--amb)}.st.n{background:#EFEBE5;color:var(--muted)}
+.item{border-bottom:1px solid var(--line);padding:10px 0}.item .q{margin-bottom:7px}
+.seg{display:flex;gap:6px}.seg button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:9px;font-weight:800;cursor:pointer}
 .seg .on.done{background:var(--ok);border-color:var(--ok);color:#fff}.seg .on.issue{background:var(--red);border-color:var(--red);color:#fff}.seg .on.na{background:#7a8899;border-color:#7a8899;color:#fff}
-.tick{display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--line);padding:11px 2px;cursor:pointer}.tick input{width:26px;height:26px;flex:none}
-.sec{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
-.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px}.tabs button{flex:none;border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:8px 13px;font-weight:700;cursor:pointer;color:var(--k)}.tabs .on{background:var(--k);color:#fff;border-color:var(--k)}
+.tick{display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--line);padding:12px 2px;cursor:pointer}.tick input{width:26px;height:26px;flex:none;accent-color:var(--ok)}
+.sec{display:flex;justify-content:space-between;align-items:center;margin-top:16px}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px}.tabs button{flex:none;border:1.5px solid var(--line);background:#fff;border-radius:22px;padding:8px 14px;font-weight:700;cursor:pointer;color:var(--k)}.tabs .on{background:var(--k);color:#fff;border-color:var(--k)}
 .tr{display:grid;grid-template-columns:1fr 110px;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:7px 0}.tr input{padding:9px;text-align:center}
 .bad{background:var(--redbg)!important;border-color:var(--red)!important}
-table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:12px;text-transform:uppercase}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em}
 .flag{color:var(--red);font-weight:800}
-canvas.sig{width:100%;height:140px;border:1.5px dashed var(--line);border-radius:10px;background:#fff;touch-action:none;display:block}
+canvas.sig{width:100%;height:140px;border:1.5px dashed #CFC6BA;border-radius:12px;background:#fff;touch-action:none;display:block}
 .err{color:var(--red);font-weight:700;margin-top:8px}
-.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px calc(env(safe-area-inset-bottom) + 10px)}
-.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-weight:700;z-index:20}
-.lim{background:var(--orbg);border-radius:10px;padding:8px 11px;font-size:14px;margin-bottom:6px}
+.nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:10px 14px calc(env(safe-area-inset-bottom) + 10px);z-index:7}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--k);color:#fff;padding:12px 18px;border-radius:14px;font-weight:700;z-index:20;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.lim{background:var(--orbg);border-radius:12px;padding:9px 12px;font-size:14px;margin-bottom:8px;color:#6B3612}
+/* gate (code / name) */
+.gate{position:relative;min-height:calc(100vh - 70px);margin:-16px -16px 0;display:flex;align-items:center;justify-content:center;padding:28px 16px;background:#151C20 url(img/hero.jpg) center/cover no-repeat}
+.gate:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(21,28,32,.55),rgba(21,28,32,.85))}
+.gbox{position:relative;width:100%;max-width:470px;color:#fff;text-align:center}
+.badge{display:inline-block;background:#fff;border-radius:16px;padding:10px 18px;box-shadow:0 8px 24px rgba(0,0,0,.3)}.badge img{height:54px;display:block}
+.gbox h1{font-family:var(--serif);font-size:40px;margin:18px 0 4px;line-height:1.05}.gbox h1 b{color:#F0A26E}
+.gbox .tag{letter-spacing:.14em;text-transform:uppercase;font-size:12px;color:#E8D7C5;font-weight:700}
+.gbox p.nar{color:#E9E4DE;font-size:15.5px;margin:14px auto 16px;max-width:420px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:18px}.chips span{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:5px 11px;font-size:13px;font-weight:600}
+.glass{background:rgba(255,255,255,.97);color:var(--ink);border-radius:20px;padding:20px;text-align:left;box-shadow:0 18px 40px rgba(0,0,0,.35)}.glass label{margin-top:0}
+/* home */
+.hero{position:relative;border-radius:22px;overflow:hidden;color:#fff;padding:26px 22px 22px;background:#151C20 url(img/hero.jpg) center 40%/cover no-repeat;box-shadow:0 12px 30px rgba(21,28,32,.25)}
+.hero:before{content:"";position:absolute;inset:0;background:linear-gradient(100deg,rgba(21,28,32,.92) 0%,rgba(21,28,32,.75) 55%,rgba(21,28,32,.35) 100%)}
+.hero>*{position:relative}.hero .tag{letter-spacing:.14em;text-transform:uppercase;font-size:12px;color:#F0C29F;font-weight:700}
+.hero h1{font-family:var(--serif);font-size:34px;margin:6px 0 6px;line-height:1.1}.hero h1 b{color:#F0A26E;font-weight:700}
+.hero p{margin:0;color:#E9E4DE;max-width:620px;font-size:15.5px}
+.prog{margin-top:18px;max-width:520px}.prog .bar{height:10px;background:rgba(255,255,255,.18);border-radius:6px;overflow:hidden}.prog .bar i{display:block;height:100%;background:linear-gradient(90deg,#F0A26E,#7BD3A3);border-radius:6px}
+.prog .lab{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px;color:#F3EEE8;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.pc{display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;cursor:pointer;text-align:left;padding:0;color:var(--ink);box-shadow:0 1px 2px rgba(30,39,44,.05),0 8px 22px rgba(30,39,44,.06);transition:transform .15s,box-shadow .15s;text-decoration:none}
+.pc:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(30,39,44,.12)}
+.pc .im{position:relative;height:150px;background:#2B3A42 center/cover no-repeat}.pc .im:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.45))}
+.pc .im .st{position:absolute;left:12px;top:12px;z-index:1;box-shadow:0 2px 8px rgba(0,0,0,.18)}.pc .im .ref{position:absolute;right:12px;top:12px;z-index:1;background:rgba(0,0,0,.45);color:#fff;font-size:11.5px;font-weight:700;border-radius:20px;padding:3px 9px;letter-spacing:.04em}
+.pc .im .ico{position:absolute;left:14px;bottom:10px;z-index:1;font-size:26px}
+.pc .bd{padding:14px 16px 16px;flex:1;display:flex;flex-direction:column}.pc .bd b{font-size:18px;color:var(--k);font-family:var(--serif)}.pc .bd span{color:var(--muted);font-size:14px;margin-top:3px;flex:1}
+.pc .ft{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13.5px;font-weight:700;color:var(--k)}.pc .ft em{font-style:normal;color:var(--or)}
+.pc.mini{flex-direction:row;align-items:center;padding:16px;gap:14px}.pc.mini .ci{width:50px;height:50px;border-radius:14px;background:var(--orbg);display:flex;align-items:center;justify-content:center;font-size:25px;flex:none}.pc.mini .bd{padding:0}.pc.mini .bd .st{display:inline-block;margin:0}.pc .go{font-style:normal;color:var(--or);font-weight:700;font-size:13.5px;flex:none}.pc.dark .go{color:#F0A26E}
+.pc.dark{background:linear-gradient(135deg,#232D33,#151C20);color:#fff;border-color:#232D33}.pc.dark .bd b{color:#fff}.pc.dark .bd span{color:#C9D0D4}.pc.dark .ci{background:rgba(255,255,255,.1)}
+.links{display:flex;flex-wrap:wrap;gap:8px}.links a{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:24px;padding:9px 14px;color:var(--k);font-weight:700;text-decoration:none;font-size:14px}.links a:hover{border-color:var(--or)}
+.limits{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.limits div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px}.limits b{display:block;font-size:18px;color:var(--k)}.limits span{font-size:12.5px;color:var(--muted)}
+.foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:30px;letter-spacing:.04em}
+/* form banner */
+.fban{position:relative;border-radius:20px;overflow:hidden;color:#fff;padding:22px 20px;margin-bottom:12px;background:linear-gradient(135deg,#2B3A42,#151C20) center/cover no-repeat;min-height:120px;display:flex;align-items:flex-end}
+.fban:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(21,28,32,.25),rgba(21,28,32,.85))}.fban>div{position:relative}
+.fban span{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:#F0C29F;font-weight:700}.fban h1{font-family:var(--serif);margin:3px 0 0;font-size:27px;line-height:1.1}
+.wrap.formv{max-width:760px}
+@media(max-width:560px){.gbox h1{font-size:34px}.hero h1{font-size:28px}.pc .im{height:130px}}
 </style>
 </head>
 <body>
-<div class="top"><img src="../assets/marketing/logos/logo-blue-transparent.png" alt=""><div class="g"><b>Kitchen compliance</b><small>Brandon Hall — opening, temperatures, cleaning, closing and logs</small></div><button id="who" class="hide"></button><button id="home" class="hide">⌂</button></div>
+<div class="top"><img src="img/logo.png" alt="Brandon Hall"><div class="g"><div class="wm">Hos<b>Kitchen</b></div><small>Brandon Hall Hotel &amp; Spa</small></div><button id="home" class="hide">⌂ Home</button><button id="who" class="hide"></button></div>
 <div class="wrap" id="app"></div>
 <div class="nav hide" id="nav"></div>
 
@@ -110,21 +150,30 @@ const bindSig = () => { const c = $("#sig"); if (c) { sigPad(c); $("#sigc").oncl
 const sigOK = (e) => { const c = $("#sig"); if (c && !c._drawn) { e.textContent = "Please sign in the box."; return false; } if (!$("#conf").checked) { e.textContent = "Tick the confirmation box."; return false; } return true; };
 
 /* ── code and name ── */
+const IMG = { open: "open", temps: "temps", clean: "clean", weekly: "weekly", close: "close" };
+const DESC = { open: "Safety, temperatures, hygiene and prep before service", temps: "Fridges AM and PM, cooking, deliveries, reheating and cooling", clean: "Five areas, each signed by the person responsible", weekly: "Today's deep-clean tasks, Monday to Sunday", close: "Food stored, kitchen cleaned, equipment off and secured", staff_food: "Record staff meals taken", waste: "Record anything thrown away, and why" };
+const wide = (on) => app.classList.toggle("formv", !on);
+const ban = (f, sub) => `<div class="fban" ${IMG[f.id] ? `style="background-image:url(img/${IMG[f.id]}.jpg)"` : ""}><div><span>${h(f.ref)}${sub ? " · " + h(sub) : ""}</span><h1>${f.icon} ${h(f.name)}</h1></div></div>`;
+const GATE = (inner) => `<div class="gate"><div class="gbox"><div class="badge"><img src="img/logo.png" alt="Brandon Hall Hotel and Spa"></div>
+  <h1>Welcome to Hos<b>Kitchen</b></h1><div class="tag">Brandon Hall kitchen compliance</div>
+  <p class="nar">Our kitchen's daily checks, temperatures, cleaning, logs and training — all in one place, on any phone or tablet. Every entry is saved with your name, the time and your signature.</p>
+  <div class="chips"><span>🌅 Opening</span><span>🌡 Temperatures</span><span>🧽 Cleaning</span><span>🌙 Closing</span><span>🗑 Waste</span><span>🎓 Training</span></div>${inner}</div></div>`;
 function viewCode() {
-  app.innerHTML = `<div class="card"><h2>Kitchen compliance</h2><p>Record the kitchen's opening and closing checks, temperatures, cleaning, staff food and food waste. Every entry is saved with your name and the time.</p>
-    <label>Staff code</label><input id="code" type="password" inputmode="numeric" autocomplete="off"><button class="btn" id="go">Start</button><div class="err" id="e"></div></div>`;
+  wide(true); $("#home").classList.add("hide");
+  app.innerHTML = GATE(`<div class="glass"><label>Staff code</label><input id="code" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter the kitchen staff code"><button class="btn" id="go">Start</button><div class="err" id="e"></div></div>`);
   $("#code").onkeydown = (e) => { if (e.key === "Enter") $("#go").click(); };
   $("#go").onclick = async () => { if (!CODE_OK() && $("#code").value.trim() !== HF_KIOSK_CODE) { $("#e").textContent = "That code is not right."; return; }
     try { sessionStorage.setItem("hf_fire_ok", "1"); } catch (e) {}
     $("#go").disabled = true; $("#go").textContent = "Connecting…"; try { await connect(); viewName(); } catch (err) { $("#go").disabled = false; $("#go").textContent = "Start"; $("#e").textContent = "Could not connect: " + err.message; } };
 }
 function viewName() {
-  setNav("");
+  setNav(""); wide(true); $("#home").classList.add("hide");
   const k = st.names.filter((r) => r.dept === "kitchen").map((r) => r.name), o = st.names.filter((r) => r.dept !== "kitchen").map((r) => r.name);
   let saved = ""; try { saved = localStorage.getItem("hk_kname") || ""; } catch (e) {}
-  app.innerHTML = `<div class="card"><h2>Who is filling this in?</h2><label>Your full name</label><input id="nm" list="nl" value="${h(st.name || saved)}" placeholder="Start typing your name"><datalist id="nl">${k.concat(o).map((n) => `<option value="${h(n)}">`).join("")}</datalist><button class="btn" id="go">Continue</button><div class="err" id="e"></div></div>`;
+  app.innerHTML = GATE(`<div class="glass"><label>Who's on shift?</label><input id="nm" list="nl" value="${h(st.name || saved)}" placeholder="Your first and last name"><datalist id="nl">${k.concat(o).map((n) => `<option value="${h(n)}">`).join("")}</datalist><button class="btn" id="go">Continue</button><div class="err" id="e"></div></div>`);
+  $("#nm").onkeydown = (e) => { if (e.key === "Enter") $("#go").click(); };
   $("#go").onclick = () => { const n = $("#nm").value.trim().replace(/\s+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()); if (n.split(" ").length < 2) { $("#e").textContent = "Please enter your first and last name."; return; }
-    st.name = n; try { localStorage.setItem("hk_kname", n); } catch (e) {} $("#who").textContent = n.split(" ")[0] + " · change"; $("#who").classList.remove("hide"); $("#home").classList.remove("hide");
+    st.name = n; try { localStorage.setItem("hk_kname", n); } catch (e) {} $("#who").textContent = "👤 " + n.split(" ")[0]; $("#who").classList.remove("hide"); $("#home").classList.remove("hide");
     const q = QF && F(QF); if (q) open(q.id); else viewHome(); };
 }
 $("#who").onclick = () => viewName();
@@ -138,22 +187,39 @@ function status(f) {
     return [am && pm && so ? "ok" : am || pm || n ? "part" : "due", `Fridges AM ${am ? "✓" : "—"} · PM ${pm ? "✓" : "—"} · ${n} other${so ? " · signed" : ""}`]; }
   if (f.kind === "areas") { const n = new Set(recsOn("clean").map((x) => x.area)).size; return [n === f.areas.length ? "ok" : n ? "part" : "due", `${n}/${f.areas.length} areas signed`]; }
   if (f.kind === "week") { const wk = mondayOf(d), r = st.recs.filter((x) => x.form === "weekly" && x.week === wk && x.part !== "mgr"), dn = HF_K_FORMS.find((x) => x.id === "weekly").days[(new Date().getDay() + 6) % 7][0];
-    const done = new Set(r.map((x) => x.day)); return [done.has(dn) ? "ok" : "due", `${done.size}/7 days · today (${dn}) ${done.has(dn) ? "✓" : "due"}`]; }
+    const done = new Set(r.map((x) => x.day)); return [done.has(dn) ? "ok" : "due", `${done.size}/7 days · ${dn} ${done.has(dn) ? "✓" : "due"}`]; }
   if (f.kind === "log") { const n = recsOn(f.id).length; return ["n", n ? `${n} today` : "Add as needed"]; }
   return ["n", ""];
 }
+function todayProgress() {
+  const t = recsOn("temps"), dn = HF_K_FORMS.find((x) => x.id === "weekly").days[(new Date().getDay() + 6) % 7][0];
+  const items = [recsOn("open").length > 0, t.some((x) => x.part === "fridge" && x.slot === "am"), t.some((x) => x.part === "fridge" && x.slot === "pm"), new Set(recsOn("clean").map((x) => x.area)).size === F("clean").areas.length,
+    st.recs.some((x) => x.form === "weekly" && x.week === mondayOf(today()) && x.day === dn), t.some((x) => x.part === "signoff"), recsOn("close").length > 0];
+  return [items.filter(Boolean).length, items.length];
+}
 function viewHome() {
-  setNav(""); window.scrollTo(0, 0);
-  const unsigned = pendingMgr().length;
-  app.innerHTML = `<h3>Today — ${h(fdate(today()))}</h3>` + HF_K_FORMS.map((f) => { const [c, t] = status(f);
-    return `<button class="fm" data-f="${f.id}"><div class="ic">${f.icon}</div><div class="t"><b>${h(f.name)}</b><span class="muted">${h(f.ref)}</span></div><span class="st ${c}">${h(t)}</span></button>`; }).join("") +
-    `<h3>Training</h3><a class="fm" href="../hosfire-training.html?course=kt${DEMO ? "&demo=1" : ""}" style="text-decoration:none"><div class="ic">🎓</div><div class="t"><b>Kitchen training</b><span class="muted">Food safety, allergens and kitchen chemicals · about 30 minutes · every year</span></div><span class="st n">Start</span></a>
-    <h3>Head Chef / manager</h3><button class="fm" data-m="1"><div class="ic">✍️</div><div class="t"><b>Manager sign-off</b><span class="muted">Opening, closing and weekly sheets waiting for the manager's signature</span></div><span class="st ${unsigned ? "part" : "ok"}">${unsigned ? unsigned + " to sign" : "All signed"}</span></button>
-    <p class="muted" style="margin-top:14px">Anything out of range or not done? Record it with what you did about it — it is flagged to the Head Chef and management in HosFIRE. Paper copies of the forms: <a href="forms/">print blank forms</a>.</p>`;
+  setNav(""); wide(true); window.scrollTo(0, 0); $("#home").classList.remove("hide");
+  const unsigned = pendingMgr().length, [dn, tot] = todayProgress(), hr = new Date().getHours(), greet = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
+  const L = HF_K_LIMITS, Q = DEMO ? "&demo=1" : "";
+  const photo = (f) => { const [c, t] = status(f); return `<button class="pc" data-f="${f.id}"><div class="im" style="background-image:url(img/${IMG[f.id]}.jpg)"><span class="st ${c}">${h(c === "ok" ? "✓ Done" : c === "part" ? "In progress" : "Due")}</span><span class="ref">${h(f.ref)}</span><span class="ico">${f.icon}</span></div>
+    <div class="bd"><b>${h(f.name)}</b><span>${h(DESC[f.id])}</span><div class="ft"><span style="flex:none;margin:0;font-size:13px;color:var(--muted);font-weight:600">${h(t)}</span><em>Open →</em></div></div></button>`; };
+  const mini = (f) => { const [c, t] = status(f); return `<button class="pc mini" data-f="${f.id}"><div class="ci">${f.icon}</div><div class="bd"><b>${h(f.name)}</b><span>${h(DESC[f.id])}</span><div style="margin-top:8px"><span class="st ${c}">${h(t)}</span></div></div><em class="go">Add →</em></button>`; };
+  app.innerHTML = `<div class="hero"><div class="tag">${h(fdate(today()))} · HosKitchen</div><h1>${greet}, <b>${h(st.name.split(" ")[0])}</b></h1>
+    <p>Welcome to HosKitchen — Brandon Hall's kitchen compliance hub. Complete today's checks as you work: what you record here is the kitchen's food safety diary, seen by the Head Chef and management and ready for any Environmental Health visit.</p>
+    <div class="prog"><div class="lab"><span>Today's essentials</span><span>${dn} of ${tot} done</span></div><div class="bar"><i style="width:${Math.round((dn / tot) * 100)}%"></i></div></div></div>
+    <h3>Today's checks</h3><div class="grid">${["open", "temps", "clean", "weekly", "close"].map((id) => photo(F(id))).join("")}</div>
+    <h3>Logs</h3><div class="grid">${mini(F("staff_food"))}${mini(F("waste"))}</div>
+    <h3>Training and sign-off</h3><div class="grid">
+      <a class="pc" href="../hosfire-training.html?course=kt${Q}"><div class="im" style="background-image:url(img/training.jpg)"><span class="st n">Every year</span><span class="ico">🎓</span></div><div class="bd"><b>Kitchen training</b><span>Food safety, allergens and kitchen chemicals — about 30 minutes, with a certificate. New starters: before your first shift.</span><div class="ft"><span></span><em>Start →</em></div></div></a>
+      <button class="pc mini dark" data-m="1" style="align-self:start"><div class="ci">✍️</div><div class="bd"><b>Manager sign-off</b><span>Head Chef: review and sign the opening, closing and weekly sheets.</span><div style="margin-top:8px"><span class="st ${unsigned ? "part" : "ok"}">${unsigned ? unsigned + " to sign" : "All signed"}</span></div></div><em class="go">Sign →</em></button></div>
+    <h3>Safe limits</h3><div class="limits"><div><b>0–5°C</b><span>Fridges</span></div><div><b>-18°C</b><span>Freezers or colder</span></div><div><b>75°C</b><span>Cook and reheat (core)</span></div><div><b>63°C</b><span>Hot holding or above</span></div><div><b>8°C</b><span>Chilled deliveries or below</span></div><div><b>-15°C</b><span>Frozen deliveries or colder</span></div></div>
+    <p class="muted" style="margin-top:10px">Anything outside these limits, or not done? Record it with what you did about it — it is flagged to the Head Chef and management.</p>
+    <h3>Useful links</h3><div class="links"><a href="forms/">🖨 Print blank forms</a><a href="../fire/${DEMO ? "?demo=1" : ""}">🔥 Fire safety and fire training</a><a href="../hosfire.html${DEMO ? "?demo=1" : ""}">🔐 HosFIRE — management login</a></div>
+    <div class="foot">HosKitchen · part of HosPRO · Brandon Hall Hotel &amp; Spa</div>`;
   $$("[data-f]").forEach((b) => (b.onclick = () => open(b.dataset.f)));
   $("[data-m]").onclick = viewMgr;
 }
-function open(id) { const f = F(id); window.scrollTo(0, 0); if (f.kind === "check") viewCheck(f); else if (f.kind === "temps") viewTemps(); else if (f.kind === "areas") viewAreas(f); else if (f.kind === "week") viewWeek(f); else viewLog(f); }
+function open(id) { const f = F(id); wide(false); window.scrollTo(0, 0); if (f.kind === "check") viewCheck(f); else if (f.kind === "temps") viewTemps(); else if (f.kind === "areas") viewAreas(f); else if (f.kind === "week") viewWeek(f); else viewLog(f); }
 const backSave = (label = "Save") => setNav(`<div style="display:flex;gap:10px;max-width:760px;margin:0 auto"><button class="btn ghost" id="bk" style="margin:0">Back</button><button class="btn" id="sv" style="margin:0">${label}</button></div>`);
 async function doSave(rec, after, okMsg = "Saved — thank you") {
   const b = $("#sv"); b.disabled = true; b.textContent = "Saving…";
@@ -163,7 +229,7 @@ async function doSave(rec, after, okMsg = "Saved — thank you") {
 /* ── opening / closing checks ── */
 function viewCheck(f) {
   const done = recsOn(f.id);
-  app.innerHTML = `<div class="card"><h2>${f.icon} ${h(f.name)}</h2><p class="muted">${h(f.ref)} · ${h(fdate(today()))}${done.length ? ` · <b style="color:var(--ok)">already completed today by ${h(done.map((x) => x.byName).join(", "))}</b>` : ""}</p>
+  app.innerHTML = `${ban(f)}<div class="card"><p class="muted">${h(f.ref)} · ${h(fdate(today()))}${done.length ? ` · <b style="color:var(--ok)">already completed today by ${h(done.map((x) => x.byName).join(", "))}</b>` : ""}</p>
     <div class="row">${f.head.map(([k, l]) => `<div><label>${h(l)}</label><input type="time" data-h="${k}" value="${hm()}"></div>`).join("")}<div><label>Staff member</label><input value="${h(st.name)}" disabled></div></div>
     ${f.sections.map(([t, items], si) => `<div class="sec"><h4>${h(t)}</h4><button class="btn ghost sm" data-all="${si}" type="button">All done ✓</button></div>` + items.map((q, i) => `<div class="item"><div class="q">${h(q)}</div><div class="seg" data-i="s${si}i${i}"><button data-v="done" class="done" type="button">✓ Done</button><button data-v="issue" class="issue" type="button">✗ Issue</button><button data-v="na" class="na" type="button">N/A</button></div></div>`).join("")).join("")}
     <label>Notes and corrective action (required for any Issue or N/A)</label><textarea id="notes"></textarea>
@@ -224,7 +290,7 @@ function viewTemps() {
     const so = r.filter((y) => y.part === "signoff");
     body = `<p>Sign the day's temperature sheet once the PM fridge check and the day's cooking checks are done.</p>${so.length ? `<p style="color:var(--ok);font-weight:700">Signed today by ${h(so.map((y) => y.byName).join(", "))}</p>` : ""}${SIGN("Signature")}`;
   }
-  app.innerHTML = `<div class="card"><h2>${f.icon} ${h(f.name)}</h2><p class="muted">${h(f.ref)} · ${h(fdate(today()))}</p><div class="tabs">${tabs.map(([k, l]) => `<button class="${k === tTab ? "on" : ""}" data-tt="${k}">${l}</button>`).join("")}</div>${body}<div class="err" id="e"></div></div>`;
+  app.innerHTML = `${ban(f)}<div class="card"><p class="muted">${h(f.ref)} · ${h(fdate(today()))}</p><div class="tabs">${tabs.map(([k, l]) => `<button class="${k === tTab ? "on" : ""}" data-tt="${k}">${l}</button>`).join("")}</div>${body}<div class="err" id="e"></div></div>`;
   $$("[data-tt]").forEach((b) => (b.onclick = () => { tTab = b.dataset.tt; viewTemps(); }));
   $$("[data-max]").forEach((x) => (x.oninput = () => x.classList.toggle("bad", x.value !== "" && +x.value > +x.dataset.max)));
   bindSig(); backSave(tTab === "signoff" ? "Sign the sheet" : "Save reading"); $("#bk").onclick = () => { tTab = ""; viewHome(); };
@@ -255,7 +321,7 @@ function viewTemps() {
 function viewAreas(f, ai) {
   const r = recsOn("clean");
   if (ai == null) {
-    setNav(""); app.innerHTML = `<div class="card"><h2>${f.icon} ${h(f.name)}</h2><p class="muted">${h(f.ref)} · ${h(fdate(today()))} · each area is signed by the person responsible</p></div>` + f.areas.map(([n, resp, t], i) => { const d = r.filter((x) => x.area === i);
+    setNav(""); app.innerHTML = `${ban(f)}<div class="card"><p class="muted">${h(f.ref)} · ${h(fdate(today()))} · each area is signed by the person responsible</p></div>` + f.areas.map(([n, resp, t], i) => { const d = r.filter((x) => x.area === i);
       return `<button class="fm" data-a="${i}"><div class="t"><b>${h(n)}</b><span class="muted">Responsible: ${h(resp)} · ${t.length} tasks</span></div><span class="st ${d.length ? "ok" : "due"}">${d.length ? "✓ " + h(d[d.length - 1].byName.split(" ")[0]) : "Due"}</span></button>`; }).join("") +
       `<button class="btn ghost" id="bk2">Back</button>`;
     $$("[data-a]").forEach((b) => (b.onclick = () => viewAreas(f, +b.dataset.a))); $("#bk2").onclick = viewHome; return;
@@ -274,7 +340,7 @@ function viewAreas(f, ai) {
 function viewWeek(f, di) {
   const wk = mondayOf(today()), r = st.recs.filter((x) => x.form === "weekly" && x.week === wk && x.part !== "mgr"), tdi = (new Date().getDay() + 6) % 7;
   if (di == null) {
-    setNav(""); app.innerHTML = `<div class="card"><h2>${f.icon} ${h(f.name)}</h2><p class="muted">${h(f.ref)} · Week commencing ${h(fdate(wk))}</p></div>` + f.days.map(([d, who, t], i) => { const x = r.filter((y) => y.day === d);
+    setNav(""); app.innerHTML = `${ban(f)}<div class="card"><p class="muted">${h(f.ref)} · Week commencing ${h(fdate(wk))}</p></div>` + f.days.map(([d, who, t], i) => { const x = r.filter((y) => y.day === d);
       return `<button class="fm" data-d="${i}"><div class="t"><b>${h(d)}${i === tdi ? " · today" : ""}</b><span class="muted">${h(t.join(" · "))}</span></div><span class="st ${x.length ? "ok" : i < tdi ? "due" : "n"}">${x.length ? "✓ " + h(x[x.length - 1].byName.split(" ")[0]) : i < tdi ? "Missed" : i === tdi ? "Due today" : "Later"}</span></button>`; }).join("") + `<button class="btn ghost" id="bk2">Back</button>`;
     $$("[data-d]").forEach((b) => (b.onclick = () => viewWeek(f, +b.dataset.d))); $("#bk2").onclick = viewHome; return;
   }
@@ -291,7 +357,7 @@ function viewWeek(f, di) {
 /* ── staff food log / food wastage ── */
 function viewLog(f) {
   const r = recsOn(f.id);
-  app.innerHTML = `<div class="card"><h2>${f.icon} ${h(f.name)}</h2><p class="muted">${h(f.ref)} · ${h(fdate(today()))}</p>
+  app.innerHTML = `${ban(f)}<div class="card"><p class="muted">${h(f.ref)} · ${h(fdate(today()))}</p>
     <div class="row"><div><label>Date</label><input value="${h(fdate(today()))}" disabled></div><div><label>Time</label><input type="time" id="tm" value="${hm()}"></div></div>
     ${f.cols.map(([k, l, opts]) => `<label>${h(l)}</label>${opts ? `<select data-c="${k}"><option value="">Choose…</option>${opts.split("|").map((o) => `<option>${h(o)}</option>`).join("")}</select>` : `<input data-c="${k}"${k === "qty" ? ' placeholder="e.g. 2 portions, 1.5 kg"' : ""}>`}`).join("")}
     <label style="text-transform:none;font-size:15px;color:var(--ink);display:flex;gap:10px;align-items:flex-start"><input type="checkbox" id="conf" style="width:auto;margin-top:3px">Signed: ${h(st.name)}</label><div class="err" id="e"></div>
@@ -311,6 +377,7 @@ function pendingMgr() {
   return out.sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 function viewMgr(sel) {
+  wide(false);
   const P = pendingMgr();
   if (!sel || !sel.of) {
     setNav(""); app.innerHTML = `<div class="card"><h2>✍️ Manager sign-off</h2><p class="muted">Head Chef or duty manager: review and sign the opening, closing and weekly sheets. Signing confirms you have checked the record.</p></div>` +
