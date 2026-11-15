@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <style>
 :root{--k:#232D33;--k2:#151C20;--or:#C8662B;--or2:#A8501D;--orbg:#F8E9DE;--gold:#B8925A;--ink:#1E272C;--muted:#66727A;--line:#E4DED6;--ok:#1E8A55;--okbg:#E3F3EA;--red:#C62828;--redbg:#FCEAEA;--amb:#A86200;--ambbg:#FDF1DC;--bg:#F6F2EC;--card:#fff;--serif:"Playfair Display",Georgia,serif}
-*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}html{background:var(--bg)}body{background:transparent}html,body{margin:0;color:var(--ink);font:16px/1.45 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit}.hide{display:none!important}a{color:var(--or2)}
 .top{position:sticky;top:0;z-index:6;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:calc(env(safe-area-inset-top) + 9px) 16px 9px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
 .top img{height:38px}.top .g{flex:1;line-height:1.1}.wm{font-family:var(--serif);font-size:22px;color:var(--k);letter-spacing:.01em}.wm b{color:var(--or)}.top small{display:block;color:var(--muted);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
@@ -63,7 +63,7 @@ canvas.sig{width:100%;height:140px;border:1.5px dashed #CFC6BA;border-radius:12p
 .hero p{margin:0;color:#E9E4DE;max-width:620px;font-size:15.5px}
 .prog{margin-top:18px;max-width:520px}.prog .bar{height:10px;background:rgba(255,255,255,.18);border-radius:6px;overflow:hidden}.prog .bar i{display:block;height:100%;background:linear-gradient(90deg,#F0A26E,#7BD3A3);border-radius:6px}
 .prog .lab{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px;color:#F3EEE8;font-weight:600}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}.grid.g3{grid-template-columns:repeat(3,1fr)}@media(max-width:900px){.grid.g3{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.grid.g3{grid-template-columns:1fr}}
 .pc{display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;cursor:pointer;text-align:left;padding:0;color:var(--ink);box-shadow:0 1px 2px rgba(30,39,44,.05),0 8px 22px rgba(30,39,44,.06);transition:transform .15s,box-shadow .15s;text-decoration:none}
 .pc:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(30,39,44,.12)}
 .pc .im{position:relative;height:150px;background:#2B3A42 center/cover no-repeat}.pc .im:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.45))}
@@ -74,8 +74,9 @@ canvas.sig{width:100%;height:140px;border:1.5px dashed #CFC6BA;border-radius:12p
 .pc.mini{flex-direction:row;align-items:center;padding:16px;gap:14px}.pc.mini .ci{width:50px;height:50px;border-radius:14px;background:var(--orbg);display:flex;align-items:center;justify-content:center;font-size:25px;flex:none}.pc.mini .bd{padding:0}.pc.mini .bd .st{display:inline-block;margin:0}.pc .go{font-style:normal;color:var(--or);font-weight:700;font-size:13.5px;flex:none}.pc.dark .go{color:#F0A26E}
 .pc.dark{background:linear-gradient(135deg,#232D33,#151C20);color:#fff;border-color:#232D33}.pc.dark .bd b{color:#fff}.pc.dark .bd span{color:#C9D0D4}.pc.dark .ci{background:rgba(255,255,255,.1)}
 .links{display:flex;flex-wrap:wrap;gap:8px}.links a{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:24px;padding:9px 14px;color:var(--k);font-weight:700;text-decoration:none;font-size:14px}.links a:hover{border-color:var(--or)}
-.limits{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.limits div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px}.limits b{display:block;font-size:18px;color:var(--k)}.limits span{font-size:12.5px;color:var(--muted)}
+.limits{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}@media(max-width:900px){.limits{grid-template-columns:repeat(3,1fr)}}.limits div{text-align:center}.limits div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px}.limits b{display:block;font-size:18px;color:var(--k)}.limits span{font-size:12.5px;color:var(--muted)}
 .foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:30px;letter-spacing:.04em}
+#bgimg{position:fixed;inset:0;z-index:-1;background:center/cover no-repeat;opacity:0;transition:opacity .35s}#bgimg.on{opacity:1}#bgimg:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(246,242,236,.72),rgba(246,242,236,.86) 55%,rgba(246,242,236,.93))}
 /* form banner */
 .fban{position:relative;border-radius:20px;overflow:hidden;color:#fff;padding:22px 20px;margin-bottom:12px;background:linear-gradient(135deg,#2B3A42,#151C20) center/cover no-repeat;min-height:120px;display:flex;align-items:flex-end}
 .fban:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(21,28,32,.25),rgba(21,28,32,.85))}.fban>div{position:relative}
@@ -86,7 +87,7 @@ canvas.sig{width:100%;height:140px;border:1.5px dashed #CFC6BA;border-radius:12p
 </head>
 <body>
 <div class="top"><img src="img/logo.png" alt="Brandon Hall"><div class="g"><div class="wm">Hos<b>Kitchen</b></div><small>Brandon Hall Hotel &amp; Spa</small></div><button id="home" class="hide">⌂ Home</button><button id="who" class="hide"></button></div>
-<div class="wrap" id="app"></div>
+<div id="bgimg"></div><div class="wrap" id="app"></div>
 <div class="nav hide" id="nav"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -152,8 +153,9 @@ const sigOK = (e) => { const c = $("#sig"); if (c && !c._drawn) { e.textContent 
 /* ── code and name ── */
 const IMG = { open: "open", temps: "temps", clean: "clean", weekly: "weekly", close: "close" };
 const DESC = { open: "Safety, temperatures, hygiene and prep before service", temps: "Fridges AM and PM, cooking, deliveries, reheating and cooling", clean: "Five areas, each signed by the person responsible", weekly: "Today's deep-clean tasks, Monday to Sunday", close: "Food stored, kitchen cleaned, equipment off and secured", staff_food: "Record staff meals taken", waste: "Record anything thrown away, and why" };
-const wide = (on) => app.classList.toggle("formv", !on);
-const ban = (f, sub) => `<div class="fban" ${IMG[f.id] ? `style="background-image:url(img/${IMG[f.id]}.jpg)"` : ""}><div><span>${h(f.ref)}${sub ? " · " + h(sub) : ""}</span><h1>${f.icon} ${h(f.name)}</h1></div></div>`;
+const setBg = (img) => { const b = $("#bgimg"); if (img) { b.style.backgroundImage = `url(img/${img}.jpg)`; b.classList.add("on"); } else b.classList.remove("on"); };
+const wide = (on) => { app.classList.toggle("formv", !on); if (on) setBg(null); };
+const ban = (f, sub) => `<div class="fban" style="background-image:url(img/${IMG[f.id] || "hero"}.jpg)"><div><span>${h(f.ref)}${sub ? " · " + h(sub) : ""}</span><h1>${f.icon} ${h(f.name)}</h1></div></div>`;
 const GATE = (inner) => `<div class="gate"><div class="gbox"><div class="badge"><img src="img/logo.png" alt="Brandon Hall Hotel and Spa"></div>
   <h1>Welcome to Hos<b>Kitchen</b></h1><div class="tag">Brandon Hall kitchen compliance</div>
   <p class="nar">Our kitchen's daily checks, temperatures, cleaning, logs and training — all in one place, on any phone or tablet. Every entry is saved with your name, the time and your signature.</p>
@@ -207,19 +209,18 @@ function viewHome() {
   app.innerHTML = `<div class="hero"><div class="tag">${h(fdate(today()))} · HosKitchen</div><h1>${greet}, <b>${h(st.name.split(" ")[0])}</b></h1>
     <p>Welcome to HosKitchen — Brandon Hall's kitchen compliance hub. Complete today's checks as you work: what you record here is the kitchen's food safety diary, seen by the Head Chef and management and ready for any Environmental Health visit.</p>
     <div class="prog"><div class="lab"><span>Today's essentials</span><span>${dn} of ${tot} done</span></div><div class="bar"><i style="width:${Math.round((dn / tot) * 100)}%"></i></div></div></div>
-    <h3>Today's checks</h3><div class="grid">${["open", "temps", "clean", "weekly", "close"].map((id) => photo(F(id))).join("")}</div>
-    <h3>Logs</h3><div class="grid">${mini(F("staff_food"))}${mini(F("waste"))}</div>
-    <h3>Training and sign-off</h3><div class="grid">
-      <a class="pc" href="../hosfire-training.html?course=kt${Q}"><div class="im" style="background-image:url(img/training.jpg)"><span class="st n">Every year</span><span class="ico">🎓</span></div><div class="bd"><b>Kitchen training</b><span>Food safety, allergens and kitchen chemicals — about 30 minutes, with a certificate. New starters: before your first shift.</span><div class="ft"><span></span><em>Start →</em></div></div></a>
-      <button class="pc mini dark" data-m="1" style="align-self:start"><div class="ci">✍️</div><div class="bd"><b>Manager sign-off</b><span>Head Chef: review and sign the opening, closing and weekly sheets.</span><div style="margin-top:8px"><span class="st ${unsigned ? "part" : "ok"}">${unsigned ? unsigned + " to sign" : "All signed"}</span></div></div><em class="go">Sign →</em></button></div>
     <h3>Safe limits</h3><div class="limits"><div><b>0–5°C</b><span>Fridges</span></div><div><b>-18°C</b><span>Freezers or colder</span></div><div><b>75°C</b><span>Cook and reheat (core)</span></div><div><b>63°C</b><span>Hot holding or above</span></div><div><b>8°C</b><span>Chilled deliveries or below</span></div><div><b>-15°C</b><span>Frozen deliveries or colder</span></div></div>
-    <p class="muted" style="margin-top:10px">Anything outside these limits, or not done? Record it with what you did about it — it is flagged to the Head Chef and management.</p>
+    <p class="muted" style="margin:10px 2px 0">Anything outside these limits, or not done? Record it with what you did about it — it is flagged to the Head Chef and management.</p>
+    <h3>Today's checks and training</h3><div class="grid g3">${["open", "temps", "clean", "weekly", "close"].map((id) => photo(F(id))).join("")}
+      <a class="pc" href="../hosfire-training.html?course=kt${Q}"><div class="im" style="background-image:url(img/training.jpg)"><span class="st n">Every year</span><span class="ref">Training</span><span class="ico">🎓</span></div><div class="bd"><b>Kitchen training</b><span>Food safety, allergens and kitchen chemicals — about 30 minutes, with a certificate.</span><div class="ft"><span style="flex:none;margin:0;font-size:13px;color:var(--muted);font-weight:600">New starters: before first shift</span><em>Start →</em></div></div></a></div>
+    <h3>Logs and sign-off</h3><div class="grid g3">${mini(F("staff_food"))}${mini(F("waste"))}
+      <button class="pc mini dark" data-m="1"><div class="ci">✍️</div><div class="bd"><b>Manager sign-off</b><span>Head Chef: review and sign the opening, closing and weekly sheets.</span><div style="margin-top:8px"><span class="st ${unsigned ? "part" : "ok"}">${unsigned ? unsigned + " to sign" : "All signed"}</span></div></div><em class="go">Sign →</em></button></div>
     <h3>Useful links</h3><div class="links"><a href="forms/">🖨 Print blank forms</a><a href="../fire/${DEMO ? "?demo=1" : ""}">🔥 Fire safety and fire training</a><a href="../hosfire.html${DEMO ? "?demo=1" : ""}">🔐 HosFIRE — management login</a></div>
     <div class="foot">HosKitchen · part of HosPRO · Brandon Hall Hotel &amp; Spa</div>`;
   $$("[data-f]").forEach((b) => (b.onclick = () => open(b.dataset.f)));
   $("[data-m]").onclick = viewMgr;
 }
-function open(id) { const f = F(id); wide(false); window.scrollTo(0, 0); if (f.kind === "check") viewCheck(f); else if (f.kind === "temps") viewTemps(); else if (f.kind === "areas") viewAreas(f); else if (f.kind === "week") viewWeek(f); else viewLog(f); }
+function open(id) { const f = F(id); wide(false); setBg(IMG[f.id] || "hero"); window.scrollTo(0, 0); if (f.kind === "check") viewCheck(f); else if (f.kind === "temps") viewTemps(); else if (f.kind === "areas") viewAreas(f); else if (f.kind === "week") viewWeek(f); else viewLog(f); }
 const backSave = (label = "Save") => setNav(`<div style="display:flex;gap:10px;max-width:760px;margin:0 auto"><button class="btn ghost" id="bk" style="margin:0">Back</button><button class="btn" id="sv" style="margin:0">${label}</button></div>`);
 async function doSave(rec, after, okMsg = "Saved — thank you") {
   const b = $("#sv"); b.disabled = true; b.textContent = "Saving…";
@@ -377,7 +378,7 @@ function pendingMgr() {
   return out.sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 function viewMgr(sel) {
-  wide(false);
+  wide(false); setBg("hero");
   const P = pendingMgr();
   if (!sel || !sel.of) {
     setNav(""); app.innerHTML = `<div class="card"><h2>✍️ Manager sign-off</h2><p class="muted">Head Chef or duty manager: review and sign the opening, closing and weekly sheets. Signing confirms you have checked the record.</p></div>` +
