@@ -170,7 +170,10 @@ const HF_COURSES = [
   ["reception", "Reception alarm procedure briefing", 12, ["reception", "nights"]],   // reception and night staff only
   ["monthly", "Monthly fire refresher", 1],
   ["coshh", "Housekeeping COSHH", 12, ["housekeeping"]],  // housekeeping only — recorded by the combined housekeeping module (HF_TRAIN_HK), renewed every 12 months
-  ["hkstd", "Room standards", 12, ["housekeeping"]]        // housekeeping only — recorded by the combined housekeeping module (HF_TRAIN_HK), renewed every 12 months
+  ["hkstd", "Room standards", 12, ["housekeeping"]],       // housekeeping only — recorded by the combined housekeeping module (HF_TRAIN_HK), renewed every 12 months
+  ["kfood", "Food safety and hygiene", 12, ["kitchen"]],     // kitchen only — recorded by the kitchen module (HF_TRAIN_KT), renewed every 12 months
+  ["kallergen", "Allergens", 12, ["kitchen"]],               // kitchen only — recorded by HF_TRAIN_KT
+  ["kcoshh", "Kitchen chemicals (COSHH)", 12, ["kitchen"]]   // kitchen only — recorded by HF_TRAIN_KT
 ];
 const courseApplies = (t, c) => !c[3] || c[3].includes((t && t.dept) || "other");
 
@@ -578,3 +581,69 @@ const HF_K_FORMS = [
   { id: "staff_food", ref: "BHK-06", icon: "🍽", name: "Staff food log", freq: "log", kind: "log", cols: [["item", "Item"], ["qty", "Quantity"]] },
   { id: "waste", ref: "BHK-07", icon: "🗑", name: "Food wastage sheet", freq: "log", kind: "log", cols: [["item", "Item"], ["qty", "Quantity"], ["reason", "Reason", "Out of date|Spoiled / damaged|Over-production|Returned by guest|Dropped / contaminated|Temperature failure|Other"]] }
 ];
+
+/* ── Kitchen standards: food safety, allergens and chemicals — ONE combined online module (15 Nov 2026) ──
+   Completing it records kfood, kallergen and kcoshh. Product names in HF_K_CHEMICALS are the TYPES of product
+   used in commercial kitchens — replace with David's actual products when he confirms them. */
+const HF_K_BOARDS = [
+  ["Red", "#D93A3A", "Raw meat and poultry"],
+  ["Blue", "#2F6FD6", "Raw fish"],
+  ["Yellow", "#F2C230", "Cooked meat"],
+  ["Green", "#2E9B57", "Salad, fruit and herbs"],
+  ["Brown", "#8B5A2B", "Raw vegetables"],
+  ["White", "#FFFFFF", "Bread and dairy"],
+  ["Purple", "#7B3FA0", "Allergen-free food"]
+];
+const HF_K_CHEMICALS = [
+  ["Food-safe sanitiser", "Sanitising worktops, boards and probes after cleaning", "Correct dilution and contact time on the label; rinse if the label says"],
+  ["Degreaser", "Cooker tops, canopies, walls and floors", "Gloves; never on hot surfaces unless the label allows"],
+  ["Oven cleaner (caustic)", "Ovens, grills and griddles", "Gloves and eye protection; ventilate; burns skin and eyes"],
+  ["Fryer boil-out", "Cleaning fryer wells", "Fryer off and cooled as instructed; gloves and eye protection"],
+  ["Dishwasher detergent and rinse aid", "Auto-dosed into the dishwasher", "Never handle the concentrate without gloves and eye protection; report when low"],
+  ["Descaler (acid)", "Limescale on dishwashers, kettles and taps", "Never mix with bleach or chlorine products"],
+  ["Bleach / chlorine products", "Only where approved by the Head Chef", "Never mixed with anything, especially acid descalers"],
+  ["Washing-up liquid", "Pot wash", "Hot water, then rinse"]
+];
+const HF_TRAIN_KT = {
+  key: "kt", title: "Kitchen standards: food safety, allergens and chemicals", mins: 30, pass: 16,
+  slides: [
+    ["Why this matters", ["Everyone who handles food at Brandon Hall must know how to keep it safe. Food poisoning and allergic reactions can make guests seriously ill — and an allergic reaction can kill.", "This course covers the 4Cs of food safety (cleaning, cooking, chilling and cross-contamination), allergens, kitchen chemicals and our kitchen records.", "It takes about 30 minutes and ends with a 20-question check. The pass mark is 16.", "It is not a replacement for a recognised food hygiene certificate — the Head Chef will tell you if you need one."]],
+    ["Personal hygiene", ["Wash your hands properly (soap, warm water, 20 seconds, dry with paper towel): before handling food, after raw meat, fish or eggs, after the toilet, bins, cleaning or breaks, and after touching your face or phone.", "Clean uniform and apron, hair tied back and covered; no watches or jewellery except a plain band.", "Cover cuts with a blue detectable plaster.", "Vomiting or diarrhoea? Do not come to work. Tell your manager, and stay off until 48 hours after the symptoms have stopped."]],
+    ["Cross-contamination and chopping boards", ["Keep raw and ready-to-eat food apart — in storage, on worktops and on equipment. Raw meat is stored at the bottom of the fridge.", "Use the colour-coded chopping boards and knives: red raw meat, blue raw fish, yellow cooked meat, green salad and fruit, brown raw vegetables, white bread and dairy, purple allergen-free.", "Clean and sanitise boards, knives and surfaces between raw and ready-to-eat food — or use separate ones.", "Wash your hands after handling raw food."]],
+    ["Cooking, reheating and hot holding", ["Cook food until the core reaches 75°C — check with a clean, sanitised probe in the thickest part.", "Reheat to 75°C core, and reheat only once.", "Hot-held food must stay at 63°C or above.", "Record cooking and reheating temperatures on the kitchen page. If a reading is too low, keep cooking and re-probe, and record what you did."]],
+    ["Chilling, freezing and cooling", ["Fridges 0–5°C, freezers -18°C or colder. Check and record them AM and PM.", "Cool hot food quickly — aim for below 8°C within 90 minutes (blast chiller, ice bath, shallow trays), then refrigerate.", "Defrost in the fridge, never at room temperature, and never refreeze defrosted food.", "Chilled deliveries 8°C or below, frozen -15°C or colder — reject or report anything outside this."]],
+    ["Storage, labels and dates", ["Cover, label and date all food. Follow first in, first out (FIFO).", "\"Use by\" is about safety: never use food after its use-by date. \"Best before\" is about quality.", "Store food off the floor, and keep chemicals well away from food.", "Throw away food past its use-by date and record it on the food wastage sheet."]],
+    ["Cleaning: clean as you go", ["Clean as you go, and follow the daily and weekly cleaning schedules.", "Two stages: first clean (remove grease and food with detergent and hot water), then sanitise (food-safe sanitiser at the right dilution, left for the contact time on the label).", "Use clean cloths and change them often. Never use a cloth from a raw-food area on a ready-to-eat area.", "Report signs of pests (droppings, gnawing, insects) to the Head Chef straight away."]],
+    ["The 14 allergens", ["By law we must tell guests if a dish contains any of the 14 allergens: celery, cereals containing gluten, crustaceans, eggs, fish, lupin, milk, molluscs, mustard, tree nuts, peanuts, sesame, soya, and sulphur dioxide / sulphites.", "Every dish's allergens are on the allergen matrix and the recipe. Never guess.", "Food we pre-pack for direct sale (for example grab-and-go sandwiches) must carry a full ingredients label with the allergens in bold (Natasha's Law)."]],
+    ["Allergen orders", ["When an allergy order comes in: read the ticket carefully, check the recipe and every ingredient label, including sauces, garnishes and oils.", "Prepare it separately: clean and sanitise the area, wash your hands, use clean utensils and the purple board, and use fresh oil or a separate fryer if needed.", "Keep it covered and identified, and make sure it reaches the right guest.", "If you are not sure a dish is safe, say so. Never say \"it should be fine\". Tell the Head Chef."]],
+    ["Recipe changes and allergic reactions", ["If you change a recipe, an ingredient or a supplier's product, tell the Head Chef so the allergen matrix is updated before it is served.", "Signs of a serious reaction: swelling of the lips, face or throat, difficulty breathing, wheezing, collapse.", "Call 999 straight away. If the guest has an adrenaline auto-injector, help them to use it. Do not leave them alone. Tell the duty manager."]],
+    ["Kitchen chemicals — what each type is for", ["Food-safe sanitiser: worktops, boards and probes after cleaning, at the right dilution and contact time.", "Degreaser: cooker tops, canopies, walls and floors. Oven cleaner (caustic): ovens, grills and griddles — it burns skin and eyes.", "Fryer boil-out: fryer wells. Descaler (acid): limescale. Dishwasher detergent and rinse aid are auto-dosed.", "Use only the products supplied by the hotel, for the job they are made for, and follow the label and dispenser."]],
+    ["Never mix — and safe handling", ["Never mix chemicals. Bleach or chlorine products must never meet an acid descaler — together they give off a poisonous gas.", "Wear gloves; add eye protection for oven cleaner, fryer boil-out, descaler and when handling dishwasher concentrate.", "Never put chemicals in food or drink containers, and never use them near open food. Keep every bottle labelled.", "Store chemicals in their own area, away from and below food, and close the cupboard after use."]],
+    ["Spills and first aid", ["Spill: keep people away, put out a wet floor sign, wear gloves and clean it up with the spill kit. Large spill or fumes: leave, ventilate and tell the Head Chef.", "Chemical in the eye: rinse with clean running water for at least 15 minutes and get first aid.", "On the skin: remove contaminated clothing and rinse well. Swallowed: don't make the person sick — get a first aider and take the product label.", "Report every accident and near miss so it can be recorded."]],
+    ["Kitchen fire and gas safety", ["Never use water on a fat or oil fire. Turn off the heat if safe, use the fire blanket or the wet chemical extinguisher, and raise the alarm.", "The kitchen has an Ansul fire suppression system over the cooking line — never block or tamper with the nozzles or the pull station.", "Smell gas? Turn off appliances, don't use switches or naked flames, open windows, leave, and tell the duty manager.", "Keep extraction filters clean — grease build-up is a major cause of kitchen fires."]],
+    ["Our kitchen records", ["Fill in the kitchen forms on the kitchen page as you work: opening and closing checks, temperatures, cleaning, staff food and food waste.", "Record what really happened, at the time. Never fill in a record for someone else, or write a reading you did not take.", "If a reading is out of range, put it right and record what you did — that is good practice, not a failure.", "These records are what an Environmental Health Officer will ask to see."]],
+    ["Our standards, everyone's job", ["Follow the kitchen procedures, not personal habits — they are there to keep guests and staff safe.", "If you see a colleague doing something unsafe (raw and cooked together, no handwashing, guessing allergens), stop it if it is safe to, and tell the Head Chef.", "If you are not sure — ask before you cook, serve or clean.", "Thank you for keeping our guests safe."]]
+  ],
+  quiz: [
+    ["What core temperature must food be cooked to?", ["75°C or above", "50°C", "63°C"], 0],
+    ["What temperature should fridges be kept at?", ["0–5°C", "8–12°C", "Below -18°C"], 0],
+    ["Hot-held food must be kept at what temperature?", ["63°C or above", "40°C", "Room temperature"], 0],
+    ["How should frozen food be defrosted?", ["In the fridge", "On the worktop overnight", "In warm water in the sink"], 0],
+    ["How quickly should hot food be cooled?", ["Below 8°C within about 90 minutes, then refrigerated", "Left out until it is cold", "Within 6 hours"], 0],
+    ["Which chopping board is used for raw meat?", ["Red", "Green", "White"], 0],
+    ["Which chopping board is used for allergen-free food?", ["Purple", "Brown", "Yellow"], 0],
+    ["Where is raw meat stored in the fridge?", ["At the bottom, below ready-to-eat food", "On the top shelf", "Anywhere there is space"], 0],
+    ["You have had diarrhoea and vomiting. When can you return to work?", ["48 hours after the symptoms have stopped, after telling your manager", "As soon as you feel better", "The next day, if you wash your hands"], 0],
+    ["How many allergens must we tell guests about by law?", ["14", "6", "20"], 0],
+    ["Which of these is one of the 14 allergens?", ["Sesame", "Garlic", "Tomato"], 0],
+    ["A guest asks if a dish is nut-free and you are not sure. What do you do?", ["Say you are not sure, check the allergen matrix and recipe, and ask the Head Chef", "Say \"it should be fine\"", "Pick the nuts out"], 0],
+    ["How do you prepare an allergy order?", ["Clean area, washed hands, clean utensils, purple board, checked ingredients, kept separate", "The same as every other order", "Just leave off the garnish"], 0],
+    ["A guest's lips and throat swell after eating. What do you do first?", ["Call 999 and help them use their adrenaline auto-injector if they have one", "Give them a glass of water and wait", "Ask them to go home"], 0],
+    ["What are the two stages of cleaning a food surface?", ["Clean with detergent, then sanitise with food-safe sanitiser for the contact time", "Sanitise, then wipe with a dry cloth", "Rinse with cold water"], 0],
+    ["Which chemicals must never be mixed?", ["Bleach or chlorine products with an acid descaler", "Washing-up liquid and hot water", "Sanitiser diluted with water as the label says"], 0],
+    ["Oven cleaner gets in your eye. What do you do?", ["Rinse with clean running water for at least 15 minutes and get first aid", "Rub it and carry on", "Wipe it with a cloth"], 0],
+    ["A pan of oil catches fire. What do you do?", ["Turn off the heat if safe, use the fire blanket or wet chemical extinguisher, and raise the alarm", "Throw water on it", "Carry the pan outside"], 0],
+    ["Can you fill in a temperature record for a colleague who forgot?", ["No — only record readings you took yourself, at the time", "Yes, if you guess the reading", "Yes, at the end of the week"], 0],
+    ["You change a sauce recipe. What must happen before it is served?", ["Tell the Head Chef so the allergen matrix is updated", "Nothing — it is only a sauce", "Tell the guest afterwards"], 0]
+  ]
+};

@@ -53,7 +53,7 @@ canvas.sig{width:100%;height:140px;border:1.5px dashed var(--line);border-radius
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="../firebase-config.js"></script>
-<script src="../hosfire-defs.js?v=20261115a"></script>
+<script src="../hosfire-defs.js?v=20261115b"></script>
 <script>
 (() => {
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -147,7 +147,8 @@ function viewHome() {
   const unsigned = pendingMgr().length;
   app.innerHTML = `<h3>Today — ${h(fdate(today()))}</h3>` + HF_K_FORMS.map((f) => { const [c, t] = status(f);
     return `<button class="fm" data-f="${f.id}"><div class="ic">${f.icon}</div><div class="t"><b>${h(f.name)}</b><span class="muted">${h(f.ref)}</span></div><span class="st ${c}">${h(t)}</span></button>`; }).join("") +
-    `<h3>Head Chef / manager</h3><button class="fm" data-m="1"><div class="ic">✍️</div><div class="t"><b>Manager sign-off</b><span class="muted">Opening, closing and weekly sheets waiting for the manager's signature</span></div><span class="st ${unsigned ? "part" : "ok"}">${unsigned ? unsigned + " to sign" : "All signed"}</span></button>
+    `<h3>Training</h3><a class="fm" href="../hosfire-training.html?course=kt${DEMO ? "&demo=1" : ""}" style="text-decoration:none"><div class="ic">🎓</div><div class="t"><b>Kitchen training</b><span class="muted">Food safety, allergens and kitchen chemicals · about 30 minutes · every year</span></div><span class="st n">Start</span></a>
+    <h3>Head Chef / manager</h3><button class="fm" data-m="1"><div class="ic">✍️</div><div class="t"><b>Manager sign-off</b><span class="muted">Opening, closing and weekly sheets waiting for the manager's signature</span></div><span class="st ${unsigned ? "part" : "ok"}">${unsigned ? unsigned + " to sign" : "All signed"}</span></button>
     <p class="muted" style="margin-top:14px">Anything out of range or not done? Record it with what you did about it — it is flagged to the Head Chef and management in HosFIRE. Paper copies of the forms: <a href="forms/">print blank forms</a>.</p>`;
   $$("[data-f]").forEach((b) => (b.onclick = () => open(b.dataset.f)));
   $("[data-m]").onclick = viewMgr;
