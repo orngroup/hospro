@@ -53,8 +53,8 @@ Object.assign(LOGINS, HF_EXTRA_LOGINS);
 const keyByEmail = (e) => Object.keys(LOGINS).find((k) => LOGINS[k].email === e);
 
 /* ---------- store ---------- */
-const COLS = { records: "hosfire_records", actions: "hosfire_actions", registers: "hosfire_registers", diary: "hosfire_diary", audit: "hosfire_audit", config: "hosfire_config", sigs: "hosfire_signatures", tlog: "hosfire_training" };
-const S = { live: false, user: null, key: null, tab: "dash", data: { records: [], actions: [], registers: [], diary: [], audit: [], config: [], sigs: [], tlog: [] }, f: {} };
+const COLS = { records: "hosfire_records", actions: "hosfire_actions", registers: "hosfire_registers", diary: "hosfire_diary", audit: "hosfire_audit", config: "hosfire_config", sigs: "hosfire_signatures", tlog: "hosfire_training", kitchen: "hosfire_kitchen" };
+const S = { live: false, user: null, key: null, tab: "dash", data: { records: [], actions: [], registers: [], diary: [], audit: [], config: [], sigs: [], tlog: [], kitchen: [] }, f: {} };
 let fb = null;
 
 function fbInit() {
@@ -77,11 +77,12 @@ const unsub = [];
 function listen() {
   if (!S.live) { demoLoad(); render(); autoCatchup(); return; }
   Object.entries(COLS).forEach(([k, col]) => {
-    unsub.push(fb.db.collection(col).onSnapshot((snap) => {
+    const q = k === "kitchen" ? fb.db.collection(col).where("date", ">=", (() => { const d = new Date(); d.setDate(d.getDate() - 120); return ymd(d); })()) : fb.db.collection(col);
+    unsub.push(q.onSnapshot((snap) => {
       S.data[k] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       if (k === "actions") autoCatchup();
       rerender();
-    }, (err) => { console.warn(col, err); if (k === "records") toast("Cannot read HosFIRE data — check the Firestore rules have been published."); }));
+    }, (err) => { console.warn(col, err); if (k === "kitchen") return; if (k === "records") toast("Cannot read HosFIRE data — check the Firestore rules have been published."); }));
   });
 }
 let catchupT = null;
@@ -258,7 +259,7 @@ function enter(k) {
 /* ============================================================ NAV */
 const TABS = [
   ["dash", "Dashboard"], ["procs", "Procedures"], ["checks", "Record a check"], ["log", "Logbook"], ["rota", "Weekly tests"], ["back", "Back-records"], ["actions", "Actions"],
-  ["audit", "Audit readiness"], ["coshh", "Housekeeping training"], ["venues", "Venues & events"], ["certs", "Certificates"], ["docs", "Documents"], ["training", "Training"], ["drills", "Drills, PEEPs, permits"],
+  ["audit", "Audit readiness"], ["coshh", "Housekeeping training"], ["kitchen", "Kitchen compliance"], ["venues", "Venues & events"], ["certs", "Certificates"], ["docs", "Documents"], ["training", "Training"], ["drills", "Drills, PEEPs, permits"],
   ["diary", "Diary"], ["regs", "Regulations"], ["pack", "Inspector pack"], ["settings", "Settings"]
 ];
 /* Side navigation, grouped into sections */
@@ -266,7 +267,7 @@ const NAV = [
   ["Overview", [["focus", "🎯", "Inspection focus"], ["dash", "📊", "Dashboard"], ["procs", "🔥", "Procedures"], ["audit", "✅", "Audit readiness"], ["diary", "📅", "Diary"]]],
   ["Checks and records", [["checks", "📝", "Record a check"], ["rota", "🔔", "Weekly tests"], ["log", "📖", "Logbook"], ["back", "🗂", "Back-records"], ["drills", "🚪", "Drills, PEEPs, permits"]]],
   ["Actions and contractors", [["actions", "📋", "Actions"], ["certs", "📜", "Certificates"], ["ext", "🧯", "Extinguishers"], ["venues", "💍", "Venues & events"]]],
-  ["People", [["training", "🎓", "Training"], ["coshh", "🧴", "Housekeeping"]]],
+  ["People", [["training", "🎓", "Training"], ["coshh", "🧴", "Housekeeping"], ["kitchen", "🍳", "Kitchen"]]],
   ["Library", [["sign", "✍️", "Documents to Sign"], ["docs", "📁", "Documents"], ["regs", "⚖️", "Regulations"], ["pack", "🖨", "Inspector pack"], ["folder", "📘", "Hotel fire folder"], ["landlord", "🏠", "Landlord pack"], ["fra", "🧾", "FRA request"]]],
   ["Admin", [["settings", "⚙️", "Settings"]]]
 ];
@@ -2835,6 +2836,103 @@ BIND.coshh = (v) => {
       ${rows.map(({ t, c: cc }) => `<tr>${td(h(t.name))}${td(h(t.role || ""))}${td(c(cc.coshh))}${td(c(cc.hkstd))}</tr>`).join("")}</table></div>`;
     printPortrait();
   };
+};
+
+/* ============================================================
+   KITCHEN COMPLIANCE — David's forms (BHK-01 to BHK-07), training and manager sign-off
+   Data: hosfire_kitchen (last 120 days loaded). Staff page: /kitchen (code 999).
+   ============================================================ */
+const KF = (id) => HF_K_FORMS.find((f) => f.id === id);
+const kAdd = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return ymd(d); };
+const kMon = (s) => { const d = parse(s); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return ymd(d); };
+const kOn = (form, d) => (S.data.kitchen || []).filter((r) => r.form === form && r.date === d).sort((a, b) => ms(a.createdAt) - ms(b.createdAt));
+const kSigned = () => new Map((S.data.kitchen || []).filter((r) => r.form === "mgr").map((r) => [r.of, r]));
+const kSig = (r) => (r && r.sig ? `<img src="${r.sig}" style="height:26px;vertical-align:middle">` : "");
+const kTick = (v) => (v === "done" || v === true ? '<b style="color:#1E8A55">✓</b>' : v === "issue" || v === false ? '<b style="color:#C62828">✗</b>' : v === "na" ? "N/A" : "");
+function kPending() {
+  const sg = kSigned(), out = [], K = S.data.kitchen || [];
+  K.filter((r) => (r.form === "open" || r.form === "close") && !sg.has(r.id)).forEach((r) => out.push({ of: r.id, target: r.form, forDate: r.date, label: `${KF(r.form).name} — ${fds(r.date)}`, by: r.byName }));
+  Array.from(new Set(K.filter((r) => r.form === "weekly").map((r) => r.week))).filter((w) => !sg.has("week:" + w)).forEach((w) => out.push({ of: "week:" + w, target: "weekly", forDate: w, label: `Weekly cleaning — w/c ${fds(w)}`, by: "" }));
+  return out.sort((a, b) => (a.forDate < b.forDate ? 1 : -1));
+}
+function kCheckHTML(f, d) {
+  const R = kOn(f.id, d), sg = kSigned();
+  if (!R.length) return `<p class="muted">Not completed.</p>`;
+  return R.map((r) => `<p style="margin:4px 0">${h(f.head[0][1])}: <b>${h((r.fields || {}).time || "")}</b> · Staff member: <b>${h(r.byName)}</b> ${kSig(r)} · Manager: ${sg.has(r.id) ? `<b>${h(sg.get(r.id).byName)}</b> ${kSig(sg.get(r.id))}` : '<span style="color:#B36B00">not yet signed</span>'}</p>
+    <table class="kt"><tr><th>Check</th><th style="width:60px">Result</th></tr>${f.sections.map(([t, items], si) => `<tr><td colspan="2" style="background:#EEF1F3;font-weight:700">${h(t)}</td></tr>` + items.map((q, i) => `<tr><td>${h(q)}</td><td>${kTick((r.items || {})["s" + si + "i" + i])}</td></tr>`).join("")).join("")}</table>
+    ${r.notes ? `<p><b>Notes / corrective action:</b> ${h(r.notes)}</p>` : ""}`).join("<hr>");
+}
+function kTempsHTML(d) {
+  const R = kOn("temps", d), P = (p) => R.filter((r) => r.part === p), L = HF_K_LIMITS;
+  const fr = P("fridge"), cell = (slot, key, max) => { const x = fr.filter((r) => r.slot === slot && r.readings && r.readings[key] !== undefined).pop(); if (!x) return ""; const v = x.readings[key]; return `<span style="${v > max ? "color:#C62828;font-weight:800" : ""}">${v}°C</span>`; };
+  const who = (slot) => fr.filter((r) => r.slot === slot).map((r) => `${h(r.byName)} ${h(r.time)}`).join(", ");
+  const tb = (rows, cols) => rows.length ? `<table class="kt"><tr>${cols.map((c) => `<th>${c[0]}</th>`).join("")}</tr>${rows.map((r) => `<tr>${cols.map((c) => `<td style="${c[2] && r.flag ? "color:#C62828;font-weight:800" : ""}">${c[1](r)}</td>`).join("")}</tr>`).join("")}</table>` : '<p class="muted">None recorded.</p>';
+  const ca = R.filter((r) => r.corrective).map((r) => `<li>${h(r.part)} ${h(r.time)} (${h(r.byName)}): ${h(r.corrective)}</li>`).join("");
+  return `<div class="kg"><div><b>Fridge / freezer temperatures</b><table class="kt"><tr><th></th><th>AM</th><th>PM</th></tr>${HF_K_FRIDGES.map((n, i) => `<tr><td>${h(n)}</td><td>${cell("am", "f" + i, L.fridgeMax)}</td><td>${cell("pm", "f" + i, L.fridgeMax)}</td></tr>`).join("")}${HF_K_FREEZERS.map((n, i) => `<tr><td>${h(n)}</td><td>${cell("am", "z" + i, L.freezerMax)}</td><td>${cell("pm", "z" + i, L.freezerMax)}</td></tr>`).join("")}</table>
+    <p class="muted" style="font-size:12px">AM: ${who("am") || "—"} · PM: ${who("pm") || "—"}</p>
+    <b>Delivery temperatures</b>${tb(P("delivery"), [["Supplier", (r) => h(r.supplier) + (r.item ? " · " + h(r.item) : "")], ["Type", (r) => h(r.type)], ["Temp", (r) => (r.temp === "" ? "—" : r.temp + "°C"), 1], ["Sign", (r) => h(r.byName)]])}</div>
+    <div><b>Cooking temperatures</b>${tb(P("cook"), [["Service", (r) => h(r.meal)], ["Item", (r) => h(r.item)], ["Temp", (r) => r.temp + "°C", 1], ["Time", (r) => h(r.time)], ["Sign", (r) => h(r.byName)]])}
+    <b>Reheating temperatures</b>${tb(P("reheat"), [["Item", (r) => h(r.item)], ["Temp", (r) => r.temp + "°C", 1], ["Sign", (r) => h(r.byName)]])}
+    <b>Cooling temperatures</b>${tb(P("cool"), [["Item", (r) => h(r.item)], ["Time", (r) => h(r.time)], ["Method", (r) => h(r.method)], ["Sign", (r) => h(r.byName)]])}</div></div>
+    ${ca ? `<p><b>Corrective actions</b></p><ul>${ca}</ul>` : ""}<p>Sheet signed: ${P("signoff").map((r) => `<b>${h(r.byName)}</b> ${kSig(r)}`).join(", ") || '<span style="color:#B36B00">not signed</span>'}</p>`;
+}
+function kCleanHTML(d) {
+  const f = KF("clean"), R = kOn("clean", d);
+  return `<table class="kt"><tr><th>Area</th><th>Tasks</th><th>Responsible</th><th>Signed</th></tr>${f.areas.map(([n, resp, t], i) => { const x = R.filter((r) => r.area === i).pop();
+    return `<tr><td><b>${h(n)}</b></td><td>${t.map((q, j) => `${x ? kTick(x.tasks[j]) : "·"} ${h(q)}`).join("<br>")}${x && x.notes ? `<br><i>${h(x.notes)}</i>` : ""}</td><td>${h(resp)}</td><td>${x ? `${h(x.byName)}<br>${kSig(x)}` : '<span style="color:#C62828">not signed</span>'}</td></tr>`; }).join("")}</table>`;
+}
+function kWeekHTML(d) {
+  const f = KF("weekly"), w = kMon(d), R = (S.data.kitchen || []).filter((r) => r.form === "weekly" && r.week === w), m = kSigned().get("week:" + w);
+  return `<p>Week commencing <b>${fds(w)}</b> · Manager: ${m ? `<b>${h(m.byName)}</b> ${kSig(m)}` : '<span style="color:#B36B00">not yet signed</span>'}</p><table class="kt"><tr><th>Day</th><th>Tasks</th><th>Sign</th></tr>${f.days.map(([dn, who, t]) => { const x = R.filter((r) => r.day === dn).pop();
+    return `<tr><td><b>${h(dn)}</b></td><td>${t.map((q, j) => `${x ? kTick(x.tasks[j]) : "·"} ${h(q)}`).join("<br>")}${x && x.notes ? `<br><i>${h(x.notes)}</i>` : ""}</td><td>${x ? `${h(x.byName)}${x.late ? " (late)" : ""}<br>${kSig(x)}` : "—"}</td></tr>`; }).join("")}</table>`;
+}
+function kLogHTML(id, d) {
+  const f = KF(id), R = kOn(id, d);
+  return R.length ? `<table class="kt"><tr><th>Date</th><th>Time</th>${f.cols.map(([, l]) => `<th>${h(l)}</th>`).join("")}<th>Sign</th></tr>${R.map((r) => `<tr><td>${fds(r.date)}</td><td>${h(r.time)}</td>${f.cols.map(([k]) => `<td>${h(r[k])}</td>`).join("")}<td>${h(r.byName)}</td></tr>`).join("")}</table>` : '<p class="muted">No entries.</p>';
+}
+function kDayHTML(d) {
+  const sec = (f, body) => `<div class="kpage"><h3 style="margin:0 0 6px;color:#2B3A42">${f.icon} ${h(f.name)} <span class="muted" style="font-weight:400;font-size:13px">${h(f.ref)} · ${fd(d)}</span></h3>${body}</div>`;
+  return sec(KF("open"), kCheckHTML(KF("open"), d)) + sec(KF("temps"), kTempsHTML(d)) + sec(KF("clean"), kCleanHTML(d)) + sec(KF("close"), kCheckHTML(KF("close"), d)) +
+    sec(KF("staff_food"), kLogHTML("staff_food", d)) + sec(KF("waste"), kLogHTML("waste", d)) + sec(KF("weekly"), kWeekHTML(d));
+}
+const K_CSS = `<style>.kt{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 10px}.kt th,.kt td{border:1px solid #DCE2E6;padding:4px 6px;text-align:left;vertical-align:top}.kt th{background:#2B3A42;color:#fff;font-size:12px}.kg{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:800px){.kg{grid-template-columns:1fr}}.kpage{margin-bottom:18px}@media print{.kpage{break-inside:avoid-page}}</style>`;
+VIEWS.kitchen = () => {
+  const d = S.kdate || today(), K = S.data.kitchen || [], P = kPending(), from30 = kAdd(today(), -30);
+  const flags = K.filter((r) => r.flag && r.date >= from30).sort((a, b) => ms(b.createdAt) - ms(a.createdAt));
+  const tt = kOn("temps", d), am = tt.some((r) => r.part === "fridge" && r.slot === "am"), pm = tt.some((r) => r.part === "fridge" && r.slot === "pm");
+  const areas = new Set(kOn("clean", d).map((r) => r.area)).size, wk = new Set(K.filter((r) => r.form === "weekly" && r.week === kMon(d)).map((r) => r.day)).size;
+  const tile = (l, v, ok) => `<div class="card"><div class="muted">${l}</div><div style="font-size:24px;font-weight:800;color:${ok ? "var(--ok)" : "var(--amber)"}">${v}</div></div>`;
+  const base = location.href.split("#")[0].replace(/[^/]*$/, "");
+  const KS = reg("training").filter((t) => t.dept === "kitchen").sort((a, b) => natRef(a.name, b.name)), CS = HF_COURSES.filter((c) => KS.some((t) => courseApplies(t, c)) && ["induction", "monthly", "refresher", "extinguisher"].includes(c[0]));
+  const lab = { ok: ["In date", "p-ok"], soon: ["Due soon", "p-amb"], expired: ["Expired", "p-red"], missing: ["Not done", "p-red"] };
+  return K_CSS + `<h2>Kitchen <span class="fl">compliance</span></h2>
+  <p class="lead">David's kitchen forms, now digital: opening and closing checks, temperatures, daily and weekly cleaning, staff food and food waste. Kitchen staff fill them in on the kitchen page (staff code 999, no login); everything lands here with names, times and signatures.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px">
+    ${tile("Opening", kOn("open", d).length ? "✓ Done" : "Not done", kOn("open", d).length)}${tile("Fridges AM / PM", `${am ? "✓" : "—"} / ${pm ? "✓" : "—"}`, am && pm)}
+    ${tile("Daily cleaning", `${areas}/5 areas`, areas === 5)}${tile("Closing", kOn("close", d).length ? "✓ Done" : "Not done", kOn("close", d).length)}
+    ${tile("Weekly cleaning", `${wk}/7 days`, wk === 7)}${tile("Flags (30 days)", flags.length, !flags.length)}${tile("Awaiting manager", P.length, !P.length)}
+  </div>
+  <div class="card" style="margin-bottom:12px;border-left:6px solid #D9631E"><div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
+    <div style="flex:1;min-width:260px"><label>Kitchen staff page — share this link or print the QR poster (staff code 999)</label><input readonly value="${h(base + "kitchen/")}" onclick="this.select()"></div>
+    <button class="btn ghost" id="k-open">Open the kitchen page</button><a class="btn ghost" href="kitchen/forms/" target="_blank" rel="noopener">Paper forms</a></div></div>
+  ${P.length ? `<div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">Awaiting manager sign-off</h3><div class="tw"><table><tr><th>Sheet</th><th>Completed by</th><th></th></tr>${P.map((p, i) => `<tr><td>${h(p.label)}</td><td>${h(p.by)}</td><td><button class="btn sm" data-kso="${i}">Sign off</button></td></tr>`).join("")}</table></div><p class="muted">Signing here records your HosFIRE login as the manager. The Head Chef can also sign with a signature on the kitchen page.</p></div>` : ""}
+  <div class="card" style="margin-bottom:12px"><div class="row" style="align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0;flex:1">Daily sheets — ${fd(d)}</h3>
+    <button class="btn sm ghost" id="k-prev">◀</button><input type="date" id="k-date" value="${d}" style="width:auto"><button class="btn sm ghost" id="k-next">▶</button><button class="btn sm ghost" id="k-today">Today</button><button class="btn sm" id="k-print">🖨 Print this day</button></div>
+    <div id="k-day" style="margin-top:12px">${kDayHTML(d)}</div></div>
+  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">Out of range and not done — last 30 days</h3>${flags.length ? `<div class="tw"><table><tr><th>Date</th><th>Form</th><th>What</th><th>Corrective action / note</th><th>By</th></tr>${flags.map((r) => `<tr><td>${fds(r.date)}</td><td>${h(KF(r.form) ? KF(r.form).name : r.form)}</td><td>${h(r.form === "temps" ? `${r.part} ${r.item || r.supplier || ""} ${r.temp !== undefined && r.temp !== "" ? r.temp + "°C" : ""}${r.readings ? Object.entries(r.readings).filter(([k, v]) => v > (k[0] === "f" ? HF_K_LIMITS.fridgeMax : HF_K_LIMITS.freezerMax)).map(([k, v]) => (k[0] === "f" ? HF_K_FRIDGES : HF_K_FREEZERS)[+k.slice(1)] + " " + v + "°C").join(", ") + " (" + (r.slot || "").toUpperCase() + ")" : ""}` : r.areaName || r.day || `${r.issues || ""} issue(s)`)}</td><td>${h(r.corrective || r.notes || "")}</td><td>${h(r.byName)}</td></tr>`).join("")}</table></div>` : '<p style="color:var(--ok);font-weight:700">Nothing flagged.</p>'}</div>
+  <div class="card"><h3 style="margin-top:0">Kitchen team — training</h3>
+    <div class="tw"><table><tr><th>Name</th><th>Role</th>${CS.map((c) => `<th>${h(c[1])}</th>`).join("")}</tr>${KS.map((t) => `<tr><td><b>${h(t.name)}</b></td><td>${h(t.role || "")}</td>${CS.map((c) => { const s = courseState((t.courses || {})[c[0]], c[2]); return `<td><span class="pill ${lab[s.st][1]}">${lab[s.st][0]}</span>${(t.courses || {})[c[0]] ? `<div class="muted" style="font-size:12px">${fds((t.courses || {})[c[0]])}</div>` : ""}</td>`; }).join("")}</tr>`).join("") || `<tr><td colspan="${2 + CS.length}" class="muted">No kitchen staff on the training list yet.</td></tr>`}</table></div>
+    <p class="muted">Fire training is done on the <a href="fire/" target="_blank" rel="noopener">fire safety page</a>. Kitchen courses (food hygiene, allergens, kitchen COSHH) can be added here next, the same way as Housekeeping.</p></div>`;
+};
+BIND.kitchen = (v) => {
+  const go = (d) => { S.kdate = d; render(); };
+  $("#k-date", v).onchange = (e) => go(e.target.value || today());
+  $("#k-prev", v).onclick = () => go(kAdd(S.kdate || today(), -1)); $("#k-next", v).onclick = () => go(kAdd(S.kdate || today(), 1)); $("#k-today", v).onclick = () => go(today());
+  $("#k-open", v).onclick = () => window.open(`kitchen/${DEMO ? "?demo=1" : ""}`, "_blank", "noopener");
+  $("#k-print", v).onclick = () => { const d = S.kdate || today(); $("#print").innerHTML = K_CSS + `<div style="font-family:inherit"><h2 style="margin:0;color:#2B3A42">Kitchen compliance — ${fd(d)}</h2><p>${h(HF_HOTEL.name)} · printed ${fds(today())} from HosFIRE</p>${kDayHTML(d)}</div>`; printPortrait(); };
+  const P = kPending();
+  $$("[data-kso]", v).forEach((b) => (b.onclick = async () => { const p = P[+b.dataset.kso]; if (!confirm(`Sign off "${p.label}" as ${S.user.name}?`)) return;
+    b.disabled = true; await add("kitchen", { form: "mgr", of: p.of, target: p.target, forDate: p.forDate, date: today(), method: "HosFIRE login" }); audit(`Kitchen: ${p.label} signed off`); toast("Signed off"); }));
 };
 
 /* ============================================================ START */

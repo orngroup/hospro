@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Kitchen compliance — Brandon Hall</title>
+<meta name="theme-color" content="#2B3A42">
+<link rel="icon" href="../assets/favicon.png">
+<style>
+:root{--k:#2B3A42;--k2:#1C272D;--or:#D9631E;--orbg:#FCEBDD;--ink:#1C272D;--muted:#5E6E7A;--line:#DCE2E6;--ok:#1E8A55;--okbg:#E5F4EC;--red:#C62828;--redbg:#FDECEA;--amb:#B36B00;--ambbg:#FFF3DF;--bg:#F3F5F6}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit}.hide{display:none!important}
+.top{position:sticky;top:0;z-index:5;background:linear-gradient(135deg,var(--k),var(--k2));color:#fff;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:4px solid var(--or);display:flex;align-items:center;gap:10px}
+.top img{height:34px;background:#fff;border-radius:6px;padding:3px}.top b{font-size:19px}.top small{display:block;color:#C8D3D9;font-size:12px}.top .g{flex:1}
+.top button{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:9px;padding:7px 11px;font-weight:700;cursor:pointer}
+.wrap{max-width:760px;margin:0 auto;padding:14px 14px 110px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:10px}
+h2{font-size:20px;margin:0 0 8px;color:var(--k)}h3{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 4px 8px}
+h4{margin:14px 0 6px;color:var(--k);font-size:16px}
+.muted{color:var(--muted);font-size:14px}
+label{display:block;font-weight:700;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 5px}
+input,select,textarea{width:100%;padding:11px;border:1.5px solid var(--line);border-radius:10px;background:#fff}textarea{min-height:64px}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.btn{display:block;width:100%;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:17px;background:var(--or);color:#fff;margin-top:12px;cursor:pointer}.btn.ghost{background:#fff;color:var(--k);border:1.5px solid var(--line)}.btn:disabled{opacity:.6}
+.btn.sm{display:inline-block;width:auto;padding:8px 12px;font-size:14px;margin:0}
+.fm{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;color:var(--ink)}
+.fm .ic{font-size:28px;width:40px;text-align:center}.fm .t{flex:1}.fm b{display:block;color:var(--k);font-size:17px}
+.st{font-size:12px;font-weight:800;border-radius:20px;padding:3px 10px;white-space:nowrap}.st.ok{background:var(--okbg);color:var(--ok)}.st.due{background:var(--redbg);color:var(--red)}.st.part{background:var(--ambbg);color:var(--amb)}.st.n{background:#EEF1F3;color:var(--muted)}
+.item{border-bottom:1px solid var(--line);padding:9px 0}.item .q{margin-bottom:6px}
+.seg{display:flex;gap:6px}.seg button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:8px;font-weight:800;cursor:pointer}
+.seg .on.done{background:var(--ok);border-color:var(--ok);color:#fff}.seg .on.issue{background:var(--red);border-color:var(--red);color:#fff}.seg .on.na{background:#7a8899;border-color:#7a8899;color:#fff}
+.tick{display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--line);padding:11px 2px;cursor:pointer}.tick input{width:26px;height:26px;flex:none}
+.sec{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px}.tabs button{flex:none;border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:8px 13px;font-weight:700;cursor:pointer;color:var(--k)}.tabs .on{background:var(--k);color:#fff;border-color:var(--k)}
+.tr{display:grid;grid-template-columns:1fr 110px;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:7px 0}.tr input{padding:9px;text-align:center}
+.bad{background:var(--redbg)!important;border-color:var(--red)!important}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:12px;text-transform:uppercase}
+.flag{color:var(--red);font-weight:800}
+canvas.sig{width:100%;height:140px;border:1.5px dashed var(--line);border-radius:10px;background:#fff;touch-action:none;display:block}
+.err{color:var(--red);font-weight:700;margin-top:8px}
+.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px calc(env(safe-area-inset-bottom) + 10px)}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-weight:700;z-index:20}
+.lim{background:var(--orbg);border-radius:10px;padding:8px 11px;font-size:14px;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="top"><img src="../assets/marketing/logos/logo-blue-transparent.png" alt=""><div class="g"><b>Kitchen compliance</b><small>Brandon Hall — opening, temperatures, cleaning, closing and logs</small></div><button id="who" class="hide"></button><button id="home" class="hide">⌂</button></div>
+<div class="wrap" id="app"></div>
+<div class="nav hide" id="nav"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="../firebase-config.js"></script>
+<script src="../hosfire-defs.js?v=20261115a"></script>
+<script>
+(() => {
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const h = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pad = (n) => String(n).padStart(2, "0"), ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, today = () => ymd(new Date());
+const hm = () => { const d = new Date(); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+const mondayOf = (s) => { const d = new Date(s + "T12:00"); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return ymd(d); };
+const addDays = (s, n) => { const d = new Date(s + "T12:00"); d.setDate(d.getDate() + n); return ymd(d); };
+const fdate = (s) => new Date(s + "T12:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+const DEMO = /[?&]demo=1/.test(location.search), DK = "hosfire_demo_v1";
+const QF = new URLSearchParams(location.search).get("f") || "";
+const CODE_OK = () => { try { return sessionStorage.getItem("hf_fire_ok") === "1"; } catch (e) { return false; } };
+const F = (id) => HF_K_FORMS.find((f) => f.id === id), L = HF_K_LIMITS;
+const st = { name: "", recs: [], names: [] };
+let fb = null;
+const app = $("#app"), nav = $("#nav");
+const setNav = (html) => { nav.innerHTML = html; nav.classList.toggle("hide", !html); };
+const toast = (t) => { const e = document.createElement("div"); e.className = "toast"; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2600); };
+const recsOn = (form, d = today()) => st.recs.filter((r) => r.form === form && r.date === d);
+
+async function connect() {
+  const from = addDays(today(), -9);
+  if (DEMO) { const j = JSON.parse(localStorage.getItem(DK) || "{}"); st.recs = (j.kitchen || []).filter((r) => r.date >= from); st.names = (j.registers || []).filter((r) => r.kind === "training"); return; }
+  firebase.apps.length || firebase.initializeApp(firebaseConfig);
+  fb = { auth: firebase.auth(), db: firebase.firestore() };
+  if (!fb.auth.currentUser || fb.auth.currentUser.email !== HF_KIOSK.email) await fb.auth.signInWithEmailAndPassword(HF_KIOSK.email, HF_KIOSK.pw);
+  const [r, t] = await Promise.all([fb.db.collection("hosfire_kitchen").where("date", ">=", from).get(), fb.db.collection("hosfire_registers").where("kind", "==", "training").get()]);
+  st.recs = r.docs.map((d) => ({ id: d.id, ...d.data() })); st.names = t.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+async function save(rec) {
+  const doc = { ...rec, date: rec.date || today(), byName: st.name, byEmail: DEMO ? "demo" : HF_KIOSK.email, source: "Kitchen compliance (staff page)" };
+  if (DEMO) { const j = JSON.parse(localStorage.getItem(DK) || "{}"); j.kitchen = j.kitchen || []; const x = { id: "k" + Date.now() + Math.random().toString(36).slice(2, 5), ...doc, createdAt: Date.now() }; j.kitchen.push(x); localStorage.setItem(DK, JSON.stringify(j)); st.recs.push(x); return; }
+  const ref = await fb.db.collection("hosfire_kitchen").add({ ...doc, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  st.recs.push({ id: ref.id, ...doc, createdAt: Date.now() });
+}
+
+/* ── signature pad ── */
+function sigPad(c) {
+  const ctx = c.getContext("2d"); let down = false; c._drawn = false;
+  const fit = () => { const r = c.getBoundingClientRect(); c.width = r.width * 2; c.height = r.height * 2; ctx.scale(2, 2); ctx.lineWidth = 2.4; ctx.lineCap = "round"; ctx.strokeStyle = "#1C272D"; };
+  fit();
+  const p = (e) => { const r = c.getBoundingClientRect(), t = e.touches ? e.touches[0] : e; return [t.clientX - r.left, t.clientY - r.top]; };
+  const s = (e) => { down = true; const [x, y] = p(e); ctx.beginPath(); ctx.moveTo(x, y); e.preventDefault(); };
+  const m = (e) => { if (!down) return; const [x, y] = p(e); ctx.lineTo(x, y); ctx.stroke(); c._drawn = true; e.preventDefault(); };
+  const u = () => (down = false);
+  c.addEventListener("mousedown", s); c.addEventListener("mousemove", m); window.addEventListener("mouseup", u);
+  c.addEventListener("touchstart", s, { passive: false }); c.addEventListener("touchmove", m, { passive: false }); c.addEventListener("touchend", u);
+  c._clear = () => { ctx.clearRect(0, 0, c.width, c.height); c._drawn = false; };
+}
+const sigData = (c) => { const o = document.createElement("canvas"); o.width = 360; o.height = 120; const x = o.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, 360, 120); x.drawImage(c, 0, 0, 360, 120); return o.toDataURL("image/jpeg", 0.6); };
+const SIGN = (who) => `<label>${h(who || "Your signature")}</label><canvas class="sig" id="sig"></canvas><div style="text-align:right;margin-top:4px"><button class="btn ghost sm" id="sigc" type="button">Clear</button></div>
+  <label style="text-transform:none;font-size:15px;color:var(--ink);display:flex;gap:10px;align-items:flex-start"><input type="checkbox" id="conf" style="width:auto;margin-top:3px">I, ${h(st.name)}, did this myself and the record is true.</label>`;
+const bindSig = () => { const c = $("#sig"); if (c) { sigPad(c); $("#sigc").onclick = () => c._clear(); } };
+const sigOK = (e) => { const c = $("#sig"); if (c && !c._drawn) { e.textContent = "Please sign in the box."; return false; } if (!$("#conf").checked) { e.textContent = "Tick the confirmation box."; return false; } return true; };
+
+/* ── code and name ── */
+function viewCode() {
+  app.innerHTML = `<div class="card"><h2>Kitchen compliance</h2><p>Record the kitchen's opening and closing checks, temperatures, cleaning, staff food and food waste. Every entry is saved with your name and the time.</p>
+    <label>Staff code</label><input id="code" type="password" inputmode="numeric" autocomplete="off"><button class="btn" id="go">Start</button><div class="err" id="e"></div></div>`;
+  $("#code").onkeydown = (e) => { if (e.key === "Enter") $("#go").click(); };
+  $("#go").onclick = async () => { if (!CODE_OK() && $("#code").value.trim() !== HF_KIOSK_CODE) { $("#e").textContent = "That code is not right."; return; }
+    try { sessionStorage.setItem("hf_fire_ok", "1"); } catch (e) {}
+    $("#go").disabled = true; $("#go").textContent = "Connecting…"; try { await connect(); viewName(); } catch (err) { $("#go").disabled = false; $("#go").textContent = "Start"; $("#e").textContent = "Could not connect: " + err.message; } };
+}
+function viewName() {
+  setNav("");
+  const k = st.names.filter((r) => r.dept === "kitchen").map((r) => r.name), o = st.names.filter((r) => r.dept !== "kitchen").map((r) => r.name);
+  let saved = ""; try { saved = localStorage.getItem("hk_kname") || ""; } catch (e) {}
+  app.innerHTML = `<div class="card"><h2>Who is filling this in?</h2><label>Your full name</label><input id="nm" list="nl" value="${h(st.name || saved)}" placeholder="Start typing your name"><datalist id="nl">${k.concat(o).map((n) => `<option value="${h(n)}">`).join("")}</datalist><button class="btn" id="go">Continue</button><div class="err" id="e"></div></div>`;
+  $("#go").onclick = () => { const n = $("#nm").value.trim().replace(/\s+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()); if (n.split(" ").length < 2) { $("#e").textContent = "Please enter your first and last name."; return; }
+    st.name = n; try { localStorage.setItem("hk_kname", n); } catch (e) {} $("#who").textContent = n.split(" ")[0] + " · change"; $("#who").classList.remove("hide"); $("#home").classList.remove("hide");
+    const q = QF && F(QF); if (q) open(q.id); else viewHome(); };
+}
+$("#who").onclick = () => viewName();
+$("#home").onclick = () => viewHome();
+
+/* ── status of each form today ── */
+function status(f) {
+  const d = today();
+  if (f.kind === "check") { const r = recsOn(f.id); return r.length ? ["ok", "✓ Done · " + r[r.length - 1].byName.split(" ")[0]] : ["due", "Due today"]; }
+  if (f.kind === "temps") { const r = recsOn("temps"), am = r.some((x) => x.part === "fridge" && x.slot === "am"), pm = r.some((x) => x.part === "fridge" && x.slot === "pm"), n = r.filter((x) => x.part !== "fridge" && x.part !== "signoff").length, so = r.some((x) => x.part === "signoff");
+    return [am && pm && so ? "ok" : am || pm || n ? "part" : "due", `Fridges AM ${am ? "✓" : "—"} · PM ${pm ? "✓" : "—"} · ${n} other${so ? " · signed" : ""}`]; }
+  if (f.kind === "areas") { const n = new Set(recsOn("clean").map((x) => x.area)).size; return [n === f.areas.length ? "ok" : n ? "part" : "due", `${n}/${f.areas.length} areas signed`]; }
+  if (f.kind === "week") { const wk = mondayOf(d), r = st.recs.filter((x) => x.form === "weekly" && x.week === wk && x.part !== "mgr"), dn = HF_K_FORMS.find((x) => x.id === "weekly").days[(new Date().getDay() + 6) % 7][0];
+    const done = new Set(r.map((x) => x.day)); return [done.has(dn) ? "ok" : "due", `${done.size}/7 days · today (${dn}) ${done.has(dn) ? "✓" : "due"}`]; }
+  if (f.kind === "log") { const n = recsOn(f.id).length; return ["n", n ? `${n} today` : "Add as needed"]; }
+  return ["n", ""];
+}
+function viewHome() {
+  setNav(""); window.scrollTo(0, 0);
+  const unsigned = pendingMgr().length;
+  app.innerHTML = `<h3>Today — ${h(fdate(today()))}</h3>` + HF_K_FORMS.map((f) => { const [c, t] = status(f);
+    return `<button class="fm" data-f="${f.id}"><div class="ic">${f.icon}</div><div class="t"><b>${h(f.name)}</b><span class="muted">${h(f.ref)}</span></div><span class="st ${c}">${h(t)}</span></button>`; }).join("") +
+    `<h3>Head Chef / manager</h3><button class="fm" data-m="1"><div class="ic">✍️</div><div class="t"><b>Manager sign-off</b><span class="muted">Opening, closing and weekly sheets waiting for the manager's signature</span></div><span class="st ${unsigned ? "part" : "ok"}">${unsigned ? unsigned + " to sign" : "All signed"}</span></button>
+    <p class="muted" style="margin-top:14px">Anything out of range or not done? Record it with what you did about it — it is flagged to the Head Chef and management in HosFIRE. Paper copies of the forms: <a href="forms/">print blank forms</a>.</p>`;
+  $$("[data-f]").forEach((b) => (b.onclick = () => open(b.dataset.f)));
+  $("[data-m]").onclick = viewMgr;
+}
+function open(id) { const f = F(id); window.scrollTo(0, 0); if (f.kind === "check") viewCheck(f); else if (f.kind === "temps") viewTemps(); else if (f.kind === "areas") viewAreas(f); else if (f.kind === "week") viewWeek(f); else viewLog(f); }
+const backSave = (label = "Save") => setNav(`<div style="display:flex;gap:10px;max-width:760px;margin:0 auto"><button class="btn ghost" id="bk" style="margin:0">Back</button><button class="btn" id="sv" style="margin:0">${label}</button></div>`);
+async function doSave(rec, after, okMsg = "Saved — thank you") {
+  const b = $("#sv"); b.disabled = true; b.textContent = "Saving…";
+  try { await save(rec); toast(okMsg); after(); } catch (err) { b.disabled = false; b.textContent = "Save"; $("#e").textContent = "Could not save: " + err.message; }
+}
+
+/* ── opening / closing checks ── */
+function viewCheck(f) {
+  const done = recsOn(f.id);
+  app.innerHTML = `<div class="card"><h2>${f.icon} ${h(f.name)}</h2><p class="muted">${h(f.ref)} · ${h(fdate(today()))}${done.length ? ` · <b style="color:var(--ok)">already completed today by ${h(done.map((x) => x.byName).join(", "))}</b>` : ""}</p>
+    <div class="row">${f.head.map(([k, l]) => `<div><label>${h(l)}</label><input type="time" data-h="${k}" value="${hm()}"></div>`).join("")}<div><label>Staff member</label><input value="${h(st.name)}" disabled></div></div>
+    ${f.sections.map(([t, items], si) => `<div class="sec"><h4>${h(t)}</h4><button class="btn ghost sm" data-all="${si}" type="button">All done ✓</button></div>` + items.map((q, i) => `<div class="item"><div class="q">${h(q)}</div><div class="seg" data-i="s${si}i${i}"><button data-v="done" class="done" type="button">✓ Done</button><button data-v="issue" class="issue" type="button">✗ Issue</button><button data-v="na" class="na" type="button">N/A</button></div></div>`).join("")).join("")}
+    <label>Notes and corrective action (required for any Issue or N/A)</label><textarea id="notes"></textarea>
+    ${SIGN("Staff member signature")}<div class="err" id="e"></div></div>`;
+  $$(".seg").forEach((sg) => $$("button", sg).forEach((b) => (b.onclick = () => { $$("button", sg).forEach((x) => x.classList.remove("on")); b.classList.add("on"); })));
+  $$("[data-all]").forEach((b) => (b.onclick = () => $$(`.seg[data-i^="s${b.dataset.all}i"]`).forEach((sg) => { $$("button", sg).forEach((x) => x.classList.remove("on")); $("button.done", sg).classList.add("on"); })));
+  bindSig(); backSave("Save " + f.name.split(" ")[0].toLowerCase() + " checks"); $("#bk").onclick = viewHome;
+  $("#sv").onclick = () => {
+    const e = $("#e"), items = {}, fields = {}; $$(".seg").forEach((sg) => { const on = $("button.on", sg); items[sg.dataset.i] = on ? on.dataset.v : ""; }); $$("[data-h]").forEach((x) => (fields[x.dataset.h] = x.value));
+    if (Object.values(items).some((v) => !v)) { e.textContent = "Please answer every check (use All done ✓ for a section that is complete)."; return; }
+    const notes = $("#notes").value.trim(), iss = Object.values(items).filter((v) => v === "issue").length;
+    if (Object.values(items).some((v) => v !== "done") && !notes) { e.textContent = "Add a note explaining each Issue or N/A and what was done."; return; }
+    if (!sigOK(e)) return;
+    doSave({ form: f.id, ref: f.ref, fields, items, notes, issues: iss, flag: iss > 0, sig: sigData($("#sig")) }, viewHome);
+  };
+}
+
+/* ── temperatures ── */
+let tTab = "";
+function viewTemps() {
+  const f = F("temps"), r = recsOn("temps"), hr = new Date().getHours();
+  if (!tTab) tTab = "fridge";
+  const tabs = [["fridge", "Fridges & freezers"], ["cook", "Cooking"], ["delivery", "Deliveries"], ["reheat", "Reheating"], ["cool", "Cooling"], ["signoff", "Sign the sheet"]];
+  const list = (part, cols) => { const x = r.filter((y) => y.part === part); return x.length ? `<h4>Recorded today</h4><table><tr>${cols.map((c) => `<th>${c[0]}</th>`).join("")}<th>By</th></tr>${x.map((y) => `<tr>${cols.map((c) => `<td class="${c[2] && y.flag ? "flag" : ""}">${h(c[1](y))}</td>`).join("")}<td>${h(y.byName)}</td></tr>`).join("")}</table>` : ""; };
+  let body = "";
+  if (tTab === "fridge") {
+    const slot = hr < 14 ? "am" : "pm", has = (s) => r.some((y) => y.part === "fridge" && y.slot === s);
+    body = `<div class="lim">Fridges ${L.text.fridge} · Freezers ${L.text.freezer}</div>
+      <label>Check</label><select id="slot"><option value="am" ${slot === "am" ? "selected" : ""}>AM${has("am") ? " (already recorded)" : ""}</option><option value="pm" ${slot === "pm" ? "selected" : ""}>PM${has("pm") ? " (already recorded)" : ""}</option></select>
+      <h4>Fridge temperatures (°C)</h4>${HF_K_FRIDGES.map((n, i) => `<div class="tr"><span>${h(n)}</span><input inputmode="decimal" data-t="f${i}" data-max="${L.fridgeMax}" placeholder="°C"></div>`).join("")}
+      <h4>Freezer temperatures (°C)</h4>${HF_K_FREEZERS.map((n, i) => `<div class="tr"><span>${h(n)}</span><input inputmode="decimal" data-t="z${i}" data-max="${L.freezerMax}" placeholder="°C"></div>`).join("")}
+      <p class="muted">Leave a box empty if that unit is not in use, and say so in the note.</p>
+      <label>Corrective action (required if any reading is out of range)</label><textarea id="ca"></textarea>
+      ${list("fridge", [["Check", (y) => y.slot.toUpperCase()], ["Readings", (y) => Object.entries(y.readings || {}).map(([k, v]) => (k[0] === "f" ? "F" : "Z") + (+k.slice(1) + 1) + " " + v + "°").join(" · "), 1], ["Time", (y) => y.time]])}`;
+  } else if (tTab === "cook") {
+    const meal = hr < 11 ? "Breakfast" : hr < 16 ? "Lunch" : "Dinner";
+    body = `<div class="lim">Core temperature ${L.text.cook}. Probe the thickest part.</div>
+      <div class="row"><div><label>Service</label><select id="meal">${["Breakfast", "Lunch", "Dinner"].map((m) => `<option ${m === meal ? "selected" : ""}>${m}</option>`).join("")}</select></div><div><label>Time</label><input type="time" id="tm" value="${hm()}"></div></div>
+      <label>Item</label><input id="it" placeholder="e.g. Chicken breast"><label>Temperature (°C)</label><input id="tp" inputmode="decimal" data-min="${L.cookMin}">
+      <label>Corrective action (if below ${L.cookMin}°C)</label><textarea id="ca"></textarea>
+      ${list("cook", [["Service", (y) => y.meal], ["Item", (y) => y.item], ["Temp", (y) => y.temp + "°C", 1], ["Time", (y) => y.time]])}`;
+  } else if (tTab === "delivery") {
+    body = `<div class="lim">Chilled ${L.text.delChilled} · Frozen ${L.text.delFrozen}. Reject or report anything outside these.</div>
+      <label>Supplier</label><input id="sp" placeholder="e.g. Brakes"><div class="row"><div><label>Type</label><select id="ty"><option>Chilled</option><option>Frozen</option><option>Ambient</option></select></div><div><label>Temperature (°C)</label><input id="tp" inputmode="decimal"></div></div>
+      <label>Items / note (optional)</label><input id="it"><label>Corrective action (if out of range)</label><textarea id="ca"></textarea>
+      ${list("delivery", [["Supplier", (y) => y.supplier], ["Type", (y) => y.type], ["Temp", (y) => (y.temp === "" ? "—" : y.temp + "°C"), 1], ["Time", (y) => y.time]])}`;
+  } else if (tTab === "reheat") {
+    body = `<div class="lim">Reheat to a core temperature of ${L.text.reheat}. Reheat once only.</div>
+      <label>Item</label><input id="it"><div class="row"><div><label>Temperature (°C)</label><input id="tp" inputmode="decimal"></div><div><label>Time</label><input type="time" id="tm" value="${hm()}"></div></div>
+      <label>Corrective action (if below ${L.reheatMin}°C)</label><textarea id="ca"></textarea>
+      ${list("reheat", [["Item", (y) => y.item], ["Temp", (y) => y.temp + "°C", 1], ["Time", (y) => y.time]])}`;
+  } else if (tTab === "cool") {
+    body = `<div class="lim">Cool as quickly as possible — aim for below 8°C within 90 minutes, then refrigerate.</div>
+      <label>Item</label><input id="it"><div class="row"><div><label>Time</label><input type="time" id="tm" value="${hm()}"></div><div><label>Method</label><select id="md"><option>Blast chiller</option><option>Ice bath</option><option>Shallow trays</option><option>Portioned</option><option>Other</option></select></div></div>
+      <label>Note (optional)</label><input id="ca">
+      ${list("cool", [["Item", (y) => y.item], ["Time", (y) => y.time], ["Method", (y) => y.method]])}`;
+  } else {
+    const so = r.filter((y) => y.part === "signoff");
+    body = `<p>Sign the day's temperature sheet once the PM fridge check and the day's cooking checks are done.</p>${so.length ? `<p style="color:var(--ok);font-weight:700">Signed today by ${h(so.map((y) => y.byName).join(", "))}</p>` : ""}${SIGN("Signature")}`;
+  }
+  app.innerHTML = `<div class="card"><h2>${f.icon} ${h(f.name)}</h2><p class="muted">${h(f.ref)} · ${h(fdate(today()))}</p><div class="tabs">${tabs.map(([k, l]) => `<button class="${k === tTab ? "on" : ""}" data-tt="${k}">${l}</button>`).join("")}</div>${body}<div class="err" id="e"></div></div>`;
+  $$("[data-tt]").forEach((b) => (b.onclick = () => { tTab = b.dataset.tt; viewTemps(); }));
+  $$("[data-max]").forEach((x) => (x.oninput = () => x.classList.toggle("bad", x.value !== "" && +x.value > +x.dataset.max)));
+  bindSig(); backSave(tTab === "signoff" ? "Sign the sheet" : "Save reading"); $("#bk").onclick = () => { tTab = ""; viewHome(); };
+  const num = (v) => (v === "" ? "" : Math.round(parseFloat(String(v).replace(",", ".")) * 10) / 10);
+  $("#sv").onclick = () => {
+    const e = $("#e"), ca = ($("#ca") || { value: "" }).value.trim(), base = { form: "temps", ref: f.ref, part: tTab, time: ($("#tm") || { value: hm() }).value || hm() }, again = () => viewTemps();
+    if (tTab === "fridge") {
+      const readings = {}; let flag = false; $$("[data-t]").forEach((x) => { if (x.value.trim() !== "") { const v = num(x.value); if (isNaN(v)) return; readings[x.dataset.t] = v; if (v > +x.dataset.max) flag = true; } });
+      if (!Object.keys(readings).length) { e.textContent = "Enter at least one reading."; return; }
+      if (Object.values(readings).some((v) => isNaN(v))) { e.textContent = "Readings must be numbers."; return; }
+      if (flag && !ca) { e.textContent = "A reading is out of range — say what you did about it."; return; }
+      return doSave({ ...base, slot: $("#slot").value, readings, corrective: ca, flag }, again);
+    }
+    if (tTab === "signoff") { if (!sigOK(e)) return; return doSave({ ...base, sig: sigData($("#sig")) }, () => { tTab = ""; viewHome(); }, "Temperature sheet signed"); }
+    const item = ($("#it") || { value: "" }).value.trim(), tp = $("#tp") ? num($("#tp").value.trim()) : "";
+    if (tTab === "delivery") { const sp = $("#sp").value.trim(), ty = $("#ty").value; if (!sp) { e.textContent = "Enter the supplier."; return; } if (ty !== "Ambient" && (tp === "" || isNaN(tp))) { e.textContent = "Enter the temperature."; return; }
+      const flag = (ty === "Chilled" && tp > L.delChilledMax) || (ty === "Frozen" && tp > L.delFrozenMax); if (flag && !ca) { e.textContent = "Out of range — say what you did (rejected, reported…)."; return; }
+      return doSave({ ...base, supplier: sp, type: ty, temp: ty === "Ambient" && (tp === "" || isNaN(tp)) ? "" : tp, item, corrective: ca, flag }, again); }
+    if (!item) { e.textContent = "Enter the item."; return; }
+    if (tTab === "cool") return doSave({ ...base, item, method: $("#md").value, corrective: ca, flag: false }, again);
+    if (tp === "" || isNaN(tp)) { e.textContent = "Enter the temperature."; return; }
+    const min = tTab === "cook" ? L.cookMin : L.reheatMin, flag = tp < min; if (flag && !ca) { e.textContent = `Below ${min}°C — say what you did (cooked on, re-probed…).`; return; }
+    doSave({ ...base, meal: tTab === "cook" ? $("#meal").value : "", item, temp: tp, corrective: ca, flag }, again);
+  };
+}
+
+/* ── daily cleaning (by area) ── */
+function viewAreas(f, ai) {
+  const r = recsOn("clean");
+  if (ai == null) {
+    setNav(""); app.innerHTML = `<div class="card"><h2>${f.icon} ${h(f.name)}</h2><p class="muted">${h(f.ref)} · ${h(fdate(today()))} · each area is signed by the person responsible</p></div>` + f.areas.map(([n, resp, t], i) => { const d = r.filter((x) => x.area === i);
+      return `<button class="fm" data-a="${i}"><div class="t"><b>${h(n)}</b><span class="muted">Responsible: ${h(resp)} · ${t.length} tasks</span></div><span class="st ${d.length ? "ok" : "due"}">${d.length ? "✓ " + h(d[d.length - 1].byName.split(" ")[0]) : "Due"}</span></button>`; }).join("") +
+      `<button class="btn ghost" id="bk2">Back</button>`;
+    $$("[data-a]").forEach((b) => (b.onclick = () => viewAreas(f, +b.dataset.a))); $("#bk2").onclick = viewHome; return;
+  }
+  const [n, resp, tasks] = f.areas[ai];
+  app.innerHTML = `<div class="card"><h2>${h(n)}</h2><p class="muted">${h(f.name)} · Responsible: ${h(resp)} · ${h(fdate(today()))}</p>
+    ${tasks.map((t, i) => `<label class="tick" style="text-transform:none;font-size:16px;color:var(--ink);font-weight:400;margin:0"><input type="checkbox" data-k="${i}">${h(t)}</label>`).join("")}
+    <label>Note (required if any task is not done)</label><textarea id="notes"></textarea>${SIGN("Sign")}<div class="err" id="e"></div></div>`;
+  bindSig(); backSave("Sign this area"); $("#bk").onclick = () => viewAreas(f);
+  $("#sv").onclick = () => { const e = $("#e"), tk = {}; $$("[data-k]").forEach((x) => (tk[x.dataset.k] = x.checked)); const notes = $("#notes").value.trim(), miss = Object.values(tk).filter((v) => !v).length;
+    if (miss && !notes) { e.textContent = "Say why any unticked task was not done."; return; } if (!sigOK(e)) return;
+    doSave({ form: "clean", ref: f.ref, area: ai, areaName: n, tasks: tk, notes, flag: miss > 0, sig: sigData($("#sig")) }, () => viewAreas(f)); };
+}
+
+/* ── weekly cleaning ── */
+function viewWeek(f, di) {
+  const wk = mondayOf(today()), r = st.recs.filter((x) => x.form === "weekly" && x.week === wk && x.part !== "mgr"), tdi = (new Date().getDay() + 6) % 7;
+  if (di == null) {
+    setNav(""); app.innerHTML = `<div class="card"><h2>${f.icon} ${h(f.name)}</h2><p class="muted">${h(f.ref)} · Week commencing ${h(fdate(wk))}</p></div>` + f.days.map(([d, who, t], i) => { const x = r.filter((y) => y.day === d);
+      return `<button class="fm" data-d="${i}"><div class="t"><b>${h(d)}${i === tdi ? " · today" : ""}</b><span class="muted">${h(t.join(" · "))}</span></div><span class="st ${x.length ? "ok" : i < tdi ? "due" : "n"}">${x.length ? "✓ " + h(x[x.length - 1].byName.split(" ")[0]) : i < tdi ? "Missed" : i === tdi ? "Due today" : "Later"}</span></button>`; }).join("") + `<button class="btn ghost" id="bk2">Back</button>`;
+    $$("[data-d]").forEach((b) => (b.onclick = () => viewWeek(f, +b.dataset.d))); $("#bk2").onclick = viewHome; return;
+  }
+  const [d, who, tasks] = f.days[di];
+  app.innerHTML = `<div class="card"><h2>${h(d)}</h2><p class="muted">${h(f.name)} · Week commencing ${h(fdate(wk))} · ${h(who)} sign</p>${di !== tdi ? `<p class="lim">You are recording ${h(d)}'s tasks on ${h(fdate(today()))}. Say why in the note if they were done late.</p>` : ""}
+    ${tasks.map((t, i) => `<label class="tick" style="text-transform:none;font-size:16px;color:var(--ink);font-weight:400;margin:0"><input type="checkbox" data-k="${i}">${h(t)}</label>`).join("")}
+    <label>Note${di !== tdi ? " (required)" : " (required if any task is not done)"}</label><textarea id="notes"></textarea>${SIGN(who + " signature")}<div class="err" id="e"></div></div>`;
+  bindSig(); backSave("Sign " + d); $("#bk").onclick = () => viewWeek(f);
+  $("#sv").onclick = () => { const e = $("#e"), tk = {}; $$("[data-k]").forEach((x) => (tk[x.dataset.k] = x.checked)); const notes = $("#notes").value.trim(), miss = Object.values(tk).filter((v) => !v).length;
+    if ((miss || di !== tdi) && !notes) { e.textContent = di !== tdi ? "Add a note — this day's tasks are being recorded late." : "Say why any unticked task was not done."; return; } if (!sigOK(e)) return;
+    doSave({ form: "weekly", ref: f.ref, week: wk, day: d, tasks: tk, notes, late: di !== tdi, flag: miss > 0, sig: sigData($("#sig")) }, () => viewWeek(f)); };
+}
+
+/* ── staff food log / food wastage ── */
+function viewLog(f) {
+  const r = recsOn(f.id);
+  app.innerHTML = `<div class="card"><h2>${f.icon} ${h(f.name)}</h2><p class="muted">${h(f.ref)} · ${h(fdate(today()))}</p>
+    <div class="row"><div><label>Date</label><input value="${h(fdate(today()))}" disabled></div><div><label>Time</label><input type="time" id="tm" value="${hm()}"></div></div>
+    ${f.cols.map(([k, l, opts]) => `<label>${h(l)}</label>${opts ? `<select data-c="${k}"><option value="">Choose…</option>${opts.split("|").map((o) => `<option>${h(o)}</option>`).join("")}</select>` : `<input data-c="${k}"${k === "qty" ? ' placeholder="e.g. 2 portions, 1.5 kg"' : ""}>`}`).join("")}
+    <label style="text-transform:none;font-size:15px;color:var(--ink);display:flex;gap:10px;align-items:flex-start"><input type="checkbox" id="conf" style="width:auto;margin-top:3px">Signed: ${h(st.name)}</label><div class="err" id="e"></div>
+    ${r.length ? `<h4>Today</h4><table><tr><th>Time</th>${f.cols.map(([, l]) => `<th>${h(l)}</th>`).join("")}<th>Sign</th></tr>${r.map((y) => `<tr><td>${h(y.time)}</td>${f.cols.map(([k]) => `<td>${h(y[k])}</td>`).join("")}<td>${h(y.byName)}</td></tr>`).join("")}</table>` : ""}</div>`;
+  backSave("Add to log"); $("#bk").onclick = viewHome;
+  $("#sv").onclick = () => { const e = $("#e"), v = {}; $$("[data-c]").forEach((x) => (v[x.dataset.c] = x.value.trim()));
+    if (f.cols.some(([k]) => !v[k])) { e.textContent = "Please complete every box."; return; } if (!$("#conf").checked) { e.textContent = "Tick to sign the entry."; return; }
+    doSave({ form: f.id, ref: f.ref, time: $("#tm").value || hm(), ...v }, () => viewLog(f), "Added"); };
+}
+
+/* ── manager sign-off ── */
+function pendingMgr() {
+  const signed = new Set(st.recs.filter((r) => r.form === "mgr").map((r) => r.of)), out = [];
+  st.recs.filter((r) => (r.form === "open" || r.form === "close") && !signed.has(r.id)).forEach((r) => out.push({ of: r.id, target: r.form, date: r.date, label: `${F(r.form).name} — ${fdate(r.date)}`, sub: `by ${r.byName}${r.issues ? ` · ${r.issues} issue(s)` : ""}`, r }));
+  const wks = Array.from(new Set(st.recs.filter((r) => r.form === "weekly" && r.part !== "mgr").map((r) => r.week)));
+  wks.forEach((w) => { const key = "week:" + w; if (!signed.has(key)) { const n = new Set(st.recs.filter((r) => r.form === "weekly" && r.week === w).map((r) => r.day)).size; out.push({ of: key, target: "weekly", date: w, label: `Weekly cleaning — week commencing ${fdate(w)}`, sub: `${n}/7 days signed` }); } });
+  return out.sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+function viewMgr(sel) {
+  const P = pendingMgr();
+  if (!sel || !sel.of) {
+    setNav(""); app.innerHTML = `<div class="card"><h2>✍️ Manager sign-off</h2><p class="muted">Head Chef or duty manager: review and sign the opening, closing and weekly sheets. Signing confirms you have checked the record.</p></div>` +
+      (P.length ? P.map((p, i) => `<button class="fm" data-p="${i}"><div class="t"><b>${h(p.label)}</b><span class="muted">${h(p.sub)}</span></div><span class="st part">Sign</span></button>`).join("") : `<div class="card"><b style="color:var(--ok)">Everything is signed.</b></div>`) + `<button class="btn ghost" id="bk2">Back</button>`;
+    $$("[data-p]").forEach((b) => (b.onclick = () => viewMgr(P[+b.dataset.p]))); $("#bk2").onclick = viewHome; return;
+  }
+  let det = "";
+  if (sel.r) { const f = F(sel.r.form); det = f.sections.map(([t, items], si) => { const bad = items.map((q, i) => [q, sel.r.items["s" + si + "i" + i]]).filter(([, v]) => v !== "done"); return bad.length ? `<p><b>${h(t)}</b><br>${bad.map(([q, v]) => `${v === "issue" ? "✗" : "N/A"} ${h(q)}`).join("<br>")}</p>` : ""; }).join("") || "<p>All checks done ✓</p>"; if (sel.r.notes) det += `<p><b>Notes:</b> ${h(sel.r.notes)}</p>`; }
+  else { const w = st.recs.filter((r) => r.form === "weekly" && r.week === sel.date && r.part !== "mgr"); det = F("weekly").days.map(([d]) => { const x = w.filter((y) => y.day === d); return `<div>${x.length ? "✓" : "✗"} ${h(d)}${x.length ? " — " + h(x.map((y) => y.byName).join(", ")) + (x.some((y) => y.flag) ? " · not all tasks done" : "") : " — not recorded"}</div>`; }).join(""); }
+  app.innerHTML = `<div class="card"><h2>${h(sel.label)}</h2><p class="muted">${h(sel.sub)}</p>${det}${SIGN("Manager signature")}<div class="err" id="e"></div></div>`;
+  bindSig(); backSave("Sign off"); $("#bk").onclick = () => viewMgr();
+  $("#sv").onclick = () => { const e = $("#e"); if (!sigOK(e)) return; doSave({ form: "mgr", of: sel.of, target: sel.target, forDate: sel.date, sig: sigData($("#sig")) }, () => viewMgr(), "Signed off"); };
+}
+
+viewCode();
+if (CODE_OK()) { const g = $("#go"); if (g) g.click(); }
+})();
+</script>
+</body>
+</html>

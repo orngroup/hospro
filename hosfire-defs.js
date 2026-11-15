@@ -526,3 +526,55 @@ const HF_TRAIN_MONTHLY = [
   ["Contractors and hot work", ["Contractors sign in, are told the fire procedure and sign out.", "Hot work (welding, grinding, blow-torches) needs a hot work permit from the hotel before it starts."], [["What does hot work need before it starts?", ["A hot work permit from the hotel", "Nothing", "A phone call"], 0], ["Who tells contractors the fire procedure?", ["The person signing them in", "Nobody", "The guest"], 0], ["A contractor is grinding without a permit. What do you do?", ["Ask them to stop and tell the duty manager", "Let them carry on", "Open a window"], 0]]]
 ];
 const hfMonthlyTopic = (d) => HF_TRAIN_MONTHLY[(new Date(d || Date.now())).getMonth() % 12];
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KITCHEN COMPLIANCE — David's kitchen forms, digitised (15 Nov 2026)
+   Saved to Firestore collection hosfire_kitchen (create-only, like hosfire_records).
+   Staff page: /kitchen (staff code 999, no login). Management view: HosFIRE → Kitchen.
+   ══════════════════════════════════════════════════════════════════════════ */
+const HF_K_FRIDGES = ["Fridge 1", "Fridge 2", "Fridge 3", "Fridge 4", "Fridge 5", "Fridge 6", "Fridge 7"];
+const HF_K_FREEZERS = ["Freezer 1", "Freezer 2"];
+// Safe limits used to flag readings (UK food safety practice). Out-of-range readings need a corrective action.
+const HF_K_LIMITS = {
+  fridgeMax: 5, freezerMax: -18, cookMin: 75, reheatMin: 75, holdMin: 63, delChilledMax: 8, delFrozenMax: -15,
+  text: { fridge: "0–5°C", freezer: "-18°C or colder", cook: "75°C or above (core)", reheat: "75°C or above (core)", hold: "63°C or above", delChilled: "8°C or below (aim for 5°C)", delFrozen: "-15°C or colder" }
+};
+const HF_K_FORMS = [
+  { id: "open", ref: "BHK-01", icon: "🌅", name: "Opening daily checks", freq: "daily", kind: "check", mgr: true,
+    head: [["time", "Opening time", "time"]],
+    sections: [
+      ["1. Kitchen safety & preparation", ["Unlock and inspect kitchen premises", "Check floors are clean, dry and free from hazards", "Check fire exits are clear and accessible", "Check fire extinguishers and fire blanket are accessible", "Check extraction system is switched on and working", "Check gas and electrical equipment for visible damage"]],
+      ["2. Temperature checks", ["Record fridge temperatures (target 0–5°C)", "Record freezer temperatures (target -18°C or colder)", "Check chilled food is stored safely", "Check hot-holding equipment is working (63°C or above)", "Check food probe is clean, sanitised and working", "Record any temperature issues and corrective action"]],
+      ["3. Cleaning & hygiene", ["Wash and sanitise food preparation surfaces", "Clean and sanitise chopping boards", "Check handwashing sinks are clean and stocked", "Check soap and paper towels are available", "Ensure sanitiser and cleaning chemicals are available and labelled", "Check bins are clean and lined", "Ensure staff are in clean uniforms and wearing suitable PPE"]],
+      ["4. Equipment & food preparation", ["Switch on ovens, grills and fryers as required", "Check cooking equipment is clean and operational", "Check dishwashers are working", "Check food deliveries are stored correctly", "Check food dates and use-by labels", "Check stock rotation (FIFO)", "Prepare ingredients and mise en place", "Check allergen information and separation procedures", "Ensure all food is covered, labelled and dated"]]
+    ] },
+  { id: "temps", ref: "BHK-02", icon: "🌡", name: "Daily kitchen temperature checks", freq: "daily", kind: "temps" },
+  { id: "clean", ref: "BHK-03", icon: "🧽", name: "Daily cleaning compliances", freq: "daily", kind: "areas",
+    areas: [
+      ["Food Preparation Areas", "Chef & KP", ["Clean and sanitise all worktops", "Wash chopping boards", "Clean sinks and taps", "Clean scales and small equipment", "Store food correctly and label", "Empty bins as required"]],
+      ["Cooking Equipment", "Chef Closing Team", ["Clean grill, griddle and chargrill", "Clean fryer exterior and filter oil if applicable", "Degrease cooker tops", "Clean oven handles and doors", "Wipe extraction canopy surfaces", "Clean microwave inside and out"]],
+      ["Refrigeration", "Shift Chef", ["Wipe door handles and seals", "Clean spillages"]],
+      ["Dishwash Area", "KP", ["Clean dishwasher interior", "Clean wash and rinse arms", "Empty and clean grease traps", "Clean sinks", "Mop and sanitise floor"]],
+      ["Floors & Waste", "KP", ["Sweep entire kitchen", "Move mobile equipment and sweep underneath", "Wet mop using degreaser", "Empty all bins", "Wash and sanitise bin areas", "Secure external waste area"]]
+    ] },
+  { id: "weekly", ref: "BHK-04", icon: "📅", name: "Weekly cleaning compliances", freq: "weekly", kind: "week", mgr: true,
+    days: [
+      ["Monday", "KP", ["Deep clean walk-in refrigerator", "Check stock shelving", "Clean fridge door seals thoroughly"]],
+      ["Tuesday", "KP/Chef", ["Deep clean ovens (evening chef)", "Remove racks and soak", "Clean oven interiors (Evening chef)"]],
+      ["Wednesday", "KP", ["Deep clean fryers or (as and when required)", "Drain oil", "Boil out and clean fryer wells", "Clean filtration equipment"]],
+      ["Thursday", "KP", ["Pull out equipment and clean behind", "Clean wall tiles and splashbacks", "Remove built-up grease"]],
+      ["Friday", "KP", ["Deep clean extraction canopy filters", "Wash and degrease canopy surfaces", "Clean fan covers accessible at kitchen level"]],
+      ["Saturday", "KP", ["Deep clean dry store", "Clean shelving", "Sweep and mop under racking", "Dispose of out-of-date stock"]],
+      ["Sunday", "KP", ["Full floor scrub", "Clean drains", "Sanitise bin store", "Weekly inspection checklist by Head Chef"]]
+    ] },
+  { id: "close", ref: "BHK-05", icon: "🌙", name: "Closing daily checks", freq: "daily", kind: "check", mgr: true,
+    head: [["time", "Closing time", "time"]],
+    sections: [
+      ["1. Food storage & stock", ["All food covered, labelled and dated", "All chilled food returned to refrigeration", "All frozen food returned to freezer", "Raw and ready-to-eat foods stored separately", "Food past its use-by date discarded", "Food waste recorded and disposed of correctly", "Allergen-sensitive ingredients stored appropriately", "Fridge and freezer doors securely closed"]],
+      ["2. Cleaning & sanitation", ["Clean and sanitise all work surfaces", "Clean chopping boards and utensils", "Clean ovens, grills and cooking equipment as required", "Clean fryers and filter oil as required", "Clean microwave and small appliances", "Clean sinks and taps", "Clean and sanitise floors", "Clean splashbacks and wall surfaces", "Empty bins and replace bin liners", "Clean and sanitise waste bins", "Wash and put away all dishes and equipment", "Ensure cleaning chemicals are stored safely"]],
+      ["3. Equipment & utilities", ["Switch off ovens and grills", "Switch off fryers when safe and appropriate", "Switch off non-essential electrical equipment", "Turn off gas appliances and isolate gas if required by procedure", "Check extraction and ventilation shutdown procedure", "Check taps are turned off", "Check dishwasher is switched off", "Check refrigeration remains powered on", "Check no equipment has been left unattended"]],
+      ["4. Final kitchen security", ["Floors are clean, dry and clear", "All food is safely stored", "All chemicals are secured away from food", "All fire exits and walkways are clear", "All windows and external doors are secured", "Check for leaks, unusual smells or hazards", "Switch off lights where appropriate", "Set alarm and lock kitchen premises"]]
+    ] },
+  { id: "staff_food", ref: "BHK-06", icon: "🍽", name: "Staff food log", freq: "log", kind: "log", cols: [["item", "Item"], ["qty", "Quantity"]] },
+  { id: "waste", ref: "BHK-07", icon: "🗑", name: "Food wastage sheet", freq: "log", kind: "log", cols: [["item", "Item"], ["qty", "Quantity"], ["reason", "Reason", "Out of date|Spoiled / damaged|Over-production|Returned by guest|Dropped / contaminated|Temperature failure|Other"]] }
+];
