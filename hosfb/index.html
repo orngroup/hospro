@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#182A3E">
+<title>HosF&amp;B – Brandon Hall Hotel and Spa</title>
+<style>
+:root{--navy:#182A3E;--jade:#4DA69C;--jade-soft:#e4f2f0;--bg:#f4f5f3;--surface:#fff;--line:#e2e4e0;--ink:#16202b;--ink2:#566170;--good:#1a7f4b;--warn:#b26a00;--bad:#c0392b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Aptos,"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif}
+header{background:var(--navy);color:#fff;padding:16px 20px 0}
+.hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+header h1{margin:0;font-size:22px;font-weight:600}
+header h1 span{color:var(--jade)}
+header p{margin:2px 0 12px;color:#b9c6d3;font-size:14px}
+.who{font-size:13px;color:#b9c6d3;text-align:right}
+.who button{background:none;border:0;color:#fff;text-decoration:underline;font:inherit;cursor:pointer;padding:0}
+nav{display:flex;gap:2px;overflow-x:auto}
+nav button{background:transparent;border:0;color:#b9c6d3;font:inherit;font-size:15px;padding:11px 15px;border-radius:9px 9px 0 0;cursor:pointer;white-space:nowrap}
+nav button.on{background:var(--bg);color:var(--ink);font-weight:600}
+main{padding:18px 20px 70px;max-width:1300px;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.card h2{margin:0 0 2px;font-size:18px;font-weight:600}
+.card h3{margin:16px 0 6px;font-size:15px;font-weight:600;color:var(--ink2)}
+.sub{margin:0 0 12px;color:var(--ink2);font-size:14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tile .l{font-size:13px;color:var(--ink2)}.tile .v{font-size:25px;font-weight:600;margin-top:2px}.tile .d{font-size:13px;color:var(--ink2)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.grow{flex:1}
+.btn{border:1px solid var(--navy);background:var(--navy);color:#fff;border-radius:9px;padding:10px 14px;font:inherit;font-size:15px;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--navy)}.btn.jade{background:var(--jade);border-color:var(--jade)}
+.btn.danger{background:#fff;color:var(--bad);border-color:var(--bad)}.btn.sm{padding:6px 10px;font-size:14px}
+select,input,textarea{font:inherit;font-size:16px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);width:100%}
+input[type=checkbox]{width:auto}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font:inherit;font-size:14px;cursor:pointer;color:var(--ink)}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scroll table{min-width:760px}
+.scroll td:first-child{min-width:190px}
+.scroll input[type=number]{width:90px}
+.row .grow{min-width:200px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{padding:8px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-weight:600;color:var(--ink2);font-size:13px;white-space:nowrap}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.sec td{background:#f7f8f6;font-weight:600;color:var(--ink2);font-size:13px}
+tr.tot td{font-weight:600;border-top:2px solid var(--line)}
+tr.click{cursor:pointer}tr.click:hover td{background:#fafbfa}
+.muted{color:var(--ink2)}.small{font-size:13px}
+.pill{display:inline-block;font-size:12px;border-radius:999px;padding:1px 8px;border:1px solid var(--line);color:var(--ink2);white-space:nowrap;margin:1px 2px 1px 0}
+.pill.good{background:#e7f4ec;border-color:#bfe0cc;color:var(--good)}
+.pill.warn{background:#fdf2dd;border-color:#f0d9a8;color:var(--warn)}
+.pill.bad{background:#fbe9e7;border-color:#f1c2bc;color:var(--bad)}
+.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.banner{background:#fdf2dd;border:1px solid #f0d9a8;color:#6b4300;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px}
+.modal{position:fixed;inset:0;background:rgba(15,25,36,.55);display:none;align-items:flex-start;justify-content:center;padding:20px 12px;overflow:auto;z-index:50}
+.modal.on{display:flex}
+.sheet{background:#fff;border-radius:14px;padding:18px;width:100%;max-width:760px}
+.sheet h2{margin:0 0 12px;font-size:19px}
+.fg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
+.fg label,.f1 label{display:flex;flex-direction:column;font-size:13px;color:var(--ink2);gap:3px}
+.fg .full{grid-column:1/-1}
+@media(max-width:640px){.fg{grid-template-columns:1fr}}
+.alg{display:flex;flex-wrap:wrap;gap:6px}
+.alg label{flex-direction:row;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:13px;color:var(--ink);cursor:pointer}
+.foot{display:flex;gap:8px;justify-content:space-between;margin-top:16px;flex-wrap:wrap}
+#login{max-width:380px;margin:60px auto;padding:0 16px}
+.tool{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.tool:last-child{border-bottom:0}
+@media print{header nav,.btn,.who,.chips{display:none!important}body{background:#fff}.card{border:0;padding:0}}
+</style>
+<link rel="stylesheet" href="hosfb-brand.css">
+</head>
+<body>
+<div id="login" hidden>
+  <div class="card">
+    <img src="../bh-logo.svg" alt="Brandon Hall Hotel and Spa" style="height:70px;display:block;margin:0 auto 10px;background:#2C3E50;border-radius:10px;padding:8px 14px"><h2>HosF&amp;B</h2><p class="sub">Brandon Hall Hotel and Spa – food and beverage management. Sign in with your HosPRO app PIN.</p>
+    <div class="f1"><label>Your name<select id="lg-user"></select></label></div>
+    <div class="f1" style="margin-top:10px"><label>PIN<input id="lg-pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label></div>
+    <p id="lg-msg" class="bad small"></p>
+    <button class="btn" style="width:100%" onclick="FB.login()">Sign in</button>
+  </div>
+</div>
+<div id="app" hidden>
+<header>
+  <div class="hd"><div style="display:flex;align-items:center"><img class="brandmark" src="../bh-logo.svg" alt="Brandon Hall Hotel and Spa"><div><h1>Hos<span>F&amp;B</span></h1><p>Brandon Hall Hotel and Spa – kitchen, bar, bookings, events and profit</p></div></div>
+  <div class="who"><span id="who"></span><br><button onclick="FB.logout()">Sign out</button></div></div>
+  <nav id="nav"></nav>
+</header>
+<main id="main"></main>
+<p class="byline">HosF&amp;B for Brandon Hall Hotel and Spa · part of HosPRO</p>
+</div>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="../firebase-config.js"></script>
+<script src="hosfb-seed.js"></script>
+<script src="hosfb-calc.js"></script>
+<script src="hosfb-auth.js"></script>
+<script>
+/* ============================================================
+   HosF&B — kitchen costing, menus and P&L (v1, 15 Nov 2026)
+   Data: Firestore collection "hosfb" (docs ingredients, dishes,
+   menus, purchases, settings), each { items: { id: {...} } }.
+   A copy is kept on the device so the tool still opens offline.
+   ============================================================ */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const gbp=v=>v==null||isNaN(v)?'–':(v<-0.004?'−':'')+'£'+Math.abs(Number(v)).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct=v=>v==null||isNaN(v)?'–':(Math.round(v*10)/10).toFixed(1)+'%';
+const num=v=>{ if(v===''||v==null) return null; const n=parseFloat(v); return isNaN(n)?null:n; };
+const uid=p=>p+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const today=()=>new Date().toISOString().slice(0,10);
+const C=HOSFB_CALC;
+
+/* People who may open HosF&B (PINs are the HosPRO app PINs; changes made in the app are picked up). */
+const FB_USERS=[
+  {id:'david',name:'David – Head Chef',pin:'9999'},{id:'jomy',name:'Jomy – Bar Manager',pin:'9999'},
+  {id:'ajay',name:'Ajay Kawa',pin:'1111'},{id:'raj',name:'Raj Kumar',pin:'0000'},{id:'alia',name:'Alia Taub',pin:'5555'}];
+const DOCS=['ingredients','dishes','menus','purchases','events','bar','matches'];
+const S={ingredients:{},dishes:{},menus:{},purchases:{},events:{},bar:{},matches:{},settings:{vat:20,targetGP:70,flagPct:5}};
+let db=null, cloud=false, me=null, tab='overview', curMenu=null, dishFilter='', ingFilter='';
+
+try{ firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }catch(e){ console.warn('Firebase not available',e); }
+
+const FB={
+  async start(){
+    const sel=$('lg-user'); sel.innerHTML=FB_USERS.map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('');
+    if(db){ try{ const d=await db.collection('hospro_app').doc('users').get(); const ov=(d.exists&&d.data().users)||{};
+      FB_USERS.forEach(u=>{ if(ov[u.id]&&ov[u.id].pin) u.pin=String(ov[u.id].pin); }); }catch(e){} }
+    let s=null; try{ s=JSON.parse(localStorage.getItem('hosfb_me')||'null'); }catch(e){}
+    if(s&&s.until>Date.now()&&FB_USERS.some(u=>u.id===s.id)){ me=FB_USERS.find(u=>u.id===s.id); this.open(); } else $('login').hidden=false;
+    $('lg-pin').addEventListener('keydown',e=>{ if(e.key==='Enter') FB.login(); });
+  },
+  login(){ const u=FB_USERS.find(x=>x.id===$('lg-user').value); if(!u||$('lg-pin').value!==u.pin){ $('lg-msg').textContent='That PIN is not right.'; return; }
+    me=u; localStorage.setItem('hosfb_me',JSON.stringify({id:u.id,until:Date.now()+12*3600*1000})); this.open(); },
+  logout(){ localStorage.removeItem('hosfb_me'); location.reload(); },
+  async open(){ $('login').hidden=true; $('app').hidden=false; $('who').textContent=me.name; await Data.load(); render(); }
+};
+
+const Data={
+  async load(){
+    try{ const l=JSON.parse(localStorage.getItem('hosfb_data')||'null'); if(l) Object.assign(S,l); }catch(e){}
+    if(db){ try{
+      const snap=await db.collection('hosfb').get(); cloud=true;
+      const got={}; snap.forEach(d=>got[d.id]=d.data());
+      if(got.settings&&got.settings.seeded){ DOCS.forEach(k=>S[k]=(got[k]&&got[k].items)||{}); S.settings=Object.assign(S.settings,got.settings); }
+      else { this.seed(); await Promise.all(DOCS.map(k=>db.collection('hosfb').doc(k).set({items:S[k]}))); await db.collection('hosfb').doc('settings').set(S.settings); }
+      db.collection('hosfb').onSnapshot(q=>{ q.docChanges().forEach(c=>{ const d=c.doc.data(); if(c.doc.id==='settings') Object.assign(S.settings,d); else if(DOCS.includes(c.doc.id)) S[c.doc.id]=d.items||{}; }); Data.cache(); if(!$('modal').classList.contains('on')) render(); });
+    }catch(e){ console.warn('HosF&B cloud',e&&e.code); cloud=false; } }
+    if(!S.settings.seeded) this.seed();
+    this.cache();
+  },
+  seed(){ S.dishes=JSON.parse(JSON.stringify(HOSFB_SEED.dishes)); S.menus=JSON.parse(JSON.stringify(HOSFB_SEED.menus)); S.settings.seeded=true; },
+  cache(){ try{ localStorage.setItem('hosfb_data',JSON.stringify(S)); }catch(e){} },
+  async put(kind,obj){ obj.updatedBy=me.id; obj.updatedAt=new Date().toISOString(); S[kind][obj.id]=obj; this.cache();
+    if(cloud){ try{ const ref=db.collection('hosfb').doc(kind);
+      try{ await ref.update(new firebase.firestore.FieldPath('items',obj.id),obj); }catch(e){ if(e.code==='not-found') await ref.set({items:{[obj.id]:obj}},{merge:true}); else throw e; } }catch(e){ alert('Saved on this device, but not to the cloud ('+(e.code||e.message)+').'); } } },
+  async del(kind,id){ delete S[kind][id]; this.cache();
+    if(cloud){ try{ await db.collection('hosfb').doc(kind).update(new firebase.firestore.FieldPath('items',id),firebase.firestore.FieldValue.delete()); }catch(e){ alert('Could not delete in the cloud ('+(e.code||e.message)+').'); } } },
+  async settings(p){ Object.assign(S.settings,p); this.cache(); if(cloud){ try{ await db.collection('hosfb').doc('settings').set(S.settings,{merge:true}); }catch(e){} } }
+};
+
+/* ---------- rendering ---------- */
+const TABS=[['overview','Overview'],['menus','Menus and P&L'],['dishes','Dishes'],['ingredients','Ingredients'],['purchases','Invoices and prices'],['tools','All tools']];
+const VIEWS={};
+function addTab(id,label,fn){ TABS.splice(TABS.length-1,0,[id,label]); VIEWS[id]=fn; }
+function go(t){ tab=t; render(); window.scrollTo(0,0); }
+function render(){
+  $('nav').innerHTML=TABS.map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="go('${k}')">${l}</button>`).join('');
+  const banner=cloud?'':'<div class="banner">Not connected to the HosPRO database yet, so changes are saved on this device only. Publish the new database rule (see the upload notes) and reload.</div>';
+  $('main').innerHTML=banner+(VIEWS[tab]||vOverview)();
+}
+const dishes=()=>Object.values(S.dishes).sort((a,b)=>a.name.localeCompare(b.name));
+const ings=()=>Object.values(S.ingredients).sort((a,b)=>a.name.localeCompare(b.name));
+const menus=()=>Object.values(S.menus);
+const gpClass=g=>g==null?'':g>=S.settings.targetGP?'good':g>=S.settings.targetGP-5?'warn':'bad';
+const allergenPills=d=>C.dishAllergens(d,S).map(a=>`<span class="pill" title="${esc(C.ALLERGENS[a])}">${a}</span>`).join('')+(d.diet||[]).map(a=>`<span class="pill good">${a}</span>`).join('');
+
+Object.assign(VIEWS,{overview:()=>vOverview(),menus:()=>vMenus(),dishes:()=>vDishes(),ingredients:()=>vIngredients(),purchases:()=>vPurchases(),tools:()=>vTools()});
+function vOverview(){
+  const ds=dishes(), costed=ds.filter(d=>C.dishCost(d,S,'est')!=null).length;
+  let rows=[], below=0, gpSum=0, gpN=0;
+  menus().forEach(m=>{ const r=C.menuPL(m,S); r.lines.forEach(l=>{ if(l.estGP!=null){ gpSum+=l.estGP; gpN++; if(l.estGP<S.settings.targetGP){ below++; rows.push([m.name,l]); } } }); });
+  const over=ings().filter(i=>C.ingVar(i)!=null&&C.ingVar(i)>S.settings.flagPct);
+  rows.sort((a,b)=>a[1].estGP-b[1].estGP);
+  return `<div class="tiles">
+    <div class="tile"><div class="l">Dishes costed</div><div class="v">${costed} of ${ds.length}</div><div class="d">Add the chef's cost on the Dishes tab</div></div>
+    <div class="tile"><div class="l">Average estimated GP</div><div class="v ${gpClass(gpN?gpSum/gpN:null)}">${pct(gpN?gpSum/gpN:null)}</div><div class="d">Target ${S.settings.targetGP}%</div></div>
+    <div class="tile"><div class="l">Menu lines below target</div><div class="v ${below?'bad':''}">${below}</div><div class="d">Across ${menus().length} menus</div></div>
+    <div class="tile"><div class="l">Ingredients over estimate</div><div class="v ${over.length?'bad':''}">${over.length}</div><div class="d">More than ${S.settings.flagPct}% above the chef's price</div></div></div>
+  <div class="card"><h2>Menus</h2><p class="sub">Profit is after VAT at ${S.settings.vat}% and before staff and overheads. Weekly figures use the forecast numbers sold until till sales are imported.</p>
+  <div class="scroll"><table><tr><th>Menu</th><th class="n">Dishes</th><th class="n">Costed</th><th class="n">Est. GP</th><th class="n">Actual GP</th><th class="n">Est. profit a week</th></tr>
+  ${menus().map(m=>{ const r=C.menuPL(m,S); return `<tr class="click" onclick="curMenu='${m.id}';go('menus')"><td>${esc(m.name)}<br><span class="muted small">${m.mode==='set'?'Set price':'Priced per dish'}</span></td><td class="n">${r.lines.length}</td><td class="n">${r.lines.filter(l=>l.estCost!=null).length}</td><td class="n ${gpClass(r.estGP)}">${pct(r.estGP)}</td><td class="n ${gpClass(r.actGP)}">${pct(r.actGP)}</td><td class="n">${r.weekProfit?gbp(r.weekProfit):'–'}</td></tr>`; }).join('')}</table></div></div>
+  <div class="card"><h2>Below target</h2><p class="sub">Menu lines under ${S.settings.targetGP}% gross profit on the chef's estimate, lowest first.</p>
+  ${rows.length?`<div class="scroll"><table><tr><th>Dish</th><th>Menu</th><th class="n">Price</th><th class="n">Cost</th><th class="n">GP</th></tr>${rows.slice(0,15).map(([mn,l])=>`<tr class="click" onclick="editDish('${l.dish.id}')"><td>${esc(l.dish.name)}</td><td>${esc(mn)}</td><td class="n">${gbp(l.price)}</td><td class="n">${gbp(l.estCost)}</td><td class="n bad">${pct(l.estGP)}</td></tr>`).join('')}</table></div>`:'<p class="muted">Nothing below target yet. Dishes appear here once they have a cost.</p>'}</div>`;
+}
+
+function vMenus(){
+  const ms=menus(); if(!curMenu||!S.menus[curMenu]) curMenu=ms[0]&&ms[0].id;
+  const m=S.menus[curMenu];
+  let h=`<div class="row"><div class="chips grow">${ms.map(x=>`<button class="chip ${x.id===curMenu?'on':''}" onclick="curMenu='${x.id}';render()">${esc(x.name)}</button>`).join('')}</div><button class="btn ghost" onclick="editMenu()">New menu</button></div>`;
+  if(!m) return h+'<div class="card"><p class="muted">No menus yet.</p></div>';
+  const r=C.menuPL(m,S), set=m.mode==='set';
+  h+=`<div class="card"><div class="row"><div class="grow"><h2>${esc(m.name)}</h2><p class="sub" style="margin:0">${set?'Set-price menu. Each dish is given a share of the menu price by course so it can be compared.':'Each dish has its own price.'}</p></div>
+    <button class="btn ghost sm" onclick="editMenu('${m.id}')">Edit menu</button><button class="btn ghost sm" onclick="addToMenu('${m.id}')">Add a dish</button><button class="btn ghost sm" onclick="window.print()">Print</button></div>`;
+  if(set){ h+=`<div class="tiles">${r.options.map(o=>`<div class="tile"><div class="l">${esc(o.label)} – ${gbp(o.price)}</div><div class="v ${gpClass(o.estGP)}">${pct(o.estGP)}</div><div class="d">${o.estProfit==null?'Cost at least one dish in each course to see this':`Profit a cover ${gbp(o.estProfit)} est.${o.actProfit!=null?' · '+gbp(o.actProfit)+' actual':''}<br>Range ${gbp(o.worst)} to ${gbp(o.best)}`}</div></div>`).join('')}
+      <div class="tile"><div class="l">Forecast covers a week</div><div class="v"><input style="font-size:20px;padding:4px 8px;max-width:110px" type="number" min="0" value="${m.covers||''}" onchange="setCovers('${m.id}',this.value)"></div><div class="d">Est. profit a week ${r.weekProfit?gbp(r.weekProfit):'–'}</div></div></div>`; }
+  else h+=`<div class="tiles"><div class="tile"><div class="l">Estimated GP</div><div class="v ${gpClass(r.estGP)}">${pct(r.estGP)}</div><div class="d">Chef's costs</div></div><div class="tile"><div class="l">Actual GP</div><div class="v ${gpClass(r.actGP)}">${pct(r.actGP)}</div><div class="d">Prices paid</div></div><div class="tile"><div class="l">Sales a week (net)</div><div class="v">${r.weekSales?gbp(r.weekSales):'–'}</div><div class="d">From forecast sold</div></div><div class="tile"><div class="l">Profit a week</div><div class="v">${r.weekProfit?gbp(r.weekProfit):'–'}</div><div class="d">Before staff costs</div></div></div>`;
+  h+=`<div class="scroll"><table><tr><th>Dish</th><th class="n">${set?'Price share':'Price'}</th><th class="n">Net of VAT</th><th class="n">Est. cost</th><th class="n">Est. profit</th><th class="n">Est. GP</th><th class="n">Actual cost</th><th class="n">Actual GP</th>${set?'':'<th class="n">Sold a week</th><th class="n">Profit a week</th>'}<th></th></tr>`;
+  let sec=null;
+  r.lines.forEach((l,i)=>{ if(l.course!==sec){ sec=l.course; h+=`<tr class="sec"><td colspan="${set?9:11}">${esc(sec)}</td></tr>`; }
+    h+=`<tr><td class="click" onclick="editDish('${l.dish.id}')" style="cursor:pointer"><strong>${esc(l.dish.name)}</strong><br><span class="muted small">${allergenPills(l.dish)}</span></td>
+      <td class="n">${set?gbp(l.price):`<input style="max-width:90px;text-align:right;padding:5px 7px" type="number" step="0.05" value="${l.price==null?'':l.price}" onchange="setItem('${m.id}',${l.idx},'price',this.value)">`}</td>
+      <td class="n">${gbp(l.net)}</td><td class="n">${gbp(l.estCost)}</td><td class="n">${gbp(l.estProfit)}</td><td class="n ${gpClass(l.estGP)}">${pct(l.estGP)}</td>
+      <td class="n">${gbp(l.actCost)}${l.actCost!=null&&l.estCost!=null&&l.actCost>l.estCost*(1+S.settings.flagPct/100)?' <span class="pill bad">over</span>':''}</td><td class="n ${gpClass(l.actGP)}">${pct(l.actGP)}</td>
+      ${set?'':`<td class="n"><input style="max-width:74px;text-align:right;padding:5px 7px" type="number" min="0" value="${l.sold||''}" onchange="setItem('${m.id}',${l.idx},'sold',this.value)"></td><td class="n">${l.weekProfit?gbp(l.weekProfit):'–'}</td>`}
+      <td><button class="btn ghost sm" title="Take off this menu" onclick="dropItem('${m.id}',${l.idx})">✕</button></td></tr>`; });
+  h+=`</table></div><p class="muted small" style="margin-top:10px">${set?`Course shares: starter ${C.SPLIT.starter}%, main ${C.SPLIT.main}%, dessert ${C.SPLIT.dessert}% of the full menu price. `:''}“–” means the dish has no cost yet. Tap a dish name to cost it.</p></div>`;
+  return h;
+}
+
+function vDishes(){
+  const f=dishFilter.toLowerCase(); const ds=dishes().filter(d=>!f||d.name.toLowerCase().includes(f)||String(d.course).toLowerCase().includes(f));
+  return `<div class="row"><input class="grow" type="search" placeholder="Search dishes" value="${esc(dishFilter)}" oninput="dishFilter=this.value;$('dl').innerHTML=dishRows()"><button class="btn" onclick="editDish()">New dish</button></div>
+  <div class="card"><p class="sub">Tap a dish to add the chef's cost a portion, or build its recipe from ingredients. Recipe costs update themselves when ingredient prices change.</p><div class="scroll"><table><tr><th>Dish</th><th>Course</th><th>Costed by</th><th class="n">Est. cost</th><th class="n">Actual cost</th><th>On menus</th></tr><tbody id="dl">${dishRows(ds)}</tbody></table></div></div>`;
+}
+function dishRows(ds){ const f=dishFilter.toLowerCase(); ds=ds||dishes().filter(d=>!f||d.name.toLowerCase().includes(f)||String(d.course).toLowerCase().includes(f));
+  return ds.map(d=>{ const e=C.dishCost(d,S,'est'), a=C.dishCost(d,S,'act'); const on=menus().filter(m=>m.items.some(i=>i.dishId===d.id)).map(m=>m.name).join(', ');
+    return `<tr class="click" onclick="editDish('${d.id}')"><td><strong>${esc(d.name)}</strong><br><span class="muted small">${allergenPills(d)}</span></td><td>${esc(d.course||'')}</td><td>${(d.recipe||[]).length?'Recipe ('+d.recipe.length+')':e!=null?'Chef estimate':'<span class="pill warn">Not costed</span>'}</td><td class="n">${gbp(e)}</td><td class="n">${gbp(a)}</td><td class="small muted">${esc(on)}</td></tr>`; }).join('')||'<tr><td colspan="6" class="muted">No dishes found.</td></tr>'; }
+
+function vIngredients(){
+  return `<div class="row"><input class="grow" type="search" placeholder="Search ingredients" value="${esc(ingFilter)}" oninput="ingFilter=this.value;$('il').innerHTML=ingRows()"><button class="btn" onclick="editIng()">New ingredient</button></div>
+  <div class="card"><p class="sub">One line per ingredient, with the chef's estimated price. The actual price fills in from the Prices paid tab.</p><div class="scroll"><table><tr><th>Ingredient</th><th>Supplier</th><th class="n">Chef's price</th><th class="n">Last paid</th><th class="n">Difference</th><th class="n">Usable</th><th>Allergens</th></tr><tbody id="il">${ingRows()}</tbody></table></div></div>`;
+}
+function ingRows(){ const f=ingFilter.toLowerCase(); const l=ings().filter(i=>!f||i.name.toLowerCase().includes(f)||String(i.supplier||'').toLowerCase().includes(f));
+  return l.map(i=>{ const v=C.ingVar(i); return `<tr class="click" onclick="editIng('${i.id}')"><td><strong>${esc(i.name)}</strong><br><span class="muted small">${esc(i.cat||'')}</span></td><td>${esc(i.supplier||'')}</td><td class="n">${gbp(i.estPrice)} / ${esc(i.unit)}</td><td class="n">${i.actPrice!=null?gbp(i.actPrice)+' / '+esc(i.unit)+'<br><span class="muted small">'+esc(i.actDate||'')+'</span>':'–'}</td><td class="n ${v==null?'':v>S.settings.flagPct?'bad':v<0?'good':''}">${v==null?'–':(v>0?'+':'')+pct(v)}</td><td class="n">${i.yield||100}%</td><td>${(i.allergens||[]).map(a=>`<span class="pill">${a}</span>`).join('')}</td></tr>`; }).join('')||'<tr><td colspan="7" class="muted">No ingredients yet. Add the main ones first: meat, fish, dairy, vegetables.</td></tr>'; }
+
+function vPurchases(){
+  const ps=Object.values(S.purchases).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const over=ings().filter(i=>C.ingVar(i)!=null&&C.ingVar(i)>S.settings.flagPct).sort((a,b)=>C.ingVar(b)-C.ingVar(a));
+  return `<div class="row"><div class="grow"></div><button class="btn" onclick="editPurchase()">Record a price paid</button></div>
+  <div class="card"><h2>Over the chef's estimate</h2><p class="sub">Ingredients where the last price paid is more than ${S.settings.flagPct}% above the estimate, and the dishes they affect.</p>
+  ${over.length?`<div class="scroll"><table><tr><th>Ingredient</th><th class="n">Estimate</th><th class="n">Paid</th><th class="n">Over by</th><th>Dishes affected</th></tr>${over.map(i=>`<tr><td>${esc(i.name)}</td><td class="n">${gbp(i.estPrice)}</td><td class="n">${gbp(i.actPrice)}</td><td class="n bad">+${pct(C.ingVar(i))}</td><td class="small">${dishes().filter(d=>(d.recipe||[]).some(l=>l.ingId===i.id)).map(d=>esc(d.name)).join(', ')||'<span class="muted">None yet</span>'}</td></tr>`).join('')}</table></div>`:'<p class="muted">Nothing over estimate.</p>'}</div>
+  <div class="card"><h2>Prices paid</h2><p class="sub">Enter lines from supplier invoices here for now. The next step is photographing the invoice and having it read automatically.</p>
+  <div class="scroll"><table><tr><th>Date</th><th>Supplier</th><th>Invoice</th><th>Ingredient</th><th class="n">Quantity</th><th class="n">Line total</th><th class="n">Price a unit</th><th></th></tr>
+  ${ps.map(p=>{ const i=S.ingredients[p.ingId]; return `<tr><td>${esc(p.date)}</td><td>${esc(p.supplier||'')}</td><td>${esc(p.invoice||'')}</td><td>${esc(i?i.name:'(deleted)')}</td><td class="n">${p.qty} ${esc(i?i.unit:'')}</td><td class="n">${gbp(p.total)}</td><td class="n">${gbp(p.unitPrice)}</td><td><button class="btn ghost sm" onclick="delPurchase('${p.id}')">✕</button></td></tr>`; }).join('')||'<tr><td colspan="8" class="muted">No prices recorded yet.</td></tr>'}</table></div></div>`;
+}
+
+function vTools(){
+  const t=(n,d,s,a)=>`<div class="tool"><div class="grow"><strong>${n}</strong> <span class="pill ${/^Live/.test(s)?'good':'warn'}">${s}</span><br><span class="muted small">${d}</span></div>${a||''}</div>`;
+  return `<div class="card"><h2>HosF&amp;B tools</h2><p class="sub">Everything for food and beverage in one place. Tools are added here as they are built.</p>
+  ${t('Kitchen costing and menu P&amp;L','Dishes, ingredients, menus, estimated against actual profit.','Live')}
+  ${t('Invoices and prices paid','Enter an invoice line by line, or photograph it and have it read. Checks every price against the chef\'s estimate.',S.settings.fnBase?'Live':'Typing live · photo reader needs set-up','<button class="btn ghost sm" onclick="go(\'purchases\')">Open</button>')}
+  ${t('Event costing','Cost an event from existing dishes or custom items, with staff and other costs.','Live','<button class="btn ghost sm" onclick="go(\'events\')">Open</button>')}
+  ${t('Bar stock, stock take and supplier orders','114 products loaded from the stock take of 7 November 2026, counted in gallons and bottles.','Live','<button class="btn ghost sm" onclick="go(\'bar\')">Open</button>')}
+  ${t('Table bookings and pre-orders','Guests book online and can pre-order; the chef sees what is coming. Phone bookings are added by the team.','Live','<button class="btn ghost sm" onclick="go(\'bookings\')">Open</button> <a class="btn ghost sm" href="book.html" target="_blank">Guest booking page</a>')}
+  ${t('Order pad','Take orders at the table on a tablet or phone, with allergies, occasions and requests. Seats bookings and brings in their pre-order.','Live','<a class="btn ghost sm" href="order.html">Open order pad</a>')}
+  ${t('Kitchen screen','Orders pop up with a sound; the chef taps Complete. Shows allergies, occasions and the day\'s pre-orders, and can print a ticket.','Live','<a class="btn ghost sm" href="order.html?view=kitchen">Open kitchen screen</a>')}
+  ${t('Daily P&amp;L','Sales by dish from the order pad or a till export, food cost and rota labour cost.','Live','<button class="btn ghost sm" onclick="go(\'pl\')">Open</button>')}
+  ${t('Xero link','Post daily sales and pull supplier bills. Code is ready; it needs your Xero app keys.',S.settings.fnBase?'Connected to functions':'Needs set-up')}
+  ${t('Automatic kitchen printers','Tickets can be printed from the kitchen screen now. Printing by themselves needs a cloud printer (Star or Epson) to be chosen.','Planned')}
+  ${t('HosChef scanner','Photograph a product label to pull in ingredients and allergens for the chef to confirm.','Planned')}</div>
+  <div class="card"><h2>Settings</h2><div class="fg"><label>VAT on menu prices (%)<input type="number" value="${S.settings.vat}" onchange="Data.settings({vat:num(this.value)||0}).then(render)"></label>
+  <label>Target gross profit (%)<input type="number" value="${S.settings.targetGP}" onchange="Data.settings({targetGP:num(this.value)||0}).then(render)"></label>
+  <label>Flag prices paid over estimate by (%)<input type="number" value="${S.settings.flagPct}" onchange="Data.settings({flagPct:num(this.value)||0}).then(render)"></label>
+  <label class="full">Cloud functions address (for the invoice photo reader and Xero – see the set-up notes)<input placeholder="https://europe-west1-brandonhall-7bdef.cloudfunctions.net" value="${esc(S.settings.fnBase||'')}" onchange="Data.settings({fnBase:this.value.trim().replace(/\/$/,'')}).then(render)"></label></div></div>`;
+}
+
+/* ---------- editing ---------- */
+function openSheet(h){ $('sheet').innerHTML=h; $('modal').classList.add('on'); }
+function closeSheet(){ $('modal').classList.remove('on'); render(); }
+const algBoxes=(sel,name)=>`<div class="alg">${Object.keys(C.ALLERGENS).map(a=>`<label><input type="checkbox" name="${name}" value="${a}" ${(sel||[]).includes(a)?'checked':''}>${C.ALLERGENS[a]}</label>`).join('')}</div>`;
+const checked=name=>[...document.querySelectorAll(`input[name="${name}"]:checked`)].map(x=>x.value);
+let draft=null;
+
+function editDish(id){
+  const d=id?JSON.parse(JSON.stringify(S.dishes[id])):{id:uid('d'),name:'',desc:'',course:'Mains',allergens:[],mayContain:[],diet:[],estCost:null,actCost:null,recipe:[],portions:1,_new:true};
+  draft=d; d.recipe=d.recipe||[];
+  openSheet(`<h2>${d._new?'New dish':esc(d.name)}</h2><div class="fg">
+   <label class="full">Dish name<input id="d-name" value="${esc(d.name)}"></label>
+   <label class="full">Description<input id="d-desc" value="${esc(d.desc||'')}"></label>
+   <label>Course<input id="d-course" list="courses" value="${esc(d.course||'')}"><datalist id="courses">${[...new Set(dishes().map(x=>x.course))].map(c=>`<option>${esc(c)}`).join('')}</datalist></label>
+   <label>Portions the recipe makes<input id="d-portions" type="number" min="1" value="${d.portions||1}" oninput="draft.portions=num(this.value)||1;recipeTotals()"></label>
+   <label>Chef's estimated cost a portion (£)<input id="d-est" type="number" step="0.01" value="${d.estCost==null?'':d.estCost}"></label>
+   <label>Actual cost a portion (£), if known<input id="d-act" type="number" step="0.01" value="${d.actCost==null?'':d.actCost}"></label></div>
+   <h3>Recipe (optional)</h3><p class="muted small" style="margin:0 0 8px">When a recipe is entered it replaces the estimate above and follows ingredient prices.</p><div id="recipe"></div>
+   <h3>Allergens</h3><p class="muted small" style="margin:0 0 8px">Tick what the dish contains. Allergens from recipe ingredients are added automatically. The chef must confirm these before they are used with guests.</p>${algBoxes(d.allergens,'d-alg')}
+   <div class="foot"><div>${d._new?'':`<button class="btn danger" onclick="delDish('${d.id}')">Delete dish</button>`}</div><div><button class="btn ghost" onclick="closeSheet()">Cancel</button> <button class="btn" onclick="saveDish()">Save</button></div></div>`);
+  recipeUI();
+}
+function recipeUI(){ const d=draft; const il=ings();
+  const rows=d.recipe.map((l,i)=>{ const ing=S.ingredients[l.ingId];
+    return `<tr><td><select onchange="draft.recipe[${i}].ingId=this.value;draft.recipe[${i}].unit=C.unitsFor((S.ingredients[this.value]||{}).unit)[0];recipeUI()">${il.map(x=>`<option value="${x.id}" ${x.id===l.ingId?'selected':''}>${esc(x.name)}</option>`).join('')}</select></td>
+    <td><input type="number" step="any" inputmode="decimal" style="max-width:100px" value="${l.qty==null?'':l.qty}" oninput="draft.recipe[${i}].qty=num(this.value);recipeTotals()"></td>
+    <td><select style="max-width:100px" onchange="draft.recipe[${i}].unit=this.value;recipeTotals()">${C.unitsFor(ing?ing.unit:'each').map(u=>`<option ${u===l.unit?'selected':''}>${u}</option>`).join('')}</select></td>
+    <td class="n" id="rc-${i}"></td><td><button class="btn ghost sm" onclick="draft.recipe.splice(${i},1);recipeUI()">✕</button></td></tr>`; }).join('');
+  $('recipe').innerHTML=(d.recipe.length?`<div class="scroll"><table><tr><th>Ingredient</th><th>Quantity</th><th>Unit</th><th class="n">Cost</th><th></th></tr>${rows}<tr class="tot"><td colspan="3" id="rc-tot"></td><td class="n" id="rc-por"></td><td></td></tr></table></div>`:'')
+   +(il.length?`<button class="btn ghost sm" style="margin-top:8px" onclick="draft.recipe.push({ingId:'${il[0].id}',qty:null,unit:'${C.unitsFor(il[0].unit)[0]}'});recipeUI()">Add an ingredient line</button>`:'<p class="muted small">Add ingredients on the Ingredients tab to build recipes.</p>');
+  recipeTotals(); }
+function recipeTotals(){ const d=draft; if(!d.recipe.length) return; let tot=0, ok=true;
+  d.recipe.forEach((l,i)=>{ const c=C.lineCost(l,S.ingredients[l.ingId],'est'); if(c==null) ok=false; else tot+=c; $('rc-'+i).textContent=gbp(c); });
+  const por=num($('d-portions').value)||1; $('rc-tot').textContent='Recipe total '+gbp(ok?tot:null)+' · cost a portion'; $('rc-por').textContent=gbp(ok?tot/por:null); }
+async function saveDish(){ const d=draft; d.name=$('d-name').value.trim(); if(!d.name){ alert('Add the dish name.'); return; }
+  d.desc=$('d-desc').value.trim(); d.course=$('d-course').value.trim()||'Other'; d.portions=num($('d-portions').value)||1; d.estCost=num($('d-est').value); d.actCost=num($('d-act').value);
+  d.allergens=checked('d-alg'); d.recipe=d.recipe.filter(l=>l.ingId&&l.qty>0); delete d._new; await Data.put('dishes',d); closeSheet(); }
+async function delDish(id){ if(!confirm('Delete this dish? It will also come off every menu.')) return;
+  for(const m of menus()){ if(m.items.some(i=>i.dishId===id)){ m.items=m.items.filter(i=>i.dishId!==id); await Data.put('menus',m); } } await Data.del('dishes',id); closeSheet(); }
+
+function editIng(id){
+  const i=id?Object.assign({},S.ingredients[id]):{id:uid('i'),name:'',cat:'',supplier:'',unit:'kg',estPrice:null,actPrice:null,yield:100,allergens:[],_new:true}; draft=i;
+  openSheet(`<h2>${i._new?'New ingredient':esc(i.name)}</h2><div class="fg">
+   <label class="full">Ingredient<input id="i-name" value="${esc(i.name)}" placeholder="For example: Chicken breast, skinless"></label>
+   <label>Type<input id="i-cat" list="cats" value="${esc(i.cat||'')}"><datalist id="cats">${['Meat','Fish','Dairy','Vegetables','Fruit','Dry goods','Bakery','Frozen','Sauces and oils','Other'].map(c=>`<option>${c}`).join('')}</datalist></label>
+   <label>Usual supplier<input id="i-sup" list="sups" value="${esc(i.supplier||'')}"><datalist id="sups">${[...new Set(ings().map(x=>x.supplier).filter(Boolean))].map(c=>`<option>${esc(c)}`).join('')}</datalist></label>
+   <label>Priced per<select id="i-unit">${['kg','litre','each'].map(u=>`<option ${u===i.unit?'selected':''}>${u}</option>`).join('')}</select></label>
+   <label>Chef's estimated price (£ per unit, before VAT)<input id="i-est" type="number" step="0.01" value="${i.estPrice==null?'':i.estPrice}"></label>
+   <label>Usable after trimming (%)<input id="i-yield" type="number" min="1" max="100" value="${i.yield||100}"></label>
+   <label>Last price paid (£ per unit)<input id="i-act" type="number" step="0.01" value="${i.actPrice==null?'':i.actPrice}"></label></div>
+   <h3>Allergens</h3>${algBoxes(i.allergens,'i-alg')}
+   <div class="foot"><div>${i._new?'':`<button class="btn danger" onclick="delIng('${i.id}')">Delete</button>`}</div><div><button class="btn ghost" onclick="closeSheet()">Cancel</button> <button class="btn" onclick="saveIng()">Save</button></div></div>`);
+}
+async function saveIng(){ const i=draft; i.name=$('i-name').value.trim(); if(!i.name){ alert('Add the ingredient name.'); return; }
+  i.cat=$('i-cat').value.trim(); i.supplier=$('i-sup').value.trim(); i.unit=$('i-unit').value; i.estPrice=num($('i-est').value); i.yield=Math.min(100,Math.max(1,num($('i-yield').value)||100));
+  const a=num($('i-act').value); if(a!==i.actPrice){ i.actPrice=a; i.actDate=a==null?null:today(); } i.allergens=checked('i-alg'); delete i._new; await Data.put('ingredients',i); closeSheet(); }
+async function delIng(id){ const used=dishes().filter(d=>(d.recipe||[]).some(l=>l.ingId===id)); if(used.length){ alert('This ingredient is used in: '+used.map(d=>d.name).join(', ')+'. Take it out of those recipes first.'); return; }
+  if(confirm('Delete this ingredient?')){ await Data.del('ingredients',id); closeSheet(); } }
+
+function editPurchase(){ const il=ings(); if(!il.length){ alert('Add ingredients first.'); go('ingredients'); return; }
+  openSheet(`<h2>Record a price paid</h2><div class="fg">
+   <label>Invoice date<input id="p-date" type="date" value="${today()}"></label><label>Supplier<input id="p-sup"></label>
+   <label>Invoice number<input id="p-inv"></label><label>Ingredient<select id="p-ing" onchange="$('p-u').textContent=S.ingredients[this.value].unit;$('p-sup').value=$('p-sup').value||S.ingredients[this.value].supplier||''">${il.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></label>
+   <label>Quantity bought (in <span id="p-u">${esc(il[0].unit)}</span>)<input id="p-qty" type="number" step="any"></label><label>Line total (£, before VAT)<input id="p-tot" type="number" step="0.01"></label></div>
+   <p class="muted small">Example: a 5 kg case of chicken at £32.50 is quantity 5 and line total 32.50, giving £6.50 a kg.</p>
+   <div class="foot"><div></div><div><button class="btn ghost" onclick="closeSheet()">Cancel</button> <button class="btn" onclick="savePurchase()">Save</button></div></div>`); }
+async function savePurchase(){ const qty=num($('p-qty').value), tot=num($('p-tot').value), ing=S.ingredients[$('p-ing').value];
+  if(!(qty>0)||!(tot>0)){ alert('Enter the quantity and the line total.'); return; }
+  const p={id:uid('p'),date:$('p-date').value||today(),supplier:$('p-sup').value.trim(),invoice:$('p-inv').value.trim(),ingId:ing.id,qty,total:tot,unitPrice:Math.round(tot/qty*10000)/10000};
+  await Data.put('purchases',p); await applyLatest(ing.id); closeSheet(); }
+async function applyLatest(ingId){ const ing=Object.assign({},S.ingredients[ingId]); const ps=Object.values(S.purchases).filter(p=>p.ingId===ingId).sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  ing.actPrice=ps.length?ps[0].unitPrice:null; ing.actDate=ps.length?ps[0].date:null; await Data.put('ingredients',ing); }
+async function delPurchase(id){ if(!confirm('Remove this line?')) return; const ingId=S.purchases[id].ingId; await Data.del('purchases',id); if(S.ingredients[ingId]) await applyLatest(ingId); render(); }
+
+function editMenu(id){ const m=id?JSON.parse(JSON.stringify(S.menus[id])):{id:uid('m'),name:'',mode:'alacarte',setPrices:[],items:[],_new:true}; draft=m;
+  const secs=[...new Set(m.items.map(i=>i.course))];
+  openSheet(`<h2>${m._new?'New menu':esc(m.name)}</h2><div class="fg"><label>Menu name<input id="m-name" value="${esc(m.name)}"></label>
+   <label>Pricing<select id="m-mode" onchange="draft.mode=this.value;$('m-set').hidden=this.value!=='set'"><option value="alacarte" ${m.mode!=='set'?'selected':''}>Each dish has a price</option><option value="set" ${m.mode==='set'?'selected':''}>Set price a person</option></select></label></div>
+   <div id="m-set" ${m.mode==='set'?'':'hidden'}><h3>Set prices</h3><div id="m-opts"></div><button class="btn ghost sm" onclick="draft.setPrices.push({label:'',price:null});optsUI()">Add a price</button></div>
+   <div class="foot"><div>${m._new?'':`<button class="btn danger" onclick="delMenu('${m.id}')">Delete menu</button>`}</div><div><button class="btn ghost" onclick="closeSheet()">Cancel</button> <button class="btn" onclick="saveMenu()">Save</button></div></div>`);
+  window._secs=secs; optsUI(); }
+function optsUI(){ const m=draft; $('m-opts').innerHTML=m.setPrices.map((o,i)=>{ const inc=C.optionCourses(o,window._secs);
+  return `<div class="card" style="padding:10px"><div class="fg"><label>Name<input value="${esc(o.label)}" onchange="draft.setPrices[${i}].label=this.value;optsUI()"></label><label>Price a person (£)<input type="number" step="0.05" value="${o.price==null?'':o.price}" onchange="draft.setPrices[${i}].price=num(this.value)"></label></div>
+   <p class="muted small" style="margin:8px 0 4px">Courses included</p><div class="alg">${window._secs.map(s=>`<label><input type="checkbox" ${inc.includes(s)?'checked':''} onchange="toggleCourse(${i},${window._secs.indexOf(s)},this.checked)">${esc(s)}</label>`).join('')||'<span class="muted small">Add dishes to the menu first.</span>'}</div>
+   <button class="btn ghost sm" style="margin-top:8px" onclick="draft.setPrices.splice(${i},1);optsUI()">Remove</button></div>`; }).join(''); }
+function toggleCourse(i,si,on){ const s=window._secs[si], o=draft.setPrices[i]; const cur=C.optionCourses(o,window._secs).slice(); o.courses=on?[...new Set([...cur,s])]:cur.filter(x=>x!==s); }
+async function saveMenu(){ const m=draft; m.name=$('m-name').value.trim(); if(!m.name){ alert('Add the menu name.'); return; } m.mode=$('m-mode').value; m.setPrices=m.setPrices.filter(o=>o.label&&o.price>0); delete m._new; await Data.put('menus',m); curMenu=m.id; closeSheet(); }
+async function delMenu(id){ if(confirm('Delete this menu? The dishes stay in the dish list.')){ await Data.del('menus',id); curMenu=null; closeSheet(); } }
+function addToMenu(id){ const m=S.menus[id]; const have=new Set(m.items.map(i=>i.dishId)); const ds=dishes().filter(d=>!have.has(d.id));
+  openSheet(`<h2>Add a dish to ${esc(m.name)}</h2><div class="fg"><label class="full">Dish<select id="a-dish" onchange="$('a-course').value=S.dishes[this.value].course||''">${ds.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select></label>
+   <label>Menu section<input id="a-course" value="${esc(ds[0]?ds[0].course:'')}"></label>${m.mode==='set'?'':'<label>Menu price (£, including VAT)<input id="a-price" type="number" step="0.05"></label>'}</div>
+   <div class="foot"><button class="btn ghost" onclick="closeSheet();editDish()">Create a new dish</button><div><button class="btn ghost" onclick="closeSheet()">Cancel</button> <button class="btn" ${ds.length?'':'disabled'} onclick="doAdd('${id}')">Add</button></div></div>`); }
+async function doAdd(id){ const m=JSON.parse(JSON.stringify(S.menus[id])); m.items.push({dishId:$('a-dish').value,course:$('a-course').value.trim()||'Other',price:$('a-price')?num($('a-price').value):null,sold:0}); await Data.put('menus',m); closeSheet(); }
+async function setItem(id,idx,k,v){ const m=JSON.parse(JSON.stringify(S.menus[id])); m.items[idx][k]=num(v); await Data.put('menus',m); render(); }
+async function dropItem(id,idx){ if(!confirm('Take this dish off the menu?')) return; const m=JSON.parse(JSON.stringify(S.menus[id])); m.items.splice(idx,1); await Data.put('menus',m); render(); }
+async function setCovers(id,v){ const m=JSON.parse(JSON.stringify(S.menus[id])); m.covers=num(v)||0; await Data.put('menus',m); render(); }
+
+/* small helpers shared with the add-on modules */
+const sub=(doc,col)=>db.collection('hosfb').doc(doc).collection(col);
+const fmtDate=d=>{ const x=new Date(d+'T12:00:00'); return isNaN(x)?d:x.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); };
+const addDays=(d,n)=>{ const x=new Date(d+'T12:00:00'); x.setDate(x.getDate()+n); return x.toISOString().slice(0,10); };
+function loadScript(src){ return new Promise((ok,no)=>{ if(document.querySelector('script[data-src="'+src+'"]')) return ok(); const e=document.createElement('script'); e.src=src; e.dataset.src=src; e.onload=ok; e.onerror=()=>no(new Error('Could not load '+src)); document.head.appendChild(e); }); }
+async function readSheet(file){ await loadScript('../costs/vendor/xlsx.full.min.js'); const wb=XLSX.read(await file.arrayBuffer(),{type:'array',raw:true}); return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}); }
+const guessCol=(hdr,re)=>hdr.findIndex(h=>re.test(String(h).toLowerCase()));
+const normName=s=>String(s||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,' ').trim();
+</script>
+<script src="hosfb-stock.js"></script>
+<script src="hosfb-bookings.js"></script>
+<script src="hosfb-events.js"></script>
+<script src="hosfb-bar.js"></script>
+<script src="hosfb-pl.js"></script>
+<script src="hosfb-invoices.js"></script>
+<script src="hosfb-xero.js"></script>
+<script>FB.start();</script>
+</body>
+</html>

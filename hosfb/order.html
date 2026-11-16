@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#182A3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>HosF&amp;B order pad – Brandon Hall Hotel and Spa</title>
+<style>
+:root{--navy:#182A3E;--jade:#4DA69C;--bg:#f4f5f3;--line:#e2e4e0;--ink:#16202b;--ink2:#566170;--bad:#c0392b;--warn:#b26a00;--good:#1a7f4b}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.4 Aptos,"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif}
+header{background:var(--navy);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:19px;font-weight:600;flex:1}header h1 span{color:var(--jade)}
+header button{background:rgba(255,255,255,.12);border:0;color:#fff;font:inherit;font-size:15px;padding:8px 12px;border-radius:9px;cursor:pointer}
+main{padding:14px;max-width:1300px;margin:0 auto}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+h2{margin:0 0 8px;font-size:18px}h3{margin:14px 0 6px;font-size:14px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em}
+.btn{border:1px solid var(--navy);background:var(--navy);color:#fff;border-radius:10px;padding:12px 16px;font:inherit;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--navy)}.btn.jade{background:var(--jade);border-color:var(--jade)}.btn.danger{background:#fff;color:var(--bad);border-color:var(--bad)}
+.btn:disabled{opacity:.45}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.tbl{border:1px solid var(--line);background:#fff;border-radius:12px;padding:14px 8px;text-align:center;font:inherit;cursor:pointer;min-height:84px}
+.tbl b{display:block;font-size:22px}.tbl small{color:var(--ink2);font-size:13px}
+.tbl.open{background:var(--navy);color:#fff;border-color:var(--navy)}.tbl.open small{color:#b9c6d3}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 14px;font:inherit;font-size:15px;cursor:pointer}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.two{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px;align-items:start}
+@media(max-width:820px){.two{grid-template-columns:1fr}}
+.dishes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.dish{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;text-align:left;font:inherit;font-size:15px;cursor:pointer;min-height:70px}
+.dish:active{background:#e4f2f0}.dish small{display:block;color:var(--ink2);font-size:12.5px;margin-top:3px}.dish.off{opacity:.4}
+.line{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.line .nm{flex:1;min-width:0}.line .nm small{display:block;color:var(--ink2);font-size:13px}
+.qty{display:flex;align-items:center;gap:6px}.qty button{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:#fff;font:inherit;font-size:19px;cursor:pointer}
+.sent{color:var(--ink2)}.note{color:var(--bad);font-weight:600}
+input,select,textarea{font:inherit;padding:10px;border:1px solid var(--line);border-radius:9px;width:100%;background:#fff}
+.tot{display:flex;justify-content:space-between;font-weight:600;font-size:19px;padding:10px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row .btn{flex:1}
+.modal{position:fixed;inset:0;background:rgba(15,25,36,.55);display:none;align-items:center;justify-content:center;padding:14px;z-index:20}
+.modal.on{display:flex}.sheet{background:#fff;border-radius:14px;padding:18px;width:100%;max-width:460px;max-height:90vh;overflow:auto}
+.banner{background:#fdf2dd;border:1px solid #f0d9a8;color:#6b4300;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:15px}
+/* kitchen screen */
+.kds{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.tk{background:#fff;border:2px solid var(--line);border-radius:12px;overflow:hidden}
+.tk .hd{background:var(--navy);color:#fff;padding:8px 12px;display:flex;justify-content:space-between;font-weight:600}
+.tk.late .hd{background:var(--bad)}.tk.mid .hd{background:var(--warn)}
+.tk .al{background:#fbe9e7;color:var(--bad);font-weight:700;padding:8px 12px}
+.tk .it{padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:18px}
+.tk .it.done{text-decoration:line-through;color:var(--ink2)}.tk .it small{display:block;font-size:14px}
+.tk .ft{padding:8px 12px}.tk .ft .btn{width:100%;padding:9px}
+@keyframes flash{0%,100%{box-shadow:0 0 0 0 rgba(187,153,121,0)}50%{box-shadow:0 0 0 8px rgba(187,153,121,.9)}}
+.tk.new{animation:flash 1s ease-in-out 4}
+.tk .oc{background:#f3ece4;padding:7px 12px;font-size:15px}
+.bk{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.bk .t{font-weight:700;font-size:19px;min-width:58px}.bk small{display:block;color:var(--ink2);font-size:13.5px}
+.pillr{display:inline-block;background:#fbe9e7;color:var(--bad);border-radius:999px;padding:1px 9px;font-size:12.5px;font-weight:700}
+.kbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.kbar .btn{padding:9px 14px;font-size:15px}
+@media print{header,.row,.chips,.kbar,.tk .ft,.banner{display:none!important}body{background:#fff}.kds{display:block}.tk{display:none;border:0;width:72mm;font-size:13pt}.tk.printme{display:block}.tk .hd{background:#fff!important;color:#000;border-bottom:2px solid #000}}
+</style>
+<link rel="stylesheet" href="hosfb-brand.css">
+</head>
+<body>
+<header><img class="brandmark" src="../bh-logo.svg" alt="Brandon Hall Hotel and Spa" style="height:36px"><h1>Hos<span>F&amp;B</span> <span id="ttl" style="color:#fff;font-size:18px;font-family:Lato,sans-serif"></span></h1><button id="hb1"></button><button id="hb2"></button></header>
+<main id="main"></main>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="../firebase-config.js"></script>
+<script src="hosfb-seed.js"></script>
+<script src="hosfb-calc.js"></script>
+<script src="hosfb-auth.js"></script>
+<script>
+/* HosF&B order pad and kitchen screen (v1, 15 Nov 2026).
+   Orders: hosfb/orders/list/{id}. Menus and dishes come from HosF&B. No payments are taken here:
+   closing a table records how it was paid on the till or card machine. */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const gbp=v=>'£'+Number(v||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+const today=()=>{ const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const KITCHEN=new URLSearchParams(location.search).get('view')==='kitchen';
+let db=null, cloud=false, me=localStorage.getItem('hosfb_waiter')||'', staff=[];
+const M={dishes:{},menus:{},settings:{tables:30}}; let orders={}, cur=null, curMenu=null, screen='tables', bookings=null, seen=null, fresh={}, soundOn=false, showDone=false, recent={};
+try{ firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }catch(e){ console.warn('Firebase not available',e); }
+const col=()=>db.collection('hosfb').doc('orders').collection('list');
+
+async function boot(){
+  try{ const l=JSON.parse(localStorage.getItem('hosfb_data')||'null'); if(l){ M.dishes=l.dishes||{}; M.menus=l.menus||{}; Object.assign(M.settings,l.settings||{}); } }catch(e){}
+  if(!Object.keys(M.menus).length){ M.dishes=HOSFB_SEED.dishes; M.menus=HOSFB_SEED.menus; }
+  try{ orders=JSON.parse(localStorage.getItem('hosfb_orders')||'{}'); }catch(e){}
+  if(db){ try{
+    const snap=await db.collection('hosfb').get(); cloud=true;
+    snap.forEach(d=>{ const x=d.data(); if(d.id==='dishes'&&x.items) M.dishes=x.items; if(d.id==='menus'&&x.items) M.menus=x.items; if(d.id==='settings') Object.assign(M.settings,x); });
+    db.collection('hosfb').onSnapshot(q=>q.docChanges().forEach(c=>{ const x=c.doc.data(); if(c.doc.id==='dishes'&&x.items) M.dishes=x.items; if(c.doc.id==='menus'&&x.items) M.menus=x.items; }));
+    col().where('status','==','open').onSnapshot(q=>{ const keep={}; Object.values(orders).forEach(o=>{ if(o.status==='open'&&o._local) keep[o.id]=o; });
+      orders=keep; q.forEach(d=>orders[d.id]=d.data()); if(cur&&orders[cur.id]&&!dirty()) cur=JSON.parse(JSON.stringify(orders[cur.id])); if(!$('modal').classList.contains('on')) render(); });
+    const r=await db.collection('hospro_public').doc('rota').get(); if(r.exists) staff=(r.data().staff||[]).filter(s=>['restaurant','bar','kitchen'].includes(s.dept)).map(s=>s.name).sort();
+  }catch(e){ console.warn('order pad cloud',e&&e.code); cloud=false; }
+    if(cloud){ hosfbStaffAuth().then(ok=>{ if(!ok){ bookings=false; render(); return; }
+      db.collection('hosfb_bookings').where('date','==',today()).onSnapshot(q=>{ bookings=q.docs.map(d=>d.data()).sort((a,b)=>String(a.time).localeCompare(String(b.time))); if(!$('modal').classList.contains('on')&&screen!=='order') render(); },e=>{ bookings=false; }); }); } }
+  if(KITCHEN){ screen='kitchen'; setInterval(()=>{ if(screen==='kitchen'&&!$('modal').classList.contains('on')) render(); },30000); }
+  else if(!me) screen='who';
+  render();
+}
+function dirty(){ return cur&&cur.lines.some(l=>!l.sentAt); }
+async function save(o){ o.updatedAt=new Date().toISOString(); orders[o.id]=JSON.parse(JSON.stringify(o)); if(o.status!=='open') delete orders[o.id];
+  if(cloud){ try{ await col().doc(o.id).set(o); delete o._local; }catch(e){ o._local=true; alert('Saved on this device only – check the connection ('+(e.code||e.message)+').'); } } else o._local=true;
+  try{ localStorage.setItem('hosfb_orders',JSON.stringify(orders)); }catch(e){} }
+const total=o=>o.lines.reduce((t,l)=>t+(l.qty||0)*(l.price||0),0);
+const openFor=t=>Object.values(orders).find(o=>o.status==='open'&&String(o.table)===String(t));
+function sheet(h){ $('sheet').innerHTML=h; $('modal').classList.add('on'); }
+function shut(){ $('modal').classList.remove('on'); render(); }
+
+function render(){
+  const b1=$('hb1'), b2=$('hb2'); b1.hidden=b2.hidden=true;
+  const warn=cloud?'':'<div class="banner">Not connected to the HosPRO database, so orders stay on this device and will not reach the kitchen screen.</div>';
+  if(screen==='kitchen'){ $('ttl').textContent='· Kitchen'; $('main').innerHTML=warn+vKitchen(); return; }
+  if(screen==='who'){ $('ttl').textContent='· Order pad'; $('main').innerHTML=vWho(); return; }
+  b1.hidden=false; b1.textContent=me; b1.onclick=()=>{ screen='who'; render(); };
+  if(screen==='order'&&cur){ $('ttl').textContent='· '+tableName(cur.table); b2.hidden=false; b2.textContent='Tables'; b2.onclick=backToTables; $('main').innerHTML=warn+vOrder(); }
+  else { screen='tables'; $('ttl').textContent='· Tables'; $('main').innerHTML=warn+vTables(); }
+}
+const tableName=t=>/^\d+$/.test(String(t))?'Table '+t:String(t);
+function vWho(){ return `<div class="card" style="max-width:460px;margin:30px auto"><h2>Who is taking orders?</h2>${staff.length?`<select id="w-sel"><option value="">Choose your name…</option>${staff.map(s=>`<option ${s===me?'selected':''}>${esc(s)}</option>`).join('')}</select><p style="color:var(--ink2);font-size:14px;margin:10px 0 4px">or type it</p>`:''}<input id="w-name" placeholder="Your name" value="${staff.includes(me)?'':esc(me)}"><button class="btn" style="width:100%;margin-top:12px" onclick="setWho()">Start</button></div>`; }
+function setWho(){ const v=(($('w-sel')&&$('w-sel').value)||$('w-name').value||'').trim(); if(!v){ alert('Choose or type your name.'); return; } me=v; localStorage.setItem('hosfb_waiter',me); screen='tables'; render(); }
+function vTables(){ const n=M.settings.tables||30; const extra=Object.values(orders).filter(o=>o.status==='open'&&!/^\d+$/.test(String(o.table)));
+  const cell=(t,o)=>`<button class="tbl ${o?'open':''}" onclick="openTable('${esc(String(t)).replace(/'/g,'')}')"><b>${esc(/^\d+$/.test(String(t))?t:String(t))}</b><small>${o?gbp(total(o))+' · '+(o.covers||0)+' guests':'Free'}</small></button>`;
+  const bl=(bookings||[]).filter(b=>b.status==='booked');
+  const bk=bookings===false?'':`<div class="card"><h2>Today's bookings</h2>${bookings===null?'<p style="color:var(--ink2)">Loading…</p>':bl.length?bl.map(b=>`<div class="bk" onclick="seat('${b.ref}')"><span class="t">${esc(b.time)}</span><div style="flex:1"><strong>${esc(b.name)}</strong> · ${b.covers} guests ${b.allergies?'<span class="pillr">Allergy</span>':''}<small>${esc([b.occasion,(b.preorder||[]).length?'Pre-ordered: '+b.preorder.map(x=>x.qty+' × '+x.name).join(', '):'',b.requests].filter(Boolean).join(' · '))}</small></div><span class="btn ghost" style="padding:8px 12px">Seat</span></div>`).join(''):'<p style="color:var(--ink2)">No more bookings waiting to be seated today.</p>'}</div>`;
+  return bk+`<div class="card"><h2>Tables</h2><div class="grid">${Array.from({length:n},(_,i)=>cell(i+1,openFor(i+1))).join('')}${extra.map(o=>cell(o.table,o)).join('')}<button class="tbl" onclick="otherTable()"><b>+</b><small>Bar, lounge or room</small></button></div></div>`; }
+function otherTable(){ sheet(`<h2>Bar, lounge or room</h2><input id="ot" placeholder="For example: Bar 2, Lounge, Room 114"><div class="row" style="margin-top:12px"><button class="btn ghost" onclick="shut()">Cancel</button><button class="btn" onclick="const v=$('ot').value.trim().replace(/'/g,'');if(v){$('modal').classList.remove('on');openTable(v)}">Open</button></div>`); }
+function openTable(t){ const o=openFor(t); if(o){ cur=JSON.parse(JSON.stringify(o)); screen='order'; render(); return; }
+  sheet(`<h2>${esc(tableName(t))}</h2><label>How many guests?<input id="cv" type="number" inputmode="numeric" min="1" value="2"></label><div class="row" style="margin-top:12px"><button class="btn ghost" onclick="shut()">Cancel</button><button class="btn" onclick="newOrder('${esc(String(t))}')">Start order</button></div>`); }
+function newOrder(t,b){ cur={id:'o-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),table:t,covers:b?b.covers:(parseInt($('cv').value)||1),by:me,date:today(),openedAt:new Date().toISOString(),status:'open',allergy:b?b.allergies||'':'',occasion:b?b.occasion||'':'',requests:b?b.requests||'':'',guest:b?b.name:'',bookingRef:b?b.ref:'',
+    lines:b?(b.preorder||[]).map((l,i)=>{ const pr=priceFor(l.dishId); return {k:Date.now()+'p'+i,dishId:l.dishId||'',name:l.name,course:l.course||'',price:pr,qty:l.qty||1,note:'Pre-ordered',sentAt:null,doneAt:null}; }):[]}; screen='order'; $('modal').classList.remove('on'); render(); }
+function priceFor(id){ for(const m of Object.values(M.menus)){ if(m.mode==='set') continue; const it=(m.items||[]).find(x=>x.dishId===id); if(it&&it.price!=null) return it.price; } return 0; }
+function seat(ref){ const b=bookings.find(x=>x.ref===ref); if(!b) return; const n=M.settings.tables||30; const free=Array.from({length:n},(_,i)=>i+1).filter(t=>!openFor(t));
+  sheet(`<h2>Seat ${esc(b.name)}</h2><p style="color:var(--ink2);margin-top:0">${esc(b.time)} · ${b.covers} guests${b.occasion?' · '+esc(b.occasion):''}</p>${b.allergies?`<p class="note">Allergy: ${esc(b.allergies)}</p>`:''}${b.requests?`<p>${esc(b.requests)}</p>`:''}${(b.preorder||[]).length?`<p style="color:var(--ink2)">Pre-ordered: ${b.preorder.map(l=>l.qty+' × '+esc(l.name)).join(', ')}</p>`:''}
+   <label>Table<select id="st">${free.map(t=>`<option ${String(b.table)===String(t)?'selected':''}>${t}</option>`).join('')}</select></label><div class="row" style="margin-top:12px"><button class="btn ghost" onclick="shut()">Cancel</button><button class="btn" onclick="doSeat('${b.ref}')">Seat and open order</button></div>`); }
+async function doSeat(ref){ const b=bookings.find(x=>x.ref===ref), t=$('st').value; newOrder(t,b); await save(cur); try{ await db.collection('hosfb_bookings').doc(ref).update({status:'seated',table:String(t),seatedAt:new Date().toISOString(),seatedBy:me}); }catch(e){ console.warn('seat',e.code); } render(); }
+function backToTables(){ if(dirty()&&!confirm('Some items have not been sent to the kitchen. Leave them unsent?')) return; if(cur&&cur.lines.length&&dirty()) save(cur); cur=null; screen='tables'; render(); }
+
+function vOrder(){ const ms=Object.values(M.menus); if(!curMenu||!M.menus[curMenu]) curMenu=ms[0]&&ms[0].id; const m=M.menus[curMenu]; const o=cur;
+  let left=`<div class="chips">${ms.map(x=>`<button class="chip ${x.id===curMenu?'on':''}" onclick="curMenu='${x.id}';render()">${esc(x.name)}</button>`).join('')}</div>`;
+  if(m){ if(m.mode==='set'&&(m.setPrices||[]).length) left+=`<h3>Price</h3><div class="dishes">${m.setPrices.map((p,i)=>`<button class="dish" onclick="addSet(${i})"><strong>${esc(m.name)}: ${esc(p.label)}</strong><small>${gbp(p.price)} a person</small></button>`).join('')}</div>`;
+    let sec=null; m.items.forEach(it=>{ const d=M.dishes[it.dishId]; if(!d) return; if(it.course!==sec){ if(sec!==null) left+='</div>'; sec=it.course; left+=`<h3>${esc(sec)}</h3><div class="dishes">`; }
+      left+=`<button class="dish" onclick="addDish('${d.id}','${m.id}')"><strong>${esc(d.name)}</strong><small>${esc([m.mode==='set'||it.price==null?'':gbp(it.price),[...(d.allergens||[]),...(d.diet||[])].join(' ')].filter(Boolean).join(' · '))}</small></button>`; }); if(sec!==null) left+='</div>'; }
+  const unsent=o.lines.filter(l=>!l.sentAt).length;
+  const right=`<div class="card"><h2>${esc(tableName(o.table))} · ${o.covers} guests</h2>
+   ${o.guest?`<p style="margin:0 0 8px;color:var(--ink2)">${esc(o.guest)}${o.bookingRef?' · booking '+esc(o.bookingRef):''}</p>`:''}
+   <label style="font-size:13px;color:var(--bad);font-weight:700">Allergies<input placeholder="Allergy or dietary alert for the kitchen" value="${esc(o.allergy||'')}" style="border-color:${o.allergy?'var(--bad)':'var(--line)'}" onchange="cur.allergy=this.value.trim();touch()"></label>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0"><label style="font-size:13px;color:var(--ink2)">Occasion<input list="occs" placeholder="Birthday, anniversary…" value="${esc(o.occasion||'')}" onchange="cur.occasion=this.value.trim();touch()"></label><label style="font-size:13px;color:var(--ink2)">Requests<input placeholder="High chair, candle on dessert…" value="${esc(o.requests||'')}" onchange="cur.requests=this.value.trim();touch()"></label></div><datalist id="occs"><option>Birthday<option>Anniversary<option>Engagement<option>Celebration<option>Business meal</datalist>
+   ${o.lines.map((l,i)=>`<div class="line ${l.sentAt?'sent':''}"><div class="nm"><strong>${esc(l.name)}</strong>${l.note?`<small class="note">${esc(l.note)}</small>`:''}<small>${l.sentAt?(l.doneAt?'Ready':'Sent to kitchen'):'Not sent yet'}${l.price?' · '+gbp(l.price*l.qty):''}</small></div>
+     ${l.sentAt?`<span>× ${l.qty}</span>`:`<div class="qty"><button onclick="chg(${i},-1)">−</button><span>${l.qty}</span><button onclick="chg(${i},1)">+</button><button onclick="noteFor(${i})" title="Note">✎</button></div>`}</div>`).join('')||'<p style="color:var(--ink2)">Tap dishes to add them.</p>'}
+   <div class="tot"><span>Total</span><span>${gbp(total(o))}</span></div>
+   <div class="row"><button class="btn jade" ${unsent?'':'disabled'} onclick="sendOrder()">Send ${unsent||''} to kitchen</button></div>
+   <div class="row" style="margin-top:8px"><button class="btn ghost" ${o.lines.length?'':'disabled'} onclick="closeOrder()">Close table</button><button class="btn danger" onclick="voidOrder()">Cancel order</button></div></div>`;
+  return `<div class="two"><div>${left}</div><div>${right}</div></div>`; }
+async function touch(){ if(cur.lines.some(l=>l.sentAt)){ mergeDone(); await save(cur); } render(); }
+function addDish(id,mid){ const d=M.dishes[id], m=M.menus[mid], it=m.items.find(x=>x.dishId===id); const price=m.mode==='set'?0:(it.price||0);
+  const ex=cur.lines.find(l=>!l.sentAt&&l.dishId===id&&!l.note&&l.price===price); if(ex) ex.qty++; else cur.lines.push({k:Date.now()+''+cur.lines.length,dishId:id,name:d.name,course:it.course,price,qty:1,note:'',sentAt:null,doneAt:null}); render(); }
+function addSet(i){ const m=M.menus[curMenu], p=m.setPrices[i]; const name=m.name+': '+p.label; const ex=cur.lines.find(l=>!l.sentAt&&l.set&&l.name===name); if(ex) ex.qty++; else cur.lines.push({k:Date.now()+'s',set:true,name,course:'',price:p.price,qty:cur.covers||1,note:'',sentAt:null,doneAt:null}); render(); }
+function chg(i,d){ const l=cur.lines[i]; l.qty+=d; if(l.qty<=0) cur.lines.splice(i,1); render(); }
+function noteFor(i){ sheet(`<h2>Note for ${esc(cur.lines[i].name)}</h2><input id="nt" placeholder="For example: no onion, sauce on the side" value="${esc(cur.lines[i].note||'')}"><div class="row" style="margin-top:12px"><button class="btn ghost" onclick="shut()">Cancel</button><button class="btn" onclick="cur.lines[${i}].note=$('nt').value.trim();shut()">Save</button></div>`); }
+function mergeDone(){ const live=orders[cur.id]; if(live) cur.lines.forEach(l=>{ const x=(live.lines||[]).find(y=>y.k===l.k); if(x&&x.doneAt&&!l.doneAt) l.doneAt=x.doneAt; }); }
+async function sendOrder(){ mergeDone(); const now=new Date().toISOString(); cur.lines.forEach(l=>{ if(!l.sentAt){ l.sentAt=now; if(l.set) l.doneAt=now; } }); await save(cur); render(); }
+function closeOrder(){ if(dirty()&&!confirm('Some items have not been sent to the kitchen. Close the table anyway?')) return;
+  sheet(`<h2>Close ${esc(tableName(cur.table))}</h2><div class="tot"><span>Total</span><span>${gbp(total(cur))}</span></div><p style="color:var(--ink2);font-size:15px">Take payment on the till or card machine as usual, then record how it was paid.</p>
+   <div class="row">${['Card','Cash','Room charge','Other'].map(p=>`<button class="btn" onclick="doClose('${p}')">${p}</button>`).join('')}</div><button class="btn ghost" style="width:100%;margin-top:10px" onclick="shut()">Back</button>`); }
+async function doClose(pay){ mergeDone(); cur.status='closed'; cur.pay=pay; cur.closedAt=new Date().toISOString(); cur.closedBy=me; cur.total=Math.round(total(cur)*100)/100; cur.lines=cur.lines.filter(l=>l.sentAt||l.set); await save(cur); cur=null; screen='tables'; shut(); }
+async function voidOrder(){ if(!confirm('Cancel this whole order? It will not count as a sale.')) return; if(cur.lines.some(l=>l.sentAt)){ cur.status='void'; cur.closedAt=new Date().toISOString(); cur.closedBy=me; await save(cur); } else { delete orders[cur.id]; if(cloud){ try{ await col().doc(cur.id).delete(); }catch(e){} } } cur=null; screen='tables'; render(); }
+
+/* ---------- kitchen screen ---------- */
+function tickets(){ const tks=[], done=[]; Object.values(orders).forEach(o=>{ if(o.status==='void') return; const by={}; (o.lines||[]).forEach((l,i)=>{ if(l.sentAt&&!l.set) (by[l.sentAt]=by[l.sentAt]||[]).push(Object.assign({i},l)); });
+    Object.keys(by).forEach(t=>{ const k={o,t,lines:by[t],key:o.id+'|'+t}; if(by[t].some(l=>!l.doneAt)){ if(o.status==='open') tks.push(k); } else { const last=by[t].map(l=>l.doneAt).sort().pop(); if(Date.now()-new Date(last)<30*60000) done.push(Object.assign(k,{last})); } }); });
+  tks.sort((a,b)=>a.t.localeCompare(b.t)); done.sort((a,b)=>b.last.localeCompare(a.last)); return {tks,done}; }
+function beep(){ if(!soundOn) return; try{ const a=window._ac||(window._ac=new (window.AudioContext||window.webkitAudioContext)()); [0,0.22].forEach(d=>{ const o=a.createOscillator(), g=a.createGain(); o.frequency.value=880; o.connect(g); g.connect(a.destination); g.gain.setValueAtTime(0.25,a.currentTime+d); g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+d+0.18); o.start(a.currentTime+d); o.stop(a.currentTime+d+0.2); }); }catch(e){} }
+function ticketHTML(k,isDone){ const mins=Math.floor((Date.now()-new Date(k.t))/60000), o=k.o;
+  return `<div class="tk ${isDone?'':mins>=20?'late':mins>=12?'mid':''} ${fresh[k.key]&&Date.now()-fresh[k.key]<6000?'new':''}" data-k="${esc(k.key)}"><div class="hd"><span>${esc(tableName(o.table))} · ${o.covers} guests</span><span>${isDone?'Completed':mins+' min'}</span></div>
+    ${o.allergy?`<div class="al">ALLERGY: ${esc(o.allergy)}</div>`:''}${o.occasion||o.requests?`<div class="oc">${o.occasion?'<strong>'+esc(o.occasion)+'</strong>':''}${o.occasion&&o.requests?' · ':''}${esc(o.requests||'')}</div>`:''}
+    ${k.lines.map(l=>`<div class="it ${l.doneAt?'done':''}" ${isDone?'':`onclick="kDone('${o.id}',${l.i})"`}><strong>${l.qty} × ${esc(l.name)}</strong>${l.note?`<small class="note">${esc(l.note)}</small>`:''}<small style="color:var(--ink2)">${esc(l.course||'')}${(M.dishes[l.dishId]&&(M.dishes[l.dishId].allergens||[]).length)?' · contains '+M.dishes[l.dishId].allergens.join(' '):''}</small></div>`).join('')}
+    <div class="ft"><span style="font-size:13px;color:var(--ink2)">${o.guest?esc(o.guest)+' · ':''}Taken by ${esc(o.by||'')} at ${new Date(k.t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>
+     ${isDone?`<button class="btn ghost" style="margin-top:6px" onclick="kReopen('${o.id}','${k.t}')">Reopen</button>`:`<button class="btn jade" style="margin-top:6px;padding:14px;font-size:19px" onclick="kAll('${o.id}','${k.t}')">Complete</button><button class="btn ghost" style="margin-top:6px" onclick="kPrint('${esc(k.key)}')">Print ticket</button>`}</div></div>`; }
+function vKitchen(){ const {tks,done}=tickets(); const keys=tks.map(k=>k.key);
+  if(seen){ const add=keys.filter(k=>!seen.includes(k)); if(add.length){ add.forEach(k=>fresh[k]=Date.now()); beep(); } } seen=keys;
+  const pre=(bookings||[]).filter(b=>b.status==='booked'&&((b.preorder||[]).length||b.allergies));
+  return `<div class="kbar"><button class="btn ${soundOn?'':'ghost'}" onclick="soundOn=!soundOn;if(soundOn)beep();render()">${soundOn?'Sound is on':'Turn sound on'}</button><button class="btn ghost" onclick="showDone=!showDone;render()">${showDone?'Hide completed':'Show completed ('+done.length+')'}</button>${bookings?`<button class="btn ghost" onclick="kPre()">Bookings and pre-orders today (${(bookings||[]).filter(b=>b.status==='booked').length})</button>`:''}<span style="flex:1"></span><span style="align-self:center;color:var(--ink2)">${tks.length} waiting</span></div>`
+   +(tks.length?`<div class="kds">${tks.map(k=>ticketHTML(k,false)).join('')}</div>`:'<div class="card" style="text-align:center;padding:50px 14px"><h2>No tickets waiting</h2><p style="color:var(--ink2)">New orders appear here as soon as they are sent from the order pad.</p></div>')
+   +(showDone&&done.length?`<h3>Completed in the last 30 minutes</h3><div class="kds">${done.map(k=>ticketHTML(k,true)).join('')}</div>`:''); }
+function kPre(){ const l=(bookings||[]).filter(b=>b.status==='booked'), tot=HOSFB_CALC.preorderTotals(l);
+  sheet(`<h2>Still to arrive today</h2>${tot.length?`<h3>Pre-ordered in total</h3>${tot.map(t=>`<div class="line"><div class="nm">${esc(t.name)}<small>${esc(t.course)}</small></div><strong>${t.qty}</strong></div>`).join('')}`:''}<h3>Bookings</h3>${l.map(b=>`<div class="line"><div class="nm"><strong>${esc(b.time)} · ${esc(b.name)} · ${b.covers}</strong>${b.allergies?`<small class="note">Allergy: ${esc(b.allergies)}</small>`:''}<small>${esc([b.occasion,b.requests,(b.preorder||[]).map(x=>x.qty+' × '+x.name).join(', ')].filter(Boolean).join(' · '))}</small></div></div>`).join('')||'<p style="color:var(--ink2)">No more bookings to arrive.</p>'}<button class="btn" style="width:100%;margin-top:12px" onclick="shut()">Close</button>`); }
+function kPrint(key){ document.querySelectorAll('.tk').forEach(e=>e.classList.toggle('printme',e.dataset.k===key)); window.print(); }
+function findOrder(id){ return orders[id]; }
+async function kDone(id,i){ const o=JSON.parse(JSON.stringify(findOrder(id))); o.lines[i].doneAt=o.lines[i].doneAt?null:new Date().toISOString(); await save(o); render(); }
+async function kAll(id,t){ const o=JSON.parse(JSON.stringify(findOrder(id))); const now=new Date().toISOString(); o.lines.forEach(l=>{ if(l.sentAt===t&&!l.doneAt) l.doneAt=now; }); await save(o); render(); }
+async function kReopen(id,t){ const o=JSON.parse(JSON.stringify(findOrder(id))); if(o.status!=='open'){ alert('That table has already been closed.'); return; } o.lines.forEach(l=>{ if(l.sentAt===t) l.doneAt=null; }); await save(o); render(); }
+boot();
+</script>
+</body>
+</html>

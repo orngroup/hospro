@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Book a table at The Clarendon restaurant, Brandon Hall Hotel and Spa, and pre-order your meal if you wish.">
+<title>Book a table – The Clarendon at Brandon Hall Hotel and Spa</title>
+<style>
+@font-face{font-family:"Italiana";src:url("fonts/italiana-latin-400-normal.woff2") format("woff2");font-display:swap}
+@font-face{font-family:"Lato";src:url("fonts/lato-latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Lato";src:url("fonts/lato-latin-700-normal.woff2") format("woff2");font-weight:700;font-display:swap}
+:root{--navy:#2C3E50;--gold:#BB9979;--cream:#F7F4EF;--line:#e5dfd6;--ink:#22313F;--ink2:#5d6975;--bad:#a8332a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--cream);color:var(--ink);font:17px/1.5 "Lato",system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+header{background:var(--navy);text-align:center;padding:22px 16px 18px;border-bottom:3px solid var(--gold)}
+header img{height:84px}
+header h1{font-family:"Italiana",Georgia,serif;font-weight:400;color:#fff;font-size:30px;letter-spacing:.04em;margin:8px 0 0}
+header p{color:#c9d2da;margin:2px 0 0;font-size:15px}
+main{max-width:680px;margin:0 auto;padding:22px 16px 60px}
+.card{background:#fff;border:1px solid var(--line);border-radius:6px;padding:22px;margin-bottom:16px}
+h2{font-family:"Italiana",Georgia,serif;font-weight:400;font-size:25px;color:var(--navy);margin:0 0 4px;letter-spacing:.02em}
+h3{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:22px 0 8px}
+.sub{color:var(--ink2);margin:0 0 14px;font-size:15.5px}
+label{display:block;font-size:14px;color:var(--ink2);margin-bottom:12px}
+input,select,textarea{display:block;width:100%;margin-top:4px;font:inherit;padding:11px 12px;border:1px solid #cfc7bb;border-radius:4px;background:#fff;color:var(--ink)}
+textarea{min-height:70px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}@media(max-width:560px){.g2{grid-template-columns:1fr}}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px}
+.slot{border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:4px;padding:11px 4px;font:inherit;font-weight:700;cursor:pointer}
+.slot.on{background:var(--navy);color:#fff}
+.btn{display:inline-block;border:1px solid var(--navy);background:var(--navy);color:#fff;border-radius:4px;padding:13px 22px;font:inherit;font-weight:700;letter-spacing:.04em;cursor:pointer}
+.btn.line{background:#fff;color:var(--navy)}.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-top:8px}
+.err{color:var(--bad);font-size:15px;min-height:1.2em}
+.dish{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.dish .n{flex:1}.dish .n small{display:block;color:var(--ink2);font-size:14px}
+.qty{display:flex;align-items:center;gap:8px}.qty button{width:38px;height:38px;border:1px solid #cfc7bb;background:#fff;border-radius:4px;font:inherit;font-size:20px;cursor:pointer}.qty span{min-width:18px;text-align:center;font-weight:700}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}.tab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font:inherit;font-size:15px;cursor:pointer}.tab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.sum{background:var(--cream);border:1px solid var(--line);border-radius:4px;padding:12px 14px;margin:10px 0}
+.ref{font-family:"Italiana",Georgia,serif;font-size:38px;letter-spacing:.1em;color:var(--navy);margin:6px 0}
+.small{font-size:14px;color:var(--ink2)}a{color:var(--navy)}
+</style>
+</head>
+<body>
+<header><img src="../bh-logo.svg" alt="Brandon Hall Hotel and Spa"><h1>The Clarendon</h1><p>Book a table at Brandon Hall Hotel and Spa</p></header>
+<main id="main"><div class="card"><p class="sub">Loading…</p></div></main>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="hosfb-calc.js"></script>
+<script>
+/* Guest table booking with optional pre-order (HosF&B, 15 Nov 2026).
+   Writes one booking to hosfb_bookings (guests can create, only staff can read) and adds the
+   party to the public availability count in hosfb/availability. */
+const firebaseConfig={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:"brandonhall-7bdef.firebaseapp.com",projectId:"brandonhall-7bdef",storageBucket:"brandonhall-7bdef.firebasestorage.app",messagingSenderId:"391317900568",appId:"1:391317900568:web:643c9d6691f7f16d65226d"};
+const PHONE='024 7710 2555';
+const $=id=>document.getElementById(id), C=HOSFB_CALC;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const iso=d=>{ const x=new Date(d); x.setMinutes(x.getMinutes()-x.getTimezoneOffset()); return x.toISOString().slice(0,10); };
+const nice=d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+let db=null, cfg=C.bookCfg(null), avail={}, menus={}, dishes={}, step=1, curMenu=null;
+const B={covers:2,date:iso(Date.now()),time:'',first:'',last:'',email:'',phone:'',occasion:'',allergies:'',requests:'',pre:{}};
+async function boot(){
+  try{ firebase.initializeApp(firebaseConfig); db=firebase.firestore();
+    const q=await db.collection('hosfb').get(); q.forEach(d=>{ const x=d.data(); if(d.id==='settings') cfg=C.bookCfg(x); if(d.id==='availability') avail=x.days||{}; if(d.id==='menus') menus=x.items||{}; if(d.id==='dishes') dishes=x.items||{}; });
+  }catch(e){ console.warn(e); db=null; }
+  if(!db||!cfg.on){ $('main').innerHTML=`<div class="card"><h2>Book by telephone</h2><p class="sub">Online booking is not available at the moment. Please call us on <strong>${PHONE}</strong> and we will be delighted to help.</p></div>`; return; }
+  render();
+}
+const maxDate=()=>iso(Date.now()+(cfg.daysAhead||90)*86400000);
+function render(){ window.scrollTo(0,0); $('main').innerHTML=[null,s1,s2,s3,s4][step](); if(step===1) slots(); if(step===3) preUI(); }
+function s1(){ return `<div class="card"><h2>When would you like to join us?</h2><p class="sub">Choose your party size and date to see the times available.</p>
+  <div class="g2"><label>Guests<select id="covers" onchange="B.covers=+this.value;B.time='';slots()">${Array.from({length:cfg.maxParty||10},(_,i)=>`<option ${B.covers===i+1?'selected':''}>${i+1}</option>`).join('')}</select></label>
+  <label>Date<input id="date" type="date" min="${iso(Date.now())}" max="${maxDate()}" value="${B.date}" onchange="if(this.value){B.date=this.value;B.time='';slots()}"></label></div>
+  <h3>Time</h3><div id="slots"></div><p class="small" style="margin-top:14px">For parties larger than ${cfg.maxParty||10}, or if the time you would like is not shown, please call us on ${PHONE}.</p>
+  <div class="row"><span></span><button class="btn" id="n1" onclick="if(B.time){step=2;render()}" ${B.time?'':'disabled'}>Continue</button></div></div>`; }
+function slots(){ const all=C.bookingSlots(cfg,B.date), open=C.openSlots(cfg,avail,B.date,B.covers,Date.now()); const e=$('slots'); if(!e) return;
+  if(!all.length) e.innerHTML='<p class="sub">The restaurant is not open for bookings on this date. Please choose another day.</p>';
+  else if(!open.length) e.innerHTML='<p class="sub">We have no tables left online for this date. Please try another day or call us on '+PHONE+'.</p>';
+  else { let sv=null, h=''; open.forEach(s=>{ if(s.service!==sv){ if(sv!==null) h+='</div>'; sv=s.service; h+=`<p class="small" style="margin:8px 0 6px">${esc(sv)}</p><div class="slots">`; } h+=`<button class="slot ${B.time===s.time?'on':''}" onclick="B.time='${s.time}';B.service='${esc(s.service).replace(/&#39;/g,'')}';slots()">${s.time}</button>`; }); e.innerHTML=h+'</div>'; }
+  const n=$('n1'); if(n) n.disabled=!B.time; }
+function s2(){ const f=(id,l,v,t,a)=>`<label>${l}<input id="${id}" type="${t||'text'}" value="${esc(v)}" ${a||''}></label>`;
+  return `<div class="card"><h2>Your details</h2><div class="sum"><strong>${B.covers} ${B.covers===1?'guest':'guests'}</strong> · ${nice(B.date)} at <strong>${B.time}</strong></div>
+  <div class="g2">${f('first','First name',B.first,'text','autocomplete="given-name"')}${f('last','Last name',B.last,'text','autocomplete="family-name"')}${f('email','Email',B.email,'email','autocomplete="email"')}${f('phone','Mobile number',B.phone,'tel','autocomplete="tel"')}</div>
+  <label>Are you celebrating anything?<select id="occasion">${['','Birthday','Anniversary','Engagement','Celebration','Business meal','Other'].map(o=>`<option value="${o}" ${B.occasion===o?'selected':''}>${o||'No special occasion'}</option>`).join('')}</select></label>
+  <label>Allergies or dietary requirements<textarea id="allergies" placeholder="Please tell us about any allergies or intolerances in your party, and who they affect.">${esc(B.allergies)}</textarea></label>
+  <label>Any other requests<textarea id="requests" placeholder="For example: a high chair, step-free access, a quiet table.">${esc(B.requests)}</textarea></label>
+  <p class="small">Our kitchen handles all 14 major allergens, so we cannot guarantee any dish is entirely free from traces. We will use these details only to manage your booking. See our <a href="https://www.brandonhallhotelandspa.com/privacy/" target="_blank" rel="noopener">privacy notice</a>.</p>
+  <p class="err" id="err"></p><div class="row"><button class="btn line" onclick="keep();step=1;render()">Back</button><button class="btn" onclick="next2()">Continue</button></div></div>`; }
+function keep(){ ['first','last','email','phone','occasion','allergies','requests'].forEach(k=>{ const e=$(k); if(e) B[k]=e.value.trim(); }); }
+function next2(){ keep(); const bad=!B.first||!B.last?'Please enter your first and last name.':!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(B.email)?'Please enter a valid email address.':B.phone.replace(/\D/g,'').length<9?'Please enter a contact telephone number.':'';
+  if(bad){ $('err').textContent=bad; return; } step=preMenus().length&&cfg.preorder?3:4; render(); }
+const preMenus=()=>Object.values(menus).filter(m=>(!cfg.preorderMenus||!cfg.preorderMenus.length||cfg.preorderMenus.includes(m.id))&&m.items&&m.items.length);
+function s3(){ return `<div class="card"><h2>Would you like to pre-order?</h2><p class="sub">This is optional. Choosing your dishes now helps our chef prepare for your visit; you can still change your mind on the day. Nothing is charged until you dine.</p><div id="pre"></div>
+  <div class="row"><button class="btn line" onclick="step=2;render()">Back</button><button class="btn" onclick="step=4;render()" id="n3">Continue</button></div></div>`; }
+function preUI(){ const ms=preMenus(); if(!curMenu||!menus[curMenu]) curMenu=ms[0].id; const m=menus[curMenu]; let sec=null, h=`<div class="tabs">${ms.map(x=>`<button class="tab ${x.id===curMenu?'on':''}" onclick="curMenu='${x.id}';preUI()">${esc(x.name)}</button>`).join('')}</div>`;
+  if(m.mode==='set'&&(m.setPrices||[]).length) h+=`<p class="small">${m.setPrices.map(p=>esc(p.label)+' £'+Number(p.price).toFixed(2)+' per person').join(' · ')}</p>`;
+  m.items.forEach(it=>{ const d=dishes[it.dishId]; if(!d) return; if(it.course!==sec){ sec=it.course; h+=`<h3>${esc(sec)}</h3>`; } const q=B.pre[d.id]?B.pre[d.id].qty:0;
+    h+=`<div class="dish"><div class="n"><strong>${esc(d.name)}</strong>${m.mode!=='set'&&it.price!=null?' · £'+Number(it.price).toFixed(2):''}<small>${esc(d.desc||'')}${(d.allergens||[]).length?' <em>Contains: '+d.allergens.map(a=>C.ALLERGENS[a]||a).join(', ')+'</em>':''}</small></div>
+     <div class="qty"><button aria-label="Fewer" onclick="pre('${d.id}',-1,'${m.id}')">−</button><span>${q}</span><button aria-label="More" onclick="pre('${d.id}',1,'${m.id}')">+</button></div></div>`; });
+  const n=Object.values(B.pre).reduce((t,l)=>t+l.qty,0); $('pre').innerHTML=h; $('n3').textContent=n?'Continue with '+n+(n===1?' dish':' dishes'):'Skip pre-ordering'; }
+function pre(id,d,mid){ const dish=dishes[id], it=menus[mid].items.find(x=>x.dishId===id); const l=B.pre[id]||{dishId:id,name:dish.name,course:it.course,menu:menus[mid].name,qty:0}; l.qty=Math.max(0,Math.min(40,l.qty+d)); if(l.qty) B.pre[id]=l; else delete B.pre[id]; preUI(); }
+function s4(){ const pl=Object.values(B.pre);
+  return `<div class="card"><h2>Check and confirm</h2><div class="sum"><strong>${esc(B.first)} ${esc(B.last)}</strong><br>${B.covers} ${B.covers===1?'guest':'guests'} · ${nice(B.date)} at <strong>${B.time}</strong>${B.occasion?'<br>Occasion: '+esc(B.occasion):''}${B.allergies?'<br>Allergies and dietary: '+esc(B.allergies):''}${B.requests?'<br>Requests: '+esc(B.requests):''}</div>
+  ${pl.length?`<h3>Your pre-order</h3>${pl.map(l=>`<div class="dish"><div class="n">${esc(l.name)}<small>${esc(l.course)}</small></div><strong>× ${l.qty}</strong></div>`).join('')}`:''}
+  <p class="err" id="err"></p><div class="row"><button class="btn line" onclick="step=${preMenus().length&&cfg.preorder?3:2};render()">Back</button><button class="btn" id="go" onclick="confirmBooking()">Confirm booking</button></div></div>`; }
+async function confirmBooking(){ const go=$('go'); go.disabled=true; go.textContent='Booking…';
+  try{ const a=firebase.auth(); if(!a.currentUser) await a.signInAnonymously();
+    const fresh=await db.collection('hosfb').doc('availability').get(); avail=(fresh.exists&&fresh.data().days)||{};
+    if(!C.openSlots(cfg,avail,B.date,B.covers,Date.now()).some(s=>s.time===B.time)){ B.time=''; step=1; render(); alert('Sorry, that time has just been taken. Please choose another.'); return; }
+    const ref='BH'+Math.random().toString(36).slice(2,6).toUpperCase().replace(/[O0I1]/g,'X')+String(Date.now()).slice(-2);
+    const doc={ref,date:B.date,time:B.time,service:B.service||'',covers:B.covers,name:(B.first+' '+B.last).slice(0,80),email:B.email.slice(0,120),phone:B.phone.slice(0,30),occasion:B.occasion,allergies:B.allergies.slice(0,600),requests:B.requests.slice(0,600),
+      preorder:Object.values(B.pre).slice(0,60),status:'booked',source:'web',table:'',createdAt:new Date().toISOString(),uid:a.currentUser.uid};
+    await db.collection('hosfb_bookings').doc(ref).set(doc);
+    try{ await db.collection('hosfb').doc('availability').set({days:{[B.date]:{[B.time]:firebase.firestore.FieldValue.increment(B.covers)}}},{merge:true}); }catch(e){ console.warn('availability',e.code); }
+    if(cfg.notifyEmail){ try{ fetch('https://formsubmit.co/ajax/'+encodeURIComponent(cfg.notifyEmail),{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({_subject:'New table booking '+ref+' – '+B.date+' '+B.time,_template:'table',Reference:ref,Date:nice(B.date),Time:B.time,Guests:B.covers,Name:doc.name,Email:doc.email,Phone:doc.phone,Occasion:doc.occasion,Allergies:doc.allergies,Requests:doc.requests,'Pre-order':doc.preorder.map(l=>l.qty+' x '+l.name).join('; ')})}); }catch(e){} }
+    $('main').innerHTML=`<div class="card" style="text-align:center"><h2>Thank you, ${esc(B.first)}. Your table is booked.</h2><p class="sub">Your booking reference</p><p class="ref">${ref}</p><div class="sum" style="text-align:left"><strong>${B.covers} ${B.covers===1?'guest':'guests'}</strong> · ${nice(B.date)} at <strong>${B.time}</strong>${doc.preorder.length?'<br>Pre-order received: '+doc.preorder.map(l=>l.qty+' × '+esc(l.name)).join(', '):''}</div><p class="small">Please keep a note of your reference. To change or cancel your booking, call us on ${PHONE}.</p></div>`; window.scrollTo(0,0);
+  }catch(e){ console.error(e); go.disabled=false; go.textContent='Confirm booking'; $('err').textContent='Sorry, we could not complete your booking online. Please try again or call us on '+PHONE+'.'; } }
+boot();
+</script>
+</body>
+</html>

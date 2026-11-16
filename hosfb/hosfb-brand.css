@@ -1,0 +1,18 @@
+/* HosF&B — Brandon Hall Hotel and Spa brand layer (navy, gold, cream; Italiana headings, Lato text).
+   Loaded after each page's own styles. */
+@font-face{font-family:"Italiana";src:url("fonts/italiana-latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Lato";src:url("fonts/lato-latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Lato";src:url("fonts/lato-latin-700-normal.woff2") format("woff2");font-weight:700;font-display:swap}
+:root{--navy:#2C3E50;--navy-deep:#22313F;--gold:#BB9979;--jade:#BB9979;--jade-soft:#f3ece4;--bg:#F7F4EF;--line:#e5dfd6;--ink:#22313F;--ink2:#5d6975}
+body{font-family:"Lato",Aptos,"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif}
+header{background:var(--navy);border-bottom:3px solid var(--gold)}
+header h1{font-family:"Italiana","Didot",Georgia,serif;font-weight:400;letter-spacing:.03em;font-size:26px}
+header h1 span{color:var(--gold)}
+.brandmark{height:44px;width:auto;margin-right:12px;flex:none}
+.card h2,.sheet h2,h2{font-family:"Italiana","Didot",Georgia,serif;font-weight:400;font-size:22px;letter-spacing:.02em;color:var(--navy)}
+nav button.on{background:var(--bg)}
+.btn.jade{background:var(--gold);border-color:var(--gold);color:#22313F;font-weight:700}
+.chip.on,.tbl.open{background:var(--navy);border-color:var(--navy)}
+.tile .v{font-weight:700}
+.byline{font-size:12px;color:var(--ink2);text-align:center;padding:18px 0 26px}
+header h1{font-family:"Lato",system-ui,sans-serif;font-weight:700;font-size:22px;letter-spacing:.01em}
