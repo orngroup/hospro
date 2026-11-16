@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-15T15:16:15.109Z",
+ "updated": "2026-11-16T16:23:41.855Z",
  "own": "Brandon Hall Hotel and Spa",
  "byPullDate": {
   "2026-10-19": {
@@ -51,6 +51,17 @@
   "2026-11-12": {},
   "2026-11-13": {},
   "2026-11-14": {},
-  "2026-11-15": {}
+  "2026-11-15": {},
+  "2026-11-16": {
+   "Brandon Hall Hotel and Spa": 75,
+   "Coombe Abbey Hotel": 107,
+   "Novotel Coventry": 104,
+   "Ramada Hotel & Suites by Wyndham Coventry": 79,
+   "Chesford Grange": 100,
+   "Nailcote Hall": 126,
+   "Mallory Court": 235,
+   "DoubleTree by Hilton Coventry": 110,
+   "Windmill Village Hotel, Golf Club & Spa": 132
+  }
  }
 }
