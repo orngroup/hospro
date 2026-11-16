@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Brandon Hall – Departmental Profitability and Costs</title>
+<title>HosProfit · Brandon Hall – Departmental Profitability and Costs</title>
 <style>
 :root{
   --bg:#f5f4f0; --surface:#fcfcfb; --line:#e4e2dc; --line2:#efede8;
@@ -69,17 +69,35 @@ td.desc{max-width:420px;color:var(--ink2)}
 a{color:#1c5cab}
 .bar-cell{display:inline-block;height:8px;border-radius:2px;background:var(--s1);vertical-align:middle;margin-right:6px}
 #tip{position:fixed;pointer-events:none;background:#141413;color:#fff;font-size:12.5px;padding:6px 9px;border-radius:6px;display:none;z-index:9;max-width:320px}
+nav button.hot{color:#ffb4ab;font-weight:600}nav button.hot.on{background:#d0362b;color:#fff}
+.hp-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:4px 0 16px}.hp-hero h2{font-size:26px;margin:0 0 4px}.hp-hero p{margin:0;color:var(--ink2)}
+.hp-stamp{font-size:12px;color:var(--ink2);text-align:right;line-height:1.5}.hp-stamp b{color:var(--ink);font-size:14px}
+.hp-today{background:var(--surface);border:1px solid var(--line);border-top:4px solid #d0362b;border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.hp-th{display:flex;align-items:center;gap:12px;margin-bottom:12px}.hp-th h3{margin:0;font-size:17px}.hp-th p{margin:2px 0 0;font-size:12px;color:var(--ink2)}
+.hp-link{margin-left:auto;background:#d0362b;color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.hp-week{display:flex;gap:10px;align-items:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid var(--line2)}.hp-week div{flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:96px}
+.hp-week span{font-size:12px;font-weight:600}.hp-week i{display:block;width:70%;max-width:44px;border-radius:4px 4px 0 0;margin-top:3px}.hp-week em{font-style:normal;font-size:11px;color:var(--ink2);margin-top:4px}
+.hp-f{cursor:pointer}.hp-f:hover{filter:brightness(.97)}
+.hp-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;margin-top:6px}
+.hp-card{display:flex;gap:14px;align-items:flex-start;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:12px;padding:16px;font:inherit;color:inherit;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.hp-card:hover,.hp-card:focus-visible{transform:translateY(-2px);box-shadow:0 6px 18px rgba(20,20,19,.09);outline:none}
+.hp-card b{display:block;font-size:15px}.hp-card small{display:block;color:var(--ink2);font-size:12.5px;line-height:1.4;margin-top:3px}.hp-card em{display:block;font-style:normal;font-size:12.5px;font-weight:600;color:var(--c);margin-top:8px}
+.hp-card.hot{background:#fff6f4}
+@media(max-width:700px){.hp-week em{font-size:10px}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Brandon Hall Hotel &amp; Spa — Departmental profitability and costs</h1>
+  <h1>HosProfit <span style="font-weight:400;opacity:.8">· Brandon Hall Hotel &amp; Spa</span></h1>
   <p id="hdr">Management accounts and Xero cost accounts</p>
   <nav id="nav">
-    <button data-t="pf-profit" class="on">Profitability</button>
-    <button data-t="pf-trading">Trading</button>
+    <button data-t="pf-home" class="on">Home</button>
+    <button data-t="pf-trading" class="hot">Trading</button>
+    <button data-t="pf-demand">Channels &amp; rates</button>
+    <button data-t="pf-profit">Profitability</button>
     <button data-t="pf-labour">Labour</button>
     <button data-t="pf-kpi">KPIs</button>
+    <button data-t="pf-accounts">Accounts (Xero)</button>
     <button data-t="pf-stock">Purchased vs consumed</button>
     <button data-t="explore">Supplier costs</button>
     <button data-t="bar">Bar &amp; keg prices</button>
@@ -92,8 +110,11 @@ a{color:#1c5cab}
 <main>
 
 <!-- ================= EXPLORER ================= -->
-<section class="tab on" id="t-pf-profit"><div id="pf-profit"></div></section>
+<section class="tab on" id="t-pf-home"><div id="pf-home"></div></section>
+<section class="tab" id="t-pf-profit"><div id="pf-profit"></div></section>
+<section class="tab" id="t-pf-accounts"><div id="pf-accounts"></div></section>
 <section class="tab" id="t-pf-trading"><div id="pf-trading"></div></section>
+<section class="tab" id="t-pf-demand"><div id="pf-demand"></div></section>
 <section class="tab" id="t-pf-labour"><div id="pf-labour"></div></section>
 <section class="tab" id="t-pf-kpi"><div id="pf-kpi"></div></section>
 <section class="tab" id="t-pf-stock"><div id="pf-stock"></div></section>
@@ -232,6 +253,8 @@ a{color:#1c5cab}
 <script src="trading-engine.js"></script>
 <script src="data/trading-data.js"></script>
 <script src="trading.js"></script>
+<script src="data/accounts-data.js"></script>
+<script src="home.js"></script>
 <script>
 (function(){
 'use strict';
@@ -590,7 +613,7 @@ $('up').addEventListener('change',function(e){if(e.target.files.length)handleUpl
 $('dl').addEventListener('click',function(){save('costs-data.js','/* Xero account transactions — replace this file to update the dashboard */\nwindow.COSTS_DATA = '+JSON.stringify({generated:GEN,rows:RAW})+';\n','text/javascript');});
 
 window.CostsApp={tx:function(){return TX;}};
-init(); renderAll(); window.Profit.show('profit');
+init(); renderAll(); window.Profit.show('home');
 })();
 </script>
 </body>

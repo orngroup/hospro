@@ -63,10 +63,11 @@
       line('Booking Source', 'Channels and OTA share', last.bs, 'Daily email scheduled 07:00') +
       line('Key Performance', 'KPI cross-check', last.kp, 'Daily email scheduled 07:00') +
       line('Deposits', 'Deposits held', last.dep, 'Daily email scheduled 07:00') +
+      [['company', 'Company', 'Booking sources and accounts'], ['segments', 'Revenue By Market Segment', 'Segment mix on the books'], ['rates', 'Daily Rate Analysis', 'Rate plans being sold'], ['cancels', 'Cancellations', 'Cancellations and notice given'], ['noshows', 'No Shows', 'No-show rooms'], ['overrides', 'Rate Override', 'Rates changed from the plan'], ['blocks', 'Block Forecast', 'Group blocks held'], ['rooms', 'Room Usage', 'Room stock and rooms out of service']].map(function (r) { return line(r[1], r[2], last[r[0]], 'Exported by hand; weekly is enough'); }).join('') +
       '</table></div><p class="note">The scheduled emails arrive as PDFs in Gmail. Until the Gmail link is switched on, drop the exported CSV or Excel files into the box at the bottom of this tab.</p></div>';
   }
 
-  function observations(m, act, bks) {
+  function observations(m, act, bks, raw) {
     var o = [], all = (S.af ? S.af.rows : []), cut = asOfDay();
     var past = all.filter(function (r) { return r.d < cut; });
     var byDow = {}; past.forEach(function (r) { (byDow[r.dow] = byDow[r.dow] || []).push(r); });
@@ -86,6 +87,7 @@
       if (bar + rest) o.push(['warn', 'Only ' + pc(bar / (bar + rest)) + ' of drinks sales are rung through the bar', gbp(rest) + ' of drinks are posted to the restaurant and ' + gbp(bar) + ' to the bar. If the bar is busier than that suggests, drinks are being rung on the restaurant till, which blurs bar margin.']);
     }
     if (act.rooms) o.push(['good', 'Guests spend ' + gbp(act.fb / act.rooms, 2) + ' on food and drink per occupied room', 'That is ' + gbp(act.fb / act.guests, 2) + ' a guest. Raising dinner take-up among in-house guests is the lowest-cost way to lift it.']);
+    if (raw) return o;
     return '<div class="card"><h2>What the numbers suggest</h2><p class="sub">Worked out automatically from the latest data</p>' + o.map(function (x) { return '<div class="finding ' + x[0] + '"><h3>' + x[1] + '</h3><p>' + x[2] + '</p></div>'; }).join('') + '</div>';
   }
 
@@ -116,6 +118,8 @@
 
     h += '<div class="card"><h2>Occupancy by night</h2><p class="sub">' + mlabel(month) + ', % of ' + ROOMS + ' rooms</p><div class="legend"><span><i style="background:#1baf7a"></i>Actual</span><span><i style="background:#b9b7af"></i>On the books</span></div><div class="chartbox"><canvas id="tr-c1"></canvas></div></div></div>';
 
+    h += '<div class="card"><h2>Daily pattern, ' + mlabel(month) + '</h2><p class="sub">Each night of the month, net of VAT. Solid line is actual, dotted is what is on the books so far.</p><div class="grid g3" style="margin:0"><div><div class="chartbox" style="height:210px"><canvas id="tr-l1"></canvas></div></div><div><div class="chartbox" style="height:210px"><canvas id="tr-l2"></canvas></div></div><div><div class="chartbox" style="height:210px"><canvas id="tr-l3"></canvas></div></div></div></div>';
+    h += '<div class="card"><h2>Every month in the feed</h2><p class="sub">' + mlabel(months[0]) + ' to ' + mlabel(months[months.length - 1]) + ': actual where traded, otherwise on the books</p><div class="grid g3" style="margin:0"><div><div class="chartbox" style="height:210px"><canvas id="tr-m1"></canvas></div></div><div><div class="chartbox" style="height:210px"><canvas id="tr-m2"></canvas></div></div><div><div class="chartbox" style="height:210px"><canvas id="tr-m3"></canvas></div></div></div></div>';
     // day of week + forward
     var past = S.af.rows.filter(function (r) { return r.d < cut; }), byDow = {};
     past.forEach(function (r) { (byDow[r.dow] = byDow[r.dow] || []).push(r); });
@@ -166,7 +170,31 @@
     Object.keys(b).forEach(function (k) { if (a[k]) { rooms += b[k][0] - a[k][0]; rev += (b[k][1] - a[k][1]); } });
     return ' Pickup since ' + dlabel(d[d.length - 2]) + ': ' + (rooms >= 0 ? '+' : '') + rooms + ' room nights, ' + gbp(net(rev)) + ' rooms revenue across future dates.';
   }
+  var extra = [];
+  function small(id, type, labels, data, title, fmt, tips, dashFrom, colour) {
+    if (!$(id)) return;
+    var ds = { data: data, borderColor: colour, backgroundColor: type === 'bar' ? data.map(function (v, i) { return dashFrom !== null && i >= dashFrom ? '#b9b7af' : colour; }) : colour, borderWidth: type === 'bar' ? 0 : 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, spanGaps: true, borderRadius: 3, maxBarThickness: 22 };
+    if (type === 'line' && dashFrom !== null) ds.segment = { borderDash: function (c) { return c.p1DataIndex >= dashFrom ? [3, 3] : undefined; }, borderColor: function (c) { return c.p1DataIndex >= dashFrom ? '#86847d' : colour; } };
+    extra.push(new Chart($(id), { type: type, data: { labels: labels, datasets: [ds] }, options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, title: { display: true, text: title, align: 'start', color: '#141413', font: { weight: '600', size: 13 } }, tooltip: { callbacks: { title: function (it) { return tips[it[0].dataIndex]; }, label: function (c) { return fmt(c.parsed.y); } } } },
+      scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } }, y: { beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false }, ticks: { callback: function (v) { return fmt(v); }, maxTicksLimit: 5 } } } } }));
+  }
+  function drawTrends() {
+    extra.forEach(function (c) { c.destroy(); }); extra = [];
+    var rows = rowsFor(month), cut = asOfDay(), df = null; rows.forEach(function (r, i) { if (df === null && r.d >= cut) df = i; });
+    var lab = rows.map(function (r) { return +r.d.slice(8); }), tips = rows.map(function (r) { return r.dow + ' ' + dlabel(r.d) + (r.d >= cut ? ' (on the books)' : ''); });
+    var g0 = function (v) { return '£' + Math.round(v); }, g2 = function (v) { return gbp(v, 2); }, p0 = function (v) { return Math.round(v) + '%'; };
+    small('tr-l1', 'line', lab, rows.map(function (r) { return r.rooms ? +(net(r.acc) / r.rooms).toFixed(2) : null; }), 'Average daily rate', g0, tips, df, '#2a78c8');
+    small('tr-l2', 'line', lab, rows.map(function (r) { return +(r.rooms / ROOMS * 100).toFixed(1); }), 'Occupancy', p0, tips, df, '#1baf7a');
+    small('tr-l3', 'line', lab, rows.map(function (r) { return +(net(r.acc) / ROOMS).toFixed(2); }), 'RevPAR', g0, tips, df, '#eb6834');
+    var ms = {}; S.af.rows.forEach(function (r) { (ms[r.d.slice(0, 7)] = ms[r.d.slice(0, 7)] || []).push(r); });
+    var mk = Object.keys(ms).sort(), ag = mk.map(function (m) { return agg(ms[m]); }), mf = null; mk.forEach(function (m, i) { if (mf === null && m > cut.slice(0, 7)) mf = i; });
+    var ml = mk.map(function (m) { return MN[+m.slice(5) - 1] + ' ' + m.slice(2, 4); }), mt = mk.map(function (m, i) { return mlabel(m) + (mf !== null && i >= mf ? ' (on the books)' : ''); });
+    small('tr-m1', 'bar', ml, ag.map(function (a) { return Math.round(a.acc); }), 'Rooms revenue by month', function (v) { return v >= 1000 ? '£' + Math.round(v / 1000) + 'k' : '£' + Math.round(v); }, mt, mf, '#2a78c8');
+    small('tr-m2', 'bar', ml, ag.map(function (a) { return +(a.occ * 100).toFixed(1); }), 'Occupancy by month', p0, mt, mf, '#1baf7a');
+    small('tr-m3', 'line', ml, ag.map(function (a) { return a.rooms ? +a.adr.toFixed(2) : null; }), 'Average daily rate by month', g0, mt, mf, '#eb6834');
+  }
   function drawChart() {
+    drawTrends();
     var rows = rowsFor(month), cut = asOfDay(); if (!$('tr-c1')) return;
     if (chart) chart.destroy();
     chart = new Chart($('tr-c1'), { type: 'bar', data: { labels: rows.map(function (r) { return +r.d.slice(8); }), datasets: [{ data: rows.map(function (r) { return +(r.rooms / ROOMS * 100).toFixed(1); }), backgroundColor: rows.map(function (r) { return r.d < cut ? '#1baf7a' : '#b9b7af'; }), borderRadius: 3, maxBarThickness: 22 }] },
@@ -176,7 +204,7 @@
 
   /* ---------- loading new files ---------- */
   function loader() {
-    return '<div class="card"><h2>Load Rezlynx reports</h2><p class="sub">Choose the Actual & Forecast CSV and Period End Excel files exported from Rezlynx. Any number at once.</p><p><input type="file" id="tr-up" multiple accept=".csv,.xls,.xlsx"></p><p class="note" id="tr-msg"></p><p><button class="btn" id="tr-dl"' + (changed ? '' : ' disabled') + '>Download trading-data.js</button></p><p class="note">The tab refreshes on your screen straight away. To update it for everyone, replace <code>costs/data/trading-data.js</code> in the repository with the downloaded file.</p></div>';
+    return '<div class="card"><h2>Load Rezlynx reports</h2><p class="sub">Choose files exported from Rezlynx: Actual & Forecast (CSV), Period End, Company, Cancellations, No Shows, Rate Override, Daily Rate Analysis, Forecast Revenue By Market Segment, Block Forecast and Room Usage (Excel). Any number at once.</p><p><input type="file" id="tr-up" multiple accept=".csv,.xls,.xlsx"></p><p class="note" id="tr-msg"></p><p><button class="btn" id="tr-dl"' + (changed ? '' : ' disabled') + '>Download trading-data.js</button></p><p class="note">The tab refreshes on your screen straight away. To update it for everyone, replace <code>costs/data/trading-data.js</code> in the repository with the downloaded file.</p></div>';
   }
   function stampFromName(name) {
     var m = name.match(/_(\d{4})(\d\d)(\d\d)_(\d\d)(\d\d)/); if (m) return m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5];
@@ -198,10 +226,89 @@
         fr.onload = function () { if (T.isAF(fr.result)) { var p = T.parseAF(fr.result); S = T.merge(S, 'af', p, meta); msg.push(f.name + ': Actual & Forecast, ' + p.length + ' nights'); } else msg.push(f.name + ': not a report this tab reads yet'); done(); };
         fr.readAsText(f);
       } else {
-        fr.onload = function () { withXlsx(function () { try { var wb = XLSX.read(fr.result), aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' }); if (T.isPE(aoa)) { var p = T.parsePE(aoa); S = T.merge(S, 'pe', p, meta); msg.push(f.name + ': Period End (' + p.type + ' from ' + p.from + ')'); } else msg.push(f.name + ': not a report this tab reads yet'); } catch (e) { msg.push(f.name + ': could not be read'); } done(); }); };
+        fr.onload = function () { withXlsx(function () { try { var wb = XLSX.read(fr.result), aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' }); if (T.isPE(aoa)) { var p = T.parsePE(aoa); S = T.merge(S, 'pe', p, meta); msg.push(f.name + ': Period End (' + p.type + ' from ' + p.from + ')'); } else { var rep = T.readReport(aoa); if (rep) { S = T.mergeReport(S, rep, meta); msg.push(f.name + ': ' + (rep.skipped ? 'recognised, nothing used from it yet' : 'loaded (' + rep.kind + ')')); } else msg.push(f.name + ': not a report this tab reads yet'); } } catch (e) { msg.push(f.name + ': could not be read'); } done(); }); };
         fr.readAsArrayBuffer(f);
       }
     });
   }
-  if (window.Profit && window.Profit.register) window.Profit.register('trading', render);
+
+  /* ---------- Channels & rates view ---------- */
+  var KNOWN = { BOOK: 'Booking.com', EXPE: 'Expedia', PERK: 'TravelPerk', MIKI: 'Miki Travel' };
+  function coName(ref) { var k = Object.keys(KNOWN).filter(function (x) { return ref.indexOf(x) === 0; })[0]; return k ? KNOWN[k] + ' <span style="color:#86847d">' + esc(ref) + '</span>' : esc(ref); }
+  function src(x) { return x ? ' · report run ' + when(x.asOf) : ''; }
+  function objRows(o, val) { return Object.keys(o).map(function (k) { return [k, o[k]]; }).sort(function (a, b) { return val(b[1]) - val(a[1]); }); }
+  function renderDemand() {
+    var X = S.x || {}, h = '', obs = [];
+    if (!Object.keys(X).length) { $('pf-demand').innerHTML = '<div class="card"><h2>No channel or rate reports loaded yet</h2><p class="sub">Load them on the Trading tab.</p></div>'; return; }
+
+    if (X.company) {
+      var c = X.company, T0 = c.total, ota = 0; c.rows.forEach(function (r) { if (/^(BOOK|EXPE)/.test(r.ref)) ota += r.rn; });
+      var top = c.rows[0];
+      h += '<div class="tiles">' + tile('Room nights, all sources', num(T0.rn), esc(c.period.replace('(Actual) ', ''))) + tile('Booking.com and Expedia', pc(ota / T0.rn), num(ota) + ' room nights') +
+        tile('Largest single source', pc(top.rn / T0.rn), (KNOWN[top.ref.slice(0, 4)] || esc(top.ref))) + tile('Cancelled room nights', num(T0.lostNights), gbp(T0.lostRev) + ' estimated value') + tile('Sources with bookings', c.rows.length, '') + '</div>';
+      h += '<div class="card"><h2>Where bookings come from</h2><p class="sub">Rezlynx Company report, ' + esc(c.period.replace('(Actual) ', '')) + ', revenue as reported (including VAT)' + src(c) + '</p><div class="scroll" style="max-height:470px"><table><tr><th>Source</th><th class="n">Arrivals</th><th class="n">Room nights</th><th class="n">Share</th><th class="n">Room rate</th><th class="n">Rooms revenue</th><th class="n">F&B on the bill</th><th class="n">F&B per night</th><th class="n">Booked ahead</th><th class="n">Nights per stay</th><th class="n">Cancelled nights</th></tr>' +
+        c.rows.slice(0, 25).map(function (r) { return '<tr><td>' + coName(r.ref) + '</td><td class="n">' + num(r.arr) + '</td><td class="n">' + num(r.rn) + '</td><td class="n"><span class="bar-cell" style="width:' + Math.round(r.rn / T0.rn * 120) + 'px"></span>' + pc(r.rn / T0.rn) + '</td><td class="n">' + gbp(r.rate, 2) + '</td><td class="n">' + gbp(r.acc) + '</td><td class="n">' + gbp(r.fb) + '</td><td class="n">' + gbp(r.fb / r.rn, 2) + '</td><td class="n">' + r.lead.toFixed(0) + ' days</td><td class="n">' + r.stay.toFixed(2) + '</td><td class="n">' + num(r.lostNights) + '</td></tr>'; }).join('') +
+        '<tr class="tot"><td>All sources</td><td class="n"></td><td class="n">' + num(T0.rn) + '</td><td class="n">100.0%</td><td class="n">' + gbp(T0.acc / T0.rn, 2) + '</td><td class="n">' + gbp(T0.acc) + '</td><td class="n">' + gbp(T0.fb) + '</td><td class="n">' + gbp(T0.fb / T0.rn, 2) + '</td><td class="n" colspan="2"></td><td class="n">' + num(T0.lostNights) + '</td></tr></table></div><p class="note">Top 25 of ' + c.rows.length + ' sources. The report lists reference codes only; names are shown where the code is unmistakable.</p></div>';
+      obs.push(['bad', pc(ota / T0.rn) + ' of room nights come through Booking.com and Expedia', 'That is ' + num(ota) + ' room nights and ' + gbp(c.rows.filter(function (r) { return /^(BOOK|EXPE)/.test(r.ref); }).reduce(function (s2, r) { return s2 + r.acc; }, 0)) + ' of rooms revenue on which commission is paid. Every point of that business moved to the hotel’s own website keeps the commission. The Agent Commission report came back empty, so the commission cost itself is not yet visible in Rezlynx.']);
+    }
+    h += '<div class="grid g2">';
+    if (X.segments) {
+      var sg = X.segments, tr = sg.rows.reduce(function (s2, r) { return s2 + r.rooms; }, 0), ta = sg.rows.reduce(function (s2, r) { return s2 + r.acc; }, 0);
+      h += '<div class="card"><h2>Market segments on the books</h2><p class="sub">' + dlabel(sg.from) + ' to ' + dlabel(sg.to) + ', ' + (sg.basis === 'gross' ? 'including VAT' : 'net') + src(sg) + '</p><div class="scroll"><table><tr><th>Segment code</th><th class="n">Rooms</th><th class="n">Share</th><th class="n">Rooms revenue</th><th class="n">Rate</th><th class="n">F&B and other</th><th class="n">Not yet confirmed</th></tr>' +
+        sg.rows.map(function (r) { return '<tr><td><b>' + esc(r.seg) + '</b></td><td class="n">' + num(r.rooms) + '</td><td class="n">' + pc(r.rooms / tr) + '</td><td class="n">' + gbp(r.acc) + '</td><td class="n">' + gbp(r.rooms ? r.acc / r.rooms : null, 2) + '</td><td class="n">' + gbp(r.fb) + '</td><td class="n">' + num(r.reserved + r.allot) + '</td></tr>'; }).join('') +
+        '<tr class="tot"><td>Total</td><td class="n">' + num(tr) + '</td><td class="n">100.0%</td><td class="n">' + gbp(ta) + '</td><td class="n">' + gbp(ta / tr, 2) + '</td><td class="n" colspan="2"></td></tr></table></div><p class="note">Codes are shown as set up in Rezlynx. “Not yet confirmed” = provisional, reserved and allotment rooms, which only become sales when picked up.</p></div>';
+    }
+    if (X.rates) {
+      var ra = X.rates, fam = objRows(ra.byFamily, function (v) { return v.n; }), brd = objRows(ra.byBoard, function (v) { return v.n; });
+      h += '<div class="card"><h2>Rates being sold</h2><p class="sub">Daily Rate Analysis, ' + esc(ra.range) + ': ' + num(ra.nights) + ' room nights at an average ' + gbp(ra.value / ra.nights, 2) + src(ra) + '</p><div class="scroll"><table><tr><th>Rate plan group</th><th class="n">Room nights</th><th class="n">Share</th><th class="n">Average rate</th></tr>' +
+        fam.map(function (f) { return '<tr><td><b>' + esc(f[0]) + '</b></td><td class="n">' + num(f[1].n) + '</td><td class="n">' + pc(f[1].n / ra.nights) + '</td><td class="n">' + gbp(f[1].n ? f[1].v / f[1].n : null, 2) + '</td></tr>'; }).join('') + '</table><table style="margin-top:10px"><tr><th>Meal basis</th><th class="n">Room nights</th><th class="n">Share</th><th class="n">Average rate</th></tr>' +
+        brd.map(function (f) { return '<tr><td>' + esc(f[0]) + '</td><td class="n">' + num(f[1].n) + '</td><td class="n">' + pc(f[1].n / ra.nights) + '</td><td class="n">' + gbp(f[1].n ? f[1].v / f[1].n : null, 2) + '</td></tr>'; }).join('') + '</table></div><p class="note">Rate plan group is the first part of the Rezlynx rate code (OTA_BB is grouped under OTA).</p></div>';
+      var dbb = ra.byBoard['Dinner, bed and breakfast']; if (dbb) obs.push(['warn', 'Only ' + pc(dbb.n / ra.nights) + ' of room nights include dinner', num(dbb.n) + ' of ' + num(ra.nights) + ' room nights in ' + esc(ra.range) + ' are on a dinner-inclusive rate. Dinner packages on the website and at check-in are the direct route to more restaurant covers.']);
+    }
+    h += '</div><div class="grid g2">';
+    if (X.cancels) {
+      var cn = X.cancels, lm = Object.keys(cn.byMonth).sort(), late = (cn.byLead['On the day'] || { c: 0, lost: 0 }), l2 = (cn.byLead['1 to 2 days before'] || { c: 0, lost: 0 });
+      var order = ['On the day', '1 to 2 days before', '3 to 7 days before', '8 to 30 days before', 'Over 30 days before'];
+      h += '<div class="card"><h2>Cancellations</h2><p class="sub">' + num(cn.count) + ' cancellations, ' + dlabel(cn.from) + ' ' + cn.from.slice(0, 4) + ' to ' + dlabel(cn.to) + ' ' + cn.to.slice(0, 4) + '; estimated value ' + gbp(cn.lost) + src(cn) + '</p><div class="scroll"><table><tr><th>How close to arrival</th><th class="n">Cancellations</th><th class="n">Share</th><th class="n">Estimated value</th></tr>' +
+        order.filter(function (k) { return cn.byLead[k]; }).map(function (k) { var v = cn.byLead[k]; return '<tr><td>' + k + '</td><td class="n">' + num(v.c) + '</td><td class="n">' + pc(v.c / cn.count) + '</td><td class="n">' + gbp(v.lost) + '</td></tr>'; }).join('') + '</table>' +
+        '<table style="margin-top:10px"><tr><th>Booked through</th><th class="n">Cancellations</th><th class="n">Estimated value</th></tr>' + objRows(cn.byAgent, function (v) { return v.c; }).slice(0, 6).map(function (a) { return '<tr><td>' + coName(a[0]) + '</td><td class="n">' + num(a[1].c) + '</td><td class="n">' + gbp(a[1].lost) + '</td></tr>'; }).join('') + '</table></div><div class="chartbox" style="height:200px;margin-top:10px"><canvas id="tr-c2"></canvas></div><p class="note">Estimated value is Rezlynx’s figure for the cancelled booking; many cancelled rooms are resold, so it is not money lost.</p></div>';
+      obs.push(['warn', num(late.c + l2.c) + ' bookings were cancelled within two days of arrival', 'Worth ' + gbp(late.lost + l2.lost) + ' at booked value, ' + num(late.c) + ' of them on the day itself. These are the hardest rooms to resell; check which rate plans allow free cancellation that late.']);
+    }
+    h += '<div>';
+    if (X.noshows) {
+      var ns = X.noshows, nf = objRows(ns.byFamily, function (v) { return v.c; });
+      h += '<div class="card"><h2>No-shows</h2><p class="sub">' + num(ns.count) + ' no-show rooms on the report' + src(ns) + '</p><table><tr><th>Rate plan group</th><th class="n">No-shows</th><th class="n">Share</th></tr>' + nf.slice(0, 6).map(function (f) { return '<tr><td>' + esc(f[0]) + '</td><td class="n">' + num(f[1].c) + '</td><td class="n">' + pc(f[1].c / ns.count) + '</td></tr>'; }).join('') + '</table><p class="note">By arrival month: ' + Object.keys(ns.byMonth).sort().map(function (m) { return mlabel(m).slice(0, 3) + ' ' + ns.byMonth[m].c; }).join(' · ') + '.</p></div>';
+      var pe = pePeriod('month'); var nsRev = pe ? (peGroup(pe, 'ACCOM').lines.filter(function (l) { return l[0] === 'NO_SHOW'; })[0] || [0, 0, 0])[2] : null;
+      if (nf[0]) obs.push(['warn', pc(nf[0][1].c / ns.count) + ' of no-shows are on ' + esc(nf[0][0]) + ' rates', num(ns.count) + ' no-show rooms in total.' + (nsRev !== null ? ' No-show charges collected this month: ' + gbp(nsRev) + '.' : '') + ' Check that no-shows are being charged and reported back to the booking site.']);
+    }
+    if (X.overrides) {
+      var ov = X.overrides, au = ov.byOp['Automatic (system)'], st = ov.byOp.Staff;
+      h += '<div class="card"><h2>Rate overrides</h2><p class="sub">' + num(ov.count) + ' overrides applied ' + dlabel(ov.from) + ' to ' + dlabel(ov.to) + ' ' + ov.to.slice(0, 4) + ', including VAT' + src(ov) + '</p><table><tr><th></th><th class="n">Overrides</th><th class="n">Rate before</th><th class="n">Rate after</th><th class="n">Change</th></tr>' +
+        (au ? '<tr><td>Applied automatically</td><td class="n">' + num(au.c) + '</td><td class="n">' + gbp(au.pre) + '</td><td class="n">' + gbp(au.post) + '</td><td class="n">' + gbp(au.diff) + ' (' + pc(au.diff / au.pre) + ')</td></tr>' : '') +
+        (st ? '<tr><td>Applied by staff (' + ov.staffUsers + ' users)</td><td class="n">' + num(st.c) + '</td><td class="n">' + gbp(st.pre) + '</td><td class="n">' + gbp(st.post) + '</td><td class="n">' + gbp(st.diff) + '</td></tr>' : '') + '</table>' +
+        '<table style="margin-top:10px"><tr><th>Rate plan</th><th class="n">Overrides</th><th class="n">Change</th><th class="n">% of rate</th></tr>' + objRows(ov.byPlan, function (v) { return -v.diff; }).filter(function (p) { return p[1].diff < 0; }).slice(0, 6).map(function (p) { return '<tr><td>' + esc(p[0]) + '</td><td class="n">' + num(p[1].c) + '</td><td class="n">' + gbp(p[1].diff) + '</td><td class="n">' + pc(p[1].diff / p[1].pre) + '</td></tr>'; }).join('') + '</table><p class="note">Staff user names are not stored here. Staff overrides in this period raised rates overall, which usually means prices keyed for groups or events.</p></div>';
+      if (au && au.diff < 0) obs.push(['bad', 'Automatic overrides cut rates by ' + pc(-au.diff / au.pre) + ' in five days', num(au.c) + ' bookings between ' + dlabel(ov.from) + ' and ' + dlabel(ov.to) + ' had their rate reduced automatically, by ' + gbp(-au.diff) + ' in total. This pattern normally comes from discounts and promotions switched on with the booking sites, on top of commission. Confirm which promotions are active and whether they are intended.']);
+    }
+    h += '</div></div><div class="grid g2">';
+    if (X.rooms) {
+      var rm = X.rooms, ty = objRows(rm.byType, function (v) { return v.c; });
+      h += '<div class="card"><h2>Rooms and room types</h2><p class="sub">' + rm.total + ' rooms on the Room Usage report: ' + Object.keys(rm.byStatus).map(function (k) { return rm.byStatus[k] + ' ' + k.toLowerCase(); }).join(', ') + src(rm) + '</p><table><tr><th>Room type</th><th class="n">Rooms</th><th class="n">Out of service now</th></tr>' + ty.map(function (t2) { return '<tr><td>' + esc(t2[1].desc || t2[0]) + ' <span style="color:#86847d">' + esc(t2[0]) + '</span></td><td class="n">' + t2[1].c + '</td><td class="n">' + (t2[1].oos || '–') + '</td></tr>'; }).join('') + '</table><p class="note">This report shows the room stock, not nights sold per type. Sales by room type need the Daily Rate Analysis displayed by room type, or the Occupancy report.</p></div>';
+      h += '<div class="card"><h2>Rooms out of service now</h2><p class="sub">' + rm.oos.length + ' rooms' + src(rm) + '</p><div class="scroll" style="max-height:330px"><table><tr><th>Room</th><th>Type</th><th>Out of service from</th><th>Back in service</th><th>Last guest left</th></tr>' + rm.oos.map(function (o) { return '<tr><td><b>' + esc(o.id) + '</b></td><td>' + esc(o.desc) + '</td><td>' + (o.since ? dlabel(o.since) + ' ' + o.since.slice(0, 4) : '–') + '</td><td>' + (o.until ? dlabel(o.until) + ' ' + o.until.slice(0, 4) : 'no date set') + '</td><td>' + (o.lastDep ? dlabel(o.lastDep) + ' ' + o.lastDep.slice(0, 4) : '–') + '</td></tr>'; }).join('') + '</table></div></div>';
+      var longO = rm.oos.filter(function (o) { return o.since && (Date.parse(rm.asOf.slice(0, 10)) - Date.parse(o.since)) / 864e5 > 30; });
+      if (longO.length) obs.push(['bad', longO.length + ' room' + (longO.length > 1 ? 's have' : ' has') + ' an out-of-service date more than 30 days old', 'Room' + (longO.length > 1 ? 's ' : ' ') + longO.map(function (o) { return o.id; }).join(', ') + '. Check with maintenance whether these are still genuinely unavailable; each is a room that cannot be sold.']);
+    }
+    h += '</div>';
+    if (X.blocks && X.blocks.months) {
+      var bm = X.blocks.months, bk = Object.keys(bm).sort(function (a, b) { return Date.parse('1 ' + a) - Date.parse('1 ' + b); }), pn = 0, pl = [];
+      h += '<div class="card"><h2>Group blocks held</h2><p class="sub">Block Forecast report, ' + bk.join(', ') + src(X.blocks) + '</p><table><tr><th>Month</th><th>Block</th><th>Group</th><th>Status</th><th>Dates</th><th class="n">Rooms a night</th><th class="n">Room nights held</th></tr>' + bk.map(function (mth) { return bm[mth].rows.map(function (b) { if (/Provisional/.test(b.status)) { pn += b.total; pl.push(esc(b.name) + ' (' + num(b.total) + ', ' + esc(mth) + ')'); } return '<tr><td>' + esc(mth) + '</td><td>' + esc(b.ref) + '</td><td><b>' + esc(b.name) + '</b></td><td><span class="pill ' + (/Provisional/.test(b.status) ? 'warn' : 'good') + '">' + esc(b.status) + '</span></td><td>' + (b.first === b.last ? b.first : b.first + ' to ' + b.last) + '</td><td class="n">' + Math.round(b.total / b.nights) + '</td><td class="n">' + num(b.total) + '</td></tr>'; }).join(''); }).join('') + '</table><p class="note">One export per month in Rezlynx; load each month you want to see.</p></div>';
+      if (pn) obs.push(['warn', num(pn) + ' room nights are held for provisional groups', pl.join(', ') + '. Until they are confirmed these rooms are off sale to other guests; agree release dates.']);
+    }
+    $('pf-demand').innerHTML = '<div class="card"><h2>What these reports suggest</h2><p class="sub">Worked out automatically from the latest reports loaded</p>' + obs.map(function (x) { return '<div class="finding ' + x[0] + '"><h3>' + x[1] + '</h3><p>' + x[2] + '</p></div>'; }).join('') + '</div>' + h +
+      '<p class="note">Guest names in the Rezlynx reports are not stored: each report is reduced to totals when it is loaded. To refresh, load new exports on the Trading tab.</p>';
+    if (X.cancels && $('tr-c2')) { var mm = Object.keys(X.cancels.byMonth).sort(); if (chart2) chart2.destroy(); chart2 = new Chart($('tr-c2'), { type: 'bar', data: { labels: mm.map(function (m) { return MN[+m.slice(5) - 1] + ' ' + m.slice(2, 4); }), datasets: [{ data: mm.map(function (m) { return X.cancels.byMonth[m].c; }), backgroundColor: '#eb6834', borderRadius: 3, maxBarThickness: 26 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Cancellations by month cancelled', align: 'start', font: { weight: '500' } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false } } } } }); }
+  }
+  var chart2 = null;
+
+  window.Trading = { S: function () { return S; }, agg: agg, rowsFor: rowsFor, asOfDay: asOfDay, observations: observations, ROOMS: ROOMS, net: net, pePeriod: pePeriod, peGroup: peGroup };
+  if (window.Profit && window.Profit.register) { window.Profit.register('trading', render); window.Profit.register('demand', renderDemand); }
 })();
