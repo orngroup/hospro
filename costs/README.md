@@ -4,6 +4,8 @@ Static site for `brandon.hospro.co.uk/costs`. Copy this `costs` folder into the 
 
 - `index.html` – the dashboard
 - `profit.js` – Profitability, Labour, KPIs, Purchased vs consumed and Alia's brief tabs. Reads the P&L dashboard's management accounts from `../pl/data/`, so it updates whenever the P&L dashboard is updated. These tabs use the same sign-in as the P&L dashboard.
+- `trading.js`, `trading-engine.js` – Trading tab: reads Rezlynx (Guestline) Actual & Forecast CSV and Period End Excel exports
+- `data/trading-data.js` – the Rezlynx data; load new files on the Trading tab, download this file and replace it to update
 - `costs-engine.js` – parsing and categorisation rules (edit here to change how a line is categorised)
 - `data/costs-data.js` – the Xero lines; replace this file to update the dashboard
 - `vendor/` – Chart.js and SheetJS, so the page needs no outside connection

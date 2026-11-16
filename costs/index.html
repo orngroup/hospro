@@ -77,6 +77,7 @@ a{color:#1c5cab}
   <p id="hdr">Management accounts and Xero cost accounts</p>
   <nav id="nav">
     <button data-t="pf-profit" class="on">Profitability</button>
+    <button data-t="pf-trading">Trading</button>
     <button data-t="pf-labour">Labour</button>
     <button data-t="pf-kpi">KPIs</button>
     <button data-t="pf-stock">Purchased vs consumed</button>
@@ -92,6 +93,7 @@ a{color:#1c5cab}
 
 <!-- ================= EXPLORER ================= -->
 <section class="tab on" id="t-pf-profit"><div id="pf-profit"></div></section>
+<section class="tab" id="t-pf-trading"><div id="pf-trading"></div></section>
 <section class="tab" id="t-pf-labour"><div id="pf-labour"></div></section>
 <section class="tab" id="t-pf-kpi"><div id="pf-kpi"></div></section>
 <section class="tab" id="t-pf-stock"><div id="pf-stock"></div></section>
@@ -227,6 +229,9 @@ a{color:#1c5cab}
 <script src="costs-engine.js"></script>
 <script src="data/costs-data.js"></script>
 <script src="profit.js"></script>
+<script src="trading-engine.js"></script>
+<script src="data/trading-data.js"></script>
+<script src="trading.js"></script>
 <script>
 (function(){
 'use strict';

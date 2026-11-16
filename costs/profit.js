@@ -364,5 +364,5 @@
     });
   });
   function current() { var b = document.querySelector('#nav button.on'); return b ? b.dataset.t.replace('pf-', '') : 'profit'; }
-  window.Profit = { show: show, isView: function (n) { return !!VIEWS[n]; } };
+  window.Profit = { show: show, isView: function (n) { return !!VIEWS[n]; }, register: function (n, f) { VIEWS[n] = f; }, data: function () { return { M: M, IDS: IDS, LABEL: LABEL }; } };
 })();
