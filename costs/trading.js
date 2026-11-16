@@ -118,7 +118,7 @@
 
     h += '<div class="card"><h2>Occupancy by night</h2><p class="sub">' + mlabel(month) + ', % of ' + ROOMS + ' rooms</p><div class="legend"><span><i style="background:#1baf7a"></i>Actual</span><span><i style="background:#b9b7af"></i>On the books</span></div><div class="chartbox"><canvas id="tr-c1"></canvas></div></div></div>';
 
-    h += '<div class="card"><h2>Daily pattern, ' + mlabel(month) + '</h2><p class="sub">Each night of the month, net of VAT. Solid line is actual, dotted is what is on the books so far.</p><div class="grid g3" style="margin:0"><div><div class="chartbox" style="height:210px"><canvas id="tr-l1"></canvas></div></div><div><div class="chartbox" style="height:210px"><canvas id="tr-l2"></canvas></div></div><div><div class="chartbox" style="height:210px"><canvas id="tr-l3"></canvas></div></div></div></div>';
+    h += '<div class="card"><h2>Rate and revenue per room by date, ' + mlabel(month) + '</h2><p class="sub">Net of VAT. Solid lines are actual nights, dotted lines are what is on the books so far. The boxes are the average for the month.</p><div class="tiles" style="margin-bottom:10px">' + avgTiles(rowsFor(month)) + '</div><div class="legend" id="tr-l1-leg"></div><div class="chartbox" style="height:300px"><canvas id="tr-l1"></canvas></div></div>';
     h += '<div class="card"><h2>Every month in the feed</h2><p class="sub">' + mlabel(months[0]) + ' to ' + mlabel(months[months.length - 1]) + ': actual where traded, otherwise on the books</p><div class="grid g3" style="margin:0"><div><div class="chartbox" style="height:210px"><canvas id="tr-m1"></canvas></div></div><div><div class="chartbox" style="height:210px"><canvas id="tr-m2"></canvas></div></div><div><div class="chartbox" style="height:210px"><canvas id="tr-m3"></canvas></div></div></div></div>';
     // day of week + forward
     var past = S.af.rows.filter(function (r) { return r.d < cut; }), byDow = {};
@@ -171,6 +171,18 @@
     return ' Pickup since ' + dlabel(d[d.length - 2]) + ': ' + (rooms >= 0 ? '+' : '') + rooms + ' room nights, ' + gbp(net(rev)) + ' rooms revenue across future dates.';
   }
   var extra = [];
+  var L3 = [['ADR', '#2a78d6'], ['RevPAR', '#eb6834'], ['TRevPAR', '#1baf7a']];
+  function avgTiles(rows) { var a = agg(rows); return tile('ADR', gbp(a.adr, 2), 'average for ' + a.nights + ' nights') + tile('RevPAR', gbp(a.revpar, 2), 'rooms revenue ÷ ' + ROOMS + ' rooms') + tile('TRevPAR', gbp(a.trevpar, 2), 'all revenue ÷ ' + ROOMS + ' rooms') + tile('Occupancy', pc(a.occ), num(a.rooms) + ' room nights'); }
+  /* three £ measures on one axis: ADR, RevPAR, TRevPAR by date */
+  function tri(id, legId, rows, store) {
+    if (!$(id)) return; var cut = asOfDay(), df = null; rows.forEach(function (r, i) { if (df === null && r.d >= cut) df = i; });
+    var vals = [rows.map(function (r) { return r.rooms ? +(net(r.acc) / r.rooms).toFixed(2) : null; }), rows.map(function (r) { return +(net(r.acc) / ROOMS).toFixed(2); }), rows.map(function (r) { return +(net(r.acc + r.fb + r.oth) / ROOMS).toFixed(2); })];
+    var many = rows.length > 62;
+    if ($(legId)) $(legId).innerHTML = L3.map(function (l) { return '<span><i style="background:' + l[1] + '"></i>' + l[0] + '</span>'; }).join('') + '<span style="color:#86847d">dotted = on the books</span>';
+    store.push(new Chart($(id), { type: 'line', data: { labels: rows.map(function (r) { return many ? dlabel(r.d) + (r.d.slice(8) === '01' ? ' ' + r.d.slice(2, 4) : '') : +r.d.slice(8); }), datasets: L3.map(function (l, k) { return { label: l[0], data: vals[k], borderColor: l[1], backgroundColor: l[1], borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, spanGaps: true, segment: { borderDash: function (c) { return df !== null && c.p1DataIndex >= df ? [4, 3] : undefined; } } }; }) },
+      options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: function (it) { var r = rows[it[0].dataIndex]; return r.dow + ' ' + dlabel(r.d) + ' ' + r.d.slice(0, 4) + (r.d >= cut ? ' (on the books)' : ''); }, label: function (c) { return c.dataset.label + ': ' + gbp(c.parsed.y, 2); }, afterBody: function (it) { var r = rows[it[0].dataIndex]; return 'Occupancy: ' + pc(r.rooms / ROOMS) + ' · ' + r.rooms + ' rooms'; } } } },
+        scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } }, y: { beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false }, ticks: { callback: function (v) { return '£' + v; }, maxTicksLimit: 6 } } } } }));
+  }
   function small(id, type, labels, data, title, fmt, tips, dashFrom, colour) {
     if (!$(id)) return;
     var ds = { data: data, borderColor: colour, backgroundColor: type === 'bar' ? data.map(function (v, i) { return dashFrom !== null && i >= dashFrom ? '#b9b7af' : colour; }) : colour, borderWidth: type === 'bar' ? 0 : 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, spanGaps: true, borderRadius: 3, maxBarThickness: 22 };
@@ -183,9 +195,7 @@
     var rows = rowsFor(month), cut = asOfDay(), df = null; rows.forEach(function (r, i) { if (df === null && r.d >= cut) df = i; });
     var lab = rows.map(function (r) { return +r.d.slice(8); }), tips = rows.map(function (r) { return r.dow + ' ' + dlabel(r.d) + (r.d >= cut ? ' (on the books)' : ''); });
     var g0 = function (v) { return '£' + Math.round(v); }, g2 = function (v) { return gbp(v, 2); }, p0 = function (v) { return Math.round(v) + '%'; };
-    small('tr-l1', 'line', lab, rows.map(function (r) { return r.rooms ? +(net(r.acc) / r.rooms).toFixed(2) : null; }), 'Average daily rate', g0, tips, df, '#2a78c8');
-    small('tr-l2', 'line', lab, rows.map(function (r) { return +(r.rooms / ROOMS * 100).toFixed(1); }), 'Occupancy', p0, tips, df, '#1baf7a');
-    small('tr-l3', 'line', lab, rows.map(function (r) { return +(net(r.acc) / ROOMS).toFixed(2); }), 'RevPAR', g0, tips, df, '#eb6834');
+    tri('tr-l1', 'tr-l1-leg', rows, extra);
     var ms = {}; S.af.rows.forEach(function (r) { (ms[r.d.slice(0, 7)] = ms[r.d.slice(0, 7)] || []).push(r); });
     var mk = Object.keys(ms).sort(), ag = mk.map(function (m) { return agg(ms[m]); }), mf = null; mk.forEach(function (m, i) { if (mf === null && m > cut.slice(0, 7)) mf = i; });
     var ml = mk.map(function (m) { return MN[+m.slice(5) - 1] + ' ' + m.slice(2, 4); }), mt = mk.map(function (m, i) { return mlabel(m) + (mf !== null && i >= mf ? ' (on the books)' : ''); });
@@ -309,6 +319,6 @@
   }
   var chart2 = null;
 
-  window.Trading = { feedPanel: feedPanel, S: function () { return S; }, agg: agg, rowsFor: rowsFor, asOfDay: asOfDay, observations: observations, ROOMS: ROOMS, net: net, pePeriod: pePeriod, peGroup: peGroup };
+  window.Trading = { feedPanel: feedPanel, tri: tri, avgTiles: avgTiles, S: function () { return S; }, agg: agg, rowsFor: rowsFor, asOfDay: asOfDay, observations: observations, ROOMS: ROOMS, net: net, pePeriod: pePeriod, peGroup: peGroup };
   if (window.Profit && window.Profit.register) { window.Profit.register('trading', render); window.Profit.register('demand', renderDemand); }
 })();

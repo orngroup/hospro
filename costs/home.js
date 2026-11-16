@@ -74,6 +74,7 @@
     if (window.__acChart) window.__acChart.destroy();
     window.__acChart = new Chart($('ac-c1'), { type: 'bar', data: { labels: ap.buckets, datasets: [{ data: ap.totals, backgroundColor: ap.totals.map(function (v, i) { return i === 0 ? '#1baf7a' : i < 2 ? '#e3a43a' : '#d0362b'; }), borderRadius: 4, maxBarThickness: 48 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (x) { return gbp(x.parsed.y); } } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false }, ticks: { callback: function (v) { return '£' + Math.round(v / 1000) + 'k'; } } } } } });
   }
+  function ctile(go, l, v, d) { return '<button class="tile click" data-go="' + go + '"><div class="l">' + l + '</div><div class="v">' + v + '</div><div class="d">' + (d || '') + '</div></button>'; }
   function tile(l, v, d) { return '<div class="tile"><div class="l">' + l + '</div><div class="v">' + v + '</div><div class="d">' + (d || '') + '</div></div>'; }
 
   /* ---------- highlights shared by the hub, the drawer and the Action Centre ---------- */
@@ -91,7 +92,16 @@
     if (a) accObs(a).forEach(function (o) { hl.push([o[0], o[1], o[2], o[3], 'Xero']); });
     return { bad: hl.filter(function (x) { return x[0] === 'bad'; }), warn: hl.filter(function (x) { return x[0] !== 'bad'; }) };
   }
-  function hlList(list, cls) { return list.length ? list.map(function (x) { return '<div class="finding ' + (cls || x[0]) + ' hp-f" data-go="' + x[3] + '"><h3>' + x[1] + '</h3><p>' + x[2] + '</p><span class="hp-src">' + x[4] + ' · open page</span></div>'; }).join('') : '<p class="note">Nothing here.</p>'; }
+  var DKEY = 'hosbusiness_done';
+  function doneMap() { try { return JSON.parse(localStorage.getItem(DKEY) || '{}'); } catch (e) { return {}; } }
+  function hid(t) { var x = 0, tx = String(t).replace(/<[^>]+>/g, ''); for (var i = 0; i < tx.length; i++) x = (x * 31 + tx.charCodeAt(i)) >>> 0; return 'a' + x.toString(36); }
+  function savings() { var out = []; document.querySelectorAll('#t-save .finding').forEach(function (f) { var h3 = f.querySelector('h3'), p = f.querySelector('p'); if (h3) out.push([f.classList.contains('good') ? 'good' : 'warn', h3.innerHTML, p ? p.innerHTML : '', 'save', 'Xero costs']); }); return out; }
+  function hlList(list, cls) {
+    var D = doneMap(), open = list.filter(function (x) { return !D[hid(x[1])]; }), done = list.filter(function (x) { return D[hid(x[1])]; });
+    var one = function (x, isDone) { var id = hid(x[1]); return '<div class="act ' + (cls || x[0]) + (isDone ? ' done' : '') + '"><label class="tick" title="Tick when dealt with"><input type="checkbox" data-done="' + id + '"' + (isDone ? ' checked' : '') + '><span></span></label><div class="act-b" data-go="' + x[3] + '"><h3>' + x[1] + '</h3><p>' + x[2] + '</p><span class="hp-src">' + x[4] + ' · open page</span></div></div>'; };
+    return list.length ? open.map(function (x) { return one(x, false); }).join('') + (done.length ? '<p class="act-done">Ticked off (' + done.length + ')</p>' + done.map(function (x) { return one(x, true); }).join('') : '') : '<p class="note">Nothing here.</p>';
+  }
+  function openCount(list) { var D = doneMap(); return list.filter(function (x) { return !D[hid(x[1])]; }).length; }
   function drawer(kind) {
     var H = highlights(), d = $('drawer'), list = kind === 'bad' ? H.bad : H.warn;
     d.innerHTML = '<div class="dr-h"><div><h2>' + (kind === 'bad' ? 'Actions' : 'Watch list') + '</h2><p>' + list.length + ' items, worked out from the latest data</p></div><button class="dr-x" aria-label="Close">×</button></div><div class="dr-b">' + hlList(list, kind === 'bad' ? 'bad' : null) + '</div><div class="dr-f"><button class="btn" data-go="pf-actions">Open the Action Centre</button></div>';
@@ -100,29 +110,31 @@
   function closeDrawer() { document.body.classList.remove('drawer-open'); }
 
   /* ---------- Hub ---------- */
-  var CARDS = [['pf-trading', 'trading', 'Trading', 'Occupancy, rate, RevPAR and revenue by night'], ['pf-demand', 'demand', 'Channels & rates', 'Booking sources, rate plans, cancellations, no-shows'], ['pf-fb', 'fb', 'Food & beverage', 'Sales by outlet and meal against what was bought'], ['pf-profit', 'profit', 'Profitability', 'Revenue, costs and profit by month and department'], ['pf-labour', 'labour', 'Labour', 'Payroll by department, agency and employer costs'], ['pf-kpi', 'kpi', 'KPIs', 'Occupancy, rate, RevPAR and cost ratios by month'], ['pf-stock', 'stock', 'Purchased vs consumed', 'Purchases against cost of sales in the accounts'], ['explore', 'explore', 'Supplier costs', 'Every cost line by supplier, type, section and month'], ['bar', 'bar', 'Bar & keg prices', 'Keg price history and market comparison'], ['rooms', 'rooms', 'Rooms, linen & housekeeping', 'Linen, cleaning, guest supplies and waste'], ['pf-actions', 'actions', 'Action Centre', 'Actions, watch list, savings and checks'], ['pf-data', 'data', 'Data & reports', 'What has been imported, when, and the Gmail feed']];
-  var TITLES = { 'pf-home': 'Hub', 'pf-brief': 'Project brief', 'pf-help': 'How figures are worked out', save: 'Action Centre · Savings & checks', update: 'Data & reports · Load Xero exports' };
+  var CARDS = [['pf-trading', 'trading', 'Trading', 'Occupancy, rate, RevPAR and revenue by night'], ['pf-demand', 'demand', 'Channels & rates', 'Booking sources, rate plans, cancellations, no-shows'], ['pf-fb', 'fb', 'Food & beverage', 'Sales by outlet and meal against what was bought'], ['pf-profit', 'profit', 'Profitability', 'Revenue, costs and profit by month and department'], ['pf-labour', 'labour', 'Labour', 'Payroll by department, agency and employer costs'], ['pf-trends', 'kpi', 'Trends', 'ADR, RevPAR, TRevPAR, revenue and costs over time'], ['pf-stock', 'stock', 'Purchased vs consumed', 'Purchases against cost of sales in the accounts'], ['explore', 'explore', 'Supplier costs', 'Every cost line by supplier, type, section and month'], ['bar', 'bar', 'Bar & keg prices', 'Keg price history and market comparison'], ['rooms', 'rooms', 'Rooms, linen & housekeeping', 'Linen, cleaning, guest supplies and waste'], ['pf-actions', 'actions', 'Action Centre', 'Actions, watch list, savings and checks'], ['pf-data', 'data', 'Data & reports', 'What has been imported, when, and the Gmail feed']];
+  /* card photographs: add a file to costs/img and name it here, e.g. trading: 'card-trading.jpg' */
+  var CARD_IMG = {}, CARD_DEFAULT = 'card-default.jpg';
+  var TITLES = { 'pf-kpi': 'Trends · Monthly KPI tables', 'pf-home': 'Hub', 'pf-brief': 'Project brief', 'pf-help': 'How figures are worked out', save: 'Action Centre · Savings & checks', update: 'Data & reports · Load Xero exports' };
   CARDS.forEach(function (c) { TITLES[c[0]] = c[2]; });
   function renderHome() {
     var el = $('pf-home'), T = window.Trading, S = T ? T.S() : {}, a = acc(), PD = window.Profit.data(), h = '', card = {}, H = highlights();
     var who = (window.Profit.user() || '').split(/\s+/)[0], hr = new Date().getHours();
     h += '<div class="hp-hero"><div><h2>' + (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (who ? ', ' + esc(who) : '') + '</h2><p>Business intelligence for Brandon Hall Hotel &amp; Spa: trading, profit and costs in one place</p></div>' +
-      '<div class="hp-btns"><button class="pillbtn bad" data-drawer="bad"><b>' + H.bad.length + '</b>Actions</button><button class="pillbtn warn" data-drawer="warn"><b>' + H.warn.length + '</b>Watch list</button><button class="iconbtn" data-go="pf-brief" title="Project brief">' + icon('brief', 30) + '<span>Project brief</span></button><button class="iconbtn" data-go="pf-help" title="How figures are worked out">' + icon('kpi', 30) + '<span>How it’s worked out</span></button></div></div>';
-    var today = '';
+      '<div class="hp-btns"><button class="pillbtn bad" data-drawer="bad"><b>' + openCount(H.bad) + '</b>Actions</button><button class="pillbtn warn" data-drawer="warn"><b>' + openCount(H.warn) + '</b>Watch list</button><button class="iconbtn" data-go="pf-brief" title="Project brief">' + icon('brief', 30) + '<span>Project brief</span></button><button class="iconbtn" data-go="pf-help" title="How figures are worked out">' + icon('kpi', 30) + '<span>How it’s worked out</span></button></div></div>';
+    var today = '', mark = h.length;
     if (S.af && S.af.rows.length) {
       var cut = T.asOfDay(), m = cut.slice(0, 7), rows = S.af.rows, R = T.ROOMS, to = rows.filter(function (r) { return r.d === cut; })[0], yd = rows.filter(function (r) { return r.d < cut; }).slice(-1)[0];
       var act = T.agg(T.rowsFor(m, 'actual')), bks = T.agg(T.rowsFor(m, 'books')), all = T.agg(T.rowsFor(m));
       var nx = rows.filter(function (r) { return r.d >= cut; }).slice(0, 14), n7 = T.agg(nx.slice(0, 7)), oos = S.x && S.x.rooms ? S.x.rooms.oos.length : (to ? to.roos : null);
       var rate = function (r) { return r && r.rooms ? T.net(r.acc) / r.rooms : null; };
       today = '<div class="hp-today"><div class="hp-th">' + icon('trading', 38) + '<div><h3>Trading today</h3><p>' + (to ? to.dow + ' ' + dlabel(cut) : dlabel(cut)) + ' · from the Guestline report received ' + when(S.af.asOf) + '</p></div><button class="hp-link" data-go="pf-trading">Open Trading</button></div><div class="tiles">' +
-        tile('Tonight', to ? pc(to.rooms / R) : '–', to ? num(to.rooms) + ' rooms booked at ' + gbp(rate(to), 2) : '') +
-        tile('Last night', yd ? pc(yd.rooms / R) : '–', yd ? num(yd.rooms) + ' rooms at ' + gbp(rate(yd), 2) + ' · ' + gbp(T.net(yd.acc + yd.fb + yd.oth)) + ' revenue' : '') +
-        tile('Month to date', gbp(act.total), pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' ADR') +
-        tile('Month, with bookings held', gbp(act.total + bks.total), pc(all.occ) + ' occupancy for the month') +
-        tile('Next 7 nights', pc(n7.occ), num(n7.rooms) + ' room nights · ' + gbp(n7.acc) + ' rooms revenue') +
-        tile('Rooms out of service', num(oos), S.x && S.x.rooms ? 'of ' + S.x.rooms.total + ' rooms' : 'tonight') + '</div>' +
+        ctile('pf-trading', 'Tonight', to ? pc(to.rooms / R) : '–', to ? num(to.rooms) + ' rooms booked at ' + gbp(rate(to), 2) : '') +
+        ctile('pf-trading', 'Last night', yd ? pc(yd.rooms / R) : '–', yd ? num(yd.rooms) + ' rooms at ' + gbp(rate(yd), 2) + ' · ' + gbp(T.net(yd.acc + yd.fb + yd.oth)) + ' revenue' : '') +
+        ctile('pf-trading', 'Month to date', gbp(act.total), pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' ADR') +
+        ctile('pf-trading', 'Month, with bookings held', gbp(act.total + bks.total), pc(all.occ) + ' occupancy for the month') +
+        ctile('pf-trading', 'Next 7 nights', pc(n7.occ), num(n7.rooms) + ' room nights · ' + gbp(n7.acc) + ' rooms revenue') +
+        ctile('pf-demand', 'Rooms out of service', num(oos), S.x && S.x.rooms ? 'of ' + S.x.rooms.total + ' rooms' : 'tonight') + '</div>' +
         '<div class="hp-week">' + nx.map(function (r) { var o = r.rooms / R; return '<div title="' + r.dow + ' ' + dlabel(r.d) + ': ' + r.rooms + ' rooms"><span>' + Math.round(o * 100) + '%</span><i style="height:' + Math.max(4, Math.round(o * 54)) + 'px;background:' + (o < 0.25 ? '#d0362b' : o < 0.5 ? '#e3a43a' : '#1baf7a') + '"></i><em>' + r.dow.slice(0, 3) + ' ' + +r.d.slice(8) + '</em></div>'; }).join('') + '</div><p class="note" style="margin:8px 0 0">Occupancy for the next 14 nights. Red is under 25% booked, amber under 50%.</p></div>';
-      card.trading = pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' ADR this month'; card.rooms = num(oos) + ' rooms out of service';
+      card.kpi = 'RevPAR ' + gbp(act.revpar, 2) + ' · TRevPAR ' + gbp(act.trevpar, 2) + ' this month'; card.trading = pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' ADR this month'; card.rooms = num(oos) + ' rooms out of service';
       var X = S.x || {}; if (X.company) { var ota = 0; X.company.rows.forEach(function (r) { if (/^(BOOK|EXPE)/.test(r.ref)) ota += r.rn; }); card.demand = pc(ota / X.company.total.rn) + ' of room nights via booking sites'; }
       var pe = T.pePeriod('month', m); if (pe) card.fb = gbp(T.peGroup(pe, 'FOOD').total[0] + T.peGroup(pe, 'BEVERAGE').total[0]) + ' food and drink sales this month';
     }
@@ -130,21 +142,22 @@
       var id = PD.IDS[PD.IDS.length - 1], mo = PD.M[id], row = function (l) { var f = (mo.pl || []).filter(function (r) { return r.label === l; })[0]; return f ? f.ma : null; };
       var rev = row('TOTAL REVENUE'), man = row('Total Manning');
       card.profit = PD.XM ? PD.XM.label.split(' ')[0] + ': ' + (PD.XM.cur.net < 0 ? 'loss of ' : 'profit of ') + gbp(Math.abs(PD.XM.cur.net)) + ' on ' + gbp(PD.XM.cur.rev) : PD.LABEL[id] + ': EBITDA ' + gbp(row('EBITDA'));
-      card.labour = PD.XM ? 'Payroll ' + pc(PD.XM.cur.pay / PD.XM.cur.rev) + ' of sales, ' + PD.XM.label.split(' ')[0] : (man && rev ? 'Payroll ' + pc(man / rev) + ' of revenue' : ''); card.kpi = 'RevPAR ' + gbp(row('REVPAR'), 2) + ', ' + PD.LABEL[id];
+      card.labour = PD.XM ? 'Payroll ' + pc(PD.XM.cur.pay / PD.XM.cur.rev) + ' of sales, ' + PD.XM.label.split(' ')[0] : (man && rev ? 'Payroll ' + pc(man / rev) + ' of revenue' : ''); 
     }
     if (window.CostsApp) { var tx = window.CostsApp.tx(), t = 0; tx.forEach(function (r) { t += r.net || 0; }); if (t) card.explore = gbp(t) + ' of supplier costs analysed'; }
-    card.actions = H.bad.length + ' actions · ' + H.warn.length + ' to watch'; card.data = (S.received ? S.received.length : 0) + ' Guestline reports on record';
-    h += '<div class="hp-cards">' + CARDS.map(function (c) { return '<button class="hp-card' + (c[1] === 'trading' ? ' hot' : '') + '" data-go="' + c[0] + '" style="--c:' + COL[c[1]] + '">' + icon(c[1]) + '<span><b>' + c[2] + '</b><small>' + c[3] + '</small>' + (card[c[1]] ? '<em>' + esc(card[c[1]]) + '</em>' : '') + '</span></button>'; }).join('') + '</div>' + today +
+    h = h.slice(0, mark) + today + h.slice(mark);
+    card.actions = openCount(H.bad) + ' actions · ' + openCount(H.warn) + ' to watch'; card.data = (S.received ? S.received.length : 0) + ' Guestline reports on record';
+    h += '<div class="hp-cards">' + CARDS.map(function (c) { return '<button class="hp-card' + (c[1] === 'trading' ? ' hot' : '') + '" data-go="' + c[0] + '" style="--c:' + COL[c[1]] + ';--img:url(img/' + (CARD_IMG[c[1]] || CARD_DEFAULT) + ')">' + icon(c[1]) + '<span><b>' + c[2] + '</b><small>' + c[3] + '</small>' + (card[c[1]] ? '<em>' + esc(card[c[1]]) + '</em>' : '') + '</span></button>'; }).join('') + '</div>' +
       '<p class="hp-foot"><a data-go="pf-data">Data references</a> · where every figure comes from and when it was imported &nbsp;|&nbsp; <a data-go="pf-help">How figures are worked out</a> &nbsp;|&nbsp; <a data-go="pf-brief">Project brief</a></p>';
     el.innerHTML = h;
   }
 
   /* ---------- Action Centre ---------- */
-  function pills(on) { var H = highlights(); return '<div class="segs"><button class="' + (on === 'bad' ? 'on' : '') + '" data-ac="bad">Act now <b>' + H.bad.length + '</b></button><button class="' + (on === 'warn' ? 'on' : '') + '" data-ac="warn">Watch list <b>' + H.warn.length + '</b></button><button class="' + (on === 'save' ? 'on' : '') + '" data-go="save">Savings &amp; checks</button></div>'; }
-  var acView = 'bad';
   function renderActions() {
-    var H = highlights();
-    $('pf-actions').innerHTML = pills(acView) + '<div class="card"><h2>' + (acView === 'bad' ? 'Act now' : 'Watch list') + '</h2><p class="sub">Rebuilt from the latest data each time a report is loaded. Click an item to open the page behind it.</p>' + hlList(acView === 'bad' ? H.bad : H.warn, acView === 'bad' ? 'bad' : null) + '</div>';
+    var H = highlights(), sv = savings();
+    var col = function (title, sub, cls, list, c, extra) { return '<div class="ac-col" style="--c:' + c + '"><div class="ac-h"><h2>' + title + '</h2><b>' + openCount(list) + '</b></div><p class="sub">' + sub + '</p>' + hlList(list, cls) + (extra || '') + '</div>'; };
+    $('pf-actions').innerHTML = '<div class="filters"><span class="note" style="margin:0">Rebuilt from the latest data each time a report is loaded. Tick an item when it has been dealt with; click its text to open the page behind it. Ticks are kept in this browser only.</span><button class="btn ghost" id="ac-reset" style="margin-left:auto">Clear all ticks</button></div>' +
+      '<div class="ac-grid">' + col('Act now', 'Costing money or sales today', 'bad', H.bad, '#b3261e') + col('Watch list', 'Worth keeping an eye on', null, H.warn, '#b9791a') + col('Savings &amp; checks', 'From the supplier cost review', null, sv, '#1a8f63', '<p style="margin-top:12px"><button class="btn" data-go="save">Open the full savings &amp; checks page</button></p>') + '</div>';
   }
 
   /* ---------- Food & beverage ---------- */
@@ -178,6 +191,50 @@
     fbCharts.push(new Chart($('fb-c2'), { type: 'bar', data: { labels: mk, datasets: [{ data: mk.map(function (x) { return Math.round(meal[x]); }), backgroundColor: '#c2417a', borderRadius: 4, maxBarThickness: 46 }] }, options: opt(false, k) }));
     var rows = T.rowsFor(m);
     fbCharts.push(new Chart($('fb-c3'), { type: 'bar', data: { labels: rows.map(function (r) { return +r.d.slice(8); }), datasets: [{ data: rows.map(function (r) { return Math.round(T.net(r.fb)); }), backgroundColor: rows.map(function (r) { return r.d < cut ? '#c2417a' : '#b9b7af'; }), borderRadius: 3, maxBarThickness: 22 }] }, options: opt(false, k) }));
+  }
+
+  /* ---------- Trends ---------- */
+  var trCharts = [], trRange = '90';
+  function lines(id, legId, labels, series, fmt, note) {
+    if (!$(id)) return; var PAL = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#6250d6'];
+    if ($(legId)) $(legId).innerHTML = series.map(function (x, i) { return '<span><i style="background:' + PAL[i] + '"></i>' + x[0] + '</span>'; }).join('') + (note ? '<span style="color:#86847d">' + note + '</span>' : '');
+    trCharts.push(new Chart($(id), { type: 'line', data: { labels: labels, datasets: series.map(function (x, i) { return { label: x[0], data: x[1], borderColor: PAL[i], backgroundColor: PAL[i], borderWidth: 2, pointRadius: labels.length > 20 ? 0 : 3, pointHoverRadius: 5, tension: 0.25, spanGaps: true }; }) }, options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + fmt(c.parsed.y); } } } }, scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } }, y: { beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false }, ticks: { callback: function (v) { return fmt(v, 1); }, maxTicksLimit: 6 } } } } }));
+  }
+  function renderTrends() {
+    var el = $('pf-trends'), T = window.Trading, S = T ? T.S() : {}, PD = window.Profit.data(), h = ''; trCharts.forEach(function (c) { c.destroy(); }); trCharts = [];
+    var rows = [], cut = '';
+    if (S.af && S.af.rows.length) {
+      cut = T.asOfDay(); var all = S.af.rows, day = function (n) { var d = new Date(cut); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+      rows = trRange === 'all' ? all : trRange === 'past' ? all.filter(function (r) { return r.d < cut; }) : all.filter(function (r) { return r.d >= day(-30) && r.d <= day(+trRange); });
+      var opt = [['30', 'Last 30 nights and next 30'], ['90', 'Last 30 nights and next 90'], ['365', 'Last 30 nights and next 12 months'], ['past', 'Actual nights only'], ['all', 'Everything loaded']];
+      h += '<div class="filters"><label>Dates<select id="tr-range">' + opt.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === trRange ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label><span class="note" style="margin:0 0 6px">Guestline Actual &amp; Forecast, ' + dlabel(all[0].d) + ' ' + all[0].d.slice(0, 4) + ' to ' + dlabel(all[all.length - 1].d) + ' ' + all[all.length - 1].d.slice(0, 4) + ', net of VAT. Nights from ' + dlabel(cut) + ' onwards are bookings held so far, so they rise as the date approaches.</span><button class="btn ghost" data-go="pf-kpi" style="margin-left:auto">Monthly KPI tables</button></div>';
+      h += '<div class="card"><h2>ADR, RevPAR and TRevPAR by date</h2><p class="sub">' + (rows.length ? dlabel(rows[0].d) + ' to ' + dlabel(rows[rows.length - 1].d) + ' ' + rows[rows.length - 1].d.slice(0, 4) : '') + ' · the boxes are the average across these dates</p><div class="tiles" style="margin-bottom:10px">' + T.avgTiles(rows) + '</div><div class="legend" id="tn-1-leg"></div><div class="chartbox" style="height:320px"><canvas id="tn-1"></canvas></div></div>';
+      h += '<div class="grid g2"><div class="card"><h2>Occupancy by date</h2><p class="sub">% of ' + T.ROOMS + ' rooms</p><div class="legend" id="tn-2-leg"></div><div class="chartbox" style="height:240px"><canvas id="tn-2"></canvas></div></div><div class="card"><h2>Food and drink per occupied room, by date</h2><p class="sub">Actual nights only</p><div class="legend" id="tn-3-leg"></div><div class="chartbox" style="height:240px"><canvas id="tn-3"></canvas></div></div></div>';
+    }
+    if (PD && PD.IDS && PD.IDS.length) {
+      h += '<div class="srcbar"><b>Monthly figures</b><span class="chip h7">7H management accounts</span>' + esc(PD.LABEL[PD.IDS[0]]) + ' to ' + esc(PD.LABEL[PD.IDS[PD.IDS.length - 1]]) + (PD.XM ? '<span class="chip xero">Xero</span>' + esc(PD.XM.label) + ' (totals only)' : '') + '</div>';
+      h += '<div class="grid g2"><div class="card"><h2>Revenue, payroll and net result by month</h2><p class="sub">Net operating profit from the 7H accounts; net profit from Xero for the latest month</p><div class="legend" id="tn-4-leg"></div><div class="chartbox" style="height:260px"><canvas id="tn-4"></canvas></div></div><div class="card"><h2>ADR, RevPAR and TRevPAR by month</h2><p class="sub">From the statistics in the 7H management accounts</p><div class="legend" id="tn-5-leg"></div><div class="chartbox" style="height:260px"><canvas id="tn-5"></canvas></div></div></div>';
+    }
+    var TX = window.CostsApp ? window.CostsApp.tx() : [];
+    h += '<div class="grid g2">' + (TX.length ? '<div class="card"><h2>Supplier costs by month</h2><p class="sub">Xero cost accounts, net of VAT</p><div class="legend" id="tn-6-leg"></div><div class="chartbox" style="height:240px"><canvas id="tn-6"></canvas></div></div>' : '') + (S.x && S.x.cancels ? '<div class="card"><h2>Cancellations by month</h2><p class="sub">Rezlynx Cancellations report, by month cancelled</p><div class="legend" id="tn-7-leg"></div><div class="chartbox" style="height:240px"><canvas id="tn-7"></canvas></div></div>' : '') + '</div>';
+    el.innerHTML = h;
+    var g0 = function (v) { return '£' + Math.round(v).toLocaleString('en-GB'); }, gk = function (v, ax) { return ax && Math.abs(v) >= 1000 ? (v < 0 ? '−' : '') + '£' + Math.abs(v / 1000).toFixed(0) + 'k' : gbp(v); }, p0 = function (v) { return Math.round(v) + '%'; };
+    if (rows.length) {
+      T.tri('tn-1', 'tn-1-leg', rows, trCharts);
+      var lab = rows.map(function (r) { return rows.length > 62 ? dlabel(r.d) : +r.d.slice(8) + ' ' + MN[+r.d.slice(5, 7) - 1]; });
+      lines('tn-2', 'tn-2-leg', lab, [['Occupancy', rows.map(function (r) { return +(r.rooms / T.ROOMS * 100).toFixed(1); })]], p0, 'from ' + dlabel(cut) + ': on the books');
+      var past = rows.filter(function (r) { return r.d < cut; });
+      lines('tn-3', 'tn-3-leg', past.map(function (r) { return +r.d.slice(8) + ' ' + MN[+r.d.slice(5, 7) - 1]; }), [['Food and drink per occupied room', past.map(function (r) { return r.rooms ? +(T.net(r.fb) / r.rooms).toFixed(2) : null; })]], function (v) { return gbp(v, 2); });
+    }
+    if (PD && PD.IDS && PD.IDS.length) {
+      var ids = PD.IDS, get = function (l) { return ids.map(function (id) { var f = (PD.M[id].pl || []).filter(function (r) { return r.label === l; })[0]; return f ? f.ma : null; }); }, ml = ids.map(function (id) { return MN[+id.slice(5) - 1] + ' ' + id.slice(2, 4); });
+      var rev = get('TOTAL REVENUE'), pay = get('Total Manning'), np = get('Net Operating Profit'), ml2 = ml.slice();
+      if (PD.XM) { ml2.push(MN[+PD.XM.id.slice(5) - 1] + ' ' + PD.XM.id.slice(2, 4) + ' (Xero)'); rev = rev.concat([PD.XM.cur.rev]); pay = pay.concat([PD.XM.cur.pay]); np = np.concat([PD.XM.cur.net]); }
+      lines('tn-4', 'tn-4-leg', ml2, [['Revenue', rev], ['Payroll', pay], ['Net result', np]], gk);
+      lines('tn-5', 'tn-5-leg', ml, [['ADR', get('Average Daily Rate')], ['RevPAR', get('REVPAR')], ['TRevPAR', get('TREVPAR')]], function (v) { return gbp(v, 2); });
+    }
+    if (TX.length && $('tn-6')) { var mm = {}, dp = {}; TX.forEach(function (t) { mm[t.month] = 1; dp[t.dept] = 1; }); var mk = Object.keys(mm).sort(), dk = Object.keys(dp).sort(); lines('tn-6', 'tn-6-leg', mk.map(function (m) { return MN[+m.slice(5) - 1] + ' ' + m.slice(2, 4); }), dk.map(function (d) { return [d, mk.map(function (m) { var v = 0; TX.forEach(function (t) { if (t.month === m && t.dept === d) v += t.net; }); return Math.round(v); })]; }), gk, 'latest month is part-loaded'); }
+    if (S.x && S.x.cancels && $('tn-7')) { var cm = Object.keys(S.x.cancels.byMonth).sort(); lines('tn-7', 'tn-7-leg', cm.map(function (m) { return MN[+m.slice(5) - 1] + ' ' + m.slice(2, 4); }), [['Cancellations', cm.map(function (m) { return S.x.cancels.byMonth[m].c; })]], function (v) { return Math.round(v); }); }
   }
 
   /* ---------- Data & reports ---------- */
@@ -268,18 +325,25 @@
     if (t.closest('.dr-x') || t.id === 'scrim') { closeDrawer(); return; }
     var a = t.closest('[data-ac]'); if (a) { acView = a.getAttribute('data-ac'); if (!document.querySelector('#t-pf-actions.on')) go('pf-actions'); else renderActions(); return; }
     if (t.id === 'gm-go') { gmailCheck(); return; }
+    if (t.id === 'ac-reset') { try { localStorage.removeItem(DKEY); } catch (e2) {} renderActions(); return; }
+    if (t.closest('.tick')) return;
     if (t.id === 'signout') { window.Profit.signOut(); return; }
     var g = t.closest('[data-go]'); if (g) { go(g.getAttribute('data-go')); return; }
     var nb = t.closest('#nav button'); if (nb) crumb(nb.dataset.t);
   });
-  document.addEventListener('change', function (e) { if (e.target.id === 'jump' && e.target.value) go(e.target.value); });
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.id === 'jump' && t.value) go(t.value);
+    if (t.id === 'tr-range') { trRange = t.value; renderTrends(); }
+    if (t.dataset && t.dataset.done) { var D = doneMap(); if (t.checked) D[t.dataset.done] = new Date().toISOString().slice(0, 10); else delete D[t.dataset.done]; try { localStorage.setItem(DKEY, JSON.stringify(D)); } catch (e2) {} if (document.querySelector('#t-pf-actions.on')) renderActions(); else { var a = t.closest('.act'); if (a) a.classList.toggle('done', t.checked); } }
+  });
   document.addEventListener('hub-signin', unlock);
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
   window.HubAccounts = renderAccounts;
-  if (window.Profit && window.Profit.register) { ['home', renderHome, 'actions', renderActions, 'fb', renderFb, 'data', renderData, 'help', renderHelp].forEach(function (v, i, arr) { if (i % 2 === 0) window.Profit.register(v, arr[i + 1]); }); }
+  if (window.Profit && window.Profit.register) { ['home', renderHome, 'actions', renderActions, 'fb', renderFb, 'data', renderData, 'help', renderHelp, 'trends', renderTrends].forEach(function (v, i, arr) { if (i % 2 === 0) window.Profit.register(v, arr[i + 1]); }); }
   document.addEventListener('DOMContentLoaded', function () {
     unlock(); crumb('pf-home');
     var sv = $('t-save'); if (sv && !sv.querySelector('.segs')) sv.insertAdjacentHTML('afterbegin', '<div id="save-pills"></div>');
-    new MutationObserver(function () { annotate(document.querySelector('main')); var sp = $('save-pills'); if (sp && !sp.firstChild && window.Profit.signedIn()) sp.innerHTML = pills('save'); }).observe(document.querySelector('main'), { childList: true, subtree: true });
+    new MutationObserver(function () { annotate(document.querySelector('main')); var sp = $('save-pills'); if (sp && !sp.firstChild && window.Profit.signedIn()) sp.innerHTML = '<p style="margin:0 0 14px"><button class="btn ghost" data-go="pf-actions">← Back to the Action Centre</button></p>'; }).observe(document.querySelector('main'), { childList: true, subtree: true });
   });
 })();

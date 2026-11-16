@@ -31,3 +31,9 @@ Reads Rezlynx Company, Forecast Revenue By Market Segment, Daily Rate Analysis, 
 - New pages in `home.js`: Food & beverage, Action Centre (with Savings & checks), Data & reports (Gmail feed check, Guestline feed status, data references), How figures are worked out. Known terms get an ⓘ tooltip automatically.
 - Profitability: the latest Xero-only month (`data/accounts-data.js`) appears in the Period list and is added to cumulative revenue, payroll and net result. Labour, KPIs and Purchased vs consumed show a banner and the latest management-accounts month.
 - The Gmail log script (`HosBUSINESS-gmail-feed.gs`) is kept outside this repo; its web address is stored in the browser, not in these files.
+
+## 16 Nov 2026, 19:30 update
+- Hub: Trading today tiles are at the top and clickable; section cards carry a photo (`img/card-default.jpg`; per-card photos are set in `CARD_IMG` in `home.js`).
+- Trends page replaces the KPIs card (monthly KPI tables are reached from Trends). ADR, RevPAR and TRevPAR share one chart with average boxes, on Trading and Trends.
+- Action Centre: three columns (Act now, Watch list, Savings & checks) with tick boxes saved in the browser.
+- Financial pages label each month by source: 7H management accounts (March to September 2026) or Xero (October 2026).

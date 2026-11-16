@@ -90,12 +90,12 @@
 
   /* ---------- controls ---------- */
   function controls() {
-    var o = IDS.map(function (id) { return '<option value="' + id + '"' + (id === sel.month ? ' selected' : '') + '>' + esc(LABEL[id]) + '</option>'; }).join('') +
-      (XM ? '<option value="' + XM.id + '"' + (isX() ? ' selected' : '') + '>' + esc(XM.label) + ' (Xero accounts)</option>' : '') +
-      '<option value="all"' + (sel.month === 'all' ? ' selected' : '') + '>' + short(IDS[0]) + ' to ' + short(XM ? XM.id : IDS[IDS.length - 1]) + ' (cumulative)</option>';
+    var o = IDS.map(function (id) { return '<option value="' + id + '"' + (id === sel.month ? ' selected' : '') + '>' + esc(LABEL[id]) + ' · 7H management accounts</option>'; }).join('') +
+      (XM ? '<option value="' + XM.id + '"' + (isX() ? ' selected' : '') + '>' + esc(XM.label) + ' · Xero</option>' : '') +
+      '<option value="all"' + (sel.month === 'all' ? ' selected' : '') + '>' + short(IDS[0]) + ' to ' + short(XM ? XM.id : IDS[IDS.length - 1]) + ' (cumulative' + (XM ? ', 7H + Xero' : '') + ')</option>';
     var h = '<div class="filters"><label>Period<select class="pf-month">' + o + '</select></label>' +
       '<label>Compare with<select class="pf-cmp"><option value="budget"' + (sel.cmp === 'budget' ? ' selected' : '') + '>Budget</option><option value="prev"' + (sel.cmp === 'prev' ? ' selected' : '') + (sel.month === 'all' ? ' disabled' : '') + '>Previous month</option></select></label>' +
-      '<span class="note" style="margin:0 0 6px">Source: management accounts, as shown on the P&amp;L dashboard, loaded to ' + esc(LABEL[IDS[IDS.length - 1]]) + (XM ? '; ' + esc(XM.label) + ' from the Xero management report' : '') + '. No prior-year figures exist — the accounts begin in ' + esc(LABEL[IDS[0]]) + '.</span></div>';
+      '</div><div class="srcbar"><b>Where these figures come from</b><span class="chip h7">7H management accounts</span>' + esc(LABEL[IDS[0]]) + ' to ' + esc(LABEL[IDS[IDS.length - 1]]) + ': departmental accounts with budget, payroll and statistics' + (XM ? '<span class="chip xero">Xero</span>' + esc(XM.label) + ': Xero management report, totals only, no departments or budget' : '') + '<span style="color:#7b8494">No prior-year figures exist.</span></div>';
     return h;
   }
 
@@ -383,5 +383,5 @@
     });
   });
   function current() { var b = document.querySelector('#nav button.on'); return b ? b.dataset.t.replace('pf-', '') : 'profit'; }
-  window.Profit = { show: show, isView: function (n) { return !!VIEWS[n]; }, register: function (n, f) { VIEWS[n] = f; }, data: function () { return { M: M, IDS: IDS, LABEL: LABEL, XM: XM }; }, signedIn: signedIn, user: function () { try { return sessionStorage.getItem(SKEY) || ''; } catch (e) { return ''; } }, signOut: function () { try { sessionStorage.removeItem(SKEY); } catch (e) {} location.reload(); } };
+  window.Profit = { show: show, isView: function (n) { return !!VIEWS[n]; }, register: function (n, f) { VIEWS[n] = f; }, data: function () { return { M: M, IDS: IDS, LABEL: LABEL, XM: XM }; }, per: function (get, label) { return IDS.map(function (id) { var r = row(get(M[id]), label); return r ? r.ma : null; }); }, signedIn: signedIn, user: function () { try { return sessionStorage.getItem(SKEY) || ''; } catch (e) { return ''; } }, signOut: function () { try { sessionStorage.removeItem(SKEY); } catch (e) {} location.reload(); } };
 })();

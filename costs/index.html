@@ -119,6 +119,23 @@ body.drawer-open #scrim{display:block}body.drawer-open #drawer{transform:none}
 .tip{display:inline-block;margin-left:5px;color:var(--gold-dk);cursor:help;position:relative;font-size:12px;font-weight:400}
 .tip:hover:after,.tip:focus:after{content:attr(data-tip);position:absolute;left:-8px;top:20px;z-index:30;width:270px;background:var(--navy);color:#fff;font-size:12.5px;line-height:1.45;font-weight:400;padding:10px 12px;border-radius:9px;text-align:left;white-space:normal;text-transform:none;letter-spacing:0;box-shadow:0 8px 24px rgba(16,29,42,.3)}
 th .tip:hover:after,th .tip:focus:after{left:auto;right:-8px}
+.hp-card{background:linear-gradient(160deg,rgba(16,29,42,.90) 0%,rgba(16,29,42,.80) 55%,rgba(16,29,42,.58) 100%),var(--img) center/cover no-repeat;color:#fff;border:0;border-top:4px solid var(--c);min-height:132px}
+.hp-card small{color:#d5dde8}.hp-card em{color:#fff;background:rgba(255,255,255,.14);border-left:3px solid var(--c);padding:4px 8px;border-radius:0 6px 6px 0;display:inline-block}
+.hp-card.hot{background:linear-gradient(160deg,rgba(90,18,14,.90) 0%,rgba(60,16,16,.80) 55%,rgba(16,29,42,.55) 100%),var(--img) center/cover no-repeat}
+.hp-card svg{box-shadow:0 0 0 3px rgba(255,255,255,.18);border-radius:50%}
+.hp-today{margin:0 0 18px}
+button.tile{display:flex;flex-direction:column;justify-content:flex-start;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;transition:transform .12s,box-shadow .12s}button.tile:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(26,43,58,.14);border-top-color:#b3261e}
+.srcbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:10px;padding:10px 14px;margin:0 0 16px;font-size:13px;color:var(--ink2)}.srcbar b{color:var(--ink);margin-right:4px}
+.chip{display:inline-block;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700;letter-spacing:.2px;color:#fff;margin-left:6px}.chip.h7{background:#1a2b3a}.chip.xero{background:#0f8f95}
+.ac-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}@media(max-width:1100px){.ac-grid{grid-template-columns:1fr}}
+.ac-col{background:#fff;border:1px solid var(--line);border-top:4px solid var(--c);border-radius:12px;padding:16px}.ac-h{display:flex;justify-content:space-between;align-items:center}.ac-h h2{margin:0;font-size:17px}.ac-h b{background:var(--c);color:#fff;border-radius:8px;min-width:30px;text-align:center;padding:3px 8px;font-size:15px}
+.ac-col .sub{margin:2px 0 14px;color:var(--ink2);font-size:13px}
+.act{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-left:4px solid #e0a030;border-radius:10px;padding:10px 12px;margin-bottom:10px;background:#fff}.act.bad{border-left-color:#b3261e}.act.good{border-left-color:#1a8f63}
+.act h3{margin:0 0 3px;font-size:14px;line-height:1.35}.act p{margin:0 0 4px;font-size:13px;color:var(--ink2);line-height:1.45}.act-b{cursor:pointer;flex:1;min-width:0}.act-b:hover h3{text-decoration:underline}
+.act.done{opacity:.55;border-left-color:#b9c1cc}.act.done h3{text-decoration:line-through}.act.done p{display:none}.act-done{font-size:12px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 8px}
+.tick{flex:none;cursor:pointer;margin-top:1px}.tick input{position:absolute;opacity:0}.tick span{display:block;width:22px;height:22px;border:2px solid #b9c1cc;border-radius:6px;background:#fff}
+.tick input:checked+span{background:#1a8f63;border-color:#1a8f63;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 10.5l3.5 3.5L15 7' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}.tick input:focus-visible+span{outline:2px solid var(--gold)}
+.dr-b .act{margin-bottom:10px}
 </style>
 </head>
 <body class="locked">
@@ -143,6 +160,7 @@ th .tip:hover:after,th .tip:focus:after{left:auto;right:-8px}
     <button data-t="pf-fb">Food &amp; beverage</button>
     <button data-t="pf-actions">Action Centre</button>
     <button data-t="pf-data">Data &amp; reports</button>
+    <button data-t="pf-trends">Trends</button>
     <button data-t="pf-help">How figures are worked out</button>
     <button data-t="pf-stock">Purchased vs consumed</button>
     <button data-t="explore">Supplier costs</button>
@@ -161,6 +179,7 @@ th .tip:hover:after,th .tip:focus:after{left:auto;right:-8px}
 <section class="tab" id="t-pf-fb"><div id="pf-fb"></div></section>
 <section class="tab" id="t-pf-actions"><div id="pf-actions"></div></section>
 <section class="tab" id="t-pf-data"><div id="pf-data"></div></section>
+<section class="tab" id="t-pf-trends"><div id="pf-trends"></div></section>
 <section class="tab" id="t-pf-help"><div id="pf-help"></div></section>
 <section class="tab" id="t-pf-trading"><div id="pf-trading"></div></section>
 <section class="tab" id="t-pf-demand"><div id="pf-demand"></div></section>
