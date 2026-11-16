@@ -24,3 +24,10 @@ Reads Rezlynx Company, Forecast Revenue By Market Segment, Daily Rate Analysis, 
 - `home.js` — welcome screen (trading today, actions, section cards with icons) and the Accounts (Xero) page.
 - `data/accounts-data.js` — built from the Xero Management Report with `build-accounts.py` (kept outside the repo); loans are grouped, not itemised.
 - Trading tab: daily rate, occupancy and RevPAR lines for the chosen month and by-month charts for the whole feed.
+
+## HosBUSINESS hub (16 Nov 2026, evening)
+- The module is now **HosBUSINESS**. The whole page sits behind a branded sign-in (same names and passwords as /pl; logo from `../bh-logo.svg`).
+- No top menu. The hub shows 12 section cards, Actions and Watch list buttons (slide-out panel), Project brief and "How it's worked out" buttons, then Trading today. Sub-pages have a "Hub" button and a "Go to" list.
+- New pages in `home.js`: Food & beverage, Action Centre (with Savings & checks), Data & reports (Gmail feed check, Guestline feed status, data references), How figures are worked out. Known terms get an ⓘ tooltip automatically.
+- Profitability: the latest Xero-only month (`data/accounts-data.js`) appears in the Period list and is added to cumulative revenue, payroll and net result. Labour, KPIs and Purchased vs consumed show a banner and the latest management-accounts month.
+- The Gmail log script (`HosBUSINESS-gmail-feed.gs`) is kept outside this repo; its web address is stored in the browser, not in these files.

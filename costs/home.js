@@ -25,9 +25,12 @@
     save: '<path d="M14 24c0-6 5-10 12-10 6 0 11 4 11 10 0 3-1 5-3 7v5h-5v-3h-6v3h-5v-5c-2-2-4-4-4-7z"/><path d="M22 18h7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="32" cy="23" r="1.6" fill="currentColor"/>',
     accounts: '<path d="M15 10h14l7 7v23H15z"/><path d="M20 22h11M20 27h11M20 32h7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
     brief: '<path d="M14 13h22v24H14z" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round"/><path d="M19 21l3 3 6-6M19 31h12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>',
+    fb: '<path d="M17 11v9a4 4 0 0 0 8 0v-9M21 11v28" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M33 39V11c-4 3-5 8-5 14h5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>',
+    actions: '<path d="M28 9L14 28h9l-2 13 15-20h-9z"/>',
+    data: '<ellipse cx="25" cy="15" rx="12" ry="5"/><path d="M13 15v10c0 3 5 5 12 5s12-2 12-5V15M13 25v10c0 3 5 5 12 5s12-2 12-5V25" fill="none" stroke="#fff" stroke-width="3"/>',
     update: '<path d="M25 33V14M17 21l8-8 8 8" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 31v6h26v-6" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'
   };
-  var COL = { trading: '#d0362b', demand: '#7a4fc4', profit: '#1a8f63', labour: '#2a78c8', kpi: '#eb6834', stock: '#0f8f95', explore: '#52606d', bar: '#b9791a', rooms: '#3f5bbf', save: '#c2417a', accounts: '#1f3d36', brief: '#6b7a2a', update: '#86847d' };
+  var COL = { trading: '#b3261e', demand: '#7a4fc4', profit: '#1a8f63', labour: '#2a78c8', kpi: '#eb6834', stock: '#0f8f95', explore: '#52606d', bar: '#b9791a', rooms: '#3f5bbf', save: '#c2417a', accounts: '#1f3d36', brief: '#6b7a2a', update: '#86847d', fb: '#c2417a', actions: '#d0362b', data: '#1a2b3a' };
   function icon(k, size) { return '<svg viewBox="0 0 50 50" width="' + (size || 46) + '" height="' + (size || 46) + '" aria-hidden="true" style="color:' + COL[k] + ';flex:none"><circle cx="25" cy="25" r="25" fill="' + COL[k] + '"/><g fill="#fff">' + G[k] + '</g></svg>'; }
   function go(tab) { var b = document.querySelector('#nav button[data-t="' + tab + '"]'); if (b) b.click(); window.scrollTo(0, 0); }
 
@@ -43,17 +46,17 @@
   }
   function accObs(a) {
     var A = a.A, obs = [], inc = a['Trading Income'], sal = a.line('Salaries'), com = a.line('Marketing Commission'), ut = a.line('Light, Power, Heating'), ap = A.ap, S0 = A.summary;
-    obs.push([a.net[0] < 0 ? 'bad' : 'good', 'Xero shows a ' + (a.net[0] < 0 ? 'loss' : 'profit') + ' of ' + gbp(Math.abs(a.net[0])) + ' for ' + esc(A.cols[0]), 'Against a profit of ' + gbp(a.net[1]) + ' in ' + esc(A.cols[1]) + '. Sales fell ' + gbp(inc[1] - inc[0]) + ' and costs rose ' + gbp((a['Cost of Sales'][0] + a['Operating Expenses'][0]) - (a['Cost of Sales'][1] + a['Operating Expenses'][1])) + '.', 'accounts']);
-    if (sal[1] > sal[2] * 1.15) obs.push(['bad', 'Salaries rose ' + gbp(sal[1] - sal[2]) + ' in a month', gbp(sal[1]) + ' in ' + esc(A.cols[0]) + ' against ' + gbp(sal[2]) + ', which is ' + pc(sal[1] / inc[0]) + ' of sales. Check whether two pay runs or back pay landed in the same month before reading it as a trend.', 'accounts']);
+    obs.push([a.net[0] < 0 ? 'bad' : 'good', 'Xero shows a ' + (a.net[0] < 0 ? 'loss' : 'profit') + ' of ' + gbp(Math.abs(a.net[0])) + ' for ' + esc(A.cols[0]), 'Against a profit of ' + gbp(a.net[1]) + ' in ' + esc(A.cols[1]) + '. Sales fell ' + gbp(inc[1] - inc[0]) + ' and costs rose ' + gbp((a['Cost of Sales'][0] + a['Operating Expenses'][0]) - (a['Cost of Sales'][1] + a['Operating Expenses'][1])) + '.', 'pf-profit']);
+    if (sal[1] > sal[2] * 1.15) obs.push(['bad', 'Salaries rose ' + gbp(sal[1] - sal[2]) + ' in a month', gbp(sal[1]) + ' in ' + esc(A.cols[0]) + ' against ' + gbp(sal[2]) + ', which is ' + pc(sal[1] / inc[0]) + ' of sales. Check whether two pay runs or back pay landed in the same month before reading it as a trend.', 'pf-profit']);
     if (com[1]) obs.push(['warn', 'Commission took ' + pc(com[1] / inc[0]) + ' of sales', gbp(com[1]) + ' of marketing commission in ' + esc(A.cols[0]) + ', up from ' + gbp(com[2]) + '. This is the cost of the booking-site share shown under Channels & rates.', 'pf-demand']);
-    if (ut[1]) obs.push(['warn', 'Energy is ' + pc(ut[1] / inc[0]) + ' of sales', gbp(ut[1]) + ' for light, power and heating in the month; ' + gbp(ut[3]) + ' in the year to date.', 'accounts']);
+    if (ut[1]) obs.push(['warn', 'Energy is ' + pc(ut[1] / inc[0]) + ' of sales', gbp(ut[1]) + ' for light, power and heating in the month; ' + gbp(ut[3]) + ' in the year to date.', 'pf-profit']);
     var over = ap.totals.slice(1).reduce(function (s, v) { return s + v; }, 0), hm = ap.top.filter(function (r) { return r[0] === 'HMRC'; })[0];
-    obs.push(['bad', gbp(ap.total) + ' is owed to suppliers, ' + gbp(over) + ' of it overdue', 'Creditors were ' + gbp(S0.Creditors[1]) + ' a month earlier. Average time to pay is ' + Math.round(S0['Average creditor days'][0]) + ' days.' + (hm ? ' HMRC is the largest balance at ' + gbp(hm[1]) + ', with ' + gbp(hm[2]) + ' more than a month overdue.' : ''), 'accounts']);
-    obs.push([S0['Short term cash forecast'][0] < 0 ? 'bad' : 'good', 'Cash at bank is ' + gbp(S0['Closing bank balance'][0]), 'Xero’s short-term cash forecast (cash plus money due in, less bills due) stands at ' + gbp(S0['Short term cash forecast'][0]) + '.', 'accounts']);
+    obs.push(['bad', gbp(ap.total) + ' is owed to suppliers, ' + gbp(over) + ' of it overdue', 'Creditors were ' + gbp(S0.Creditors[1]) + ' a month earlier. Average time to pay is ' + Math.round(S0['Average creditor days'][0]) + ' days.' + (hm ? ' HMRC is the largest balance at ' + gbp(hm[1]) + ', with ' + gbp(hm[2]) + ' more than a month overdue.' : ''), 'pf-profit']);
+    obs.push([S0['Short term cash forecast'][0] < 0 ? 'bad' : 'good', 'Cash at bank is ' + gbp(S0['Closing bank balance'][0]), 'Xero’s short-term cash forecast (cash plus money due in, less bills due) stands at ' + gbp(S0['Short term cash forecast'][0]) + '.', 'pf-profit']);
     return obs;
   }
-  function renderAccounts() {
-    var a = acc(), el = $('pf-accounts'); if (!a) { el.innerHTML = '<div class="card"><h2>No Xero management report loaded</h2></div>'; return; }
+  function renderAccounts(target, prefix) {
+    var a = acc(), el = $(target || 'pf-profit'); prefix = prefix || ''; if (!a) { el.innerHTML = '<div class="card"><h2>No Xero management report loaded</h2></div>'; return; }
     var A = a.A, c = A.cols, inc = a['Trading Income'], S0 = A.summary;
     function sec(k, title) { return '<tr class="tot"><td colspan="5">' + title + '</td></tr>' + A.pl[k].filter(function (r) { return r[1] || r[2] || r[3]; }).map(function (r) { var d = r[1] - r[2]; return '<tr><td>' + esc(r[0]) + '</td><td class="n">' + gbp(r[1]) + '</td><td class="n">' + gbp(r[2]) + '</td><td class="n">' + (Math.abs(d) < 1 ? '–' : (d > 0 ? '+' : '−') + gbp(Math.abs(d))) + '</td><td class="n">' + gbp(r[3]) + '</td></tr>'; }).join(''); }
     function tot(l, v) { return '<tr class="tot"><td>' + l + '</td><td class="n">' + gbp(v[0]) + '</td><td class="n">' + gbp(v[1]) + '</td><td class="n">' + (v[0] - v[1] >= 0 ? '+' : '−') + gbp(Math.abs(v[0] - v[1])) + '</td><td class="n">' + gbp(v[2]) + '</td></tr>'; }
@@ -66,58 +69,217 @@
     h += '<div class="card"><h2>Balance sheet</h2><p class="sub">Summary; individual loans are grouped</p><table><tr><th></th><th class="n">' + esc(A.bs.cols[0]) + '</th><th class="n">' + esc(A.bs.cols[1]) + '</th></tr>' + A.bs.lines.map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td class="n">' + gbp(r[1]) + '</td><td class="n">' + gbp(r[2]) + '</td></tr>'; }).join('') + '<tr class="tot"><td>Net assets</td><td class="n">' + gbp(S0['Net assets'][0]) + '</td><td class="n"></td></tr></table></div></div></div>';
     var ap = A.ap;
     h += '<div class="grid g2"><div class="card"><h2>What is owed to suppliers, by age</h2><p class="sub">' + ap.count + ' suppliers, ' + gbp(ap.total) + ' in total</p><div class="chartbox" style="height:230px"><canvas id="ac-c1"></canvas></div></div><div class="card"><h2>Largest balances owed</h2><p class="sub">Top 12 by amount</p><div class="scroll" style="max-height:290px"><table><tr><th>Supplier</th><th class="n">Owed</th><th class="n">Over a month overdue</th></tr>' + ap.top.map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td class="n">' + gbp(r[1]) + '</td><td class="n">' + (r[2] > 0.5 ? gbp(r[2]) : '–') + '</td></tr>'; }).join('') + '</table></div></div></div>';
-    h += '<p class="note">This page is Xero’s own management report: one sales line and no departments, budget or occupancy. Departmental profit stays on the Profitability page, which follows the management accounts workbook. Debtors: ' + gbp(A.ar.total) + ' across ' + A.ar.count + ' accounts, ' + gbp(A.ar.older) + ' of it more than three months old.</p>';
-    el.innerHTML = h;
+    h += '<p class="note">This month comes from Xero’s own management report: one sales line and no departments, budget or occupancy. Choose an earlier month above for departmental profit from the management accounts. Debtors: ' + gbp(A.ar.total) + ' across ' + A.ar.count + ' accounts, ' + gbp(A.ar.older) + ' of it more than three months old.</p>';
+    el.innerHTML = prefix + h;
     if (window.__acChart) window.__acChart.destroy();
     window.__acChart = new Chart($('ac-c1'), { type: 'bar', data: { labels: ap.buckets, datasets: [{ data: ap.totals, backgroundColor: ap.totals.map(function (v, i) { return i === 0 ? '#1baf7a' : i < 2 ? '#e3a43a' : '#d0362b'; }), borderRadius: 4, maxBarThickness: 48 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (x) { return gbp(x.parsed.y); } } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false }, ticks: { callback: function (v) { return '£' + Math.round(v / 1000) + 'k'; } } } } } });
   }
   function tile(l, v, d) { return '<div class="tile"><div class="l">' + l + '</div><div class="v">' + v + '</div><div class="d">' + (d || '') + '</div></div>'; }
 
-  /* ---------- Welcome ---------- */
-  function renderHome() {
-    var el = $('pf-home'), T = window.Trading, S = T ? T.S() : {}, a = acc(), PD = window.Profit.data(), h = '', hl = [], card = {};
-    var who = ''; try { who = sessionStorage.getItem('bhpl_user') || ''; } catch (e) {}
-    who = who.split(/\s+/)[0]; who = who ? who.charAt(0).toUpperCase() + who.slice(1).toLowerCase() : '';
-    h += '<div class="hp-hero"><div><h2>Welcome to HosProfit' + (who ? ', ' + esc(who) : '') + '</h2><p>Brandon Hall Hotel &amp; Spa · trading, profit and costs in one place</p></div>' + (S.af ? '<div class="hp-stamp">Trading data from Guestline<br><b>' + when(S.af.asOf) + '</b></div>' : '') + '</div>';
+  /* ---------- highlights shared by the hub, the drawer and the Action Centre ---------- */
+  function highlights() {
+    var T = window.Trading, S = T ? T.S() : {}, a = acc(), hl = [];
+    if (S.af && S.af.rows.length) {
+      var cut = T.asOfDay(), m = cut.slice(0, 7), act = T.agg(T.rowsFor(m, 'actual')), bks = T.agg(T.rowsFor(m, 'books'));
+      T.observations(m, act, bks, true).forEach(function (o) { hl.push([o[0], o[1], o[2], 'pf-trading', 'Guestline']); });
+      var X = S.x || {};
+      if (X.company) { var ota = 0; X.company.rows.forEach(function (r) { if (/^(BOOK|EXPE)/.test(r.ref)) ota += r.rn; }); hl.push(['bad', pc(ota / X.company.total.rn) + ' of room nights come through Booking.com and Expedia', 'Commission is paid on all of it. Moving bookings to the hotel’s own website is the largest single saving available.', 'pf-demand', 'Guestline']); }
+      if (X.overrides && X.overrides.byOp['Automatic (system)'] && X.overrides.byOp['Automatic (system)'].diff < 0) { var au = X.overrides.byOp['Automatic (system)']; hl.push(['bad', 'Automatic rate cuts of ' + pc(-au.diff / au.pre) + ' on ' + num(au.c) + ' bookings', gbp(-au.diff) + ' taken off rates between ' + dlabel(X.overrides.from) + ' and ' + dlabel(X.overrides.to) + '. Confirm which booking-site promotions are switched on.', 'pf-demand', 'Guestline']); }
+      if (X.rooms) { var lo = X.rooms.oos.filter(function (o) { return o.since && (Date.parse(X.rooms.asOf.slice(0, 10)) - Date.parse(o.since)) / 864e5 > 30; }); if (lo.length) hl.push(['bad', lo.length + ' rooms have been out of service for over 30 days', 'Rooms ' + lo.map(function (o) { return o.id; }).join(', ') + '. Each is a room that cannot be sold.', 'pf-demand', 'Guestline']); }
+      if (X.cancels) { var c0 = X.cancels.byLead['On the day'] || { c: 0, lost: 0 }, c1 = X.cancels.byLead['1 to 2 days before'] || { c: 0, lost: 0 }; hl.push(['warn', num(c0.c + c1.c) + ' bookings cancelled within two days of arrival', gbp(c0.lost + c1.lost) + ' at booked value over the past year. Check which rates allow free cancellation that late.', 'pf-demand', 'Guestline']); }
+    }
+    if (a) accObs(a).forEach(function (o) { hl.push([o[0], o[1], o[2], o[3], 'Xero']); });
+    return { bad: hl.filter(function (x) { return x[0] === 'bad'; }), warn: hl.filter(function (x) { return x[0] !== 'bad'; }) };
+  }
+  function hlList(list, cls) { return list.length ? list.map(function (x) { return '<div class="finding ' + (cls || x[0]) + ' hp-f" data-go="' + x[3] + '"><h3>' + x[1] + '</h3><p>' + x[2] + '</p><span class="hp-src">' + x[4] + ' · open page</span></div>'; }).join('') : '<p class="note">Nothing here.</p>'; }
+  function drawer(kind) {
+    var H = highlights(), d = $('drawer'), list = kind === 'bad' ? H.bad : H.warn;
+    d.innerHTML = '<div class="dr-h"><div><h2>' + (kind === 'bad' ? 'Actions' : 'Watch list') + '</h2><p>' + list.length + ' items, worked out from the latest data</p></div><button class="dr-x" aria-label="Close">×</button></div><div class="dr-b">' + hlList(list, kind === 'bad' ? 'bad' : null) + '</div><div class="dr-f"><button class="btn" data-go="pf-actions">Open the Action Centre</button></div>';
+    document.body.classList.add('drawer-open');
+  }
+  function closeDrawer() { document.body.classList.remove('drawer-open'); }
 
+  /* ---------- Hub ---------- */
+  var CARDS = [['pf-trading', 'trading', 'Trading', 'Occupancy, rate, RevPAR and revenue by night'], ['pf-demand', 'demand', 'Channels & rates', 'Booking sources, rate plans, cancellations, no-shows'], ['pf-fb', 'fb', 'Food & beverage', 'Sales by outlet and meal against what was bought'], ['pf-profit', 'profit', 'Profitability', 'Revenue, costs and profit by month and department'], ['pf-labour', 'labour', 'Labour', 'Payroll by department, agency and employer costs'], ['pf-kpi', 'kpi', 'KPIs', 'Occupancy, rate, RevPAR and cost ratios by month'], ['pf-stock', 'stock', 'Purchased vs consumed', 'Purchases against cost of sales in the accounts'], ['explore', 'explore', 'Supplier costs', 'Every cost line by supplier, type, section and month'], ['bar', 'bar', 'Bar & keg prices', 'Keg price history and market comparison'], ['rooms', 'rooms', 'Rooms, linen & housekeeping', 'Linen, cleaning, guest supplies and waste'], ['pf-actions', 'actions', 'Action Centre', 'Actions, watch list, savings and checks'], ['pf-data', 'data', 'Data & reports', 'What has been imported, when, and the Gmail feed']];
+  var TITLES = { 'pf-home': 'Hub', 'pf-brief': 'Project brief', 'pf-help': 'How figures are worked out', save: 'Action Centre · Savings & checks', update: 'Data & reports · Load Xero exports' };
+  CARDS.forEach(function (c) { TITLES[c[0]] = c[2]; });
+  function renderHome() {
+    var el = $('pf-home'), T = window.Trading, S = T ? T.S() : {}, a = acc(), PD = window.Profit.data(), h = '', card = {}, H = highlights();
+    var who = (window.Profit.user() || '').split(/\s+/)[0], hr = new Date().getHours();
+    h += '<div class="hp-hero"><div><h2>' + (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (who ? ', ' + esc(who) : '') + '</h2><p>Business intelligence for Brandon Hall Hotel &amp; Spa: trading, profit and costs in one place</p></div>' +
+      '<div class="hp-btns"><button class="pillbtn bad" data-drawer="bad"><b>' + H.bad.length + '</b>Actions</button><button class="pillbtn warn" data-drawer="warn"><b>' + H.warn.length + '</b>Watch list</button><button class="iconbtn" data-go="pf-brief" title="Project brief">' + icon('brief', 30) + '<span>Project brief</span></button><button class="iconbtn" data-go="pf-help" title="How figures are worked out">' + icon('kpi', 30) + '<span>How it’s worked out</span></button></div></div>';
+    var today = '';
     if (S.af && S.af.rows.length) {
       var cut = T.asOfDay(), m = cut.slice(0, 7), rows = S.af.rows, R = T.ROOMS, to = rows.filter(function (r) { return r.d === cut; })[0], yd = rows.filter(function (r) { return r.d < cut; }).slice(-1)[0];
       var act = T.agg(T.rowsFor(m, 'actual')), bks = T.agg(T.rowsFor(m, 'books')), all = T.agg(T.rowsFor(m));
-      var nx = rows.filter(function (r) { return r.d >= cut; }).slice(0, 7), n7 = T.agg(nx), oos = S.x && S.x.rooms ? S.x.rooms.oos.length : (to ? to.roos : null);
+      var nx = rows.filter(function (r) { return r.d >= cut; }).slice(0, 14), n7 = T.agg(nx.slice(0, 7)), oos = S.x && S.x.rooms ? S.x.rooms.oos.length : (to ? to.roos : null);
       var rate = function (r) { return r && r.rooms ? T.net(r.acc) / r.rooms : null; };
-      h += '<div class="hp-today"><div class="hp-th">' + icon('trading', 38) + '<div><h3>Trading today</h3><p>' + (to ? to.dow + ' ' + dlabel(cut) : dlabel(cut)) + ', as at the last Guestline report</p></div><button class="hp-link" data-go="pf-trading">Open Trading</button></div><div class="tiles">' +
+      today = '<div class="hp-today"><div class="hp-th">' + icon('trading', 38) + '<div><h3>Trading today</h3><p>' + (to ? to.dow + ' ' + dlabel(cut) : dlabel(cut)) + ' · from the Guestline report received ' + when(S.af.asOf) + '</p></div><button class="hp-link" data-go="pf-trading">Open Trading</button></div><div class="tiles">' +
         tile('Tonight', to ? pc(to.rooms / R) : '–', to ? num(to.rooms) + ' rooms booked at ' + gbp(rate(to), 2) : '') +
         tile('Last night', yd ? pc(yd.rooms / R) : '–', yd ? num(yd.rooms) + ' rooms at ' + gbp(rate(yd), 2) + ' · ' + gbp(T.net(yd.acc + yd.fb + yd.oth)) + ' revenue' : '') +
-        tile('Month to date', gbp(act.total), pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' rate') +
+        tile('Month to date', gbp(act.total), pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' ADR') +
         tile('Month, with bookings held', gbp(act.total + bks.total), pc(all.occ) + ' occupancy for the month') +
         tile('Next 7 nights', pc(n7.occ), num(n7.rooms) + ' room nights · ' + gbp(n7.acc) + ' rooms revenue') +
         tile('Rooms out of service', num(oos), S.x && S.x.rooms ? 'of ' + S.x.rooms.total + ' rooms' : 'tonight') + '</div>' +
-        '<div class="hp-week">' + nx.map(function (r) { var o = r.rooms / R; return '<div title="' + r.dow + ' ' + dlabel(r.d) + ': ' + r.rooms + ' rooms"><span>' + Math.round(o * 100) + '%</span><i style="height:' + Math.max(4, Math.round(o * 54)) + 'px;background:' + (o < 0.25 ? '#d0362b' : o < 0.5 ? '#e3a43a' : '#1baf7a') + '"></i><em>' + r.dow.slice(0, 3) + ' ' + +r.d.slice(8) + '</em></div>'; }).join('') + '</div></div>';
-      T.observations(m, act, bks, true).forEach(function (o) { hl.push([o[0], o[1], o[2], 'pf-trading']); });
-      card.trading = pc(act.occ) + ' occupancy, ' + gbp(act.adr, 2) + ' rate this month'; card.rooms = num(oos) + ' rooms out of service';
-      var X = S.x || {};
-      if (X.company) { var ota = 0; X.company.rows.forEach(function (r) { if (/^(BOOK|EXPE)/.test(r.ref)) ota += r.rn; }); var sh = ota / X.company.total.rn; card.demand = pc(sh) + ' of room nights via booking sites'; hl.push(['bad', pc(sh) + ' of room nights come through Booking.com and Expedia', 'Commission is paid on all of it. Moving bookings to the hotel’s own website is the largest single saving available.', 'pf-demand']); }
-      if (X.overrides && X.overrides.byOp['Automatic (system)'] && X.overrides.byOp['Automatic (system)'].diff < 0) { var au = X.overrides.byOp['Automatic (system)']; hl.push(['bad', 'Automatic rate cuts of ' + pc(-au.diff / au.pre) + ' on ' + num(au.c) + ' bookings', gbp(-au.diff) + ' taken off rates between ' + dlabel(X.overrides.from) + ' and ' + dlabel(X.overrides.to) + '. Confirm which booking-site promotions are switched on.', 'pf-demand']); }
-      if (X.rooms) { var lo = X.rooms.oos.filter(function (o) { return o.since && (Date.parse(X.rooms.asOf.slice(0, 10)) - Date.parse(o.since)) / 864e5 > 30; }); if (lo.length) hl.push(['bad', lo.length + ' rooms have been out of service for over 30 days', 'Rooms ' + lo.map(function (o) { return o.id; }).join(', ') + '. Each is a room that cannot be sold.', 'pf-demand']); }
-      if (X.cancels) { var c0 = X.cancels.byLead['On the day'] || { c: 0, lost: 0 }, c1 = X.cancels.byLead['1 to 2 days before'] || { c: 0, lost: 0 }; hl.push(['warn', num(c0.c + c1.c) + ' bookings cancelled within two days of arrival', gbp(c0.lost + c1.lost) + ' at booked value over the past year. Check which rates allow free cancellation that late.', 'pf-demand']); }
+        '<div class="hp-week">' + nx.map(function (r) { var o = r.rooms / R; return '<div title="' + r.dow + ' ' + dlabel(r.d) + ': ' + r.rooms + ' rooms"><span>' + Math.round(o * 100) + '%</span><i style="height:' + Math.max(4, Math.round(o * 54)) + 'px;background:' + (o < 0.25 ? '#d0362b' : o < 0.5 ? '#e3a43a' : '#1baf7a') + '"></i><em>' + r.dow.slice(0, 3) + ' ' + +r.d.slice(8) + '</em></div>'; }).join('') + '</div><p class="note" style="margin:8px 0 0">Occupancy for the next 14 nights. Red is under 25% booked, amber under 50%.</p></div>';
+      card.trading = pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' ADR this month'; card.rooms = num(oos) + ' rooms out of service';
+      var X = S.x || {}; if (X.company) { var ota = 0; X.company.rows.forEach(function (r) { if (/^(BOOK|EXPE)/.test(r.ref)) ota += r.rn; }); card.demand = pc(ota / X.company.total.rn) + ' of room nights via booking sites'; }
+      var pe = T.pePeriod('month', m); if (pe) card.fb = gbp(T.peGroup(pe, 'FOOD').total[0] + T.peGroup(pe, 'BEVERAGE').total[0]) + ' food and drink sales this month';
     }
-    if (a) { accObs(a).forEach(function (o) { hl.push([o[0], o[1], o[2], o[3] === 'accounts' ? 'pf-accounts' : o[3]]); }); card.accounts = (a.net[0] < 0 ? 'Loss of ' : 'Profit of ') + gbp(Math.abs(a.net[0])) + ' in ' + a.A.cols[0]; }
     if (PD && PD.IDS && PD.IDS.length) {
       var id = PD.IDS[PD.IDS.length - 1], mo = PD.M[id], row = function (l) { var f = (mo.pl || []).filter(function (r) { return r.label === l; })[0]; return f ? f.ma : null; };
-      var rev = row('TOTAL REVENUE'), eb = row('EBITDA'), man = row('Total Manning');
-      card.profit = PD.LABEL[id] + ': EBITDA ' + gbp(eb) + ' on ' + gbp(rev); if (man && rev) card.labour = 'Payroll ' + pc(man / rev) + ' of revenue, ' + PD.LABEL[id]; card.kpi = 'RevPAR ' + gbp(row('REVPAR'), 2) + ', ' + PD.LABEL[id];
+      var rev = row('TOTAL REVENUE'), man = row('Total Manning');
+      card.profit = PD.XM ? PD.XM.label.split(' ')[0] + ': ' + (PD.XM.cur.net < 0 ? 'loss of ' : 'profit of ') + gbp(Math.abs(PD.XM.cur.net)) + ' on ' + gbp(PD.XM.cur.rev) : PD.LABEL[id] + ': EBITDA ' + gbp(row('EBITDA'));
+      card.labour = PD.XM ? 'Payroll ' + pc(PD.XM.cur.pay / PD.XM.cur.rev) + ' of sales, ' + PD.XM.label.split(' ')[0] : (man && rev ? 'Payroll ' + pc(man / rev) + ' of revenue' : ''); card.kpi = 'RevPAR ' + gbp(row('REVPAR'), 2) + ', ' + PD.LABEL[id];
     }
     if (window.CostsApp) { var tx = window.CostsApp.tx(), t = 0; tx.forEach(function (r) { t += r.net || 0; }); if (t) card.explore = gbp(t) + ' of supplier costs analysed'; }
-
-    var rank = { bad: 0, warn: 1, good: 2 }; hl.sort(function (x, y) { return rank[x[0]] - rank[y[0]]; });
-    var bad = hl.filter(function (x) { return x[0] === 'bad'; }), warn = hl.filter(function (x) { return x[0] === 'warn'; }), good = hl.filter(function (x) { return x[0] === 'good'; });
-    function col(title, cls, list) { return '<div class="card"><h2>' + title + '</h2><p class="sub">' + list.length + (list.length === 1 ? ' item' : ' items') + '</p>' + (list.length ? list.map(function (x) { return '<div class="finding ' + cls + ' hp-f" data-go="' + x[3] + '"><h3>' + x[1] + '</h3><p>' + x[2] + '</p></div>'; }).join('') : '<p class="note">Nothing here.</p>') + '</div>'; }
-    h += '<div class="grid g2">' + col('Act on these', 'bad', bad) + col('Keep an eye on', 'warn', warn.concat(good.map(function (g) { return g; }))) + '</div>';
-
-    var cards = [['pf-trading', 'trading', 'Trading', 'Occupancy, rate, RevPAR and revenue by night from Guestline'], ['pf-demand', 'demand', 'Channels & rates', 'Where bookings come from, rate plans, cancellations, no-shows'], ['pf-profit', 'profit', 'Profitability', 'Revenue against costs and profit for every department'], ['pf-labour', 'labour', 'Labour', 'Payroll by department, agency and employer costs'], ['pf-kpi', 'kpi', 'KPIs', 'Occupancy, rate, RevPAR and cost ratios by month'], ['pf-accounts', 'accounts', 'Accounts (Xero)', 'Monthly profit and loss, cash and what is owed'], ['pf-stock', 'stock', 'Purchased vs consumed', 'Purchases in Xero against cost of sales in the accounts'], ['explore', 'explore', 'Supplier costs', 'Every Xero cost line by supplier, type, section and month'], ['bar', 'bar', 'Bar & keg prices', 'Keg price history and market comparison'], ['rooms', 'rooms', 'Rooms, linen & housekeeping', 'Linen, cleaning, guest supplies and waste'], ['save', 'save', 'Savings & checks', 'Where to buy better, duplicates and miscoded lines'], ['pf-brief', 'brief', 'Alia’s brief', 'The seven points asked for and where each is covered'], ['update', 'update', 'Update data', 'Load new Xero exports']];
-    h += '<div class="hp-cards">' + cards.map(function (c) { return '<button class="hp-card' + (c[1] === 'trading' ? ' hot' : '') + '" data-go="' + c[0] + '" style="--c:' + COL[c[1]] + '">' + icon(c[1]) + '<span><b>' + c[2] + '</b><small>' + c[3] + '</small>' + (card[c[1]] ? '<em>' + esc(card[c[1]]) + '</em>' : '') + '</span></button>'; }).join('') + '</div>';
+    card.actions = H.bad.length + ' actions · ' + H.warn.length + ' to watch'; card.data = (S.received ? S.received.length : 0) + ' Guestline reports on record';
+    h += '<div class="hp-cards">' + CARDS.map(function (c) { return '<button class="hp-card' + (c[1] === 'trading' ? ' hot' : '') + '" data-go="' + c[0] + '" style="--c:' + COL[c[1]] + '">' + icon(c[1]) + '<span><b>' + c[2] + '</b><small>' + c[3] + '</small>' + (card[c[1]] ? '<em>' + esc(card[c[1]]) + '</em>' : '') + '</span></button>'; }).join('') + '</div>' + today +
+      '<p class="hp-foot"><a data-go="pf-data">Data references</a> · where every figure comes from and when it was imported &nbsp;|&nbsp; <a data-go="pf-help">How figures are worked out</a> &nbsp;|&nbsp; <a data-go="pf-brief">Project brief</a></p>';
     el.innerHTML = h;
   }
-  document.addEventListener('click', function (e) { var t = e.target.closest ? e.target.closest('[data-go]') : null; if (t) go(t.getAttribute('data-go')); });
-  if (window.Profit && window.Profit.register) { window.Profit.register('home', renderHome); window.Profit.register('accounts', renderAccounts); }
+
+  /* ---------- Action Centre ---------- */
+  function pills(on) { var H = highlights(); return '<div class="segs"><button class="' + (on === 'bad' ? 'on' : '') + '" data-ac="bad">Act now <b>' + H.bad.length + '</b></button><button class="' + (on === 'warn' ? 'on' : '') + '" data-ac="warn">Watch list <b>' + H.warn.length + '</b></button><button class="' + (on === 'save' ? 'on' : '') + '" data-go="save">Savings &amp; checks</button></div>'; }
+  var acView = 'bad';
+  function renderActions() {
+    var H = highlights();
+    $('pf-actions').innerHTML = pills(acView) + '<div class="card"><h2>' + (acView === 'bad' ? 'Act now' : 'Watch list') + '</h2><p class="sub">Rebuilt from the latest data each time a report is loaded. Click an item to open the page behind it.</p>' + hlList(acView === 'bad' ? H.bad : H.warn, acView === 'bad' ? 'bad' : null) + '</div>';
+  }
+
+  /* ---------- Food & beverage ---------- */
+  var fbCharts = [];
+  function renderFb() {
+    var el = $('pf-fb'), T = window.Trading, S = T ? T.S() : {}; fbCharts.forEach(function (c) { c.destroy(); }); fbCharts = [];
+    if (!S.af) { el.innerHTML = '<div class="card"><h2>No Guestline data loaded</h2></div>'; return; }
+    var cut = T.asOfDay(), m = cut.slice(0, 7), pe = T.pePeriod('month', m), act = T.agg(T.rowsFor(m, 'actual')), h = '';
+    if (!pe) { el.innerHTML = '<div class="card"><h2>No Period End report for this month</h2><p class="sub">Food and drink sales by outlet come from the Rezlynx Period End / End of Day report.</p></div>'; return; }
+    var F = T.peGroup(pe, 'FOOD'), B = T.peGroup(pe, 'BEVERAGE'), food = F.total[0], bev = B.total[0], tot = food + bev;
+    var lines = F.lines.map(function (l) { return [l[1], l[2], 'Food', l[0]]; }).concat(B.lines.map(function (l) { return [l[1], l[2], 'Drinks', l[0]]; })).filter(function (l) { return l[1] > 0.5; }).sort(function (x, y) { return y[1] - x[1]; });
+    var meal = { Breakfast: 0, Lunch: 0, Dinner: 0, 'Bar': 0, 'Room service and other': 0 };
+    lines.forEach(function (l) { var c = l[3]; var k = /BRK/.test(c) ? 'Breakfast' : /LUN/.test(c) ? 'Lunch' : /DIN/.test(c) ? 'Dinner' : /^BAR/.test(c) ? 'Bar' : 'Room service and other'; meal[k] += l[1]; });
+    var bar = 0; B.lines.forEach(function (l) { if (/^BAR/.test(l[0])) bar += l[2]; });
+    h += '<div class="filters"><span class="note" style="margin:0">' + MN[+m.slice(5) - 1] + ' ' + m.slice(0, 4) + ' to date, from the Rezlynx Period End report received ' + when(pe.asOf) + '. Net of VAT.</span></div>';
+    h += '<div class="tiles">' + tile('Food and drink sales', gbp(tot), 'month to date') + tile('Food', gbp(food), pc(food / tot) + ' of the total') + tile('Drinks', gbp(bev), pc(bev / tot) + ' of the total') + tile('Per occupied room', gbp(act.rooms ? tot / act.rooms : null, 2), num(act.rooms) + ' room nights') + tile('Per guest', gbp(act.guests ? tot / act.guests : null, 2), num(act.guests) + ' guest nights') + tile('Drinks rung on the bar till', pc(bev ? bar / bev : null), gbp(bar) + ' of ' + gbp(bev)) + '</div>';
+    h += '<div class="grid g2"><div class="card"><h2>Sales by line</h2><p class="sub">Every food and drink analysis code with sales this month · green is food, amber is drinks</p><div class="chartbox" style="height:' + Math.max(220, lines.length * 30) + 'px"><canvas id="fb-c1"></canvas></div></div><div><div class="card"><h2>Sales by meal period</h2><p class="sub">Food and drink together</p><div class="chartbox" style="height:220px"><canvas id="fb-c2"></canvas></div></div>';
+    var TX = window.CostsApp ? window.CostsApp.tx() : [], xs = function (f) { var s2 = 0; TX.forEach(function (t) { if (t.month === m && f(t)) s2 += t.net; }); return s2; };
+    var xf = xs(function (t) { return t.dept === 'Restaurant' && ['Food', 'Hot beverages', 'Beverages'].indexOf(t.section) !== -1 && t.cat !== 'Alcohol (coded to restaurant)'; }), xb = xs(function (t) { return t.dept === 'Bar' || t.cat === 'Alcohol (coded to restaurant)'; });
+    var rw = function (n1, s2, x) { return '<tr><td>' + n1 + '</td><td class="n">' + gbp(s2) + '</td><td class="n">' + gbp(x) + '</td><td class="n">' + (s2 ? pc(x / s2) : '–') + '</td></tr>'; };
+    h += '<div class="card"><h2>Sales against purchases</h2><p class="sub">Rezlynx sales beside Xero supplier invoices for the same month</p><table><tr><th></th><th class="n">Sales</th><th class="n">Purchases</th><th class="n">Purchases % of sales</th></tr>' + rw('Food', food, xf) + rw('Drinks', bev, xb) + '</table><p class="note">Purchases are invoices dated in the month, not stock used, and Xero may be behind. Read it as a direction, not a margin.</p></div></div></div>';
+    h += '<div class="card"><h2>Food and drink sales by night</h2><p class="sub">From the Actual &amp; Forecast report; nights after ' + dlabel(cut) + ' show only what is pre-booked with rooms</p><div class="chartbox" style="height:220px"><canvas id="fb-c3"></canvas></div></div>';
+    var X = S.x || {};
+    if (X.company) { var top = X.company.rows.slice(0, 8); h += '<div class="grid g2"><div class="card"><h2>Food and drink on the bill, by booking source</h2><p class="sub">Rezlynx Company report, ' + esc(X.company.period.replace('(Actual) ', '')) + ', including VAT</p><table><tr><th>Source</th><th class="n">Room nights</th><th class="n">F&amp;B on the bill</th><th class="n">F&amp;B per room night</th></tr>' + top.map(function (r) { return '<tr><td>' + esc(r.ref) + '</td><td class="n">' + num(r.rn) + '</td><td class="n">' + gbp(r.fb) + '</td><td class="n">' + gbp(r.fb / r.rn, 2) + '</td></tr>'; }).join('') + '</table></div>'; }
+    else h += '<div class="grid g2"><div></div>';
+    h += '<div class="card"><h2>What is still missing for food and drink</h2><p class="sub">Rezlynx only sees totals posted from the tills</p><div class="finding warn"><h3>Item sales from the tills (EPoS)</h3><p>Which dishes and drinks sell, in what quantity and at what price. Needed for menu margins and to match keg purchases to pints sold. Report: Daily Items Sold.</p></div><div class="finding warn"><h3>Covers</h3><p>Number of diners per meal, so spend per cover can be tracked for breakfast, lunch and dinner. Breakfast currently has to be judged per guest night.</p></div><div class="finding warn"><h3>Voids and discounts</h3><p>Voided Items by operator, the standard control report for a bar and restaurant.</p></div><div class="finding warn"><h3>Events and functions</h3><p>Weddings, conferences and private dining appear only as provisional revenue in the market segment forecast. An event-by-event revenue report would separate them from the restaurant.</p></div></div></div>';
+    el.innerHTML = h;
+    var opt = function (horiz, f) { return { indexAxis: horiz ? 'y' : 'x', maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return gbp(horiz ? c.parsed.x : c.parsed.y); } } } }, scales: { x: { grid: horiz ? { color: '#ebe9e3', drawTicks: false } : { display: false }, border: { display: false }, ticks: horiz ? { callback: f, maxTicksLimit: 6 } : {} }, y: { grid: horiz ? { display: false } : { color: '#ebe9e3', drawTicks: false }, border: { display: false }, beginAtZero: true, ticks: horiz ? {} : { callback: f, maxTicksLimit: 5 } } } }; }, k = function (v) { return '£' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(0) + 'k' : v); };
+    fbCharts.push(new Chart($('fb-c1'), { type: 'bar', data: { labels: lines.map(function (l) { return l[0]; }), datasets: [{ data: lines.map(function (l) { return Math.round(l[1]); }), backgroundColor: lines.map(function (l) { return l[2] === 'Food' ? '#1a8f63' : '#b9791a'; }), borderRadius: 4, maxBarThickness: 20 }] }, options: opt(true, k) }));
+    var mk = Object.keys(meal).filter(function (x) { return meal[x] > 0.5; });
+    fbCharts.push(new Chart($('fb-c2'), { type: 'bar', data: { labels: mk, datasets: [{ data: mk.map(function (x) { return Math.round(meal[x]); }), backgroundColor: '#c2417a', borderRadius: 4, maxBarThickness: 46 }] }, options: opt(false, k) }));
+    var rows = T.rowsFor(m);
+    fbCharts.push(new Chart($('fb-c3'), { type: 'bar', data: { labels: rows.map(function (r) { return +r.d.slice(8); }), datasets: [{ data: rows.map(function (r) { return Math.round(T.net(r.fb)); }), backgroundColor: rows.map(function (r) { return r.d < cut ? '#c2417a' : '#b9b7af'; }), borderRadius: 3, maxBarThickness: 22 }] }, options: opt(false, k) }));
+  }
+
+  /* ---------- Data & reports ---------- */
+  var KIND = { af: ['Actual & Forecast', 'Occupancy, rate and revenue by night'], pe: ['Period End / End of Day', 'Revenue by outlet, payments, deposits'], company: ['Company', 'Booking sources'], segments: ['Forecast Revenue By Market Segment', 'Segment mix on the books'], rates: ['Daily Rate Analysis', 'Rate plans sold'], cancels: ['Cancellations', 'Cancellations and notice given'], noshows: ['No Shows', 'No-show rooms'], overrides: ['Rate Override', 'Rates changed from the plan'], blocks: ['Block Forecast', 'Group blocks held'], rooms: ['Room Usage', 'Room stock and out of service'], bizdone: ['Business Done', 'Not used'], commission: ['Agent Commission', 'Not used (report was empty)'] };
+  var GKEY = 'hosbusiness_gmail_feed';
+  function gmailBox() { var u = ''; try { u = localStorage.getItem(GKEY) || ''; } catch (e) {} return '<div class="card"><h2>Daily emails from Guestline</h2><p class="sub">Shows what arrived in the Gmail inbox, once the Gmail script is installed. Paste the script’s web address here; it is kept in this browser only.</p><div class="filters" style="margin:0"><label style="flex:1">Gmail script web address<input type="url" id="gm-url" value="' + esc(u) + '" placeholder="https://script.google.com/macros/s/…/exec?key=…" style="width:100%;max-width:none"></label><button class="btn" id="gm-go">Check now</button></div><div id="gm-out"><p class="note">' + (u ? 'Checking…' : 'Not connected yet. Until it is, load exported reports by hand on the Trading page.') + '</p></div></div>'; }
+  function gmailCheck() {
+    var u = ($('gm-url').value || '').trim(), out = $('gm-out'); try { localStorage.setItem(GKEY, u); } catch (e) {}
+    if (!u) { out.innerHTML = '<p class="note">Paste the web address first.</p>'; return; }
+    out.innerHTML = '<p class="note">Checking…</p>';
+    fetch(u).then(function (r) { return r.json(); }).then(function (j) {
+      if (j.error) { out.innerHTML = '<div class="finding bad"><h3>The script answered with an error</h3><p>' + esc(j.error) + '</p></div>'; return; }
+      var rows = j.messages || [], today = new Date().toISOString().slice(0, 10), n = rows.filter(function (r) { return String(r.received).slice(0, 10) === today; }).length;
+      out.innerHTML = '<div class="finding ' + (n ? 'good' : 'warn') + '"><h3>' + (n ? n + ' Guestline email' + (n > 1 ? 's' : '') + ' received today' : 'No Guestline emails received today yet') + '</h3><p>Last checked by the script: ' + esc(j.lastRun || 'not yet run') + '. ' + rows.length + ' emails on record.</p></div>' + (rows.length ? '<div class="scroll" style="max-height:340px"><table><tr><th>Received</th><th>Report</th><th>Subject</th><th>Attachments</th></tr>' + rows.map(function (r) { return '<tr><td>' + esc(String(r.received).replace('T', ' ').slice(0, 16)) + '</td><td><b>' + esc(r.report || '–') + '</b></td><td>' + esc(r.subject || '') + '</td><td>' + esc(r.attachments || 'none') + '</td></tr>'; }).join('') + '</table></div>' : '');
+    }).catch(function () { out.innerHTML = '<div class="finding bad"><h3>Could not reach the Gmail script</h3><p>Check the address is the full web app address ending in /exec with ?key=… and that the script is deployed for “Anyone”.</p></div>'; });
+  }
+  function renderData() {
+    var T = window.Trading, S = T ? T.S() : {}, PD = window.Profit.data(), A = window.ACCOUNTS_DATA, C = window.COSTS_DATA, refs = [];
+    (S.received || []).slice().sort(function (x, y) { return x.ts < y.ts ? 1 : -1; }).forEach(function (r) { var k = KIND[r.kind] || [r.kind, '']; refs.push(['Guestline Rezlynx', k[0], r.file, when(r.ts), k[1]]); });
+    if (C) { var tx = window.CostsApp ? window.CostsApp.tx() : [], by = {}; tx.forEach(function (t) { by[t.dept] = (by[t.dept] || 0) + 1; }); refs.push(['Xero', 'Account Transactions: Bar Costs (Drinks), Restaurant Costs, Room Costs (Linen and Materials)', 'three exports, ' + (C.rows ? C.rows.length : tx.length) + ' lines', esc(C.generated || ''), 'Supplier costs, keg prices, linen, savings']); }
+    if (A) refs.push(['Xero', 'Management Report', 'month ended ' + A.period, '16 Nov', 'Profitability (latest month), cash, creditors']);
+    if (PD && PD.IDS) refs.push(['Management accounts', 'Departmental accounts workbook, one per month', PD.IDS.map(function (id) { return PD.LABEL[id].split(' ')[0].slice(0, 3); }).join(', ') + ' ' + PD.IDS[PD.IDS.length - 1].slice(0, 4), 'via the P&amp;L dashboard', 'Profitability, labour, KPIs, budget and forecast']);
+    refs.push(['Market research', 'Wholesale keg and supply prices checked online', '–', '14 Nov', 'Bar &amp; keg prices, savings']);
+    $('pf-data').innerHTML = gmailBox() + (T && T.feedPanel ? T.feedPanel() : '') +
+      '<div class="card"><h2>Data references</h2><p class="sub">Every report imported into HosBUSINESS, newest first, and what it feeds</p><div class="scroll"><table><tr><th>System</th><th>Report</th><th>File or period</th><th>Run or loaded</th><th>Used for</th></tr>' + refs.map(function (r) { return '<tr><td>' + r[0] + '</td><td><b>' + esc(r[1]) + '</b></td><td style="word-break:break-all">' + esc(r[2]) + '</td><td>' + r[3] + '</td><td>' + r[4] + '</td></tr>'; }).join('') + '</table></div></div>' +
+      '<div class="card"><h2>Load new data</h2><p class="sub">Until the Gmail feed is live, files are loaded by hand</p><p><button class="btn" data-go="pf-trading">Load Guestline reports (bottom of the Trading page)</button> &nbsp; <button class="btn" data-go="update">Load Xero cost exports</button></p></div>';
+    var u = ''; try { u = localStorage.getItem(GKEY) || ''; } catch (e) {} if (u) gmailCheck();
+  }
+
+  /* ---------- explanations ---------- */
+  var TERMS = [
+    ['Occupancy', 'Rooms sold ÷ rooms available. Brandon Hall is counted on 120 lettable rooms, the figure the management accounts and the Manager’s Flash use.'],
+    ['ADR', 'Average daily rate: rooms revenue (net of VAT) ÷ rooms sold. What a sold room earned on average.'],
+    ['RevPAR', 'Revenue per available room: rooms revenue ÷ all 120 rooms, sold or not. It equals occupancy × ADR, so it shows whether a rate rise cost more in empty rooms than it gained.'],
+    ['TRevPAR', 'Total revenue per available room: rooms, food, drink and other revenue ÷ 120 rooms. Shows what the whole hotel earns per room, not only the bedroom.'],
+    ['GOPPAR', 'Gross operating profit per available room: profit before fixed costs ÷ rooms available.'],
+    ['Room nights', 'One room sold for one night. Two rooms for three nights is six room nights.'],
+    ['On the books', 'Bookings already held for future nights. It grows as the date approaches, so it is a floor, not a forecast.'],
+    ['Pickup', 'Room nights gained for future dates since the previous report. Needs two days of reports.'],
+    ['Out of service', 'Rooms taken off sale for repair (Rezlynx: ROOS). “Deduct from stock” (DFS) rooms are removed from the count altogether.'],
+    ['Group block', 'Rooms held for a group. They only become sales when the group’s guests are named (picked up).'],
+    ['Lead time', 'Days between the booking being made and arrival.'],
+    ['Gross profit', 'Revenue less the direct cost of what was sold (food, drink, linen, commission in Xero’s layout).'],
+    ['Departmental profit', 'A department’s revenue less its cost of sales, its own payroll and its other expenses.'],
+    ['Gross operating profit', 'All departmental profit less undistributed costs: administration, sales and marketing, energy, maintenance. Often shortened to GOP.'],
+    ['EBITDA', 'Earnings before interest, tax, depreciation and amortisation: gross operating profit less insurance, property tax and rent.'],
+    ['Net operating profit', 'EBITDA less the furniture reserve and management fee.'],
+    ['Creditor days', 'Average number of days taken to pay suppliers, as calculated by Xero.']
+  ];
+  var CALCS = [
+    ['Net of VAT', 'Guestline’s Actual &amp; Forecast export is including VAT, so every revenue figure from it is divided by 1.2. Period End figures are already net. Checked against the Manager’s Flash for 1–15 November: rooms revenue £80,204 on both.'],
+    ['Rooms sold', 'Taken as the export’s occupancy % × its rooms in stock for the night. The export’s own “sold” column also counts unnamed group block rooms, which overstates sales.'],
+    ['Where the month is heading', 'Actual revenue for nights already traded + revenue on the books for the remaining nights, compared with the forecast in the management accounts. Food and drink on the books is only what is pre-booked with rooms, so that gap closes as the month trades.'],
+    ['Food and drink per guest or room', 'Food and drink sales ÷ guest nights or ÷ occupied room nights for the same dates.'],
+    ['Booking-site share', 'Room nights on the Booking.com and Expedia company codes ÷ all room nights on the Rezlynx Company report.'],
+    ['Rate overrides', 'Rate before the override less rate after, added up by who applied it. “Automatic” is the Rezlynx system user.'],
+    ['Cancellation notice', 'Arrival date less the date the booking was cancelled, grouped into bands. The value is Rezlynx’s estimate for the cancelled stay; many of those rooms are resold.'],
+    ['Rooms out of service over 30 days', 'Report date less the out-of-service start date on the Room Usage report.'],
+    ['Purchases % of sales', 'Xero supplier invoices dated in the month ÷ Rezlynx sales for the month. Invoices are not the same as stock used, so it is a direction rather than a true margin.'],
+    ['Overdue creditors', 'Everything on Xero’s aged payables report past its due date, including the “under one month” column.'],
+    ['Cumulative totals with October', 'Management accounts for March to September, plus October’s revenue, payroll and net result from Xero. Departmental profit, gross operating profit and EBITDA stop at September because Xero has no departments.'],
+    ['Payroll in Xero', 'Salaries + employer’s National Insurance + pension costs + direct wages.'],
+    ['Keg and supplier prices', 'Unit prices read from the invoice line descriptions in Xero; market prices from wholesaler websites on 14 November.']
+  ];
+  function renderHelp() {
+    $('pf-help').innerHTML = '<div class="grid g2"><div class="card"><h2>What the terms mean</h2><p class="sub">These also appear when you hover over an ⓘ on any page</p><table>' + TERMS.map(function (t) { return '<tr><td style="white-space:nowrap;vertical-align:top"><b>' + t[0] + '</b></td><td>' + t[1] + '</td></tr>'; }).join('') + '</table></div><div class="card"><h2>How the figures are worked out</h2><p class="sub">Every calculation made by the hub rather than taken straight from a report</p><table>' + CALCS.map(function (t) { return '<tr><td style="vertical-align:top;min-width:150px"><b>' + t[0] + '</b></td><td>' + t[1] + '</td></tr>'; }).join('') + '</table></div></div>';
+  }
+  /* add an ⓘ beside known terms in tiles and table headings */
+  var TIPS = TERMS.map(function (t) { return [new RegExp('^(' + t[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + (t[0] === 'ADR' ? '|Average daily rate|Rate' : t[0] === 'Gross operating profit' ? '|GOP' : '') + ')\\b', 'i'), t[1]]; });
+  function annotate(root) {
+    (root || document).querySelectorAll('.tile .l, th').forEach(function (n) {
+      if (n.dataset.tip) return; n.dataset.tip = '1'; var tx = n.textContent.trim();
+      for (var i = 0; i < TIPS.length; i++) if (TIPS[i][0].test(tx)) { var s = document.createElement('span'); s.className = 'tip'; s.tabIndex = 0; s.textContent = 'ⓘ'; s.setAttribute('data-tip', TIPS[i][1].replace(/&amp;/g, '&')); n.appendChild(s); break; }
+    });
+  }
+
+  /* ---------- shell: sign-in, top bar, navigation ---------- */
+  function go(tab) { closeDrawer(); var b = document.querySelector('#nav button[data-t="' + tab + '"]'); if (b) b.click(); window.scrollTo(0, 0); }
+  function crumb(tab) {
+    var c = $('crumb'); if (!c) return;
+    document.body.classList.toggle('at-home', tab === 'pf-home');
+    c.innerHTML = tab === 'pf-home' ? '' : '<button class="back" data-go="pf-home">← Hub</button><b>' + (TITLES[tab] || '') + '</b><select id="jump" aria-label="Go to page"><option value="">Go to…</option>' + CARDS.map(function (x) { return '<option value="' + x[0] + '">' + x[2] + '</option>'; }).join('') + '</select>';
+  }
+  function unlock() { var ok = window.Profit.signedIn(); document.body.classList.toggle('locked', !ok); if (ok && $('who')) $('who').textContent = window.Profit.user(); }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target : null; if (!t) return;
+    var d = t.closest('[data-drawer]'); if (d) { drawer(d.getAttribute('data-drawer')); return; }
+    if (t.closest('.dr-x') || t.id === 'scrim') { closeDrawer(); return; }
+    var a = t.closest('[data-ac]'); if (a) { acView = a.getAttribute('data-ac'); if (!document.querySelector('#t-pf-actions.on')) go('pf-actions'); else renderActions(); return; }
+    if (t.id === 'gm-go') { gmailCheck(); return; }
+    if (t.id === 'signout') { window.Profit.signOut(); return; }
+    var g = t.closest('[data-go]'); if (g) { go(g.getAttribute('data-go')); return; }
+    var nb = t.closest('#nav button'); if (nb) crumb(nb.dataset.t);
+  });
+  document.addEventListener('change', function (e) { if (e.target.id === 'jump' && e.target.value) go(e.target.value); });
+  document.addEventListener('hub-signin', unlock);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
+  window.HubAccounts = renderAccounts;
+  if (window.Profit && window.Profit.register) { ['home', renderHome, 'actions', renderActions, 'fb', renderFb, 'data', renderData, 'help', renderHelp].forEach(function (v, i, arr) { if (i % 2 === 0) window.Profit.register(v, arr[i + 1]); }); }
+  document.addEventListener('DOMContentLoaded', function () {
+    unlock(); crumb('pf-home');
+    var sv = $('t-save'); if (sv && !sv.querySelector('.segs')) sv.insertAdjacentHTML('afterbegin', '<div id="save-pills"></div>');
+    new MutationObserver(function () { annotate(document.querySelector('main')); var sp = $('save-pills'); if (sp && !sp.firstChild && window.Profit.signedIn()) sp.innerHTML = pills('save'); }).observe(document.querySelector('main'), { childList: true, subtree: true });
+  });
 })();

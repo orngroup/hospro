@@ -8,6 +8,19 @@
   var SKEY = 'bhpl_user';
   var M = {}, IDS = [], LABEL = {}, loaded = false, loadErr = null;
   var sel = { month: null, cmp: 'budget' };
+  var XM = null; // a month that exists only in Xero's management report (no departmental accounts yet)
+  function buildXM() {
+    var A = window.ACCOUNTS_DATA; if (!A || !A.period) return;
+    var d = new Date(A.period); if (isNaN(d)) return;
+    var id = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); if (IDS.indexOf(id) !== -1) return;
+    var sum = function (k, i) { return (A.pl[k] || []).reduce(function (t, r) { return t + (r[i] || 0); }, 0); };
+    var ln = function (n, i) { var v = 0; Object.keys(A.pl).forEach(function (k) { A.pl[k].forEach(function (r) { if (r[0] === n) v = r[i] || 0; }); }); return v; };
+    var one = function (i) { var rev = sum('Trading Income', i), cos = sum('Cost of Sales', i), ox = sum('Operating Expenses', i), oi = sum('Other Income', i);
+      return { rev: rev, cos: cos, gp: rev - cos, opex: ox, net: rev - cos + oi - ox, pay: ln('Salaries', i) + ln('Employers National Insurance', i) + ln('Pensions Costs', i) + ln('Direct Wages', i) }; };
+    XM = { id: id, label: d.toLocaleString('en-GB', { month: 'long' }) + ' ' + d.getFullYear(), cur: one(1), prev: one(2), prevLabel: A.cols[1] };
+  }
+  function isX() { return XM && sel.month === XM.id; }
+  function xBanner(what) { return '<div class="finding warn" style="margin-bottom:14px"><h3>' + esc(XM.label) + ' is in from Xero as totals only</h3><p>' + what + ' The departmental management accounts for ' + esc(XM.label) + ' have not been loaded yet, so the breakdown below is ' + esc(LABEL[IDS[IDS.length - 1]]) + '.</p></div>'; }
   var charts = {};
   var PAL = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'];
 
@@ -25,7 +38,7 @@
     rows.forEach(function (r) { if (r.head) { on = r.label.trim() === head; return; } if (/^TOTAL PAYROLL$/.test(r.label.trim())) on = false; if (on) out.push(r); });
     return out;
   }
-  function ids() { return sel.month === 'all' ? IDS : [sel.month]; }
+  function ids() { return sel.month === 'all' ? IDS : [isX() ? IDS[IDS.length - 1] : sel.month]; }
   function prevId() { var i = IDS.indexOf(sel.month); return i > 0 ? IDS[i - 1] : null; }
   // v(path fn, label, field) summed over the selected month(s)
   function V(get, label, f, list) {
@@ -78,24 +91,26 @@
   /* ---------- controls ---------- */
   function controls() {
     var o = IDS.map(function (id) { return '<option value="' + id + '"' + (id === sel.month ? ' selected' : '') + '>' + esc(LABEL[id]) + '</option>'; }).join('') +
-      '<option value="all"' + (sel.month === 'all' ? ' selected' : '') + '>' + short(IDS[0]) + ' to ' + short(IDS[IDS.length - 1]) + ' (cumulative)</option>';
+      (XM ? '<option value="' + XM.id + '"' + (isX() ? ' selected' : '') + '>' + esc(XM.label) + ' (Xero accounts)</option>' : '') +
+      '<option value="all"' + (sel.month === 'all' ? ' selected' : '') + '>' + short(IDS[0]) + ' to ' + short(XM ? XM.id : IDS[IDS.length - 1]) + ' (cumulative)</option>';
     var h = '<div class="filters"><label>Period<select class="pf-month">' + o + '</select></label>' +
       '<label>Compare with<select class="pf-cmp"><option value="budget"' + (sel.cmp === 'budget' ? ' selected' : '') + '>Budget</option><option value="prev"' + (sel.cmp === 'prev' ? ' selected' : '') + (sel.month === 'all' ? ' disabled' : '') + '>Previous month</option></select></label>' +
-      '<span class="note" style="margin:0 0 6px">Source: management accounts, as shown on the P&amp;L dashboard. Accounts are loaded to ' + esc(LABEL[IDS[IDS.length - 1]]) + '. No prior-year figures exist — the accounts begin in ' + esc(LABEL[IDS[0]]) + '.</span></div>';
+      '<span class="note" style="margin:0 0 6px">Source: management accounts, as shown on the P&amp;L dashboard, loaded to ' + esc(LABEL[IDS[IDS.length - 1]]) + (XM ? '; ' + esc(XM.label) + ' from the Xero management report' : '') + '. No prior-year figures exist — the accounts begin in ' + esc(LABEL[IDS[0]]) + '.</span></div>';
     return h;
   }
 
   /* ---------- PROFITABILITY ---------- */
   function renderProfit() {
+    if (isX() && window.HubAccounts) { window.HubAccounts('pf-profit', controls()); return; }
     var rev = A(PLs, 'TOTAL REVENUE'), goi = A(PLs, 'GROSS OPERATING INCOME'), gop = A(PLs, 'GROSS OPERATING PROFIT'), eb = A(PLs, 'EBITDA'), nop = A(PLs, 'Net Operating Profit'), pay = A(PLs, 'Total Manning');
-    var cl = cmpLabel();
-    var h = controls() + '<div class="tiles">' +
-      tile('Total revenue', gbp(rev), vs(rev, C(PLs, 'TOTAL REVENUE'), false, cl)) +
-      tile('Departmental profit', gbp(goi), vs(goi, C(PLs, 'GROSS OPERATING INCOME'), false, cl)) +
-      tile('Gross operating profit', gbp(gop), vs(gop, C(PLs, 'GROSS OPERATING PROFIT'), false, cl)) +
-      tile('EBITDA', gbp(eb), vs(eb, C(PLs, 'EBITDA'), false, cl)) +
-      tile('Net operating profit', gbp(nop), pc(nop / rev) + ' of revenue') +
-      tile('Payroll', gbp(pay), pc(pay / rev) + ' of revenue · ' + vs(pay, C(PLs, 'Total Manning'), true, cl)) + '</div>';
+    var cl = cmpLabel(), addX = XM && sel.month === 'all', xr = addX ? XM.cur.rev : 0, xp = addX ? XM.cur.pay : 0, xn = addX ? XM.cur.net : 0, toS = addX ? ' (to ' + short(IDS[IDS.length - 1]) + ')' : '';
+    var h = controls() + (addX ? '<p class="note" style="margin:-4px 0 12px">Totals include ' + esc(XM.label) + ' from Xero where a like-for-like figure exists: revenue ' + gbp(xr) + ', payroll ' + gbp(xp) + ' and the net result ' + gbp(xn) + '. Xero has no departmental split, so departmental profit, gross operating profit and EBITDA stop at ' + esc(LABEL[IDS[IDS.length - 1]]) + '.</p>' : '') + '<div class="tiles">' +
+      tile('Total revenue', gbp(rev + xr), addX ? 'including ' + gbp(xr) + ' for ' + short(XM.id) : vs(rev, C(PLs, 'TOTAL REVENUE'), false, cl)) +
+      tile('Departmental profit' + toS, gbp(goi), vs(goi, C(PLs, 'GROSS OPERATING INCOME'), false, cl)) +
+      tile('Gross operating profit' + toS, gbp(gop), vs(gop, C(PLs, 'GROSS OPERATING PROFIT'), false, cl)) +
+      tile('EBITDA' + toS, gbp(eb), vs(eb, C(PLs, 'EBITDA'), false, cl)) +
+      tile('Net operating profit', gbp(nop + xn), pc((nop + xn) / (rev + xr)) + ' of revenue' + (addX ? ' · ' + short(XM.id) + ' on Xero’s basis' : '')) +
+      tile('Payroll', gbp(pay + xp), pc((pay + xp) / (rev + xr)) + ' of revenue' + (addX ? '' : ' · ' + vs(pay, C(PLs, 'Total Manning'), true, cl))) + '</div>';
 
     // departments
     var D = [
@@ -313,7 +328,7 @@
         'Profitability tab: revenue down to gross operating profit, EBITDA and net operating profit, with the largest overhead lines listed against budget.',
         'Accounts are loaded to ' + last + '. October onwards appears as soon as the next management accounts are uploaded to the P&L dashboard.']
     ];
-    var h = '<div class="card"><h2>Alia’s brief: what is now covered, and what is still missing</h2><p class="sub">Feedback received 15 November 2026: Xero shows what we spend; the dashboard needs to show the actual profitability of each department. Each point below is mapped to where it now sits and what data is still needed.</p><div class="scroll"><table><tr><th>#</th><th>Requested</th><th>Status</th><th>What the dashboard now shows</th><th>Still missing, and where it will come from</th></tr>' +
+    var h = '<div class="card"><h2>Project brief: what is now covered, and what is still missing</h2><p class="sub">Feedback received 15 November 2026: Xero shows what we spend; the dashboard needs to show the actual profitability of each department. Each point below is mapped to where it now sits and what data is still needed.</p><div class="scroll"><table><tr><th>#</th><th>Requested</th><th>Status</th><th>What the dashboard now shows</th><th>Still missing, and where it will come from</th></tr>' +
       R.map(function (r) { return '<tr><td>' + r[0] + '</td><td style="min-width:200px"><b>' + r[1] + '</b><br><span style="color:#52514e">' + r[2] + '</span></td><td><span class="pill ' + r[3] + '">' + r[4] + '</span></td><td style="min-width:260px">' + esc(r[5]) + '</td><td style="min-width:260px">' + esc(r[6]) + '</td></tr>'; }).join('') + '</table></div></div>';
     h += '<div class="card"><h2>Where each figure comes from</h2><div class="scroll"><table><tr><th>Source</th><th>What it provides</th><th>Coverage today</th></tr>' +
       '<tr><td><b>Management accounts</b> (the P&amp;L dashboard data)</td><td>Revenue, cost of sales, payroll, departmental and hotel profit, budget, rooms and sleepers</td><td>' + first + ' to ' + last + '</td></tr>' +
@@ -336,7 +351,7 @@
     return fetch(PL_BASE + 'index.json', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('index'); return r.json(); }).then(function (ix) {
       IDS = ix.months.map(function (m) { LABEL[m.id] = m.label; return m.id; });
       return Promise.all(IDS.map(function (id) { return fetch(PL_BASE + id + '.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) { M[id] = d; }); }));
-    }).then(function () { loaded = true; sel.month = IDS[IDS.length - 1]; }).catch(function () { loadErr = true; });
+    }).then(function () { loaded = true; sel.month = IDS[IDS.length - 1]; buildXM(); if (XM) sel.month = XM.id; }).catch(function () { loadErr = true; });
   }
   var VIEWS = { profit: renderProfit, labour: renderLabour, kpi: renderKpi, stock: renderStock, brief: renderBrief };
   function show(name) {
@@ -346,6 +361,10 @@
     load().then(function () {
       if (loadErr) { el.innerHTML = '<div class="card"><h2>Management accounts not found</h2><p class="sub">This tab reads the P&amp;L dashboard’s data from <code>pl/data/</code> on the same site. It works on brandon.hospro.co.uk; it cannot load when the page is opened straight from a folder on a computer.</p></div>'; return; }
       VIEWS[name]();
+      if (isX() && ['labour', 'kpi', 'stock'].indexOf(name) !== -1) {
+        var c = XM.cur, msg = name === 'labour' ? 'Xero shows payroll of ' + gbp(c.pay) + ' for the month, ' + pc(c.pay / c.rev) + ' of sales (' + gbp(XM.prev.pay) + ' in ' + esc(XM.prevLabel) + '), with no split by department, hours or overtime.' : name === 'kpi' ? 'Xero shows sales of ' + gbp(c.rev) + ' and a net result of ' + gbp(c.net) + ', but holds no occupancy or rate statistics.' : 'Xero shows cost of sales of ' + gbp(c.cos) + ' against sales of ' + gbp(c.rev) + ', with no stock adjustment.';
+        el.insertAdjacentHTML('afterbegin', xBanner(msg)); var sm = el.querySelector('.pf-month'); if (sm) sm.value = XM.id;
+      }
     });
   }
   document.addEventListener('change', function (e) {
@@ -360,9 +379,9 @@
     sha(u + '|' + p).then(function (hx) {
       var ok = HASHES.filter(function (x) { return x.h === hx; })[0];
       if (!ok) { f.querySelector('.pf-err').textContent = 'Name or password not recognised.'; return; }
-      sessionStorage.setItem(SKEY, ok.d); show(current());
+      sessionStorage.setItem(SKEY, ok.d); document.dispatchEvent(new Event('hub-signin')); show(current());
     });
   });
   function current() { var b = document.querySelector('#nav button.on'); return b ? b.dataset.t.replace('pf-', '') : 'profit'; }
-  window.Profit = { show: show, isView: function (n) { return !!VIEWS[n]; }, register: function (n, f) { VIEWS[n] = f; }, data: function () { return { M: M, IDS: IDS, LABEL: LABEL }; } };
+  window.Profit = { show: show, isView: function (n) { return !!VIEWS[n]; }, register: function (n, f) { VIEWS[n] = f; }, data: function () { return { M: M, IDS: IDS, LABEL: LABEL, XM: XM }; }, signedIn: signedIn, user: function () { try { return sessionStorage.getItem(SKEY) || ''; } catch (e) { return ''; } }, signOut: function () { try { sessionStorage.removeItem(SKEY); } catch (e) {} location.reload(); } };
 })();

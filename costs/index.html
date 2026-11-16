@@ -4,20 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>HosProfit · Brandon Hall – Departmental Profitability and Costs</title>
+<title>HosBUSINESS · Brandon Hall Hotel &amp; Spa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f5f4f0; --surface:#fcfcfb; --line:#e4e2dc; --line2:#efede8;
-  --ink:#141413; --ink2:#52514e; --ink3:#86847d;
-  --accent:#1f3d36; --accent-soft:#e6efe9;
+  --bg:#f3f5f8; --surface:#ffffff; --line:#e3e7ee; --line2:#eef1f5;
+  --ink:#1a2230; --ink2:#4a5466; --ink3:#7b8494; --navy:#1a2b3a; --navy-dk:#101d2a; --gold:#BB9979; --gold-dk:#9d7d5f; --teal:#4DA69C;
+  --accent:#1a2b3a; --accent-soft:#e8edf2;
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
   --good:#1a7f4b; --warn:#b26a00; --bad:#c0392b;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Aptos,"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif}
-header{background:var(--accent);color:#fff;padding:20px 28px 0}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Manrope,Aptos,"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif}
+
 header h1{margin:0;font-size:22px;font-weight:600;letter-spacing:.2px}
-header p{margin:4px 0 14px;color:#c9d8d2;font-size:13.5px}
+
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:transparent;border:0;color:#c9d8d2;font:inherit;font-size:14px;padding:10px 16px;border-radius:8px 8px 0 0;cursor:pointer}
 nav button.on{background:var(--bg);color:var(--ink);font-weight:600}
@@ -69,41 +71,85 @@ td.desc{max-width:420px;color:var(--ink2)}
 a{color:#1c5cab}
 .bar-cell{display:inline-block;height:8px;border-radius:2px;background:var(--s1);vertical-align:middle;margin-right:6px}
 #tip{position:fixed;pointer-events:none;background:#141413;color:#fff;font-size:12.5px;padding:6px 9px;border-radius:6px;display:none;z-index:9;max-width:320px}
-nav button.hot{color:#ffb4ab;font-weight:600}nav button.hot.on{background:#d0362b;color:#fff}
-.hp-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:4px 0 16px}.hp-hero h2{font-size:26px;margin:0 0 4px}.hp-hero p{margin:0;color:var(--ink2)}
-.hp-stamp{font-size:12px;color:var(--ink2);text-align:right;line-height:1.5}.hp-stamp b{color:var(--ink);font-size:14px}
-.hp-today{background:var(--surface);border:1px solid var(--line);border-top:4px solid #d0362b;border-radius:12px;padding:16px 18px;margin-bottom:16px}
+#nav{display:none!important}.pf-month{min-width:250px}.lg-form input{max-width:none!important}#who{white-space:nowrap}#signout{white-space:nowrap}
+body.locked #top,body.locked main{display:none}body:not(.locked) #login{display:none}
+#login{min-height:100vh;display:grid;grid-template-columns:1.1fr 1fr;background:var(--navy)}
+.lg-art{padding:8vh 7vw;color:#fff;display:flex;flex-direction:column;justify-content:center;background:radial-gradient(1200px 600px at 0% 0%,#26405a 0%,var(--navy) 55%,var(--navy-dk) 100%)}
+.lg-art img{width:190px;margin-bottom:34px}.lg-art h1{font-size:44px;margin:0;font-weight:500;letter-spacing:.5px}.lg-art h1 b{font-weight:800;color:var(--gold)}
+.lg-art p{font-family:"Cormorant Garamond",Georgia,serif;font-size:25px;line-height:1.3;color:#e8dccf;margin:10px 0 28px;max-width:440px}
+.lg-art ul{list-style:none;padding:0;margin:0;color:#c7d2e0;font-size:14.5px}.lg-art li{padding:7px 0 7px 26px;position:relative}.lg-art li:before{content:"";position:absolute;left:0;top:14px;width:14px;height:2px;background:var(--gold)}
+.lg-form{background:var(--bg);display:flex;align-items:center;justify-content:center;padding:40px 24px}
+.lg-form form{background:#fff;border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:14px;padding:34px 34px 26px;width:100%;max-width:400px;box-shadow:0 10px 40px rgba(26,43,58,.12)}
+.lg-mod{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold-dk);font-weight:700}.lg-form h2{margin:6px 0 4px;font-size:23px}.lg-form p{margin:0 0 18px;color:var(--ink2);font-size:13.5px}
+.lg-form label{display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin-bottom:14px}.lg-form input{display:block;width:100%;margin-top:5px;font:inherit;font-size:15px;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:#fafbfc}
+.lg-form input:focus{outline:2px solid var(--gold);border-color:var(--gold)}.lg-form button{width:100%;background:var(--navy);color:#fff;border:0;border-radius:9px;padding:12px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;margin-top:4px}.lg-form button:hover{background:var(--navy-dk)}
+.lg-form .pf-err{color:var(--bad);font-size:13px;min-height:18px}.lg-form small{display:block;text-align:center;color:var(--ink3);margin-top:16px;font-size:12px}
+@media(max-width:860px){#login{grid-template-columns:1fr}.lg-art{padding:36px 28px}.lg-art ul{display:none}.lg-art p{margin-bottom:0}}
+#top{background:var(--navy);color:#fff;padding:10px 28px;display:flex;align-items:center;gap:22px;position:sticky;top:0;z-index:20;border-bottom:3px solid var(--gold)}
+#top .brand{display:flex;align-items:center;gap:12px;background:none;border:0;color:#fff;font:inherit;cursor:pointer;padding:0;text-align:left}#top .brand img{height:42px}
+#top .brand b{display:block;font-size:19px;font-weight:500;letter-spacing:.3px}#top .brand b i{font-style:normal;font-weight:800;color:var(--gold)}#top .brand small{display:block;font-size:11.5px;color:#c7d2e0;letter-spacing:.4px}
+#crumb{display:flex;align-items:center;gap:12px;flex:1;min-width:0}#crumb b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#crumb .back{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);color:#fff;border-radius:8px;padding:7px 13px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}#crumb .back:hover{background:rgba(255,255,255,.2)}
+#crumb select{margin-left:auto;background:var(--navy-dk);color:#fff;border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:7px 10px;font:inherit;font-size:13px}
+.top-r{display:flex;align-items:center;gap:12px;font-size:13px;color:#c7d2e0;margin-left:auto}#crumb:not(:empty)+.top-r{margin-left:0}
+#signout{background:none;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:6px 11px;font:inherit;font-size:12.5px;cursor:pointer}
+.card,.tile{box-shadow:0 1px 2px rgba(26,43,58,.05)}.card{border-radius:12px}.tile{border-radius:12px;border-top:3px solid var(--gold)}.tile .v{font-weight:800}
+.hp-hero{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin:6px 0 18px}.hp-hero h2{font-size:27px;margin:0 0 3px;font-weight:800;letter-spacing:-.3px}.hp-hero p{margin:0;color:var(--ink2)}
+.hp-btns{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+.pillbtn{display:flex;align-items:center;gap:9px;border:0;border-radius:11px;padding:9px 16px 9px 9px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;color:#fff}.pillbtn b{background:rgba(255,255,255,.22);border-radius:8px;min-width:32px;padding:4px 6px;font-size:16px;text-align:center}
+.pillbtn.bad{background:#b3261e}.pillbtn.warn{background:#b9791a}.pillbtn:hover{filter:brightness(1.08)}
+.iconbtn{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:6px 14px 6px 7px;font:inherit;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer}.iconbtn:hover{border-color:var(--gold)}
+.hp-today{background:var(--surface);border:1px solid var(--line);border-top:4px solid #b3261e;border-radius:12px;padding:16px 18px;margin:18px 0 16px}
 .hp-th{display:flex;align-items:center;gap:12px;margin-bottom:12px}.hp-th h3{margin:0;font-size:17px}.hp-th p{margin:2px 0 0;font-size:12px;color:var(--ink2)}
-.hp-link{margin-left:auto;background:#d0362b;color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
-.hp-week{display:flex;gap:10px;align-items:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid var(--line2)}.hp-week div{flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:96px}
-.hp-week span{font-size:12px;font-weight:600}.hp-week i{display:block;width:70%;max-width:44px;border-radius:4px 4px 0 0;margin-top:3px}.hp-week em{font-style:normal;font-size:11px;color:var(--ink2);margin-top:4px}
-.hp-f{cursor:pointer}.hp-f:hover{filter:brightness(.97)}
-.hp-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;margin-top:6px}
-.hp-card{display:flex;gap:14px;align-items:flex-start;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:12px;padding:16px;font:inherit;color:inherit;cursor:pointer;transition:transform .12s,box-shadow .12s}
-.hp-card:hover,.hp-card:focus-visible{transform:translateY(-2px);box-shadow:0 6px 18px rgba(20,20,19,.09);outline:none}
-.hp-card b{display:block;font-size:15px}.hp-card small{display:block;color:var(--ink2);font-size:12.5px;line-height:1.4;margin-top:3px}.hp-card em{display:block;font-style:normal;font-size:12.5px;font-weight:600;color:var(--c);margin-top:8px}
-.hp-card.hot{background:#fff6f4}
-@media(max-width:700px){.hp-week em{font-size:10px}}
+.hp-link{margin-left:auto;background:#b3261e;color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.hp-week{display:flex;gap:8px;align-items:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid var(--line2)}.hp-week div{flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:96px}
+.hp-week span{font-size:12px;font-weight:700}.hp-week i{display:block;width:70%;max-width:40px;border-radius:4px 4px 0 0;margin-top:3px}.hp-week em{font-style:normal;font-size:11px;color:var(--ink2);margin-top:4px;white-space:nowrap}
+.hp-f{cursor:pointer}.hp-f:hover{background:#f6f8fa}.hp-src{font-size:11.5px;color:var(--ink3);font-weight:600}
+.hp-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}@media(max-width:1150px){.hp-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.hp-cards{grid-template-columns:1fr}}
+.hp-card{display:flex;gap:14px;align-items:flex-start;text-align:left;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--c);border-radius:14px;padding:16px;font:inherit;color:inherit;cursor:pointer;transition:transform .12s,box-shadow .12s;min-height:118px;box-shadow:0 1px 2px rgba(26,43,58,.05)}
+.hp-card:hover,.hp-card:focus-visible{transform:translateY(-2px);box-shadow:0 8px 22px rgba(26,43,58,.13);outline:none}
+.hp-card b{display:block;font-size:15.5px;font-weight:700}.hp-card small{display:block;color:var(--ink2);font-size:12.5px;line-height:1.4;margin-top:3px}.hp-card em{display:block;font-style:normal;font-size:12.5px;font-weight:700;color:var(--c);margin-top:8px}
+.hp-card.hot{background:#fff7f6}
+.hp-foot{text-align:center;color:var(--ink3);font-size:13px;margin:22px 0 0}.hp-foot a{color:var(--navy);font-weight:700;cursor:pointer;text-decoration:underline;text-decoration-color:var(--gold);text-underline-offset:3px}
+.segs{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:11px;padding:4px;gap:4px;margin-bottom:16px}.segs button{border:0;background:none;font:inherit;font-size:14px;font-weight:600;padding:8px 16px;border-radius:8px;cursor:pointer;color:var(--ink2)}.segs button.on{background:var(--navy);color:#fff}.segs b{font-weight:800;margin-left:4px}
+#scrim{position:fixed;inset:0;background:rgba(16,29,42,.45);z-index:40;display:none}#drawer{position:fixed;top:0;right:0;bottom:0;width:min(480px,94vw);background:#fff;z-index:41;transform:translateX(102%);transition:transform .2s;display:flex;flex-direction:column;box-shadow:-12px 0 40px rgba(16,29,42,.25)}
+body.drawer-open #scrim{display:block}body.drawer-open #drawer{transform:none}
+.dr-h{display:flex;justify-content:space-between;align-items:flex-start;padding:18px 20px;background:var(--navy);color:#fff;border-bottom:3px solid var(--gold)}.dr-h h2{margin:0;font-size:19px}.dr-h p{margin:2px 0 0;font-size:12.5px;color:#c7d2e0}
+.dr-x{background:none;border:0;color:#fff;font-size:28px;line-height:1;cursor:pointer}.dr-b{padding:18px 20px;overflow:auto;flex:1}.dr-b .finding{padding:6px 8px 6px 14px;border-radius:0 8px 8px 0}.dr-f{padding:14px 20px;border-top:1px solid var(--line)}
+.tip{display:inline-block;margin-left:5px;color:var(--gold-dk);cursor:help;position:relative;font-size:12px;font-weight:400}
+.tip:hover:after,.tip:focus:after{content:attr(data-tip);position:absolute;left:-8px;top:20px;z-index:30;width:270px;background:var(--navy);color:#fff;font-size:12.5px;line-height:1.45;font-weight:400;padding:10px 12px;border-radius:9px;text-align:left;white-space:normal;text-transform:none;letter-spacing:0;box-shadow:0 8px 24px rgba(16,29,42,.3)}
+th .tip:hover:after,th .tip:focus:after{left:auto;right:-8px}
 </style>
 </head>
-<body>
-<header>
-  <h1>HosProfit <span style="font-weight:400;opacity:.8">· Brandon Hall Hotel &amp; Spa</span></h1>
-  <p id="hdr">Management accounts and Xero cost accounts</p>
-  <nav id="nav">
+<body class="locked">
+<div id="login">
+  <div class="lg-art"><img src="../bh-logo.svg" alt="Brandon Hall Hotel &amp; Spa"><h1>Hos<b>BUSINESS</b></h1><p>The business intelligence hub for Brandon Hall Hotel &amp; Spa</p><ul><li>Trading from Guestline, every day</li><li>Profit, labour and costs from the accounts</li><li>Actions and savings worked out for you</li></ul></div>
+  <div class="lg-form"><form class="pf-login" autocomplete="off"><span class="lg-mod">HosPRO module</span><h2>Sign in to HosBUSINESS</h2><p>Directors’ access. Use the same name and password as the P&amp;L dashboard.</p>
+    <label>Name<input type="text" name="u" autocomplete="off" autofocus></label><label>Password<input type="password" name="p" autocomplete="off"></label><div class="pf-err"></div><button type="submit">Sign in</button><small>Brandon Hall Hotel &amp; Spa · Warwickshire</small></form></div>
+</div>
+<div id="scrim"></div><aside id="drawer" aria-label="Actions"></aside>
+<header id="top">
+  <button class="brand" data-go="pf-home" title="Back to the hub"><img src="../bh-logo.svg" alt=""><span><b>Hos<i>BUSINESS</i></b><small>Brandon Hall Hotel &amp; Spa</small></span></button>
+  <div id="crumb"></div>
+  <div class="top-r"><span id="who"></span><button id="signout">Sign out</button></div>
+  <p id="hdr" hidden>Management accounts and Xero cost accounts</p>
+  <nav id="nav" hidden>
     <button data-t="pf-home" class="on">Home</button>
     <button data-t="pf-trading" class="hot">Trading</button>
     <button data-t="pf-demand">Channels &amp; rates</button>
     <button data-t="pf-profit">Profitability</button>
     <button data-t="pf-labour">Labour</button>
     <button data-t="pf-kpi">KPIs</button>
-    <button data-t="pf-accounts">Accounts (Xero)</button>
+    <button data-t="pf-fb">Food &amp; beverage</button>
+    <button data-t="pf-actions">Action Centre</button>
+    <button data-t="pf-data">Data &amp; reports</button>
+    <button data-t="pf-help">How figures are worked out</button>
     <button data-t="pf-stock">Purchased vs consumed</button>
     <button data-t="explore">Supplier costs</button>
     <button data-t="bar">Bar &amp; keg prices</button>
     <button data-t="rooms">Rooms, linen &amp; housekeeping</button>
     <button data-t="save">Savings &amp; checks</button>
-    <button data-t="pf-brief">Alia’s brief</button>
+    <button data-t="pf-brief">Project brief</button>
     <button data-t="update">Update data</button>
   </nav>
 </header>
@@ -112,7 +158,10 @@ nav button.hot{color:#ffb4ab;font-weight:600}nav button.hot.on{background:#d0362
 <!-- ================= EXPLORER ================= -->
 <section class="tab on" id="t-pf-home"><div id="pf-home"></div></section>
 <section class="tab" id="t-pf-profit"><div id="pf-profit"></div></section>
-<section class="tab" id="t-pf-accounts"><div id="pf-accounts"></div></section>
+<section class="tab" id="t-pf-fb"><div id="pf-fb"></div></section>
+<section class="tab" id="t-pf-actions"><div id="pf-actions"></div></section>
+<section class="tab" id="t-pf-data"><div id="pf-data"></div></section>
+<section class="tab" id="t-pf-help"><div id="pf-help"></div></section>
 <section class="tab" id="t-pf-trading"><div id="pf-trading"></div></section>
 <section class="tab" id="t-pf-demand"><div id="pf-demand"></div></section>
 <section class="tab" id="t-pf-labour"><div id="pf-labour"></div></section>
