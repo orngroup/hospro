@@ -127,16 +127,17 @@
         if (/out of service/i.test(st)) out.oos.push({ id: String(r[0]), desc: String(r[2]), floor: String(r[6] || ''), since: d2(r[12]), until: d2(r[14]), lastDep: d2(r[16]) });
       });
     } else if (/Cancellations Report/.test(t)) {
-      out = { kind: 'cancels', count: 0, lost: 0, byMonth: {}, byAgent: {}, byLead: {}, from: '', to: '' };
+      out = { kind: 'cancels', count: 0, lost: 0, byMonth: {}, byAgent: {}, byLead: {}, byDay: {}, from: '', to: '' };
       for (var j = 0; j < aoa.length; j++) {
         var c = aoa[j] || [], d = aoa[j + 1] || [];
         if (!/^CN\d+/.test(String(c[0])) || typeof c[18] !== 'number') continue;
         var cd = d2(c[1]), ad = d2(d[11]), lead = cd && ad ? Math.round((Date.parse(ad) - Date.parse(cd)) / 864e5) : null;
         var bk = lead === null ? 'Unknown' : lead <= 0 ? 'On the day' : lead <= 2 ? '1 to 2 days before' : lead <= 7 ? '3 to 7 days before' : lead <= 30 ? '8 to 30 days before' : 'Over 30 days before';
         var f2 = { c: 1, lost: c[18] };
-        out.count++; out.lost += c[18]; bump(out.byMonth, cd.slice(0, 7), f2); bump(out.byAgent, String(d[6] || '').trim() || '(direct or no agent)', f2); bump(out.byLead, bk, f2);
+        out.count++; out.lost += c[18]; if (cd) out.byDay[cd] = (out.byDay[cd] || 0) + 1; bump(out.byMonth, cd.slice(0, 7), f2); bump(out.byAgent, String(d[6] || '').trim() || '(direct or no agent)', f2); bump(out.byLead, bk, f2);
         if (cd && (!out.from || cd < out.from)) out.from = cd; if (cd > out.to) out.to = cd;
       }
+      Object.keys(out.byDay).sort().slice(0, -120).forEach(function (k) { delete out.byDay[k]; });
     } else if (/No Shows Report/.test(t)) {
       out = { kind: 'noshows', count: 0, byMonth: {}, byFamily: {} };
       for (var k = 0; k < aoa.length; k++) {

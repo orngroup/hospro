@@ -88,7 +88,7 @@
     }
     if (act.rooms) o.push(['good', 'Guests spend ' + gbp(act.fb / act.rooms, 2) + ' on food and drink per occupied room', 'That is ' + gbp(act.fb / act.guests, 2) + ' a guest. Raising dinner take-up among in-house guests is the lowest-cost way to lift it.']);
     if (raw) return o;
-    return '<div class="card"><h2>What the numbers suggest</h2><p class="sub">Worked out automatically from the latest data</p>' + o.map(function (x) { return '<div class="finding ' + x[0] + '"><h3>' + x[1] + '</h3><p>' + x[2] + '</p></div>'; }).join('') + '</div>';
+    return '<div class="card"><h2>What the numbers suggest</h2><p class="sub">Worked out automatically from the latest data · click an item to read it in full</p><div class="find2">' + o.map(function (x) { return '<div class="finding ' + x[0] + '"><h3>' + x[1] + '</h3><p>' + x[2] + '</p></div>'; }).join('') + '</div></div>';
   }
 
   function render() {
@@ -313,12 +313,12 @@
       h += '<div class="card"><h2>Group blocks held</h2><p class="sub">Block Forecast report, ' + bk.join(', ') + src(X.blocks) + '</p><table><tr><th>Month</th><th>Block</th><th>Group</th><th>Status</th><th>Dates</th><th class="n">Rooms a night</th><th class="n">Room nights held</th></tr>' + bk.map(function (mth) { return bm[mth].rows.map(function (b) { if (/Provisional/.test(b.status)) { pn += b.total; pl.push(esc(b.name) + ' (' + num(b.total) + ', ' + esc(mth) + ')'); } return '<tr><td>' + esc(mth) + '</td><td>' + esc(b.ref) + '</td><td><b>' + esc(b.name) + '</b></td><td><span class="pill ' + (/Provisional/.test(b.status) ? 'warn' : 'good') + '">' + esc(b.status) + '</span></td><td>' + (b.first === b.last ? b.first : b.first + ' to ' + b.last) + '</td><td class="n">' + Math.round(b.total / b.nights) + '</td><td class="n">' + num(b.total) + '</td></tr>'; }).join(''); }).join('') + '</table><p class="note">One export per month in Rezlynx; load each month you want to see.</p></div>';
       if (pn) obs.push(['warn', num(pn) + ' room nights are held for provisional groups', pl.join(', ') + '. Until they are confirmed these rooms are off sale to other guests; agree release dates.']);
     }
-    $('pf-demand').innerHTML = '<div class="card"><h2>What these reports suggest</h2><p class="sub">Worked out automatically from the latest reports loaded</p>' + obs.map(function (x) { return '<div class="finding ' + x[0] + '"><h3>' + x[1] + '</h3><p>' + x[2] + '</p></div>'; }).join('') + '</div>' + h +
+    $('pf-demand').innerHTML = '<div class="card"><h2>What these reports suggest</h2><p class="sub">Worked out automatically from the latest reports loaded · click an item to read it in full</p><div class="find2">' + obs.map(function (x) { return '<div class="finding ' + x[0] + '"><h3>' + x[1] + '</h3><p>' + x[2] + '</p></div>'; }).join('') + '</div></div>' + h +
       '<p class="note">Guest names in the Rezlynx reports are not stored: each report is reduced to totals when it is loaded. To refresh, load new exports on the Trading tab.</p>';
     if (X.cancels && $('tr-c2')) { var mm = Object.keys(X.cancels.byMonth).sort(); if (chart2) chart2.destroy(); chart2 = new Chart($('tr-c2'), { type: 'bar', data: { labels: mm.map(function (m) { return MN[+m.slice(5) - 1] + ' ' + m.slice(2, 4); }), datasets: [{ data: mm.map(function (m) { return X.cancels.byMonth[m].c; }), backgroundColor: '#eb6834', borderRadius: 3, maxBarThickness: 26 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Cancellations by month cancelled', align: 'start', font: { weight: '500' } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false } } } } }); }
   }
   var chart2 = null;
 
-  window.Trading = { feedPanel: feedPanel, tri: tri, avgTiles: avgTiles, S: function () { return S; }, agg: agg, rowsFor: rowsFor, asOfDay: asOfDay, observations: observations, ROOMS: ROOMS, net: net, pePeriod: pePeriod, peGroup: peGroup };
+  window.Trading = { resetMonth: function () { month = null; }, feedPanel: feedPanel, tri: tri, avgTiles: avgTiles, S: function () { return S; }, agg: agg, rowsFor: rowsFor, asOfDay: asOfDay, observations: observations, ROOMS: ROOMS, net: net, pePeriod: pePeriod, peGroup: peGroup };
   if (window.Profit && window.Profit.register) { window.Profit.register('trading', render); window.Profit.register('demand', renderDemand); }
 })();

@@ -60,7 +60,7 @@
     var A = a.A, c = A.cols, inc = a['Trading Income'], S0 = A.summary;
     function sec(k, title) { return '<tr class="tot"><td colspan="5">' + title + '</td></tr>' + A.pl[k].filter(function (r) { return r[1] || r[2] || r[3]; }).map(function (r) { var d = r[1] - r[2]; return '<tr><td>' + esc(r[0]) + '</td><td class="n">' + gbp(r[1]) + '</td><td class="n">' + gbp(r[2]) + '</td><td class="n">' + (Math.abs(d) < 1 ? '–' : (d > 0 ? '+' : '−') + gbp(Math.abs(d))) + '</td><td class="n">' + gbp(r[3]) + '</td></tr>'; }).join(''); }
     function tot(l, v) { return '<tr class="tot"><td>' + l + '</td><td class="n">' + gbp(v[0]) + '</td><td class="n">' + gbp(v[1]) + '</td><td class="n">' + (v[0] - v[1] >= 0 ? '+' : '−') + gbp(Math.abs(v[0] - v[1])) + '</td><td class="n">' + gbp(v[2]) + '</td></tr>'; }
-    var h = '<div class="card"><h2>What the Xero accounts show</h2><p class="sub">Xero Management Report for the month ended ' + esc(A.period) + '</p>' + accObs(a).map(function (x) { return '<div class="finding ' + x[0] + '"><h3>' + x[1] + '</h3><p>' + x[2] + '</p></div>'; }).join('') + '</div>';
+    var h = '<div class="card"><h2>What the Xero accounts show</h2><p class="sub">Xero Management Report for the month ended ' + esc(A.period) + ' · click an item to read it in full</p><div class="find2">' + accObs(a).map(function (x) { return '<div class="finding ' + x[0] + '"><h3>' + x[1] + '</h3><p>' + x[2] + '</p></div>'; }).join('') + '</div></div>';
     h += '<div class="tiles">' + tile('Sales, ' + esc(c[0]), gbp(inc[0]), gbp(inc[1]) + ' in ' + esc(c[1])) + tile('Gross profit', gbp(a.gp[0]), pc(a.gp[0] / inc[0]) + ' of sales') + tile(a.net[0] < 0 ? 'Loss for the month' : 'Profit for the month', gbp(a.net[0]), gbp(a.net[1]) + ' in ' + esc(c[1])) + tile('Year to date', gbp(a.net[2]), 'on sales of ' + gbp(inc[2])) + tile('Cash at bank', gbp(S0['Closing bank balance'][0]), 'month movement ' + gbp(S0['Cash surplus (deficit)'][0])) + tile('Owed to suppliers', gbp(A.ap.total), Math.round(S0['Average creditor days'][0]) + ' days to pay on average') + '</div>';
     h += '<div class="grid g2"><div class="card"><h2>Profit and loss</h2><p class="sub">As coded in Xero, net of VAT</p><div class="scroll"><table><tr><th>Account</th><th class="n">' + esc(c[0]) + '</th><th class="n">' + esc(c[1]) + '</th><th class="n">Change</th><th class="n">' + esc(c[2]) + '</th></tr>' +
       sec('Trading Income', 'Income') + tot('Total income', inc) + sec('Cost of Sales', 'Cost of sales') + tot('Gross profit', a.gp) + sec('Other Income', 'Other income') + sec('Operating Expenses', 'Operating expenses') + tot('Total operating expenses', a['Operating Expenses']) + tot('Net profit (loss)', a.net) + '</table></div></div><div>';
@@ -133,7 +133,7 @@
         ctile('pf-trading', 'Month, with bookings held', gbp(act.total + bks.total), pc(all.occ) + ' occupancy for the month') +
         ctile('pf-trading', 'Next 7 nights', pc(n7.occ), num(n7.rooms) + ' room nights · ' + gbp(n7.acc) + ' rooms revenue') +
         ctile('pf-demand', 'Rooms out of service', num(oos), S.x && S.x.rooms ? 'of ' + S.x.rooms.total + ' rooms' : 'tonight') + '</div>' +
-        '<div class="hp-week">' + nx.map(function (r) { var o = r.rooms / R; return '<div title="' + r.dow + ' ' + dlabel(r.d) + ': ' + r.rooms + ' rooms"><span>' + Math.round(o * 100) + '%</span><i style="height:' + Math.max(4, Math.round(o * 54)) + 'px;background:' + (o < 0.25 ? '#d0362b' : o < 0.5 ? '#e3a43a' : '#1baf7a') + '"></i><em>' + r.dow.slice(0, 3) + ' ' + +r.d.slice(8) + '</em></div>'; }).join('') + '</div><p class="note" style="margin:8px 0 0">Occupancy for the next 14 nights. Red is under 25% booked, amber under 50%.</p></div>';
+        '<div class="hp-chart"><div class="hp-key" id="hp-key"></div><div class="hp-plot"><canvas id="hp-c1"></canvas></div></div><p class="note" style="margin:8px 0 0">14 nights back and 14 ahead, net of VAT. Solid is actual; dotted, right of the “today” line, is what is on the books so far. Click a name in the key to hide or show its line.</p></div>';
       card.kpi = 'RevPAR ' + gbp(act.revpar, 2) + ' · TRevPAR ' + gbp(act.trevpar, 2) + ' this month'; card.trading = pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' ADR this month'; card.rooms = num(oos) + ' rooms out of service';
       var X = S.x || {}; if (X.company) { var ota = 0; X.company.rows.forEach(function (r) { if (/^(BOOK|EXPE)/.test(r.ref)) ota += r.rn; }); card.demand = pc(ota / X.company.total.rn) + ' of room nights via booking sites'; }
       var pe = T.pePeriod('month', m); if (pe) card.fb = gbp(T.peGroup(pe, 'FOOD').total[0] + T.peGroup(pe, 'BEVERAGE').total[0]) + ' food and drink sales this month';
@@ -150,6 +150,29 @@
     h += '<div class="hp-cards">' + CARDS.map(function (c) { return '<button class="hp-card' + (c[1] === 'trading' ? ' hot' : '') + '" data-go="' + c[0] + '" style="--c:' + COL[c[1]] + ';--img:url(img/' + (CARD_IMG[c[1]] || CARD_DEFAULT) + ')">' + icon(c[1]) + '<span><b>' + c[2] + '</b><small>' + c[3] + '</small>' + (card[c[1]] ? '<em>' + esc(card[c[1]]) + '</em>' : '') + '</span></button>'; }).join('') + '</div>' +
       '<p class="hp-foot"><a data-go="pf-data">Data references</a> · where every figure comes from and when it was imported &nbsp;|&nbsp; <a data-go="pf-help">How figures are worked out</a> &nbsp;|&nbsp; <a data-go="pf-brief">Project brief</a></p>';
     el.innerHTML = h;
+    hubChart();
+  }
+
+  var hubC = null;
+  function hubChart() {
+    var T = window.Trading, S = T ? T.S() : {}; if (hubC) { hubC.destroy(); hubC = null; } if (!$('hp-c1') || !S.af) return;
+    var cut = T.asOfDay(), R = T.ROOMS, all = S.af.rows, i0 = -1; all.forEach(function (r, i) { if (r.d === cut) i0 = i; }); if (i0 < 0) i0 = all.length - 1;
+    var rows = all.slice(Math.max(0, i0 - 14), i0 + 15), ti = rows.map(function (r) { return r.d; }).indexOf(cut), cx = S.x && S.x.cancels && S.x.cancels.byDay ? S.x.cancels.byDay : null;
+    var SER = [['ADR', '#2a78d6', 'y1', function (r) { return r.rooms ? T.net(r.acc) / r.rooms : null; }, function (v) { return gbp(v, 2); }],
+      ['RevPAR', '#eb6834', 'y1', function (r) { return T.net(r.acc) / R; }, function (v) { return gbp(v, 2); }],
+      ['TRevPAR', '#1baf7a', 'y1', function (r) { return T.net(r.acc + r.fb + r.oth) / R; }, function (v) { return gbp(v, 2); }],
+      ['Occupancy', '#6250d6', 'y2', function (r) { return r.rooms / R * 100; }, function (v) { return v.toFixed(1) + '%'; }],
+      ['Rooms out of service', '#b3261e', 'y3', function (r) { return r.roos; }, function (v) { return Math.round(v) + ''; }],
+      ['Cancellations made', '#b9791a', 'y3', function (r) { return cx && r.d <= cut ? (cx[r.d] || 0) : null; }, function (v) { return Math.round(v) + ''; }]];
+    var GR = [['y1', '£ per room', 3], ['y2', '% of ' + R + ' rooms', 2], ['y3', 'Number', 2]];
+    var tv = rows[ti] || rows[rows.length - 1];
+    $('hp-key').innerHTML = GR.map(function (g) { return '<div class="hp-kg" style="flex:' + g[2] + '"><small>' + g[1] + '</small>' + SER.map(function (x, k) { if (x[2] !== g[0]) return ''; var v = x[3](tv); return '<button data-ser="' + k + '"><i style="background:' + x[1] + '"></i><span>' + x[0] + '</span><b>' + (v === null || v === undefined ? '–' : x[4](v)) + '</b></button>'; }).join('') + '</div>'; }).join('') + '<small class="hp-kn">Figures in the key are for tonight</small>';
+    var scales = { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 15 } } };
+    GR.slice().reverse().forEach(function (g) { var gi = g[0] === 'y1' ? 0 : g[0] === 'y2' ? 1 : 2; scales[g[0]] = { stack: 's', stackWeight: g[2], offset: true, beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false }, afterFit: function (a) { a.width = 52; }, ticks: { maxTicksLimit: gi ? 3 : 4, callback: function (v) { return gi === 0 ? '£' + v : gi === 1 ? v + '%' : v; } } }; });
+    scales.y2.max = 100;
+    hubC = new Chart($('hp-c1'), { type: 'line', data: { labels: rows.map(function (r) { return r.dow.slice(0, 3) + ' ' + +r.d.slice(8); }), datasets: SER.map(function (x) { return { label: x[0], yAxisID: x[2], data: rows.map(function (r) { var v = x[3](r); return v === null || v === undefined ? null : +(+v).toFixed(2); }), borderColor: x[1], backgroundColor: x[1], borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, spanGaps: false, segment: { borderDash: function (c) { return ti >= 0 && c.p1DataIndex > ti ? [4, 3] : undefined; } } }; }) },
+      options: { maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false }, onClick: function () { go('pf-trading'); }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: function (it) { var r = rows[it[0].dataIndex]; return r.dow + ' ' + dlabel(r.d) + (r.d > cut ? ' (on the books)' : r.d === cut ? ' (tonight)' : ''); }, label: function (c) { return c.dataset.label + ': ' + SER[c.datasetIndex][4](c.parsed.y); } } } }, scales: scales },
+      plugins: [{ id: 'today', afterDraw: function (ch) { if (ti < 0) return; var x = ch.scales.x.getPixelForValue(ti), a = ch.chartArea, c = ch.ctx; c.save(); c.strokeStyle = '#1a2b3a'; c.lineWidth = 1; c.setLineDash([2, 3]); c.beginPath(); c.moveTo(x, a.top); c.lineTo(x, a.bottom); c.stroke(); c.setLineDash([]); c.fillStyle = '#1a2b3a'; c.font = '600 11px Manrope, sans-serif'; c.textAlign = 'center'; c.fillText('today', x, a.top + 10); c.restore(); } }] });
   }
 
   /* ---------- Action Centre ---------- */
@@ -312,7 +335,7 @@
   }
 
   /* ---------- shell: sign-in, top bar, navigation ---------- */
-  function go(tab) { closeDrawer(); var b = document.querySelector('#nav button[data-t="' + tab + '"]'); if (b) b.click(); window.scrollTo(0, 0); }
+  function go(tab) { closeDrawer(); if (tab === 'pf-trading' && document.querySelector('#t-pf-home.on') && window.Trading && window.Trading.resetMonth) window.Trading.resetMonth(); var b = document.querySelector('#nav button[data-t="' + tab + '"]'); if (b) b.click(); window.scrollTo(0, 0); }
   function crumb(tab) {
     var c = $('crumb'); if (!c) return;
     document.body.classList.toggle('at-home', tab === 'pf-home');
@@ -325,6 +348,8 @@
     if (t.closest('.dr-x') || t.id === 'scrim') { closeDrawer(); return; }
     var a = t.closest('[data-ac]'); if (a) { acView = a.getAttribute('data-ac'); if (!document.querySelector('#t-pf-actions.on')) go('pf-actions'); else renderActions(); return; }
     if (t.id === 'gm-go') { gmailCheck(); return; }
+    var f2 = t.closest('.find2 .finding'); if (f2) { f2.classList.toggle('open'); return; }
+    var ks = t.closest('[data-ser]'); if (ks && hubC) { var k = +ks.getAttribute('data-ser'), vis = hubC.isDatasetVisible(k); hubC.setDatasetVisibility(k, !vis); hubC.update(); ks.classList.toggle('off', vis); return; }
     if (t.id === 'ac-reset') { try { localStorage.removeItem(DKEY); } catch (e2) {} renderActions(); return; }
     if (t.closest('.tick')) return;
     if (t.id === 'signout') { window.Profit.signOut(); return; }
