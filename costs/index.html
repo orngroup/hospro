@@ -153,6 +153,10 @@ button.tile{display:flex;flex-direction:column;justify-content:flex-start;width:
 .lg-art .pf-err{color:#ffb4ab;font-size:13px;min-height:18px}.lg-art form small{display:block;color:#93a1b3;margin-top:12px;font-size:12px}
 .lg-art ul{margin-bottom:0}.lg-form{padding:0;background:url('../assets/hotel/exterior-dusk.png') center/cover no-repeat,var(--navy)}
 @media(max-width:860px){.lg-form{min-height:34vh;order:-1}.lg-art{padding:28px}}
+.feed-chip{border:1px solid rgba(255,255,255,.25);background:none;color:#c7d2e0;border-radius:20px;padding:5px 11px 5px 24px;font:inherit;font-size:12px;cursor:pointer;position:relative;white-space:nowrap}
+.feed-chip:before{content:"";position:absolute;left:10px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:#7b8494}.feed-chip.ok:before{background:#35c98a}.feed-chip.busy:before{background:#e3a43a}.feed-chip.warn:before{background:#e3a43a}.feed-chip.bad:before{background:#e0584f}
+@media(max-width:900px){.feed-chip{display:none}}
+.hp-chart{height:600px!important}
 </style>
 </head>
 <body class="locked">
@@ -165,7 +169,7 @@ button.tile{display:flex;flex-direction:column;justify-content:flex-start;width:
 <header id="top">
   <button class="brand" data-go="pf-home" title="Back to the hub"><img src="../bh-logo.svg" alt=""><span><b>Hos<i>BUSINESS</i></b><small>Brandon Hall Hotel &amp; Spa</small></span></button>
   <div id="crumb"></div>
-  <div class="top-r"><span id="who"></span><button id="signout">Sign out</button></div>
+  <div class="top-r"><button id="feed-chip" class="feed-chip off" data-go="pf-data" title="Open Data &amp; reports"></button><span id="who"></span><button id="signout">Sign out</button></div>
   <p id="hdr" hidden>Management accounts and Xero cost accounts</p>
   <nav id="nav" hidden>
     <button data-t="pf-home" class="on">Home</button>

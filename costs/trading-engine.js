@@ -70,7 +70,10 @@
     store = store || {}; store.received = store.received || []; store.snaps = store.snaps || {}; store.pe = store.pe || {};
     var day = meta.asOf.slice(0, 10);
     if (kind === 'af') {
-      var have = {}; (store.af && store.af.rows || []).forEach(function (r) { have[r.d] = r; });
+      var have = {}, nb = meta.basis || 'gross';
+      if (store.af && store.af.basis !== nb) { /* gross CSV replaced by net PDF (or back): never mix the two */
+        var k2 = nb === 'net' ? 1 / 1.2 : 1.2; Object.keys(store.snaps).forEach(function (sd) { Object.keys(store.snaps[sd]).forEach(function (x) { store.snaps[sd][x][1] = Math.round(store.snaps[sd][x][1] * k2); }); });
+      } else (store.af && store.af.rows || []).forEach(function (r) { have[r.d] = r; });
       parsed.forEach(function (r) { have[r.d] = r; });
       store.af = { asOf: meta.asOf, basis: meta.basis || 'gross', rows: Object.keys(have).sort().map(function (k) { return have[k]; }) };
       var snap = {}; parsed.forEach(function (r) { if (r.d >= day && (r.rooms || r.acc)) snap[r.d] = [r.rooms, Math.round(r.acc)]; });
@@ -177,6 +180,59 @@
     return store;
   }
 
-  var api = { csv: csv, isAF: isAF, parseAF: parseAF, isPE: isPE, parsePE: parsePE, merge: merge, readReport: readReport, mergeReport: mergeReport };
+
+  /* ---------- daily emails from Guestline: PDF cells and End of Day email text ---------- */
+  function nn(v) { var x = parseFloat(String(v === undefined ? '' : v).replace(/[\s,]/g, '')); return isFinite(x) ? x : 0; }
+  var DOW = { Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' };
+  function isAFCells(rows) { return rows.slice(0, 6).some(function (r) { return r[0] === 'Date' && r.indexOf('TRevPAR') !== -1 && r.indexOf('Accom') !== -1; }); }
+  /* Actual & Forecast PDF (figures are net of VAT). Rooms sold = accommodation / ADR, which matches the End of Day count. */
+  function parseAFCells(rows) {
+    var hdr = rows.filter(function (r) { return r[0] === 'Date' && r.indexOf('Accom') !== -1; })[0]; if (!hdr) return [];
+    var ix = function (n) { return hdr.indexOf(n); }, out = [];
+    rows.forEach(function (r) {
+      var m = /^(\d\d)\/(\d\d)\/(\d{4})$/.exec(r[0] || ''); if (!m || r.length < hdr.length) return;
+      var g = function (n) { return nn(r[ix(n)]); }, acc = g('Accom'), adr = g('ADR');
+      out.push({ d: m[3] + '-' + m[2] + '-' + m[1], dow: DOW[r[1]] || r[1], listed: g('Sold'), indv: g('Indv'), multi: g('Multi'), blocks: g('Blocks'), occPct: g('Occ'), rooms: adr > 0 ? Math.round(acc / adr) : 0,
+        ad: g('Adults'), ch: g('Children'), acc: acc, fb: g('F&B'), oth: g('Other'), roos: g('ROOS'), dfs: g('DFS'), stock: null, arr: g('Arrivals'), dep: g('Departures') });
+    });
+    return out;
+  }
+  function shift(d, n) { var t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+  function isKPCells(rows) { return rows.slice(0, 3).some(function (r) { return /Key Performance Report/.test(r[0] || ''); }); }
+  /* Key Performance PDF: seven days of revenue by group and balances. Columns are headed with the date each day was closed, so the trading day is the day before. */
+  function parseKPCells(rows) {
+    var days = {}, cols = null;
+    rows.forEach(function (r) {
+      if (r[0] === 'Description') { cols = r.slice(1).map(function (c) { var m = /(\d\d)\/(\w{3})\/(\d{4})/.exec(c); return m && MON[m[2]] ? shift(m[3] + '-' + MON[m[2]] + '-' + m[1], -1) : null; }); return; }
+      if (!cols) return;
+      var key = { 'Rooms Sold': 'rooms', 'Occupancy%': 'occ', 'Accommodation': 'accom', 'BEVERAGE': 'bev', 'CONFERENCE': 'conf', 'FOOD': 'food', 'MISC': 'misc', 'Sundries': 'sund', 'Revenue Nett Total': 'net', 'Deposit Balance (Actual)': 'deposits', 'Ledger Balance (Actual)': 'ledger', 'InHouse/Balance of Folios': 'inhouse', 'Total Non Ledger Payments Received': 'paid' }[r[0]];
+      if (!key) return;
+      cols.forEach(function (d, i) { if (!d || r[i + 1] === undefined) return; days[d] = days[d] || {}; if (days[d][key] === undefined || key === 'accom' || key === 'bev' || key === 'food') { if (days[d][key] === undefined) days[d][key] = nn(r[i + 1]); } });
+    });
+    return days;
+  }
+  function isEODText(t) { return /End\s+of\s+Day\s+Stats/i.test(t); }
+  /* End of Day email body. Works whether a label and its figure share a line or not. */
+  function parseEODText(t) {
+    var m = /Closed\s+on\s+(\d{1,2})\/(\w{3})\/(\d{4})/i.exec(t); if (!m || !MON[m[2]]) return null;
+    var closed = m[3] + '-' + MON[m[2]] + '-' + ('0' + m[1]).slice(-2), flat = t.replace(/\s+/g, ' ');
+    var wk = flat.search(/Week to Date/i), mo = flat.search(/Month to Date/i), day = flat.slice(0, wk < 0 ? flat.length : wk), mtd = mo < 0 ? '' : flat.slice(mo);
+    var get = function (src, label) { var x = new RegExp('(?:^| )' + label + ' (-?[\\d,]+\\.?\\d*)').exec(src); return x ? nn(x[1]) : 0; };
+    var rev = function (src) { return { accom: get(src, 'ACCOM'), bev: get(src, 'BEVERAGE'), conf: get(src, 'CONFERENCE'), food: get(src, 'FOOD'), misc: get(src, 'MISC'), sund: get(src, 'SUNDRIES') }; };
+    var d = rev(day); d.net = d.accom + d.bev + d.conf + d.food + d.misc + d.sund;
+    d.rooms = get(day, 'Rooms Sold'); d.occ = get(day, 'Occ%'); d.deposits = get(day, 'Deposits'); d.ledger = get(day, 'Sales Ledger'); d.inhouse = get(day, 'In-House');
+    return { closed: closed, day: shift(closed, -1), d: d, mtd: mtd ? rev(mtd) : null };
+  }
+  function mergeDaily(store, days, meta) {
+    store = store || {}; store.daily = store.daily || {}; store.received = store.received || [];
+    Object.keys(days).forEach(function (k) { var o = store.daily[k] || {}; Object.keys(days[k]).forEach(function (f) { o[f] = days[k][f]; }); o.src = meta.kind; store.daily[k] = o; });
+    var ks = Object.keys(store.daily).sort(); ks.slice(0, -120).forEach(function (k) { delete store.daily[k]; });
+    if (meta.mtd) store.eodMtd = { asOf: meta.asOf, to: meta.to, rev: meta.mtd };
+    store.received.unshift({ ts: meta.asOf, kind: meta.kind === 'eod' ? 'pe' : meta.kind, file: meta.file, rows: Object.keys(days).length });
+    store.received = store.received.slice(0, 60);
+    return store;
+  }
+
+  var api = { csv: csv, isAF: isAF, parseAF: parseAF, isPE: isPE, parsePE: parsePE, merge: merge, readReport: readReport, mergeReport: mergeReport, isAFCells: isAFCells, parseAFCells: parseAFCells, isKPCells: isKPCells, parseKPCells: parseKPCells, isEODText: isEODText, parseEODText: parseEODText, mergeDaily: mergeDaily };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TradingEngine = api;
 })(typeof window !== 'undefined' ? window : this);

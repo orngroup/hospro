@@ -37,3 +37,8 @@ Reads Rezlynx Company, Forecast Revenue By Market Segment, Daily Rate Analysis, 
 - Trends page replaces the KPIs card (monthly KPI tables are reached from Trends). ADR, RevPAR and TRevPAR share one chart with average boxes, on Trading and Trends.
 - Action Centre: three columns (Act now, Watch list, Savings & checks) with tick boxes saved in the browser.
 - Financial pages label each month by source: 7H management accounts (March to September 2026) or Xero (October 2026).
+
+## Live Guestline feed (17 Nov 2026)
+- If a Gmail script address is saved in the browser (Data & reports), the hub fetches the latest Actual & Forecast and Key Performance PDFs and End of Day email text on sign-in, reads them with `vendor/pdf.min.js`, and merges them in memory (`TradingEngine.parseAFCells`, `parseKPCells`, `parseEODText`, `mergeDaily`). Nothing is written to the repo.
+- Emailed Actual & Forecast figures are net of VAT (`basis: net`); rooms sold = accommodation / ADR.
+- Deposits and Booking Source PDFs are never fetched: they carry guest names.

@@ -131,7 +131,7 @@
         ctile('pf-trading', 'Yesterday · ' + (yd ? yd.dow.slice(0, 3) + ' ' + dlabel(yd.d) : ''), yd ? pc(yd.rooms / R) : '–', yd ? num(yd.rooms) + ' rooms at ' + gbp(rate(yd), 2) + ' ADR' : '') +
         ctile('pf-trading', 'Yesterday’s revenue', gbp(yrev), yd ? 'rooms ' + gbp(T.net(yd.acc)) + ' · F&amp;B ' + gbp(T.net(yd.fb)) + ' · other ' + gbp(T.net(yd.oth)) : '') +
         ctile('pf-trading', 'Month to date', gbp(act.total), pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' ADR · ' + gbp(act.total + bks.total) + ' with bookings held') +
-        ctile('pf-trading', 'Tonight, on the books', to ? pc(to.rooms / R) : '–', to ? num(to.rooms) + ' rooms booked at ' + gbp(rate(to), 2) : '') +
+        ctile('pf-trading', 'Tonight, on the books', to ? pc(to.rooms / R) : '–', to ? num(to.rooms) + ' rooms at ' + gbp(rate(to), 2) + (to.arr !== undefined ? ' · ' + num(to.arr) + ' arrivals, ' + num(to.dep) + ' departures' : '') : '') +
         ctile('pf-trading', 'Next 7 nights, on the books', pc(n7.occ), num(n7.rooms) + ' room nights · ' + gbp(n7.acc) + ' rooms revenue') +
         ctile('pf-demand', 'Rooms out of service', num(oos), S.x && S.x.rooms ? 'of ' + S.x.rooms.total + ' rooms' : 'tonight') + '</div>' +
         '<div class="hp-chart"><div class="hp-key" id="hp-key"></div><div class="hp-plot"><canvas id="hp-c1"></canvas></div></div><p class="note" style="margin:8px 0 0">14 nights back and 14 ahead, net of VAT. Revenue is what Guestline posted for each day: rooms, food and beverage (restaurant and bar together) and other (events, spa and sundries). Solid is actual; dotted, right of the “report date” line, is what is on the books so far. Click a name in the key to hide or show its line.</p></div>';
@@ -163,12 +163,14 @@
       ['RevPAR', '#eb6834', 'y1', function (r) { return T.net(r.acc) / R; }, function (v) { return gbp(v, 2); }],
       ['TRevPAR', '#1baf7a', 'y1', function (r) { return T.net(r.acc + r.fb + r.oth) / R; }, function (v) { return gbp(v, 2); }],
       ['Rooms revenue', '#0f8f95', 'y4', function (r) { return T.net(r.acc); }, function (v) { return gbp(v); }],
-      ['Food and beverage', '#c2417a', 'y4', function (r) { return T.net(r.fb); }, function (v) { return gbp(v); }],
+      ['Food and beverage total', '#c2417a', 'y4', function (r) { return T.net(r.fb); }, function (v) { return gbp(v); }],
+      ['Food', '#e3a43a', 'y4', function (r) { var d = S.daily && S.daily[r.d]; return d && r.d < cut ? d.food : null; }, function (v) { return gbp(v); }],
+      ['Beverage', '#7a4fc4', 'y4', function (r) { var d = S.daily && S.daily[r.d]; return d && r.d < cut ? d.bev : null; }, function (v) { return gbp(v); }],
       ['Other revenue', '#7b8494', 'y4', function (r) { return T.net(r.oth); }, function (v) { return gbp(v); }],
       ['Occupancy', '#6250d6', 'y2', function (r) { return r.rooms / R * 100; }, function (v) { return v.toFixed(1) + '%'; }],
       ['Rooms out of service', '#b3261e', 'y3', function (r) { return r.roos; }, function (v) { return Math.round(v) + ''; }],
       ['Cancellations made', '#b9791a', 'y3', function (r) { return cx && r.d < cut ? (cx[r.d] || 0) : null; }, function (v) { return Math.round(v) + ''; }]];
-    var GR = [['y4', 'Revenue for the day', 3], ['y1', '£ per room', 3], ['y2', '% of ' + R + ' rooms', 2], ['y3', 'Number', 2]];
+    var GR = [['y4', 'Revenue for the day', 4], ['y1', '£ per room', 3], ['y2', '% of ' + R + ' rooms', 2], ['y3', 'Number', 2]];
     var tv = rows[ti - 1] || rows[ti] || rows[rows.length - 1];
     $('hp-key').innerHTML = GR.map(function (g) { return '<div class="hp-kg" style="flex:' + g[2] + '"><small>' + g[1] + '</small>' + SER.map(function (x, k) { if (x[2] !== g[0]) return ''; var v = x[3](tv); return '<button data-ser="' + k + '"><i style="background:' + x[1] + '"></i><span>' + x[0] + '</span><b>' + (v === null || v === undefined ? '–' : x[4](v)) + '</b></button>'; }).join('') + '</div>'; }).join('') + '<small class="hp-kn">Figures in the key are for ' + tv.dow + ' ' + dlabel(tv.d) + ', the last full day</small>';
     var scales = { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 15 } } };
@@ -206,6 +208,7 @@
     var xf = xs(function (t) { return t.dept === 'Restaurant' && ['Food', 'Hot beverages', 'Beverages'].indexOf(t.section) !== -1 && t.cat !== 'Alcohol (coded to restaurant)'; }), xb = xs(function (t) { return t.dept === 'Bar' || t.cat === 'Alcohol (coded to restaurant)'; });
     var rw = function (n1, s2, x) { return '<tr><td>' + n1 + '</td><td class="n">' + gbp(s2) + '</td><td class="n">' + gbp(x) + '</td><td class="n">' + (s2 ? pc(x / s2) : '–') + '</td></tr>'; };
     h += '<div class="card"><h2>Sales against purchases</h2><p class="sub">Rezlynx sales beside Xero supplier invoices for the same month</p><table><tr><th></th><th class="n">Sales</th><th class="n">Purchases</th><th class="n">Purchases % of sales</th></tr>' + rw('Food', food, xf) + rw('Drinks', bev, xb) + '</table><p class="note">Purchases are invoices dated in the month, not stock used, and Xero may be behind. Read it as a direction, not a margin.</p></div></div></div>';
+    if (S.daily) { var dk = Object.keys(S.daily).sort().slice(-14).reverse(); if (dk.length) h += '<div class="card"><h2>Food and beverage by day</h2><p class="sub">From Guestline’s End of Day and Key Performance emails, net of VAT, latest first</p><div class="scroll" style="max-height:330px"><table><tr><th>Day</th><th class="n">Food</th><th class="n">Beverage</th><th class="n">Food and beverage</th><th class="n">Rooms sold</th><th class="n">Per occupied room</th><th class="n">All revenue</th></tr>' + dk.map(function (k) { var d = S.daily[k], fbv = (d.food || 0) + (d.bev || 0); return '<tr><td>' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(k + 'T12:00:00').getDay()] + ' ' + dlabel(k) + '</td><td class="n">' + gbp(d.food) + '</td><td class="n">' + gbp(d.bev) + '</td><td class="n">' + gbp(fbv) + '</td><td class="n">' + num(d.rooms) + '</td><td class="n">' + gbp(d.rooms ? fbv / d.rooms : null, 2) + '</td><td class="n">' + gbp(d.net) + '</td></tr>'; }).join('') + '</table></div><p class="note">Guestline groups revenue as food, beverage, conference, miscellaneous and sundries each day. The split between restaurant and bar tills is only in the month-to-date Period End report above.</p></div>'; }
     h += '<div class="card"><h2>Food and drink sales by night</h2><p class="sub">From the Actual &amp; Forecast report; nights after ' + dlabel(cut) + ' show only what is pre-booked with rooms</p><div class="chartbox" style="height:220px"><canvas id="fb-c3"></canvas></div></div>';
     var X = S.x || {};
     if (X.company) { var top = X.company.rows.slice(0, 8); h += '<div class="grid g2"><div class="card"><h2>Food and drink on the bill, by booking source</h2><p class="sub">Rezlynx Company report, ' + esc(X.company.period.replace('(Actual) ', '')) + ', including VAT</p><table><tr><th>Source</th><th class="n">Room nights</th><th class="n">F&amp;B on the bill</th><th class="n">F&amp;B per room night</th></tr>' + top.map(function (r) { return '<tr><td>' + esc(r.ref) + '</td><td class="n">' + num(r.rn) + '</td><td class="n">' + gbp(r.fb) + '</td><td class="n">' + gbp(r.fb / r.rn, 2) + '</td></tr>'; }).join('') + '</table></div>'; }
@@ -262,6 +265,47 @@
     }
     if (TX.length && $('tn-6')) { var mm = {}, dp = {}; TX.forEach(function (t) { mm[t.month] = 1; dp[t.dept] = 1; }); var mk = Object.keys(mm).sort(), dk = Object.keys(dp).sort(); lines('tn-6', 'tn-6-leg', mk.map(function (m) { return MN[+m.slice(5) - 1] + ' ' + m.slice(2, 4); }), dk.map(function (d) { return [d, mk.map(function (m) { var v = 0; TX.forEach(function (t) { if (t.month === m && t.dept === d) v += t.net; }); return Math.round(v); })]; }), gk, 'latest month is part-loaded'); }
     if (S.x && S.x.cancels && $('tn-7')) { var cm = Object.keys(S.x.cancels.byMonth).sort(); lines('tn-7', 'tn-7-leg', cm.map(function (m) { return MN[+m.slice(5) - 1] + ' ' + m.slice(2, 4); }), [['Cancellations', cm.map(function (m) { return S.x.cancels.byMonth[m].c; })]], function (v) { return Math.round(v); }); }
+  }
+
+  /* ---------- live feed: the Gmail script hands over the latest Guestline reports ---------- */
+  var feed = { status: 'off', note: 'Gmail feed not connected' };
+  function feedUrl() { try { return localStorage.getItem(GKEY) || ''; } catch (e) { return ''; } }
+  function chip() { var c = $('feed-chip'); if (!c) return; c.className = 'feed-chip ' + feed.status; c.textContent = feed.note; }
+  function addScript(src) { return new Promise(function (ok, bad) { if (window.pdfjsLib) return ok(); var x = document.createElement('script'); x.src = src; x.onload = ok; x.onerror = bad; document.head.appendChild(x); }); }
+  function pdfCells(b64) {
+    var bin = atob(b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
+    return window.pdfjsLib.getDocument({ data: u }).promise.then(function (doc) {
+      var out = [], chain = Promise.resolve();
+      for (var p = 1; p <= doc.numPages; p++) (function (pn) { chain = chain.then(function () { return doc.getPage(pn); }).then(function (pg) { return pg.getTextContent(); }).then(function (tc) {
+        var by = {}; tc.items.forEach(function (it) { var t = (it.str || '').trim(); if (!t) return; var y = Math.round(it.transform[5] / 3) * 3; (by[y] = by[y] || []).push([it.transform[4], t]); });
+        Object.keys(by).map(Number).sort(function (a, b) { return b - a; }).forEach(function (y) { out.push(by[y].sort(function (a, b) { return a[0] - b[0]; }).map(function (c) { return c[1]; })); });
+      }); })(p);
+      return chain.then(function () { return out; });
+    });
+  }
+  function stampOf(name, received) { var m = /(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)\d\d\.pdf$/i.exec(name || ''); if (m) return m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5]; var d = new Date(received); return isNaN(d) ? String(received).replace(' ', 'T').slice(0, 16) : new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16); }
+  function rerender() { var on = document.querySelector('section.tab.on'); if (on && on.id.indexOf('t-pf-') === 0 && window.Profit.signedIn()) window.Profit.show(on.id.slice(5)); }
+  function liveFeed() {
+    var u = feedUrl(), T = window.Trading, TE = window.TradingEngine;
+    if (!u || !T || !TE) { feed = { status: 'off', note: 'Gmail feed not connected' }; chip(); return Promise.resolve(); }
+    feed = { status: 'busy', note: 'Checking Guestline emails…' }; chip();
+    return fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'data=1').then(function (r) { return r.json(); }).then(function (j) {
+      if (j.error) throw new Error(j.error);
+      if (!j.files) { feed = { status: 'warn', note: 'Gmail script needs updating to version 2' }; chip(); return; }
+      var S = T.S(), got = [], chain = addScript('vendor/pdf.min.js');
+      (j.files || []).filter(function (f) { return f.b64; }).sort(function (a, b) { return a.report < b.report ? 1 : -1; }).forEach(function (f) {   // Key Performance first, then Actual & Forecast
+        chain = chain.then(function () { return pdfCells(f.b64); }).then(function (cells) {
+          var asOf = stampOf(f.name, f.received);
+          if (TE.isKPCells(cells)) { TE.mergeDaily(S, TE.parseKPCells(cells), { kind: 'kp', asOf: asOf, file: f.name }); got.push('Key Performance'); }
+          else if (TE.isAFCells(cells)) { var rows = TE.parseAFCells(cells); if (rows.length && (!S.af || asOf > S.af.asOf)) { TE.merge(S, 'af', rows, { asOf: asOf, file: f.name, basis: 'net' }); if (T.resetMonth) T.resetMonth(); } got.push('Actual & Forecast'); }
+        });
+      });
+      return chain.then(function () {
+        (j.texts || []).slice().reverse().forEach(function (t) { if (!TE.isEODText(t.body || '')) return; var e = TE.parseEODText(t.body); if (!e) return; var d = {}; d[e.day] = e.d; TE.mergeDaily(S, d, { kind: 'eod', asOf: e.closed + 'T03:45', file: t.subject, mtd: e.mtd, to: e.day }); if (got.indexOf('End of Day') < 0) got.push('End of Day'); });
+        feed = { status: 'ok', note: 'Guestline feed · ' + (S.af ? when(S.af.asOf) : 'no report yet'), got: got }; chip(); rerender();
+      });
+    }).catch(function (e) { feed = { status: 'bad', note: 'Gmail feed could not be read' }; chip(); });
   }
 
   /* ---------- Data & reports ---------- */
@@ -353,7 +397,7 @@
     var d = t.closest('[data-drawer]'); if (d) { drawer(d.getAttribute('data-drawer')); return; }
     if (t.closest('.dr-x') || t.id === 'scrim') { closeDrawer(); return; }
     var a = t.closest('[data-ac]'); if (a) { acView = a.getAttribute('data-ac'); if (!document.querySelector('#t-pf-actions.on')) go('pf-actions'); else renderActions(); return; }
-    if (t.id === 'gm-go') { gmailCheck(); return; }
+    if (t.id === 'gm-go') { gmailCheck(); liveFeed(); return; }
     var f2 = t.closest('.find2 .finding'); if (f2) { f2.classList.toggle('open'); return; }
     var ks = t.closest('[data-ser]'); if (ks && hubC) { var k = +ks.getAttribute('data-ser'), vis = hubC.isDatasetVisible(k); hubC.setDatasetVisibility(k, !vis); hubC.update(); ks.classList.toggle('off', vis); return; }
     if (t.id === 'ac-reset') { try { localStorage.removeItem(DKEY); } catch (e2) {} renderActions(); return; }
@@ -368,12 +412,12 @@
     if (t.id === 'tr-range') { trRange = t.value; renderTrends(); }
     if (t.dataset && t.dataset.done) { var D = doneMap(); if (t.checked) D[t.dataset.done] = new Date().toISOString().slice(0, 10); else delete D[t.dataset.done]; try { localStorage.setItem(DKEY, JSON.stringify(D)); } catch (e2) {} if (document.querySelector('#t-pf-actions.on')) renderActions(); else { var a = t.closest('.act'); if (a) a.classList.toggle('done', t.checked); } }
   });
-  document.addEventListener('hub-signin', unlock);
+  document.addEventListener('hub-signin', function () { unlock(); liveFeed(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
   window.HubAccounts = renderAccounts;
   if (window.Profit && window.Profit.register) { ['home', renderHome, 'actions', renderActions, 'fb', renderFb, 'data', renderData, 'help', renderHelp, 'trends', renderTrends].forEach(function (v, i, arr) { if (i % 2 === 0) window.Profit.register(v, arr[i + 1]); }); }
   document.addEventListener('DOMContentLoaded', function () {
-    unlock(); crumb('pf-home');
+    unlock(); crumb('pf-home'); if (window.Profit.signedIn()) liveFeed(); else chip();
     var sv = $('t-save'); if (sv && !sv.querySelector('.segs')) sv.insertAdjacentHTML('afterbegin', '<div id="save-pills"></div>');
     new MutationObserver(function () { annotate(document.querySelector('main')); var sp = $('save-pills'); if (sp && !sp.firstChild && window.Profit.signedIn()) sp.innerHTML = '<p style="margin:0 0 14px"><button class="btn ghost" data-go="pf-actions">← Back to the Action Centre</button></p>'; }).observe(document.querySelector('main'), { childList: true, subtree: true });
   });
