@@ -596,7 +596,8 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
           <div style="flex:1;text-align:center;font:800 14px Lato;color:var(--navy)" id="sc-wk"></div>
           <button type="button" onclick="clWeek(1)" style="background:#f3f5f8;border:1px solid var(--line);color:var(--navy);border-radius:9px;padding:8px 11px;font:700 13px Lato;cursor:pointer">Next →</button>
         </div>
-        <div id="sc-shiftsel" style="display:flex;gap:7px;margin-bottom:12px"></div>
+        <div id="sc-shiftsel" style="display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap"></div>
+        <div id="cl-checklist-body">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
           <label class="fl" style="margin:0">Your name</label>
           <select id="sc-who" onchange="clIni(this.value)" style="flex:1;min-width:150px"><option value="">Select…</option></select>
@@ -612,6 +613,8 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         <div id="sc-notes" style="margin-top:10px"></div>
         <div class="sechd" style="margin:18px 0 6px">Recent handovers</div>
         <div class="muted" style="font-size:12px;margin:-2px 0 8px">Tap a day to expand. Scroll back for previous shifts &amp; weeks. Imported from the OneDrive handover sheets.</div><div id="h-list" style="max-height:460px;overflow:auto;padding-right:2px"></div>
+        </div><!-- /cl-checklist-body -->
+        <div id="nw-records" style="display:none"></div>
       </div>
     </div>
 
@@ -1408,6 +1411,102 @@ function clSubmitted(dk,sk){ return CL_DOC && CL_DOC.submitted && CL_DOC.submitt
 function clInit(){ clFillPeople(); try{ CL_INI=localStorage.getItem('hosnight_ini')||''; }catch(e){} ['sc-who','so-who'].forEach(function(id){ var b=$(id); if(b)b.value=CL_INI; }); if(!CL_SHIFT) CL_SHIFT=clDefaultShift(); if(CL_DOC && CL_DOC.week===clWkKey(CL_WK)){ clRenderAll(); } else { clLoad(); } }
 function clIni(v){ CL_INI=(v||'').trim(); try{ localStorage.setItem('hosnight_ini',CL_INI); }catch(e){} ['sc-who','so-who'].forEach(function(id){ var b=$(id); if(b&&b.value!==CL_INI)b.value=CL_INI; }); }
 function clSetShift(k){ CL_SHIFT=k; clRenderAll(); }
+function clRenderMode(){
+  var nw=(CL_SHIFT==='nightwalk');
+  var body=$('cl-checklist-body'), rec=$('nw-records');
+  if(body) body.style.display = nw?'none':'';
+  if(rec){ rec.style.display = nw?'':'none'; if(nw){ nwInit(); } }
+  try{
+    var ph=$('pane-handover'); var pf=ph?ph.querySelector('.pane-form'):null;
+    if(pf) pf.style.display = nw?'none':'';
+    if(ph) ph.style.display = nw?'block':'';
+  }catch(e){}
+}
+/* ===== Night Walk records (read-only history in HosDesk) ===== */
+var NW_LABELS=['Hotel entrance door closed','Brandon Suite fire exit 1 closed (closer to reception)','Brandon Suite fire exit 2 closed (farther from reception)','Brandon Suite main door closed','Wolston Suite fire door 1 closed (closer to the Brandon Suite)','Wolston Suite fire door 2 closed (in the middle)','Wolston Suite fire door 3 closed (at the far back)','Kitchen ovens turned off','Kitchen back door fire exit closed','Restaurant fire exit 1 closed (closer to the kitchen)','Restaurant far corner door closed','Beer cellar door closed','Beer cellar fire exit door closed','Bar double doors closed','Bar windows closed','Events cupboard locked','Sales office door locked','Beech Room locked','Fire exit by the Beech Room closed','Housekeeping main office closed','Fire exit by the staircase near the lift closed','Fire exit by the staircase near Room 115 closed','Housekeeping main cupboard closed','Hunt Suite closed','Fire exit by the Warwick Suite closed','Warwick Suite closed','Smoking area courtyard grey fire doors 1 and 2 closed','Gate by the smoking area at the back of the kitchen locked shut','Fire exit by the staircase near the linen room closed','Linen room fire exit closed','Linen room shutter door closed','Fire door by Room 164 unobstructed','Fire door by Room 149 unobstructed','All corridors are clear of any obstructions','All fire exits and fire doors are unobstructed'];
+var NW_N=NW_LABELS.length;
+var NW_ROWS=[], NW_SUB=null, NW_INIT=false, NW_OPEN={};
+function nwInit(){ if(NW_INIT){ nwRenderRecords(); return; } NW_INIT=true; nwSubscribe(); }
+function nwSubscribe(){
+  if(!db){ var e=$('nw-records'); if(e) e.innerHTML='<div class="muted" style="padding:10px 2px">Offline — can\'t load walk records.</div>'; return; }
+  try{
+    if(NW_SUB) NW_SUB();
+    NW_SUB=db.collection('hosnightwalk').orderBy('startTs','desc').limit(400).onSnapshot(function(qs){
+      NW_ROWS=qs.docs.map(function(d){ var v=d.data()||{}; v.id=d.id; return v; });
+      nwRenderRecords();
+      var b=$('bc-nw-n'); // optional badge if present
+    }, function(){ var e=$('nw-records'); if(e) e.innerHTML='<div class="muted" style="padding:10px 2px">Could not load walk records.</div>'; });
+  }catch(e){}
+}
+function nwDone(w){ var c=0,it=w.items||{}; for(var k in it){ if(it[k]&&it[k].status) c++; } return c; }
+function nwIssues(w){ var a=[],it=w.items||{}; for(var k in it){ if(it[k]&&it[k].status==='issue'){ a.push({i:+k, at:it[k].at, note:it[k].note}); } } a.sort(function(x,y){return x.i-y.i;}); return a; }
+function nwFmtNight(nd){ try{ return new Date(nd+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); }catch(e){ return nd; } }
+function nwRenderRecords(){
+  var el=$('nw-records'); if(!el) return;
+  var head='<div class="sechd" style="margin-top:0">🌙 Night Walk records</div>'
+    +'<div class="muted" style="font-size:12px;margin-bottom:12px">The night manager’s fire &amp; security walk — two per night shift. Each door is time-stamped as it’s checked. Newest night first.</div>';
+  if(!NW_ROWS.length){ el.innerHTML=head+'<div class="muted" style="padding:10px 2px">No walks recorded yet. They appear here as Alan completes them on the Night Walk app.</div>'; return; }
+  // group by nightDate
+  var nights=[], byN={};
+  NW_ROWS.forEach(function(w){ var nd=w.nightDate||w.date||'—'; if(!byN[nd]){ byN[nd]=[]; nights.push(nd); } byN[nd].push(w); });
+  nights.sort(function(a,b){ return a<b?1:(a>b?-1:0); });
+  var todayNd=(function(){ var d=new Date(); if(d.getHours()<7) d.setDate(d.getDate()-1); return d.toLocaleDateString('en-CA'); })();
+  var html=head;
+  nights.forEach(function(nd){
+    var walks=byN[nd].sort(function(a,b){ return (a.walkNo||0)-(b.walkNo||0) || (a.startTs||0)-(b.startTs||0); });
+    var totIss=0; walks.forEach(function(w){ totIss+=nwIssues(w).length; });
+    var isToday=(nd===todayNd);
+    html+='<div style="border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden">'
+      +'<div style="background:'+(isToday?'#1a2b3a':'#f5f7f9')+';color:'+(isToday?'#fff':'var(--navy)')+';padding:11px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+      +'<span style="font:800 14px Lato">'+esc(nwFmtNight(nd))+'</span>'
+      +(isToday?'<span style="background:#BB9979;color:#1a2b3a;border-radius:999px;padding:2px 9px;font:800 11px Lato">Tonight</span>':'')
+      +'<span style="margin-left:auto;font:700 12px Lato;'+(isToday?'color:#cdd8e2':'color:var(--muted)')+'">'+walks.length+'/2 walks'
+      +(totIss?(' · <span style="color:'+(isToday?'#ffb4a8':'#b3261e')+'">⚠ '+totIss+' issue'+(totIss===1?'':'s')+'</span>'):'')+'</span></div>';
+    [1,2].forEach(function(no){
+      var w=walks.filter(function(x){return x.walkNo===no;})[0] || walks.filter(function(x){return !x.walkNo;})[no-1];
+      html+=nwWalkRow(nd,no,w);
+    });
+    // any extra walks beyond 2
+    walks.filter(function(x){return x.walkNo>2;}).forEach(function(w){ html+=nwWalkRow(nd,w.walkNo,w); });
+    html+='</div>';
+  });
+  el.innerHTML=html;
+}
+function nwWalkRow(nd,no,w){
+  var key=nd+'_'+no;
+  if(!w){ return '<div style="padding:11px 14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:7px;background:#eef1f5;color:#8b97a4;font:800 12px Lato;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto">'+no+'</span><span class="muted" style="font-size:13px">Walk '+no+' — not done</span></div>'; }
+  var done=nwDone(w), iss=nwIssues(w), complete=(w.status==='complete');
+  var open=!!NW_OPEN[key];
+  var sub=esc(w.by||'')+' · '+(complete?(esc(w.startAt||'')+'–'+esc(w.endAt||'')):('started '+esc(w.startAt||'')+' · in progress'))+' · '+done+'/'+NW_N+' checked';
+  var pill=complete?'<span style="background:#e8f6ee;color:#13532f;border-radius:999px;padding:2px 9px;font:800 11px Lato">✓ Complete</span>':'<span style="background:#fff5e6;color:#b06a00;border-radius:999px;padding:2px 9px;font:800 11px Lato">● In progress</span>';
+  var h='<div style="border-top:1px solid var(--line)">'
+    +'<div onclick="nwToggle(\''+key+'\')" style="padding:11px 14px;display:flex;align-items:center;gap:10px;cursor:pointer">'
+    +'<span style="width:26px;height:26px;border-radius:7px;background:#1a2b3a;color:#fff;font:800 12px Lato;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto">'+no+'</span>'
+    +'<span style="flex:1;min-width:0"><span style="font:800 13px Lato;color:var(--navy)">Walk '+no+'</span><div class="muted" style="font-size:12px;margin-top:1px">'+sub+'</div></span>'
+    +(iss.length?'<span style="background:#fdecea;color:#b3261e;border-radius:999px;padding:2px 9px;font:800 11px Lato">⚠ '+iss.length+'</span>':'')+pill
+    +'<span style="color:#9aa6b2;font-size:13px">'+(open?'▲':'▼')+'</span></div>';
+  if(open){
+    h+='<div style="padding:4px 14px 14px">';
+    if(iss.length){
+      h+='<div style="font:800 12px Lato;color:#b3261e;margin:4px 0 6px">Issues flagged</div>';
+      iss.forEach(function(x){ h+='<div style="background:#fdf1f0;border:1px solid #f0c4c0;border-radius:9px;padding:9px 11px;margin-bottom:7px"><div style="font:700 13px Lato;color:#7a2b25">'+esc(NW_LABELS[x.i]||('Checkpoint '+(x.i+1)))+'</div><div style="font-size:12.5px;color:#7a2b25;margin-top:3px">'+esc(x.note||'')+'</div><div class="muted" style="font-size:11px;margin-top:3px">flagged '+esc(x.at||'')+'</div></div>'; });
+    } else if(complete){
+      h+='<div style="background:#f3fbf6;border:1px solid #bfe3cd;border-radius:9px;padding:9px 11px;font:700 13px Lato;color:#13532f;margin-bottom:8px">✓ All '+NW_N+' checkpoints secure — no issues.</div>';
+    }
+    // full checkpoint log with times
+    h+='<div style="font:800 12px Lato;color:var(--navy);margin:8px 0 6px">Checkpoint log</div><div style="max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:9px">';
+    for(var i=0;i<NW_N;i++){ var it=(w.items||{})[i]; var ok=it&&it.status==='ok', bad=it&&it.status==='issue';
+      h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid #eef1f4;font-size:12.5px">'
+        +'<span style="flex:0 0 18px;text-align:center">'+(ok?'✓':bad?'⚠':'<span style="color:#c3cad3">–</span>')+'</span>'
+        +'<span style="flex:1;min-width:0;color:'+(bad?'#b3261e':'var(--navy)')+'">'+esc(NW_LABELS[i])+'</span>'
+        +'<span class="muted" style="font-size:11px;flex:0 0 auto">'+(it?esc(it.at||''):'<span style="color:#c3cad3">not checked</span>')+'</span></div>';
+    }
+    h+='</div></div>';
+  }
+  h+='</div>';
+  return h;
+}
+function nwToggle(key){ NW_OPEN[key]=!NW_OPEN[key]; nwRenderRecords(); }
 async function clLoad(){
   var wk=clWkKey(CL_WK);
   CL_DOC={ week:wk, weekLabel:clWkLabel(CL_WK), grid:{}, notes:[], submitted:{} };
@@ -1422,18 +1521,24 @@ async function clLoad(){
 function clWeek(n){ CL_WK+=n; clLoad(); }
 function clRenderShiftSel(){
   var el=$('sc-shiftsel'); if(!el) return;
-  el.innerHTML=CL_SHIFTS.map(function(s){ var on=(s.key===CL_SHIFT);
-    return '<button type="button" onclick="clSetShift(\''+s.key+'\')" style="flex:1;border-radius:10px;padding:9px 6px;font:800 13px Lato;cursor:pointer;border:1px solid '+(on?s.col:'var(--line)')+';background:'+(on?s.col:'#f3f5f8')+';color:'+(on?'#fff':'var(--navy)')+'">'+s.label+'</button>';
+  var html=CL_SHIFTS.map(function(s){ var on=(s.key===CL_SHIFT && CL_SHIFT!=='nightwalk');
+    return '<button type="button" onclick="clSetShift(\''+s.key+'\')" style="flex:1 1 60px;border-radius:10px;padding:9px 6px;font:800 13px Lato;cursor:pointer;border:1px solid '+(on?s.col:'var(--line)')+';background:'+(on?s.col:'#f3f5f8')+';color:'+(on?'#fff':'var(--navy)')+'">'+s.label+'</button>';
   }).join('');
+  var nwOn=(CL_SHIFT==='nightwalk');
+  html+='<button type="button" onclick="clSetShift(\'nightwalk\')" style="flex:1 1 90px;border-radius:10px;padding:9px 6px;font:800 13px Lato;cursor:pointer;border:1px solid '+(nwOn?'#1a2b3a':'var(--line)')+';background:'+(nwOn?'#1a2b3a':'#f3f5f8')+';color:'+(nwOn?'#fff':'var(--navy)')+'">🌙 Night Walk</button>';
+  el.innerHTML=html;
 }
 function clRenderAll(){
   if(!CL_SHIFT) CL_SHIFT=clDefaultShift();
   if($('sc-wk')) $('sc-wk').textContent=clWkLabel(CL_WK);
   clRenderShiftSel();
-  if($('sc-grid')) clGrid('sc-grid','sc-gridttl',clShiftDef(CL_SHIFT));
-  clRenderSubmit();
-  if($('sc-notes')) clNotes('sc-notes');
-  try{ soRender(); }catch(e){}
+  clRenderMode();
+  if(CL_SHIFT!=='nightwalk'){
+    if($('sc-grid')) clGrid('sc-grid','sc-gridttl',clShiftDef(CL_SHIFT));
+    clRenderSubmit();
+    if($('sc-notes')) clNotes('sc-notes');
+    try{ soRender(); }catch(e){}
+  }
 }
 function clRenderSubmit(){
   var el=$('sc-submitbar'); if(!el) return;
