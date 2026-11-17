@@ -12,6 +12,7 @@ const USERS = {
   "alia.taub":        { name:"Alia Taub",          code:"BHAT", role:"admin", tier:"admin",  title:"Director" },
   "nicola.cartwright":{ name:"Nicola Cartwright",  code:"BHNC", role:"admin", tier:"admin",  title:"Events Manager" },
   "natalie.freeman":  { name:"Natalie Freeman",    code:"BHNF", role:"admin", tier:"admin",  title:"Event Executive" },
+  "lauren.damms-ingla":{ name:"Lauren Damms-Ingla", code:"BHLD", role:"admin", tier:"admin",  title:"Event Executive" },
   "veronica.webb":    { name:"Veronica Webb",      code:"BHVW", role:"admin", tier:"admin",  title:"Finance Assistant" },
   "glenn.randell":    { name:"Glenn Randell",      code:"BHGR", role:"admin", tier:"admin",  title:"Maintenance Manager" },
   "patrik.vlach":     { name:"Patrik Vlach",       code:"BHPV", role:"person",tier:"person", title:"Front Office Manager" },
@@ -21,7 +22,7 @@ const USERS = {
   "jomy.joy":         { name:"Jomy Joy",           code:"BHJJ", role:"person",tier:"person", title:"Bar Manager" },
   "laith.hardy":      { name:"Laith Hardy",        code:"BHLH", role:"person",tier:"person", title:"Housekeeping / Operations Manager" },
 };
-const ADMIN_IDS=["ajay.kawa","raj.kumar","alia.taub","nicola.cartwright","natalie.freeman","veronica.webb","glenn.randell"];
+const ADMIN_IDS=["ajay.kawa","raj.kumar","alia.taub","nicola.cartwright","natalie.freeman","lauren.damms-ingla","veronica.webb","glenn.randell"];
 const NOTIFY_ON_COMPLETE=["raj.kumar","ajay.kawa","alia.taub","glenn.randell"];
 
 const LAYOUT_LABELS = { boardroom:"Boardroom", ushape:"U-Shape",
