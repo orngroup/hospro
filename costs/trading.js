@@ -57,8 +57,8 @@
       return '<tr><td><b>' + name + '</b></td><td>' + what + '</td><td>' + (r ? when(r.ts) : '–') + '</td><td>' + (r ? esc(r.file) : '–') + '</td><td>' + st + '</td><td style="color:#52514e">' + how + '</td></tr>';
     };
     return '<div class="card"><h2>Data received from Guestline</h2><p class="sub">When each Rezlynx report last reached the dashboard</p><div class="scroll"><table><tr><th>Report</th><th>Used for</th><th>Last received</th><th>File</th><th>Status</th><th>How it arrives</th></tr>' +
-      line('Actual & Forecast', 'Occupancy, rate, revenue by night, forward bookings', last.af, 'Loaded by hand today; daily email scheduled 07:00') +
-      line('Period End / End of Day', 'Revenue by outlet, payments, deposits, debtors', last.pe, 'Loaded by hand today; End of Day email set up') +
+      line('Actual & Forecast', 'Occupancy, rate, revenue by night, forward bookings', last.af, 'Daily email at 07:00, read automatically') +
+      line('Period End / End of Day', 'Revenue by outlet, payments, deposits, debtors', last.pe, 'End of Day email read automatically; Period End exported by hand') +
       line('Manager’s Flash', 'Cross-check of headline KPIs', last.flash, 'Daily email subscription') +
       line('Booking Source', 'Channels and OTA share', last.bs, 'Daily email scheduled 07:00') +
       line('Key Performance', 'KPI cross-check', last.kp, 'Daily email scheduled 07:00') +
