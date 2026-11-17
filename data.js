@@ -1110,7 +1110,7 @@ function hpUserAllows(perm, userKey){
    e.g. the quote builder opens from the Sales Pipeline, so pipeline access = quote access. */
 const TAB_PARENT = { quote:"pipeline" };
 /* Pages open to every signed-in staff member, whatever their group. */
-const TAB_OPEN = { home:1, help:1 };
+const TAB_OPEN = { home:1, help:1, eventPack:1 };
 /* Can the current user open this tab/permission? */
 function hpCanTab(tab, userKey){
   if(TAB_OPEN[tab]) return true;
@@ -1125,7 +1125,7 @@ function hpCanAccess(modId, userKey){
   if(gs.some(g=>{ const grp=ACCESS_CONFIG.groups[g]; return grp && grp.allow==="all"; })) return true;
   const m=(FLOW_MODULES||[]).find(x=>x.id===modId);
   if(!m) return hpUserAllows(modId, userKey);
-  return (m.tabs||[]).some(t=>hpUserAllows(t, userKey));
+  return (m.tabs||[]).some(t=>hpCanTab(t, userKey));
 }
 function hpCanFinancial(userKey){ return hpUserAllows("financial", userKey); }
 function hpIsAdmin(userKey){ return hpUserAllows("admin", userKey); }
