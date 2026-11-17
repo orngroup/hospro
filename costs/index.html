@@ -156,7 +156,11 @@ button.tile{display:flex;flex-direction:column;justify-content:flex-start;width:
 .feed-chip{border:1px solid rgba(255,255,255,.25);background:none;color:#c7d2e0;border-radius:20px;padding:5px 11px 5px 24px;font:inherit;font-size:12px;cursor:pointer;position:relative;white-space:nowrap}
 .feed-chip:before{content:"";position:absolute;left:10px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:#7b8494}.feed-chip.ok:before{background:#35c98a}.feed-chip.busy:before{background:#e3a43a}.feed-chip.warn:before{background:#e3a43a}.feed-chip.bad:before{background:#e0584f}
 @media(max-width:900px){.feed-chip{display:none}}
-.hp-chart{height:600px!important}
+.hp-chart{height:700px!important}
+.tile .v small{font-size:13px;font-weight:600;color:var(--ink2)}.tile .v span{font-size:17px;font-weight:700;color:var(--ink2);margin-left:6px;padding-left:8px;border-left:2px solid var(--line)}
+.hp-key{width:245px!important}
+.hp-today .tiles{grid-template-columns:repeat(5,minmax(0,1fr))}@media(max-width:1250px){.hp-today .tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:900px){.hp-today .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.segs button:disabled{opacity:.4;cursor:not-allowed}
 </style>
 </head>
 <body class="locked">

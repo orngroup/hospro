@@ -149,10 +149,12 @@
         out.count++; bump(out.byMonth, d2(b[10]).slice(0, 7), { c: 1 }); bump(out.byFamily, family(a[20]), { c: 1 });
       }
     } else if (/Daily Rate Analysis/.test(t)) {
-      out = { kind: 'rates', range: flat(aoa[0])[1] || '', nights: 0, value: 0, byPlan: {}, byFamily: {}, byBoard: {} };
+      out = { kind: 'rates', range: flat(aoa[0])[1] || '', nights: 0, value: 0, byPlan: {}, byFamily: {}, byBoard: {}, byDay: {} };
+      var colDay = {};
       aoa.forEach(function (r) {
+        if (r && r[0] === 'BookRef') { for (var c = 1; c < r.length; c++) if (d2(r[c])) colDay[c] = d2(r[c]); return; }
         if (!r || !/^BK\d+/.test(String(r[0]))) return;
-        for (var x = 1; x < r.length; x++) { var m = String(r[x] || '').match(/^([A-Z0-9_]+)\s*\n\s*([\d.]+)/); if (!m) continue; var f = { n: 1, v: parseFloat(m[2]) }; out.nights++; out.value += f.v; bump(out.byPlan, m[1], f); bump(out.byFamily, family(m[1]), f); bump(out.byBoard, board(m[1]), f); }
+        for (var x = 1; x < r.length; x++) { var m = String(r[x] || '').match(/^([A-Z0-9_]+)\s*\n\s*([\d.]+)/); if (!m) continue; var f = { n: 1, v: parseFloat(m[2]) }; if (colDay[x]) { var bd = {}; bd[/_DBB/.test(m[1]) ? 'dbb' : /_BB/.test(m[1]) ? 'bb' : /_RO/.test(m[1]) ? 'ro' : 'other'] = 1; bd.n = 1; bump(out.byDay, colDay[x], bd); } out.nights++; out.value += f.v; bump(out.byPlan, m[1], f); bump(out.byFamily, family(m[1]), f); bump(out.byBoard, board(m[1]), f); }
       });
     } else if (/Forecast Revenue By Market Segment/.test(t)) {
       var fr = flat(aoa[1]), to = flat(aoa[2]);
@@ -162,6 +164,31 @@
     } else if (/Block Forecast Report/.test(t)) {
       out = { kind: 'blocks', month: flat(aoa[1]).join('').trim(), rows: [] };
       aoa.forEach(function (r) { if (!r || !/^G[A-Z]\d+/.test(String(r[0]))) return; var days = []; for (var x = 4; x < 35; x++) if (n(r[x])) days.push(x - 3); out.rows.push({ ref: String(r[0]), name: String(r[1]), status: String(r[3]).replace(/\s+/g, ' '), total: n(r[35]), first: days[0], last: days[days.length - 1], nights: days.length }); });
+    } else if (/Postings Report/.test(t)) {
+      /* every till and folio posting: reduced to counts and values by day and by item. Guest names, rooms and operators are dropped. */
+      out = { kind: 'postings', from: '', to: '', net: 0, count: 0, byDay: {}, byHour: {}, sect: {}, brkPrice: {}, deleted: { c: 0, v: 0 }, refunds: { c: 0, v: 0 }, codes: {} };
+      var IT = {}, SECT = function (c) { return /BRK/.test(c) ? 'brk' : /BEV/.test(c) ? 'bev' : /^RS_/.test(c) ? 'rs' : /LUN/.test(c) ? 'lun' : /DIN/.test(c) ? 'din' : 'oth'; };
+      aoa.forEach(function (r) {
+        var ts = String(r && r[0] || ''), m = /^(\d\d)\/(\d\d)\/(\d{4}) (\d\d):/.exec(ts); if (!m || !r[3]) return;
+        var code = String(r[3]).replace(/\s+/g, ''), desc = String(r[6] || '').replace(/\s+/g, ' ').trim(), nett = n(r[14]), st = String(r[18] || '').replace(/\s+/g, ' ').trim(), ity = String(r[19] || '').replace(/\s+/g, ' ').trim();
+        if (st === 'Deleted') { out.deleted.c++; out.deleted.v += nett; return; }
+        var day = m[3] + '-' + m[2] + '-' + m[1], mx = /^(\d+) x (.*)$/.exec(desc), units = n(r[13]) * (mx ? +mx[1] : 1) * (nett < 0 ? -1 : 1), name = mx ? mx[2] : desc, sc = SECT(code), auto = String(r[9]).trim() === 'AUTO';
+        if (nett < 0) { out.refunds.c++; out.refunds.v += nett; }
+        out.count++; out.net += nett; if (!out.from || day < out.from) out.from = day; if (day > out.to) out.to = day;
+        bump(out.codes, code, { c: 1, v: nett });
+        var D = out.byDay[day] = out.byDay[day] || { bi: 0, biv: 0, bp: 0, bpv: 0, lun: 0, din: 0, bev: 0, rs: 0, oth: 0, cov: 0 };
+        if (sc === 'brk') { if (/^Auto/i.test(ity)) { D.bi += units; D.biv += nett; } else { D.bp += units; D.bpv += nett; } if (nett > 0) { var pk = Math.abs(n(r[11]) / (mx ? +mx[1] : 1)).toFixed(2); bump(out.brkPrice, (/^Auto/i.test(ity) ? 'inc ' : 'paid ') + pk, { c: Math.abs(units) }); } }
+        else D[sc] += nett;
+        if (!auto) bump(out.byHour, m[4], (function () { var o = {}; o[sc === 'brk' ? 'brk' : sc === 'bev' ? 'bev' : 'food'] = nett; return o; })());
+        if (sc !== 'brk' && nett !== 0 && !/refund|adjust|discrepan/i.test(name)) { var key = sc + '|' + name.toLowerCase().replace(/btl/g, 'bottle').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean).sort().join(' '); var I = IT[key] = IT[key] || { s: sc, names: {}, q: 0, v: 0 }; I.q += units; I.v += nett; I.names[name] = (I.names[name] || 0) + 1; }
+      });
+      Object.keys(out.byDay).forEach(function (k) { var D = out.byDay[k]; Object.keys(D).forEach(function (f) { D[f] = Math.round(D[f] * 100) / 100; }); });
+      ['lun', 'din', 'bev', 'rs'].forEach(function (sc) {
+        var list = Object.keys(IT).map(function (k) { return IT[k]; }).filter(function (I) { return I.s === sc; }), tv = 0; list.forEach(function (I) { tv += I.v; });
+        list.sort(function (a, b) { return b.v - a.v; });
+        out.sect[sc] = { items: list.length, net: Math.round(tv * 100) / 100, top: list.slice(0, 40).map(function (I) { var nm = Object.keys(I.names).sort(function (a, b) { return I.names[b] - I.names[a]; })[0]; return [nm, Math.round(I.q), Math.round(I.v * 100) / 100]; }) };
+      });
+      out.net = Math.round(out.net * 100) / 100;
     } else if (/Business Done Report/.test(t)) { out = { kind: 'bizdone', skipped: true };
     } else if (/Agent Commission Report/.test(t)) { out = { kind: 'commission', skipped: true };
     } else return null;
