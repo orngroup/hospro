@@ -372,7 +372,14 @@
     feed = { status: 'busy', note: 'Checking Guestline emails…' }; chip();
     return fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'data=1').then(function (r) { return r.json(); }).then(function (j) {
       if (j.error) throw new Error(j.error);
-      if (!j.files) { feed = { status: 'warn', note: 'Gmail script needs updating to version 2' }; chip(); return; }
+      if (!j.files) { feed = { status: 'warn', note: 'Gmail script needs updating' }; chip(); return; }
+      var keep = { messages: j.messages || [], version: j.version || 2 };
+      if (j.tracker) { var tk0 = ticks(); Object.keys(j.tracker).forEach(function (k) { tk0[k] = 1; }); setTicks(tk0); }
+      if (j.store) { var st = j.store, S0 = T.S(); S0.x = S0.x || {}; S0.pe = S0.pe || {}; S0.received = S0.received || [];
+        Object.keys(st.x || {}).forEach(function (k) { if (!S0.x[k] || (st.x[k].asOf || '') > (S0.x[k].asOf || '')) S0.x[k] = st.x[k]; });
+        Object.keys(st.pe || {}).forEach(function (k) { if (!S0.pe[k] || (st.pe[k].asOf || '') > (S0.pe[k].asOf || '')) S0.pe[k] = st.pe[k]; });
+        (st.received || []).forEach(function (r) { if (!S0.received.some(function (q) { return q.kind === r.kind && q.ts === r.ts; })) S0.received.push(r); });
+        S0.received.sort(function (a, b) { return a.ts < b.ts ? 1 : -1; }); }
       var S = T.S(), got = [], chain = addScript('vendor/pdf.min.js');
       (j.files || []).filter(function (f) { return f.b64; }).sort(function (a, b) { return a.report < b.report ? 1 : -1; }).forEach(function (f) {   // Key Performance first, then Actual & Forecast
         chain = chain.then(function () { return pdfCells(f.b64); }).then(function (cells) {
@@ -383,10 +390,62 @@
       });
       return chain.then(function () {
         (j.texts || []).slice().reverse().forEach(function (t) { if (!TE.isEODText(t.body || '')) return; var e = TE.parseEODText(t.body); if (!e) return; var d = {}; d[e.day] = e.d; TE.mergeDaily(S, d, { kind: 'eod', asOf: e.closed + 'T03:45', file: t.subject, mtd: e.mtd, to: e.day }); if (got.indexOf('End of Day') < 0) got.push('End of Day'); });
-        feed = { status: 'ok', note: 'Guestline feed · ' + (S.af ? when(S.af.asOf) : 'no report yet'), got: got }; chip(); rerender();
+        feed = { status: 'ok', note: 'Guestline feed · ' + (S.af ? when(S.af.asOf) : 'no report yet'), got: got, messages: keep.messages, version: keep.version }; chip(); rerender();
       });
     }).catch(function (e) { feed = { status: 'bad', note: 'Gmail feed could not be read' }; chip(); });
   }
+
+  /* ---------- report tracker ---------- */
+  var TRK_START = '2026-11-16', TKEY = 'hosbusiness_track';
+  var TRK = [
+    ['auto', 'af', 'Actual & Forecast', 'Email, 07:00', 'Actual & Forecast', 1], ['auto', 'kp', 'Key Performance', 'Email, 07:00', 'Key Performance', 1], ['auto', 'eod', 'End of Day', 'Email, about 03:45', 'End of Day', 1],
+    ['auto', 'flash', 'Manager’s Flash', 'Email, morning', "Manager's Flash", 1], ['auto', 'bs', 'Booking Source', 'Email, 07:00 · arrives empty, schedule needs fixing', 'Booking Source', 1], ['auto', 'dep', 'Deposits', 'Email, 07:00 · not used (guest names)', 'Deposits', 1],
+    ['manual', 'pe', 'Period End', 'Rezlynx export · weekly', null, 7], ['manual', 'postings', 'Postings', 'Rezlynx export · weekly', null, 7], ['manual', 'rates', 'Daily Rate Analysis', 'Rezlynx export · weekly', null, 7],
+    ['manual', 'company', 'Company', 'Rezlynx export · weekly', null, 7], ['manual', 'cancels', 'Cancellations', 'Rezlynx export · weekly', null, 7], ['manual', 'noshows', 'No Shows', 'Rezlynx export · weekly', null, 7],
+    ['manual', 'overrides', 'Rate Override', 'Rezlynx export · weekly', null, 7], ['manual', 'rooms', 'Room Usage', 'Rezlynx export · weekly', null, 7], ['manual', 'segments', 'Revenue By Market Segment', 'Rezlynx export · monthly', null, 31],
+    ['manual', 'blocks', 'Block Forecast', 'Rezlynx export · monthly', null, 31], ['manual', 'xero-costs', 'Xero cost accounts (bar, restaurant, rooms)', 'Xero export · monthly', null, 31],
+    ['manual', 'xero-mr', 'Xero Management Report', 'Xero export · monthly', null, 31], ['manual', 'acc-7h', '7H management accounts', 'Workbook into the P&amp;L dashboard · monthly', null, 31]
+  ];
+  function ticks() { try { return JSON.parse(localStorage.getItem(TKEY) || '{}'); } catch (e) { return {}; } }
+  function setTicks(o) { try { localStorage.setItem(TKEY, JSON.stringify(o)); } catch (e) {} }
+  function isoDay(v) { var d = new Date(v); if (isNaN(d)) return String(v).slice(0, 10); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function tracker() {
+    var T = window.Trading, S = T ? T.S() : {}, tk = ticks(), now = new Date(), today = isoDay(now), days = [], d = new Date(TRK_START + 'T12:00:00');
+    while (isoDay(d) <= today) { days.push(isoDay(d)); d.setDate(d.getDate() + 1); } days = days.slice(-90);
+    var mail = {}; (feed.messages || []).forEach(function (m) { var rep = m.report; if ((!rep || rep === 'Not recognised') && /\bEOD\b/i.test(m.subject || '')) rep = 'End of Day'; mail[rep + '|' + isoDay(m.received)] = 1; });
+    var up = {}; (S.received || []).forEach(function (r) { var k = r.kind === 'pe' && /EOD/i.test(r.file || '') ? 'eod' : r.kind; up[k + '|' + String(r.ts).slice(0, 10)] = 1; });
+    var gen = window.COSTS_DATA && window.COSTS_DATA.generated ? isoDay(window.COSTS_DATA.generated) : ''; if (gen) up['xero-costs|' + (gen < TRK_START ? TRK_START : gen)] = 1; if (window.ACCOUNTS_DATA) up['xero-mr|' + TRK_START] = 1;
+    var head = '<tr><th class="rt-name">Report</th><th class="rt-st">Status</th>' + days.map(function (k) { var dt = new Date(k + 'T12:00:00'); return '<th class="rt-d' + (k === today ? ' today' : '') + (dt.getDay() === 1 ? ' wk' : '') + '">' + ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][dt.getDay()] + '<b>' + dt.getDate() + '</b><i>' + MN[dt.getMonth()] + '</i></th>'; }).join('') + '</tr>';
+    var row = function (r) {
+      var auto = r[0] === 'auto', last = '', cells = days.map(function (k) {
+        var id = r[1] + '|' + k, got = auto ? (mail[r[4] + '|' + k] || up[id]) : (tk[id] || up[id]); if (got) last = k;
+        if (auto) { var late = k < today || (k === today && now.getHours() >= 8); return '<td class="rt-d' + (k === today ? ' today' : '') + '">' + (got ? '<span class="rt-ok" title="Received ' + dlabel(k) + '">✓</span>' : k === TRK_START ? '<span class="rt-na" title="Before the email feed started">–</span>' : late ? '<span class="rt-miss" title="Not received">✕</span>' : '<span class="rt-na" title="Not due yet">·</span>') + '</td>'; }
+        return '<td class="rt-d' + (k === today ? ' today' : '') + '"><label class="tick sm" title="' + esc(r[2].replace(/&amp;/g, '&')) + ', ' + dlabel(k) + '"><input type="checkbox" data-trk="' + id + '"' + (got ? ' checked' : '') + (up[id] ? ' data-up="1"' : '') + '><span></span></label></td>';
+      }).join('');
+      var age = last ? Math.round((Date.parse(today) - Date.parse(last)) / 864e5) : null, st = auto ? (age === 0 ? '<span class="pill good">Received today</span>' : age === null ? '<span class="pill">Not received yet</span>' : '<span class="pill warn">Last ' + dlabel(last) + '</span>') : (age === null ? '<span class="pill warn">Not loaded yet</span>' : age > r[5] ? '<span class="pill bad">Due · last ' + dlabel(last) + '</span>' : '<span class="pill good">Up to date · ' + dlabel(last) + '</span>');
+      return '<tr><td class="rt-name"><b>' + r[2] + '</b><small>' + r[3] + '</small></td><td class="rt-st">' + st + '</td>' + cells + '</tr>';
+    };
+    var sec = function (t, n) { return '<tr class="rt-sec"><td class="rt-name">' + t + '</td><td class="rt-st"></td><td colspan="' + days.length + '">' + n + '</td></tr>'; };
+    var synced = feed.version >= 3;
+    return '<div class="card"><h2>Report tracker</h2><p class="sub">Every report the hub uses, by day from ' + dlabel(TRK_START) + '. Emailed reports tick themselves when they arrive. For the others, tick the day you exported and loaded them; loading a file here ticks it for you.</p>' +
+      '<div class="rt-wrap" id="rt-wrap"><table class="rt">' + head + sec('Arrive by email', 'ticked automatically from the Gmail log') + TRK.filter(function (r) { return r[0] === 'auto'; }).map(row).join('') + sec('Exported by hand', 'tick when loaded') + TRK.filter(function (r) { return r[0] === 'manual'; }).map(row).join('') + '</table></div>' +
+      '<div class="rt-up"><div><b>Load exported reports</b><p>Rezlynx exports (Excel or CSV): Period End, Postings, Daily Rate Analysis, Company, Cancellations, No Shows, Rate Override, Room Usage, Market Segment, Block Forecast, Actual &amp; Forecast. Any number at once.</p></div><label class="btn" for="rt-file">Choose files</label><input type="file" id="rt-file" multiple accept=".csv,.xls,.xlsx" hidden></div><div id="rt-msg" class="rt-msg">' + (trkMsg || '') + '</div>' +
+      '<p class="note">' + (synced ? 'Ticks and loaded reports are saved online through the Gmail script, so every director sees the same.' : feedUrl() ? 'Ticks are kept in this browser until the Gmail script is updated to version 3; after that they are saved online for everyone.' : 'Ticks are kept in this browser only. Connect the Gmail script below to save them online.') + ' Xero and 7H files are loaded on their own pages (Supplier costs and the P&amp;L dashboard); tick them here once done.</p></div>';
+  }
+  var trkMsg = '';
+  function saveOnline() {
+    var u = feedUrl(), T = window.Trading; if (!u || !T || !(feed.version >= 3)) return Promise.resolve(false);
+    var S = T.S(), m = /[?&]key=([^&]+)/.exec(u), body = { key: m ? decodeURIComponent(m[1]) : '', store: { savedAt: new Date().toISOString(), x: S.x || {}, pe: S.pe || {}, received: (S.received || []).filter(function (r) { return ['af', 'kp'].indexOf(r.kind) < 0 && !/EOD/i.test(r.file || ''); }).slice(0, 60) } };
+    return fetch(u.split('?')[0], { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }).then(function (r) { return r.json(); }).then(function (j) { return !!j.ok; }).catch(function () { return false; });
+  }
+  window.HubLoaded = function (msg) {
+    var ok = (msg || []).filter(function (x) { return !/not a report/.test(x); }).length;
+    trkMsg = (msg || []).map(function (x) { return '<div>' + esc(x) + '</div>'; }).join('');
+    saveOnline().then(function (saved) {
+      trkMsg += ok ? (saved ? '<div class="ok">Saved online. Every director will see these on their next sign-in.</div>' : '<div class="warn">Loaded in this browser only. To keep them, either update the Gmail script to version 3, or use “Download trading-data.js” on the Trading page and upload it to the repo.</div>') : '';
+      if (document.querySelector('#t-pf-data.on')) renderData();
+    });
+  };
 
   /* ---------- Data & reports ---------- */
   var KIND = { af: ['Actual & Forecast', 'Occupancy, rate and revenue by night'], pe: ['Period End / End of Day', 'Revenue by outlet, payments, deposits'], company: ['Company', 'Booking sources'], segments: ['Forecast Revenue By Market Segment', 'Segment mix on the books'], rates: ['Daily Rate Analysis', 'Rate plans sold'], cancels: ['Cancellations', 'Cancellations and notice given'], noshows: ['No Shows', 'No-show rooms'], overrides: ['Rate Override', 'Rates changed from the plan'], blocks: ['Block Forecast', 'Group blocks held'], rooms: ['Room Usage', 'Room stock and out of service'], bizdone: ['Business Done', 'Not used'], commission: ['Agent Commission', 'Not used (report was empty)'] };
@@ -411,10 +470,11 @@
     if (A) refs.push(['Xero', 'Management Report', 'month ended ' + A.period, '16 Nov', 'Profitability (latest month), cash, creditors']);
     if (PD && PD.IDS) refs.push(['Management accounts', 'Departmental accounts workbook, one per month', PD.IDS.map(function (id) { return PD.LABEL[id].split(' ')[0].slice(0, 3); }).join(', ') + ' ' + PD.IDS[PD.IDS.length - 1].slice(0, 4), 'via the P&amp;L dashboard', 'Profitability, labour, KPIs, budget and forecast']);
     refs.push(['Market research', 'Wholesale keg and supply prices checked online', '–', '14 Nov', 'Bar &amp; keg prices, savings']);
-    $('pf-data').innerHTML = gmailBox() + (T && T.feedPanel ? T.feedPanel() : '') +
+    $('pf-data').innerHTML = tracker() + gmailBox() + (T && T.feedPanel ? T.feedPanel() : '') +
       '<div class="card"><h2>Data references</h2><p class="sub">Every report imported into HosBUSINESS, newest first, and what it feeds</p><div class="scroll"><table><tr><th>System</th><th>Report</th><th>File or period</th><th>Run or loaded</th><th>Used for</th></tr>' + refs.map(function (r) { return '<tr><td>' + r[0] + '</td><td><b>' + esc(r[1]) + '</b></td><td style="word-break:break-all">' + esc(r[2]) + '</td><td>' + r[3] + '</td><td>' + r[4] + '</td></tr>'; }).join('') + '</table></div></div>' +
       '<div class="card"><h2>Load new data</h2><p class="sub">Until the Gmail feed is live, files are loaded by hand</p><p><button class="btn" data-go="pf-trading">Load Guestline reports (bottom of the Trading page)</button> &nbsp; <button class="btn" data-go="update">Load Xero cost exports</button></p></div>';
     var u = ''; try { u = localStorage.getItem(GKEY) || ''; } catch (e) {} if (u) gmailCheck();
+    var w = $('rt-wrap'); if (w) w.scrollLeft = w.scrollWidth;
   }
 
   /* ---------- explanations ---------- */
@@ -490,6 +550,8 @@
   document.addEventListener('change', function (e) {
     var t = e.target;
     if (t.id === 'jump' && t.value) go(t.value);
+    if (t.id === 'rt-file' && t.files && t.files.length && window.Trading) { $('rt-msg').innerHTML = '<div>Reading ' + t.files.length + ' file' + (t.files.length > 1 ? 's' : '') + '…</div>'; window.Trading.loadFiles(t.files); return; }
+    if (t.dataset && t.dataset.trk) { if (t.dataset.up && !t.checked) { t.checked = true; return; } var tk1 = ticks(); if (t.checked) tk1[t.dataset.trk] = 1; else delete tk1[t.dataset.trk]; setTicks(tk1); var fu = feedUrl(); if (fu && feed.version >= 3) fetch(fu + '&tick=' + encodeURIComponent(t.dataset.trk + '|' + (t.checked ? 1 : 0))).catch(function () {}); var sl = $('rt-wrap') ? $('rt-wrap').scrollLeft : 0; renderData(); if ($('rt-wrap')) $('rt-wrap').scrollLeft = sl; return; }
     if (t.dataset && t.dataset.staff) { var cur = []; try { cur = JSON.parse(localStorage.getItem(SKEY2) || '[]'); } catch (e3) {} var ix = cur.indexOf(t.dataset.staff); if (t.checked && ix < 0) cur.push(t.dataset.staff); if (!t.checked && ix >= 0) cur.splice(ix, 1); try { localStorage.setItem(SKEY2, JSON.stringify(cur)); } catch (e4) {} rerender(); return; }
     if (t.id === 'tr-range') { trRange = t.value; renderTrends(); }
     if (t.dataset && t.dataset.done) { var D = doneMap(); if (t.checked) D[t.dataset.done] = new Date().toISOString().slice(0, 10); else delete D[t.dataset.done]; try { localStorage.setItem(DKEY, JSON.stringify(D)); } catch (e2) {} if (document.querySelector('#t-pf-actions.on')) renderActions(); else { var a = t.closest('.act'); if (a) a.classList.toggle('done', t.checked); } }

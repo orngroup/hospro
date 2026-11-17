@@ -161,6 +161,18 @@ button.tile{display:flex;flex-direction:column;justify-content:flex-start;width:
 .hp-key{width:245px!important}
 .hp-today .tiles{grid-template-columns:repeat(5,minmax(0,1fr))}@media(max-width:1250px){.hp-today .tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:900px){.hp-today .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .segs button:disabled{opacity:.4;cursor:not-allowed}
+.rt-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:4px 0 14px}
+table.rt{border-collapse:separate;border-spacing:0;width:max-content;font-size:13px}table.rt th,table.rt td{border-bottom:1px solid var(--line2);padding:6px 4px;text-align:center;background:#fff}
+.rt .rt-name{position:sticky;left:0;z-index:2;text-align:left;min-width:270px;max-width:270px;padding:7px 12px;border-right:1px solid var(--line)}.rt .rt-name small{display:block;color:var(--ink3);font-size:11.5px;line-height:1.3}
+.rt .rt-st{position:sticky;left:270px;z-index:2;min-width:150px;text-align:left;padding:6px 10px;border-right:2px solid var(--line);white-space:nowrap}
+.rt th{position:sticky;top:0;font-weight:600;color:var(--ink2);font-size:11px;background:#f7f9fb!important}.rt th.rt-d{min-width:40px}.rt th.rt-d b{display:block;font-size:14px;color:var(--ink);font-weight:800}.rt th.rt-d i{display:block;font-style:normal;font-size:10px;color:var(--ink3)}
+.rt .rt-d.today{background:#fff8ec!important}.rt th.rt-d.today b{color:#b3261e}.rt th.rt-d.wk{border-left:2px solid var(--line)}
+.rt tr.rt-sec td{background:var(--navy)!important;color:#fff;font-weight:700;font-size:12px;text-align:left;letter-spacing:.3px;padding:7px 12px}.rt tr.rt-sec td:last-child{font-weight:400;color:#c7d2e0}
+.rt-ok{color:#1a8f63;font-weight:800;font-size:15px}.rt-miss{color:#b3261e;font-weight:800}.rt-na{color:#b9c1cc}
+.tick.sm span{width:20px;height:20px;border-radius:5px;margin:0 auto}.tick.sm{display:inline-block;margin:0}
+.rt-up{display:flex;align-items:center;gap:18px;border:2px dashed var(--line);border-radius:12px;padding:14px 18px;background:#fafbfc}.rt-up b{font-size:14.5px}.rt-up p{margin:3px 0 0;font-size:12.5px;color:var(--ink2)}.rt-up .btn{margin-left:auto;white-space:nowrap;cursor:pointer}
+.rt-msg{font-size:13px;margin:10px 0 0;color:var(--ink2)}.rt-msg div{padding:2px 0}.rt-msg .ok{color:#1a8f63;font-weight:700}.rt-msg .warn{color:#9a6400;font-weight:600}
+.pill.bad{background:#fbe9e7;color:#b3261e;border-color:#f3c5c0}
 </style>
 </head>
 <body class="locked">

@@ -227,8 +227,8 @@
     var dl = $('tr-dl'); if (dl) dl.onclick = function () { var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['/* Rezlynx trading data — replace this file to update the Trading tab */\nwindow.TRADING_DATA = ' + JSON.stringify(S) + ';\n'], { type: 'text/javascript' })); a.download = 'trading-data.js'; document.body.appendChild(a); a.click(); a.remove(); };
     var up = $('tr-up'); if (up) up.onchange = function () { if (up.files.length) load(up.files); };
   }
-  function load(files) {
-    var msg = [], left = files.length, done = function () { if (--left === 0) { changed = true; render(); $('tr-msg').innerHTML = msg.map(esc).join('<br>'); } };
+  function load(files, cb) {
+    var msg = [], left = files.length, done = function () { if (--left === 0) { changed = true; render(); if ($('tr-msg')) $('tr-msg').innerHTML = msg.map(esc).join('<br>'); if (cb) cb(msg); if (window.HubLoaded) window.HubLoaded(msg); } };
     var withXlsx = function (cb) { if (window.XLSX) return cb(); var sc = document.createElement('script'); sc.src = 'vendor/xlsx.full.min.js'; sc.onload = cb; document.head.appendChild(sc); };
     Array.prototype.forEach.call(files, function (f) {
       var fr = new FileReader(), meta = { asOf: stampFromName(f.name), file: f.name, basis: 'gross' };
@@ -320,6 +320,6 @@
   }
   var chart2 = null;
 
-  window.Trading = { resetMonth: function () { month = null; }, feedPanel: feedPanel, tri: tri, avgTiles: avgTiles, S: function () { return S; }, agg: agg, rowsFor: rowsFor, asOfDay: asOfDay, observations: observations, ROOMS: ROOMS, net: net, pePeriod: pePeriod, peGroup: peGroup };
+  window.Trading = { loadFiles: load, resetMonth: function () { month = null; }, feedPanel: feedPanel, tri: tri, avgTiles: avgTiles, S: function () { return S; }, agg: agg, rowsFor: rowsFor, asOfDay: asOfDay, observations: observations, ROOMS: ROOMS, net: net, pePeriod: pePeriod, peGroup: peGroup };
   if (window.Profit && window.Profit.register) { window.Profit.register('trading', render); window.Profit.register('demand', renderDemand); }
 })();
