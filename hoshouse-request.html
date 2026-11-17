@@ -377,6 +377,7 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         <div class="bigcard" id="card-hostv" onclick="showSection('hostv')"><div class="bc-n" id="bc-tv-n">0%</div><div class="bc-banner"><div class="bc-t">HosTV</div><div class="bc-s">Bedroom TV audit</div></div></div>
         <div class="bigcard" id="card-priority" onclick="showSection('priority')"><div class="bc-banner"><div class="bc-t">HosPRIORITY</div><div class="bc-s">Flag rooms · alert housekeeping</div></div></div>
         <div class="bigcard" id="card-night" onclick="showSection('notes')"><div class="bc-banner"><div class="bc-t">HosNOTES</div><div class="bc-s">Reception notes board</div></div></div>
+        <div class="bigcard" id="card-firelog" onclick="showSection('firelog')" style="background-color:#7a1f14"><div class="bc-n" id="bc-fire-n">0</div><div class="bc-banner"><div class="bc-t">🔥 HosFIRE Log</div><div class="bc-s">Fire alarms &amp; drills</div></div></div>
       </div>
         </div>
         <aside class="proc-rail" id="proc-rail">
@@ -408,6 +409,48 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
     <div class="hd-back hide" id="hd-back">
       <button class="bk" onclick="goHome()">← Back to cards</button>
       <span class="sct" id="hd-sec-title"></span>
+    </div>
+
+    <!-- HosFIRE Log: record a fire alarm / drill (left) · log of all events (right) -->
+    <div class="pane" id="pane-firelog">
+      <div class="pane-form">
+        <div class="card">
+          <div style="font:800 14px Lato;color:#7a1f14;margin-bottom:4px">🔥 Record a fire event</div>
+          <div class="muted" style="font-size:12px;margin-bottom:12px">Log every fire alarm activation, fire drill and weekly test. Entries are kept as a permanent record.</div>
+          <label class="fl">Type</label>
+          <select id="fl-type">
+            <option value="alarm">🔴 Fire alarm (activation)</option>
+            <option value="drill">🟠 Fire drill</option>
+            <option value="test">🟢 Weekly test / fire walk</option>
+          </select>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <div style="flex:1"><label class="fl">Date</label><input id="fl-date" type="date"></div>
+            <div style="flex:1"><label class="fl">Time</label><input id="fl-time" type="time"></div>
+          </div>
+          <label class="fl" style="margin-top:12px">Zone / location</label>
+          <input id="fl-zone" placeholder="e.g. Panel zone 3 — kitchen corridor">
+          <label class="fl" style="margin-top:12px">Cause / reason</label>
+          <input id="fl-cause" placeholder="e.g. Burnt toast, test, call point broken">
+          <label class="fl" style="margin-top:12px">Action taken</label>
+          <input id="fl-action" placeholder="e.g. Checked zone, silenced &amp; reset panel">
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <div style="flex:1"><label class="fl">Reset / silenced by</label><input id="fl-reset" placeholder="Name"></div>
+            <div style="flex:1"><label class="fl">Duration</label><input id="fl-dur" placeholder="e.g. 4 min"></div>
+          </div>
+          <label class="fl" style="margin-top:12px"><input type="checkbox" id="fl-acc" style="width:auto;margin-right:6px;vertical-align:-2px">Everyone accounted for (drills)</label>
+          <label class="fl" style="margin-top:10px">Logged by</label>
+          <select id="fl-by"></select>
+          <label class="fl" style="margin-top:12px">Notes</label>
+          <textarea id="fl-notes" rows="3" placeholder="Anything else worth recording…"></textarea>
+          <button class="btn btn-go" style="margin-top:12px;background:#7a1f14" onclick="flSave()">Save to fire log →</button>
+          <div id="fl-msg" class="muted" style="font-size:12px;min-height:14px;margin-top:6px"></div>
+        </div>
+      </div>
+      <div class="pane-list">
+        <div class="sechd" style="margin-top:0;display:flex;align-items:center;gap:10px">Fire log <span class="ib-count" id="fl-count"></span></div>
+        <input id="fl-search" type="text" placeholder="🔍 Search by date, zone, cause or type…" oninput="flRender()" style="margin-bottom:12px">
+        <div id="fl-list"><div class="ib-empty">Loading…</div></div>
+      </div>
     </div>
 
     <!-- Information for Reception: add (left) · search + all notices (right) -->
@@ -992,7 +1035,7 @@ async function startBoard(){
 function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } if(H_UNSUB){ H_UNSUB(); H_UNSUB=null; } stopVD(); B_READY=false; M_READY=false; }
 function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l])=>`<button class="chip ${B_FILTER===ff?'on':''}" onclick="bSetFilter('${ff}')">${l}</button>`).join(''); bRender(); }
 // Maintenance and Shift Handover are gated by a staff code (remove a name from GATED to open that section to all).
-const SECTIONS=['requests','deliveries','maintenance','handover','roomcheck','directory','hostv','priority','notes','info'];
+const SECTIONS=['requests','deliveries','maintenance','handover','roomcheck','directory','hostv','priority','notes','info','firelog'];
 const GATED={maintenance:true};  // only HosFIX stays code-protected; everything else is open
 const UNLOCKED={};
 let GATE_TARGET=null;
@@ -1003,7 +1046,7 @@ function checkCode(){ const v=($('cg-in').value||'').trim(); if(v==='3132'){ con
 function openFire(){ $('ovl-fire').classList.add('on'); }
 function closeFire(){ $('ovl-fire').classList.remove('on'); }
 // Tap a big card → that section takes over the whole page. goHome() returns to the cards.
-const SEC_TITLES={requests:'🧹 HosGUEST — Guest requests', deliveries:'📦 HosPARCEL — Deliveries', maintenance:'🔧 HosFIX — Maintenance', handover:'🔄 HosSHIFT — Handover', roomcheck:'🔍 HosROOM — Room check', directory:'📇 HosSTAFF — Directory', hostv:'📺 HosTV — TV audit', priority:'⚡ HosPRIORITY', notes:'📝 HosNOTES — Reception notes', info:'ℹ️ Information for Reception'};
+const SEC_TITLES={requests:'🧹 HosGUEST — Guest requests', deliveries:'📦 HosPARCEL — Deliveries', maintenance:'🔧 HosFIX — Maintenance', handover:'🔄 HosSHIFT — Handover', roomcheck:'🔍 HosROOM — Room check', directory:'📇 HosSTAFF — Directory', hostv:'📺 HosTV — TV audit', priority:'⚡ HosPRIORITY', notes:'📝 HosNOTES — Reception notes', info:'ℹ️ Information for Reception', firelog:'🔥 HosFIRE Log — Fire alarms & drills'};
 function showSection(x){
   if(GATED[x] && !UNLOCKED[x]){ openCodeGate(x); return; }
   if(x==='handover'){ try{ soInit(); clInit(); }catch(e){} }
@@ -1012,6 +1055,7 @@ function showSection(x){
   if(x==='hostv'){ try{ tvInit(); }catch(e){} }
   if(x==='priority'){ try{ prioInit(); }catch(e){} }
   if(x==='notes'){ try{ notesInit(); }catch(e){} }
+  if(x==='firelog'){ try{ flInit(); }catch(e){} }
   SECTIONS.forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.toggle('on', s===x); });
   const home=$('hd-home'); if(home) home.classList.add('hide');
   const t=$('hd-sec-title'); if(t) t.textContent=SEC_TITLES[x]||'';
@@ -1304,7 +1348,8 @@ const CL_EARLY=[
  'Booking.com & Expedia — respond to reviews/requests, note requests on Guestline; check kids going to executive rooms, add extra bed from upsell inventory',
  'Check and deal with emails and tick them; scroll to past days — all emails must be done',
  'Inform the afternoon shift what went on via the handover sheet',
- 'Take a picture and send on Reception chat'
+ 'Take a picture and send on Reception chat',
+ 'Keep reception tidy; wipe the back office desk after your meal and drink'
 ];
 const CL_LATE=[
  'Receive handover from the early shift + read the handover sheet',
@@ -1321,7 +1366,8 @@ const CL_LATE=[
  'Reply to Booking.com and Expedia reviews',
  'Check and deal with emails and tick them; scroll to past emails — all must be done',
  'On finishing: print the operator shift, close PDQ shifts, staple PDQ reports to the operator shift and file in today’s folder',
- 'Take a picture and send on Reception chat'
+ 'Take a picture and send on Reception chat',
+ 'Keep reception tidy; wipe the back office desk after your meal and drink'
 ];
 const CL_NIGHT=[
  'Receive handover from the late shift + read the handover sheet',
@@ -1336,7 +1382,8 @@ const CL_NIGHT=[
  'Clean the coffee machine (Thursday and Sunday)',
  '2nd fire walk between 04:00 and 05:00',
  'Replenish the water and cups at reception',
- 'Take a picture and send on Reception chat'
+ 'Take a picture and send on Reception chat',
+ 'Keep reception tidy; sweep the reception floor including the back office; wipe the back office desk; empty all reception bins'
 ];
 const CL_SHIFTS=[
  {key:'early', label:'☀️ Early', title:'☀️ Early Shift Checklist', col:'#b06a00', tasks:CL_EARLY, start:[7,0],  hours:'7am–3pm'},
@@ -1895,6 +1942,74 @@ function rotaRender(){
     });
     body.innerHTML=html||'<div class="muted" style="text-align:center;padding:30px">No staff in this department.</div>';
   }
+}
+
+/* ===================== HosFIRE Log — fire alarms & drills ===================== */
+var FL_ROWS=[], FL_UNSUB=null, FL_INIT=false;
+var FL_PEOPLE=['Patrik','Joy','Alison','Alice','Manjusha','Manju','Alan','Amal','Rowan','Veronica'];
+var FL_TYPES={alarm:{lab:'🔴 Fire alarm',bg:'#fdeceb',col:'#b3261e',bd:'#f0c4c0'},drill:{lab:'🟠 Fire drill',bg:'#fff5e6',col:'#b06a00',bd:'#f2d9ab'},test:{lab:'🟢 Weekly test',bg:'#e8f6ee',col:'#1d7a4d',bd:'#bfe3cd'}};
+function flNowTime(){ try{ return new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function flInit(){
+  var sel=$('fl-by'); if(sel && sel.options.length===0){ sel.innerHTML='<option value="">— choose —</option>'+FL_PEOPLE.map(function(n){return '<option>'+esc(n)+'</option>';}).join(''); }
+  var d=$('fl-date'); if(d && !d.value) d.value=todayISO();
+  var t=$('fl-time'); if(t && !t.value) t.value=flNowTime();
+  if(!FL_INIT){ FL_INIT=true; flSubscribe(); }
+  flRender();
+}
+function flSubscribe(){
+  if(!db) return;
+  FL_UNSUB=db.collection('hosfirelog').onSnapshot(function(qs){
+    FL_ROWS=qs.docs.map(function(dc){ var v=dc.data()||{}; v.id=dc.id; return v; })
+      .sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+    var n=$('bc-fire-n'); if(n) n.textContent=FL_ROWS.length;
+    flRender();
+  }, function(){});
+}
+function flSave(){
+  var type=$('fl-type').value, date=$('fl-date').value, time=$('fl-time').value;
+  var zone=($('fl-zone').value||'').trim(), cause=($('fl-cause').value||'').trim();
+  var by=$('fl-by').value;
+  var msg=$('fl-msg');
+  if(!date||!time){ if(msg){msg.style.color='#b3261e';msg.textContent='Enter the date and time.';} return; }
+  if(!zone && !cause){ if(msg){msg.style.color='#b3261e';msg.textContent='Add a zone/location or a cause.';} return; }
+  if(!by){ if(msg){msg.style.color='#b3261e';msg.textContent='Choose who logged it.';} return; }
+  if(!db){ if(msg){msg.style.color='#b3261e';msg.textContent='Offline — cannot save.';} return; }
+  var rec={ type:type, date:date, time:time, zone:zone, cause:cause,
+    action:($('fl-action').value||'').trim(), resetBy:($('fl-reset').value||'').trim(),
+    duration:($('fl-dur').value||'').trim(), accounted: $('fl-acc').checked,
+    by:by, notes:($('fl-notes').value||'').trim(),
+    ts:Date.now(), createdAt:new Date().toISOString() };
+  db.collection('hosfirelog').add(rec).then(function(){
+    if(msg){ msg.style.color='#1d7a4d'; msg.textContent='✓ Logged.'; }
+    ['fl-zone','fl-cause','fl-action','fl-reset','fl-dur','fl-notes'].forEach(function(id){ var e=$(id); if(e) e.value=''; });
+    $('fl-acc').checked=false; $('fl-time').value=flNowTime();
+    try{ toast('🔥 Fire event logged'); }catch(e){}
+  }).catch(function(){ if(msg){ msg.style.color='#b3261e'; msg.textContent='Could not save — check connection.'; } });
+}
+function flRender(){
+  var box=$('fl-list'); if(!box) return;
+  var q=(($('fl-search')&&$('fl-search').value)||'').toLowerCase().trim();
+  var rows=FL_ROWS.filter(function(r){ if(!q) return true; var hay=((r.date||'')+' '+(r.time||'')+' '+(FL_TYPES[r.type]?FL_TYPES[r.type].lab:'')+' '+(r.zone||'')+' '+(r.cause||'')+' '+(r.action||'')+' '+(r.by||'')+' '+(r.notes||'')).toLowerCase(); return hay.indexOf(q)>-1; });
+  var cnt=$('fl-count'); if(cnt) cnt.textContent=FL_ROWS.length+(q?(' · '+rows.length+' match'):(' event'+(FL_ROWS.length===1?'':'s')));
+  if(!rows.length){ box.innerHTML='<div class="ib-empty">'+(q?'No fire events match your search.':'No fire events logged yet.')+'</div>'; return; }
+  box.innerHTML=rows.map(function(r){
+    var ty=FL_TYPES[r.type]||FL_TYPES.alarm;
+    var dlabel=r.date; try{ dlabel=new Date(r.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }catch(_){}
+    var bits=[];
+    if(r.zone) bits.push('<b>Zone:</b> '+esc(r.zone));
+    if(r.cause) bits.push('<b>Cause:</b> '+esc(r.cause));
+    if(r.action) bits.push('<b>Action:</b> '+esc(r.action));
+    if(r.resetBy) bits.push('<b>Reset by:</b> '+esc(r.resetBy));
+    if(r.duration) bits.push('<b>Duration:</b> '+esc(r.duration));
+    if(r.type==='drill') bits.push('<b>All accounted for:</b> '+(r.accounted?'✓ Yes':'—'));
+    return '<div style="background:#fff;border:1px solid var(--line);border-left:4px solid '+ty.col+';border-radius:12px;padding:12px 13px;margin-bottom:10px">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px"><span style="background:'+ty.bg+';color:'+ty.col+';border:1px solid '+ty.bd+';border-radius:7px;padding:2px 9px;font-weight:800;font-size:12px">'+ty.lab+'</span>'
+      +'<span style="font-weight:800;font-size:14px;color:var(--navy)">'+esc(dlabel)+' · '+esc(r.time||'')+'</span></div>'
+      +'<div style="font-size:13px;line-height:1.5;color:#2a3340">'+bits.join(' &nbsp;·&nbsp; ')+'</div>'
+      +(r.notes?('<div style="font-size:12.5px;color:#555;margin-top:4px">'+esc(r.notes)+'</div>'):'')
+      +'<div style="font-size:12px;color:#7a1f14;font-weight:700;margin-top:6px">Logged by '+esc(r.by||'')+'</div>'
+      +'</div>';
+  }).join('');
 }
 
 /* ===================== HosNOTES — reception notes board ===================== */
