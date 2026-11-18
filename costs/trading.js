@@ -161,7 +161,7 @@
     } else {
       h += '<div class="card"><h2>Revenue by outlet</h2><p class="sub">No Period End report has been loaded for ' + mlabel(month) + '.</p></div>';
     }
-    h += observations(month, act, bks) + feedPanel() + loader();
+    h += (window.HubTermCard ? window.HubTermCard() : '') + observations(month, act, bks) + feedPanel() + loader();
     el.innerHTML = h; wire(); drawChart();
   }
   function pickupNote() {
@@ -236,7 +236,7 @@
         fr.onload = function () { if (T.isAF(fr.result)) { var p = T.parseAF(fr.result); S = T.merge(S, 'af', p, meta); msg.push(f.name + ': Actual & Forecast, ' + p.length + ' nights'); } else msg.push(f.name + ': not a report this tab reads yet'); done(); };
         fr.readAsText(f);
       } else {
-        fr.onload = function () { withXlsx(function () { try { var wb = XLSX.read(fr.result), aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' }); if (T.isPE(aoa)) { var p = T.parsePE(aoa); S = T.merge(S, 'pe', p, meta); msg.push(f.name + ': Period End (' + p.type + ' from ' + p.from + ')'); } else { var rep = T.readReport(aoa); if (rep) { S = T.mergeReport(S, rep, meta); msg.push(f.name + ': ' + (rep.skipped ? 'recognised, nothing used from it yet' : 'loaded (' + rep.kind + ')')); } else msg.push(f.name + ': not a report this tab reads yet'); } } catch (e) { msg.push(f.name + ': could not be read'); } done(); }); };
+        fr.onload = function () { withXlsx(function () { try { var wb = XLSX.read(fr.result), aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' }); if (T.isPE(aoa)) { var p = T.parsePE(aoa); S = T.merge(S, 'pe', p, meta); msg.push(f.name + ': Period End (' + p.type + ' from ' + p.from + ')'); } else { var hd = ''; try { hd = new TextDecoder().decode(new Uint8Array(fr.result).slice(0, 3000)); } catch (e0) {} var rep = T.readReport(aoa, f.name, /<html|<title/i.test(hd) ? hd : ''); if (rep) { S = T.mergeReport(S, rep, meta); msg.push(f.name + ': ' + (rep.skipped ? 'recognised, nothing used from it yet' : 'loaded (' + rep.kind + ')')); } else msg.push(f.name + ': not a report this tab reads yet'); } } catch (e) { msg.push(f.name + ': could not be read'); } done(); }); };
         fr.readAsArrayBuffer(f);
       }
     });

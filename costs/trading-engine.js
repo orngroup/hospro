@@ -98,7 +98,7 @@
   function family(plan) { return String(plan).split('_')[0] || 'Other'; }
   function board(plan) { var p = String(plan); return /_DBB/.test(p) ? 'Dinner, bed and breakfast' : /_BB/.test(p) ? 'Bed and breakfast' : /_RO/.test(p) ? 'Room only' : 'Other'; }
 
-  function readReport(aoa) {
+  function readReport(aoa, fname, head) {
     var t = title(aoa), out;
     if (/Company Report/.test(t)) {
       out = { kind: 'company', period: flat(aoa[0]).join('').trim(), rows: [], total: {} };
@@ -164,6 +164,18 @@
     } else if (/Block Forecast Report/.test(t)) {
       out = { kind: 'blocks', month: flat(aoa[1]).join('').trim(), rows: [] };
       aoa.forEach(function (r) { if (!r || !/^G[A-Z]\d+/.test(String(r[0]))) return; var days = []; for (var x = 4; x < 35; x++) if (n(r[x])) days.push(x - 3); out.rows.push({ ref: String(r[0]), name: String(r[1]), status: String(r[3]).replace(/\s+/g, ' '), total: n(r[35]), first: days[0], last: days[days.length - 1], nights: days.length }); });
+    } else if (/Plu Sales Report/i.test(t + ' ' + (head || '')) || /PLU Description Qty Gross Adjustment/i.test(t.replace(/\s+/g, ' '))) {
+      /* till (EPoS) item sales for one terminal and meal period. The terminal is not named inside the report, so it is taken from the file name. */
+      var fn = String(fname || ''), meal = /lunch/i.test(fn) ? 'Lunch' : /dinner/i.test(fn) ? 'Dinner' : /break/i.test(fn) ? 'Breakfast' : '', place = /bar/i.test(fn) ? 'Bar' : /rest/i.test(fn) ? 'Restaurant' : /room/i.test(fn) ? 'Room service' : '';
+      var pr = /From\s+(\d\d)\/(\d\d)\/(\d{4})\s+To\s+(\d\d)\/(\d\d)\/(\d{4})/i.exec(t + ' ' + (head || '')) || [];
+      out = { kind: 'plu', term: (meal && place) ? meal + ' · ' + place : (fn.replace(/^[0-9a-f]{8}-/, '').replace(/\.\w+$/, '').replace(/_/g, ' ') || 'Unlabelled'), meal: meal, place: place, from: pr[3] ? pr[3] + '-' + pr[2] + '-' + pr[1] : '', to: pr[6] ? pr[6] + '-' + pr[5] + '-' + pr[4] : '', qty: 0, gross: 0, adj: 0, net: 0, items: [] };
+      aoa.forEach(function (r) {
+        if (!r) return; var d = String(r[1] || '').trim(), code = String(r[0] || '').trim();
+        if (/^Grand Total/i.test(d)) { out.qty = n(r[2]); out.gross = n(r[3]); out.adj = n(r[4]); out.net = n(r[7]); return; }
+        if (!/^\d+$/.test(code) || !d) return;
+        if (n(r[2]) || n(r[3]) || n(r[4])) out.items.push([d, n(r[2]), n(r[3]), n(r[4]), n(r[7])]);
+      });
+      out.items.sort(function (a, b) { return b[4] - a[4]; });
     } else if (/Postings Report/.test(t)) {
       /* every till and folio posting: reduced to counts and values by day and by item. Guest names, rooms and operators are dropped. */
       out = { kind: 'postings', from: '', to: '', net: 0, count: 0, byDay: {}, byHour: {}, sect: {}, brkPrice: {}, deleted: { c: 0, v: 0 }, refunds: { c: 0, v: 0 }, codes: {} };
@@ -196,7 +208,12 @@
   }
   function mergeReport(store, rep, meta) {
     store = store || {}; store.x = store.x || {}; store.received = store.received || [];
-    if (rep.kind === 'blocks' && !rep.skipped) {
+    if (rep.kind === 'plu') {
+      /* one export per terminal and meal period: keep them side by side */
+      var pt = store.x.plu && store.x.plu.terms ? store.x.plu.terms : {};
+      pt[rep.term] = { meal: rep.meal, place: rep.place, from: rep.from, to: rep.to, qty: rep.qty, gross: rep.gross, adj: rep.adj, net: rep.net, items: rep.items, asOf: meta.asOf };
+      store.x.plu = { kind: 'plu', terms: pt, asOf: meta.asOf, file: meta.file };
+    } else if (rep.kind === 'blocks' && !rep.skipped) {
       /* one export per month: keep every month loaded, newest export of each */
       var prev = store.x.blocks && store.x.blocks.months ? store.x.blocks.months : {};
       prev[rep.month] = { rows: rep.rows, asOf: meta.asOf };
