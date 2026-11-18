@@ -14010,7 +14010,10 @@ function htRender(){
     const late = (ros&&rosStart!=null&&inMin!=null) ? (inMin-rosStart) : null;
     const endDiff = (ros&&rosEnd!=null&&outMin!=null) ? (outMin-rosEnd) : null;
     const code=(pp&&pp.code)||(ros&&ros.code)||'';
-    return {k:k,code:code,name:name,dept:dept,shift:ros?ros.shift:'',inP:inP,outP:outP,inMin:inMin,outMin:outMin,worked:worked,rosMin:rosMin,rosStart:rosStart,rosEnd:rosEnd,late:late,endDiff:endDiff,status:status};
+    // Live photo for THIS day — taken at the actual clock-in (in-punch first, then any punch today)
+    let dayPhoto=(inP&&inP.photo)||(outP&&outP.photo)||'';
+    if(!dayPhoto){ punches.some(p=>{ if(p&&p.photo){ dayPhoto=p.photo; return true; } return false; }); }
+    return {k:k,code:code,name:name,dept:dept,shift:ros?ros.shift:'',inP:inP,outP:outP,inMin:inMin,outMin:outMin,worked:worked,rosMin:rosMin,rosStart:rosStart,rosEnd:rosEnd,late:late,endDiff:endDiff,status:status,dayPhoto:dayPhoto};
   });
   const onNow=rows.filter(r=>r.inP&&!r.outP).length;
   const fin=rows.filter(r=>r.inP&&r.outP).length;
@@ -14045,8 +14048,13 @@ function htRender(){
       const dIn = r.inP ? htDiffChip('in',r.late,true) : '';
       const dOut = r.outP ? htDiffChip('out',r.endDiff,false) : '';
       const diffCell = (dIn||dOut) ? ((dIn||'')+(dIn&&dOut?'<br>':'')+(dOut||'')) : '<span style="color:#64707f">—</span>';
-      const face = HT.facesName[r.k] || (r.code&&HT.faces[String(r.code)]) || '';
-      const photo = face ? ('<img class="ht-ph" src="'+face+'" title="'+spEsc(r.name)+' — reference photo" onclick="htLb(this.src)">') : '<span style="color:#64707f">—</span>';
+      // Photo: the live shot from this day's clock-in. Nothing shown for people not clocked in today.
+      const clockedToday = !!(r.inP||r.outP);
+      const ref = HT.facesName[r.k] || (r.code&&HT.faces[String(r.code)]) || '';
+      let photo;
+      if(r.dayPhoto){ photo='<img class="ht-ph" src="'+r.dayPhoto+'" title="'+spEsc(r.name)+(r.inP?(' — clocked in '+spEsc(r.inP.time)):'')+'" onclick="htLb(this.src)">'; }
+      else if(clockedToday && ref){ photo='<img class="ht-ph" style="opacity:.45" src="'+ref+'" title="'+spEsc(r.name)+' — reference photo (no live photo on this clock-in)" onclick="htLb(this.src)">'; }
+      else { photo='<span style="color:#64707f">—</span>'; }
       html+='<tr><td style="font-weight:700">'+spEsc(r.name)+'</td><td>'+chip+'</td><td>'+rotaCell+'</td><td>'+clockedCell+'</td><td>'+diffCell+'</td><td>'+(r.worked!=null?('<b style="font-size:14px">'+htHrs(r.worked)+'</b>'):'<span style="color:#64707f">—</span>')+'</td><td>'+photo+'</td></tr>';
     });
     html+='</table></div>';
