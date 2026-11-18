@@ -645,24 +645,27 @@
     el.insertBefore(block, el.firstChild);
   }
   function tradingTally(S, from, to) {
+    /* Groups in the Guestline feed use single-letter keys as plain numbers:
+       A = accommodation, F = food, B = beverage, C = conference, M = misc, S = sundries.
+       Rooms revenue = accommodation less room hire; Other = room hire + conference + misc + sundries. */
     var days = daysIn(S, from, to);
-    var acc = 0, fb = 0, oth = 0, rooms = 0, oos = 0;
+    var acc = 0, food = 0, bev = 0, oth = 0, rooms = 0, oos = 0;
     days.forEach(function (x) {
       var g = x.groups || {};
       var codes = x.codes || {};
       var hire = codes.ROOM_HIRE || 0;
-      var roomsRev = ((g.ACCOM && g.ACCOM.n) || 0) - hire;
-      var foodRev = (g.FOOD && g.FOOD.n) || 0;
-      var bevRev = (g.BEVERAGE && g.BEVERAGE.n) || 0;
-      var confRev = (g.CONFERENCE && g.CONFERENCE.n) || 0;
-      var miscRev = (g.MISC && g.MISC.n) || 0;
-      var sundRev = (g.SUNDRIES && g.SUNDRIES.n) || 0;
-      acc += roomsRev; fb += foodRev + bevRev; oth += hire + confRev + miscRev + sundRev;
-      rooms += x.sold || 0; oos += x.oos || 0;
+      var A = +(g.A) || 0, F = +(g.F) || 0, B = +(g.B) || 0, C = +(g.C) || 0, M = +(g.M) || 0, Sg = +(g.S) || 0;
+      acc += A - hire;
+      food += F;
+      bev += B;
+      oth += hire + C + M + Sg;
+      rooms += x.sold || 0;
+      oos += x.oos || 0;
     });
+    var fb = food + bev;
     var total = acc + fb + oth, nights = days.length, avail = 120 * nights;
     return {
-      nights: nights, rooms: rooms, acc: r2(acc), fb: r2(fb), oth: r2(oth), total: r2(total), oos: oos,
+      nights: nights, rooms: rooms, acc: r2(acc), fb: r2(fb), food: r2(food), bev: r2(bev), oth: r2(oth), total: r2(total), oos: oos,
       occ: avail ? rooms / avail : null,
       adr: rooms ? acc / rooms : null,
       revpar: avail ? acc / avail : null,
@@ -703,14 +706,9 @@
       return ' <span class="v18-cmp"><span class="' + cls + '">' + (v >= 0 ? '+' : '−') + Math.abs(v * 100).toFixed(1) + '%</span></span>';
     }
 
-    // Split F&B into food vs beverage using the Guestline byDay groups
+    // F&B split from the tally (groups.F and groups.B, single-letter keys, as plain numbers)
     var days = daysIn(S, d.from, d.to);
-    var food = 0, bev = 0, foodRev = tally.fb;
-    days.forEach(function (x) {
-      var g = x.groups || {};
-      food += (g.FOOD && g.FOOD.n) || 0;
-      bev += (g.BEVERAGE && g.BEVERAGE.n) || 0;
-    });
+    var food = tally.food || 0, bev = tally.bev || 0, foodRev = tally.fb;
 
     // Breakfast counts from Postings
     var inr = 0, paid = 0, biv = 0, bpv = 0;
