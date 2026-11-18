@@ -2,7 +2,8 @@
    compares them with the management accounts forecast and Xero purchases. */
 (function () {
   'use strict';
-  var ROOMS = 120;             // lettable bedrooms (management accounts and Manager's Flash)
+  var ROOMS = 120;             // bedrooms in the building (management accounts and Manager's Flash)
+  var STAFF = 5, STAFF_RATE = 11, STORE = 1, LETTABLE = ROOMS - STAFF - STORE;   // 5 staff rooms at £11 a night, 1 storage room at £0, 114 to sell
   var VAT = 1.2;
   var T = window.TradingEngine, S = window.TRADING_DATA || {}, month = null, chart = null, changed = false;
   var MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -19,9 +20,9 @@
   function net(v) { return (S.af && S.af.basis === 'net') ? v : v / VAT; }
 
   function agg(rows) {
-    var a = { nights: rows.length, rooms: 0, acc: 0, fb: 0, oth: 0, guests: 0, roos: 0, dfs: 0, blocks: 0, listed: 0, busyRoos: 0 };
+    var a = { nights: rows.length, rooms: 0, acc: 0, fb: 0, oth: 0, guests: 0, roos: 0, roosVal: 0, dfs: 0, blocks: 0, listed: 0, busyRoos: 0 };
     rows.forEach(function (r) {
-      a.rooms += r.rooms; a.acc += net(r.acc); a.fb += net(r.fb); a.oth += net(r.oth); a.guests += r.ad + r.ch; a.roos += r.roos; a.dfs += r.dfs; a.blocks += r.blocks; a.listed += r.listed;
+      a.rooms += r.rooms; a.acc += net(r.acc); a.fb += net(r.fb); a.oth += net(r.oth); a.guests += r.ad + r.ch; a.roos += r.roos; if (r.roos && r.rooms) a.roosVal += r.roos * net(r.acc) / r.rooms; a.dfs += r.dfs; a.blocks += r.blocks; a.listed += r.listed;
       if (r.roos && r.rooms / ROOMS >= 0.7) a.busyRoos += r.roos;
     });
     a.avail = rows.length * ROOMS; a.total = a.acc + a.fb + a.oth;
@@ -108,7 +109,8 @@
       tile('TRevPAR', gbp(main.trevpar, 2), 'all revenue per available room') +
       tile('Guests', num(main.guests), main.rooms ? (main.guests / main.rooms).toFixed(2) + ' per occupied room' : '') +
       tile('F&B per occupied room', gbp(main.rooms ? main.fb / main.rooms : null, 2), gbp(main.guests ? main.fb / main.guests : null, 2) + ' per guest') +
-      tile('Rooms out of service', num(act.roos + bks.roos), 'room nights this month' + (act.busyRoos ? ' · ' + num(act.busyRoos) + ' on busy nights' : '')) + '</div>';
+      tile('Rooms out of service', num(act.roos + bks.roos) + ' <small>nights</small>', gbp(act.roosVal + bks.roosVal) + ' at each night’s ADR' + (act.busyRoos ? ' · ' + num(act.busyRoos) + ' on busy nights' : '')) +
+      tile('Staff and storage rooms', STAFF + ' <small>staff</small> <span>' + STORE + ' storage</span>', gbp(STAFF * STAFF_RATE) + ' a night from staff at ' + gbp(STAFF_RATE) + ' a room · ' + LETTABLE + ' of ' + ROOMS + ' rooms to sell') + '</div>';
 
     // projection
     var pr = [['Rooms', act.acc, bks.acc, fc && fc.rooms], ['Food and beverage', act.fb, bks.fb, fc && fc.fb], ['Other', act.oth, bks.oth, fc && fc.other], ['Total', act.total, bks.total, fc && fc.total]];
@@ -320,6 +322,6 @@
   }
   var chart2 = null;
 
-  window.Trading = { loadFiles: load, resetMonth: function () { month = null; }, feedPanel: feedPanel, tri: tri, avgTiles: avgTiles, S: function () { return S; }, agg: agg, rowsFor: rowsFor, asOfDay: asOfDay, observations: observations, ROOMS: ROOMS, net: net, pePeriod: pePeriod, peGroup: peGroup };
+  window.Trading = { loadFiles: load, resetMonth: function () { month = null; }, feedPanel: feedPanel, tri: tri, avgTiles: avgTiles, S: function () { return S; }, agg: agg, rowsFor: rowsFor, asOfDay: asOfDay, observations: observations, ROOMS: ROOMS, STAFF: STAFF, STAFF_RATE: STAFF_RATE, STORE: STORE, LETTABLE: LETTABLE, net: net, pePeriod: pePeriod, peGroup: peGroup };
   if (window.Profit && window.Profit.register) { window.Profit.register('trading', render); window.Profit.register('demand', renderDemand); }
 })();

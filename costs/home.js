@@ -89,10 +89,10 @@
     var dbb = d.dbb || 0, bb = d.bb || 0;
     return ctile('pf-fb', 'Meal plans tonight', num(dbb) + ' <small>DBB</small> <span>' + num(bb) + ' B&amp;B</span>', num(dbb + bb) + ' rooms with breakfast · ' + num(dbb) + ' with dinner · ' + num((d.ro || 0) + (d.other || 0)) + ' room only or no charge · as booked ' + when(rt.asOf));
   }
-  function oosTile(S, to, R) {
-    var rm = S.x && S.x.rooms; if (!rm) return ctile('pf-demand', 'Rooms out of service', num(to ? to.roos : null), 'tonight');
-    var st = staffRooms(), n = rm.oos.filter(function (o) { return st.indexOf(o.id) !== -1; }).length, tot = rm.oos.length;
-    return n ? ctile('pf-demand', 'Rooms out of service', num(tot - n) + ' <small>to fix</small> <span>' + n + ' staff</span>', tot + ' of ' + rm.total + ' rooms are off sale') : ctile('pf-demand', 'Rooms out of service', num(tot), 'of ' + rm.total + ' rooms · open to tick which are staff rooms');
+  function oosTile(S, to, R, yd, act) {
+    var T = window.Trading, r = yd || to; if (!r) return ctile('pf-trading', 'Rooms out of service', '–', '');
+    var adr = r.rooms ? T.net(r.acc) / r.rooms : 0, lost = r.roos * adr;
+    return ctile('pf-trading', 'Rooms out of service · ' + r.dow.slice(0, 3) + ' ' + dlabel(r.d), num(r.roos) + ' <small>rooms</small> <span>' + gbp(lost) + '</span>', 'valued at that night’s ADR of ' + gbp(adr, 2) + (act ? ' · ' + gbp(act.roosVal) + ' so far this month' : '') + ' · plus ' + T.STAFF + ' staff rooms (' + gbp(T.STAFF * T.STAFF_RATE) + ' a night) and ' + T.STORE + ' storage');
   }
   function rp(rooms, share) { return num(rooms) + ' <small>rooms</small> <span>' + pc(share) + '</span>'; }
   function ctile(go, l, v, d) { return '<button class="tile click" data-go="' + go + '"><div class="l">' + l + '</div><div class="v">' + v + '</div><div class="d">' + (d || '') + '</div></button>'; }
@@ -149,14 +149,14 @@
       var rate = function (r) { return r && r.rooms ? T.net(r.acc) / r.rooms : null; };
       var age = Math.floor((Date.now() - Date.parse(S.af.asOf.slice(0, 10))) / 864e5), yrev = yd ? T.net(yd.acc + yd.fb + yd.oth) : null;
       today = '<div class="hp-today"><div class="hp-th">' + icon('trading', 38) + '<div><h3>Latest trading position</h3><p>Last full day: ' + (yd ? yd.dow + ' ' + dlabel(yd.d) : '–') + ' · from the Guestline report received ' + when(S.af.asOf) + '</p></div>' + (age >= 1 ? '<span class="pill warn" style="margin-left:auto">Report is ' + age + ' day' + (age > 1 ? 's' : '') + ' old · load the latest to update</span>' : '') + '<button class="hp-link" data-go="pf-trading"' + (age >= 1 ? ' style="margin-left:10px"' : '') + '>Open Trading</button></div><div class="tiles">' +
-        ctile('pf-trading', 'Yesterday · ' + (yd ? yd.dow.slice(0, 3) + ' ' + dlabel(yd.d) : ''), yd ? rp(yd.rooms, yd.rooms / R) : '–', yd ? 'of ' + R + ' rooms · ' + gbp(rate(yd), 2) + ' ADR' : '') +
+        ctile('pf-trading', 'Yesterday · ' + (yd ? yd.dow.slice(0, 3) + ' ' + dlabel(yd.d) : ''), yd ? rp(yd.rooms, yd.rooms / R) : '–', yd ? 'of ' + R + ' rooms · ' + pc(yd.rooms / T.LETTABLE) + ' of the ' + T.LETTABLE + ' to sell · ' + gbp(rate(yd), 2) + ' ADR' : '') +
         ctile('pf-trading', 'Yesterday’s revenue', gbp(yrev), yd ? 'rooms ' + gbp(T.net(yd.acc)) + ' · F&amp;B ' + gbp(T.net(yd.fb)) + ' · other ' + gbp(T.net(yd.oth)) : '') +
         ctile('pf-trading', 'Month to date', gbp(act.total), num(act.rooms) + ' room nights · ' + pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' ADR') +
         ctile('pf-trading', 'Tonight, on the books', to ? rp(to.rooms, to.rooms / R) : '–', to ? gbp(rate(to), 2) + ' ADR · ' + gbp(T.net(to.acc)) + ' rooms revenue' : '') +
         (to && to.arr !== undefined ? ctile('pf-trading', 'Arrivals and departures today', num(to.arr) + ' <small>in</small> <span>' + num(to.dep) + ' out</span>', 'rooms arriving and leaving, from this morning’s report') : ctile('pf-trading', 'Month, with bookings held', gbp(act.total + bks.total), pc(all.occ) + ' occupancy for the month')) +
         mealTile(S, cut) + brkTile(S, yd) +
         ctile('pf-trading', 'Next 7 nights, on the books', rp(n7.rooms, n7.occ), 'room nights of ' + num(R * 7) + ' · ' + gbp(n7.acc) + ' rooms revenue') +
-        oosTile(S, to, R) + ctile('pf-trading', 'Month, with bookings held', gbp(act.total + bks.total), pc(all.occ) + ' occupancy for the month') + '</div>' +
+        oosTile(S, to, R, yd, act) + ctile('pf-trading', 'Month, with bookings held', gbp(act.total + bks.total), pc(all.occ) + ' occupancy for the month') + '</div>' +
         '<div class="hp-chart"><div class="hp-key" id="hp-key"></div><div class="hp-plot"><canvas id="hp-c1"></canvas></div></div><p class="note" style="margin:8px 0 0">14 nights back and 14 ahead, net of VAT. Revenue is what Guestline posted for each day: rooms, food and beverage (restaurant and bar together) and other (events, spa and sundries). Solid is actual; dotted, right of the “report date” line, is what is on the books so far. Click a name in the key to hide or show its line.</p></div>';
       card.kpi = 'RevPAR ' + gbp(act.revpar, 2) + ' · TRevPAR ' + gbp(act.trevpar, 2) + ' this month'; card.trading = pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' ADR this month'; card.rooms = num(oos) + ' rooms out of service';
       var X = S.x || {}; if (X.company) { var ota = 0; X.company.rows.forEach(function (r) { if (/^(BOOK|EXPE)/.test(r.ref)) ota += r.rn; }); card.demand = pc(ota / X.company.total.rn) + ' of room nights via booking sites'; }
@@ -192,19 +192,21 @@
       ['Beverage', '#7a4fc4', 'y4', function (r) { var d = S.daily && S.daily[r.d]; return d && r.d < cut ? d.bev : null; }, function (v) { return gbp(v); }],
       ['Breakfast revenue', '#1a2b3a', 'y4', function (r) { var d = BK && BK[r.d]; return d ? d.biv + d.bpv : null; }, function (v) { return gbp(v); }],
       ['Other revenue', '#7b8494', 'y4', function (r) { return T.net(r.oth); }, function (v) { return gbp(v); }],
+      ['Out of service, lost at ADR', '#b3261e', 'y4', function (r) { return r.rooms ? r.roos * T.net(r.acc) / r.rooms : null; }, function (v) { return gbp(v); }],
       ['Occupancy', '#6250d6', 'y2', function (r) { return r.rooms / R * 100; }, function (v) { return Math.round(v * R / 100) + ' rooms · ' + v.toFixed(1) + '%'; }],
-      ['Rooms out of service', '#b3261e', 'y3', function (r) { return r.roos; }, function (v) { return Math.round(v) + ''; }],
+      ['Rooms out of service', '#b3261e', 'y3', function (r) { return r.roos; }, function (v) { return Math.round(v) + ''; }, function (r) { return r.roos + (r.rooms ? ' · ' + gbp(r.roos * T.net(r.acc) / r.rooms) : ''); }],
+      ['Staff rooms', '#8a6d3b', 'y3', function () { return T.STAFF; }, function (v) { return Math.round(v) + ' · ' + gbp(v * T.STAFF_RATE); }],
       ['Breakfasts in the rate', '#1a8f63', 'y3', function (r) { var d = BK && BK[r.d]; return d ? d.bi : null; }, function (v) { return Math.round(v) + ''; }],
       ['Breakfasts paid on the day', '#2a78d6', 'y3', function (r) { var d = BK && BK[r.d]; return d ? d.bp : null; }, function (v) { return Math.round(v) + ''; }],
       ['Cancellations made', '#b9791a', 'y3', function (r) { return cx && r.d < cut ? (cx[r.d] || 0) : null; }, function (v) { return Math.round(v) + ''; }]];
     var GR = [['y4', 'Revenue for the day', 4], ['y1', '£ per room', 3], ['y2', '% of ' + R + ' rooms', 2], ['y3', 'Number', 3]];
     var tv = rows[ti - 1] || rows[ti] || rows[rows.length - 1];
-    $('hp-key').innerHTML = GR.map(function (g) { return '<div class="hp-kg" style="flex:' + g[2] + '"><small>' + g[1] + '</small>' + SER.map(function (x, k) { if (x[2] !== g[0]) return ''; var v = x[3](tv); return '<button data-ser="' + k + '"><i style="background:' + x[1] + '"></i><span>' + x[0] + '</span><b>' + (v === null || v === undefined ? '–' : x[4](v)) + '</b></button>'; }).join('') + '</div>'; }).join('') + '<small class="hp-kn">Figures in the key are for ' + tv.dow + ' ' + dlabel(tv.d) + ', the last full day</small>';
+    $('hp-key').innerHTML = GR.map(function (g) { return '<div class="hp-kg" style="flex:' + g[2] + '"><small>' + g[1] + '</small>' + SER.map(function (x, k) { if (x[2] !== g[0]) return ''; var v = x[3](tv); return '<button data-ser="' + k + '"><i style="background:' + x[1] + '"></i><span>' + x[0] + '</span><b>' + (v === null || v === undefined ? '–' : x[5] ? x[5](tv) : x[4](v)) + '</b></button>'; }).join('') + '</div>'; }).join('') + '<small class="hp-kn">Figures in the key are for ' + tv.dow + ' ' + dlabel(tv.d) + ', the last full day. ' + R + ' rooms: ' + T.LETTABLE + ' to sell, ' + T.STAFF + ' staff rooms at ' + gbp(T.STAFF_RATE) + ' a night, ' + T.STORE + ' storage room at £0. Rooms out of service are valued at that night’s ADR.</small>';
     var scales = { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 15 } } };
     GR.slice().reverse().forEach(function (g) { var gi = g[0] === 'y1' ? 0 : g[0] === 'y2' ? 1 : g[0] === 'y4' ? 3 : 2; scales[g[0]] = { stack: 's', stackWeight: g[2], offset: true, beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false }, afterFit: function (a) { a.width = 52; }, ticks: { maxTicksLimit: gi ? 3 : 4, callback: function (v) { return gi === 3 ? (v >= 1000 ? '£' + v / 1000 + 'k' : '£' + v) : gi === 0 ? '£' + v : gi === 1 ? v + '%' : v; } } }; });
     scales.y2.max = 100; scales.y4.min = 0;
     hubC = new Chart($('hp-c1'), { type: 'line', data: { labels: rows.map(function (r) { return r.dow.slice(0, 3) + ' ' + +r.d.slice(8); }), datasets: SER.map(function (x) { return { label: x[0], yAxisID: x[2], data: rows.map(function (r) { var v = x[3](r); return v === null || v === undefined ? null : +(+v).toFixed(2); }), borderColor: x[1], backgroundColor: x[1], borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, spanGaps: false, segment: { borderDash: function (c) { return ti >= 0 && c.p1DataIndex > ti ? [4, 3] : undefined; } } }; }) },
-      options: { maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false }, onClick: function () { go('pf-trading'); }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: function (it) { var r = rows[it[0].dataIndex]; return r.dow + ' ' + dlabel(r.d) + (r.d > cut ? ' (on the books)' : r.d === cut ? ' (tonight)' : ''); }, label: function (c) { return c.dataset.label + ': ' + SER[c.datasetIndex][4](c.parsed.y); } } } }, scales: scales },
+      options: { maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false }, onClick: function () { go('pf-trading'); }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: function (it) { var r = rows[it[0].dataIndex]; return r.dow + ' ' + dlabel(r.d) + (r.d > cut ? ' (on the books)' : r.d === cut ? ' (tonight)' : ''); }, label: function (c) { var x = SER[c.datasetIndex]; return c.dataset.label + ': ' + (x[5] ? x[5](rows[c.dataIndex]) : x[4](c.parsed.y)); }, afterBody: function (it) { var r = rows[it[0].dataIndex]; return ['', 'Of the ' + T.LETTABLE + ' rooms to sell: ' + (r.rooms / T.LETTABLE * 100).toFixed(1) + '% sold', 'Staff rooms: ' + T.STAFF + ' at ' + gbp(T.STAFF_RATE) + ' = ' + gbp(T.STAFF * T.STAFF_RATE) + ' · storage: ' + T.STORE + ' at £0']; } } } }, scales: scales },
       plugins: [{ id: 'today', afterDraw: function (ch) { if (ti < 0) return; var x = ch.scales.x.getPixelForValue(ti), a = ch.chartArea, c = ch.ctx; c.save(); c.strokeStyle = '#1a2b3a'; c.lineWidth = 1; c.setLineDash([2, 3]); c.beginPath(); c.moveTo(x, a.top); c.lineTo(x, a.bottom); c.stroke(); c.setLineDash([]); c.fillStyle = '#1a2b3a'; c.font = '600 11px Manrope, sans-serif'; c.textAlign = 'center'; c.fillText('report date', x, a.top + 10); c.restore(); } }] });
   }
 
@@ -527,7 +529,7 @@
 
   /* ---------- explanations ---------- */
   var TERMS = [
-    ['Occupancy', 'Rooms sold ÷ rooms available. Brandon Hall is counted on 120 lettable rooms, the figure the management accounts and the Manager’s Flash use.'],
+    ['Occupancy', 'Rooms sold ÷ rooms. Brandon Hall has 120 rooms: 114 to sell, 5 staff rooms (staff pay £11 a night each, £55 a night in all) and 1 storage room at £0. The headline percentage is on all 120, the figure the management accounts use; the share of the 114 rooms to sell is shown beside it. Guestline’s own percentage uses fewer rooms, so it reads higher.'],
     ['ADR', 'Average daily rate: rooms revenue (net of VAT) ÷ rooms sold. What a sold room earned on average.'],
     ['RevPAR', 'Revenue per available room: rooms revenue ÷ all 120 rooms, sold or not. It equals occupancy × ADR, so it shows whether a rate rise cost more in empty rooms than it gained.'],
     ['TRevPAR', 'Total revenue per available room: rooms, food, drink and other revenue ÷ 120 rooms. Shows what the whole hotel earns per room, not only the bedroom.'],
@@ -553,6 +555,8 @@
     ['Booking-site share', 'Room nights on the Booking.com and Expedia company codes ÷ all room nights on the Rezlynx Company report.'],
     ['Rate overrides', 'Rate before the override less rate after, added up by who applied it. “Automatic” is the Rezlynx system user.'],
     ['Cancellation notice', 'Arrival date less the date the booking was cancelled, grouped into bands. The value is Rezlynx’s estimate for the cancelled stay; many of those rooms are resold.'],
+    ['Rooms out of service, lost revenue', 'Rooms out of service that night (Actual & Forecast report) × that night’s ADR. It is what those rooms would have earned at the average rate actually achieved; on a quiet night they might not all have sold.'],
+    ['Staff rooms', '5 rooms × £11 a night paid by staff = £55 a night. They are not counted as rooms sold.'],
     ['Rooms out of service over 30 days', 'Report date less the out-of-service start date on the Room Usage report.'],
     ['Purchases % of sales', 'Xero supplier invoices dated in the month ÷ Rezlynx sales for the month. Invoices are not the same as stock used, so it is a direction rather than a true margin.'],
     ['Overdue creditors', 'Everything on Xero’s aged payables report past its due date, including the “under one month” column.'],
