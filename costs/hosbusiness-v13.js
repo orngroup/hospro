@@ -70,7 +70,44 @@
       '.v13-bar .a{background:#1baf7a}.v13-bar .b{background:#2a78d6}',
       '.v13-hero-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;background:#e6f4ee;color:#1a6442;border-radius:999px;font-size:12px;font-weight:600;margin-left:10px}',
       '.hp-hero h2 .v13-hero-badge{vertical-align:2px}',
-      '@media (max-width:640px){.v13-split{grid-template-columns:1fr}}'
+      '@media (max-width:640px){.v13-split{grid-template-columns:1fr}}',
+      /* v16 layout: sidebar on left, sticky top bar */
+      'body.v16 #top{display:none}',
+      'body.v16 main{margin-left:260px;padding-top:64px;padding-left:28px;padding-right:28px;padding-bottom:40px;background:#f5f4ef;min-height:100vh}',
+      'body.v16 #crumb{display:none !important}',
+      'body.v16 .v16-side{position:fixed;left:0;top:0;width:260px;height:100vh;background:#1a2b47;color:#fff;overflow-y:auto;z-index:30;display:flex;flex-direction:column}',
+      'body.v16 .v16-brand{padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px}',
+      'body.v16 .v16-brand img{height:34px}',
+      'body.v16 .v16-brand b{font-size:15px;font-weight:600;line-height:1.1}',
+      'body.v16 .v16-brand b i{color:#BB9979;font-style:normal;font-weight:800}',
+      'body.v16 .v16-brand small{display:block;font-size:11px;color:#c7d2e0;letter-spacing:.3px;margin-top:2px}',
+      'body.v16 .v16-sidelist{flex:1;padding:8px 10px}',
+      'body.v16 .v16-item{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:#d5dde8;padding:9px 10px;border-radius:7px;cursor:pointer;font:inherit;font-size:13.5px;text-align:left;margin-bottom:2px;transition:background .15s}',
+      'body.v16 .v16-item:hover{background:rgba(255,255,255,.07);color:#fff}',
+      'body.v16 .v16-item.on{background:#BB9979;color:#1a2b47;font-weight:700}',
+      'body.v16 .v16-item.on .v16-sub{color:rgba(26,43,71,.7)}',
+      'body.v16 .v16-item .v16-ic{width:26px;height:26px;border-radius:5px;flex:none}',
+      'body.v16 .v16-item div{flex:1;min-width:0}',
+      'body.v16 .v16-item b{display:block;font-weight:600;font-size:13.5px;line-height:1.1}',
+      'body.v16 .v16-item .v16-sub{display:block;font-size:11px;color:rgba(255,255,255,.55);margin-top:2px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      'body.v16 .v16-side-sec{padding:12px 20px 4px 20px;font-size:10.5px;letter-spacing:1.2px;color:#8fa4bf;text-transform:uppercase;font-weight:700}',
+      'body.v16 .v16-foot{padding:10px 14px;border-top:1px solid rgba(255,255,255,.1);font-size:12px;color:#c7d2e0;display:flex;justify-content:space-between;align-items:center}',
+      'body.v16 .v16-foot button{background:rgba(255,255,255,.08);color:#fff;border:0;padding:6px 10px;border-radius:6px;font:inherit;font-size:11.5px;cursor:pointer}',
+      'body.v16 .v16-top{position:fixed;left:260px;right:0;top:0;height:64px;background:#fff;border-bottom:1px solid #e4e2dc;z-index:20;display:flex;align-items:center;padding:0 24px;gap:14px;box-shadow:0 1px 3px rgba(8,16,26,.05)}',
+      'body.v16 .v16-top h1{margin:0;font-size:17px;font-weight:600;color:#1a2b47;white-space:nowrap}',
+      'body.v16 .v16-top h1 small{font-size:12px;color:#86847d;font-weight:400;margin-left:8px}',
+      'body.v16 .v16-top .v16-top-filters{margin-left:auto;display:flex;align-items:center;gap:8px;overflow-x:auto;max-width:65vw}',
+      'body.v16 .v16-top .v16-top-filters::-webkit-scrollbar{height:4px}',
+      'body.v16 .v16-top select{font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid #e4e2dc;border-radius:6px;background:#fff}',
+      'body.v16 .v16-top .v16-chip{padding:5px 10px;border:1px solid #e4e2dc;background:#fff;border-radius:999px;font:inherit;font-size:12px;cursor:pointer;color:#2b2a27;white-space:nowrap}',
+      'body.v16 .v16-top .v16-chip.on{background:#1a2b47;color:#fff;border-color:#1a2b47}',
+      'body.v16 .v16-top .v16-chip-g{color:#1a8f63}',
+      'body.v16 .v16-top .v16-feed{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:600;background:#e6f4ee;color:#1a6442;white-space:nowrap}',
+      'body.v16 .v16-top .v16-feed::before{content:"●";color:#1a8f63}',
+      'body.v16 #top>.top-r{display:none}',   /* duplicate who/signout line shown in sidebar now */
+      'body.v16 .v13-dr{margin:14px 0 18px}',
+      'body.v16 .back{display:none !important}',
+      '@media (max-width:860px){body.v16 main{margin-left:0;padding-top:120px}body.v16 .v16-side{top:auto;bottom:0;left:0;right:0;width:100%;height:auto;flex-direction:row;overflow-x:auto;overflow-y:hidden}body.v16 .v16-brand,body.v16 .v16-foot{display:none}body.v16 .v16-sidelist{display:flex;gap:4px}body.v16 .v16-item{min-width:110px}body.v16 .v16-top{left:0}}'
     ].join('\n');
     document.head.appendChild(s);
   }
@@ -227,12 +264,8 @@
       '<div class="v13-col"><h4>Breakfast <span class="v13-tick"></span></h4>' + breakfastBlock(days) + '</div>' +
       '</div>';
 
-    // Best-selling items for the last closed day (Guestline API)
-    var items = window.GuestlineFeed && window.GuestlineFeed.items ? window.GuestlineFeed.items() : null;
-    var itemsDate = window.GuestlineFeed && window.GuestlineFeed.itemsDate ? window.GuestlineFeed.itemsDate() : null;
-    if (items && items.length) {
-      h += renderItemsBlock(items, itemsDate);
-    }
+    // Items drill-down (date-picker driven): shows what sold on the chosen day
+    h += '<div id="v13-items-wrap"></div>';
 
     // sales line table
     var lines = [];
@@ -245,7 +278,84 @@
       '</table></div><p class="note">' + cmpNote + '. Source: Guestline Rezlynx Financial Report, analysis code totals.</p></div>';
 
     host.innerHTML = h;
+    initItemsBlock(lastClosed);
   }
+  // Day picker + fetch for the items block inside POS.
+  function initItemsBlock(initDate) {
+    var wrap = $('v13-items-wrap'); if (!wrap) return;
+    var G = window.GuestlineFeed;
+    var pickDate = initDate || (G && G.itemsDate && G.itemsDate());
+    var S = window.Trading ? window.Trading.S() : {};
+    var dates = S.gl && S.gl.byDay ? Object.keys(S.gl.byDay).sort().slice(-180) : [];
+    if (!pickDate && dates.length) pickDate = dates[dates.length - 1];
+    if (!pickDate) { wrap.innerHTML = ''; return; }
+    var opts = dates.slice().reverse().map(function (x) { return '<option value="' + x + '"' + (x === pickDate ? ' selected' : '') + '>' + dlong(x) + '</option>'; }).join('');
+    wrap.innerHTML = '<div class="v13-col" style="margin:14px 0"><h4>What sold on <select id="v13-itemsday" style="font:inherit;font-size:14px;padding:3px 6px;border:1px solid #e4e2dc;border-radius:6px;background:#fff;font-weight:600;color:#1a2b47">' + opts + '</select> <span class="v13-tick"></span></h4><div id="v13-items-body"><p class="note">Loading items…</p></div></div>';
+    function show(data) {
+      var body = $('v13-items-body'); if (!body) return;
+      if (!data || !data.found || !data.items || !data.items.length) { body.innerHTML = '<p class="note">No item lines on file for this date. The feed may not have loaded this day yet, or Guestline posted no items.</p>'; return; }
+      body.innerHTML = renderItemsBody(data.items, data.date, data.rates || [], data.lines || data.items.length);
+    }
+    var recent = G && G.items ? G.items() : null, recentDate = G && G.itemsDate ? G.itemsDate() : null;
+    if (recent && pickDate === recentDate) {
+      show({ found: true, items: recent, date: recentDate, lines: recent.length });
+    } else if (G && G.fetchItems) {
+      G.fetchItems(pickDate).then(show).catch(function (e) { $('v13-items-body').innerHTML = '<p class="note">Could not load items: ' + esc(e.message || e) + '</p>'; });
+    } else {
+      $('v13-items-body').innerHTML = '<p class="note">Items endpoint not available yet. Deploy the feed update.</p>';
+    }
+    var sel = $('v13-itemsday');
+    if (sel) sel.addEventListener('change', function () {
+      var d = sel.value; $('v13-items-body').innerHTML = '<p class="note">Loading items for ' + esc(dlong(d)) + '…</p>';
+      if (G && G.fetchItems) G.fetchItems(d).then(show).catch(function (e) { $('v13-items-body').innerHTML = '<p class="note">Could not load: ' + esc(e.message || e) + '</p>'; });
+    });
+  }
+
+  function renderItemsBody(items, date, rates, lines) {
+    var GROUP = {
+      RES1_BRK: 'Breakfast', AFT_TEA: 'Afternoon tea',
+      RES1_LUN: 'Restaurant food', RES1_DIN: 'Restaurant food', RS_FOOD: 'Room service',
+      BAR1_LUN: 'Bar food', BAR1_DIN: 'Bar food',
+      RES1BEV_LUN: 'Restaurant drinks', RES1BEV_DIN: 'Restaurant drinks', REST_BEV: 'Restaurant drinks',
+      BAR1BEV_LUN: 'Bar drinks', BAR1BEV_DIN: 'Bar drinks', BAR_BER: 'Bar drinks', SOFT_BEV: 'Bar drinks', CORK: 'Bar drinks', BAR2_PCK: 'Bar drinks',
+      RS_BEV: 'Room service', FUN_LUN: 'Functions', FUN_DIN: 'Functions', FUN_BEV_LUN: 'Functions', FUN_BEV_DIN: 'Functions',
+      CON_LUN: 'Conference', CON_DIN: 'Conference', PKL_FOOD: 'Pack lunches', PKL_BEV: 'Pack lunches'
+    };
+    var byGroup = {}, totalN = 0, totalQ = 0;
+    items.forEach(function (it) {
+      var g = GROUP[it.c] || it.c;
+      byGroup[g] = byGroup[g] || {};
+      var k = it.d || '(unnamed)';
+      var r = byGroup[g][k] || (byGroup[g][k] = { q: 0, n: 0, c: it.c });
+      r.q += it.q || 0; r.n += it.n || 0;
+      totalN += it.n || 0; totalQ += it.q || 0;
+    });
+    var groupList = Object.keys(byGroup).map(function (g) {
+      var rows = Object.keys(byGroup[g]).map(function (k) { return Object.assign({ d: k }, byGroup[g][k]); });
+      var gn = rows.reduce(function (s, x) { return s + x.n; }, 0), gq = rows.reduce(function (s, x) { return s + x.q; }, 0);
+      rows.sort(function (a, b) { return b.n - a.n; });
+      return { g: g, rows: rows, gn: r2(gn), gq: gq };
+    }).sort(function (a, b) { return b.gn - a.gn; });
+
+    var h = '<p class="note" style="margin:0 0 10px">Individual dishes and drinks from Guestline\'s item lines, ' + (lines || items.length) + ' postings totalling ' + gbp(totalN) + ' net across ' + groupList.length + ' outlet groups.</p>';
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px">';
+    groupList.forEach(function (g) {
+      var topN = g.rows.slice(0, 10);
+      h += '<div style="background:#faf9f6;border:1px solid #efede7;border-radius:10px;padding:12px 14px">';
+      h += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><b>' + esc(g.g) + '</b><span style="color:#52514e;font-size:12px">' + num(g.gq) + ' items · ' + gbp(g.gn) + '</span></div>';
+      h += '<table style="width:100%;font-size:12.5px"><tr><th style="text-align:left">Item</th><th class="n">Qty</th><th class="n">Net</th><th class="n">Avg</th></tr>';
+      topN.forEach(function (r) {
+        var avg = r.q ? r.n / r.q : null;
+        h += '<tr><td style="padding:3px 0">' + esc(r.d).slice(0, 48) + '</td><td class="n">' + num(r.q) + '</td><td class="n">' + gbp(r.n) + '</td><td class="n">' + gbp(avg, 2) + '</td></tr>';
+      });
+      if (g.rows.length > 10) h += '<tr><td colspan="4" class="note" style="padding-top:4px">+ ' + (g.rows.length - 10) + ' more</td></tr>';
+      h += '</table></div>';
+    });
+    h += '</div>';
+    h += '<p class="note" style="margin-top:8px">Totals: <b>' + num(totalQ) + '</b> items for <b>' + gbp(totalN) + '</b> on ' + esc(dlong(date)) + '. Source: Guestline Rezlynx Financial Report, transaction lines (HOSPRO_ITEMS template).</p>';
+    return h;
+  }
+
   /* Items drill-down: dishes and drinks sold on the last closed day (Guestline API).
      Groups by outlet (Food/Drinks/Breakfast) and by item name, with qty and value. */
   function renderItemsBlock(items, date) {
@@ -516,6 +626,7 @@
     }, true);
   }
   function reRender() {
+    if (SIDEBAR_BUILT) { renderTopFilters(); highlightActive(); }
     var fbEl = $('pf-fb');
     if (fbEl && fbEl.closest('section.tab.on')) {
       var active = fbEl.querySelector('.seg.on');
@@ -542,10 +653,108 @@
     }
   }
 
+  /* ---------- sidebar + topbar layout ---------- */
+  var SIDEBAR_BUILT = false, V16_ACTIVE = 'pf-home';
+  function sidebarItem(tab, colorKey, title, subtitle) {
+    var ic = (window.icon && window.COL && window.COL[colorKey]) ? ('<span class="v16-ic" style="background:' + window.COL[colorKey] + '"></span>') : '<span class="v16-ic" style="background:#52606d"></span>';
+    return '<button class="v16-item" data-v16-tab="' + esc(tab) + '">' + ic + '<div><b>' + esc(title) + '</b><small class="v16-sub">' + esc(subtitle) + '</small></div></button>';
+  }
+  function buildSidebar() {
+    if (SIDEBAR_BUILT || !document.body) return;
+    // All the "cards" the home page used to show, in a sensible order
+    var items = [
+      { group: 'Main', rows: [
+        ['pf-home', 'brief', 'Overview', 'Dashboard, live from Guestline'],
+        ['pf-trading', 'trading', 'Trading', 'Occupancy, rate, RevPAR'],
+        ['pf-fb', 'fb', 'Food & beverage', 'Sales by outlet and meal']
+      ]},
+      { group: 'Commercial', rows: [
+        ['pf-demand', 'demand', 'Channels & rates', 'Booking sources, rate plans'],
+        ['pf-trends', 'kpi', 'Trends', 'ADR, RevPAR, revenue over time'],
+        ['pf-actions', 'actions', 'Action Centre', 'Actions, watch list, savings']
+      ]},
+      { group: 'Operations', rows: [
+        ['bar', 'bar', 'Bar & keg prices', 'Keg history, market comparison'],
+        ['rooms', 'rooms', 'Rooms & linen', 'Linen, cleaning, guest supplies']
+      ]},
+      { group: 'Finance', rows: [
+        ['pf-profit', 'profit', 'Profitability', 'Revenue, costs and profit'],
+        ['pf-labour', 'labour', 'Labour', 'Payroll by department'],
+        ['pf-stock', 'stock', 'Purchased vs consumed', 'Purchases against cost of sales'],
+        ['explore', 'explore', 'Supplier costs', 'Every cost line by supplier']
+      ]},
+      { group: 'Reference', rows: [
+        ['pf-data', 'data', 'Data & reports', 'What has been loaded'],
+        ['pf-brief', 'brief', 'Project brief', 'What this hub does'],
+        ['pf-help', 'kpi', 'How it works', 'How figures are worked out']
+      ]}
+    ];
+    var who = '', who2 = '';
+    try { who = (window.Profit && window.Profit.user) ? (window.Profit.user() || '') : ''; who2 = who.split(/\s+/)[0]; } catch (e) {}
+
+    var h = '<div class="v16-brand"><img src="../bh-logo.svg" alt=""><div><b>Hos<i>BUSINESS</i></b><small>Brandon Hall Hotel &amp; Spa</small></div></div>';
+    h += '<div class="v16-sidelist">';
+    items.forEach(function (sec) {
+      h += '<div class="v16-side-sec">' + esc(sec.group) + '</div>';
+      sec.rows.forEach(function (r) { h += sidebarItem(r[0], r[1], r[2], r[3]); });
+    });
+    h += '</div>';
+    h += '<div class="v16-foot"><span title="' + esc(who) + '">' + esc(who2 || 'Signed in') + '</span><button data-v16-signout>Sign out</button></div>';
+
+    var side = document.createElement('div');
+    side.className = 'v16-side';
+    side.innerHTML = h;
+    document.body.appendChild(side);
+
+    var top = document.createElement('div');
+    top.className = 'v16-top';
+    top.innerHTML = '<h1 id="v16-title">Overview <small id="v16-sub"></small></h1><div class="v16-top-filters" id="v16-top-filters"></div>';
+    document.body.appendChild(top);
+
+    document.body.classList.add('v16');
+    SIDEBAR_BUILT = true;
+    renderTopFilters();
+    highlightActive();
+  }
+  function renderTopFilters() {
+    var top = $('v16-top-filters'); if (!top) return;
+    var r = getRange(), cmp = getCmp();
+    // Shortlist of chips; the full range + custom + compare live in each page's v13-dr bar
+    var QUICK = [['today', 'Today'], ['1', 'Yesterday'], ['7', '7 days'], ['14', '14 days'], ['28', '28 days'], ['mtd', 'MTD'], ['lastmonth', 'Last month'], ['90', '90 days'], ['12m', '12 months']];
+    var chips = QUICK.map(function (o) { return '<button class="v16-chip' + (r.kind === o[0] ? ' on' : '') + '" data-v13-r="' + o[0] + '">' + o[1] + '</button>'; }).join('');
+    var cmpSel = '<select data-v13-cmp>' + [['none', 'No compare'], ['prev', 'Previous period'], ['ly', 'Same period LY']].map(function (o) { return '<option value="' + o[0] + '"' + (cmp === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+    var G = window.GuestlineFeed && window.GuestlineFeed.info ? window.GuestlineFeed.info() : null;
+    var feedChip = (G && G.days) ? '<span class="v16-feed">Live · ' + G.days + ' days</span>' : '';
+    top.innerHTML = chips + cmpSel + feedChip;
+  }
+  function highlightActive() {
+    var all = document.querySelectorAll('.v16-item');
+    var active = (document.querySelector('section.tab.on') || {}).id || '';
+    active = active.indexOf('t-') === 0 ? active.slice(2) : active;
+    V16_ACTIVE = active || V16_ACTIVE;
+    all.forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v16-tab') === V16_ACTIVE); });
+    var title = $('v16-title'), sub = $('v16-sub');
+    if (title) {
+      var found = null;
+      document.querySelectorAll('.v16-item').forEach(function (b) { if (b.getAttribute('data-v16-tab') === V16_ACTIVE) { found = b.querySelector('b').textContent + ''; } });
+      title.firstChild.textContent = (found || 'Overview') + ' ';
+    }
+  }
+  function wireV16() {
+    document.addEventListener('click', function (e) {
+      var it = e.target.closest ? e.target.closest('[data-v16-tab]') : null;
+      if (it) { e.preventDefault(); e.stopPropagation(); var tab = it.getAttribute('data-v16-tab'); var btn = document.querySelector('#nav button[data-t="' + tab + '"]'); if (btn) { btn.click(); V16_ACTIVE = tab; setTimeout(highlightActive, 100); } return; }
+      var so = e.target.closest ? e.target.closest('[data-v16-signout]') : null;
+      if (so) { var sob = $('signout'); if (sob) sob.click(); }
+    }, true);
+  }
+
   /* ---------- boot ---------- */
   function boot() {
     addStyle();
     wire();
+    wireV16();
+    setTimeout(buildSidebar, 100);
     var moT = 0;
     var mo = new MutationObserver(function (muts) {
       // ignore mutations we caused
@@ -556,7 +765,10 @@
     if (document.body) mo.observe(document.body, { subtree: true, childList: true });
     augmentHome(); augmentFb(); augmentTrading();
     // After guestline feed loads, re-augment
-    document.addEventListener('hub-signin', function () { setTimeout(function () { augmentHome(); augmentFb(); }, 1200); });
+    document.addEventListener('hub-signin', function () { setTimeout(function () { augmentHome(); augmentFb(); augmentTrading(); if (!SIDEBAR_BUILT) buildSidebar(); renderTopFilters(); highlightActive(); }, 1200); });
+    // keep sidebar highlight + top filters in sync when tabs/range/cmp change
+    var syncT = 0;
+    new MutationObserver(function () { clearTimeout(syncT); syncT = setTimeout(function () { renderTopFilters(); highlightActive(); }, 100); }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

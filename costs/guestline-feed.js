@@ -128,8 +128,21 @@
     var so = function (e) { if (e.target && e.target.id === 'signout') setToken(null); };
     root.document.addEventListener('click', so, true);
   }
+  /* Fetch items for a specific trading day. Cached on the singleton so a second request for the same date is free. */
+  var ITEMS_URL = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/glItems';
+  var itemCache = {};
+  function fetchItems(date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) return Promise.reject(new Error('date'));
+    if (itemCache[date]) return Promise.resolve(itemCache[date]);
+    var t = getToken(); if (!t) return Promise.reject(new Error('expired'));
+    return root.fetch(ITEMS_URL + '?date=' + encodeURIComponent(date), { headers: { Authorization: 'Bearer ' + t }, cache: 'no-store' })
+      .then(function (r) { if (r.status === 401) { setToken(null); throw new Error('expired'); } if (!r.ok) throw new Error('items ' + r.status); return r.json(); })
+      .then(function (j) { if (!j.ok) throw new Error(j.error || 'items failed'); itemCache[date] = j; return j; });
+  }
+
   var api = { load: load, apply: apply, reapply: reapply, signIn: signIn, info: function () { return info; }, toRow: toRow, toDaily: toDaily,
     items: function () { return window.GuestlineFeed._items || null; },
-    itemsDate: function () { return window.GuestlineFeed._itemsDate || null; } };
+    itemsDate: function () { return window.GuestlineFeed._itemsDate || null; },
+    fetchItems: fetchItems };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.GuestlineFeed = api;
 })(typeof window !== 'undefined' ? window : this);

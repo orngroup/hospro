@@ -1,54 +1,57 @@
-HosBUSINESS v14 — upload steps
+HosBUSINESS v16 — sidebar layout + items by date + Trading date filter + compare
 
-Two things to do: deploy the feed update, then upload the 4 website files.
+TWO JOBS. Do them in order.
 
 ============================================================
 JOB 1 — Deploy the feed update (3 minutes, Cloud Shell)
 ============================================================
 
-1. Open shell.cloud.google.com.
-2. Click the three dots (top right of the black area) → Upload.
-3. Choose guestline-feed-v3.zip.
-4. Paste this into Cloud Shell and press Enter:
+Same feed file as v15. If you already deployed it, skip.
 
-   cd ~ && unzip -o guestline-feed-v3.zip && cd guestline-feed && npm --prefix functions install && firebase deploy --only functions:guestline --project brandonhall-7bdef --force
+1. shell.cloud.google.com
+2. Three dots → Upload → guestline-feed-v4.zip
+3. Paste and press Enter:
 
-5. Wait 2-3 minutes for "Deploy complete!"
+   cd ~ && unzip -o guestline-feed-v4.zip && cd guestline-feed && npm --prefix functions install && firebase deploy --only functions:guestline --project brandonhall-7bdef --force
 
-This extends the feed with recentItems so the website can show what sold.
+4. Wait for "Deploy complete!" — you should see FOUR functions:
+   glTick, glRun, glData, glItems.
 
 ============================================================
 JOB 2 — Upload the 4 website files (2 minutes, GitHub)
 ============================================================
 
-1. Open github.com/orngroup/hospro → "costs" folder.
-2. Click "Add file" → "Upload files".
-3. Drag all FOUR files from THIS folder into the box:
-     home.js
-     index.html
-     guestline-feed.js
-     hosbusiness-v13.js
-4. Commit message: Add items drilldown + Trading date filters
-5. Click the green "Commit changes" button.
-6. Wait 60 seconds, then Cmd+Shift+R on brandon.hospro.co.uk/costs.
+1. github.com/orngroup/hospro → "costs" folder.
+2. Add file → Upload files → drag the four files from this folder.
+3. Commit message: HosBUSINESS v16 — sidebar layout + items picker
+4. Commit, wait 60s, Cmd+Shift+R on brandon.hospro.co.uk/costs.
 
 ============================================================
-WHAT'S NEW IN v14
+WHAT'S NEW IN v16
 ============================================================
 
-NEW: Items drilldown on the POS page
-- A "What sold on [date]" block at the bottom of POS, grouped by outlet (Restaurant food, Restaurant drinks, Breakfast, Bar food, Bar drinks, Room service, Functions, Conference).
-- Shows top 10 items per group with quantity, net value and average price.
-- Uses the items for the last closed day (the feed returns ~450 item lines on an average day).
-- "Posted by hand" means a hand-typed posting - we keep the group but not the description, so no guest names leak.
+LAYOUT (your new design):
+- Left sidebar with every module grouped (Main, Commercial, Operations, Finance, Reference).
+- Click any item and the main area switches in place — no "back to Hub" button, no page jump.
+- The active page is highlighted in gold.
+- Top bar across the content: title on the left, date range chips (Today, Yesterday, 7/14/28 days, MTD, Last month, 90, 12 months), compare dropdown, Live Guestline badge.
+- The top date range filter stays visible on every page.
+- Your name and Sign out are at the bottom of the sidebar.
+- Collapses to a horizontal bar on narrow screens (under 860px).
 
-NEW: Date range on the Trading tab
-- A new summary block at the top: Rooms sold, ADR, RevPAR, TRevPAR, Total revenue, Out of service.
-- Driven by the same date range chips as the F&B POS (Today, Yesterday, Last 7/14/21/28 days, Month to date, Last month, Last 90 days, Year to date, Last 12 months, Custom).
-- Compare dropdown: Previous period or Same period last year.
-- The month selector below is kept for drill-down.
+NEW on the F&B POS page:
+- Date picker on the "What sold on..." block. Pick any day since Nov 2025 and the items reload within a second (uses the new glItems endpoint).
 
-NEW: Compare on Trading
-- When Compare is set to "Previous period" or "Same period last year", every tile shows the +/- percentage vs the comparison range.
-- Also works on the F&B POS tiles.
+v15 (included):
+- Items drilldown on POS with outlet groups (Restaurant food/drinks, Breakfast, Bar food/drinks, Room service, Functions, Conference) showing dishes, drinks, qty, net, average price.
 
+v14 (included):
+- Date range + compare on the Trading tab.
+- Compare on POS tiles (Previous period / Same period last year).
+
+v13 bug fixes (included):
+- "NaN a day on average" on breakfast tile.
+- "-4 paid" negative display.
+- "Open Trading" button hidden (home IS the dashboard).
+
+Note: the Guestline is shown at the top AND inside each page's local date range bar. The two are linked — change one and the other updates. The local bar is kept so each page can also have per-page options (like the Next 7/14/21/28 nights forward chips on POS).
