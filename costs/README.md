@@ -42,3 +42,11 @@ Reads Rezlynx Company, Forecast Revenue By Market Segment, Daily Rate Analysis, 
 - If a Gmail script address is saved in the browser (Data & reports), the hub fetches the latest Actual & Forecast and Key Performance PDFs and End of Day email text on sign-in, reads them with `vendor/pdf.min.js`, and merges them in memory (`TradingEngine.parseAFCells`, `parseKPCells`, `parseEODText`, `mergeDaily`). Nothing is written to the repo.
 - Emailed Actual & Forecast figures are net of VAT (`basis: net`); rooms sold = accommodation / ADR.
 - Deposits and Booking Source PDFs are never fetched: they carry guest names.
+
+## Guestline API feed (18 Nov 2026)
+- `guestline-feed.js` reads closed trading days from the private HosPRO feed (cloud function `glData`) and lays them over the Trading store after the emailed reports have merged. Past days then come straight from Guestline; nights ahead still come from the emailed Actual & Forecast until the bookings feed is added.
+- It uses the name and password typed at the hub sign-in, once, to get a 12-hour token. Nothing is stored in these files. After a page reload in the same session the token is reused; once it expires the chip asks the user to sign out and in again.
+- What it fills: `af.rows[]` for closed days (`src: 'api'`; rooms, occupancy, rooms revenue, food and beverage, other, out of service, deducted from stock, stock), `daily[date]`, `eodMtd` (only when every day of the month is present), `x.postings.byDay[date]` (lunch, dinner, drinks, room service; breakfasts on the morning eaten) and a new `gl.byDay[date]` (revenue by analysis code, accommodation by segment and booking source, rooms sold by segment, till sales charged to rooms and paid at the till).
+- Rooms revenue follows Actual & Forecast: the accommodation group less room hire. "Other" is room hire, conference, miscellaneous and sundries. Checked against the emailed reports for 17 November 2026.
+- `af.asOf` becomes the later of the emailed report and the last day Guestline closed; `af.emailAsOf` keeps the emailed forecast's own date.
+- `home.js`: `chip()` shows the API status when days are loaded; `glFeed()` runs after `liveFeed()` at sign-in.

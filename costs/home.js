@@ -399,7 +399,9 @@
   /* ---------- live feed: the Gmail script hands over the latest Guestline reports ---------- */
   var feed = { status: 'off', note: 'Gmail feed not connected' };
   function feedUrl() { try { return localStorage.getItem(GKEY) || ''; } catch (e) { return ''; } }
-  function chip() { var c = $('feed-chip'); if (!c) return; c.className = 'feed-chip ' + feed.status; c.textContent = feed.note; }
+  function chip() { var c = $('feed-chip'); if (!c) return; var g = window.GuestlineFeed && window.GuestlineFeed.info(); if (g && g.days) { c.className = 'feed-chip ' + g.status; c.textContent = g.note; return; } c.className = 'feed-chip ' + feed.status; c.textContent = feed.note; }
+  /* Guestline API feed (guestline-feed.js): closed days straight from Guestline, laid over whatever the emails supplied */
+  function glFeed() { var G = window.GuestlineFeed; if (!G) return; return G.load().then(function (n) { if (n) rerender(); }); }
   function addScript(src) { return new Promise(function (ok, bad) { if (window.pdfjsLib) return ok(); var x = document.createElement('script'); x.src = src; x.onload = ok; x.onerror = bad; document.head.appendChild(x); }); }
   function pdfCells(b64) {
     var bin = atob(b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
@@ -590,7 +592,7 @@
     if (t.closest('.dr-x') || t.id === 'scrim') { closeDrawer(); return; }
     var a = t.closest('[data-ac]'); if (a) { acView = a.getAttribute('data-ac'); if (!document.querySelector('#t-pf-actions.on')) go('pf-actions'); else renderActions(); return; }
     var fv = t.closest('[data-fb]'); if (fv && !fv.disabled) { fbView = fv.getAttribute('data-fb'); if (!document.querySelector('#t-pf-fb.on')) go('pf-fb'); else renderFb(); window.scrollTo(0, 0); return; }
-    if (t.id === 'gm-go') { gmailCheck(); liveFeed(); return; }
+    if (t.id === 'gm-go') { gmailCheck(); liveFeed().then(glFeed); return; }
     var f2 = t.closest('.find2 .finding'); if (f2) { f2.classList.toggle('open'); return; }
     var ks = t.closest('[data-ser]'); if (ks && hubC) { var k = +ks.getAttribute('data-ser'), vis = hubC.isDatasetVisible(k); hubC.setDatasetVisibility(k, !vis); hubC.update(); ks.classList.toggle('off', vis); return; }
     if (t.id === 'ac-reset') { try { localStorage.removeItem(DKEY); } catch (e2) {} renderActions(); return; }
@@ -608,12 +610,12 @@
     if (t.id === 'tr-range') { trRange = t.value; renderTrends(); }
     if (t.dataset && t.dataset.done) { var D = doneMap(); if (t.checked) D[t.dataset.done] = new Date().toISOString().slice(0, 10); else delete D[t.dataset.done]; try { localStorage.setItem(DKEY, JSON.stringify(D)); } catch (e2) {} if (document.querySelector('#t-pf-actions.on')) renderActions(); else { var a = t.closest('.act'); if (a) a.classList.toggle('done', t.checked); } }
   });
-  document.addEventListener('hub-signin', function () { unlock(); liveFeed(); });
+  document.addEventListener('hub-signin', function () { unlock(); liveFeed().then(glFeed); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
   window.HubAccounts = renderAccounts;
   if (window.Profit && window.Profit.register) { ['home', renderHome, 'actions', renderActions, 'fb', renderFb, 'data', renderData, 'help', renderHelp, 'trends', renderTrends].forEach(function (v, i, arr) { if (i % 2 === 0) window.Profit.register(v, arr[i + 1]); }); }
   document.addEventListener('DOMContentLoaded', function () {
-    unlock(); crumb('pf-home'); if (window.Profit.signedIn()) liveFeed(); else chip();
+    unlock(); crumb('pf-home'); if (window.Profit.signedIn()) liveFeed().then(glFeed); else chip();
     var sv = $('t-save'); if (sv && !sv.querySelector('.segs')) sv.insertAdjacentHTML('afterbegin', '<div id="save-pills"></div>');
     new MutationObserver(function () { annotate(document.querySelector('main')); var sp = $('save-pills'); if (sp && !sp.firstChild && window.Profit.signedIn()) sp.innerHTML = '<p style="margin:0 0 14px"><button class="btn ghost" data-go="pf-actions">← Back to the Action Centre</button></p>'; }).observe(document.querySelector('main'), { childList: true, subtree: true });
   });
