@@ -13989,6 +13989,9 @@ function htRender(){
   const tiles=document.getElementById('ht-tiles'), body=document.getElementById('ht-body'); if(!body) return;
   const deptf=(document.getElementById('ht-deptf')||{}).value||'all';
   const day=htDK(htCurDate());
+  const todayStr=htDK(new Date());
+  const nowMin=(function(){ const n=new Date(); return n.getHours()*60+n.getMinutes(); })();
+  const GRACE_MIN=30;   // minutes past rota end before an un-clocked-out shift auto-closes
   // group punches by person (name)
   const byPerson={};
   HT.punches.forEach(p=>{ const k=htNorm(p.name)||p.staffCode; if(!byPerson[k]) byPerson[k]={name:p.name,code:p.staffCode,dept:p.dept||'',punches:[]}; byPerson[k].punches.push(p); if(p.dept&&!byPerson[k].dept) byPerson[k].dept=p.dept; });
@@ -14006,7 +14009,16 @@ function htRender(){
     const inMin=inP?inP.mins:null, outMin=outP?outP.mins:null;
     const worked=(inMin!=null&&outMin!=null)?(((outMin-inMin)+1440)%1440):null;
     const rosMin=ros?htRosMins(ros.shift):null, rosStart=ros?htRosStart(ros.shift):null, rosEnd=ros?htRosEnd(ros.shift):null;
-    const status = inP&&!outP ? 'on' : (inP&&outP ? 'fin' : (ros ? 'abs' : 'extra'));
+    // Missed clock-out: clocked in, never clocked out, and now >30 min past the rota end
+    // (or the viewed day is already over). Such shifts auto-close and stop counting as "on shift".
+    let missed=false;
+    if(inP && !outP){
+      const overnight = (rosStart!=null && rosEnd!=null && rosEnd<rosStart);
+      if(day < todayStr){ missed=true; }                                         // a past day — must be closed
+      else if(day===todayStr && rosEnd!=null && !overnight && nowMin > (rosEnd+GRACE_MIN)){ missed=true; }
+      else if(day===todayStr && rosEnd==null && !ros){ /* clocked in with no rota — leave as 'on' */ }
+    }
+    const status = missed ? 'missed' : (inP&&!outP ? 'on' : (inP&&outP ? 'fin' : (ros ? 'abs' : 'extra')));
     const late = (ros&&rosStart!=null&&inMin!=null) ? (inMin-rosStart) : null;
     const endDiff = (ros&&rosEnd!=null&&outMin!=null) ? (outMin-rosEnd) : null;
     const code=(pp&&pp.code)||(ros&&ros.code)||'';
@@ -14015,11 +14027,14 @@ function htRender(){
     if(!dayPhoto){ punches.some(p=>{ if(p&&p.photo){ dayPhoto=p.photo; return true; } return false; }); }
     return {k:k,code:code,name:name,dept:dept,shift:ros?ros.shift:'',inP:inP,outP:outP,inMin:inMin,outMin:outMin,worked:worked,rosMin:rosMin,rosStart:rosStart,rosEnd:rosEnd,late:late,endDiff:endDiff,status:status,dayPhoto:dayPhoto};
   });
-  const onNow=rows.filter(r=>r.inP&&!r.outP).length;
-  const fin=rows.filter(r=>r.inP&&r.outP).length;
+  const onNow=rows.filter(r=>r.status==='on').length;
+  const fin=rows.filter(r=>r.status==='fin').length;
   const abs=rows.filter(r=>r.shift&&!r.inP).length;
   const extra=rows.filter(r=>(r.inP||r.outP)&&!r.shift).length;
-  if(tiles) tiles.innerHTML=htTile(onNow,'On shift now','#1d7a4d')+htTile(fin,'Finished today','#334')+htTile(abs,'Rostered, not in','#b3261e')+htTile(extra,'Not on rota','#8a6100');
+  const missedN=rows.filter(r=>r.status==='missed').length;
+  if(tiles){ tiles.innerHTML=htTile(onNow,'On shift now','#1d7a4d')+htTile(fin,'Finished today','#334')+htTile(abs,'Rostered, not in','#b3261e')+htTile(extra,'Not on rota','#8a6100');
+    if(missedN){ tiles.innerHTML+='<div style="grid-column:1/-1;margin-top:2px;background:#fff6ec;border:1px solid #f2d9ab;border-radius:10px;padding:9px 13px;font-size:12.5px;font-weight:700;color:#8a3b00">⚠ '+missedN+' missed clock-out'+(missedN>1?'s':'')+' — clocked in but never clocked out (auto-closed 30 min after shift end). Shown below; not counted as on shift.</div>'; }
+  }
   const deptList=htDeptList();
   const knownIds={}; deptList.forEach(d=>knownIds[d.id]=1);
   const byDept={}; rows.forEach(r=>{ const d=(r.dept in knownIds)?r.dept:''; (byDept[d]=byDept[d]||[]).push(r); });
@@ -14027,7 +14042,7 @@ function htRender(){
   deptList.forEach(dd=>{
     const d=dd.id;
     if(deptf!=='all' && d!==deptf) return;
-    const list=(byDept[d]||[]).sort((a,b)=>{ const s={on:0,abs:1,fin:2,extra:3}; return (s[a.status]-s[b.status])||a.name.localeCompare(b.name); });
+    const list=(byDept[d]||[]).sort((a,b)=>{ const s={on:0,missed:1,abs:2,fin:3,extra:4}; return (s[a.status]-s[b.status])||a.name.localeCompare(b.name); });
     const dot='<span style="width:11px;height:11px;border-radius:50%;background:'+htDeptCol(d)+';display:inline-block"></span>';
     if(!list.length){
       // keep every department visible even when nobody is in / rostered
@@ -14037,12 +14052,12 @@ function htRender(){
     html+='<div style="margin-bottom:18px"><h2 style="font-size:15.5px;display:flex;align-items:center;gap:8px;margin-bottom:9px;color:#1a2b3a">'+dot+spEsc(dd.name)+' <span style="font-size:12px;color:#64707f;font-weight:600">'+list.filter(r=>r.status==='on').length+' on · '+list.length+' total</span></h2>';
     html+='<table class="ht-tbl"><tr><th>Name</th><th>Status</th><th>Rota time</th><th>Clocked in / out</th><th>Difference</th><th>Total in day</th><th>Photo</th></tr>';
     list.forEach(r=>{
-      const chip = r.status==='on'?'<span class="ht-chip" style="background:#e8f6ee;color:#1d7a4d">● On shift</span>':r.status==='fin'?'<span class="ht-chip" style="background:#eef1f5;color:#334">Finished</span>':r.status==='abs'?'<span class="ht-chip" style="background:#fde8e8;color:#b3261e">Not clocked in</span>':'<span class="ht-chip" style="background:#fff3cd;color:#8a6100">Not on rota</span>';
+      const chip = r.status==='on'?'<span class="ht-chip" style="background:#e8f6ee;color:#1d7a4d">● On shift</span>':r.status==='missed'?'<span class="ht-chip" style="background:#fdecd8;color:#8a3b00">⚠ Missed clock-out</span>':r.status==='fin'?'<span class="ht-chip" style="background:#eef1f5;color:#334">Finished</span>':r.status==='abs'?'<span class="ht-chip" style="background:#fde8e8;color:#b3261e">Not clocked in</span>':'<span class="ht-chip" style="background:#fff3cd;color:#8a6100">Not on rota</span>';
       // Rota time column — scheduled start–end
       const rotaCell = r.shift ? ('<b>'+spEsc(htClock(r.rosStart))+'</b> – <b>'+spEsc(htClock(r.rosEnd))+'</b>'+(r.rosMin?(' <span style="color:#64707f;font-size:11px">('+htHrs(r.rosMin)+')</span>'):'')) : '<span style="color:#64707f">not rostered</span>';
       // Clocked column — actual in → out
       const inC = r.inP ? spEsc(r.inP.time) : '<span style="color:#64707f">—</span>';
-      const outC = r.outP ? spEsc(r.outP.time) : (r.inP?'<span style="color:#1d7a4d;font-weight:700">still in</span>':'<span style="color:#64707f">—</span>');
+      const outC = r.outP ? spEsc(r.outP.time) : (r.status==='missed'?'<span style="color:#8a3b00;font-weight:700">no clock-out</span>':(r.inP?'<span style="color:#1d7a4d;font-weight:700">still in</span>':'<span style="color:#64707f">—</span>'));
       const clockedCell = '<b>'+inC+'</b> → <b>'+outC+'</b>';
       // Difference column — start variance (late in bad) + end variance (early out bad)
       const dIn = r.inP ? htDiffChip('in',r.late,true) : '';
