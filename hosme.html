@@ -61,9 +61,21 @@ const FBCONF={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:"brand
 firebase.initializeApp(FBCONF); const db=firebase.firestore();
 
 let ROSTER=[], ME=null, MYREQ=[], reqUnsub=null, busy=false;
+let ROTA={staff:[],rota:{}}, ROTA_WK=0;
+const ICON='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjM4IiBmaWxsPSIjMWEyYjNhIi8+PHRleHQgeD0iOTAiIHk9IjExNSIgZm9udC1zaXplPSI3MCIgZm9udC1mYW1pbHk9Ikdlb3JnaWEiIGZpbGw9IiNjNWE0NWMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkJIPC90ZXh0Pjwvc3ZnPg==';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const DEPTNAME={reception:'Reception',admin:'Admin / Events',nights:'Nights',maintenance:'Maintenance',kitchen:'Kitchen',bar:'Bar',restaurant:'Food & Beverage',housekeeping:'Housekeeping',spa:'Spa'};
+const DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+async function loadRota(){
+  try{ const s=await db.collection('hospro_public').doc('rota').get(); if(s.exists){ const d=s.data()||{}; ROTA={staff:d.staff||[], rota:d.rota||{}}; } }catch(e){ console.warn('rota',e); }
+}
+function rdk(x){ return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); }
+function myRotaId(){ const m=(ROTA.staff||[]).find(s=>String(s.staffCode||'')===String(ME&&ME.code)); return (m&&m.id)||(ME&&ME.id)||''; }
+function weekDates(offset){ const d=new Date(); const dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow+(offset||0)*7); const out=[]; for(let i=0;i<7;i++){ const x=new Date(d); x.setDate(d.getDate()+i); out.push(x); } return out; }
+function shiftOf(id,dk){ const day=(ROTA.rota||{})[dk]; let v=day?day[id]:null; if(v&&typeof v==='object') v=v.shift||''; return v||''; }
+function prettyShift(sh){ if(!sh) return {t:'—',off:true}; const l=sh.toLowerCase(); if(l==='off') return {t:'Off',off:true}; if(l==='holiday') return {t:'Holiday',off:true}; if(l==='unavailable') return {t:'Unavailable',off:true}; if(l==='sick') return {t:'Sick',off:true}; if(l==='in lieu'||l==='lieu') return {t:'Lieu',off:true}; return {t:sh.replace(/&/g,' & '),off:false}; }
 function d1(h){ return (h==null||h==='')?'—':(Math.round(h/8*10)/10); }           // hours→days @8h fallback
 function days(h,dayHrs){ const dh=dayHrs||8; return (h==null)?'—':(Math.round(h/dh*10)/10); }
 function fmtH(h){ return (h==null||h==='')?'—':(Math.round(h*10)/10)+'h'; }
@@ -105,6 +117,8 @@ function viewHome(){
   const s=ME, dh=s.dayHrs||8;
   const remainD=days(s.outstandingHrs,dh), takenD=days(s.takenHrs,dh), entD=days(s.entHrs,dh), schedD=days(s.scheduledHrs,dh);
   $('app').innerHTML=`
+    <div id="hm-banner"></div>
+    ${alertsCardHTML()}
     <div class="card">
       <div class="hdr"><div><div class="hello">Welcome back, ${esc((s.name||'').split(' ')[0])} 👋</div>
         <div class="sub">${esc(s.role||'')} · ${esc(DEPTNAME[s.dept]||s.dept||'')}</div></div>
@@ -129,6 +143,12 @@ function viewHome(){
     </div>
 
     <div class="card">
+      <div class="hdr"><h3>My rota</h3><div class="seg" style="margin:0"><button id="rwk0" class="${ROTA_WK===0?'on':''}" onclick="setWk(0)" style="padding:7px 12px">This week</button><button id="rwk1" class="${ROTA_WK===1?'on':''}" onclick="setWk(1)" style="padding:7px 12px">Next week</button></div></div>
+      <div id="hm-rota"></div>
+      <div class="note">Your shifts as published by management. Times can change — check back for updates.</div>
+    </div>
+
+    <div class="card">
       <div class="hdr"><h3>Request time off</h3></div>
       <button class="btn navy" onclick="viewRequest()">+ New leave request</button>
     </div>
@@ -138,6 +158,56 @@ function viewHome(){
       <div id="myreq"></div>
     </div>`;
   renderMyReq();
+  renderRota();
+}
+
+// ---------- MY ROTA ----------
+function setWk(n){ ROTA_WK=n; const a=$('rwk0'),b=$('rwk1'); if(a)a.className=(n===0?'on':''); if(b)b.className=(n===1?'on':''); renderRota(); }
+function renderRota(){
+  const el=$('hm-rota'); if(!el) return;
+  const id=myRotaId();
+  if(!id){ el.innerHTML='<div class="muted">We couldn’t match you to the published rota yet. Ask reception to check your name is on it.</div>'; return; }
+  const dates=weekDates(ROTA_WK), todayK=rdk(new Date());
+  let any=false;
+  const rows=dates.map((x,i)=>{
+    const dk=rdk(x), ps=prettyShift(shiftOf(id,dk)); if(!ps.off) any=true;
+    const isToday=(dk===todayK);
+    return `<div class="row" style="${isToday?'background:#f6f8fa;border-radius:8px;padding-left:8px;padding-right:8px;':''}">
+      <span><b${isToday?' style="color:var(--teal)"':''}>${DOW[i]}</b> <span class="sub">${x.getDate()}/${x.getMonth()+1}</span></span>
+      <b style="${ps.off?'color:var(--mut);font-weight:600':''}">${esc(ps.t)}</b></div>`;
+  }).join('');
+  el.innerHTML = rows + (any?'':'<div class="note" style="text-align:center">No shifts published for this week yet.</div>');
+}
+
+// ---------- ALERTS & NOTIFICATIONS ----------
+function notifState(){ return ('Notification' in window) ? Notification.permission : 'unsupported'; }
+function alertsCardHTML(){
+  const st=notifState();
+  if(st==='granted' || st==='unsupported') return '';
+  const line = st==='denied'
+    ? 'Alerts are blocked in your phone settings. Allow notifications for this site to get told when your leave is approved.'
+    : 'Get a notification the moment your leave is approved or declined — no need to keep checking.';
+  const btn = st==='denied' ? '' : '<button class="btn" style="margin-top:10px" onclick="askNotif()">🔔 Turn on alerts</button>';
+  return `<div class="card" style="border-color:#f2d9ab;background:#fffaf0"><div class="hdr"><h3>🔔 Leave alerts</h3></div><div class="note" style="margin-top:0">${line}</div>${btn}</div>`;
+}
+function askNotif(){ if(!('Notification' in window)) return; try{ Notification.requestPermission().then(()=>{ viewHome(); }); }catch(e){ viewHome(); } }
+function loadSeen(){ try{ return JSON.parse(localStorage.getItem('hosme_seen_'+String(ME.code))||'{}')||{}; }catch(e){ return {}; } }
+function saveSeen(m){ try{ localStorage.setItem('hosme_seen_'+String(ME.code), JSON.stringify(m)); }catch(e){} }
+function showBanner(msg, kind){
+  const b=$('hm-banner'); if(!b) return;
+  const bg = kind==='approved'?'#e8f6ee':kind==='declined'?'#fde8e8':'#eef4ff';
+  const col= kind==='approved'?'#1d7a4d':kind==='declined'?'#b3261e':'#2B726A';
+  b.innerHTML='<div class="card" style="border-color:'+col+';background:'+bg+';display:flex;align-items:center;gap:10px"><div style="flex:1;font-weight:700;font-size:14px;color:'+col+'">'+esc(msg)+'</div><button class="link" onclick="this.closest(\'.card\').remove()">Dismiss</button></div>';
+}
+function alertStatus(r){
+  const nice=(r.type||'leave');
+  const msg = r.status==='approved'
+    ? ('✅ Your '+nice+' ('+r.from+' → '+r.to+') was approved')
+    : ('❌ Your '+nice+' ('+r.from+' → '+r.to+') was declined');
+  showBanner(msg, r.status);
+  try{ if('Notification' in window && Notification.permission==='granted'){
+    new Notification('HosME — leave '+r.status, { body: nice+': '+r.from+' → '+r.to, icon: ICON, badge: ICON, tag:'hosme-'+r._id });
+  } }catch(e){}
 }
 
 // ---------- MY REQUESTS ----------
@@ -145,9 +215,16 @@ function watchRequests(){
   if(reqUnsub){ try{reqUnsub();}catch(e){} }
   try{
     reqUnsub=db.collection('leave_requests').where('staffCode','==',String(ME.code)).onSnapshot(qs=>{
-      MYREQ=[]; qs.forEach(d=>{ const v=d.data()||{}; v._id=d.id; MYREQ.push(v); });
+      const prev=loadSeen(), firstRun=(Object.keys(prev).length===0);
+      MYREQ=[]; const changed=[];
+      qs.forEach(d=>{ const v=d.data()||{}; v._id=d.id; MYREQ.push(v);
+        const was=prev[d.id];
+        if(!firstRun && was!==undefined && was!==v.status && (v.status==='approved'||v.status==='declined')){ changed.push(v); }
+      });
+      const seen={}; MYREQ.forEach(r=>{ seen[r._id]=r.status; }); saveSeen(seen);
       MYREQ.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
       renderMyReq();
+      changed.forEach(alertStatus);
     }, e=>console.warn('req',e&&e.code));
   }catch(e){}
 }
@@ -216,10 +293,15 @@ async function submitReq(){
 // ---------- BOOT ----------
 (async function(){
   $('app').innerHTML='<div class="card"><div class="muted">Loading…</div></div>';
-  await loadRoster();
+  await Promise.all([loadRoster(), loadRota()]);
+  // Personal link — brandon.hospro.co.uk/hosme.html?code=12685 logs this person
+  // straight in and is remembered for next time.
+  let urlCode='';
+  try{ var qp=new URLSearchParams(location.search); urlCode=(qp.get('code')||qp.get('emp')||qp.get('e')||'').trim(); }catch(e){}
+  if(urlCode){ const s=findStaff(urlCode); if(s){ try{ localStorage.setItem('hosme_code', s.code); }catch(e){} ME=s; watchRequests(); viewHome(); return; } }
   let saved=''; try{ saved=localStorage.getItem('hosme_code')||''; }catch(e){}
   if(saved){ const s=findStaff(saved); if(s){ ME=s; watchRequests(); viewHome(); return; } }
-  viewLogin(saved);
+  viewLogin(saved||urlCode);
 })();
 </script>
 </body>
