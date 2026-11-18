@@ -63,6 +63,31 @@
       '.v13-pos-tile.other{border-top:3px solid #6250d6}',
       '.v13-note{background:#fdf6e9;border:1px solid #f0d99f;border-radius:8px;padding:10px 14px;margin:10px 0;font-size:13px;color:#725514}',
       '.v13-split{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}',
+      /* v18: smaller trading position tiles, hide hp-cards duplication */
+      'body.v16 #pf-home .hp-cards,body.v16 #pf-home .hp-foot{display:none!important}',
+      'body.v16 #pf-home .hp-today .tiles{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}',
+      'body.v16 #pf-home .hp-today .tile,body.v16 #pf-home .hp-today .tile.click{padding:10px 12px}',
+      'body.v16 #pf-home .hp-today .tile .l{font-size:11px;letter-spacing:.2px}',
+      'body.v16 #pf-home .hp-today .tile .v{font-size:19px;line-height:1.15;margin:3px 0 1px}',
+      'body.v16 #pf-home .hp-today .tile .d{font-size:11px;line-height:1.3}',
+      'body.v16 #pf-home .hp-today .tile .v small{font-size:11px;font-weight:400;color:#86847d;margin-left:4px}',
+      'body.v16 #pf-home .hp-today .tile .v span{font-size:14px;color:#52514e;font-weight:600;margin-left:6px}',
+      /* smaller header */
+      'body.v16 #pf-home .hp-today .hp-th{padding:10px 14px}',
+      'body.v16 #pf-home .hp-today .hp-th h3{font-size:15px}',
+      'body.v16 #pf-home .hp-today .hp-th p{font-size:12.5px}',
+      /* v18: F&B range summary strip */
+      '.v18-fb-strip{background:#fff;border:1px solid #e4e2dc;border-radius:12px;padding:14px 18px;margin:0 0 14px}',
+      '.v18-fb-strip h3{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}',
+      '.v18-fb-strip .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}',
+      '.v18-fb-strip .tile{background:#faf9f6;border:1px solid #efede7;border-radius:9px;padding:10px 12px}',
+      '.v18-fb-strip .tile .l{font-size:11px;color:#52514e;letter-spacing:.2px;text-transform:uppercase;font-weight:600}',
+      '.v18-fb-strip .tile .v{font-size:19px;font-weight:700;color:#1a2b47;margin:3px 0 1px}',
+      '.v18-fb-strip .tile .d{font-size:11px;color:#52514e;line-height:1.3}',
+      '.v18-cmp{font-size:10.5px;margin-left:6px}',
+      '.v18-cmp .up{color:#1a8f63;font-weight:600}',
+      '.v18-cmp .dn{color:#e34948;font-weight:600}',
+
       '.v13-split .v13-col{background:#fff;border:1px solid #e4e2dc;border-radius:10px;padding:14px}',
       '.v13-split .v13-col h4{margin:0 0 10px;font-size:14px;display:flex;justify-content:space-between;align-items:center}',
       '.v13-bar{height:28px;background:#eee;border-radius:5px;overflow:hidden;display:flex;margin:6px 0}',
@@ -488,23 +513,92 @@
   function augmentHome() {
     var el = $('pf-home'); if (!el) return;
     var S = window.Trading && window.Trading.S ? window.Trading.S() : {}, lc = lastClosed();
+    var T = window.Trading;
+
     // Add "Live" badge next to the greeting if the API is connected
     var hero = el.querySelector('.hp-hero h2');
     var G = window.GuestlineFeed && window.GuestlineFeed.info();
     if (hero && G && G.days && !hero.querySelector('.v13-hero-badge')) {
       hero.insertAdjacentHTML('beforeend', '<span class="v13-hero-badge">● Live from Guestline · ' + (G.days || 0) + ' days loaded' + (G.loading ? ' · still loading history' : '') + '</span>');
     }
-    // Insert date range + Highlights block before hp-cards
-    var cards = el.querySelector('.hp-cards'), hlHtml = buildHighlights(S, lc);
-    if (cards) {
-      var existingHl = el.querySelector('.v13-hl'); if (existingHl) existingHl.remove();
-      var existingDr = el.querySelector('.v13-dr[data-v13-page="home"]'); if (existingDr) existingDr.remove();
-      if (hlHtml) cards.insertAdjacentHTML('beforebegin', drBar('home', { forward: false }) + hlHtml);
+
+    // Remove any old insertions
+    var existingHl = el.querySelector('.v13-hl'); if (existingHl) existingHl.remove();
+    var existingDr = el.querySelector('.v13-dr[data-v13-page="home"]'); if (existingDr) existingDr.remove();
+
+    // Insert date range bar before the hp-today block (above the trading position)
+    var today = el.querySelector('.hp-today');
+    if (today && T && S.af) {
+      today.insertAdjacentHTML('beforebegin', drBar('home', { forward: false }));
+      // Replace the tiles inside hp-today with range-aware ones
+      var tilesEl = today.querySelector(':scope > .tiles');
+      if (tilesEl) {
+        var newTiles = buildBusinessTodayTiles(S, lc);
+        tilesEl.outerHTML = newTiles;
+      }
+      // Update the title to reflect the range
+      var th = today.querySelector('.hp-th');
+      if (th) {
+        var r = getRange(), d = rangeDates(/^next/.test(r.kind) ? { kind: '7' } : r, lc);
+        var h3 = th.querySelector('h3');
+        if (h3) { h3.firstChild.textContent = 'Latest trading position '; if (!h3.querySelector('.v13-src')) h3.insertAdjacentHTML('beforeend', ' <span class="v13-src">Guestline API ●</span>'); }
+        var p = th.querySelector('p');
+        if (p) p.innerHTML = esc(d.label) + ' · from the Guestline report received ' + th.querySelector('p').textContent.split('received').pop();
+      }
+      // Hide the Open Trading button
+      var ot = today.querySelector('.hp-link[data-go="pf-trading"]'); if (ot) ot.style.display = 'none';
     }
-    // Add green ticks to the "Latest trading position" header
-    var today = el.querySelector('.hp-today h3');
-    if (today && !today.querySelector('.v13-src')) today.insertAdjacentHTML('beforeend', ' <span class="v13-src">Guestline API ●</span>');
+
+    // Add highlights block AFTER hp-today
+    var hlHtml = buildHighlights(S, lc);
+    if (today && hlHtml) today.insertAdjacentHTML('afterend', hlHtml);
   }
+
+  function buildBusinessTodayTiles(S, lc) {
+    var T = window.Trading; if (!T || !S.af) return '<div class="tiles"></div>';
+    var r = getRange(), d = rangeDates(/^next/.test(r.kind) ? { kind: '7' } : r, lc), cmp = getCmp();
+    var tally = tradingTally(S, d.from, d.to);
+    var cd = cmp !== 'none' ? cmpDates(d, cmp) : null;
+    var ctally = cd ? tradingTally(S, cd.from, cd.to) : null;
+
+    function delta(a, b) {
+      if (!b || !isFinite(b) || b === 0 || a === null || !isFinite(a)) return '';
+      var v = (a - b) / Math.abs(b); var cls = v >= 0 ? 'up' : 'dn';
+      return ' <span class="v18-cmp"><span class="' + cls + '">' + (v >= 0 ? '+' : '−') + Math.abs(v * 100).toFixed(1) + '%</span></span>';
+    }
+
+    // Forward-looking: tonight on the books
+    var cut = T.asOfDay();
+    var to = S.af.rows.filter(function (x) { return x.d === cut; })[0];
+    var yd = S.af.rows.filter(function (x) { return x.d < cut; }).slice(-1)[0];
+    var tonightAcc = to ? T.net(to.acc) : 0;
+    var tonightAdr = to && to.rooms ? tonightAcc / to.rooms : 0;
+    var n7 = T.agg(S.af.rows.filter(function (x) { return x.d >= cut; }).slice(0, 7));
+    var m = cut.slice(0, 7), act = T.agg(T.rowsFor(m, 'actual')), bks = T.agg(T.rowsFor(m, 'books'));
+    var allMonth = act.total + bks.total, allMonthOcc = (act.rooms + bks.rooms) / (120 * (act.nights + bks.nights));
+
+    function t(label, value, sub) {
+      return '<div class="tile"><div class="l">' + label + '</div><div class="v">' + value + '</div>' + (sub ? '<div class="d">' + sub + '</div>' : '') + '</div>';
+    }
+
+    var tiles = [
+      t(esc(d.label) + ' revenue', gbp(tally.total), (tally.nights || 0) + ' night' + (tally.nights === 1 ? '' : 's') + ' · ' + num(tally.rooms) + ' room nights' + delta(tally.total, ctally && ctally.total)),
+      t('Occupancy', pc(tally.occ), num(tally.rooms) + ' of ' + num(120 * tally.nights) + ' rooms' + delta(tally.occ, ctally && ctally.occ)),
+      t('ADR', gbp(tally.adr, 2), 'average daily rate net of VAT' + delta(tally.adr, ctally && ctally.adr)),
+      t('RevPAR', gbp(tally.revpar, 2), 'rooms revenue ÷ ' + T.ROOMS + ' rooms' + delta(tally.revpar, ctally && ctally.revpar)),
+      t('TRevPAR', gbp(tally.trevpar, 2), 'all revenue ÷ ' + T.ROOMS + ' rooms' + delta(tally.trevpar, ctally && ctally.trevpar)),
+      t('Rooms sold', num(tally.rooms), gbp(tally.acc) + ' accommodation revenue' + delta(tally.rooms, ctally && ctally.rooms)),
+      t('Food &amp; Beverage', gbp(tally.fb), (tally.rooms ? gbp(tally.fb / tally.rooms, 2) + ' per room sold' : '') + delta(tally.fb, ctally && ctally.fb)),
+      t('Other revenue', gbp(tally.oth), 'room hire, conference, misc, sundries'),
+      t('Out of service', num(tally.oos), tally.adr ? gbp(tally.oos * tally.adr) + ' at ADR' : ''),
+      // Forward-looking anchors (always shown)
+      t('Tonight, on the books', to ? num(to.rooms) + ' <small>rooms</small>' : '–', to ? gbp(tonightAdr, 2) + ' ADR · ' + gbp(tonightAcc) + ' rooms revenue' : ''),
+      t('Next 7 nights, on the books', n7.rooms ? num(n7.rooms) + ' <small>rooms</small> <span>' + pc(n7.occ) + '</span>' : '–', n7.rooms ? gbp(n7.acc) + ' rooms revenue' : ''),
+      t(MN[+m.slice(5) - 1] + ', with bookings held', gbp(allMonth), pc(allMonthOcc) + ' occupancy for the month')
+    ].join('');
+    return '<div class="tiles">' + tiles + '</div>';
+  }
+
 
   function augmentTrading() {
     var el = $('pf-trading'); if (!el) return;
@@ -586,6 +680,51 @@
       btn.innerHTML = 'POS <span class="v13-tick" style="width:14px;height:14px;font-size:9.5px" title="Live from Guestline API"></span>';
       seg.insertBefore(btn, seg.firstChild);
     }
+    // Capitalise the heading if it says "Food & beverage"
+    el.querySelectorAll('h1,h2,h3').forEach(function (h) {
+      if (/Food\s*&(amp;)?\s*beverage/i.test(h.innerHTML)) {
+        h.innerHTML = h.innerHTML.replace(/Food\s*&(amp;)?\s*beverage/i, 'Food & Beverage').replace(/Food\s*&amp;\s*beverage/i, 'Food &amp; Beverage');
+      }
+    });
+    // Inject a range summary strip at the very top
+    var existing = el.querySelector('.v18-fb-strip'); if (existing) existing.remove();
+    var existingDr = el.querySelector('.v13-dr[data-v13-page="fb"]'); if (existingDr) existingDr.remove();
+    var S = window.Trading && window.Trading.S ? window.Trading.S() : {};
+    var T = window.Trading, lc = lastClosed();
+    if (!T || !S.af || !lc) return;
+    var r = getRange(), d = rangeDates(/^next/.test(r.kind) ? { kind: '7' } : r, lc), cmp = getCmp();
+    var tally = tradingTally(S, d.from, d.to);
+    var cd = cmp !== 'none' ? cmpDates(d, cmp) : null;
+    var ctally = cd ? tradingTally(S, cd.from, cd.to) : null;
+
+    function delta(a, b) {
+      if (!b || !isFinite(b) || b === 0 || a === null || !isFinite(a)) return '';
+      var v = (a - b) / Math.abs(b); var cls = v >= 0 ? 'up' : 'dn';
+      return ' <span class="v18-cmp"><span class="' + cls + '">' + (v >= 0 ? '+' : '−') + Math.abs(v * 100).toFixed(1) + '%</span></span>';
+    }
+
+    // Split F&B into food vs beverage using the Guestline byDay groups
+    var days = daysIn(S, d.from, d.to);
+    var food = 0, bev = 0, foodRev = tally.fb;
+    days.forEach(function (x) {
+      var g = x.groups || {};
+      food += (g.FOOD && g.FOOD.n) || 0;
+      bev += (g.BEVERAGE && g.BEVERAGE.n) || 0;
+    });
+
+    // Breakfast counts from Postings
+    var inr = 0, paid = 0, biv = 0, bpv = 0;
+    days.forEach(function (x) { if (Array.isArray(x.bk)) { inr += x.bk[0] || 0; biv += x.bk[1] || 0; paid += Math.max(0, x.bk[2] || 0); bpv += Math.max(0, x.bk[3] || 0); } });
+
+    var html = '<div class="v18-fb-strip"><h3>Food &amp; Beverage summary · ' + esc(d.label) + ' <span class="v13-src">Guestline API ●</span></h3><div class="tiles">';
+    html += '<div class="tile"><div class="l">Total F&amp;B revenue</div><div class="v">' + gbp(foodRev) + '</div><div class="d">' + (tally.nights ? gbp(foodRev / tally.nights) + ' a day · ' : '') + (tally.rooms ? gbp(foodRev / tally.rooms, 2) + ' per occupied room' : '') + delta(foodRev, ctally && ctally.fb) + '</div></div>';
+    html += '<div class="tile"><div class="l">Food revenue</div><div class="v">' + gbp(food) + '</div><div class="d">' + pc(foodRev ? food / foodRev : null) + ' of F&amp;B</div></div>';
+    html += '<div class="tile"><div class="l">Beverage revenue</div><div class="v">' + gbp(bev) + '</div><div class="d">' + pc(foodRev ? bev / foodRev : null) + ' of F&amp;B</div></div>';
+    html += '<div class="tile"><div class="l">Breakfasts served</div><div class="v">' + num(inr + paid) + '</div><div class="d">' + num(inr) + ' in the rate · ' + num(paid) + ' paid on the day</div></div>';
+    html += '<div class="tile"><div class="l">Nights in view</div><div class="v">' + num(tally.nights) + '</div><div class="d">' + (tally.rooms ? num(tally.rooms) + ' rooms sold · ' + pc(tally.occ) + ' occupancy' : '') + '</div></div>';
+    html += '</div></div>';
+
+    el.insertAdjacentHTML('afterbegin', drBar('fb', { forward: false }) + html);
   }
 
   var currentFb = null;
@@ -665,9 +804,8 @@
     // All the "cards" the home page used to show, in a sensible order
     var items = [
       { group: 'Main', rows: [
-        ['pf-home', 'brief', 'Overview', 'Dashboard, live from Guestline'],
-        ['pf-trading', 'trading', 'Trading', 'Occupancy, rate, RevPAR'],
-        ['pf-fb', 'fb', 'Food & beverage', 'Sales by outlet and meal']
+        ['pf-home', 'trading', 'Business Today', 'Trading, live from Guestline'],
+        ['pf-fb', 'fb', 'Food & Beverage', 'Sales by outlet and meal']
       ]},
       { group: 'Commercial', rows: [
         ['pf-demand', 'demand', 'Channels & rates', 'Booking sources, rate plans'],
@@ -709,7 +847,7 @@
 
     var top = document.createElement('div');
     top.className = 'v16-top';
-    top.innerHTML = '<h1 id="v16-title">Overview <small id="v16-sub"></small></h1><div class="v16-top-filters" id="v16-top-filters"></div>';
+    top.innerHTML = '<h1 id="v16-title">Business Today <small id="v16-sub"></small></h1><div class="v16-top-filters" id="v16-top-filters"></div>';
     document.body.appendChild(top);
 
     document.body.classList.add('v16');
@@ -738,7 +876,7 @@
     if (title) {
       var found = null;
       document.querySelectorAll('.v16-item').forEach(function (b) { if (b.getAttribute('data-v16-tab') === V16_ACTIVE) { found = b.querySelector('b').textContent + ''; } });
-      title.firstChild.textContent = (found || 'Overview') + ' ';
+      title.firstChild.textContent = (found || 'Business Today') + ' ';
     }
   }
   function wireV16() {
