@@ -49,7 +49,7 @@
     days.forEach(function (x) {
       have[x.d] = toRow(x, have[x.d]);
       S.daily[x.d] = toDaily(x);
-      gl.byDay[x.d] = { codes: x.c || {}, seg: x.as || {}, media: x.am || {}, roomsBySeg: x.os || {}, sleepers: x.sl, adr: x.adr, stock: x.st, till: x.tl || null, period: x.p };
+      gl.byDay[x.d] = { codes: x.c || {}, seg: x.as || {}, media: x.am || {}, roomsBySeg: x.os || {}, sleepers: x.sl, adr: x.adr, stock: x.st, oos: x.oo, dfs: x.df, sold: x.so, groups: x.g || {}, net: x.net, till: x.tl || null, period: x.p };
       if (x.bk) brk[shift(x.d, 1)] = x.bk;          // breakfasts are eaten the morning after the trading day they are posted in
     });
     /* "As of" is the later of the emailed report and the last day Guestline closed, so closed days always count as actual.
@@ -105,6 +105,8 @@
         return r.json();
       }).then(function (data) {
         cache = data;
+        // Expose items for the last closed day, if the feed provides them (v2+ roll-up)
+        if (data.recentItems) { try { window.GuestlineFeed._items = data.recentItems; window.GuestlineFeed._itemsDate = data.recentItemsDate; } catch (e) {} }
         var n = apply(T.S(), data);
         if (!n) { info = { status: 'warn', note: 'Guestline API: no days loaded yet', days: 0 }; chip(); return 0; }
         if (T.resetMonth) T.resetMonth();
@@ -126,6 +128,8 @@
     var so = function (e) { if (e.target && e.target.id === 'signout') setToken(null); };
     root.document.addEventListener('click', so, true);
   }
-  var api = { load: load, apply: apply, reapply: reapply, signIn: signIn, info: function () { return info; }, toRow: toRow, toDaily: toDaily };
+  var api = { load: load, apply: apply, reapply: reapply, signIn: signIn, info: function () { return info; }, toRow: toRow, toDaily: toDaily,
+    items: function () { return window.GuestlineFeed._items || null; },
+    itemsDate: function () { return window.GuestlineFeed._itemsDate || null; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.GuestlineFeed = api;
 })(typeof window !== 'undefined' ? window : this);
