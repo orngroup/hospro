@@ -169,7 +169,7 @@ async function doSave(photo){
     date: now.toISOString().slice(0,10),
     time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
     ts: now.toISOString(), mins: now.getHours()*60+now.getMinutes(),
-    source:'qr-hostime', hasPhoto: !!photo };
+    source:'qr-hostime', hasPhoto: !!photo, photo: photo||'' };
   var done=false;
   const wd=setTimeout(function(){ if(!done){ show('err','Still saving — check the Wi-Fi and try again.'); busy=false; } }, 12000);
   try{

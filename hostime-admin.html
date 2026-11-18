@@ -192,8 +192,15 @@ function render(){
     list.forEach(function(r){
       var chip = r.status==='on'?'<span class="chip c-on">● On shift</span>':r.status==='fin'?'<span class="chip c-fin">Finished</span>':r.status==='abs'?'<span class="chip c-abs">Not clocked in</span>':'<span class="chip c-extra">Not on rota</span>';
       var inTxt = r.inP ? (esc(r.inP.time)+(r.late!=null?(r.late>5?(' <span class="late">+'+r.late+'m late</span>'):(r.late< -0?' <span class="early">'+Math.abs(r.late)+'m early</span>':' <span class="ok">on time</span>')):'')) : '<span class="muted">—</span>';
-      var face = FACES_NAME[r.k] || (r.code&&FACES[String(r.code)]) || '';
-      var photos = face ? ('<img class="ph" src="'+face+'" title="'+esc(r.name)+' — reference photo" onclick="lb(this.src)">') : '';
+      // Photo for THIS day: the live shot taken at the actual clock-in (in-punch first, then any punch today).
+      var dayPhoto = (r.inP&&r.inP.photo) || (r.outP&&r.outP.photo) || '';
+      if(!dayPhoto){ (r.punches||[]).some(function(p){ if(p&&p.photo){ dayPhoto=p.photo; return true; } return false; }); }
+      var clockedToday = !!(r.inP||r.outP);
+      var ref = FACES_NAME[r.k] || (r.code&&FACES[String(r.code)]) || '';
+      var photos;
+      if(dayPhoto){ photos='<img class="ph" src="'+dayPhoto+'" title="'+esc(r.name)+(r.inP?(' — clocked in '+esc(r.inP.time)):'')+'" onclick="lb(this.src)">'; }
+      else if(clockedToday && ref){ photos='<img class="ph" style="opacity:.45" src="'+ref+'" title="'+esc(r.name)+' — reference photo (no live photo saved on this clock-in)" onclick="lb(this.src)">'; }
+      else { photos=''; }
       html+='<tr><td class="nm">'+esc(r.name)+'</td><td>'+chip+'</td><td>'+(r.shift?esc(r.shift):'<span class="muted">not rostered</span>')+(r.rosMin?(' <span class="muted">· '+hrs(r.rosMin)+'</span>'):'')+'</td><td>'+inTxt+'</td><td>'+(r.outP?esc(r.outP.time):'<span class="muted">—</span>')+'</td><td>'+(r.worked!=null?('<b>'+hrs(r.worked)+'</b>'):'<span class="muted">—</span>')+'</td><td>'+(photos||'<span class="muted">—</span>')+'</td></tr>';
     });
     html+='</table></div>';
