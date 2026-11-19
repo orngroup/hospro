@@ -957,8 +957,7 @@
     var totalOcc = totalAvail ? totalRooms / totalAvail : null;
 
     /* ===== Build HTML ===== */
-    var h = drBar('forecast', { forward: false });
-    h += '<div class="card" style="padding:20px"><h2 style="margin:0 0 4px">Next 6 months on the books <span class="v13-src">Guestline API ●</span></h2><p class="sub" style="margin:0 0 18px">From ' + MN[+months[0].slice(5)-1] + ' ' + months[0].slice(0,4) + ' to ' + MN[+months[5].slice(5)-1] + ' ' + months[5].slice(0,4) + ', rolling · from the Actual &amp; Forecast feed, net of VAT, on ' + LET + ' lettable rooms a night. Staffing from HosPRO Rota rules.</p>';
+    var h = '<div class="card" style="padding:20px"><h2 style="margin:0 0 4px">Next 6 months on the books <span class="v13-src">Guestline API ●</span></h2><p class="sub" style="margin:0 0 18px">From ' + MN[+months[0].slice(5)-1] + ' ' + months[0].slice(0,4) + ' to ' + MN[+months[5].slice(5)-1] + ' ' + months[5].slice(0,4) + ', rolling · from the Actual &amp; Forecast feed, net of VAT, on ' + LET + ' lettable rooms a night. Staffing from HosPRO Rota rules.</p>';
     h += '<div class="tiles" style="margin-bottom:14px">' +
       '<div class="tile"><div class="l">Total rooms revenue</div><div class="v">' + gbp(totalAcc) + '</div><div class="d">Across 6 months</div></div>' +
       '<div class="tile"><div class="l">Total F&amp;B (pre-booked)</div><div class="v">' + gbp(totalFb) + '</div><div class="d">Only pre-booked with rooms so far</div></div>' +
@@ -1162,6 +1161,9 @@
   }
   function renderTopFilters() {
     var top = $('v16-top-filters'); if (!top) return;
+    // v24: no date filter on the Forecast tab
+    var activeTab = (document.querySelector('section.tab.on') || {}).id || '';
+    if (activeTab === 't-pf-forecast') { top.innerHTML = ''; return; }
     var r = getRange(), cmp = getCmp();
     // Shortlist of chips; the full range + custom + compare live in each page's v13-dr bar
     var QUICK = [['1', 'Yesterday'], ['7', '7 days'], ['14', '14 days'], ['28', '28 days'], ['mtd', 'MTD'], ['lastmonth', 'Last month'], ['90', '90 days'], ['12m', '12 months']];
