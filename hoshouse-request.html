@@ -372,6 +372,7 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         <div class="bigcard" id="card-deliveries" onclick="showSection('deliveries')"><div class="bc-n" id="bc-del-n">0</div><div class="bc-banner"><div class="bc-t">HosPARCEL</div><div class="bc-s">Parcels in</div></div></div>
         <div class="bigcard" id="card-maintenance" onclick="showSection('maintenance')"><div class="bc-n" id="bc-mnt-n">0</div><div class="bc-banner"><div class="bc-t">HosFIX 🔒</div><div class="bc-s">Repairs &amp; faults · code needed</div></div></div>
         <div class="bigcard" id="card-handover" onclick="showSection('handover')"><div class="bc-n" id="bc-hand-n">0</div><div class="bc-banner"><div class="bc-t">HosSHIFT</div><div class="bc-s">Reception · code needed</div></div></div>
+        <div class="bigcard" id="card-rooms" onclick="showSection('rooms')"><div class="bc-n" id="bc-rooms-n">—</div><div class="bc-banner"><div class="bc-t">HosROOMS</div><div class="bc-s">Today's rooms · cleaning status</div></div></div>
         <div class="bigcard" id="card-roomcheck" onclick="showSection('roomcheck')"><div class="bc-banner"><div class="bc-t">HosROOM</div><div class="bc-s">Is a room cleaned &amp; ready?</div></div></div>
         <div class="bigcard" id="card-directory" onclick="showSection('directory')"><div class="bc-banner"><div class="bc-t">HosSTAFF</div><div class="bc-s">By department · phone numbers</div></div></div>
         <div class="bigcard" id="card-hostv" onclick="showSection('hostv')"><div class="bc-n" id="bc-tv-n">0%</div><div class="bc-banner"><div class="bc-t">HosTV</div><div class="bc-s">Bedroom TV audit</div></div></div>
@@ -673,6 +674,33 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         </div>
       </div>
       <div class="pane-list"><div class="sechd" style="margin-top:0" id="tv-title">Bedroom TVs</div><div id="tv-out"></div></div>
+    </div>
+
+    <!-- HosROOMS: today's rooms & live cleaning status (reads HosHouse) -->
+    <div class="pane" id="pane-rooms">
+      <div class="pane-form">
+        <div class="card">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <div style="flex:1;min-width:130px"><div style="font:900 24px Lato;color:#1d7a4d" id="rm-sum-ready">0 / 0</div><div class="muted" style="font-size:12px">rooms cleaned &amp; ready</div></div>
+            <div style="min-width:96px;text-align:right"><div style="font:900 20px Lato;color:#b02a5b" id="rm-sum-left">0</div><div class="muted" style="font-size:12px">still to do</div></div>
+          </div>
+          <div style="height:9px;background:#e8edf2;border-radius:6px;overflow:hidden;margin:10px 0 2px"><div id="rm-bar" style="height:100%;width:0;background:#1d7a4d;transition:width .3s"></div></div>
+          <div id="rm-counts" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:14px"></div>
+          <label class="fl" style="margin-top:14px">Find a room</label>
+          <input id="rm-search" type="text" inputmode="numeric" placeholder="Room number…" oninput="rmRender()">
+          <label class="fl" style="margin-top:12px">Show</label>
+          <select id="rm-filter" onchange="rmRender()">
+            <option value="all">All rooms</option>
+            <option value="notready">Not ready yet</option>
+            <option value="todo">Not started</option>
+            <option value="prog">Being cleaned</option>
+            <option value="done">Cleaned ✓</option>
+            <option value="blocked">Blocked / DND</option>
+          </select>
+          <div class="muted" style="font-size:12px;margin-top:12px">Live from housekeeping. Tap a room to see who's cleaning it and the times. <b style="color:#b02a5b">Pink = not ready.</b></div>
+        </div>
+      </div>
+      <div class="pane-list"><div class="sechd" style="margin-top:0" id="rm-title">Rooms today</div><div id="rm-out"></div></div>
     </div>
 
     <!-- HosPRIORITY: pick rooms on a grid, add reason, alert housekeeping -->
@@ -1000,6 +1028,8 @@ async function startBoard(){
   document.body.classList.add('console');
   $('top-tt').textContent='🖥️ HosDesk — Reception';
   showScreen('scr-board');
+  // Reception opens on the live rooms-cleaning overview by default (once per load); "Back to cards" reaches everything else.
+  if(!window._rmDefaulted){ window._rmDefaulted=true; try{ showSection('rooms'); }catch(e){} }
   await loadStaff(); fillStaffDatalist(); fillSupplierDatalist();
   try{ dSyncInputs(); }catch(e){}
   try{ mInitAreas(); }catch(e){}
@@ -1038,7 +1068,7 @@ async function startBoard(){
 function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } if(H_UNSUB){ H_UNSUB(); H_UNSUB=null; } stopVD(); B_READY=false; M_READY=false; }
 function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l])=>`<button class="chip ${B_FILTER===ff?'on':''}" onclick="bSetFilter('${ff}')">${l}</button>`).join(''); bRender(); }
 // Maintenance and Shift Handover are gated by a staff code (remove a name from GATED to open that section to all).
-const SECTIONS=['requests','deliveries','maintenance','handover','roomcheck','directory','hostv','priority','notes','info','firelog'];
+const SECTIONS=['rooms','requests','deliveries','maintenance','handover','roomcheck','directory','hostv','priority','notes','info','firelog'];
 const GATED={maintenance:true};  // only HosFIX stays code-protected; everything else is open
 const UNLOCKED={};
 let GATE_TARGET=null;
@@ -1049,12 +1079,13 @@ function checkCode(){ const v=($('cg-in').value||'').trim(); if(v==='3132'){ con
 function openFire(){ $('ovl-fire').classList.add('on'); }
 function closeFire(){ $('ovl-fire').classList.remove('on'); }
 // Tap a big card → that section takes over the whole page. goHome() returns to the cards.
-const SEC_TITLES={requests:'🧹 HosGUEST — Guest requests', deliveries:'📦 HosPARCEL — Deliveries', maintenance:'🔧 HosFIX — Maintenance', handover:'🔄 HosSHIFT — Handover', roomcheck:'🔍 HosROOM — Room check', directory:'📇 HosSTAFF — Directory', hostv:'📺 HosTV — TV audit', priority:'⚡ HosPRIORITY', notes:'📝 HosNOTES — Reception notes', info:'ℹ️ Information for Reception', firelog:'🔥 HosFIRE Log — Fire alarms & drills'};
+const SEC_TITLES={rooms:'🛏️ HosROOMS — Room cleaning today', requests:'🧹 HosGUEST — Guest requests', deliveries:'📦 HosPARCEL — Deliveries', maintenance:'🔧 HosFIX — Maintenance', handover:'🔄 HosSHIFT — Handover', roomcheck:'🔍 HosROOM — Room check', directory:'📇 HosSTAFF — Directory', hostv:'📺 HosTV — TV audit', priority:'⚡ HosPRIORITY', notes:'📝 HosNOTES — Reception notes', info:'ℹ️ Information for Reception', firelog:'🔥 HosFIRE Log — Fire alarms & drills'};
 function showSection(x){
   if(GATED[x] && !UNLOCKED[x]){ openCodeGate(x); return; }
   if(x==='handover'){ try{ soInit(); clInit(); }catch(e){} }
   if(x==='directory'){ try{ dirInit(); }catch(e){} }
   if(x==='roomcheck'){ try{ const r=$('rc-room'); if(r){ r.value=''; setTimeout(()=>r.focus(),60); } }catch(e){} }
+  if(x==='rooms'){ try{ rmInit(); }catch(e){} }
   if(x==='hostv'){ try{ tvInit(); }catch(e){} }
   if(x==='priority'){ try{ prioInit(); }catch(e){} }
   if(x==='notes'){ try{ notesInit(); }catch(e){} }
@@ -2315,6 +2346,87 @@ async function roomCheckSearch(){
   out.innerHTML=banner+html;
 }
 function rcZoom(srcs){ try{ hdLightbox(srcs); }catch(e){} }
+
+/* ===================== HosROOMS — today's rooms & live cleaning status ===================== */
+let RM_DATA={}, RM_SUB=null, RM_READY=false;
+function rmStatus(r){ const s=(r.status||'').toLowerCase(); if(s==='done') return 'done'; if(s==='in_progress') return 'prog'; if(s==='blocked') return 'blocked'; return 'todo'; }
+function rmStyle(st){ return st==='done'?{bg:'#e8f6ee',bd:'#bfe3cd',c:'#1d7a4d',lab:'✓ Ready'}
+  : st==='prog'?{bg:'#fff5e6',bd:'#f2d9ab',c:'#b06a00',lab:'● Cleaning'}
+  : st==='blocked'?{bg:'#fdeceb',bd:'#f0c4c0',c:'#b3261e',lab:'⛔ DND'}
+  : {bg:'#fde7ef',bd:'#f4c2d5',c:'#b02a5b',lab:'○ To do'}; }
+function rmInit(){
+  rmRender();
+  if(RM_SUB) return;
+  if(!db){ const o=$('rm-out'); if(o) o.innerHTML='<div class="muted" style="padding:10px 2px">Offline — cannot load today’s rooms.</div>'; return; }
+  const today=todayISO();
+  try{
+    RM_SUB=db.collection('hoshouse_rooms').where('date','==',today).onSnapshot(function(qs){
+      RM_DATA={}; qs.forEach(function(d){ const v=d.data()||{}; const rm=String(v.room||(String(d.id).split('__')[1])||d.id); RM_DATA[rm]=v; });
+      RM_READY=true; rmRender();
+    }, function(e){ const o=$('rm-out'); if(o) o.innerHTML='<div class="muted" style="padding:10px 2px">Could not load rooms — check connection.</div>'; });
+  }catch(e){}
+}
+function rmRooms(){ return Object.keys(RM_DATA).map(function(k){ return Object.assign({room:k},RM_DATA[k]); }).sort(function(a,b){ return (parseInt(a.room,10)||0)-(parseInt(b.room,10)||0); }); }
+function rmRender(){
+  const out=$('rm-out'); if(!out) return;
+  const all=rmRooms(), total=all.length;
+  const n=function(st){ return all.filter(function(r){ return rmStatus(r)===st; }).length; };
+  const done=n('done'), prog=n('prog'), todo=n('todo'), blk=n('blocked'), left=total-done;
+  if($('rm-sum-ready')) $('rm-sum-ready').textContent=done+' / '+total;
+  if($('rm-sum-left')) $('rm-sum-left').textContent=left;
+  if($('rm-bar')) $('rm-bar').style.width=(total?Math.round(done/total*100):0)+'%';
+  const bn=$('bc-rooms-n'); if(bn) bn.textContent=total?(Math.round(done/total*100)+'%'):'—';
+  const rc=$('rm-counts');
+  if(rc){ const box=function(num,lab,col){ return '<div style="border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;text-align:center"><div style="font:900 18px Lato;color:'+col+'">'+num+'</div><div style="font-size:11px;color:var(--navy);font-weight:700">'+lab+'</div></div>'; };
+    rc.innerHTML=box(todo,'Not started','#b02a5b')+box(prog,'Being cleaned','#b06a00')+box(done,'Ready ✓','#1d7a4d')+box(blk,'Blocked / DND','#b3261e'); }
+  if(!total){ out.innerHTML='<div class="muted" style="padding:14px 2px;line-height:1.6">No rooms set for today yet.<br>Housekeeping adds the day’s rooms each morning — they’ll appear here live as they’re cleaned.</div>'; return; }
+  const q=(($('rm-search')&&$('rm-search').value)||'').trim();
+  const f=($('rm-filter')&&$('rm-filter').value)||'all';
+  let rooms=all;
+  if(q) rooms=rooms.filter(function(r){ return String(r.room).indexOf(q)>=0; });
+  if(f==='notready') rooms=rooms.filter(function(r){ return rmStatus(r)!=='done'; });
+  else if(f==='todo') rooms=rooms.filter(function(r){ return rmStatus(r)==='todo'; });
+  else if(f==='prog') rooms=rooms.filter(function(r){ return rmStatus(r)==='prog'; });
+  else if(f==='done') rooms=rooms.filter(function(r){ return rmStatus(r)==='done'; });
+  else if(f==='blocked') rooms=rooms.filter(function(r){ return rmStatus(r)==='blocked'; });
+  if(!rooms.length){ out.innerHTML='<div class="muted" style="padding:10px 2px">No rooms match.</div>'; return; }
+  const floors={}; rooms.forEach(function(r){ const fl=r.floor||'—'; (floors[fl]=floors[fl]||[]).push(r); });
+  const order=Object.keys(floors).sort(function(a,b){ return a==='G'?-1:b==='G'?1:((parseInt(a,10)||99)-(parseInt(b,10)||99))||a.localeCompare(b); });
+  out.innerHTML=order.map(function(fl){
+    const chips=floors[fl].map(function(r){ const st=rmStatus(r), s=rmStyle(st); const urg=(r.urgent&&st!=='done')?' 🚨':'';
+      return '<button onclick="rmOpen(\''+esc(String(r.room))+'\')" style="border:1px solid '+s.bd+';background:'+s.bg+';color:'+s.c+';border-radius:11px;padding:9px 6px;font:800 15px Lato;cursor:pointer;text-align:center">'+esc(String(r.room))+urg+'<div style="font-weight:700;font-size:10px;margin-top:2px">'+s.lab+'</div></button>';
+    }).join('');
+    const flLab=(fl==='G'?'Ground':(fl==='—'?'Rooms':'Floor '+esc(fl)));
+    return '<div class="sechd" style="margin:14px 0 8px;color:var(--navy)">'+flLab+' <span class="muted" style="font-weight:600;font-size:12px">· '+floors[fl].length+'</span></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px">'+chips+'</div>';
+  }).join('');
+}
+function rmTime(ms){ if(!ms) return ''; try{ return new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function rmOpen(room){
+  const r=RM_DATA[room]; if(!r) return;
+  const st=rmStatus(r);
+  const verdict = st==='done'?{t:'✓ Cleaned & ready',c:'#1d7a4d',bg:'#e8f6ee',bd:'#bfe3cd'}
+    : st==='prog'?{t:'● Being cleaned now',c:'#b06a00',bg:'#fff5e6',bd:'#f2d9ab'}
+    : st==='blocked'?{t:(r.blockReason==='dnd'?'⛔ Do Not Disturb':'⛔ Service blocked'),c:'#b3261e',bg:'#fdeceb',bd:'#f0c4c0'}
+    : {t:'○ Not started yet',c:'#b02a5b',bg:'#fde7ef',bd:'#f4c2d5'};
+  const dur=r.durationSec?Math.round(r.durationSec/60)+' min':'';
+  const line=function(ic,lab,val){ return (val&&String(val).trim())?'<div style="font-size:14px;margin-top:7px">'+ic+' <b>'+lab+':</b> '+esc(val)+'</div>':''; };
+  const html='<div style="background:#fff;border-radius:16px;max-width:460px;width:94%;padding:20px 20px 22px;box-shadow:0 18px 50px rgba(10,18,26,.35)">'
+    +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="font:900 22px Lato;color:var(--navy)">Room '+esc(room)+'</div>'
+    +(r.type?'<span class="pill" style="background:#eef1f5;color:#1a2b3a;border-radius:999px;padding:3px 10px;font:700 12px Lato">'+esc(r.type)+'</span>':'')
+    +((r.urgent&&st!=='done')?'<span style="background:#fdeceb;color:#b3261e;border-radius:999px;padding:3px 10px;font:800 11px Lato">🚨 PRIORITY</span>':'')
+    +'<span style="margin-left:auto;background:'+verdict.bg+';border:1px solid '+verdict.bd+';color:'+verdict.c+';border-radius:999px;padding:5px 12px;font:800 13px Lato">'+verdict.t+'</span></div>'
+    +line('👤','Housekeeper',r.housekeeperName)
+    +(r.startAt?'<div style="font-size:14px;margin-top:7px">▶ <b>Started:</b> '+rmTime(r.startAt)+'</div>':'')
+    +(r.finishAt?'<div style="font-size:14px;margin-top:7px">✓ <b>Finished:</b> '+rmTime(r.finishAt)+(dur?(' · '+dur):'')+'</div>':'')
+    +(st==='todo'?'<div class="muted" style="font-size:13px;margin-top:7px">Not started — no housekeeper has begun this room yet.</div>':'')
+    +line('📝','Note',r.notes)
+    +line('🔧','To maintenance',r.maintenance)
+    +line('🎒','Lost property',r.lostProperty)
+    +'<button onclick="rmClose()" style="margin-top:18px;width:100%;border:none;border-radius:12px;padding:13px;font:800 15px Lato;background:var(--navy);color:#fff;cursor:pointer">Close</button></div>';
+  let ov=$('ovl-room'); if(!ov){ ov=document.createElement('div'); ov.id='ovl-room'; ov.style.cssText='position:fixed;inset:0;background:rgba(10,18,26,.5);display:flex;align-items:center;justify-content:center;z-index:120;padding:16px'; ov.onclick=function(e){ if(e.target===ov) rmClose(); }; document.body.appendChild(ov); }
+  ov.innerHTML=html; ov.style.display='flex';
+}
+function rmClose(){ const ov=$('ovl-room'); if(ov) ov.style.display='none'; }
 
 /* ===================== Staff Directory — by department, with phone numbers ===================== */
 const STAFF_REG=[{"id":"aghil_joy_8","n":"Aghil Joy","d":"reception","r":"Receptionist"},{"id":"alice_asumeng_7","n":"Alice Asumeng","d":"reception","r":"Receptionist"},{"id":"manjusha_ushadevi_6","n":"Manjusha Ushadevi","d":"reception","r":"Reception Supervisor"},{"id":"patrik_vlach_5","n":"Patrik Vlach","d":"reception","r":"Front Office Manager"},{"id":"alan_wilkins_9","n":"Alan Wilkins","d":"nights","r":"Nights Supervisor"},{"id":"amal_premkumar_10","n":"Amal Premkumar","d":"nights","r":"Night Porter"},{"id":"allen_37","n":"Allen Thomas","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"anisha_54","n":"Anisha","d":"housekeeping","r":"Housekeeping"},{"id":"aryan_31","n":"Aryan","d":"housekeeping","r":"Housekeeping"},{"id":"ayomidipupo_yoemi_46","n":"Ayomidipupo Yoemi","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"becky_57","n":"Becky","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"christopher_62","n":"Christopher","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"chutharat_59","n":"Chutharat","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"dushyanth_39","n":"Dushyanth Vuyyuru","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"edwin_53","n":"Edwin","d":"housekeeping","r":"Housekeeping"},{"id":"hassen_38","n":"Haseen Muskaan","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"jitendra_34","n":"Jitendra Dasnur","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"laith_hardy_55","n":"Laith Hardy","d":"housekeeping","r":"Manager — covering Housekeeping"},{"id":"lara_jervis_32","n":"Lara Jervis","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"manoj_35","n":"Mani Sonti","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"marie_61","n":"Marie","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"rahul_reghunath_33","n":"Rahul Reghunath","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"ruth_addison_30","n":"Ruth Addison","d":"housekeeping","r":"Head Housekeeper"},{"id":"satya_51","n":"Satya","d":"housekeeping","r":"Housekeeping (training)"},{"id":"tushar_ambekar_36","n":"Tushar Ambekar","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"yaya_52","n":"Yaya","d":"housekeeping","r":"Housekeeping"},{"id":"yeswanth_58","n":"Yeswanth","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"glenn_randell_11","n":"Glenn Randell","d":"maintenance","r":"Maintenance Manager"},{"id":"herman_charles_13","n":"Herman Charles","d":"maintenance","r":"Multi-trader"},{"id":"pete_12","n":"Pete","d":"maintenance","r":"Multi-trader (Elec)"},{"id":"ashleigh_49","n":"Ashleigh","d":"kitchen","r":"Chef"},{"id":"david_head_chef_47","n":"David (Head Chef)","d":"kitchen","r":"Head Chef"},{"id":"david_marshall_16","n":"David Marshall","d":"kitchen","r":"Kitchen Porter"},{"id":"devendra_subedi_14","n":"Devendra Subedi","d":"kitchen","r":"Junior Sous Chef"},{"id":"matt_48","n":"Matt","d":"kitchen","r":"Chef"},{"id":"nathan_field_17","n":"Nathan Field","d":"kitchen","r":"Kitchen Porter"},{"id":"noah_50","n":"Noah","d":"kitchen","r":"Kitchen Team"},{"id":"sajeed_15","n":"Sajeed","d":"kitchen","r":"Breakfast Team"},{"id":"stelios_60","n":"Stelios","d":"kitchen","r":"Chef"},{"id":"anael_nkunga_22","n":"Anael Nkunga","d":"restaurant","r":"F&B Team Member"},{"id":"arthur_27","n":"Arthur Bennett","d":"restaurant","r":"F&B Team Member"},{"id":"betel_elias_44","n":"Betel Elias","d":"restaurant","r":"F&B Team Member"},{"id":"caitlin_playdon_40","n":"Caitlin Playdon","d":"restaurant","r":"F&B Team Member"},{"id":"cameron_mcgregor_42","n":"Cameron McGregor","d":"restaurant","r":"F&B Team Member"},{"id":"catarina_li_20","n":"Catarina Li","d":"restaurant","r":"Assistant Manager"},{"id":"darren_28","n":"Darren Younge","d":"restaurant","r":"F&B Team Member"},{"id":"dhruvilsinh_chauhan_24","n":"Dhruvilsinh Chauhan","d":"restaurant","r":"Breakfast Team Member"},{"id":"jaimie_leigh_watts_41","n":"Jaimie-Leigh Watts","d":"restaurant","r":"F&B Team Member"},{"id":"jayan_26","n":"Jayan Gerget","d":"restaurant","r":"F&B Team Member"},{"id":"lily_mae_mcdonald_43","n":"Lily-Mae Mcdonald","d":"restaurant","r":"F&B Team Member"},{"id":"manjinder_shergill_21","n":"Manjinder Kaur Shergill","d":"restaurant","r":"F&B Supervisor"},{"id":"nevin_29","n":"Nevin Babu","d":"restaurant","r":"F&B Team Member"},{"id":"olivia_hale_45","n":"Olivia Hale","d":"restaurant","r":"F&B Team Member"},{"id":"reuven_25","n":"Reuven Shergill","d":"restaurant","r":"F&B Team Member"},{"id":"sheba_tychicus_23","n":"Sheba Tychicus","d":"restaurant","r":"F&B Team Member"},{"id":"jomy_mathai_joy_18","n":"Jomy Mathai Joy","d":"bar","r":"Bar Supervisor"},{"id":"rowan_wilkins_19","n":"Rowan Wilkins","d":"bar","r":"Bar Team Member"},{"id":"lauren_damms_ingla_56","n":"Lauren Damms-Ingla","d":"admin","r":"Admin / Reception"},{"id":"natalie_freeman_4","n":"Natalie Freeman","d":"admin","r":"Event Executive"},{"id":"nicola_3","n":"Nicola Cartwright","d":"admin","r":"Sales Manager"},{"id":"veronica_webb_2","n":"Veronica Webb","d":"admin","r":"Finance Assistant"}];
