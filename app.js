@@ -13744,16 +13744,16 @@ function clockRoster(){
   return rows;
 }
 
-async function spPublishClockRoster(){
+async function spPublishClockRoster(silent){
   const rows=clockRoster(), geo=clockGeo();
   const payload={ geo, updated:new Date().toISOString(),
     staff: rows.map(r=>({ name:r.name, code:r.code, pinHash:clockHash(r.pin, r.code) })) };
   if(typeof FB!=="undefined" && FB.ready && FB.user){
     try{ await FB.db.collection('clock_roster').doc('current').set(payload);
-      if(typeof toast==='function') toast('✓ Clock-in roster published — the wall QR is now live'); return true; }
-    catch(e){ if(typeof toast==='function') toast('Could not publish: '+e.message); return false; }
+      if(!silent && typeof toast==='function') toast('✓ Clock-in roster published — the wall QR is now live'); return true; }
+    catch(e){ if(!silent && typeof toast==='function') toast('Could not publish: '+e.message); return false; }
   }
-  if(typeof toast==='function') toast('Sign in required to publish the roster'); return false;
+  if(!silent && typeof toast==='function') toast('Sign in required to publish the roster'); return false;
 }
 
 function spClockRosterModal(){
@@ -14104,6 +14104,9 @@ async function spPublishRota(silent){
       rota:out
     });
     try{ localStorage.setItem('sp_rota_published',new Date().toISOString()); }catch(e){}
+    // Keep the HosTIME clock-in roster in step with the staff list, so new/updated staff codes
+    // (e.g. a kitchen relief added mid-week) can clock in without a separate manual publish.
+    try{ if(typeof spPublishClockRoster==='function') spPublishClockRoster(true); }catch(e){}
     if(!silent) toast('✓ Rota published — staff links are up to date');
     if(typeof hpPublishSummary==='function') setTimeout(()=>hpPublishSummary(true),500);
     const st=document.getElementById('sp-pub-status'); if(st) st.textContent='Last published: just now';
