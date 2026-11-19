@@ -347,14 +347,14 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
     <div id="hd-home">
       <div id="home-alert" style="display:none;align-items:center;gap:12px;background:#fde8e8;border:2px solid #b3261e;color:#b3261e;border-radius:14px;padding:12px 16px;margin-top:14px;font-family:Lato;font-size:13.5px;animation:sbflash 1.2s steps(1,end) infinite"></div>
       <div class="proclinks">
-        <button type="button" class="proclink" onclick="procShow('checkin')">Check-In Procedure</button>
-        <button type="button" class="proclink" onclick="procShow('checkout')">Check-Out Procedure</button>
-        <button type="button" class="proclink" onclick="procShow('notready')">Room Not Ready</button>
-        <button type="button" class="proclink" onclick="procShow('deposit')">£50 Deposit Procedure</button>
-        <button type="button" class="proclink" onclick="procShow('lostprop')">Lost Property Procedure</button>
+        <button type="button" class="proclink" onclick="procJump('checkin')">Check-In Procedure</button>
+        <button type="button" class="proclink" onclick="procJump('checkout')">Check-Out Procedure</button>
+        <button type="button" class="proclink" onclick="procJump('notready')">Room Not Ready</button>
+        <button type="button" class="proclink" onclick="procJump('deposit')">£50 Deposit Procedure</button>
+        <button type="button" class="proclink" onclick="procJump('lostprop')">Lost Property Procedure</button>
         <button type="button" class="proclink" onclick="rotaOpen()" style="background:#1a2b3a;color:#fff;border-color:#1a2b3a">👥 Staff Rota</button>
-        <button type="button" class="proclink" onclick="procShow('key')">Key Process</button>
-        <button type="button" class="proclink" onclick="procShow('lostkey')">Lost Key Process</button>
+        <button type="button" class="proclink" onclick="procJump('key')">Key Process</button>
+        <button type="button" class="proclink" onclick="procJump('lostkey')">Lost Key Process</button>
       </div>
       <div class="home-split">
         <aside class="notice-rail" id="notice-rail">
@@ -392,8 +392,8 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
       </div>
         </div>
         <aside class="proc-rail" id="proc-rail">
-          <div class="pr-head"><span>📋</span><span id="pr-title" style="flex:1">Procedures</span><button type="button" id="pr-close" onclick="procClose()" style="display:none;background:none;border:none;font-size:16px;cursor:pointer;color:var(--muted)">✕</button></div>
-          <div class="pr-body" id="pr-body"><div class="pr-empty">Tap a procedure above to read it here.</div></div>
+          <div class="pr-head"><span>🛏️</span><span style="flex:1">Rooms Ready</span><span id="rr-count" class="muted" style="font-size:12px"></span></div>
+          <div class="pr-body" id="rr-body"><div class="pr-empty">Loading rooms…</div></div>
         </aside>
       </div>
 
@@ -1983,7 +1983,7 @@ function procEdit(key){
     '<label class="fl" style="margin-top:8px">Steps — one per line</label>'+
     '<textarea id="pe-steps" rows="12" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;line-height:1.5">'+esc(pr.steps.join('\n'))+'</textarea>'+
     '<div style="display:flex;gap:8px;margin-top:10px"><button type="button" class="btn btn-go" style="background:#2a6a4a;flex:1" onclick="procEditSave(\''+key+'\')">Save</button>'+
-    '<button type="button" class="btn" style="background:#eef1f4;color:#1a2b3a" onclick="procShow(\''+key+'\')">Cancel</button></div>';
+    '<button type="button" class="btn" style="background:#eef1f4;color:#1a2b3a" onclick="procJump(\''+key+'\')">Cancel</button></div>';
 }
 function procEditSave(key){
   var t=(($('pe-title')||{}).value||'').trim();
@@ -2570,6 +2570,7 @@ function rmInit(){
 }
 function rmRooms(){ return Object.keys(RM_DATA).map(function(k){ return Object.assign({room:k},RM_DATA[k]); }).sort(function(a,b){ return (parseInt(a.room,10)||0)-(parseInt(b.room,10)||0); }); }
 function rmRender(){
+  try{ rrRender(); }catch(e){}
   const out=$('rm-out'); if(!out) return;
   const all=rmRooms(), total=all.length;
   const n=function(st){ return all.filter(function(r){ return rmStatus(r)===st; }).length; };
@@ -2629,6 +2630,19 @@ function rmOpen(room){
   ov.innerHTML=html; ov.style.display='flex';
 }
 function rmClose(){ const ov=$('ovl-room'); if(ov) ov.style.display='none'; }
+/* Home right-rail: "Rooms Ready" quick view — live list of today's cleaned & ready rooms */
+function procJump(key){ try{ showSection('procedures'); }catch(e){} try{ prcPick('steps',key); }catch(e){} }
+function rrOpenRoom(room){ try{ showSection('rooms'); }catch(e){} setTimeout(function(){ try{ rmOpen(room); }catch(e){} },80); }
+function rrRender(){
+  var el=$('rr-body'); if(!el) return;
+  var all=rmRooms();
+  var ready=all.filter(function(r){ return rmStatus(r)==='done'; }).sort(function(a,b){ return (parseInt(a.room,10)||0)-(parseInt(b.room,10)||0); });
+  var cnt=$('rr-count'); if(cnt) cnt.textContent = all.length? (ready.length+' of '+all.length) : '';
+  if(!all.length){ el.innerHTML='<div class="pr-empty">No rooms set for today yet.</div>'; return; }
+  if(!ready.length){ el.innerHTML='<div class="pr-empty">No rooms ready yet — they’ll appear here as housekeeping finishes.</div>'; return; }
+  el.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:6px">'+ready.map(function(r){ return '<button type="button" onclick="rrOpenRoom(\''+esc(String(r.room))+'\')" style="border:1px solid #bfe3cd;background:#e8f6ee;color:#1d7a4d;border-radius:9px;padding:6px 10px;font:800 13px Lato;cursor:pointer">'+esc(String(r.room))+' ✓</button>'; }).join('')+'</div>'
+    +'<div class="muted" style="font-size:11px;margin-top:10px">Cleaned &amp; ready for check-in. Tap a room for details.</div>';
+}
 
 /* ===================== Staff Directory — by department, with phone numbers ===================== */
 const STAFF_REG=[{"id":"aghil_joy_8","n":"Aghil Joy","d":"reception","r":"Receptionist"},{"id":"alice_asumeng_7","n":"Alice Asumeng","d":"reception","r":"Receptionist"},{"id":"manjusha_ushadevi_6","n":"Manjusha Ushadevi","d":"reception","r":"Reception Supervisor"},{"id":"patrik_vlach_5","n":"Patrik Vlach","d":"reception","r":"Front Office Manager"},{"id":"alan_wilkins_9","n":"Alan Wilkins","d":"nights","r":"Nights Supervisor"},{"id":"amal_premkumar_10","n":"Amal Premkumar","d":"nights","r":"Night Porter"},{"id":"allen_37","n":"Allen Thomas","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"anisha_54","n":"Anisha","d":"housekeeping","r":"Housekeeping"},{"id":"aryan_31","n":"Aryan","d":"housekeeping","r":"Housekeeping"},{"id":"ayomidipupo_yoemi_46","n":"Ayomidipupo Yoemi","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"becky_57","n":"Becky","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"christopher_62","n":"Christopher","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"chutharat_59","n":"Chutharat","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"dushyanth_39","n":"Dushyanth Vuyyuru","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"edwin_53","n":"Edwin","d":"housekeeping","r":"Housekeeping"},{"id":"hassen_38","n":"Haseen Muskaan","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"jitendra_34","n":"Jitendra Dasnur","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"laith_hardy_55","n":"Laith Hardy","d":"housekeeping","r":"Manager — covering Housekeeping"},{"id":"lara_jervis_32","n":"Lara Jervis","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"manoj_35","n":"Mani Sonti","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"marie_61","n":"Marie","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"rahul_reghunath_33","n":"Rahul Reghunath","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"ruth_addison_30","n":"Ruth Addison","d":"housekeeping","r":"Head Housekeeper"},{"id":"satya_51","n":"Satya","d":"housekeeping","r":"Housekeeping (training)"},{"id":"tushar_ambekar_36","n":"Tushar Ambekar","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"yaya_52","n":"Yaya","d":"housekeeping","r":"Housekeeping"},{"id":"yeswanth_58","n":"Yeswanth","d":"housekeeping","r":"Housekeeping Team Member"},{"id":"glenn_randell_11","n":"Glenn Randell","d":"maintenance","r":"Maintenance Manager"},{"id":"herman_charles_13","n":"Herman Charles","d":"maintenance","r":"Multi-trader"},{"id":"pete_12","n":"Pete","d":"maintenance","r":"Multi-trader (Elec)"},{"id":"ashleigh_49","n":"Ashleigh","d":"kitchen","r":"Chef"},{"id":"david_head_chef_47","n":"David (Head Chef)","d":"kitchen","r":"Head Chef"},{"id":"david_marshall_16","n":"David Marshall","d":"kitchen","r":"Kitchen Porter"},{"id":"devendra_subedi_14","n":"Devendra Subedi","d":"kitchen","r":"Junior Sous Chef"},{"id":"matt_48","n":"Matt","d":"kitchen","r":"Chef"},{"id":"nathan_field_17","n":"Nathan Field","d":"kitchen","r":"Kitchen Porter"},{"id":"noah_50","n":"Noah","d":"kitchen","r":"Kitchen Team"},{"id":"sajeed_15","n":"Sajeed","d":"kitchen","r":"Breakfast Team"},{"id":"stelios_60","n":"Stelios","d":"kitchen","r":"Chef"},{"id":"anael_nkunga_22","n":"Anael Nkunga","d":"restaurant","r":"F&B Team Member"},{"id":"arthur_27","n":"Arthur Bennett","d":"restaurant","r":"F&B Team Member"},{"id":"betel_elias_44","n":"Betel Elias","d":"restaurant","r":"F&B Team Member"},{"id":"caitlin_playdon_40","n":"Caitlin Playdon","d":"restaurant","r":"F&B Team Member"},{"id":"cameron_mcgregor_42","n":"Cameron McGregor","d":"restaurant","r":"F&B Team Member"},{"id":"catarina_li_20","n":"Catarina Li","d":"restaurant","r":"Assistant Manager"},{"id":"darren_28","n":"Darren Younge","d":"restaurant","r":"F&B Team Member"},{"id":"dhruvilsinh_chauhan_24","n":"Dhruvilsinh Chauhan","d":"restaurant","r":"Breakfast Team Member"},{"id":"jaimie_leigh_watts_41","n":"Jaimie-Leigh Watts","d":"restaurant","r":"F&B Team Member"},{"id":"jayan_26","n":"Jayan Gerget","d":"restaurant","r":"F&B Team Member"},{"id":"lily_mae_mcdonald_43","n":"Lily-Mae Mcdonald","d":"restaurant","r":"F&B Team Member"},{"id":"manjinder_shergill_21","n":"Manjinder Kaur Shergill","d":"restaurant","r":"F&B Supervisor"},{"id":"nevin_29","n":"Nevin Babu","d":"restaurant","r":"F&B Team Member"},{"id":"olivia_hale_45","n":"Olivia Hale","d":"restaurant","r":"F&B Team Member"},{"id":"reuven_25","n":"Reuven Shergill","d":"restaurant","r":"F&B Team Member"},{"id":"sheba_tychicus_23","n":"Sheba Tychicus","d":"restaurant","r":"F&B Team Member"},{"id":"jomy_mathai_joy_18","n":"Jomy Mathai Joy","d":"bar","r":"Bar Supervisor"},{"id":"rowan_wilkins_19","n":"Rowan Wilkins","d":"bar","r":"Bar Team Member"},{"id":"lauren_damms_ingla_56","n":"Lauren Damms-Ingla","d":"admin","r":"Admin / Reception"},{"id":"natalie_freeman_4","n":"Natalie Freeman","d":"admin","r":"Event Executive"},{"id":"nicola_3","n":"Nicola Cartwright","d":"admin","r":"Sales Manager"},{"id":"veronica_webb_2","n":"Veronica Webb","d":"admin","r":"Finance Assistant"}];
