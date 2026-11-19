@@ -971,7 +971,7 @@
     h += '<h3 style="margin:18px 0 6px;font-size:14.5px">Forward position by day — scroll right for later dates</h3>';
     h += '<p class="sub" style="margin:0 0 10px">Daily occupancy, ADR, RevPAR and TRevPAR across the next ' + daily.length + ' nights. Surge markers (gold) on nights at 80%+. Hover for details.</p>';
     h += '<div class="v23-scroll" style="overflow-x:auto;overflow-y:hidden;border:1px solid #efede7;border-radius:10px;background:#faf9f6">';
-    h += '<div style="width:' + Math.max(1600, daily.length * 24) + 'px;height:320px;padding:10px"><canvas id="fc-daily-chart"></canvas></div>';
+    h += '<div style="width:' + Math.max(1800, daily.length * 42) + 'px;height:360px;padding:14px 14px 8px"><canvas id="fc-daily-chart"></canvas></div>';
     h += '</div>';
     h += '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#52514e"><span><i style="display:inline-block;width:10px;height:10px;background:#6250d6;border-radius:50%;margin-right:4px"></i>Occupancy %</span><span><i style="display:inline-block;width:10px;height:10px;background:#2a78d6;border-radius:50%;margin-right:4px"></i>ADR</span><span><i style="display:inline-block;width:10px;height:10px;background:#eb6834;border-radius:50%;margin-right:4px"></i>RevPAR</span><span><i style="display:inline-block;width:10px;height:10px;background:#1baf7a;border-radius:50%;margin-right:4px"></i>TRevPAR</span><span><i style="display:inline-block;width:10px;height:10px;background:#bb9979;border-radius:50%;margin-right:4px"></i>Surge (80%+ occ)</span><span><i style="display:inline-block;width:10px;height:10px;background:#c2417a;border-radius:50%;margin-right:4px"></i>Block / event</span></div>';
 
@@ -1051,13 +1051,63 @@
     try {
       var cv = document.getElementById('fc-daily-chart');
       if (cv && window.Chart) {
-        var labels = daily.map(function (x) { return x.dow.slice(0,1) + ' ' + +x.d.slice(8) + '/' + +x.d.slice(5,7); });
+        var labels = daily.map(function (x) { return x.dow.slice(0,3) + ' ' + +x.d.slice(8); });
         var ctx = cv.getContext('2d');
         // Surge point style for occupancy
         var surgeColours = daily.map(function (x) { return x.occ >= 0.8 ? '#bb9979' : '#6250d6'; });
         var surgeSizes = daily.map(function (x) { return x.occ >= 0.8 ? 5 : 2; });
         // Mark event days with annotation-like dots on the baseline
         var evtPoints = daily.map(function (x) { return x.blocks ? 2 : null; });
+        // Month separator + header plugin
+        var MN2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var monthSep = {
+          id: 'monthSep',
+          afterDraw: function (chart) {
+            var ctx = chart.ctx, area = chart.chartArea, xs = chart.scales.x;
+            if (!xs) return;
+            ctx.save();
+            // Find month starts and draw separator + month label
+            daily.forEach(function (d, i) {
+              var isStart = (i === 0) || (d.d.slice(0, 7) !== daily[i - 1].d.slice(0, 7));
+              if (!isStart) return;
+              var x = xs.getPixelForValue(i);
+              if (i > 0) {
+                ctx.strokeStyle = '#d4c7ae';
+                ctx.lineWidth = 1.2;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(x, area.top);
+                ctx.lineTo(x, area.bottom);
+                ctx.stroke();
+                ctx.setLineDash([]);
+              }
+              // Month name banner at top of area
+              var m = d.d.slice(0, 7);
+              var label = MN2[+m.slice(5) - 1] + ' ' + m.slice(0, 4);
+              ctx.fillStyle = '#faf0d8';
+              ctx.fillRect(x + 1, area.top, Math.min(180, xs.getPixelForValue(Math.min(i + 31, daily.length - 1)) - x), 22);
+              ctx.fillStyle = '#5a4320';
+              ctx.font = '600 11.5px -apple-system, Inter, Segoe UI, sans-serif';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(label, x + 8, area.top + 11);
+            });
+            // "today" marker: draw a gold vertical line on the first day
+            if (daily.length) {
+              var tx = xs.getPixelForValue(0);
+              ctx.strokeStyle = '#bb9979';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(tx, area.top + 22);
+              ctx.lineTo(tx, area.bottom);
+              ctx.stroke();
+              ctx.fillStyle = '#bb9979';
+              ctx.font = '600 10.5px -apple-system, Inter, sans-serif';
+              ctx.fillText('today', tx + 4, area.top + 36);
+            }
+            ctx.restore();
+          }
+        };
+
         new window.Chart(ctx, {
           type: 'line',
           data: {
@@ -1073,23 +1123,58 @@
           options: {
             maintainAspectRatio: false, animation: false,
             interaction: { mode: 'index', intersect: false },
+            layout: { padding: { top: 28 } },
             plugins: {
               legend: { display: false },
-              tooltip: { callbacks: { title: function (it) { var x = daily[it[0].dataIndex]; return x.dow + ' ' + dlabel(x.d) + ' ' + x.d.slice(0,4); },
-                afterBody: function (it) {
-                  var x = daily[it[0].dataIndex];
-                  var lines = ['', 'Rooms sold: ' + x.rooms + ' of ' + LET, 'Arrivals: ' + x.arrivals + ' · Departures: ' + x.departures + ' · Stayovers: ' + x.stayovers];
-                  if (x.blocks) lines.push('Block: ' + x.blocks.rooms + ' · ' + x.blocks.names.join(', '));
-                  lines.push('Staff needed: HK ' + x.staff.housekeeping + ' · Kitch ' + x.staff.kitchen + ' · Rest ' + x.staff.restaurant + ' (total ' + x.staff.total + ')');
-                  return lines;
-                } } }
+              tooltip: {
+                displayColors: false,
+                backgroundColor: 'rgba(10,22,38,0.96)',
+                titleFont: { size: 13, weight: '700' },
+                bodyFont: { size: 12 },
+                padding: 10,
+                callbacks: {
+                  title: function (it) { var x = daily[it[0].dataIndex]; return x.dow + ' ' + dlabel(x.d) + ' ' + x.d.slice(0, 4); },
+                  label: function (it) {
+                    var x = daily[it.dataIndex];
+                    var ds = it.dataset.label;
+                    if (ds === 'Occupancy %') return 'Occupancy: ' + Math.round(x.occ * 100) + '% (' + x.rooms + ' of ' + LET + ')';
+                    if (ds === 'ADR £') return 'ADR: ' + gbp(x.adr, 2);
+                    if (ds === 'RevPAR £') return 'RevPAR: ' + gbp(x.revpar, 2);
+                    if (ds === 'TRevPAR £') return 'TRevPAR: ' + gbp(x.trevpar, 2);
+                    return null;
+                  },
+                  afterBody: function (it) {
+                    var x = daily[it[0].dataIndex];
+                    var lines = [
+                      '',
+                      'Arrivals ' + x.arrivals + ' · Departures ' + x.departures + ' · Stayovers ' + x.stayovers,
+                      'Breakfasts (est): ' + x.bkfst + ' · Dinners booked: ' + (x.dinner || 0)
+                    ];
+                    if (x.blocks) lines.push('Block: ' + x.blocks.rooms + ' rooms · ' + x.blocks.names.join(', '));
+                    if (x.oos) lines.push('Out of service: ' + x.oos + ' rooms');
+                    lines.push('');
+                    lines.push('── Suggested rota ──');
+                    lines.push('Housekeeping   ' + x.staff.housekeeping);
+                    lines.push('Kitchen        ' + x.staff.kitchen);
+                    lines.push('Restaurant     ' + x.staff.restaurant);
+                    lines.push('Reception      ' + x.staff.reception);
+                    lines.push('Bar            ' + x.staff.bar);
+                    lines.push('Nights         ' + x.staff.nights);
+                    lines.push('Admin          ' + x.staff.admin);
+                    lines.push('Maintenance    ' + x.staff.maintenance + ' (on call)');
+                    lines.push('TOTAL          ' + x.staff.total);
+                    return lines;
+                  }
+                }
+              }
             },
             scales: {
-              x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 0, font: { size: 10 } } },
+              x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 0, font: { size: 10.5 }, color: '#52514e' } },
               y1: { position: 'left', title: { display: true, text: 'Occupancy %' }, min: 0, max: 100, grid: { color: '#efede7' } },
               y2: { position: 'right', title: { display: true, text: '£ per room' }, min: 0, grid: { display: false } }
             }
-          }
+          },
+          plugins: [monthSep]
         });
       }
     } catch (ex) { /* chart failed, table still useful */ }
