@@ -519,7 +519,16 @@
     var hero = el.querySelector('.hp-hero h2');
     var G = window.GuestlineFeed && window.GuestlineFeed.info();
     if (hero && G && G.days && !hero.querySelector('.v13-hero-badge')) {
-      hero.insertAdjacentHTML('beforeend', '<span class="v13-hero-badge">● Live from Guestline · ' + (G.days || 0) + ' days loaded' + (G.loading ? ' · still loading history' : '') + '</span>');
+      var T3 = window.Trading && window.Trading.S ? window.Trading.S() : {};
+      var hwhen = T3.af && T3.af.asOf ? new Date(T3.af.asOf) : null;
+      var htime = '';
+      if (hwhen && !isNaN(hwhen)) {
+        var ht0 = new Date(); ht0.setHours(0,0,0,0);
+        var hdiff = Math.floor((hwhen - ht0) / 864e5);
+        var hday = hdiff === 0 ? 'today' : (hdiff === -1 ? 'yesterday' : hwhen.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
+        htime = hday + ' ' + hwhen.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+      } else { htime = 'recently'; }
+      hero.insertAdjacentHTML('beforeend', '<span class="v13-hero-badge" title="Closed-day pulls run at 04:10, 05:00 and 07:00 London each morning. Forward on-the-books still comes from the hand-exported Actual & Forecast until Gary confirms the bookings endpoint.">● Guestline feed · ' + G.days + ' days loaded · updated ' + htime + (G.loading ? ' · still loading history' : '') + '</span>');
     }
 
     // Remove any old insertions
@@ -1255,7 +1264,24 @@
     var chips = QUICK.map(function (o) { return '<button class="v16-chip' + (r.kind === o[0] ? ' on' : '') + '" data-v13-r="' + o[0] + '">' + o[1] + '</button>'; }).join('');
     var cmpSel = '<select data-v13-cmp>' + [['none', 'No compare'], ['prev', 'Previous period'], ['ly', 'Same period LY']].map(function (o) { return '<option value="' + o[0] + '"' + (cmp === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
     var G = window.GuestlineFeed && window.GuestlineFeed.info ? window.GuestlineFeed.info() : null;
-    var feedChip = (G && G.days) ? '<span class="v16-feed">Live · ' + G.days + ' days</span>' : '';
+    // v26: honest chip label — show the actual last-pull timestamp from Guestline, not just "Live"
+    var feedChip = '';
+    if (G && G.days) {
+      var T2 = window.Trading && window.Trading.S ? window.Trading.S() : {};
+      var when = T2.af && T2.af.asOf ? T2.af.asOf : null;
+      var label = 'Updated ';
+      if (when) {
+        var dt = new Date(when);
+        if (!isNaN(dt)) {
+          var today0 = new Date(); today0.setHours(0,0,0,0);
+          var diff = Math.floor((dt - today0) / 864e5);
+          var hhmm = dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+          var dayLabel = diff === 0 ? 'today' : (diff === -1 ? 'yesterday' : dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
+          label += dayLabel + ' ' + hhmm;
+        } else { label += 'recently'; }
+      } else { label += 'recently'; }
+      feedChip = '<span class="v16-feed" title="Guestline API — closed-day pulls at 04:10, 05:00 and 07:00 London. Click a chip to refresh the view.">' + label + ' · ' + G.days + ' days</span>';
+    }
     top.innerHTML = chips + cmpSel + feedChip;
   }
   function highlightActive() {
@@ -1356,6 +1382,18 @@
     document.addEventListener('hub-signin', function () { setTimeout(function () { augmentHome(); augmentFb(); augmentTrading(); if (!SIDEBAR_BUILT) buildSidebar(); renderTopFilters(); highlightActive(); }, 1200); });
     // v22: register Forecast renderer with the hub's Profit registry so clicking the nav button renders it
     (function tryReg(){ if (window.Profit && window.Profit.register) { try { window.Profit.register('forecast', renderForecast); } catch(e) {} return; } setTimeout(tryReg, 200); })();
+    // v26: auto-refresh the Guestline data every 30 minutes if the page is in the foreground.
+    // Keeps a page left open all day in sync with the next 07:00 pull without a hard reload.
+    setInterval(function () {
+      if (document.hidden) return;
+      try {
+        if (window.GuestlineFeed && window.GuestlineFeed.load) {
+          window.GuestlineFeed.load().then(function (n) {
+            if (n > 0) { renderTopFilters(); augmentHome(); augmentFb(); }
+          });
+        }
+      } catch (e) {}
+    }, 30 * 60 * 1000);
     // keep sidebar highlight + top filters in sync when tabs/range/cmp change
     var syncT = 0;
     new MutationObserver(function () { clearTimeout(syncT); syncT = setTimeout(function () {
