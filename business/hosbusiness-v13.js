@@ -139,14 +139,14 @@
 
   /* ---------- state ---------- */
   var S_RANGE_KEY = 'hosbusiness_dr_v13', S_CMP_KEY = 'hosbusiness_cmp_v13';
-  function getRange() { try { return JSON.parse(localStorage.getItem(S_RANGE_KEY)) || { kind: '7' }; } catch (e) { return { kind: '7' }; } }
+  function getRange() { try { return JSON.parse(localStorage.getItem(S_RANGE_KEY)) || { kind: '1' }; } catch (e) { return { kind: '1' }; } }
   function setRange(r) { try { localStorage.setItem(S_RANGE_KEY, JSON.stringify(r)); } catch (e) {} }
   function getCmp() { try { return localStorage.getItem(S_CMP_KEY) || 'none'; } catch (e) { return 'none'; } }
   function setCmp(v) { try { localStorage.setItem(S_CMP_KEY, v); } catch (e) {} }
 
   /* ---------- date-range control ---------- */
   var RANGES = [
-    ['today', 'Today'], ['1', 'Yesterday'], ['7', 'Last 7 days'], ['14', 'Last 14 days'],
+    ['1', 'Yesterday'], ['7', 'Last 7 days'], ['14', 'Last 14 days'],
     ['21', 'Last 21 days'], ['28', 'Last 28 days'], ['mtd', 'Month to date'],
     ['lastmonth', 'Last month'], ['90', 'Last 90 days'], ['ytd', 'Year to date'],
     ['12m', 'Last 12 months']
@@ -857,7 +857,7 @@
     var top = $('v16-top-filters'); if (!top) return;
     var r = getRange(), cmp = getCmp();
     // Shortlist of chips; the full range + custom + compare live in each page's v13-dr bar
-    var QUICK = [['today', 'Today'], ['1', 'Yesterday'], ['7', '7 days'], ['14', '14 days'], ['28', '28 days'], ['mtd', 'MTD'], ['lastmonth', 'Last month'], ['90', '90 days'], ['12m', '12 months']];
+    var QUICK = [['1', 'Yesterday'], ['7', '7 days'], ['14', '14 days'], ['28', '28 days'], ['mtd', 'MTD'], ['lastmonth', 'Last month'], ['90', '90 days'], ['12m', '12 months']];
     var chips = QUICK.map(function (o) { return '<button class="v16-chip' + (r.kind === o[0] ? ' on' : '') + '" data-v13-r="' + o[0] + '">' + o[1] + '</button>'; }).join('');
     var cmpSel = '<select data-v13-cmp>' + [['none', 'No compare'], ['prev', 'Previous period'], ['ly', 'Same period LY']].map(function (o) { return '<option value="' + o[0] + '"' + (cmp === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
     var G = window.GuestlineFeed && window.GuestlineFeed.info ? window.GuestlineFeed.info() : null;
@@ -888,6 +888,8 @@
 
   /* ---------- boot ---------- */
   function boot() {
+    // v20 migration: 'today' is retired; rewrite saved range to Yesterday
+    try { var sr = JSON.parse(localStorage.getItem(S_RANGE_KEY)); if (sr && sr.kind === 'today') { localStorage.setItem(S_RANGE_KEY, JSON.stringify({ kind: '1' })); } } catch (e) {}
     addStyle();
     wire();
     wireV16();
