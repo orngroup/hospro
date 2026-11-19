@@ -891,6 +891,47 @@
       });
     } catch (e) {}
 
+    /* ===== Projection model: 6-month day-of-week average from closed history =====
+       For each day of the week, average the final rooms sold across the last 183 closed days.
+       We use that as the "projected final" for forward nights of the same DOW.
+       NB: this is DOW-average, not a true pickup/pace model (which needs daily on-the-books snapshots).
+       We started keeping snapshots on 12 Nov 2026, so the pace model will land once we have ~3 months of them. */
+    var histStart = (function () { var e = new Date(cut + 'T12:00:00Z'); e.setUTCDate(e.getUTCDate() - 183); return e.toISOString().slice(0, 10); })();
+    var dowSum = [0, 0, 0, 0, 0, 0, 0], dowN = [0, 0, 0, 0, 0, 0, 0];
+    S.af.rows.forEach(function (r) {
+      if (!r || !r.d || r.d >= cut || r.d < histStart) return;
+      var di = new Date(r.d + 'T12:00:00Z').getUTCDay();
+      dowSum[di] += (r.rooms || 0); dowN[di] += 1;
+    });
+    var dowAvg = dowSum.map(function (sum, i) { return dowN[i] ? sum / dowN[i] : 0; });
+    function projectForDay(ds) { var di = new Date(ds + 'T12:00:00Z').getUTCDay(); return Math.round(dowAvg[di]); }
+
+    /* Accuracy: for the last 30 closed days, how close would our DOW-average projection have been?
+       For each past day, project using the 6-month window ENDING THE DAY BEFORE, so the day itself is not in the sample. */
+    function projectAt(ds) {
+      var di = new Date(ds + 'T12:00:00Z').getUTCDay();
+      var winStart = (function () { var e = new Date(ds + 'T12:00:00Z'); e.setUTCDate(e.getUTCDate() - 183); return e.toISOString().slice(0, 10); })();
+      var sum = 0, n = 0;
+      S.af.rows.forEach(function (r) {
+        if (!r || !r.d || r.d >= ds || r.d < winStart) return;
+        if (new Date(r.d + 'T12:00:00Z').getUTCDay() !== di) return;
+        sum += (r.rooms || 0); n += 1;
+      });
+      return n ? Math.round(sum / n) : null;
+    }
+    var accuracyRows = [];
+    for (var ai = 30; ai >= 1; ai--) {
+      var dd = new Date(cut + 'T12:00:00Z'); dd.setUTCDate(dd.getUTCDate() - ai);
+      var ads = dd.toISOString().slice(0, 10);
+      var row = S.af.rows.filter(function (x) { return x.d === ads; })[0];
+      if (!row) continue;
+      var proj = projectAt(ads), act = row.rooms || 0;
+      if (proj == null) continue;
+      accuracyRows.push({ d: ads, dow: DOW[dd.getUTCDay()], actual: act, projected: proj, err: act - proj });
+    }
+    var mae = accuracyRows.length ? accuracyRows.reduce(function (s, x) { return s + Math.abs(x.err); }, 0) / accuracyRows.length : null;
+    var bias = accuracyRows.length ? accuracyRows.reduce(function (s, x) { return s + x.err; }, 0) / accuracyRows.length : null;
+
     /* ===== Build daily forward rows (from today + 180 days) ===== */
     var startD = cut, endD = (function () { var e = new Date(cut + 'T12:00:00Z'); e.setUTCDate(e.getUTCDate() + 180); return e.toISOString().slice(0, 10); })();
     var afIndex = {}; S.af.rows.forEach(function (r) { afIndex[r.d] = r; });
@@ -899,29 +940,41 @@
       var ds = d.toISOString().slice(0, 10);
       var r = afIndex[ds];
       if (!r) continue;
-      var rooms = r.rooms || 0;
-      var dep = r.dep != null ? r.dep : 0;    // departures count
-      var arr = r.arr != null ? r.arr : 0;    // arrivals count
-      // stayovers = rooms occupied tonight who were here last night and aren't departing today (approx: rooms - arrivals today)
-      var stay = Math.max(0, rooms - arr);
-      var bkfst = r.bkfst || null;            // not usually supplied by A&F; estimate from rooms
+      var rooms = r.rooms || 0;                       // rooms currently on the books for this night
+      var dep = r.dep != null ? r.dep : 0;              // departures count
+      var arr = r.arr != null ? r.arr : 0;              // arrivals count
+      var stay = Math.max(0, rooms - arr);              // stayovers (rough: rooms − arrivals)
+      var bkfst = r.bkfst || null;                      // not usually supplied by A&F; estimate from rooms
       var dinner = r.dinner || 0;
-      var staff = staffForDay(rooms, dep, stay, bkfst, dinner);
+      // v27: projected rooms = 6-month DOW average for forward nights, actual for past nights
+      var isFwd = ds >= cut;
+      var projected = isFwd ? projectForDay(ds) : rooms;
+      // When projected > on-the-books, scale up departures/stayovers proportionally so housekeeping is sized right
+      var scale = (rooms > 0 && projected > rooms) ? (projected / rooms) : 1;
+      var depProj = Math.round(dep * scale), stayProj = Math.round(stay * scale);
+      var bkfstProj = Math.round(projected * 1.8);
+      var staff = staffForDay(projected, depProj, stayProj, bkfstProj, dinner);
+      var staffOnBooks = staffForDay(rooms, dep, stay, bkfst, dinner);
       var accNet = T.net(r.acc) || 0, fbNet = T.net(r.fb) || 0, othNet = T.net(r.oth) || 0;
       daily.push({
         d: ds, dow: r.dow || DOW[new Date(ds + 'T12:00:00Z').getUTCDay()],
         rooms: rooms, arrivals: arr, departures: dep, stayovers: stay,
+        projected: projected, pickup: Math.max(0, projected - rooms),      // v27: projected final + expected pickup
         occ: LET ? rooms / LET : 0,
+        occProj: LET ? projected / LET : 0,
         acc: accNet, fb: fbNet, oth: othNet, total: accNet + fbNet + othNet,
         adr: rooms ? accNet / rooms : null,
         revpar: LET ? accNet / LET : null,
         trevpar: LET ? (accNet + fbNet + othNet) / LET : null,
         bkfst: bkfst || Math.round(rooms * 1.8),
+        bkfstProj: bkfstProj,
         dinner: dinner,
         blocks: blocksByDay[ds] || null,
-        staff: staff,
+        staff: staff,                        // staff based on PROJECTED rooms (what we'll actually need)
+        staffOnBooks: staffOnBooks,          // staff based on on-the-books only (for reference)
         oos: r.roos || 0,
-        isBeforeToday: ds < cut
+        isBeforeToday: ds < cut,
+        isForward: isFwd
       });
     }
 
@@ -982,7 +1035,23 @@
     h += '<div class="v23-scroll" style="overflow-x:auto;overflow-y:hidden;border:1px solid #efede7;border-radius:10px;background:#faf9f6">';
     h += '<div style="width:' + Math.max(1800, daily.length * 42) + 'px;height:360px;padding:14px 14px 8px"><canvas id="fc-daily-chart"></canvas></div>';
     h += '</div>';
-    h += '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#52514e"><span><i style="display:inline-block;width:10px;height:10px;background:#6250d6;border-radius:50%;margin-right:4px"></i>Occupancy %</span><span><i style="display:inline-block;width:10px;height:10px;background:#2a78d6;border-radius:50%;margin-right:4px"></i>ADR</span><span><i style="display:inline-block;width:10px;height:10px;background:#eb6834;border-radius:50%;margin-right:4px"></i>RevPAR</span><span><i style="display:inline-block;width:10px;height:10px;background:#1baf7a;border-radius:50%;margin-right:4px"></i>TRevPAR</span><span><i style="display:inline-block;width:10px;height:10px;background:#bb9979;border-radius:50%;margin-right:4px"></i>Surge (80%+ occ)</span><span><i style="display:inline-block;width:10px;height:10px;background:#c2417a;border-radius:50%;margin-right:4px"></i>Block / event</span></div>';
+    h += '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#52514e"><span><i style="display:inline-block;width:10px;height:10px;background:#6250d6;border-radius:50%;margin-right:4px"></i>Occupancy % (on the books)</span><span><i style="display:inline-block;width:14px;height:0;border-top:2px dashed #b98a3f;margin-right:4px;vertical-align:middle"></i>Projected % (6-mo DOW)</span><span><i style="display:inline-block;width:10px;height:10px;background:#2a78d6;border-radius:50%;margin-right:4px"></i>ADR</span><span><i style="display:inline-block;width:10px;height:10px;background:#eb6834;border-radius:50%;margin-right:4px"></i>RevPAR</span><span><i style="display:inline-block;width:10px;height:10px;background:#1baf7a;border-radius:50%;margin-right:4px"></i>TRevPAR</span><span><i style="display:inline-block;width:10px;height:10px;background:#bb9979;border-radius:50%;margin-right:4px"></i>Surge (80%+ occ)</span><span><i style="display:inline-block;width:10px;height:10px;background:#c2417a;border-radius:50%;margin-right:4px"></i>Block / event</span></div>';
+
+    /* ===== Projection accuracy: last 30 days actual vs projected ===== */
+    if (accuracyRows.length) {
+      var within5 = accuracyRows.filter(function (r) { return Math.abs(r.err) <= 5; }).length;
+      var within10 = accuracyRows.filter(function (r) { return Math.abs(r.err) <= 10; }).length;
+      h += '<div class="card" style="margin:16px 0 0;padding:14px 18px;background:#faf9f6;border:1px solid #efede7;border-radius:10px">';
+      h += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px"><b style="font-size:13.5px">Projection accuracy — last ' + accuracyRows.length + ' days</b><span class="note" style="margin:0;font-size:12px">6-month DOW model, actual vs projected for each past night</span></div>';
+      h += '<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">';
+      h += '<div class="tile" style="padding:10px 12px"><div class="l" style="font-size:10.5px">Average error</div><div class="v" style="font-size:18px">' + (mae != null ? '±' + mae.toFixed(1) + ' rooms' : '–') + '</div></div>';
+      h += '<div class="tile" style="padding:10px 12px"><div class="l" style="font-size:10.5px">Bias</div><div class="v" style="font-size:18px">' + (bias != null ? (bias >= 0 ? '+' : '') + bias.toFixed(1) + '</div><div class="d" style="font-size:11px">' + (bias > 0 ? 'under-projected' : (bias < 0 ? 'over-projected' : 'balanced')) + '</div>' : '–</div>') + '</div>';
+      h += '<div class="tile" style="padding:10px 12px"><div class="l" style="font-size:10.5px">Within 5 rooms</div><div class="v" style="font-size:18px">' + pc(within5 / accuracyRows.length) + '</div><div class="d" style="font-size:11px">' + within5 + ' of ' + accuracyRows.length + ' nights</div></div>';
+      h += '<div class="tile" style="padding:10px 12px"><div class="l" style="font-size:10.5px">Within 10 rooms</div><div class="v" style="font-size:18px">' + pc(within10 / accuracyRows.length) + '</div><div class="d" style="font-size:11px">' + within10 + ' of ' + accuracyRows.length + ' nights</div></div>';
+      h += '</div>';
+      h += '<p class="note" style="margin-top:10px;font-size:11.5px;color:#86847d">The projection uses a rolling 6-month day-of-week average. A true pickup/pace model needs daily snapshots of on-the-books (started 12 Nov) — this version catches up in a few months\' time.</p>';
+      h += '</div>';
+    }
 
     /* ===== Monthly summary with staffing ===== */
     h += '<h3 style="margin:22px 0 6px;font-size:14.5px">Monthly roll-up with average staffing per day</h3>';
@@ -1023,24 +1092,24 @@
     /* ===== Daily detail table (scrollable, next 90 days) ===== */
     h += '<h3 style="margin:22px 0 6px;font-size:14.5px">Day-by-day for the next 90 nights</h3>';
     h += '<p class="sub" style="margin:0 0 10px">Blocks and events come from the Block Forecast; breakfasts estimated at rooms × 1.8; dinners from booking data when available. Staff rows show the HosPRO Rota formulas applied to each night.</p>';
-    h += '<div class="scroll" style="max-height:480px"><table style="font-size:12px"><thead style="position:sticky;top:0;background:#fff"><tr><th>Night</th><th class="n">Rooms</th><th class="n">Occ</th><th class="n">Arr</th><th class="n">Dep</th><th class="n">Stay</th><th class="n">ADR</th><th class="n">RevPAR</th><th class="n">TRevPAR</th><th class="n">Bkfsts</th><th class="n">Dinner</th><th>Blocks / events</th><th class="n">HK</th><th class="n">Kitch</th><th class="n">Rest</th><th class="n">Recep</th><th class="n">Bar</th><th class="n">Total staff</th></tr></thead><tbody>';
+    h += '<div class="scroll" style="max-height:480px"><table style="font-size:12px"><thead style="position:sticky;top:0;background:#fff"><tr><th>Night</th><th class="n">On books</th><th class="n">Projected</th><th class="n">Proj Occ</th><th class="n">Arr</th><th class="n">Dep</th><th class="n">Stay</th><th class="n">ADR</th><th class="n">RevPAR</th><th class="n">Bkfsts</th><th>Blocks / events</th><th class="n">HK</th><th class="n">Kitch</th><th class="n">Rest</th><th class="n">Recep</th><th class="n">Bar</th><th class="n">Total staff</th></tr></thead><tbody>';
     daily.slice(0, 90).forEach(function (x) {
       var style = '';
       if (x.occ >= 0.9) style = 'background:#faf0d8';
       else if (x.occ >= 0.8) style = 'background:#fdf6e9';
       else if (x.occ < 0.3) style = 'background:#f7f6f3';
       var blkTxt = x.blocks ? '<span style="color:#c2417a">' + x.blocks.rooms + ' · ' + esc(x.blocks.names.join(', ').slice(0, 30)) + '</span>' : '–';
+      var projCell = x.isForward ? '<b>' + x.projected + '</b>' + (x.pickup > 0 ? ' <span style="color:#b98a3f;font-size:10.5px">+' + x.pickup + '</span>' : '') : '<span style="color:#86847d">' + x.rooms + '</span>';
       h += '<tr style="' + style + '"><td><b>' + x.dow + '</b> ' + dlabel(x.d) + '</td>' +
         '<td class="n">' + x.rooms + '</td>' +
-        '<td class="n">' + Math.round(x.occ * 100) + '%</td>' +
+        '<td class="n">' + projCell + '</td>' +
+        '<td class="n">' + Math.round((x.isForward ? x.occProj : x.occ) * 100) + '%</td>' +
         '<td class="n">' + x.arrivals + '</td>' +
         '<td class="n">' + x.departures + '</td>' +
         '<td class="n">' + x.stayovers + '</td>' +
         '<td class="n">' + gbp(x.adr, 2) + '</td>' +
         '<td class="n">' + gbp(x.revpar, 2) + '</td>' +
-        '<td class="n">' + gbp(x.trevpar, 2) + '</td>' +
-        '<td class="n">' + x.bkfst + '</td>' +
-        '<td class="n">' + (x.dinner || '–') + '</td>' +
+        '<td class="n">' + (x.isForward ? x.bkfstProj : x.bkfst) + '</td>' +
         '<td>' + blkTxt + '</td>' +
         '<td class="n"><b>' + x.staff.housekeeping + '</b></td>' +
         '<td class="n">' + x.staff.kitchen + '</td>' +
@@ -1051,7 +1120,7 @@
     });
     h += '</tbody></table></div>';
 
-    h += '<p class="note" style="margin-top:14px;font-size:12px">Staffing from HosPRO Rota — Forecast Staffing Rules (19 Nov 2026): Reception 3, Nights 1, Bar 2, Admin 1, Maintenance 1 (on call). Kitchen = max(2, ⌈bkfst÷28⌉ + (1 if dinner&gt;0)). Restaurant = max(1, ⌈bkfst÷28⌉) + ⌈dinner÷7⌉. Housekeeping = max(1, ⌈(dep×0.542 + stay×0.333)÷7.5⌉). Breakfast covers estimate = rooms × 1.8 when not supplied; dinner defaults to 0 until feed is live.</p>';
+    h += '<p class="note" style="margin-top:14px;font-size:12px"><b>Staffing is sized for the PROJECTED rooms</b>, not the on-the-books count, so the rota covers what the day is likely to land at rather than what has booked so far. The gold +N on the Projected column is the expected pickup from historic 6-month day-of-week averages. Formulas from HosPRO Rota — Forecast Staffing Rules (19 Nov 2026): Reception 3, Nights 1, Bar 2, Admin 1, Maintenance 1 (on call). Kitchen = max(2, ⌈bkfst÷28⌉ + (1 if dinner&gt;0)). Restaurant = max(1, ⌈bkfst÷28⌉) + ⌈dinner÷7⌉. Housekeeping = max(1, ⌈(dep×0.542 + stay×0.333)÷7.5⌉). Breakfast estimate = projected rooms × 1.8.</p>';
 
     h += '</div>';
     el.innerHTML = h;
@@ -1123,6 +1192,7 @@
             labels: labels,
             datasets: [
               { label: 'Occupancy %', data: daily.map(function (x) { return Math.round(x.occ * 100); }), borderColor: '#6250d6', backgroundColor: 'rgba(98,80,214,0.08)', yAxisID: 'y1', tension: 0.25, borderWidth: 2, pointRadius: surgeSizes, pointBackgroundColor: surgeColours, pointBorderColor: surgeColours, fill: true },
+              { label: 'Projected %', data: daily.map(function (x) { return x.isForward ? Math.round(x.occProj * 100) : null; }), borderColor: '#b98a3f', backgroundColor: 'rgba(185,138,63,0.05)', yAxisID: 'y1', tension: 0.25, borderWidth: 2, pointRadius: 0, borderDash: [6, 3], fill: false },
               { label: 'ADR £', data: daily.map(function (x) { return x.adr ? Math.round(x.adr) : null; }), borderColor: '#2a78d6', yAxisID: 'y2', tension: 0.25, borderWidth: 2, pointRadius: 0, fill: false },
               { label: 'RevPAR £', data: daily.map(function (x) { return x.revpar ? Math.round(x.revpar) : null; }), borderColor: '#eb6834', yAxisID: 'y2', tension: 0.25, borderWidth: 2, pointRadius: 0, fill: false },
               { label: 'TRevPAR £', data: daily.map(function (x) { return x.trevpar ? Math.round(x.trevpar) : null; }), borderColor: '#1baf7a', yAxisID: 'y2', tension: 0.25, borderWidth: 2, pointRadius: 0, borderDash: [4, 3], fill: false },
@@ -1146,7 +1216,8 @@
                   label: function (it) {
                     var x = daily[it.dataIndex];
                     var ds = it.dataset.label;
-                    if (ds === 'Occupancy %') return 'Occupancy: ' + Math.round(x.occ * 100) + '% (' + x.rooms + ' of ' + LET + ')';
+                    if (ds === 'Occupancy %') return 'On the books: ' + Math.round(x.occ * 100) + '% (' + x.rooms + ' of ' + LET + ')';
+                    if (ds === 'Projected %') return x.isForward ? 'Projected final: ' + Math.round(x.occProj * 100) + '% (' + x.projected + ' rooms · +' + x.pickup + ' pickup)' : null;
                     if (ds === 'ADR £') return 'ADR: ' + gbp(x.adr, 2);
                     if (ds === 'RevPAR £') return 'RevPAR: ' + gbp(x.revpar, 2);
                     if (ds === 'TRevPAR £') return 'TRevPAR: ' + gbp(x.trevpar, 2);
@@ -1154,15 +1225,14 @@
                   },
                   afterBody: function (it) {
                     var x = daily[it[0].dataIndex];
-                    var lines = [
-                      '',
-                      'Arrivals ' + x.arrivals + ' · Departures ' + x.departures + ' · Stayovers ' + x.stayovers,
-                      'Breakfasts (est): ' + x.bkfst + ' · Dinners booked: ' + (x.dinner || 0)
-                    ];
+                    var lines = ['', 'Arrivals ' + x.arrivals + ' · Departures ' + x.departures + ' · Stayovers ' + x.stayovers];
+                    if (x.isForward) lines.push('Breakfasts (projected): ' + x.bkfstProj + ' · Dinners booked: ' + (x.dinner || 0));
+                    else lines.push('Breakfasts (est): ' + x.bkfst + ' · Dinners booked: ' + (x.dinner || 0));
                     if (x.blocks) lines.push('Block: ' + x.blocks.rooms + ' rooms · ' + x.blocks.names.join(', '));
                     if (x.oos) lines.push('Out of service: ' + x.oos + ' rooms');
                     lines.push('');
                     lines.push('── Suggested rota ──');
+                    if (x.isForward) lines.push('(sized for projected ' + x.projected + ' rooms, not ' + x.rooms + ' on the books)');
                     lines.push('Housekeeping   ' + x.staff.housekeeping);
                     lines.push('Kitchen        ' + x.staff.kitchen);
                     lines.push('Restaurant     ' + x.staff.restaurant);
