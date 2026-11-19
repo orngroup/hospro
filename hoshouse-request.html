@@ -732,7 +732,7 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
               <button type="button" class="btn btn-go" style="background:#2a6a4a;flex:1" onclick="prcAddSave()">Save</button>
               <button type="button" class="btn" style="background:#eef1f4;color:#1a2b3a" onclick="prcAddClose()">Cancel</button>
             </div>
-            <div class="muted" style="font-size:11px;margin-top:8px">Adding, editing or deleting needs the management code (2222).</div>
+            <div class="muted" style="font-size:11px;margin-top:8px">Adding, editing or deleting needs the management code.</div>
           </div>
         </div>
       </div>
@@ -2019,7 +2019,9 @@ function procClose(){
   var body=$('pr-body'); if(body) body.innerHTML='<div class="pr-empty">Tap a procedure above to read it here.</div>';
 }
 
-/* ===================== Procedures PAGE — list + content, uploads, read & sign, edit (2222) ===================== */
+/* ===================== Procedures PAGE — list + content, uploads, read & sign, edit (management code) ===================== */
+var PRC_AUTH=false;
+function procAuth(){ if(PRC_AUTH||SHIFT_DEL_OK) return true; var c=prompt('Enter the management code:'); if(c===null) return false; if((c||'').trim()==='2222'){ PRC_AUTH=true; return true; } if(typeof toast==='function') toast('Incorrect code'); return false; }
 var PROC_ORDER=['checkin','checkout','notready','deposit','lostprop','key','lostkey'];
 var PRC_DOCS=[], PRC_DSUB=null, PRC_CUR=null;
 function prcInit(){
@@ -2064,12 +2066,12 @@ function prcShowSteps(key){
   if($('prc-del')) $('prc-del').style.display='none';
   var body=$('prc-body'); if(!body) return; body.setAttribute('data-touched','1');
   body.innerHTML='<ol style="padding-left:18px;line-height:1.6;font-size:14px;margin:0">'+pr.steps.map(function(s){return '<li style="margin-bottom:5px">'+esc(s)+'</li>';}).join('')+'</ol>'
-    +'<div style="margin-top:12px"><button type="button" onclick="prcEditSteps(\''+esc(key)+'\')" style="background:#eef1f4;border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:700 12px Lato;color:#1a2b3a;cursor:pointer">✎ Edit (code 2222)</button></div>'
+    +'<div style="margin-top:12px"><button type="button" onclick="prcEditSteps(\''+esc(key)+'\')" style="background:#eef1f4;border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:700 12px Lato;color:#1a2b3a;cursor:pointer">✎ Edit</button></div>'
     +'<div id="prc-ack" style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px"></div>';
   prcLoadAcks('proc_'+key, 'prc-ack');
 }
 function prcEditSteps(key){
-  if(!shiftDelAuth()) return;
+  if(!procAuth()) return;
   var pr=procDef(key); var body=$('prc-body'); if(!body||!pr) return;
   body.innerHTML='<label class="fl" style="margin:0">Title</label><input id="prc-e-title" value="'+esc(pr.t).replace(/"/g,'&quot;')+'" style="width:100%">'
     +'<label class="fl" style="margin-top:8px">Steps — one per line</label><textarea id="prc-e-steps" rows="12" style="width:100%;line-height:1.5">'+esc(pr.steps.join('\n'))+'</textarea>'
@@ -2118,10 +2120,10 @@ function prcSign(refId){
   var sel=$('prc-who'); var name=sel?sel.value:''; if(!name){ toast('Pick your name first'); return; }
   if(db){ db.collection('hosdesk_acks').doc(refId).set({acks:firebase.firestore.FieldValue.arrayUnion({name:name,at:new Date().toISOString()})},{merge:true}).then(function(){ toast('✓ Signed — thank you '+name); prcLoadAcks(refId,'prc-ack'); }).catch(function(){ toast('Could not save'); }); }
 }
-function prcAddOpen(){ if(!shiftDelAuth()) return; var b=$('prc-addbox'); if(b) b.style.display='block'; }
+function prcAddOpen(){ if(!procAuth()) return; var b=$('prc-addbox'); if(b) b.style.display='block'; }
 function prcAddClose(){ var b=$('prc-addbox'); if(b) b.style.display='none'; ['prc-a-title','prc-a-steps'].forEach(function(i){var e=$(i);if(e)e.value='';}); var f=$('prc-a-file'); if(f) f.value=''; var m=$('prc-a-msg'); if(m) m.textContent=''; }
 function prcAddSave(){
-  if(!shiftDelAuth()) return;
+  if(!procAuth()) return;
   var title=((($('prc-a-title')||{}).value)||'').trim();
   var steps=((($('prc-a-steps')||{}).value)||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);
   var fi=$('prc-a-file'); var file=fi&&fi.files&&fi.files[0];
@@ -2147,7 +2149,7 @@ function prcAddSave(){
 }
 function prcDelete(){
   if(!PRC_CUR || PRC_CUR.type!=='doc') return;
-  if(!shiftDelAuth()) return;
+  if(!procAuth()) return;
   if(!confirm('Delete this procedure/document?')) return;
   var id=PRC_CUR.id;
   if(db){ db.collection('hosproc_docs').doc(id).delete().then(function(){ toast('Deleted'); PRC_CUR=null; if($('prc-title')) $('prc-title').textContent='Select a procedure'; if($('prc-del')) $('prc-del').style.display='none'; var b=$('prc-body'); if(b) b.innerHTML='<div class="muted" style="padding:10px 2px">Pick a procedure on the left to read it and sign.</div>'; prcRenderList(); }).catch(function(){ toast('Could not delete'); }); }
