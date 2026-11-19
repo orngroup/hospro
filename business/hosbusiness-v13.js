@@ -601,6 +601,14 @@
       t('TRevPAR', gbp(tally.trevpar, 2), 'all revenue ÷ ' + LET3 + ' lettable' + delta(tally.trevpar, ctally && ctally.trevpar)),
       t('Food &amp; Beverage', gbp(tally.fb), (tally.rooms ? gbp(tally.fb / tally.rooms, 2) + ' per room sold' : '') + delta(tally.fb, ctally && ctally.fb)),
       t('Other revenue', gbp(tally.oth), 'room hire, conference, misc, sundries'),
+      (function () {
+        // v29: Guests in hotel tile, from Meal Plan if loaded
+        if (!window.MEALPLAN_DATA) return '';
+        var dd = d.to || d.from || (T.asOfDay && T.asOfDay()); if (!dd) return '';
+        var mp = window.MEALPLAN_DATA.rows.filter(function (r) { return r.d === dd; })[0];
+        if (!mp) return '';
+        return t('Guests in the hotel', num(mp.guests), mp.total.ad + ' adults · ' + mp.total.ch + ' children' + (mp.total.inf ? ' · ' + mp.total.inf + ' infants' : ''));
+      })(),
       t('Revenue lost to OOS', gbp(tally.oosLoss), (tally.oos || 0) + ' room nights × that night\'s ADR'),
       // Forward-looking anchors (always shown)
       t('Tonight, on the books', to ? num(to.rooms) + ' <small>rooms</small>' : '–', to ? gbp(tonightAdr, 2) + ' ADR · ' + gbp(tonightAcc) + ' rooms revenue' : ''),
@@ -705,6 +713,14 @@
       btn.innerHTML = 'POS <span class="v13-tick" style="width:14px;height:14px;font-size:9.5px" title="Live from Guestline API"></span>';
       seg.insertBefore(btn, seg.firstChild);
     }
+    // v29: add Meal Plan segment
+    if (seg && !seg.querySelector('[data-fb="mealplan"]')) {
+      var btnMP = document.createElement('button');
+      btnMP.className = 'seg'; btnMP.setAttribute('data-fb', 'mealplan');
+      btnMP.innerHTML = 'Meal Plan <span class="v13-tick" style="width:14px;height:14px;font-size:9.5px" title="From the Rezlynx Meal Plan export"></span>';
+      var posBtn = seg.querySelector('[data-fb="pos"]');
+      if (posBtn) seg.insertBefore(btnMP, posBtn.nextSibling); else seg.insertBefore(btnMP, seg.firstChild);
+    }
     // Capitalise the heading if it says "Food & beverage"
     el.querySelectorAll('h1,h2,h3').forEach(function (h) {
       if (/Food\s*&(amp;)?\s*beverage/i.test(h.innerHTML)) {
@@ -767,15 +783,20 @@
         return;
       }
       var fb = e.target.closest ? e.target.closest('[data-fb]') : null;
-      if (fb && fb.getAttribute('data-fb') === 'pos') {
-        // make POS active and render our view; stop the hub's own click handler from running renderFb
+      if (fb && (fb.getAttribute('data-fb') === 'pos' || fb.getAttribute('data-fb') === 'mealplan')) {
+        // make the segment active and render our view; stop the hub's own click handler from running renderFb
         e.stopPropagation(); e.preventDefault();
         var el = $('pf-fb'); if (!el) return;
         // go to F&B tab first if we're not on it
         if (!document.querySelector('#t-pf-fb.on')) { var navBtn = document.querySelector('#nav button[data-t="pf-fb"]'); if (navBtn) navBtn.click(); }
         Array.from(el.querySelectorAll('.seg')).forEach(function (b) { b.classList.remove('on'); });
         fb.classList.add('on');
-        setTimeout(function () { var S = window.Trading ? window.Trading.S() : {}; renderPosView(el, S, lastClosed()); }, 40);
+        var kind = fb.getAttribute('data-fb');
+        setTimeout(function () {
+          var S = window.Trading ? window.Trading.S() : {};
+          if (kind === 'pos') renderPosView(el, S, lastClosed());
+          else if (kind === 'mealplan') renderMealPlanView(el);
+        }, 40);
       }
     }, true);
     document.addEventListener('change', function (e) {
@@ -929,16 +950,20 @@
       var dep = r.dep != null ? r.dep : 0;              // departures count
       var arr = r.arr != null ? r.arr : 0;              // arrivals count
       var stay = Math.max(0, rooms - arr);              // stayovers (rough: rooms − arrivals)
-      var bkfst = r.bkfst || null;                      // not usually supplied by A&F; estimate from rooms
-      var dinner = r.dinner || 0;
+      // v29: if the Rezlynx Meal Plan export has this date, use real breakfast and dinner covers
+      var mp = (window.MEALPLAN_DATA && window.MEALPLAN_DATA.rows) ? window.MEALPLAN_DATA.rows.filter(function (x) { return x.d === ds; })[0] : null;
+      var bkfst = mp ? mp.breakfasts : (r.bkfst || null);
+      var dinner = mp ? mp.dinners : (r.dinner || 0);
       // v27: projected rooms = 6-month DOW average for forward nights, actual for past nights
       var isFwd = ds >= cut;
       var projected = isFwd ? projectForDay(ds) : rooms;
       // When projected > on-the-books, scale up departures/stayovers proportionally so housekeeping is sized right
       var scale = (rooms > 0 && projected > rooms) ? (projected / rooms) : 1;
       var depProj = Math.round(dep * scale), stayProj = Math.round(stay * scale);
-      var bkfstProj = Math.round(projected * 1.8);
-      var staff = staffForDay(projected, depProj, stayProj, bkfstProj, dinner);
+      // Use real meal plan breakfast/dinner where present; otherwise scale from projected rooms
+      var bkfstProj = mp ? bkfst : Math.round(projected * 1.8);
+      var dinnerProj = mp ? dinner : 0;
+      var staff = staffForDay(projected, depProj, stayProj, bkfstProj, dinnerProj);
       var staffOnBooks = staffForDay(rooms, dep, stay, bkfst, dinner);
       var accNet = T.net(r.acc) || 0, fbNet = T.net(r.fb) || 0, othNet = T.net(r.oth) || 0;
       daily.push({
@@ -953,7 +978,10 @@
         trevpar: LET ? (accNet + fbNet + othNet) / LET : null,
         bkfst: bkfst || Math.round(rooms * 1.8),
         bkfstProj: bkfstProj,
+        bkfstReal: !!mp,                     // v29: true when breakfast came from Meal Plan, not an estimate
         dinner: dinner,
+        dinnerProj: dinnerProj,
+        mp: mp || null,
         blocks: blocksByDay[ds] || null,
         staff: staff,                        // staff based on PROJECTED rooms (what we'll actually need)
         staffOnBooks: staffOnBooks,          // staff based on on-the-books only (for reference)
@@ -1377,6 +1405,133 @@
       var so = e.target.closest ? e.target.closest('[data-v16-signout]') : null;
       if (so) { var sob = $('signout'); if (sob) sob.click(); }
     }, true);
+  }
+
+  /* ---------- v29: Meal Plan (adults, children, breakfasts, dinners) ---------- */
+  function mealPlanRow(d) {
+    if (!window.MEALPLAN_DATA || !window.MEALPLAN_DATA.rows) return null;
+    var hit = window.MEALPLAN_DATA.rows.filter(function (r) { return r.d === d; })[0];
+    return hit || null;
+  }
+  function mealPlanRange(from, to) {
+    if (!window.MEALPLAN_DATA || !window.MEALPLAN_DATA.rows) return [];
+    return window.MEALPLAN_DATA.rows.filter(function (r) { return r.d >= from && r.d <= to; });
+  }
+  function mealPlanAsOf() {
+    return (window.MEALPLAN_DATA && window.MEALPLAN_DATA.asOf) || null;
+  }
+
+  function renderMealPlanView(el) {
+    if (!el) return;
+    if (!window.MEALPLAN_DATA) {
+      el.innerHTML = '<div class="card"><h2>Meal Plan report not loaded</h2><p class="sub">Load the Rezlynx Meal Plan export via Data &amp; reports to show adults, children, breakfasts and dinners by day.</p></div>';
+      return;
+    }
+    var T = window.Trading;
+    var cut = T && T.asOfDay ? T.asOfDay() : new Date().toISOString().slice(0, 10);
+    var rows = window.MEALPLAN_DATA.rows.slice().sort(function (a, b) { return a.d < b.d ? -1 : 1; });
+    var history = rows.filter(function (r) { return r.d < cut; });
+    var forward = rows.filter(function (r) { return r.d >= cut; });
+    // Tonight snapshot
+    var tonight = mealPlanRow(cut) || rows[rows.length - 1];
+    var MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    function dlabelMP(d) { return +d.slice(8) + ' ' + MN[+d.slice(5, 7) - 1]; }
+    function mpAsOfLabel() {
+      var a = mealPlanAsOf(); if (!a) return 'loaded';
+      var t = new Date(a); var now = new Date(); var today0 = new Date(); today0.setHours(0, 0, 0, 0);
+      var diff = Math.floor((t - today0) / 864e5);
+      var dayLabel = diff === 0 ? 'today' : (diff === -1 ? 'yesterday' : t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
+      return dayLabel + ' ' + t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+
+    var h = '<div class="card"><h2>Meal Plan <span class="v13-src">Rezlynx export · ' + mpAsOfLabel() + '</span></h2>' +
+      '<p class="sub">Rooms, adults and children by meal plan basis (Room Only · Bed &amp; Breakfast · Dinner, Bed &amp; Breakfast). Breakfast and dinner counts drive the Forecast staffing when uploaded.</p>';
+
+    // Tonight snapshot tiles
+    if (tonight) {
+      h += '<h3 style="margin:14px 0 6px;font-size:14px">Tonight · ' + dlabelMP(tonight.d) + '</h3>';
+      h += '<div class="tiles">' +
+        '<div class="tile"><div class="l">Guests in the hotel</div><div class="v">' + tonight.guests + '</div><div class="d">' + tonight.total.ad + ' adults · ' + tonight.total.ch + ' children · ' + tonight.total.inf + ' infants</div></div>' +
+        '<div class="tile"><div class="l">Rooms occupied</div><div class="v">' + tonight.total.rm + '</div><div class="d">' + tonight.ro.rm + ' RO · ' + tonight.bb.rm + ' B&amp;B · ' + tonight.dbb.rm + ' DBB</div></div>' +
+        '<div class="tile"><div class="l">Breakfasts tomorrow</div><div class="v">' + tonight.breakfasts + '</div><div class="d">B&amp;B ' + (tonight.bb.ad + tonight.bb.ch) + ' + DBB ' + (tonight.dbb.ad + tonight.dbb.ch) + '</div></div>' +
+        '<div class="tile"><div class="l">Dinners tonight</div><div class="v">' + tonight.dinners + '</div><div class="d">' + tonight.dbb.ad + ' adults · ' + tonight.dbb.ch + ' children on DBB</div></div>' +
+        '</div>';
+    }
+
+    // Two side-by-side charts
+    h += '<div class="grid g2" style="margin-top:18px">' +
+      '<div><h3 style="margin:0 0 6px;font-size:14px">Historical — last 90 days</h3><div class="chartbox" style="height:280px"><canvas id="mp-hist"></canvas></div></div>' +
+      '<div><h3 style="margin:0 0 6px;font-size:14px">Forward — next 180 days on the books</h3><div class="chartbox" style="height:280px"><canvas id="mp-fwd"></canvas></div></div>' +
+      '</div>';
+
+    // Day by day table (scrolling, forward)
+    h += '<h3 style="margin:22px 0 6px;font-size:14px">Day by day — from today forward</h3>';
+    h += '<div class="scroll" style="max-height:420px"><table style="font-size:12px"><thead style="position:sticky;top:0;background:#fff"><tr><th>Date</th><th class="n">Rooms</th><th class="n">Guests</th><th class="n">Adults</th><th class="n">Children</th><th class="n">Infants</th><th class="n">Room only</th><th class="n">B&amp;B</th><th class="n">DBB</th><th class="n">Breakfasts</th><th class="n">Dinners</th></tr></thead><tbody>';
+    forward.slice(0, 180).forEach(function (r) {
+      var style = r.breakfasts >= 100 ? 'background:#faf0d8' : (r.breakfasts >= 60 ? 'background:#fdf6e9' : '');
+      h += '<tr style="' + style + '"><td>' + DOW[new Date(r.d + 'T12:00:00Z').getUTCDay()] + ' ' + dlabelMP(r.d) + '</td>' +
+        '<td class="n">' + r.total.rm + '</td>' +
+        '<td class="n"><b>' + r.guests + '</b></td>' +
+        '<td class="n">' + r.total.ad + '</td>' +
+        '<td class="n">' + r.total.ch + '</td>' +
+        '<td class="n">' + r.total.inf + '</td>' +
+        '<td class="n">' + r.ro.rm + '</td>' +
+        '<td class="n">' + r.bb.rm + '</td>' +
+        '<td class="n">' + r.dbb.rm + '</td>' +
+        '<td class="n"><b>' + r.breakfasts + '</b></td>' +
+        '<td class="n"><b>' + r.dinners + '</b></td></tr>';
+    });
+    h += '</tbody></table></div>';
+
+    h += '<p class="note" style="margin-top:14px;font-size:11.5px">Breakfasts are the sum of adults and children on Bed &amp; Breakfast or Dinner, Bed &amp; Breakfast (infants free). Dinners are adults and children on Dinner, Bed &amp; Breakfast. This report updates when a fresh Meal Plan export is loaded on Data &amp; reports. Once the Guestline API endpoint for meal plans is confirmed, this will update automatically with every morning\'s 07:00 pull.</p>';
+    h += '</div>';
+    el.innerHTML = h;
+
+    if (!window.Chart) return;
+    function mkDataset(label, colour, getFn) {
+      return { label: label, borderColor: colour, backgroundColor: colour + '22', tension: 0.25, borderWidth: 2, pointRadius: 0, fill: false, data: null, _get: getFn };
+    }
+    function buildChart(id, rowsArr, title) {
+      var cv = document.getElementById(id); if (!cv) return;
+      var labels = rowsArr.map(function (r) { return dlabelMP(r.d); });
+      var mkd = [
+        mkDataset('Breakfasts', '#c2417a', function (r) { return r.breakfasts; }),
+        mkDataset('Dinners', '#6250d6', function (r) { return r.dinners; }),
+        mkDataset('Adults', '#1baf7a', function (r) { return r.total.ad; }),
+        mkDataset('Children', '#eb6834', function (r) { return r.total.ch + r.total.inf; })
+      ];
+      mkd.forEach(function (d) { d.data = rowsArr.map(d._get); });
+      try {
+        new window.Chart(cv.getContext('2d'), {
+          type: 'line',
+          data: { labels: labels, datasets: mkd },
+          options: {
+            maintainAspectRatio: false, animation: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { position: 'top', align: 'end', labels: { boxWidth: 10, boxHeight: 10, font: { size: 11.5 } } },
+              tooltip: {
+                callbacks: {
+                  title: function (it) { var r = rowsArr[it[0].dataIndex]; return DOW[new Date(r.d + 'T12:00:00Z').getUTCDay()] + ' ' + dlabelMP(r.d) + ' ' + r.d.slice(0, 4); },
+                  afterBody: function (it) {
+                    var r = rowsArr[it[0].dataIndex];
+                    return ['', 'Rooms: ' + r.total.rm + ' (' + r.ro.rm + ' RO / ' + r.bb.rm + ' B&B / ' + r.dbb.rm + ' DBB)', 'Guests: ' + r.guests];
+                  }
+                }
+              }
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10, font: { size: 10.5 } } },
+              y: { min: 0, grid: { color: '#efede7' } }
+            }
+          }
+        });
+      } catch (e) {}
+    }
+    var histWindow = history.slice(-90);
+    var fwdWindow = forward.slice(0, 180);
+    buildChart('mp-hist', histWindow, 'Historical');
+    buildChart('mp-fwd', fwdWindow, 'Forward');
   }
 
   /* ---------- Universal strip for hub pages so the top chips drive them ---------- */
