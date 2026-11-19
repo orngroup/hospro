@@ -469,7 +469,7 @@
     // Rooms sold average
     var totSold = 0, totOos = 0; days.forEach(function (x) { totSold += x.sold || 0; totOos += x.oos || 0; });
     var avgSold = days.length ? totSold / days.length : 0;
-    out.push({ k: 'info', l: 'Average rooms sold', v: avgSold.toFixed(1) + ' of 120', d: 'Across ' + days.length + ' night' + (days.length > 1 ? 's' : '') + ' (' + d.label + ')' });
+    out.push({ k: 'info', l: 'Average rooms sold', v: avgSold.toFixed(1) + ' of 114 lettable', d: 'Across ' + days.length + ' night' + (days.length > 1 ? 's' : '') + ' (' + d.label + ')' });
     // Out of service value
     if (totOos && days.length) {
       var avgAdr = 0, n = 0; days.forEach(function (x) { if (x.adr) { avgAdr += x.adr; n++; } }); avgAdr = n ? avgAdr / n : 70;
@@ -575,22 +575,24 @@
     var tonightAdr = to && to.rooms ? tonightAcc / to.rooms : 0;
     var n7 = T.agg(S.af.rows.filter(function (x) { return x.d >= cut; }).slice(0, 7));
     var m = cut.slice(0, 7), act = T.agg(T.rowsFor(m, 'actual')), bks = T.agg(T.rowsFor(m, 'books'));
-    var allMonth = act.total + bks.total, allMonthOcc = (act.rooms + bks.rooms) / (120 * (act.nights + bks.nights));
+    var LET2 = (T && T.LETTABLE) ? T.LETTABLE : 114; var allMonth = act.total + bks.total, allMonthOcc = (act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights));
 
     function t(label, value, sub) {
       return '<div class="tile"><div class="l">' + label + '</div><div class="v">' + value + '</div>' + (sub ? '<div class="d">' + sub + '</div>' : '') + '</div>';
     }
 
+    var LET3 = tally.lettable || 114;
+    var avail = LET3 * (tally.nights || 0);
     var tiles = [
       t(esc(d.label) + ' revenue', gbp(tally.total), (tally.nights || 0) + ' night' + (tally.nights === 1 ? '' : 's') + ' · ' + num(tally.rooms) + ' room nights' + delta(tally.total, ctally && ctally.total)),
-      t('Occupancy', pc(tally.occ), num(tally.rooms) + ' of ' + num(120 * tally.nights) + ' rooms' + delta(tally.occ, ctally && ctally.occ)),
+      t('Rooms sold', num(tally.rooms) + ' <small>of ' + num(avail) + '</small>', pc(tally.occ) + ' occupancy on ' + LET3 + ' lettable · ' + gbp(tally.acc) + ' accommodation' + delta(tally.rooms, ctally && ctally.rooms)),
+      t('Occupancy', pc(tally.occ), num(tally.rooms) + ' of ' + num(avail) + ' lettable' + delta(tally.occ, ctally && ctally.occ)),
       t('ADR', gbp(tally.adr, 2), 'average daily rate net of VAT' + delta(tally.adr, ctally && ctally.adr)),
-      t('RevPAR', gbp(tally.revpar, 2), 'rooms revenue ÷ ' + T.ROOMS + ' rooms' + delta(tally.revpar, ctally && ctally.revpar)),
-      t('TRevPAR', gbp(tally.trevpar, 2), 'all revenue ÷ ' + T.ROOMS + ' rooms' + delta(tally.trevpar, ctally && ctally.trevpar)),
-      t('Rooms sold', num(tally.rooms), gbp(tally.acc) + ' accommodation revenue' + delta(tally.rooms, ctally && ctally.rooms)),
+      t('RevPAR', gbp(tally.revpar, 2), 'rooms revenue ÷ ' + LET3 + ' lettable' + delta(tally.revpar, ctally && ctally.revpar)),
+      t('TRevPAR', gbp(tally.trevpar, 2), 'all revenue ÷ ' + LET3 + ' lettable' + delta(tally.trevpar, ctally && ctally.trevpar)),
       t('Food &amp; Beverage', gbp(tally.fb), (tally.rooms ? gbp(tally.fb / tally.rooms, 2) + ' per room sold' : '') + delta(tally.fb, ctally && ctally.fb)),
       t('Other revenue', gbp(tally.oth), 'room hire, conference, misc, sundries'),
-      t('Out of service', num(tally.oos), tally.adr ? gbp(tally.oos * tally.adr) + ' at ADR' : ''),
+      t('Revenue lost to OOS', gbp(tally.oosLoss), (tally.oos || 0) + ' room nights × that night\'s ADR'),
       // Forward-looking anchors (always shown)
       t('Tonight, on the books', to ? num(to.rooms) + ' <small>rooms</small>' : '–', to ? gbp(tonightAdr, 2) + ' ADR · ' + gbp(tonightAcc) + ' rooms revenue' : ''),
       t('Next 7 nights, on the books', n7.rooms ? num(n7.rooms) + ' <small>rooms</small> <span>' + pc(n7.occ) + '</span>' : '–', n7.rooms ? gbp(n7.acc) + ' rooms revenue' : ''),
@@ -627,7 +629,7 @@
       h += '<p class="note">No data from the API for this range yet. The feed may still be loading; try again shortly.</p>';
     } else {
       h += '<div class="tiles">' +
-        '<div class="tile"><div class="l">Rooms sold <span class="v13-tick"></span></div><div class="v">' + num(tally.rooms) + '</div><div class="d">' + pc(tally.occ) + ' occupancy on 120 rooms ' + (ctally ? cmpLine('rooms', tally.rooms, ctally.rooms) : '') + '</div></div>' +
+        '<div class="tile"><div class="l">Rooms sold <span class="v13-tick"></span></div><div class="v">' + num(tally.rooms) + '</div><div class="d">' + pc(tally.occ) + ' occupancy of ' + (tally.lettable || 114) + ' lettable ' + (ctally ? cmpLine('rooms', tally.rooms, ctally.rooms) : '') + '</div></div>' +
         '<div class="tile"><div class="l">ADR <span class="v13-tick"></span></div><div class="v">' + gbp(tally.adr, 2) + '</div><div class="d">' + (ctally ? cmpLine('adr', tally.adr, ctally.adr) : '') + '</div></div>' +
         '<div class="tile"><div class="l">RevPAR <span class="v13-tick"></span></div><div class="v">' + gbp(tally.revpar, 2) + '</div><div class="d">rooms revenue per available ' + (ctally ? cmpLine('revpar', tally.revpar, ctally.revpar) : '') + '</div></div>' +
         '<div class="tile"><div class="l">TRevPAR <span class="v13-tick"></span></div><div class="v">' + gbp(tally.trevpar, 2) + '</div><div class="d">all revenue per available ' + (ctally ? cmpLine('trevpar', tally.trevpar, ctally.trevpar) : '') + '</div></div>' +
@@ -647,9 +649,12 @@
   function tradingTally(S, from, to) {
     /* Groups in the Guestline feed use single-letter keys as plain numbers:
        A = accommodation, F = food, B = beverage, C = conference, M = misc, S = sundries.
-       Rooms revenue = accommodation less room hire; Other = room hire + conference + misc + sundries. */
+       Rooms revenue = accommodation less room hire; Other = room hire + conference + misc + sundries.
+       Occupancy base is LETTABLE (114 = 120 total − 5 staff − 1 storage), not 120.
+       OOS loss per night = that night's OOS rooms × that night's ADR (only on actual nights). */
     var days = daysIn(S, from, to);
-    var acc = 0, food = 0, bev = 0, oth = 0, rooms = 0, oos = 0;
+    var T = window.Trading; var LET = (T && T.LETTABLE) ? T.LETTABLE : 114;
+    var acc = 0, food = 0, bev = 0, oth = 0, rooms = 0, oos = 0, oosLoss = 0, actualNights = 0;
     days.forEach(function (x) {
       var g = x.groups || {};
       var codes = x.codes || {};
@@ -659,13 +664,21 @@
       food += F;
       bev += B;
       oth += hire + C + M + Sg;
-      rooms += x.sold || 0;
-      oos += x.oos || 0;
+      var soldN = x.sold || 0, oosN = x.oos || 0;
+      rooms += soldN;
+      oos += oosN;
+      // ADR for this night = (A − hire) / rooms sold
+      if (soldN > 0) {
+        var adrN = (A - hire) / soldN;
+        oosLoss += oosN * adrN;
+        actualNights += 1;
+      }
     });
     var fb = food + bev;
-    var total = acc + fb + oth, nights = days.length, avail = 120 * nights;
+    var total = acc + fb + oth, nights = days.length, avail = LET * nights;
     return {
-      nights: nights, rooms: rooms, acc: r2(acc), fb: r2(fb), food: r2(food), bev: r2(bev), oth: r2(oth), total: r2(total), oos: oos,
+      nights: nights, rooms: rooms, acc: r2(acc), fb: r2(fb), food: r2(food), bev: r2(bev), oth: r2(oth), total: r2(total),
+      oos: oos, oosLoss: r2(oosLoss), lettable: LET,
       occ: avail ? rooms / avail : null,
       adr: rooms ? acc / rooms : null,
       revpar: avail ? acc / avail : null,
@@ -763,31 +776,324 @@
     }, true);
   }
   function reRender() {
+    /* v21: every page must respond to the top date-range chips. */
     if (SIDEBAR_BUILT) { renderTopFilters(); highlightActive(); }
-    var fbEl = $('pf-fb');
-    if (fbEl && fbEl.closest('section.tab.on')) {
-      var active = fbEl.querySelector('.seg.on');
-      if (active && active.getAttribute('data-fb') === 'pos') { var S = window.Trading ? window.Trading.S() : {}; renderPosView(fbEl, S, lastClosed()); return; }
+    var active = document.querySelector('section.tab.on');
+    if (!active) return;
+    var tabId = active.id.indexOf('t-') === 0 ? active.id.slice(2) : active.id;
+
+    /* F&B: two shapes — POS view (rendered by me) and the hub's own views (Overview, By terminal, Breakfast, What we sell). */
+    if (tabId === 'pf-fb') {
+      var fbEl = $('pf-fb');
+      var seg = fbEl && fbEl.querySelector('.seg.on');
+      if (seg && seg.getAttribute('data-fb') === 'pos') {
+        renderPosView(fbEl, window.Trading.S(), lastClosed());
+        return;
+      }
+      /* Hub F&B view — force the hub to re-render, then re-stamp my strip and chips on top. */
+      if (window.Profit && window.Profit.show) {
+        window.Profit.show('fb');
+        setTimeout(augmentFb, 60);
+        return;
+      }
     }
-    // Home: re-augment in place (the hl block depends on the range)
-    var homeEl = $('pf-home');
-    if (homeEl && homeEl.closest('section.tab.on')) {
+
+    /* Business Today — augment in place (the strip and tiles use the range directly). */
+    if (tabId === 'pf-home') {
       augmentHome();
       return;
     }
-    // Trading: remove old augmentation and re-augment
-    var trEl = $('pf-trading');
-    if (trEl && trEl.closest('section.tab.on')) {
-      var old = trEl.querySelector('.v13-trading-head'); if (old) old.remove();
+
+    /* Trading (if ever shown) — re-augment. */
+    if (tabId === 'pf-trading') {
+      var trEl = $('pf-trading');
+      var old = trEl && trEl.querySelector('.v13-trading-head'); if (old) old.remove();
       augmentTrading();
       return;
     }
-    // Else force re-render of the active tab
-    var active2 = document.querySelector('section.tab.on');
-    if (active2 && window.Profit && window.Profit.show && active2.id.indexOf('t-pf-') === 0) {
-      var name = active2.id.slice(5); window.Profit.show(name);
-      setTimeout(function () { augmentHome(); augmentFb(); }, 50);
+
+    /* Forecast page (mine) */
+    if (tabId === 'pf-forecast') {
+      renderForecast();
+      return;
     }
+
+    /* Any other page the hub owns (Channels & rates, Trends, Profitability, Labour, Stock, Actions, Data, Help, Brief):
+       force the hub to re-render under the current selection, then stamp our range-aware strip on top so the chips drive the view. */
+    if (window.Profit && window.Profit.show && tabId.indexOf('pf-') === 0) {
+      var name = tabId.slice(3);
+      try { window.Profit.show(name); } catch (e) {}
+      setTimeout(function () { augmentHome(); augmentFb(); augmentTrading(); augmentHubPage(tabId); }, 60);
+      return;
+    }
+    // Non-pf tabs (explore, bar, rooms, save, update)
+    augmentHubPage(tabId);
+  }
+
+  /* ---------- Forecast page: next N months on the books ---------- */
+  function renderForecast() {
+    var el = $('pf-forecast'); if (!el) return;
+    var T = window.Trading, S = T ? T.S() : {};
+    if (!T || !S.af || !S.af.rows || !S.af.rows.length) { el.innerHTML = '<div class="card"><h2>No Guestline data yet</h2><p class="sub">Forecast needs the Actual &amp; Forecast feed to be loaded.</p></div>'; return; }
+    var LET = T.LETTABLE || 114;
+    var cut = T.asOfDay();
+    var now = new Date(cut + 'T12:00:00Z');
+    var MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var MNL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    /* ===== Staffing rules (from HosPRO Rota — Forecast Staffing Rules tab) =====
+       Kitchen        = max(2, ceil(bkfst/28) + (dinner>0 ? 1 : 0))
+       Restaurant F&B = max(1, ceil(bkfst/28)) + (dinner>0 ? ceil(dinner/7) : 0)
+       Housekeeping   = max(1, ceil((dep*0.542 + stay*0.333) / 7.5))
+       Reception = 3, Nights = 1, Bar = 2, Admin = 1, Maintenance = 1 (on-call)
+       Covers fallback: bkfst = rooms × 1.8 if not supplied; dinner = 0 if not. */
+    function ceil(x) { return Math.ceil(x); }
+    function staffForDay(rooms, departures, stayovers, bkfst, dinner) {
+      rooms = rooms || 0; departures = departures || 0; stayovers = stayovers || 0;
+      if (bkfst == null) bkfst = rooms * 1.8;
+      dinner = dinner || 0;
+      var kitchen = Math.max(2, ceil(bkfst / 28) + (dinner > 0 ? 1 : 0));
+      var restaurant = Math.max(1, ceil(bkfst / 28)) + (dinner > 0 ? ceil(dinner / 7) : 0);
+      var housekeeping = rooms > 0 ? Math.max(1, ceil((departures * 0.542 + stayovers * 0.333) / 7.5)) : 1;
+      return {
+        reception: 3, nights: 1, kitchen: kitchen, restaurant: restaurant,
+        bar: 2, housekeeping: housekeeping, admin: 1, maintenance: 1,
+        total: 3 + 1 + kitchen + restaurant + 2 + housekeeping + 1 + 1
+      };
+    }
+    /* Block/event rooms for a date from the Block Forecast if loaded */
+    var blocksByDay = {};
+    try {
+      var bl = (S.x && S.x.blocks && S.x.blocks.byMonth) || {};
+      Object.keys(bl).forEach(function (mk) {
+        (bl[mk].rows || []).forEach(function (b) {
+          if (!b.first || !b.last) return;
+          var d = b.first;
+          while (d <= b.last) {
+            var perNight = Math.round((b.total || 0) / (b.nights || 1));
+            blocksByDay[d] = blocksByDay[d] || { rooms: 0, names: [] };
+            blocksByDay[d].rooms += perNight;
+            if (blocksByDay[d].names.indexOf(b.name) === -1) blocksByDay[d].names.push(b.name);
+            // step +1 day
+            var dd = new Date(d + 'T12:00:00Z'); dd.setUTCDate(dd.getUTCDate() + 1); d = dd.toISOString().slice(0, 10);
+          }
+        });
+      });
+    } catch (e) {}
+
+    /* ===== Build daily forward rows (from today + 180 days) ===== */
+    var startD = cut, endD = (function () { var e = new Date(cut + 'T12:00:00Z'); e.setUTCDate(e.getUTCDate() + 180); return e.toISOString().slice(0, 10); })();
+    var afIndex = {}; S.af.rows.forEach(function (r) { afIndex[r.d] = r; });
+    var daily = [];
+    for (var d = new Date(startD + 'T12:00:00Z'), end = new Date(endD + 'T12:00:00Z'); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+      var ds = d.toISOString().slice(0, 10);
+      var r = afIndex[ds];
+      if (!r) continue;
+      var rooms = r.rooms || 0;
+      var dep = r.dep != null ? r.dep : 0;    // departures count
+      var arr = r.arr != null ? r.arr : 0;    // arrivals count
+      // stayovers = rooms occupied tonight who were here last night and aren't departing today (approx: rooms - arrivals today)
+      var stay = Math.max(0, rooms - arr);
+      var bkfst = r.bkfst || null;            // not usually supplied by A&F; estimate from rooms
+      var dinner = r.dinner || 0;
+      var staff = staffForDay(rooms, dep, stay, bkfst, dinner);
+      var accNet = T.net(r.acc) || 0, fbNet = T.net(r.fb) || 0, othNet = T.net(r.oth) || 0;
+      daily.push({
+        d: ds, dow: r.dow || DOW[new Date(ds + 'T12:00:00Z').getUTCDay()],
+        rooms: rooms, arrivals: arr, departures: dep, stayovers: stay,
+        occ: LET ? rooms / LET : 0,
+        acc: accNet, fb: fbNet, oth: othNet, total: accNet + fbNet + othNet,
+        adr: rooms ? accNet / rooms : null,
+        revpar: LET ? accNet / LET : null,
+        trevpar: LET ? (accNet + fbNet + othNet) / LET : null,
+        bkfst: bkfst || Math.round(rooms * 1.8),
+        dinner: dinner,
+        blocks: blocksByDay[ds] || null,
+        staff: staff,
+        oos: r.roos || 0,
+        isBeforeToday: ds < cut
+      });
+    }
+
+    /* ===== Rolling 6 months aggregation ===== */
+    var months = [];
+    for (var i = 0; i < 6; i++) {
+      var dd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + i, 1));
+      months.push(dd.toISOString().slice(0, 7));
+    }
+    function daysInMonth(m) { var y = +m.slice(0,4), mi = +m.slice(5,7); return new Date(y, mi, 0).getDate(); }
+    function aggMonth(m) {
+      var mrows = S.af.rows.filter(function (x) { return x.d.slice(0,7) === m; });
+      var dMrows = daily.filter(function (x) { return x.d.slice(0,7) === m; });
+      var days = daysInMonth(m);
+      var acc = 0, fb = 0, oth = 0, sold = 0, nights = mrows.length, bkfst = 0, dinner = 0;
+      var staffTotal = { reception: 0, nights: 0, kitchen: 0, restaurant: 0, bar: 0, housekeeping: 0, admin: 0, maintenance: 0 };
+      mrows.forEach(function (r) {
+        acc += T.net(r.acc) || 0; fb += T.net(r.fb) || 0; oth += T.net(r.oth) || 0; sold += r.rooms || 0;
+      });
+      dMrows.forEach(function (x) {
+        bkfst += x.bkfst || 0; dinner += x.dinner || 0;
+        Object.keys(staffTotal).forEach(function (k) { staffTotal[k] += x.staff[k]; });
+      });
+      var total = acc + fb + oth, avail = days * LET;
+      // Avg staff per day in the month (round to 1dp)
+      var staffAvg = {}; Object.keys(staffTotal).forEach(function (k) { staffAvg[k] = dMrows.length ? +(staffTotal[k] / dMrows.length).toFixed(1) : 0; });
+      return {
+        month: m, days: days, loaded: nights, available: avail,
+        sold: sold, acc: acc, fb: fb, oth: oth, total: total,
+        bkfst: bkfst, dinner: dinner,
+        occ: avail ? sold / avail : null,
+        adr: sold ? acc / sold : null,
+        revpar: avail ? acc / avail : null,
+        staff: staffAvg
+      };
+    }
+    var mRows = months.map(aggMonth);
+
+    /* ===== Headline tiles ===== */
+    var totalRev = 0, totalRooms = 0, totalAvail = 0, totalAcc = 0, totalFb = 0, totalBkfst = 0, totalDinner = 0;
+    mRows.forEach(function (r) { totalRev += r.total; totalRooms += r.sold; totalAvail += r.available; totalAcc += r.acc; totalFb += r.fb; totalBkfst += r.bkfst; totalDinner += r.dinner; });
+    var totalOcc = totalAvail ? totalRooms / totalAvail : null;
+
+    /* ===== Build HTML ===== */
+    var h = drBar('forecast', { forward: false });
+    h += '<div class="card" style="padding:20px"><h2 style="margin:0 0 4px">Next 6 months on the books <span class="v13-src">Guestline API ●</span></h2><p class="sub" style="margin:0 0 18px">From ' + MN[+months[0].slice(5)-1] + ' ' + months[0].slice(0,4) + ' to ' + MN[+months[5].slice(5)-1] + ' ' + months[5].slice(0,4) + ', rolling · from the Actual &amp; Forecast feed, net of VAT, on ' + LET + ' lettable rooms a night. Staffing from HosPRO Rota rules.</p>';
+    h += '<div class="tiles" style="margin-bottom:14px">' +
+      '<div class="tile"><div class="l">Total rooms revenue</div><div class="v">' + gbp(totalAcc) + '</div><div class="d">Across 6 months</div></div>' +
+      '<div class="tile"><div class="l">Total F&amp;B (pre-booked)</div><div class="v">' + gbp(totalFb) + '</div><div class="d">Only pre-booked with rooms so far</div></div>' +
+      '<div class="tile"><div class="l">Total revenue</div><div class="v">' + gbp(totalRev) + '</div><div class="d">Rooms + F&amp;B + other</div></div>' +
+      '<div class="tile"><div class="l">Total rooms sold</div><div class="v">' + num(totalRooms) + '</div><div class="d">of ' + num(totalAvail) + ' lettable</div></div>' +
+      '<div class="tile"><div class="l">6-month occupancy</div><div class="v">' + pc(totalOcc) + '</div><div class="d">Picks up as bookings land</div></div>' +
+      '<div class="tile"><div class="l">Breakfasts expected</div><div class="v">' + num(totalBkfst) + '</div><div class="d">rooms × 1.8 (estimate)</div></div>' +
+      '</div>';
+
+    /* ===== Daily scrolling chart ===== */
+    h += '<h3 style="margin:18px 0 6px;font-size:14.5px">Forward position by day — scroll right for later dates</h3>';
+    h += '<p class="sub" style="margin:0 0 10px">Daily occupancy, ADR, RevPAR and TRevPAR across the next ' + daily.length + ' nights. Surge markers (gold) on nights at 80%+. Hover for details.</p>';
+    h += '<div class="v23-scroll" style="overflow-x:auto;overflow-y:hidden;border:1px solid #efede7;border-radius:10px;background:#faf9f6">';
+    h += '<div style="width:' + Math.max(1600, daily.length * 24) + 'px;height:320px;padding:10px"><canvas id="fc-daily-chart"></canvas></div>';
+    h += '</div>';
+    h += '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#52514e"><span><i style="display:inline-block;width:10px;height:10px;background:#6250d6;border-radius:50%;margin-right:4px"></i>Occupancy %</span><span><i style="display:inline-block;width:10px;height:10px;background:#2a78d6;border-radius:50%;margin-right:4px"></i>ADR</span><span><i style="display:inline-block;width:10px;height:10px;background:#eb6834;border-radius:50%;margin-right:4px"></i>RevPAR</span><span><i style="display:inline-block;width:10px;height:10px;background:#1baf7a;border-radius:50%;margin-right:4px"></i>TRevPAR</span><span><i style="display:inline-block;width:10px;height:10px;background:#bb9979;border-radius:50%;margin-right:4px"></i>Surge (80%+ occ)</span><span><i style="display:inline-block;width:10px;height:10px;background:#c2417a;border-radius:50%;margin-right:4px"></i>Block / event</span></div>';
+
+    /* ===== Monthly summary with staffing ===== */
+    h += '<h3 style="margin:22px 0 6px;font-size:14.5px">Monthly roll-up with average staffing per day</h3>';
+    h += '<div class="scroll"><table style="font-size:12.5px"><tr><th>Month</th><th class="n">Nights</th><th class="n">Rooms</th><th class="n">Occ</th><th class="n">ADR</th><th class="n">RevPAR</th><th class="n">Rooms rev</th><th class="n">F&amp;B</th><th class="n">Total rev</th><th class="n">Bkfsts</th><th class="n">HK</th><th class="n">Kitch</th><th class="n">Rest</th><th class="n">Recep</th><th class="n">Bar</th><th class="n">Nights</th></tr>';
+    mRows.forEach(function (r, i) {
+      var m = r.month, label = MN[+m.slice(5)-1] + ' ' + m.slice(0,4);
+      h += '<tr' + (i === 0 ? ' style="background:#faf9f6"' : '') + '><td><b>' + label + '</b>' + (i === 0 ? ' <span class="pill" style="font-size:10px;background:#faf0d8;color:#725514;padding:1px 6px;border-radius:999px;margin-left:4px">current</span>' : '') + '</td>' +
+        '<td class="n">' + r.loaded + '/' + r.days + '</td>' +
+        '<td class="n">' + num(r.sold) + '</td>' +
+        '<td class="n">' + pc(r.occ) + '</td>' +
+        '<td class="n">' + gbp(r.adr, 2) + '</td>' +
+        '<td class="n">' + gbp(r.revpar, 2) + '</td>' +
+        '<td class="n">' + gbp(r.acc) + '</td>' +
+        '<td class="n">' + gbp(r.fb) + '</td>' +
+        '<td class="n"><b>' + gbp(r.total) + '</b></td>' +
+        '<td class="n">' + num(r.bkfst) + '</td>' +
+        '<td class="n">' + r.staff.housekeeping + '</td>' +
+        '<td class="n">' + r.staff.kitchen + '</td>' +
+        '<td class="n">' + r.staff.restaurant + '</td>' +
+        '<td class="n">' + r.staff.reception + '</td>' +
+        '<td class="n">' + r.staff.bar + '</td>' +
+        '<td class="n">' + r.staff.nights + '</td></tr>';
+    });
+    h += '</table></div>';
+
+    /* ===== Surge callouts (next 60 days, 80%+ occ) ===== */
+    var surges = daily.slice(0, 60).filter(function (x) { return !x.isBeforeToday && x.occ >= 0.8; }).slice(0, 10);
+    if (surges.length) {
+      h += '<h3 style="margin:22px 0 6px;font-size:14.5px">Surge nights ahead <span class="v13-src" style="color:#bb9979">need extra cover</span></h3>';
+      h += '<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">';
+      surges.forEach(function (x) {
+        var blkTxt = x.blocks ? '<br><span style="color:#c2417a;font-size:11px">' + x.blocks.rooms + ' from ' + esc(x.blocks.names.join(', ')) + '</span>' : '';
+        h += '<div class="tile" style="border-left:3px solid #bb9979;background:#faf0d8"><div class="l">' + x.dow + ' ' + dlabel(x.d) + '</div><div class="v">' + Math.round(x.occ * 100) + '%</div><div class="d">' + x.rooms + ' rooms · ' + gbp(x.adr, 2) + ' ADR · HK ' + x.staff.housekeeping + ', Kitch ' + x.staff.kitchen + blkTxt + '</div></div>';
+      });
+      h += '</div>';
+    }
+
+    /* ===== Daily detail table (scrollable, next 90 days) ===== */
+    h += '<h3 style="margin:22px 0 6px;font-size:14.5px">Day-by-day for the next 90 nights</h3>';
+    h += '<p class="sub" style="margin:0 0 10px">Blocks and events come from the Block Forecast; breakfasts estimated at rooms × 1.8; dinners from booking data when available. Staff rows show the HosPRO Rota formulas applied to each night.</p>';
+    h += '<div class="scroll" style="max-height:480px"><table style="font-size:12px"><thead style="position:sticky;top:0;background:#fff"><tr><th>Night</th><th class="n">Rooms</th><th class="n">Occ</th><th class="n">Arr</th><th class="n">Dep</th><th class="n">Stay</th><th class="n">ADR</th><th class="n">RevPAR</th><th class="n">TRevPAR</th><th class="n">Bkfsts</th><th class="n">Dinner</th><th>Blocks / events</th><th class="n">HK</th><th class="n">Kitch</th><th class="n">Rest</th><th class="n">Recep</th><th class="n">Bar</th><th class="n">Total staff</th></tr></thead><tbody>';
+    daily.slice(0, 90).forEach(function (x) {
+      var style = '';
+      if (x.occ >= 0.9) style = 'background:#faf0d8';
+      else if (x.occ >= 0.8) style = 'background:#fdf6e9';
+      else if (x.occ < 0.3) style = 'background:#f7f6f3';
+      var blkTxt = x.blocks ? '<span style="color:#c2417a">' + x.blocks.rooms + ' · ' + esc(x.blocks.names.join(', ').slice(0, 30)) + '</span>' : '–';
+      h += '<tr style="' + style + '"><td><b>' + x.dow + '</b> ' + dlabel(x.d) + '</td>' +
+        '<td class="n">' + x.rooms + '</td>' +
+        '<td class="n">' + Math.round(x.occ * 100) + '%</td>' +
+        '<td class="n">' + x.arrivals + '</td>' +
+        '<td class="n">' + x.departures + '</td>' +
+        '<td class="n">' + x.stayovers + '</td>' +
+        '<td class="n">' + gbp(x.adr, 2) + '</td>' +
+        '<td class="n">' + gbp(x.revpar, 2) + '</td>' +
+        '<td class="n">' + gbp(x.trevpar, 2) + '</td>' +
+        '<td class="n">' + x.bkfst + '</td>' +
+        '<td class="n">' + (x.dinner || '–') + '</td>' +
+        '<td>' + blkTxt + '</td>' +
+        '<td class="n"><b>' + x.staff.housekeeping + '</b></td>' +
+        '<td class="n">' + x.staff.kitchen + '</td>' +
+        '<td class="n">' + x.staff.restaurant + '</td>' +
+        '<td class="n">' + x.staff.reception + '</td>' +
+        '<td class="n">' + x.staff.bar + '</td>' +
+        '<td class="n"><b>' + x.staff.total + '</b></td></tr>';
+    });
+    h += '</tbody></table></div>';
+
+    h += '<p class="note" style="margin-top:14px;font-size:12px">Staffing from HosPRO Rota — Forecast Staffing Rules (19 Nov 2026): Reception 3, Nights 1, Bar 2, Admin 1, Maintenance 1 (on call). Kitchen = max(2, ⌈bkfst÷28⌉ + (1 if dinner&gt;0)). Restaurant = max(1, ⌈bkfst÷28⌉) + ⌈dinner÷7⌉. Housekeeping = max(1, ⌈(dep×0.542 + stay×0.333)÷7.5⌉). Breakfast covers estimate = rooms × 1.8 when not supplied; dinner defaults to 0 until feed is live.</p>';
+
+    h += '</div>';
+    el.innerHTML = h;
+
+    /* ===== Render the scrolling daily chart with Chart.js ===== */
+    try {
+      var cv = document.getElementById('fc-daily-chart');
+      if (cv && window.Chart) {
+        var labels = daily.map(function (x) { return x.dow.slice(0,1) + ' ' + +x.d.slice(8) + '/' + +x.d.slice(5,7); });
+        var ctx = cv.getContext('2d');
+        // Surge point style for occupancy
+        var surgeColours = daily.map(function (x) { return x.occ >= 0.8 ? '#bb9979' : '#6250d6'; });
+        var surgeSizes = daily.map(function (x) { return x.occ >= 0.8 ? 5 : 2; });
+        // Mark event days with annotation-like dots on the baseline
+        var evtPoints = daily.map(function (x) { return x.blocks ? 2 : null; });
+        new window.Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: 'Occupancy %', data: daily.map(function (x) { return Math.round(x.occ * 100); }), borderColor: '#6250d6', backgroundColor: 'rgba(98,80,214,0.08)', yAxisID: 'y1', tension: 0.25, borderWidth: 2, pointRadius: surgeSizes, pointBackgroundColor: surgeColours, pointBorderColor: surgeColours, fill: true },
+              { label: 'ADR £', data: daily.map(function (x) { return x.adr ? Math.round(x.adr) : null; }), borderColor: '#2a78d6', yAxisID: 'y2', tension: 0.25, borderWidth: 2, pointRadius: 0, fill: false },
+              { label: 'RevPAR £', data: daily.map(function (x) { return x.revpar ? Math.round(x.revpar) : null; }), borderColor: '#eb6834', yAxisID: 'y2', tension: 0.25, borderWidth: 2, pointRadius: 0, fill: false },
+              { label: 'TRevPAR £', data: daily.map(function (x) { return x.trevpar ? Math.round(x.trevpar) : null; }), borderColor: '#1baf7a', yAxisID: 'y2', tension: 0.25, borderWidth: 2, pointRadius: 0, borderDash: [4, 3], fill: false },
+              { label: 'Block / event', data: evtPoints, borderColor: 'transparent', backgroundColor: '#c2417a', yAxisID: 'y1', pointRadius: 5, pointStyle: 'rectRot', showLine: false }
+            ]
+          },
+          options: {
+            maintainAspectRatio: false, animation: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { title: function (it) { var x = daily[it[0].dataIndex]; return x.dow + ' ' + dlabel(x.d) + ' ' + x.d.slice(0,4); },
+                afterBody: function (it) {
+                  var x = daily[it[0].dataIndex];
+                  var lines = ['', 'Rooms sold: ' + x.rooms + ' of ' + LET, 'Arrivals: ' + x.arrivals + ' · Departures: ' + x.departures + ' · Stayovers: ' + x.stayovers];
+                  if (x.blocks) lines.push('Block: ' + x.blocks.rooms + ' · ' + x.blocks.names.join(', '));
+                  lines.push('Staff needed: HK ' + x.staff.housekeeping + ' · Kitch ' + x.staff.kitchen + ' · Rest ' + x.staff.restaurant + ' (total ' + x.staff.total + ')');
+                  return lines;
+                } } }
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 0, font: { size: 10 } } },
+              y1: { position: 'left', title: { display: true, text: 'Occupancy %' }, min: 0, max: 100, grid: { color: '#efede7' } },
+              y2: { position: 'right', title: { display: true, text: '£ per room' }, min: 0, grid: { display: false } }
+            }
+          }
+        });
+      }
+    } catch (ex) { /* chart failed, table still useful */ }
   }
 
   /* ---------- sidebar + topbar layout ---------- */
@@ -803,6 +1109,7 @@
     var items = [
       { group: 'Main', rows: [
         ['pf-home', 'trading', 'Business Today', 'Trading, live from Guestline'],
+        ['pf-forecast', 'kpi', 'Forecast', 'Next 6 months on the books'],
         ['pf-fb', 'fb', 'Food & Beverage', 'Sales by outlet and meal']
       ]},
       { group: 'Commercial', rows: [
@@ -880,10 +1187,65 @@
   function wireV16() {
     document.addEventListener('click', function (e) {
       var it = e.target.closest ? e.target.closest('[data-v16-tab]') : null;
-      if (it) { e.preventDefault(); e.stopPropagation(); var tab = it.getAttribute('data-v16-tab'); var btn = document.querySelector('#nav button[data-t="' + tab + '"]'); if (btn) { btn.click(); V16_ACTIVE = tab; setTimeout(highlightActive, 100); } return; }
+      if (it) {
+        e.preventDefault(); e.stopPropagation();
+        var tab = it.getAttribute('data-v16-tab');
+        var btn = document.querySelector('#nav button[data-t="' + tab + '"]');
+        if (btn) {
+          btn.click();
+          V16_ACTIVE = tab;
+          setTimeout(function () {
+            highlightActive();
+            // Make sure every page gets our augmentation (strip, Forecast, etc.) right after nav
+            if (tab === 'pf-forecast') { try { renderForecast(); } catch(e) {} }
+            else if (tab === 'pf-home') { augmentHome(); }
+            else if (tab === 'pf-fb') { augmentFb(); }
+            else if (tab === 'pf-trading') { augmentTrading(); }
+            else { augmentHubPage(tab); }
+          }, 120);
+        }
+        return;
+      }
       var so = e.target.closest ? e.target.closest('[data-v16-signout]') : null;
       if (so) { var sob = $('signout'); if (sob) sob.click(); }
     }, true);
+  }
+
+  /* ---------- Universal strip for hub pages so the top chips drive them ---------- */
+  function augmentHubPage(tabId) {
+    // Only for hub pages we don't own directly
+    var MINE = { 'pf-home':1, 'pf-fb':1, 'pf-trading':1, 'pf-forecast':1 };
+    if (MINE[tabId]) return;
+    // pf-xxx has an inner <div id=pf-xxx>; non-pf tabs (explore, bar, rooms, save, update) only have the section
+    var el = document.getElementById(tabId);
+    if (!el) el = document.getElementById('t-' + tabId);
+    if (!el) return;
+    // Remove any previous strip
+    var existingDr = el.querySelector(':scope > .v13-dr'); if (existingDr) existingDr.remove();
+    var existingStrip = el.querySelector(':scope > .v18-fb-strip.v22-any'); if (existingStrip) existingStrip.remove();
+
+    // Always show the chips so range selection is visible; strip only when we have data
+    var T = window.Trading, S = T ? T.S() : {}, lc = lastClosed();
+    if (!T || !S.af || !lc) { el.insertAdjacentHTML('afterbegin', drBar(tabId, { forward: false })); return; }
+    var r = getRange(), d = rangeDates(/^next/.test(r.kind) ? { kind: '7' } : r, lc), cmp = getCmp();
+    var tally = tradingTally(S, d.from, d.to);
+    var cd = cmp !== 'none' ? cmpDates(d, cmp) : null;
+    var ctally = cd ? tradingTally(S, cd.from, cd.to) : null;
+    function delta(a, b) {
+      if (!b || !isFinite(b) || b === 0 || a === null || !isFinite(a)) return '';
+      var v = (a - b) / Math.abs(b); var cls = v >= 0 ? 'up' : 'dn';
+      return ' <span class="v18-cmp"><span class="' + cls + '">' + (v >= 0 ? '+' : '−') + Math.abs(v * 100).toFixed(1) + '%</span></span>';
+    }
+    var LET = tally.lettable || 114;
+    var h = '<div class="v18-fb-strip v22-any"><h3>Figures for ' + esc(d.label) + ' <span class="v13-src">Guestline API ●</span></h3><div class="tiles">' +
+      '<div class="tile"><div class="l">Total revenue</div><div class="v">' + gbp(tally.total) + '</div><div class="d">' + (tally.nights || 0) + ' nights' + delta(tally.total, ctally && ctally.total) + '</div></div>' +
+      '<div class="tile"><div class="l">Rooms sold</div><div class="v">' + num(tally.rooms) + '</div><div class="d">of ' + num(LET * (tally.nights || 0)) + ' lettable</div></div>' +
+      '<div class="tile"><div class="l">Occupancy</div><div class="v">' + pc(tally.occ) + '</div><div class="d">on ' + LET + ' lettable' + delta(tally.occ, ctally && ctally.occ) + '</div></div>' +
+      '<div class="tile"><div class="l">ADR</div><div class="v">' + gbp(tally.adr, 2) + '</div><div class="d">net of VAT' + delta(tally.adr, ctally && ctally.adr) + '</div></div>' +
+      '<div class="tile"><div class="l">RevPAR</div><div class="v">' + gbp(tally.revpar, 2) + '</div><div class="d">÷ ' + LET + ' lettable</div></div>' +
+      '<div class="tile"><div class="l">F&amp;B</div><div class="v">' + gbp(tally.fb) + '</div><div class="d">food + beverage</div></div>' +
+      '</div><p class="note" style="margin:8px 2px 0;font-size:11.5px;color:#86847d">Date chips at the top drive this strip. The content below is the hub\'s own view for drill-down.</p></div>';
+    el.insertAdjacentHTML('afterbegin', drBar(tabId, { forward: false }) + h);
   }
 
   /* ---------- boot ---------- */
@@ -899,12 +1261,14 @@
       // ignore mutations we caused
       var ours = muts.every(function (m) { return Array.from(m.addedNodes || []).every(function (n) { return n && n.nodeType === 1 && (n.classList && (n.classList.contains('v13-hl') || n.classList.contains('v13-hero-badge') || n.classList.contains('v13-src'))); }); });
       if (ours) return;
-      clearTimeout(moT); moT = setTimeout(function () { augmentHome(); augmentFb(); augmentTrading(); }, 150);
+      clearTimeout(moT); moT = setTimeout(function () { augmentHome(); augmentFb(); augmentTrading(); var act = document.querySelector('section.tab.on'); if (act) augmentHubPage(act.id.slice(2)); }, 150);
     });
-    if (document.body) mo.observe(document.body, { subtree: true, childList: true });
+    if (document.body) mo.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
     augmentHome(); augmentFb(); augmentTrading();
     // After guestline feed loads, re-augment
     document.addEventListener('hub-signin', function () { setTimeout(function () { augmentHome(); augmentFb(); augmentTrading(); if (!SIDEBAR_BUILT) buildSidebar(); renderTopFilters(); highlightActive(); }, 1200); });
+    // v22: register Forecast renderer with the hub's Profit registry so clicking the nav button renders it
+    (function tryReg(){ if (window.Profit && window.Profit.register) { try { window.Profit.register('forecast', renderForecast); } catch(e) {} return; } setTimeout(tryReg, 200); })();
     // keep sidebar highlight + top filters in sync when tabs/range/cmp change
     var syncT = 0;
     new MutationObserver(function () { clearTimeout(syncT); syncT = setTimeout(function () {

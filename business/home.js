@@ -180,12 +180,12 @@
   var hubC = null;
   function hubChart() {
     var T = window.Trading, S = T ? T.S() : {}; if (hubC) { hubC.destroy(); hubC = null; } if (!$('hp-c1') || !S.af) return;
-    var cut = T.asOfDay(), R = T.ROOMS, all = S.af.rows, i0 = -1; all.forEach(function (r, i) { if (r.d === cut) i0 = i; }); if (i0 < 0) i0 = all.length - 1;
+    var cut = T.asOfDay(), R = T.ROOMS, L = T.LETTABLE || 114, all = S.af.rows, i0 = -1; all.forEach(function (r, i) { if (r.d === cut) i0 = i; }); if (i0 < 0) i0 = all.length - 1;
     var rows = all.slice(Math.max(0, i0 - 14), i0 + 15), ti = rows.map(function (r) { return r.d; }).indexOf(cut), cx = S.x && S.x.cancels && S.x.cancels.byDay ? S.x.cancels.byDay : null;
     var BK = S.x && S.x.postings ? S.x.postings.byDay : null;
     var SER = [['ADR', '#2a78d6', 'y1', function (r) { return r.rooms ? T.net(r.acc) / r.rooms : null; }, function (v) { return gbp(v, 2); }],
-      ['RevPAR', '#eb6834', 'y1', function (r) { return T.net(r.acc) / R; }, function (v) { return gbp(v, 2); }],
-      ['TRevPAR', '#1baf7a', 'y1', function (r) { return T.net(r.acc + r.fb + r.oth) / R; }, function (v) { return gbp(v, 2); }],
+      ['RevPAR', '#eb6834', 'y1', function (r) { return T.net(r.acc) / L; }, function (v) { return gbp(v, 2); }],
+      ['TRevPAR', '#1baf7a', 'y1', function (r) { return T.net(r.acc + r.fb + r.oth) / L; }, function (v) { return gbp(v, 2); }],
       ['Rooms revenue', '#0f8f95', 'y4', function (r) { return T.net(r.acc); }, function (v) { return gbp(v); }],
       ['Food and beverage total', '#c2417a', 'y4', function (r) { return T.net(r.fb); }, function (v) { return gbp(v); }],
       ['Food', '#e3a43a', 'y4', function (r) { var d = S.daily && S.daily[r.d]; return d && r.d < cut ? d.food : null; }, function (v) { return gbp(v); }],
@@ -193,13 +193,13 @@
       ['Breakfast revenue', '#1a2b3a', 'y4', function (r) { var d = BK && BK[r.d]; return d ? d.biv + d.bpv : null; }, function (v) { return gbp(v); }],
       ['Other revenue', '#7b8494', 'y4', function (r) { return T.net(r.oth); }, function (v) { return gbp(v); }],
       ['Out of service, lost at ADR', '#b3261e', 'y4', function (r) { return r.rooms ? r.roos * T.net(r.acc) / r.rooms : null; }, function (v) { return gbp(v); }],
-      ['Occupancy', '#6250d6', 'y2', function (r) { return r.rooms / R * 100; }, function (v) { return Math.round(v * R / 100) + ' rooms · ' + v.toFixed(1) + '%'; }],
+      ['Occupancy', '#6250d6', 'y2', function (r) { return r.rooms / L * 100; }, function (v) { return Math.round(v * L / 100) + ' rooms · ' + v.toFixed(1) + '%'; }],
       ['Rooms out of service', '#b3261e', 'y3', function (r) { return r.roos; }, function (v) { return Math.round(v) + ''; }, function (r) { return r.roos + (r.rooms ? ' · ' + gbp(r.roos * T.net(r.acc) / r.rooms) : ''); }],
       ['Staff rooms', '#8a6d3b', 'y3', function () { return T.STAFF; }, function (v) { return Math.round(v) + ' · ' + gbp(v * T.STAFF_RATE); }],
       ['Breakfasts in the rate', '#1a8f63', 'y3', function (r) { var d = BK && BK[r.d]; return d ? d.bi : null; }, function (v) { return Math.round(v) + ''; }],
       ['Breakfasts paid on the day', '#2a78d6', 'y3', function (r) { var d = BK && BK[r.d]; return d ? d.bp : null; }, function (v) { return Math.round(v) + ''; }],
       ['Cancellations made', '#b9791a', 'y3', function (r) { return cx && r.d < cut ? (cx[r.d] || 0) : null; }, function (v) { return Math.round(v) + ''; }]];
-    var GR = [['y4', 'Revenue for the day', 4], ['y1', '£ per room', 3], ['y2', '% of ' + R + ' rooms', 2], ['y3', 'Number', 3]];
+    var GR = [['y4', 'Revenue for the day', 4], ['y1', '£ per room', 3], ['y2', '% of ' + L + ' lettable', 2], ['y3', 'Number', 3]];
     var tv = rows[ti - 1] || rows[ti] || rows[rows.length - 1];
     $('hp-key').innerHTML = GR.map(function (g) { return '<div class="hp-kg" style="flex:' + g[2] + '"><small>' + g[1] + '</small>' + SER.map(function (x, k) { if (x[2] !== g[0]) return ''; var v = x[3](tv); return '<button data-ser="' + k + '"><i style="background:' + x[1] + '"></i><span>' + x[0] + '</span><b>' + (v === null || v === undefined ? '–' : x[5] ? x[5](tv) : x[4](v)) + '</b></button>'; }).join('') + '</div>'; }).join('') + '<small class="hp-kn">Figures in the key are for ' + tv.dow + ' ' + dlabel(tv.d) + ', the last full day. ' + R + ' rooms: ' + T.LETTABLE + ' to sell, ' + T.STAFF + ' staff rooms at ' + gbp(T.STAFF_RATE) + ' a night, ' + T.STORE + ' storage room at £0. Rooms out of service are valued at that night’s ADR.</small>';
     var scales = { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 15 } } };
