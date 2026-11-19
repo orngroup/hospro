@@ -378,11 +378,17 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         <div class="bigcard" id="card-priority" onclick="showSection('priority')"><div class="bc-banner"><div class="bc-t">HosPRIORITY</div><div class="bc-s">Flag rooms · alert housekeeping</div></div></div>
         <div class="bigcard" id="card-night" onclick="showSection('notes')"><div class="bc-banner"><div class="bc-t">HosNOTES</div><div class="bc-s">Reception notes board</div></div></div>
       </div>
-      <div id="card-firelog" onclick="showSection('firelog')" style="margin-top:12px;background:#7a1f14;color:#fff;border-radius:14px;padding:13px 18px;display:flex;align-items:center;gap:13px;cursor:pointer;box-shadow:0 2px 10px rgba(122,31,20,.25)">
-        <span style="font-size:22px">🔥</span>
-        <div style="flex:1;min-width:0"><div style="font:800 16px Lato;letter-spacing:.3px">HosFIRE Log</div><div style="font-size:12.5px;opacity:.85">Fire alarms &amp; drills · permanent reception log</div></div>
-        <span id="bc-fire-n" style="background:rgba(255,255,255,.18);border-radius:999px;padding:4px 13px;font:800 14px Lato">0</span>
-        <span style="font-size:18px;opacity:.8">→</span>
+      <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap">
+        <div id="card-firelog" onclick="showSection('firelog')" style="flex:1 1 240px;background:#7a1f14;color:#fff;border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:11px;cursor:pointer;box-shadow:0 2px 10px rgba(122,31,20,.25)">
+          <span style="font-size:20px">🔥</span>
+          <div style="flex:1;min-width:0"><div style="font:800 15px Lato;letter-spacing:.3px">HosFIRE Log</div><div style="font-size:12px;opacity:.85">Fire alarms &amp; drills</div></div>
+          <span id="bc-fire-n" style="background:rgba(255,255,255,.18);border-radius:999px;padding:4px 12px;font:800 13px Lato">0</span>
+        </div>
+        <div id="card-procedures" onclick="showSection('procedures')" style="flex:1 1 240px;background:#1f4e5f;color:#fff;border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:11px;cursor:pointer;box-shadow:0 2px 10px rgba(31,78,95,.25)">
+          <span style="font-size:20px">📘</span>
+          <div style="flex:1;min-width:0"><div style="font:800 15px Lato;letter-spacing:.3px">Procedures</div><div style="font-size:12px;opacity:.85">Guides, documents &amp; sign</div></div>
+          <span id="bc-prc-n" style="background:rgba(255,255,255,.18);border-radius:999px;padding:4px 12px;font:800 13px Lato">0</span>
+        </div>
       </div>
         </div>
         <aside class="proc-rail" id="proc-rail">
@@ -607,6 +613,7 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
           <label class="fl" style="margin:0">Your name</label>
           <select id="sc-who" onchange="clIni(this.value)" style="flex:1;min-width:150px"><option value="">Select…</option></select>
         </div>
+        <div id="sat-late"></div>
         <div id="sc-gridttl" class="sechd" style="margin:4px 0 6px">Checklist</div>
         <div class="scroll" style="overflow-x:auto;border:1px solid var(--line);border-radius:12px"><table id="sc-grid" style="border-collapse:collapse;width:100%;min-width:660px"></table></div>
         <div id="sc-submitbar" style="margin-top:12px"></div>
@@ -703,6 +710,36 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         </div>
       </div>
       <div class="pane-list"><div class="sechd" style="margin-top:0" id="rm-title">Rooms today</div><div id="rm-out"></div></div>
+    </div>
+
+    <!-- Procedures: list left, content right; upload docs, read & sign, edit (2222) -->
+    <div class="pane" id="pane-procedures">
+      <div class="pane-form">
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px"><div style="font:900 18px Lato;color:var(--navy)">Procedures &amp; documents</div><span id="prc-count" class="muted" style="margin-left:auto;font-size:12px"></span></div>
+          <input id="prc-search" type="text" placeholder="Search procedures…" oninput="prcRenderList()" style="margin-top:10px">
+          <div id="prc-list" style="margin-top:10px;display:flex;flex-direction:column;gap:7px"></div>
+          <button type="button" class="btn" style="margin-top:12px;background:#1f4e5f;color:#fff" onclick="prcAddOpen()">＋ Add / upload a procedure</button>
+          <div id="prc-addbox" style="display:none;margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+            <label class="fl">Title</label>
+            <input id="prc-a-title" type="text" placeholder="e.g. Fire evacuation plan">
+            <label class="fl" style="margin-top:8px">Written steps (optional — one per line)</label>
+            <textarea id="prc-a-steps" rows="4" placeholder="Leave blank if you're uploading a document"></textarea>
+            <label class="fl" style="margin-top:8px">Attach a document (optional)</label>
+            <input id="prc-a-file" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.txt">
+            <div id="prc-a-msg" class="muted" style="font-size:12px;margin-top:6px"></div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button type="button" class="btn btn-go" style="background:#2a6a4a;flex:1" onclick="prcAddSave()">Save</button>
+              <button type="button" class="btn" style="background:#eef1f4;color:#1a2b3a" onclick="prcAddClose()">Cancel</button>
+            </div>
+            <div class="muted" style="font-size:11px;margin-top:8px">Adding, editing or deleting needs the management code (2222).</div>
+          </div>
+        </div>
+      </div>
+      <div class="pane-list">
+        <div style="display:flex;align-items:center;gap:10px"><div class="sechd" style="margin-top:0" id="prc-title">Select a procedure</div><button id="prc-del" type="button" onclick="prcDelete()" style="display:none;margin-left:auto;background:none;border:none;color:#c0708a;font-size:13px;text-decoration:underline;cursor:pointer">Delete</button></div>
+        <div id="prc-body"><div class="muted" style="padding:10px 2px">Pick a procedure on the left to read it and sign.</div></div>
+      </div>
     </div>
 
     <!-- HosPRIORITY: pick rooms on a grid, add reason, alert housekeeping -->
@@ -887,6 +924,7 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="hoshouse-config.js"></script>
 <script>
@@ -1070,7 +1108,7 @@ async function startBoard(){
 function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } if(H_UNSUB){ H_UNSUB(); H_UNSUB=null; } stopVD(); B_READY=false; M_READY=false; }
 function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l])=>`<button class="chip ${B_FILTER===ff?'on':''}" onclick="bSetFilter('${ff}')">${l}</button>`).join(''); bRender(); }
 // Maintenance and Shift Handover are gated by a staff code (remove a name from GATED to open that section to all).
-const SECTIONS=['rooms','requests','deliveries','maintenance','handover','directory','hostv','priority','notes','info','firelog'];
+const SECTIONS=['rooms','requests','deliveries','maintenance','handover','directory','hostv','priority','notes','info','firelog','procedures'];
 const GATED={maintenance:true};  // only HosFIX stays code-protected; everything else is open
 const UNLOCKED={};
 let GATE_TARGET=null;
@@ -1081,7 +1119,7 @@ function checkCode(){ const v=($('cg-in').value||'').trim(); if(v==='3132'){ con
 function openFire(){ $('ovl-fire').classList.add('on'); }
 function closeFire(){ $('ovl-fire').classList.remove('on'); }
 // Tap a big card → that section takes over the whole page. goHome() returns to the cards.
-const SEC_TITLES={rooms:'🛏️ HosROOMS — Rooms today & room check', requests:'🧹 HosGUEST — Guest requests', deliveries:'📦 HosPARCEL — Deliveries', maintenance:'🔧 HosFIX — Maintenance', handover:'🔄 HosSHIFT — Handover', directory:'📇 HosSTAFF — Directory', hostv:'📺 HosTV — TV audit', priority:'⚡ HosPRIORITY', notes:'📝 HosNOTES — Reception notes', info:'ℹ️ Information for Reception', firelog:'🔥 HosFIRE Log — Fire alarms & drills'};
+const SEC_TITLES={rooms:'🛏️ HosROOMS — Rooms today & room check', requests:'🧹 HosGUEST — Guest requests', deliveries:'📦 HosPARCEL — Deliveries', maintenance:'🔧 HosFIX — Maintenance', handover:'🔄 HosSHIFT — Handover', directory:'📇 HosSTAFF — Directory', hostv:'📺 HosTV — TV audit', priority:'⚡ HosPRIORITY', notes:'📝 HosNOTES — Reception notes', info:'ℹ️ Information for Reception', firelog:'🔥 HosFIRE Log — Fire alarms & drills', procedures:'📘 Procedures — guides & documents'};
 function showSection(x){
   if(GATED[x] && !UNLOCKED[x]){ openCodeGate(x); return; }
   if(x==='handover'){ try{ soInit(); clInit(); }catch(e){} }
@@ -1091,6 +1129,7 @@ function showSection(x){
   if(x==='priority'){ try{ prioInit(); }catch(e){} }
   if(x==='notes'){ try{ notesInit(); }catch(e){} }
   if(x==='firelog'){ try{ flInit(); }catch(e){} }
+  if(x==='procedures'){ try{ prcInit(); }catch(e){} }
   SECTIONS.forEach(s=>{ const p=$('pane-'+s); if(p) p.classList.toggle('on', s===x); });
   const home=$('hd-home'); if(home) home.classList.add('hide');
   const t=$('hd-sec-title'); if(t) t.textContent=SEC_TITLES[x]||'';
@@ -1541,12 +1580,12 @@ function nwWalkRow(nd,no,w){
 function nwToggle(key){ NW_OPEN[key]=!NW_OPEN[key]; nwRenderRecords(); }
 async function clLoad(){
   var wk=clWkKey(CL_WK);
-  CL_DOC={ week:wk, weekLabel:clWkLabel(CL_WK), grid:{}, notes:[], submitted:{} };
+  CL_DOC={ week:wk, weekLabel:clWkLabel(CL_WK), grid:{}, notes:[], submitted:{}, satLate:{} };
   clRenderAll();
   if(!db) return;
   try{
     var s=await db.collection('hosnight_logs').doc('wk_'+wk).get();
-    if(s.exists){ var d=s.data()||{}; CL_DOC={ week:wk, weekLabel:CL_DOC.weekLabel, grid:(d.grid&&typeof d.grid==='object')?d.grid:{}, notes:Array.isArray(d.notes)?d.notes:[], submitted:(d.submitted&&typeof d.submitted==='object')?d.submitted:{} }; }
+    if(s.exists){ var d=s.data()||{}; CL_DOC={ week:wk, weekLabel:CL_DOC.weekLabel, grid:(d.grid&&typeof d.grid==='object')?d.grid:{}, notes:Array.isArray(d.notes)?d.notes:[], submitted:(d.submitted&&typeof d.submitted==='object')?d.submitted:{}, satLate:(d.satLate&&typeof d.satLate==='object')?d.satLate:{} }; }
     clRenderAll();
   }catch(e){}
 }
@@ -1566,11 +1605,37 @@ function clRenderAll(){
   clRenderShiftSel();
   clRenderMode();
   if(CL_SHIFT!=='nightwalk'){
+    try{ clRenderSatLate(); }catch(e){}
     if($('sc-grid')) clGrid('sc-grid','sc-gridttl',clShiftDef(CL_SHIFT));
     clRenderSubmit();
     if($('sc-notes')) clNotes('sc-notes');
     try{ soRender(); }catch(e){}
   }
+}
+function clRenderSatLate(){
+  var box=$('sat-late'); if(!box) return;
+  if(CL_SHIFT!=='late'){ box.innerHTML=''; return; }
+  var sl=(CL_DOC&&CL_DOC.satLate)||{};
+  var opts=function(sel){ return '<option value="">Select…</option>'+CL_PEOPLE.map(function(n){return '<option'+(sel===n?' selected':'')+'>'+esc(n)+'</option>';}).join(''); };
+  box.innerHTML='<div style="background:#eef4f6;border:1px solid #cfe0e6;border-radius:12px;padding:11px 13px;margin-bottom:12px">'
+    +'<div style="font:800 13px Lato;color:#1a4e5f;margin-bottom:3px">📅 Saturday late shift — 2 on duty</div>'
+    +'<div class="muted" style="font-size:12px;margin-bottom:8px">Record both receptionists on the Saturday late shift. Either can tick the checklist — each just selects their name under “Your name” above before ticking.</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<select id="sl-p1" style="flex:1;min-width:130px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px">'+opts(sl.p1||'')+'</select>'
+    +'<select id="sl-p2" style="flex:1;min-width:130px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px">'+opts(sl.p2||'')+'</select>'
+    +'<button type="button" class="btn btn-go" style="background:#1f6e5f;width:auto;padding:0 16px;margin:0" onclick="clSatLateSave()">Save</button></div>'
+    +((sl.p1||sl.p2)?('<div style="font-size:12px;color:#2a6a4a;margin-top:7px">✓ On duty: '+esc([sl.p1,sl.p2].filter(Boolean).join(' & '))+(sl.by?(' <span class="muted">· set by '+esc(sl.by)+'</span>'):'')+'</div>'):'')
+    +'</div>';
+}
+function clSatLateSave(){
+  var p1=((($('sl-p1')||{}).value)||'').trim(), p2=((($('sl-p2')||{}).value)||'').trim();
+  if(!p1 && !p2){ toast('Pick at least one name'); return; }
+  if(p1 && p2 && p1===p2){ toast('Pick two different people'); return; }
+  var rec={p1:p1,p2:p2,by:(CL_INI||'Reception'),at:clNow()};
+  if(!CL_DOC) return; CL_DOC.satLate=rec;
+  var wk=clWkKey(CL_WK);
+  if(db){ db.collection('hosnight_logs').doc('wk_'+wk).set({satLate:rec},{merge:true}).then(function(){ toast('✓ Saturday late shift saved'); clRenderSatLate(); }).catch(function(){ toast('Could not save'); }); }
+  else { clRenderSatLate(); }
 }
 function clRenderSubmit(){
   var el=$('sc-submitbar'); if(!el) return;
@@ -1952,6 +2017,140 @@ function procClose(){
   var ttl=$('pr-title'); if(ttl) ttl.textContent='Procedures';
   var cls=$('pr-close'); if(cls) cls.style.display='none';
   var body=$('pr-body'); if(body) body.innerHTML='<div class="pr-empty">Tap a procedure above to read it here.</div>';
+}
+
+/* ===================== Procedures PAGE — list + content, uploads, read & sign, edit (2222) ===================== */
+var PROC_ORDER=['checkin','checkout','notready','deposit','lostprop','key','lostkey'];
+var PRC_DOCS=[], PRC_DSUB=null, PRC_CUR=null;
+function prcInit(){
+  try{ procSubscribe(); }catch(e){}
+  prcDocsSubscribe();
+  prcRenderList();
+  if(PRC_CUR) prcShow(PRC_CUR); else { var b=$('prc-body'); if(b && !b.getAttribute('data-touched')) {} }
+}
+function prcDocsSubscribe(){
+  if(!db || PRC_DSUB) return;
+  PRC_DSUB=db.collection('hosproc_docs').onSnapshot(function(qs){
+    PRC_DOCS=qs.docs.map(function(d){ var v=d.data()||{}; v.id=d.id; return v; }).sort(function(a,b){ return String(b.createdAt||'').localeCompare(String(a.createdAt||'')); });
+    var bn=$('bc-prc-n'); if(bn) bn.textContent=(PROC_ORDER.length+PRC_DOCS.length);
+    prcRenderList();
+    if(PRC_CUR && PRC_CUR.type==='doc') prcShow(PRC_CUR);
+  }, function(){});
+}
+function prcItems(){
+  var items=PROC_ORDER.map(function(k){ var d=procDef(k); return {type:'steps', key:k, title:(d?d.t:k)}; });
+  PRC_DOCS.forEach(function(d){ items.push({type:'doc', id:d.id, title:d.title||'Untitled'}); });
+  return items;
+}
+function prcRenderList(){
+  var box=$('prc-list'); if(!box) return;
+  var all=prcItems();
+  var cnt=$('prc-count'); if(cnt) cnt.textContent=all.length+' item'+(all.length===1?'':'s');
+  var bn=$('bc-prc-n'); if(bn) bn.textContent=all.length;
+  var q=((($('prc-search')||{}).value)||'').trim().toLowerCase();
+  var items=all.filter(function(it){ return !q || (it.title||'').toLowerCase().indexOf(q)>-1; });
+  if(!items.length){ box.innerHTML='<div class="muted" style="font-size:12px;padding:6px 2px">No procedures match.</div>'; return; }
+  box.innerHTML=items.map(function(it){
+    var active=PRC_CUR && ((it.type==='steps'&&PRC_CUR.type==='steps'&&PRC_CUR.key===it.key)||(it.type==='doc'&&PRC_CUR.type==='doc'&&PRC_CUR.id===it.id));
+    var ic=it.type==='doc'?'📄':'📋';
+    return '<button type="button" onclick="prcPick(\''+it.type+'\',\''+esc(it.key||it.id)+'\')" style="text-align:left;border:1px solid '+(active?'#1f4e5f':'var(--line)')+';background:'+(active?'#eaf2f4':'#fff')+';border-radius:10px;padding:10px 12px;font:700 13.5px Lato;color:#1a2b3a;cursor:pointer;display:flex;align-items:center;gap:9px">'+ic+' <span style="flex:1;min-width:0">'+esc(it.title)+'</span></button>';
+  }).join('');
+}
+function prcPick(type,ref){ PRC_CUR = (type==='steps')?{type:'steps',key:ref}:{type:'doc',id:ref}; prcRenderList(); prcShow(PRC_CUR); window.scrollTo({top:0,behavior:'smooth'}); }
+function prcShow(cur){ if(!cur) return; if(cur.type==='steps') prcShowSteps(cur.key); else prcShowDoc(cur.id); }
+function prcShowSteps(key){
+  var pr=procDef(key); if(!pr) return;
+  if($('prc-title')) $('prc-title').textContent=pr.t;
+  if($('prc-del')) $('prc-del').style.display='none';
+  var body=$('prc-body'); if(!body) return; body.setAttribute('data-touched','1');
+  body.innerHTML='<ol style="padding-left:18px;line-height:1.6;font-size:14px;margin:0">'+pr.steps.map(function(s){return '<li style="margin-bottom:5px">'+esc(s)+'</li>';}).join('')+'</ol>'
+    +'<div style="margin-top:12px"><button type="button" onclick="prcEditSteps(\''+esc(key)+'\')" style="background:#eef1f4;border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:700 12px Lato;color:#1a2b3a;cursor:pointer">✎ Edit (code 2222)</button></div>'
+    +'<div id="prc-ack" style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px"></div>';
+  prcLoadAcks('proc_'+key, 'prc-ack');
+}
+function prcEditSteps(key){
+  if(!shiftDelAuth()) return;
+  var pr=procDef(key); var body=$('prc-body'); if(!body||!pr) return;
+  body.innerHTML='<label class="fl" style="margin:0">Title</label><input id="prc-e-title" value="'+esc(pr.t).replace(/"/g,'&quot;')+'" style="width:100%">'
+    +'<label class="fl" style="margin-top:8px">Steps — one per line</label><textarea id="prc-e-steps" rows="12" style="width:100%;line-height:1.5">'+esc(pr.steps.join('\n'))+'</textarea>'
+    +'<div style="display:flex;gap:8px;margin-top:10px"><button type="button" class="btn btn-go" style="background:#2a6a4a;flex:1" onclick="prcEditStepsSave(\''+esc(key)+'\')">Save</button><button type="button" class="btn" style="background:#eef1f4;color:#1a2b3a" onclick="prcShowSteps(\''+esc(key)+'\')">Cancel</button></div>';
+}
+function prcEditStepsSave(key){
+  var t=((($('prc-e-title')||{}).value)||'').trim();
+  var steps=((($('prc-e-steps')||{}).value)||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);
+  if(!t||!steps.length){ toast('Add a title and at least one step'); return; }
+  if(db){ db.collection('hosproc').doc(key).set({t:t,steps:steps,updatedAt:new Date().toISOString()},{merge:true}).then(function(){ toast('✓ Updated'); PROC_OVERRIDES[key]={t:t,steps:steps}; prcShowSteps(key); prcRenderList(); }).catch(function(){ toast('Could not save'); }); }
+  else { PROC_OVERRIDES[key]={t:t,steps:steps}; prcShowSteps(key); }
+}
+function prcShowDoc(id){
+  var d=null; for(var i=0;i<PRC_DOCS.length;i++){ if(PRC_DOCS[i].id===id){ d=PRC_DOCS[i]; break; } }
+  var body=$('prc-body'); if(!body) return; body.setAttribute('data-touched','1');
+  if(!d){ body.innerHTML='<div class="muted" style="padding:10px 2px">Document not found.</div>'; return; }
+  if($('prc-title')) $('prc-title').textContent=d.title||'Document';
+  if($('prc-del')) $('prc-del').style.display='block';
+  var fileBlock='';
+  if(d.fileUrl){
+    var isImg=/^image\//.test(d.fileType||'')||/\.(png|jpe?g|webp|gif)$/i.test(d.fileName||'');
+    var isPdf=/pdf/i.test(d.fileType||'')||/\.pdf$/i.test(d.fileName||'');
+    if(isImg) fileBlock='<img src="'+d.fileUrl+'" style="max-width:100%;border-radius:10px;border:1px solid var(--line);margin-top:4px">';
+    else if(isPdf) fileBlock='<iframe src="'+d.fileUrl+'" style="width:100%;height:520px;border:1px solid var(--line);border-radius:10px;margin-top:4px"></iframe>';
+    fileBlock+='<div style="margin-top:8px"><a href="'+d.fileUrl+'" target="_blank" rel="noopener" style="display:inline-block;background:#1f4e5f;color:#fff;border-radius:8px;padding:8px 13px;font:700 12px Lato;text-decoration:none">⬇ Open / download '+esc(d.fileName||'document')+'</a></div>';
+  }
+  var steps=(d.steps&&d.steps.length)?('<ol style="padding-left:18px;line-height:1.6;font-size:14px;margin:0 0 8px">'+d.steps.map(function(s){return '<li style="margin-bottom:5px">'+esc(s)+'</li>';}).join('')+'</ol>'):'';
+  body.innerHTML=steps+fileBlock
+    +'<div class="muted" style="font-size:11px;margin-top:8px">Added '+esc(String(d.createdAt||'').slice(0,10))+(d.createdBy?(' · '+esc(d.createdBy)):'')+'</div>'
+    +'<div id="prc-ack" style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px"></div>';
+  prcLoadAcks('pdoc_'+id, 'prc-ack');
+}
+function prcLoadAcks(refId, elId){
+  if(!db){ var el0=$(elId); if(el0) el0.innerHTML=''; return; }
+  db.collection('hosdesk_acks').doc(refId).get().then(function(s){ var d=s.exists?(s.data()||{}):{}; prcAckRender(elId, refId, d.acks||[]); }).catch(function(){ prcAckRender(elId, refId, []); });
+}
+function prcAckRender(elId, refId, acks){
+  var map={}; (acks||[]).forEach(function(a){ if(a&&a.name) map[a.name]=a.at; });
+  var names=Object.keys(map); var el=$(elId); if(!el) return;
+  el.innerHTML='<div style="font:800 12px Lato;color:#1a2b3a;margin-bottom:6px">Read &amp; understood — signatures</div>'
+    +(names.length?'<div style="font-size:12px;color:#2a6a4a;margin-bottom:8px">✓ '+names.map(esc).join(', ')+' <span class="muted">('+names.length+')</span></div>':'<div class="muted" style="font-size:12px;margin-bottom:8px">No one has signed yet.</div>')
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap"><select id="prc-who" style="flex:1;min-width:120px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font-size:13px"><option value="">Your name…</option>'+CL_PEOPLE.map(function(n){return '<option>'+esc(n)+'</option>';}).join('')+'</select>'
+    +'<button type="button" class="btn btn-go" style="background:#2a6a4a;padding:7px 12px;font-size:12px" onclick="prcSign(\''+esc(refId)+'\')">✓ I have read &amp; understood</button></div>';
+}
+function prcSign(refId){
+  var sel=$('prc-who'); var name=sel?sel.value:''; if(!name){ toast('Pick your name first'); return; }
+  if(db){ db.collection('hosdesk_acks').doc(refId).set({acks:firebase.firestore.FieldValue.arrayUnion({name:name,at:new Date().toISOString()})},{merge:true}).then(function(){ toast('✓ Signed — thank you '+name); prcLoadAcks(refId,'prc-ack'); }).catch(function(){ toast('Could not save'); }); }
+}
+function prcAddOpen(){ if(!shiftDelAuth()) return; var b=$('prc-addbox'); if(b) b.style.display='block'; }
+function prcAddClose(){ var b=$('prc-addbox'); if(b) b.style.display='none'; ['prc-a-title','prc-a-steps'].forEach(function(i){var e=$(i);if(e)e.value='';}); var f=$('prc-a-file'); if(f) f.value=''; var m=$('prc-a-msg'); if(m) m.textContent=''; }
+function prcAddSave(){
+  if(!shiftDelAuth()) return;
+  var title=((($('prc-a-title')||{}).value)||'').trim();
+  var steps=((($('prc-a-steps')||{}).value)||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);
+  var fi=$('prc-a-file'); var file=fi&&fi.files&&fi.files[0];
+  var msg=$('prc-a-msg');
+  if(!title){ if(msg) msg.textContent='Add a title.'; return; }
+  if(!steps.length && !file){ if(msg) msg.textContent='Add written steps or attach a document.'; return; }
+  var id='pdoc_'+Date.now().toString(36);
+  var base={ title:title, steps:steps, acks:[], createdAt:new Date().toISOString(), createdBy:'Reception' };
+  function saveDoc(extra){
+    var rec=Object.assign({},base,extra||{});
+    if(db){ db.collection('hosproc_docs').doc(id).set(rec).then(function(){ toast('✓ Procedure added'); prcAddClose(); PRC_CUR={type:'doc',id:id}; }).catch(function(){ if(msg) msg.textContent='Could not save.'; }); }
+    else { if(msg) msg.textContent='Offline — cannot save.'; }
+  }
+  if(file){
+    if(file.size>8*1024*1024){ if(msg) msg.textContent='File too large (max 8 MB).'; return; }
+    if(msg) msg.textContent='Uploading…';
+    try{
+      if(!firebase.storage){ if(msg) msg.textContent='Uploads unavailable here.'; return; }
+      var ref=firebase.storage().ref().child('hosproc_docs/'+id+'/'+file.name);
+      ref.put(file).then(function(snap){ return snap.ref.getDownloadURL(); }).then(function(url){ saveDoc({fileUrl:url, fileName:file.name, fileType:file.type||''}); }).catch(function(e){ if(msg) msg.textContent='Upload failed: '+((e&&e.message)||'error'); });
+    }catch(e){ if(msg) msg.textContent='Upload error: '+((e&&e.message)||'error'); }
+  } else { saveDoc(); }
+}
+function prcDelete(){
+  if(!PRC_CUR || PRC_CUR.type!=='doc') return;
+  if(!shiftDelAuth()) return;
+  if(!confirm('Delete this procedure/document?')) return;
+  var id=PRC_CUR.id;
+  if(db){ db.collection('hosproc_docs').doc(id).delete().then(function(){ toast('Deleted'); PRC_CUR=null; if($('prc-title')) $('prc-title').textContent='Select a procedure'; if($('prc-del')) $('prc-del').style.display='none'; var b=$('prc-body'); if(b) b.innerHTML='<div class="muted" style="padding:10px 2px">Pick a procedure on the left to read it and sign.</div>'; prcRenderList(); }).catch(function(){ toast('Could not delete'); }); }
 }
 
 /* ===================== HosINFO — Information for Reception ===================== */
