@@ -1458,11 +1458,14 @@
         '</div>';
     }
 
-    // Two side-by-side charts
-    h += '<div class="grid g2" style="margin-top:18px">' +
-      '<div><h3 style="margin:0 0 6px;font-size:14px">Historical — last 90 days</h3><div class="chartbox" style="height:280px"><canvas id="mp-hist"></canvas></div></div>' +
-      '<div><h3 style="margin:0 0 6px;font-size:14px">Forward — next 180 days on the books</h3><div class="chartbox" style="height:280px"><canvas id="mp-fwd"></canvas></div></div>' +
-      '</div>';
+    // Single full-width horizontally-scrolling chart with today as the anchor
+    var combined = history.slice(-180).concat(forward.slice(0, 180));
+    var todayIdx = combined.findIndex(function (r) { return r.d >= cut; });
+    if (todayIdx < 0) todayIdx = combined.length - 1;
+    h += '<h3 style="margin:18px 0 6px;font-size:14px">Full view — 180 days back and 180 days forward · scroll left for history, right for bookings on the books</h3>';
+    h += '<div class="v30-mp-scroll" style="overflow-x:auto;overflow-y:hidden;border:1px solid #efede7;border-radius:10px;background:#faf9f6">';
+    h += '<div style="width:' + Math.max(1800, combined.length * 42) + 'px;height:360px;padding:14px 14px 8px"><canvas id="mp-chart"></canvas></div>';
+    h += '</div>';
 
     // Day by day table (scrolling, forward)
     h += '<h3 style="margin:22px 0 6px;font-size:14px">Day by day — from today forward</h3>';
@@ -1488,50 +1491,101 @@
     el.innerHTML = h;
 
     if (!window.Chart) return;
-    function mkDataset(label, colour, getFn) {
-      return { label: label, borderColor: colour, backgroundColor: colour + '22', tension: 0.25, borderWidth: 2, pointRadius: 0, fill: false, data: null, _get: getFn };
-    }
-    function buildChart(id, rowsArr, title) {
-      var cv = document.getElementById(id); if (!cv) return;
-      var labels = rowsArr.map(function (r) { return dlabelMP(r.d); });
-      var mkd = [
-        mkDataset('Breakfasts', '#c2417a', function (r) { return r.breakfasts; }),
-        mkDataset('Dinners', '#6250d6', function (r) { return r.dinners; }),
-        mkDataset('Adults', '#1baf7a', function (r) { return r.total.ad; }),
-        mkDataset('Children', '#eb6834', function (r) { return r.total.ch + r.total.inf; })
-      ];
-      mkd.forEach(function (d) { d.data = rowsArr.map(d._get); });
+    (function renderCombined() {
+      var cv = document.getElementById('mp-chart'); if (!cv) return;
+      var labels = combined.map(function (r) { return DOW[new Date(r.d + 'T12:00:00Z').getUTCDay()].slice(0, 3) + ' ' + +r.d.slice(8); });
+
+      // Month separator + "today" marker plugin
+      var MN2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      var monthSep = {
+        id: 'mpMonthSep',
+        afterDraw: function (chart) {
+          var ctx = chart.ctx, area = chart.chartArea, xs = chart.scales.x; if (!xs) return;
+          ctx.save();
+          combined.forEach(function (r, i) {
+            var isStart = (i === 0) || (r.d.slice(0, 7) !== combined[i - 1].d.slice(0, 7));
+            if (!isStart) return;
+            var x = xs.getPixelForValue(i);
+            if (i > 0) {
+              ctx.strokeStyle = '#d4c7ae'; ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
+              ctx.beginPath(); ctx.moveTo(x, area.top); ctx.lineTo(x, area.bottom); ctx.stroke();
+              ctx.setLineDash([]);
+            }
+            var m = r.d.slice(0, 7);
+            var label = MN2[+m.slice(5) - 1] + ' ' + m.slice(0, 4);
+            ctx.fillStyle = '#faf0d8';
+            ctx.fillRect(x + 1, area.top, Math.min(180, xs.getPixelForValue(Math.min(i + 31, combined.length - 1)) - x), 22);
+            ctx.fillStyle = '#5a4320';
+            ctx.font = '600 11.5px -apple-system, Inter, Segoe UI, sans-serif';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, x + 8, area.top + 11);
+          });
+          // Today marker
+          if (todayIdx >= 0) {
+            var tx = xs.getPixelForValue(todayIdx);
+            ctx.strokeStyle = '#bb9979'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(tx, area.top + 22); ctx.lineTo(tx, area.bottom); ctx.stroke();
+            ctx.fillStyle = '#bb9979';
+            ctx.font = '600 10.5px -apple-system, Inter, sans-serif';
+            ctx.fillText('today', tx + 4, area.top + 36);
+          }
+          ctx.restore();
+        }
+      };
+
       try {
         new window.Chart(cv.getContext('2d'), {
           type: 'line',
-          data: { labels: labels, datasets: mkd },
+          data: {
+            labels: labels,
+            datasets: [
+              { label: 'Breakfasts', data: combined.map(function (r) { return r.breakfasts; }), borderColor: '#c2417a', backgroundColor: 'rgba(194,65,122,0.08)', tension: 0.25, borderWidth: 2.5, pointRadius: 0, fill: true },
+              { label: 'Dinners', data: combined.map(function (r) { return r.dinners; }), borderColor: '#6250d6', tension: 0.25, borderWidth: 2, pointRadius: 0, fill: false },
+              { label: 'Adults', data: combined.map(function (r) { return r.total.ad; }), borderColor: '#1baf7a', tension: 0.25, borderWidth: 2, pointRadius: 0, borderDash: [4, 3], fill: false },
+              { label: 'Children (incl infants)', data: combined.map(function (r) { return r.total.ch + r.total.inf; }), borderColor: '#eb6834', tension: 0.25, borderWidth: 2, pointRadius: 0, fill: false }
+            ]
+          },
           options: {
             maintainAspectRatio: false, animation: false,
             interaction: { mode: 'index', intersect: false },
+            layout: { padding: { top: 28 } },
             plugins: {
-              legend: { position: 'top', align: 'end', labels: { boxWidth: 10, boxHeight: 10, font: { size: 11.5 } } },
+              legend: { position: 'top', align: 'end', labels: { boxWidth: 12, boxHeight: 10, font: { size: 11.5 } } },
               tooltip: {
+                displayColors: false,
+                backgroundColor: 'rgba(10,22,38,0.96)',
+                titleFont: { size: 13, weight: '700' }, bodyFont: { size: 12 }, padding: 10,
                 callbacks: {
-                  title: function (it) { var r = rowsArr[it[0].dataIndex]; return DOW[new Date(r.d + 'T12:00:00Z').getUTCDay()] + ' ' + dlabelMP(r.d) + ' ' + r.d.slice(0, 4); },
+                  title: function (it) { var r = combined[it[0].dataIndex]; return DOW[new Date(r.d + 'T12:00:00Z').getUTCDay()] + ' ' + dlabelMP(r.d) + ' ' + r.d.slice(0, 4); },
+                  label: function (it) {
+                    var r = combined[it.dataIndex]; var ds = it.dataset.label;
+                    if (ds === 'Breakfasts') return 'Breakfasts: ' + r.breakfasts;
+                    if (ds === 'Dinners') return 'Dinners: ' + r.dinners;
+                    if (ds === 'Adults') return 'Adults: ' + r.total.ad;
+                    if (ds === 'Children (incl infants)') return 'Children: ' + r.total.ch + (r.total.inf ? ' (+ ' + r.total.inf + ' infants)' : '');
+                    return null;
+                  },
                   afterBody: function (it) {
-                    var r = rowsArr[it[0].dataIndex];
+                    var r = combined[it[0].dataIndex];
                     return ['', 'Rooms: ' + r.total.rm + ' (' + r.ro.rm + ' RO / ' + r.bb.rm + ' B&B / ' + r.dbb.rm + ' DBB)', 'Guests: ' + r.guests];
                   }
                 }
               }
             },
             scales: {
-              x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10, font: { size: 10.5 } } },
-              y: { min: 0, grid: { color: '#efede7' } }
+              x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 0, font: { size: 10.5 }, color: '#52514e' } },
+              y: { min: 0, grid: { color: '#efede7' }, title: { display: true, text: 'Count per day' } }
             }
-          }
+          },
+          plugins: [monthSep]
         });
+        // Scroll the view so today is near the left (so Ajay can see today forward by default)
+        setTimeout(function () {
+          var sc = document.querySelector('.v30-mp-scroll');
+          if (sc) sc.scrollLeft = Math.max(0, todayIdx * 42 - 160);
+        }, 100);
       } catch (e) {}
-    }
-    var histWindow = history.slice(-90);
-    var fwdWindow = forward.slice(0, 180);
-    buildChart('mp-hist', histWindow, 'Historical');
-    buildChart('mp-fwd', fwdWindow, 'Forward');
+    })();
   }
 
   /* ---------- Universal strip for hub pages so the top chips drive them ---------- */
@@ -1598,7 +1652,11 @@
     if (document.body) mo.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
     augmentHome(); augmentFb(); augmentTrading();
     // After guestline feed loads, re-augment
-    document.addEventListener('hub-signin', function () { setTimeout(function () { augmentHome(); augmentFb(); augmentTrading(); if (!SIDEBAR_BUILT) buildSidebar(); renderTopFilters(); highlightActive(); }, 1200); });
+    document.addEventListener('hub-signin', function () {
+      // v30: always land on Yesterday for each new sign-in, regardless of what was saved
+      try { localStorage.setItem(S_RANGE_KEY, JSON.stringify({ kind: '1' })); } catch (e) {}
+      setTimeout(function () { augmentHome(); augmentFb(); augmentTrading(); if (!SIDEBAR_BUILT) buildSidebar(); renderTopFilters(); highlightActive(); }, 1200);
+    });
     // v22: register Forecast renderer with the hub's Profit registry so clicking the nav button renders it
     (function tryReg(){ if (window.Profit && window.Profit.register) { try { window.Profit.register('forecast', renderForecast); } catch(e) {} return; } setTimeout(tryReg, 200); })();
     // v26: auto-refresh the Guestline data every 30 minutes if the page is in the foreground.
