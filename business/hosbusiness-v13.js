@@ -785,13 +785,17 @@
     }, true);
   }
   function reRender() {
-    /* v21: every page must respond to the top date-range chips. */
+    /* v28: every chip click forces a full re-render of the active tab so chips always drive the data visibly.
+       The hub is cheap to re-render; reliability beats the tiny flicker of a redraw. */
     if (SIDEBAR_BUILT) { renderTopFilters(); highlightActive(); }
     var active = document.querySelector('section.tab.on');
     if (!active) return;
     var tabId = active.id.indexOf('t-') === 0 ? active.id.slice(2) : active.id;
 
-    /* F&B: two shapes — POS view (rendered by me) and the hub's own views (Overview, By terminal, Breakfast, What we sell). */
+    /* Forecast page (mine, no hub render) */
+    if (tabId === 'pf-forecast') { renderForecast(); return; }
+
+    /* F&B POS view (mine) — render directly */
     if (tabId === 'pf-fb') {
       var fbEl = $('pf-fb');
       var seg = fbEl && fbEl.querySelector('.seg.on');
@@ -799,43 +803,24 @@
         renderPosView(fbEl, window.Trading.S(), lastClosed());
         return;
       }
-      /* Hub F&B view — force the hub to re-render, then re-stamp my strip and chips on top. */
-      if (window.Profit && window.Profit.show) {
-        window.Profit.show('fb');
-        setTimeout(augmentFb, 60);
-        return;
-      }
     }
 
-    /* Business Today — augment in place (the strip and tiles use the range directly). */
-    if (tabId === 'pf-home') {
-      augmentHome();
-      return;
-    }
-
-    /* Trading (if ever shown) — re-augment. */
-    if (tabId === 'pf-trading') {
-      var trEl = $('pf-trading');
-      var old = trEl && trEl.querySelector('.v13-trading-head'); if (old) old.remove();
-      augmentTrading();
-      return;
-    }
-
-    /* Forecast page (mine) */
-    if (tabId === 'pf-forecast') {
-      renderForecast();
-      return;
-    }
-
-    /* Any other page the hub owns (Channels & rates, Trends, Profitability, Labour, Stock, Actions, Data, Help, Brief):
-       force the hub to re-render under the current selection, then stamp our range-aware strip on top so the chips drive the view. */
+    /* Any pf-* tab — force the hub to re-render, then stamp all my augments on top.
+       This is the single reliable path for Business Today, F&B overview/by terminal/breakfast/what-we-sell,
+       Channels & rates, Trends, Profitability, Labour, Stock, Actions, Data, Help, Brief, Demand. */
     if (window.Profit && window.Profit.show && tabId.indexOf('pf-') === 0) {
       var name = tabId.slice(3);
-      try { window.Profit.show(name); } catch (e) {}
-      setTimeout(function () { augmentHome(); augmentFb(); augmentTrading(); augmentHubPage(tabId); }, 60);
+      try { window.Profit.show(name); } catch (e) { /* ignore render errors */ }
+      setTimeout(function () {
+        try { augmentHome(); } catch (e) {}
+        try { augmentFb(); } catch (e) {}
+        try { augmentTrading(); } catch (e) {}
+        try { augmentHubPage(tabId); } catch (e) {}
+      }, 60);
       return;
     }
-    // Non-pf tabs (explore, bar, rooms, save, update)
+
+    /* Non-pf tabs (explore, bar, rooms, save, update) */
     augmentHubPage(tabId);
   }
 
@@ -1435,6 +1420,15 @@
   function boot() {
     // v20 migration: 'today' is retired; rewrite saved range to Yesterday
     try { var sr = JSON.parse(localStorage.getItem(S_RANGE_KEY)); if (sr && sr.kind === 'today') { localStorage.setItem(S_RANGE_KEY, JSON.stringify({ kind: '1' })); } } catch (e) {}
+    // v28 one-time reset: any saved range gets reset to Yesterday so the Yesterday-default lands for everyone.
+    // After this fires, the user picks what they want and it sticks as normal.
+    try {
+      var vflag = localStorage.getItem('hosbusiness_dr_v28');
+      if (vflag !== '1') {
+        localStorage.setItem(S_RANGE_KEY, JSON.stringify({ kind: '1' }));
+        localStorage.setItem('hosbusiness_dr_v28', '1');
+      }
+    } catch (e) {}
     addStyle();
     wire();
     wireV16();
