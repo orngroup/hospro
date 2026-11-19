@@ -372,13 +372,17 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
         <div class="bigcard" id="card-deliveries" onclick="showSection('deliveries')"><div class="bc-n" id="bc-del-n">0</div><div class="bc-banner"><div class="bc-t">HosPARCEL</div><div class="bc-s">Parcels in</div></div></div>
         <div class="bigcard" id="card-maintenance" onclick="showSection('maintenance')"><div class="bc-n" id="bc-mnt-n">0</div><div class="bc-banner"><div class="bc-t">HosFIX 🔒</div><div class="bc-s">Repairs &amp; faults · code needed</div></div></div>
         <div class="bigcard" id="card-handover" onclick="showSection('handover')"><div class="bc-n" id="bc-hand-n">0</div><div class="bc-banner"><div class="bc-t">HosSHIFT</div><div class="bc-s">Reception · code needed</div></div></div>
-        <div class="bigcard" id="card-rooms" onclick="showSection('rooms')"><div class="bc-n" id="bc-rooms-n">—</div><div class="bc-banner"><div class="bc-t">HosROOMS</div><div class="bc-s">Today's rooms · cleaning status</div></div></div>
-        <div class="bigcard" id="card-roomcheck" onclick="showSection('roomcheck')"><div class="bc-banner"><div class="bc-t">HosROOM</div><div class="bc-s">Is a room cleaned &amp; ready?</div></div></div>
+        <div class="bigcard" id="card-rooms" onclick="showSection('rooms')"><div class="bc-n" id="bc-rooms-n">—</div><div class="bc-banner"><div class="bc-t">HosROOMS</div><div class="bc-s">Today's rooms · status &amp; room check</div></div></div>
         <div class="bigcard" id="card-directory" onclick="showSection('directory')"><div class="bc-banner"><div class="bc-t">HosSTAFF</div><div class="bc-s">By department · phone numbers</div></div></div>
         <div class="bigcard" id="card-hostv" onclick="showSection('hostv')"><div class="bc-n" id="bc-tv-n">0%</div><div class="bc-banner"><div class="bc-t">HosTV</div><div class="bc-s">Bedroom TV audit</div></div></div>
         <div class="bigcard" id="card-priority" onclick="showSection('priority')"><div class="bc-banner"><div class="bc-t">HosPRIORITY</div><div class="bc-s">Flag rooms · alert housekeeping</div></div></div>
         <div class="bigcard" id="card-night" onclick="showSection('notes')"><div class="bc-banner"><div class="bc-t">HosNOTES</div><div class="bc-s">Reception notes board</div></div></div>
-        <div class="bigcard" id="card-firelog" onclick="showSection('firelog')" style="background-color:#7a1f14"><div class="bc-n" id="bc-fire-n">0</div><div class="bc-banner"><div class="bc-t">🔥 HosFIRE Log</div><div class="bc-s">Fire alarms &amp; drills</div></div></div>
+      </div>
+      <div id="card-firelog" onclick="showSection('firelog')" style="margin-top:12px;background:#7a1f14;color:#fff;border-radius:14px;padding:13px 18px;display:flex;align-items:center;gap:13px;cursor:pointer;box-shadow:0 2px 10px rgba(122,31,20,.25)">
+        <span style="font-size:22px">🔥</span>
+        <div style="flex:1;min-width:0"><div style="font:800 16px Lato;letter-spacing:.3px">HosFIRE Log</div><div style="font-size:12.5px;opacity:.85">Fire alarms &amp; drills · permanent reception log</div></div>
+        <span id="bc-fire-n" style="background:rgba(255,255,255,.18);border-radius:999px;padding:4px 13px;font:800 14px Lato">0</span>
+        <span style="font-size:18px;opacity:.8">→</span>
       </div>
         </div>
         <aside class="proc-rail" id="proc-rail">
@@ -620,20 +624,6 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
     </div>
 
     <!-- Room Check: search a room → its cleaning record for the last 7 days -->
-    <div class="pane" id="pane-roomcheck">
-      <div class="pane-form">
-        <div class="card">
-          <label class="fl">Check a room</label>
-          <div class="muted" style="font-size:12px;margin-bottom:8px">See when it was last cleaned and whether it's ready — handy before moving a guest.</div>
-          <div style="display:flex;gap:8px">
-            <input id="rc-room" type="text" inputmode="numeric" placeholder="Room number — e.g. 214" onkeydown="if(event.key==='Enter')roomCheckSearch()" style="flex:1">
-            <button class="btn btn-go" style="width:auto;padding:0 20px;margin:0" onclick="roomCheckSearch()">Check</button>
-          </div>
-          <div class="muted" style="font-size:12px;margin-top:12px">Shows the last 72 hours of housekeeping records for that room — status, housekeeper, times, completion photos and the room's checklist, same detail as tapping the room in HosHouse.</div>
-        </div>
-      </div>
-      <div class="pane-list"><div class="sechd" style="margin-top:0" id="rc-title">Room records</div><div id="rc-out"><div class="muted" style="padding:10px 2px">Enter a room number above to see its cleaning history.</div></div></div>
-    </div>
 
     <!-- Staff Directory: by department, with phone numbers -->
     <div class="pane" id="pane-directory">
@@ -676,8 +666,20 @@ body.console::before{content:'';position:fixed;inset:0;z-index:-1;background:lin
       <div class="pane-list"><div class="sechd" style="margin-top:0" id="tv-title">Bedroom TVs</div><div id="tv-out"></div></div>
     </div>
 
-    <!-- HosROOMS: today's rooms & live cleaning status (reads HosHouse) -->
+    <!-- HosROOMS: today's rooms & live cleaning status (reads HosHouse) + check any room -->
     <div class="pane" id="pane-rooms">
+      <div style="grid-column:1/-1">
+        <div class="card" style="margin:0">
+          <label class="fl" style="margin:0">🔍 Check any room — is it cleaned &amp; ready?</label>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <input id="rc-room" type="text" inputmode="numeric" placeholder="Room number — e.g. 214" onkeydown="if(event.key==='Enter')roomCheckSearch()" style="flex:1">
+            <button class="btn btn-go" style="width:auto;padding:0 20px;margin:0" onclick="roomCheckSearch()">Check</button>
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:8px">Last 72 hours for any room — status, housekeeper, times, completion photos &amp; checklist. Works for rooms not on today's list too.</div>
+          <div class="sechd" id="rc-title" style="margin:12px 0 6px"></div>
+          <div id="rc-out"></div>
+        </div>
+      </div>
       <div class="pane-form">
         <div class="card">
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
@@ -1028,8 +1030,8 @@ async function startBoard(){
   document.body.classList.add('console');
   $('top-tt').textContent='🖥️ HosDesk — Reception';
   showScreen('scr-board');
-  // Reception opens on the live rooms-cleaning overview by default (once per load); "Back to cards" reaches everything else.
-  if(!window._rmDefaulted){ window._rmDefaulted=true; try{ showSection('rooms'); }catch(e){} }
+  // Keep the HosROOMS card's live % populated on the main menu without opening the section.
+  try{ rmInit(); }catch(e){}
   await loadStaff(); fillStaffDatalist(); fillSupplierDatalist();
   try{ dSyncInputs(); }catch(e){}
   try{ mInitAreas(); }catch(e){}
@@ -1068,7 +1070,7 @@ async function startBoard(){
 function stopBoard(){ if(B_UNSUB){ B_UNSUB(); B_UNSUB=null; } if(H_UNSUB){ H_UNSUB(); H_UNSUB=null; } stopVD(); B_READY=false; M_READY=false; }
 function bSetFilter(f){ B_FILTER=f; $('b-chips').innerHTML=B_FILTERS.map(([ff,l])=>`<button class="chip ${B_FILTER===ff?'on':''}" onclick="bSetFilter('${ff}')">${l}</button>`).join(''); bRender(); }
 // Maintenance and Shift Handover are gated by a staff code (remove a name from GATED to open that section to all).
-const SECTIONS=['rooms','requests','deliveries','maintenance','handover','roomcheck','directory','hostv','priority','notes','info','firelog'];
+const SECTIONS=['rooms','requests','deliveries','maintenance','handover','directory','hostv','priority','notes','info','firelog'];
 const GATED={maintenance:true};  // only HosFIX stays code-protected; everything else is open
 const UNLOCKED={};
 let GATE_TARGET=null;
@@ -1079,12 +1081,11 @@ function checkCode(){ const v=($('cg-in').value||'').trim(); if(v==='3132'){ con
 function openFire(){ $('ovl-fire').classList.add('on'); }
 function closeFire(){ $('ovl-fire').classList.remove('on'); }
 // Tap a big card → that section takes over the whole page. goHome() returns to the cards.
-const SEC_TITLES={rooms:'🛏️ HosROOMS — Room cleaning today', requests:'🧹 HosGUEST — Guest requests', deliveries:'📦 HosPARCEL — Deliveries', maintenance:'🔧 HosFIX — Maintenance', handover:'🔄 HosSHIFT — Handover', roomcheck:'🔍 HosROOM — Room check', directory:'📇 HosSTAFF — Directory', hostv:'📺 HosTV — TV audit', priority:'⚡ HosPRIORITY', notes:'📝 HosNOTES — Reception notes', info:'ℹ️ Information for Reception', firelog:'🔥 HosFIRE Log — Fire alarms & drills'};
+const SEC_TITLES={rooms:'🛏️ HosROOMS — Rooms today & room check', requests:'🧹 HosGUEST — Guest requests', deliveries:'📦 HosPARCEL — Deliveries', maintenance:'🔧 HosFIX — Maintenance', handover:'🔄 HosSHIFT — Handover', directory:'📇 HosSTAFF — Directory', hostv:'📺 HosTV — TV audit', priority:'⚡ HosPRIORITY', notes:'📝 HosNOTES — Reception notes', info:'ℹ️ Information for Reception', firelog:'🔥 HosFIRE Log — Fire alarms & drills'};
 function showSection(x){
   if(GATED[x] && !UNLOCKED[x]){ openCodeGate(x); return; }
   if(x==='handover'){ try{ soInit(); clInit(); }catch(e){} }
   if(x==='directory'){ try{ dirInit(); }catch(e){} }
-  if(x==='roomcheck'){ try{ const r=$('rc-room'); if(r){ r.value=''; setTimeout(()=>r.focus(),60); } }catch(e){} }
   if(x==='rooms'){ try{ rmInit(); }catch(e){} }
   if(x==='hostv'){ try{ tvInit(); }catch(e){} }
   if(x==='priority'){ try{ prioInit(); }catch(e){} }
