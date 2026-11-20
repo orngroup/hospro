@@ -30,7 +30,7 @@
     data: '<ellipse cx="25" cy="15" rx="12" ry="5"/><path d="M13 15v10c0 3 5 5 12 5s12-2 12-5V15M13 25v10c0 3 5 5 12 5s12-2 12-5V25" fill="none" stroke="#fff" stroke-width="3"/>',
     update: '<path d="M25 33V14M17 21l8-8 8 8" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 31v6h26v-6" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'
   };
-  var COL = { trading: '#b3261e', demand: '#7a4fc4', profit: '#1a8f63', labour: '#2a78c8', kpi: '#eb6834', stock: '#0f8f95', explore: '#52606d', bar: '#b9791a', rooms: '#3f5bbf', save: '#c2417a', accounts: '#1f3d36', brief: '#6b7a2a', update: '#86847d', fb: '#c2417a', actions: '#d0362b', data: '#1a2b3a' };
+  var COL = { trading: '#b3261e', demand: '#7a4fc4', profit: '#1a8f63', labour: '#2a78c8', kpi: '#eb6834', stock: '#0f8f95', explore: '#52606d', bar: '#b9791a', rooms: '#3f5bbf', save: '#c2417a', accounts: '#1f3d36', brief: '#6b7a2a', update: '#86847d', fb: '#c2417a', actions: '#d0362b', data: '#1a2b3a', rev: '#1F7A8C' };
   function icon(k, size) { return '<svg viewBox="0 0 50 50" width="' + (size || 46) + '" height="' + (size || 46) + '" aria-hidden="true" style="color:' + COL[k] + ';flex:none"><circle cx="25" cy="25" r="25" fill="' + COL[k] + '"/><g fill="#fff">' + G[k] + '</g></svg>'; }
   function go(tab) { var b = document.querySelector('#nav button[data-t="' + tab + '"]'); if (b) b.click(); window.scrollTo(0, 0); }
 

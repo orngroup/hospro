@@ -130,7 +130,7 @@
       'body.v16 .v16-top .v16-feed{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:600;background:#e6f4ee;color:#1a6442;white-space:nowrap}',
       'body.v16 .v16-top .v16-feed::before{content:"●";color:#1a8f63}',
       'body.v16 #top>.top-r{display:none}',   /* duplicate who/signout line shown in sidebar now */
-      'body.v16 .v13-dr{margin:14px 0 18px}',
+      'body.v16 .v13-dr{display:none}',   /* v31: top chips cover the common range cases; inline bar was duplicating them */
       'body.v16 .back{display:none !important}',
       '@media (max-width:860px){body.v16 main{margin-left:0;padding-top:120px}body.v16 .v16-side{top:auto;bottom:0;left:0;right:0;width:100%;height:auto;flex-direction:row;overflow-x:auto;overflow-y:hidden}body.v16 .v16-brand,body.v16 .v16-foot{display:none}body.v16 .v16-sidelist{display:flex;gap:4px}body.v16 .v16-item{min-width:110px}body.v16 .v16-top{left:0}}'
     ].join('\n');
@@ -1286,12 +1286,12 @@
       { group: 'Main', rows: [
         ['pf-home', 'trading', 'Business Today', 'Trading, live from Guestline'],
         ['pf-forecast', 'kpi', 'Forecast', 'Next 6 months on the books'],
+        ['pf-rev', 'rev', 'Revenue Management', '365-night rate recommendations'],
         ['pf-fb', 'fb', 'Food & Beverage', 'Sales by outlet and meal']
       ]},
       { group: 'Commercial', rows: [
         ['pf-demand', 'demand', 'Channels & rates', 'Booking sources, rate plans'],
-        ['pf-trends', 'kpi', 'Trends', 'ADR, RevPAR, revenue over time'],
-        ['pf-actions', 'actions', 'Action Centre', 'Actions, watch list, savings']
+        ['pf-trends', 'kpi', 'Trends', 'ADR, RevPAR, revenue over time']
       ]},
       { group: 'Operations', rows: [
         ['bar', 'bar', 'Bar & keg prices', 'Keg history, market comparison'],
@@ -1300,13 +1300,7 @@
       { group: 'Finance', rows: [
         ['pf-profit', 'profit', 'Profitability', 'Revenue, costs and profit'],
         ['pf-labour', 'labour', 'Labour', 'Payroll by department'],
-        ['pf-stock', 'stock', 'Purchased vs consumed', 'Purchases against cost of sales'],
-        ['explore', 'explore', 'Supplier costs', 'Every cost line by supplier']
-      ]},
-      { group: 'Reference', rows: [
-        ['pf-data', 'data', 'Data & reports', 'What has been loaded'],
-        ['pf-brief', 'brief', 'Project brief', 'What this hub does'],
-        ['pf-help', 'kpi', 'How it works', 'How figures are worked out']
+        ['pf-stock', 'stock', 'Purchased vs consumed', 'Purchases against cost of sales']
       ]}
     ];
     var who = '', who2 = '';
@@ -1338,9 +1332,9 @@
   }
   function renderTopFilters() {
     var top = $('v16-top-filters'); if (!top) return;
-    // v24: no date filter on the Forecast tab
+    // v24: no date filter on the Forecast tab · v31: ditto Revenue Management (its views are all 365-night forward)
     var activeTab = (document.querySelector('section.tab.on') || {}).id || '';
-    if (activeTab === 't-pf-forecast') { top.innerHTML = ''; return; }
+    if (activeTab === 't-pf-forecast' || activeTab === 't-pf-rev') { top.innerHTML = ''; return; }
     var r = getRange(), cmp = getCmp();
     // Shortlist of chips; the full range + custom + compare live in each page's v13-dr bar
     var QUICK = [['1', 'Yesterday'], ['7', '7 days'], ['14', '14 days'], ['28', '28 days'], ['mtd', 'MTD'], ['lastmonth', 'Last month'], ['90', '90 days'], ['12m', '12 months']];
@@ -1394,6 +1388,7 @@
             highlightActive();
             // Make sure every page gets our augmentation (strip, Forecast, etc.) right after nav
             if (tab === 'pf-forecast') { try { renderForecast(); } catch(e) {} }
+            else if (tab === 'pf-rev') { try { if (window.HosREV) window.HosREV.render(); } catch(e) {} }
             else if (tab === 'pf-home') { augmentHome(); }
             else if (tab === 'pf-fb') { augmentFb(); }
             else if (tab === 'pf-trading') { augmentTrading(); }
@@ -1591,7 +1586,7 @@
   /* ---------- Universal strip for hub pages so the top chips drive them ---------- */
   function augmentHubPage(tabId) {
     // Only for hub pages we don't own directly
-    var MINE = { 'pf-home':1, 'pf-fb':1, 'pf-trading':1, 'pf-forecast':1 };
+    var MINE = { 'pf-home':1, 'pf-fb':1, 'pf-trading':1, 'pf-forecast':1, 'pf-rev':1 };   /* v31: pf-rev is owned by HosREV */
     if (MINE[tabId]) return;
     // pf-xxx has an inner <div id=pf-xxx>; non-pf tabs (explore, bar, rooms, save, update) only have the section
     var el = document.getElementById(tabId);
