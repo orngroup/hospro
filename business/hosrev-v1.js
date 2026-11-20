@@ -104,7 +104,26 @@
       '#pf-rev .rv-compcell{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}',
       '#pf-rev .rv-compcell .g{font-size:10.5px;color:#7b8494}',
       '#pf-rev .rv-compcell.us{color:#1a2b3a;font-weight:700}',
-      '#pf-rev .rv-eventtype{display:inline-block;padding:2px 8px;background:#f1efe9;border-radius:999px;font-size:11px;color:#52514e}'
+      '#pf-rev .rv-eventtype{display:inline-block;padding:2px 8px;background:#f1efe9;border-radius:999px;font-size:11px;color:#52514e}',
+      /* v34: AI insights */
+      '#pf-rev .rv-ai-card{background:linear-gradient(180deg,#fafafa 0%,#f3f7f8 100%);border-color:#d6e4e8}',
+      '#pf-rev .rv-ai-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;background:linear-gradient(90deg,#1F7A8C,#145866);color:#fff}',
+      '#pf-rev .rv-ai-mode{font-size:11px;color:#7b8494;font-style:italic}',
+      '#pf-rev .rv-ai-list{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}',
+      '@media (max-width:1100px){#pf-rev .rv-ai-list{grid-template-columns:1fr}}',
+      '#pf-rev .rv-ai-item{display:flex;gap:12px;padding:12px 14px;background:#fff;border:1px solid #e4e2dc;border-radius:10px}',
+      '#pf-rev .rv-ai-icon{flex:0 0 32px;height:32px;line-height:32px;text-align:center;border-radius:8px;background:#1F7A8C;color:#fff;font-weight:700;font-size:16px}',
+      '#pf-rev .rv-ai-item b{display:block;font-size:13.5px;color:#1a2b3a;margin-bottom:3px}',
+      '#pf-rev .rv-ai-item p{margin:0;font-size:12.5px;color:#52514e;line-height:1.45}',
+      '#pf-rev .rv-ai-refresh{margin-left:auto;background:#fff;border:1px solid #d6e4e8;border-radius:999px;padding:4px 10px;font:inherit;font-size:11.5px;color:#1F7A8C;cursor:pointer}',
+      '#pf-rev .rv-ai-refresh:hover{background:#eef5f6;border-color:#1F7A8C}',
+      /* v34: Actions */
+      '#pf-rev .rv-actions-card{border-color:#efe4c7}',
+      '#pf-rev .rv-actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:4px}',
+      '#pf-rev .rv-act{text-align:left;background:#fff;border:1px solid #e4e2dc;border-left:4px solid #BB9979;border-radius:10px;padding:12px 14px;font:inherit;cursor:pointer;transition:all .1s ease}',
+      '#pf-rev .rv-act:hover{background:#fdf8ee;border-color:#BB9979;transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.06)}',
+      '#pf-rev .rv-act b{display:block;font-size:13px;color:#1a2b3a;margin-bottom:2px}',
+      '#pf-rev .rv-act small{display:block;font-size:11.5px;color:#7b8494}'
     ].join('\n');
     document.head.appendChild(s);
   }
@@ -331,9 +350,8 @@
       ['dash',     'Dashboard'],
       ['calendar', 'Calendar'],
       ['compset',  'Compset'],
-      ['trend',    'Trend'],
       ['events',   'Events'],
-      ['forecast', 'Forecast'],
+      ['forecast', 'Forecast & Trends'],
       ['settings', 'Settings']
     ];
     return '<div class="rv-tabs">' + tabs.map(function (t) {
@@ -341,8 +359,14 @@
     }).join('') + '</div>';
   }
 
+  var HOSREV_VERSION = 'v35';
+  var AI_ENDPOINT = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/hosrevAi';
+  var AI_TOKEN_KEY = 'hosbusiness_gl_token';
+  var AI_CACHE_KEY = 'hosrev_ai_cache';
+  var AI_CACHE_TTL = 10 * 60 * 1000;   // 10 minutes
+  var AI_INFLIGHT = false;
   function hero() {
-    return '<div class="rv-hero"><div><h2>Revenue Management</h2><p>Maximising net room margin across the next 365 nights · Recommendations refresh every 30 mins against latest on-books · Comp rates refreshed daily at 05:30</p></div><div class="rv-demo">Phase 1 shell · Demo data</div></div>';
+    return '<div class="rv-hero"><div><h2>Revenue Management</h2><p>Maximising net room margin across the next 365 nights · Recommendations refresh every 30 mins against latest on-books · Comp rates refreshed daily at 05:30</p></div><div class="rv-demo">Phase 1 · Demo · ' + HOSREV_VERSION + '</div></div>';
   }
 
   /* ---- Dashboard ---- */
@@ -391,6 +415,13 @@
         tile('Avg comp reference', gbp(avgComp), 'weighted comp set', '') +
         tile('Event nights', num(eventN), 'impact ≥ 3/5', '') +
       '</div>' +
+
+      /* v34: AI insights (rule-based for now; wires to Gemini/Claude when Gary ships the key) */
+      aiInsightsCard(nights, decs, horizon) +
+
+      /* v34: Actions — bulk operations across the engine's recommendations */
+      actionsCard(nights, decs, horizon) +
+
       '<div class="rv-grid2">' +
         '<div class="rv-card"><h3>Dates needing a decision</h3><p class="sub">Executive double · next ' + horizon + ' nights</p>' +
           '<table class="rv-t"><thead><tr><th>Night</th><th class="n">Current</th><th class="n">Recommended</th><th>Move</th><th>Why</th></tr></thead><tbody>' + pendingH + '</tbody></table>' +
@@ -400,6 +431,198 @@
         '</div>' +
       '</div>' +
       '<div class="rv-signoff"><span class="rv-badge">Sign-off</span><span>Daily sign-off: <b>Patrik Vlach</b> · recommendations are reviewed and approved — nothing writes back to Rezlynx in Phase 1.</span></div>';
+  }
+
+  /* ---------- v34: AI insights (rule-based, upgrades to LLM when the key lands) ---------- */
+  function aiInsightsCard(nights, decs, horizon) {
+    var near = nights.slice(0, horizon);
+    var insights = [];
+
+    // 1) Big revenue opportunity: nights where recommended > current (push up) and occ > 70%
+    var pushUp = near.filter(function (n) { return n.recommended - n.current >= 10 && n.occ >= 0.7; });
+    if (pushUp.length) {
+      var oppRooms = pushUp.reduce(function (t, n) { return t + Math.round(n.capacity * n.occ); }, 0);
+      var oppRev   = pushUp.reduce(function (t, n) { return t + (n.recommended - n.current) * Math.round(n.capacity * n.occ); }, 0);
+      insights.push({ t: 'rev-up', icon: '↑', title: 'Pricing power on ' + pushUp.length + ' strong nights', body: 'Forecast occupancy is ≥70% on these nights and comp has moved above us. Pushing to the recommendation could lift revenue by about ' + gbp(oppRev) + ' (' + oppRooms + ' rooms across the window). First three: ' + pushUp.slice(0, 3).map(function (n) { return shortD(n.d) + ' (+£' + (n.recommended - n.current) + ')'; }).join(', ') + '.' });
+    }
+
+    // 2) Softness pattern: run of quiet nights (<35% occ) suggests a theme
+    var soft = near.filter(function (n) { return n.occ < 0.35; });
+    if (soft.length >= 4) {
+      var softSat = soft.filter(function (n) { return n.day === 6 || n.day === 0; }).length;
+      var softSuffix = softSat > 0 ? ' — ' + softSat + ' of them are weekends, worth checking if a promo would land better than a rate cut.' : '.';
+      insights.push({ t: 'soft', icon: '↓', title: soft.length + ' soft nights in the next ' + horizon + ' days', body: 'Forecast occupancy sits below 35% on these nights' + softSuffix + ' Lowest: ' + soft.slice(0, 3).map(function (n) { return shortD(n.d) + ' (' + pct(n.occ) + ')'; }).join(', ') + '.' });
+    }
+
+    // 3) Comp gap: average our recommended vs comp ref — if we're trailing by more than 10%
+    var ourAvg = 0, compAvg = 0;
+    near.forEach(function (n) { ourAvg += n.recommended; compAvg += n.compRef; });
+    ourAvg = ourAvg / near.length; compAvg = compAvg / near.length;
+    var gap = (compAvg - ourAvg) / compAvg;
+    if (gap > 0.12) insights.push({ t: 'comp-gap', icon: '◎', title: 'Trailing the comp set by ' + pct(gap, 0), body: 'Our average recommended rate sits ' + gbp(compAvg - ourAvg) + ' below the weighted comp reference across the next ' + horizon + ' nights. Likely room to close part of the gap on the stronger nights without hurting demand.' });
+    else if (gap < -0.08) insights.push({ t: 'comp-ahead', icon: '◎', title: 'Pricing above the comp set', body: 'Our average recommended rate is ' + pct(-gap, 0) + ' above the comp reference. Worth validating the comp-set weights in Settings are still right for today.' });
+
+    // 4) Events coming up
+    var ev = buildNights().slice(0, horizon).filter(function (n) { return n.eventScore >= 3; });
+    if (ev.length) {
+      insights.push({ t: 'events', icon: '★', title: ev.length + ' high-impact event nights ahead', body: 'Dates where local events score ≥3/5. First few: ' + ev.slice(0, 3).map(function (n) { return shortD(n.d) + ' (' + n.eventScore + '/5)'; }).join(', ') + '. Check these aren\'t locked at the current BAR — the engine usually wants to push them.' });
+    }
+
+    // 5) Pending decisions urgency
+    var urgent = near.filter(function (n) { return !decs['exec_dbl|' + n.d] && Math.abs(n.recommended - n.current) >= 20; });
+    if (urgent.length) {
+      insights.push({ t: 'urgent', icon: '⏱', title: urgent.length + ' nights where the engine wants a big move', body: 'Recommendations differ from current BAR by £20 or more and still need a decision. First: ' + urgent.slice(0, 3).map(function (n) { return shortD(n.d) + ' (' + (n.recommended > n.current ? '+' : '−') + '£' + Math.abs(n.recommended - n.current) + ')'; }).join(', ') + '.' });
+    }
+
+    if (!insights.length) insights.push({ t: 'ok', icon: '✓', title: 'Nothing urgent', body: 'Recommendations sit within normal bands across the next ' + horizon + ' nights. Nothing jumps out.' });
+
+    // Prefer cached live Gemini result if fresh
+    var live = getCachedAi();
+    var useLive = !!(live && live.insights && live.insights.length);
+    var shown = useLive ? live.insights : insights.slice(0, 5);
+    var items = shown.map(function (i) {
+      return '<div class="rv-ai-item"><span class="rv-ai-icon">' + i.icon + '</span><div><b>' + esc(i.title) + '</b><p>' + esc(i.body) + '</p></div></div>';
+    }).join('');
+
+    var mode = useLive
+      ? 'Live · ' + (live.model || 'Gemini') + ' · updated ' + fmtAgo(live.ts)
+      : 'Rule-based · live Gemini loads in the background if the key is set';
+
+    // Kick off a background fetch if cache is stale and we have a token available
+    setTimeout(function () { maybeFetchAi(nights, decs, horizon); }, 0);
+
+    return '<div class="rv-card rv-ai-card" id="rv-ai-card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap"><span class="rv-ai-badge">AI insights</span><span class="rv-ai-mode" id="rv-ai-mode">' + mode + '</span><button class="rv-ai-refresh" data-rv-ai-refresh title="Clear cache and re-ask Gemini">↻ Refresh</button></div><div class="rv-ai-list" id="rv-ai-list">' + items + '</div></div>';
+  }
+
+  /* ---------- v35: Gemini live insights ---------- */
+  function getCachedAi() {
+    try {
+      var raw = localStorage.getItem(AI_CACHE_KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !o.ts || (Date.now() - o.ts) > AI_CACHE_TTL) return null;
+      return o;
+    } catch (e) { return null; }
+  }
+  function setCachedAi(o) {
+    try { localStorage.setItem(AI_CACHE_KEY, JSON.stringify(o)); } catch (e) {}
+  }
+  function fmtAgo(ts) {
+    var mins = Math.floor((Date.now() - ts) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins === 1) return '1 min ago';
+    if (mins < 60) return mins + ' mins ago';
+    var h = Math.floor(mins / 60);
+    return h + (h === 1 ? ' hr ago' : ' hrs ago');
+  }
+  function maybeFetchAi(nights, decs, horizon) {
+    if (AI_INFLIGHT) return;
+    var live = getCachedAi();
+    if (live && live.insights && live.insights.length) return;    // still fresh
+    var token;
+    try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { token = null; }
+    if (!token) return;    // no token, can't call the function — stay on rule-based
+    AI_INFLIGHT = true;
+    var payload = {
+      today: new Date().toISOString().slice(0, 10),
+      horizon: horizon,
+      nights: nights.slice(0, horizon).map(function (n) {
+        return { d: n.d, day: n.day, occ: n.occ, compRef: n.compRef, current: n.current, recommended: n.recommended, eventScore: n.eventScore || 0, reasons: n.reasons || [] };
+      }),
+      decisions: decs,
+      settings: { commission: SETTINGS.commission, variable: SETTINGS.variable, ancillary: SETTINGS.ancillary, weights: SETTINGS.weights }
+    };
+    fetch(AI_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json(); })
+      .then(function (j) {
+        AI_INFLIGHT = false;
+        if (!j || !j.ok || !Array.isArray(j.insights) || !j.insights.length) return;
+        var cache = { ts: Date.now(), model: j.model || 'Gemini', insights: j.insights };
+        setCachedAi(cache);
+        // Replace the card contents in place (no full re-render)
+        var list = document.getElementById('rv-ai-list');
+        var mode = document.getElementById('rv-ai-mode');
+        if (list) list.innerHTML = j.insights.slice(0, 5).map(function (i) {
+          return '<div class="rv-ai-item"><span class="rv-ai-icon">' + esc(i.icon || '•') + '</span><div><b>' + esc(i.title) + '</b><p>' + esc(i.body) + '</p></div></div>';
+        }).join('');
+        if (mode) mode.textContent = 'Live · ' + (j.model || 'Gemini') + ' · updated just now';
+      }).catch(function () { AI_INFLIGHT = false; });
+  }
+
+  /* ---------- v34: Actions — bulk operations ---------- */
+  function actionsCard(nights, decs, horizon) {
+    var near = nights.slice(0, horizon);
+    var weekends = near.filter(function (n) { return n.day === 5 || n.day === 6; });
+    var weekendsPending = weekends.filter(function (n) { return !decs['exec_dbl|' + n.d]; }).length;
+    var narrow = near.filter(function (n) { return Math.abs(n.recommended - n.current) <= 20 && !decs['exec_dbl|' + n.d]; }).length;
+    var overrideCount = Object.keys(decs).filter(function (k) { return decs[k].d === 'over'; }).length;
+    var monthEnd = (function () {
+      var now = new Date(); var e = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      return Math.max(0, Math.floor((e - now) / 864e5));
+    })();
+
+    return '<div class="rv-card rv-actions-card"><h3>Actions</h3><p class="sub">One-click bulk operations across all room types. Nothing writes to Rezlynx — all decisions are saved locally until write-back is on.</p>' +
+      '<div class="rv-actions">' +
+        '<button class="rv-act" data-rv-act="approve-weekends"><b>Approve weekend recommendations</b><small>' + weekendsPending + ' weekend nights pending across the next ' + horizon + ' days</small></button>' +
+        '<button class="rv-act" data-rv-act="approve-narrow"><b>Approve where move ≤ ±£20</b><small>' + narrow + ' low-risk nights — follows the engine quietly</small></button>' +
+        '<button class="rv-act" data-rv-act="lock-month"><b>Lock current BAR to month-end</b><small>Freeze for ' + monthEnd + ' nights while something\'s under investigation</small></button>' +
+        '<button class="rv-act" data-rv-act="promo-weekend-escape"><b>Push Weekend Escape −15%</b><small>Apply to Thu–Sun across the next 30 days</small></button>' +
+        '<button class="rv-act" data-rv-act="clear-overrides"><b>Clear all overrides</b><small>' + overrideCount + ' active overrides across all room types</small></button>' +
+        '<button class="rv-act" data-rv-act="send-patrik"><b>Export for Patrik to review</b><small>CSV of everything pending, across all room types</small></button>' +
+      '</div>' +
+      '<p class="rv-note">An "Action" is reversible — click Clear all overrides or Reset decisions in Settings to undo. Once Rezlynx write-back is turned on (Phase 2+), each Approve/Override will push the rate to the PMS.</p>' +
+    '</div>';
+  }
+
+  /* ---------- Action handlers ---------- */
+  function runAction(key) {
+    var done = 0;
+    var ROOMS = ['classic_dbl', 'classic_twn', 'exec_dbl', 'exec_dbl_a', 'exec_trp', 'exec_twn', 'exec_twn_a', 'jr_suite', 'priv_dbl'];
+    if (key === 'approve-weekends') {
+      ROOMS.forEach(function (rt) {
+        nightsFor(rt, 60).forEach(function (n) {
+          if ((n.day === 5 || n.day === 6) && !decisionFor(rt, n.d)) { setDecision(rt, n.d, 'approve', n.recommended); done++; }
+        });
+      });
+      alert('Approved ' + done + ' weekend nights at the engine\'s recommended rate.');
+    } else if (key === 'approve-narrow') {
+      ROOMS.forEach(function (rt) {
+        nightsFor(rt, 60).forEach(function (n) {
+          if (Math.abs(n.recommended - n.current) <= 20 && !decisionFor(rt, n.d)) { setDecision(rt, n.d, 'approve', n.recommended); done++; }
+        });
+      });
+      alert('Approved ' + done + ' nights with low-risk moves (≤ ±£20).');
+    } else if (key === 'lock-month') {
+      var now = new Date(), end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      ROOMS.forEach(function (rt) {
+        nightsFor(rt, 60).forEach(function (n) {
+          var d = parseISO(n.d);
+          if (d <= end) { setDecision(rt, n.d, 'lock', n.current); done++; }
+        });
+      });
+      alert('Locked current BAR on ' + done + ' nights through month-end.');
+    } else if (key === 'promo-weekend-escape') {
+      ROOMS.forEach(function (rt) {
+        nightsFor(rt, 30).forEach(function (n) {
+          if (n.day >= 4 || n.day === 0) {    // Thu-Sun
+            var promoPrice = Math.round(n.current * 0.85);
+            setDecision(rt, n.d, 'over', promoPrice); done++;
+          }
+        });
+      });
+      alert('Weekend Escape −15% applied to ' + done + ' Thu-Sun nights across the next 30 days.');
+    } else if (key === 'clear-overrides') {
+      var st = loadState(); var decs = st.decisions || {};
+      Object.keys(decs).forEach(function (k) { if (decs[k].d === 'over') { delete decs[k]; done++; } });
+      st.decisions = decs; saveState(st);
+      alert('Cleared ' + done + ' active overrides.');
+    } else if (key === 'send-patrik') {
+      exportCsv(); return;
+    }
+    bustCache(); render();
   }
 
   function tile(l, v, d, klass) {
@@ -645,15 +868,17 @@
   /* ---- Forecast ---- */
   function viewForecast() {
     var html = hero() + viewTabs() +
-      '<div class="rv-grid2">' +
-        '<div class="rv-card"><h3>Occupancy — past 30 days + next 30 nights</h3><p class="sub">Past bars are real occupancy from the Guestline feed · forward bars are the engine\'s forecast</p>' +
-          '<div class="rv-chartbox"><canvas id="rv-fc-occ"></canvas></div>' +
-        '</div>' +
-        '<div class="rv-card"><h3>Net room profit per night — Executive double</h3><p class="sub">At the recommended price</p>' +
-          '<div class="rv-chartbox"><canvas id="rv-fc-prof"></canvas></div>' +
-        '</div>' +
+      '<div class="rv-card"><h3>Occupancy — past 30 days + next 30 nights</h3><p class="sub">Past bars are real occupancy from the Guestline feed · forward bars are the engine\'s forecast</p>' +
+        '<div class="rv-chartbox" style="height:380px"><canvas id="rv-fc-occ"></canvas></div>' +
       '</div>' +
-      '<p class="rv-note" style="text-align:center">Historic bars come from closed-day Guestline pulls (already live). Forward occupancy becomes live too the moment the Report Data API key lands.</p>';
+      '<div class="rv-card"><h3>Net room profit per night — Executive double</h3><p class="sub">Expected net profit per occupied room × expected rooms sold, at the engine\'s recommended price for each night</p>' +
+        '<div class="rv-chartbox" style="height:380px"><canvas id="rv-fc-prof"></canvas></div>' +
+      '</div>' +
+      '<div class="rv-card"><h3>Trend — average displayed rate by hotel</h3><p class="sub">Next ~30 nights · one line per comp hotel · our Brandon Hall (recommended) in bold navy, current BAR dashed grey</p>' +
+        '<div class="rv-chartbox" style="height:420px"><canvas id="rv-trend-chart"></canvas></div>' +
+        '<div class="rv-leg" id="rv-trend-leg"></div>' +
+      '</div>' +
+      '<p class="rv-note" style="text-align:center">Historic occupancy bars come from closed-day Guestline pulls (already live). Forward occupancy and the Trend chart become live too the moment the Report Data API key lands.</p>';
     return html;
   }
   function drawForecastCharts() {
@@ -806,19 +1031,30 @@
     if (view === 'dash')         html += viewDash();
     else if (view === 'calendar') html += viewCalendar();
     else if (view === 'compset')  html += viewCompset();
-    else if (view === 'trend')    html += viewTrend();
     else if (view === 'events')   html += viewEvents();
     else if (view === 'forecast') html += viewForecast();
     else if (view === 'settings') html += viewSettings();
     html += '</div>';
     el.innerHTML = html;
-    if (view === 'trend')    setTimeout(drawTrendChart, 20);
-    if (view === 'forecast') setTimeout(drawForecastCharts, 20);
+    if (view === 'forecast') setTimeout(function () { drawForecastCharts(); drawTrendChart(); }, 20);
   }
 
   /* ---------- events ---------- */
   document.addEventListener('click', function (e) {
     var t = e.target; if (!t.closest) return;
+
+    // AI refresh — clear cache and re-ask Gemini
+    if (t.closest('[data-rv-ai-refresh]')) {
+      try { localStorage.removeItem(AI_CACHE_KEY); } catch (e) {}
+      var modeEl = document.getElementById('rv-ai-mode');
+      if (modeEl) modeEl.textContent = 'Asking Gemini…';
+      render();
+      return;
+    }
+
+    // Bulk action
+    var ac = t.closest('[data-rv-act]');
+    if (ac) { runAction(ac.getAttribute('data-rv-act')); return; }
 
     // Export CSV
     if (t.closest('[data-rv-csv]')) { exportCsv(); return; }
