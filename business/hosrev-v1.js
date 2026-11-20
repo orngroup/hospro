@@ -45,6 +45,8 @@
       '#pf-rev .rv-hero h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.2px}',
       '#pf-rev .rv-hero p{margin:4px 0 0;font-size:13.5px;opacity:.9}',
       '#pf-rev .rv-hero .rv-demo{margin-left:auto;background:rgba(255,255,255,.18);padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.3px;text-transform:uppercase}',
+      '#pf-rev .rv-hero .rv-demo-live{background:linear-gradient(90deg,#1a8f63,#17a371);color:#fff;box-shadow:0 2px 8px rgba(26,143,99,.3)}',
+      '#pf-rev .rv-hero .rv-demo-live::before{content:"● ";animation:rv-blink 1.4s infinite}',
       '#pf-rev .rv-tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid #e4e2dc;padding-bottom:0;overflow-x:auto}',
       '#pf-rev .rv-tabs button{background:transparent;border:0;border-bottom:3px solid transparent;color:#52514e;font:inherit;font-size:13.5px;font-weight:600;padding:10px 16px;cursor:pointer;white-space:nowrap}',
       '#pf-rev .rv-tabs button:hover{color:#1F7A8C}',
@@ -378,9 +380,25 @@
   function nightComputedFor(roomType, night, prevReco) {
     var rt = ROOM_TYPES.filter(function (r) { return r.id === roomType; })[0];
     if (!rt) return null;
+
+    // v38: live forward on-books from Guestline (if available)
+    var live = getCachedBooks();
+    var liveForDay = live && live.byDate && live.byDate[night.d] ? live.byDate[night.d] : null;
+    var liveRoomsThisType = liveForDay && liveForDay.byRoomType && liveForDay.byRoomType[roomType] ? liveForDay.byRoomType[roomType].rooms : null;
+    var liveDataPresent = liveForDay && liveForDay.totals && liveForDay.totals.rooms != null;
+
     // Adjust base occupancy per room type (small bias by category)
     var typeAdj = { double: 1.00, twin: 0.94, suite: 0.70, accessible: 0.60 }[rt.cat] || 1;
     var occ = Math.max(0.05, Math.min(0.99, night.baseOcc * typeAdj));
+
+    // If we have live on-books data for this day, lift forecast occupancy toward that minimum
+    if (liveDataPresent) {
+      var lettable = 114;
+      var currentHouseOcc = Math.min(0.99, liveForDay.totals.rooms / lettable);
+      // Blend: forecast can't be below what's already booked
+      if (currentHouseOcc > occ) occ = Math.min(0.99, Math.max(occ, currentHouseOcc + 0.08));   // add a touch of pickup headroom
+    }
+
     // Per-room-type comp reference — add exec supplement if applicable
     var compRef = night.compRef + (rt.exec ? 10 : -6);
     if (rt.cat === 'suite') compRef += 45;
@@ -388,8 +406,8 @@
     compRef = round(compRef * (1 + 0.025 * night.eventScore), 0);
     var pr = priceSearch(occ, compRef, rt.rooms, rt.floor, rt.ceiling, prevReco);
     var current = rt.bar;
-    // On-books: demo — rooms already sold for that night
-    var onBooks = Math.round(rt.rooms * occ * 0.72);
+    // On-books: prefer live from Guestline; fall back to demo
+    var onBooks = liveRoomsThisType != null ? liveRoomsThisType : Math.round(rt.rooms * occ * 0.72);
     var reasons = [];
     if (compRef - pr.price > 10) reasons.push('Comp ref £' + compRef + ' (we are £' + (compRef - pr.price) + ' below)');
     if (compRef - current > 20) reasons.push('Current BAR £' + current + ' well under comp ref £' + compRef);
@@ -465,29 +483,41 @@
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v37';
+  var HOSREV_VERSION = 'v38';
+  function phaseBadge() {
+    var liveBooks = getCachedBooks();
+    var liveOnBooks = !!(liveBooks && liveBooks.byDate);
+    if (liveOnBooks) return 'Phase 1 · LIVE · ' + HOSREV_VERSION;
+    return 'Phase 1 · Demo · ' + HOSREV_VERSION;
+  }
   var FN_BASE = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/';
   var AI_ENDPOINT = FN_BASE + 'hosrevAi';
   var AGENT_ENDPOINT = FN_BASE + 'hosrevAgent';
   var EVENTS_ENDPOINT = FN_BASE + 'hosrevEvents';
   var COMP_ENDPOINT = FN_BASE + 'hosrevComp';
   var PLAN_ENDPOINT = FN_BASE + 'hosrevPlan';
+  var BOOKS_ENDPOINT = FN_BASE + 'hosrevBooks';
   var AI_TOKEN_KEY = 'hosbusiness_gl_token';
   var AI_CACHE_KEY = 'hosrev_ai_cache';
   var EVENTS_CACHE_KEY = 'hosrev_events_cache';
   var COMP_CACHE_KEY = 'hosrev_comp_cache';
   var AGENT_HIST_KEY = 'hosrev_agent_history';
   var PLAN_CACHE_KEY = 'hosrev_plan_cache';
+  var BOOKS_CACHE_KEY = 'hosrev_books_cache';
   var ACCURACY_KEY = 'hosrev_accuracy';
   var AI_CACHE_TTL = 10 * 60 * 1000;
   var EVENTS_CACHE_TTL = 24 * 60 * 60 * 1000;
   var COMP_CACHE_TTL = 6 * 60 * 60 * 1000;
   var PLAN_CACHE_TTL = 60 * 60 * 1000;   // 1 hour for a day-plan
+  var BOOKS_CACHE_TTL = 30 * 60 * 1000;  // 30 min — matches server cadence
   var AI_INFLIGHT = false;
   var AGENT_INFLIGHT = false;
   var PLAN_INFLIGHT = false;
+  var BOOKS_INFLIGHT = false;
   function hero() {
-    return '<div class="rv-hero"><div><h2>Revenue Management</h2><p>Maximising net room margin across the next 365 nights · Recommendations refresh every 30 mins against latest on-books · Comp rates refreshed daily at 05:30</p></div><div class="rv-demo">Phase 1 · Demo · ' + HOSREV_VERSION + '</div></div>';
+    var badge = phaseBadge();
+    var isLive = badge.indexOf('LIVE') !== -1;
+    return '<div class="rv-hero"><div><h2>Revenue Management</h2><p>Maximising net room margin across the next 365 nights · Recommendations refresh every 30 mins against latest on-books · Comp rates refreshed daily at 05:30</p></div><div class="rv-demo' + (isLive ? ' rv-demo-live' : '') + '">' + esc(badge) + '</div></div>';
   }
 
   /* ---- Dashboard ---- */
@@ -1266,6 +1296,36 @@
     });
   }
 
+  /* v38: live forward on-books — cached locally, backed by hosrevBooks (Firestore).
+     Server runs hosbookTick every 30 min, which calls Guestline SOAP for the next 90 nights,
+     strips guest names, writes aggregates to Firestore. */
+  function getCachedBooks() {
+    try {
+      var raw = localStorage.getItem(BOOKS_CACHE_KEY); if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !o.ts || (Date.now() - o.ts) > BOOKS_CACHE_TTL) return null;
+      return o;
+    } catch (e) { return null; }
+  }
+  function setCachedBooks(o) { try { localStorage.setItem(BOOKS_CACHE_KEY, JSON.stringify(o)); } catch (e) {} }
+  function maybeFetchBooks() {
+    if (BOOKS_INFLIGHT) return;
+    if (getCachedBooks()) return;
+    var token; try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { return; }
+    if (!token) return;
+    BOOKS_INFLIGHT = true;
+    fetch(BOOKS_ENDPOINT, { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        BOOKS_INFLIGHT = false;
+        if (!j || !j.ok || !j.snapshot || !Array.isArray(j.snapshot.days) || !j.snapshot.days.length) return;
+        var byDate = {};
+        j.snapshot.days.forEach(function (d) { byDate[d.date] = { byRoomType: d.byRoomType || {}, totals: d.totals || { rooms: 0 } }; });
+        setCachedBooks({ ts: Date.now(), byDate: byDate, serverTs: j.snapshot.ts, builtAt: j.snapshot.builtAt, windowStart: j.snapshot.windowStart, windowEnd: j.snapshot.windowEnd, stats: j.snapshot.stats });
+        bustCache(); render();
+      }).catch(function () { BOOKS_INFLIGHT = false; });
+  }
+
   /* v36: live comp rates — cached locally, backed by hosrevComp (Firestore). */
   function getCachedComp() {
     try {
@@ -1842,6 +1902,7 @@
   function render() {
     injectCSS();
     try { snapshotForAccuracy(); reconcileAccuracy(); } catch (e) {}
+    try { maybeFetchBooks(); } catch (e) {}   // v38 — fire-and-forget fetch of live on-books
     var el = $('pf-rev');
     if (!el) return;
     var view = UI.view;
