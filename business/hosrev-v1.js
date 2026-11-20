@@ -119,6 +119,39 @@
   }
   var UI = { view: 'dash', roomType: 'exec_dbl' };
 
+  function mergeSaved() {
+    var st = loadState();
+    if (st.settings) {
+      Object.keys(st.settings).forEach(function (k) {
+        if (k === 'weights' && st.settings.weights) {
+          Object.keys(st.settings.weights).forEach(function (w) { SETTINGS.weights[w] = +st.settings.weights[w]; });
+        } else { SETTINGS[k] = +st.settings[k]; }
+      });
+    }
+    if (st.compWeights) {
+      COMP_SET.forEach(function (c) { if (st.compWeights[c.id] != null) c.weight = +st.compWeights[c.id]; });
+    }
+  }
+  function persistSettings() {
+    var st = loadState();
+    st.settings = {
+      commission: SETTINGS.commission, variable: SETTINGS.variable,
+      ancillary: SETTINGS.ancillary,   maxDailyChange: SETTINGS.maxDailyChange,
+      weights: {
+        comp: SETTINGS.weights.comp, forecast: SETTINGS.weights.forecast,
+        events: SETTINGS.weights.events, pickup: SETTINGS.weights.pickup
+      }
+    };
+    saveState(st);
+  }
+  function persistCompWeights() {
+    var st = loadState();
+    st.compWeights = {};
+    COMP_SET.forEach(function (c) { st.compWeights[c.id] = c.weight; });
+    saveState(st);
+  }
+  function bustCache() { NIGHTS = null; }
+
   /* ---------- room types & settings (demo defaults from the brief) ---------- */
   var ROOM_TYPES = [
     { id: 'classic_dbl', label: 'Classic double',             cat: 'double',     exec: false, suppl: 0,  rooms: 25, floor: 69, ceiling: 180, bar: 157 },
@@ -156,14 +189,16 @@
      and sharper for a soft night, so recommendations bend the way they should. */
   function demandAt(p, baseOcc, compRef, capacity) {
     var ref = compRef || 140;
-    // price position vs reference
-    var position = (p - ref) / ref;        // -0.5 = cheap, +0.5 = pricey
-    // elasticity: soft nights more sensitive, strong nights less
-    var elast = 2.8 - 1.6 * baseOcc;       // ~1.2 at 100% baseOcc, ~2.8 at 0%
+    // price position vs reference — amplified/damped by the comp-weight setting
+    var compW = (SETTINGS.weights.comp || 3) / 3;    // 1→0.33, 5→1.67
+    var position = (p - ref) / ref * compW;
+    // elasticity: softer when forecast occupancy signal is weighted less
+    var fcW = (SETTINGS.weights.forecast || 3) / 3;
+    var elast = (2.8 - 1.6 * baseOcc) * (0.6 + 0.4 * fcW);
     // sigmoid around the comp ref
     var mult = 1 / (1 + Math.exp(elast * position * 4));
     // scale by baseline demand share (baseOcc) and capacity
-    var rooms = capacity * baseOcc * 2 * mult;  // *2 because sigmoid is 0.5 at the ref
+    var rooms = capacity * baseOcc * 2 * mult;
     if (rooms < 0) rooms = 0;
     if (rooms > capacity) rooms = capacity;
     return rooms;
@@ -373,7 +408,7 @@
 
   /* ---- Calendar ---- */
   function viewCalendar() {
-    var days = 30;
+    var days = 60;
     var nights = nightsFor(UI.roomType, days);
     var decs = getDecisions();
     var rt = ROOM_TYPES.filter(function (r) { return r.id === UI.roomType; })[0];
@@ -383,20 +418,39 @@
       var dec = decs[key];
       var cls = ['Sat', 'Sun'].indexOf(dow(n.d)) >= 0 ? (dow(n.d) === 'Sat' ? 'sat' : 'sun') : '';
       if (dec && dec.d === 'lock') cls = 'locked';
-      var delta = n.recommended - n.current;
+
+      // effective sell rate = override > lock > approved recommended > engine recommended (pending)
+      var sellRate = n.recommended;
+      if (dec && dec.d === 'approve') sellRate = dec.p;
+      if (dec && dec.d === 'over') sellRate = dec.p;
+      if (dec && dec.d === 'lock') sellRate = dec.p;
+
+      var delta = sellRate - n.current;
       var pill = delta > 0 ? '<span class="rv-pill up">+£' + delta + '</span>' : (delta < 0 ? '<span class="rv-pill dn">−£' + Math.abs(delta) + '</span>' : '<span class="rv-pill flat">hold</span>');
+      var recoCell = '<b style="color:#1F7A8C">' + gbp(n.recommended) + '</b>';
+      if (dec && dec.d === 'over') recoCell = '<b style="color:#eb6834">' + gbp(dec.p) + '</b> <small style="color:#7b8494">was £' + n.recommended + '</small>';
+      if (dec && dec.d === 'lock') recoCell = '<b style="color:#6250d6">£' + dec.p + ' locked</b>';
+
+      var overOpen = (UI.overrideOpen === UI.roomType + '|' + n.d);
+      var overBtn;
+      if (overOpen) {
+        overBtn = '<input class="rv-input" style="width:68px;padding:3px 6px" type="number" step="1" data-rv-over-in="' + UI.roomType + '|' + n.d + '" value="' + (dec && dec.d === 'over' ? dec.p : n.recommended) + '">';
+      } else {
+        overBtn = '<button data-rv-dec="over" data-rv-rt="' + UI.roomType + '" data-rv-d="' + n.d + '" data-rv-p="' + n.recommended + '"' + (dec && dec.d === 'over' ? ' class="on over"' : '') + '>Override' + (dec && dec.d === 'over' ? ' £' + dec.p : '') + '</button>';
+      }
+
       return '<tr class="' + cls + '">' +
         '<td><b>' + esc(shortD(n.d)) + '</b></td>' +
         '<td class="n">' + num(n.onBooks) + ' / ' + num(n.capacity) + '</td>' +
         '<td class="n">' + pct(n.occ) + '</td>' +
         '<td class="n">' + gbp(n.compRef) + '</td>' +
         '<td class="n">' + gbp(n.current) + '</td>' +
-        '<td class="n"><b style="color:#1F7A8C">' + gbp(n.recommended) + '</b> ' + pill + '</td>' +
+        '<td class="n">' + recoCell + ' ' + pill + '</td>' +
         '<td class="n">' + gbp(n.netPerRoom, 2) + '</td>' +
         '<td class="rv-why">' + n.reasons.map(esc).join('<br>') + '</td>' +
         '<td><div class="rv-dec">' +
           '<button data-rv-dec="approve" data-rv-rt="' + UI.roomType + '" data-rv-d="' + n.d + '" data-rv-p="' + n.recommended + '"' + (dec && dec.d === 'approve' ? ' class="on"' : '') + '>Approve</button>' +
-          '<button data-rv-dec="over" data-rv-rt="' + UI.roomType + '" data-rv-d="' + n.d + '" data-rv-p="' + n.recommended + '"' + (dec && dec.d === 'over' ? ' class="on over"' : '') + '>Override</button>' +
+          overBtn +
           '<button data-rv-dec="lock" data-rv-rt="' + UI.roomType + '" data-rv-d="' + n.d + '" data-rv-p="' + n.current + '"' + (dec && dec.d === 'lock' ? ' class="on lock"' : '') + '>Lock</button>' +
         '</div></td>' +
       '</tr>';
@@ -407,11 +461,40 @@
     }).join('');
 
     return hero() + viewTabs() +
-      '<div class="rv-card"><h3>365-night rate calendar</h3><p class="sub">Per room type — showing the next ' + days + ' nights. Approve / Override / Lock each night; Lock keeps the current BAR and stops the engine moving it.</p>' +
-      '<div class="rv-roomsel">' + roomBtns + '</div>' +
-      '<table class="rv-t"><thead><tr><th>Night</th><th class="n">On books</th><th class="n">Fcast occ</th><th class="n">Comp ref</th><th class="n">Current BAR</th><th class="n">Recommended</th><th class="n">Net / room</th><th>Why</th><th>Decision</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<div class="rv-card">' +
+      '<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap">' +
+        '<div><h3>365-night rate calendar</h3><p class="sub" style="margin-bottom:0">Per room type — showing the next ' + days + ' nights. Approve sells at recommended; Override lets you type the price you want; Lock holds current BAR.</p></div>' +
+        '<button class="v16-chip" data-rv-csv title="Download the next ' + days + ' nights as CSV for Patrik to review offline">↓ Export CSV</button>' +
+      '</div>' +
+      '<div class="rv-roomsel" style="margin-top:12px">' + roomBtns + '</div>' +
+      '<table class="rv-t"><thead><tr><th>Night</th><th class="n">On books</th><th class="n">Fcast occ</th><th class="n">Comp ref</th><th class="n">Current BAR</th><th class="n">Sell at</th><th class="n">Net / room</th><th>Why</th><th>Decision</th></tr></thead><tbody>' + rows + '</tbody></table>' +
       '<p class="rv-note">Guardrails in force: floor £' + rt.floor + ', ceiling £' + rt.ceiling + ', max daily change £' + SETTINGS.maxDailyChange + '. Decisions are stored locally until the Guestline write-back is wired (Phase 2+, test site first).</p>' +
       '</div>';
+  }
+
+  /* CSV export for the current room type's recommendations */
+  function exportCsv() {
+    var days = 60;
+    var rt = ROOM_TYPES.filter(function (r) { return r.id === UI.roomType; })[0];
+    var nights = nightsFor(UI.roomType, days);
+    var decs = getDecisions();
+    var lines = ['Date,Day,Room type,On books,Capacity,Fcast occ %,Comp ref £,Current BAR £,Recommended £,Sell at £,Decision,Net per room £,Reasons'];
+    nights.forEach(function (n) {
+      var dec = decs[UI.roomType + '|' + n.d];
+      var sell = n.recommended;
+      if (dec && dec.d) sell = dec.p;
+      var decLabel = dec && dec.d ? dec.d.toUpperCase() : 'pending';
+      lines.push([
+        n.d, dow(n.d), rt.label, n.onBooks, n.capacity, Math.round(n.occ * 100),
+        n.compRef, n.current, n.recommended, sell, decLabel, n.netPerRoom,
+        '"' + n.reasons.join('; ').replace(/"/g, '""') + '"'
+      ].join(','));
+    });
+    var blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'hosrev-' + UI.roomType + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
 
   /* ---- Compset ---- */
@@ -422,7 +505,10 @@
     // Row per comp hotel + our Classic double (shown bold)
     var headerDates = nights.map(function (n) { return '<th class="n">' + esc(dow(n.d)) + '<br>' + esc(shortD(n.d).split(' ')[1]) + '</th>'; }).join('');
 
-    function cellForHotel(comp, night, ci) {
+    var ourRows = nightsFor('classic_dbl', days);
+    var decs = getDecisions();
+
+    function cellForHotel(comp, night, ci, idx) {
       var seed = (comp ? (comp.id.length * 13 + ci * 7) : 0) + parseISO(night.d).getDate();
       function pseudo(s) { var x = Math.sin(s * 9301 + 49297) * 233280; return x - Math.floor(x); }
       var displayed, genius;
@@ -433,24 +519,27 @@
         genius = Math.round(displayed * 0.9);
         return '<td class="n"><div class="rv-compcell">' + gbp(displayed) + '<span class="g">G ' + gbp(genius) + '</span></div></td>';
       }
-      // Us — Classic double
-      var rt = ROOM_TYPES.filter(function (r) { return r.id === 'classic_dbl'; })[0];
-      var row = nightComputedFor('classic_dbl', night, null);
-      displayed = row.current;
-      genius = Math.round(displayed * 0.9);
-      return '<td class="n"><div class="rv-compcell us">' + gbp(displayed) + '<span class="g">G ' + gbp(genius) + '</span></div></td>';
+      // Us — Classic double, showing the recommended (dynamic) with current BAR beneath
+      var r = ourRows[idx];
+      var dec = decs['classic_dbl|' + r.d];
+      var sell = dec && dec.d ? dec.p : r.recommended;
+      genius = Math.round(sell * 0.9);
+      return '<td class="n"><div class="rv-compcell us">' + gbp(sell) + '<span class="g">G ' + gbp(genius) + ' · BAR £' + r.current + '</span></div></td>';
     }
 
-    var usRow = '<tr><td><b>Brandon Hall</b><br><small style="color:#7b8494">Classic double</small></td>' + nights.map(function (n) { return cellForHotel(null, n, 0); }).join('') + '</tr>';
+    var usRow = '<tr><td><b>Brandon Hall</b><br><small style="color:#7b8494">Classic double · recommended</small></td>' + nights.map(function (n, i) { return cellForHotel(null, n, 0, i); }).join('') + '</tr>';
     var compRows = COMP_SET.map(function (c, ci) {
-      var stars = '●'.repeat(c.weight) + '<span class="dim">' + '○'.repeat(5 - c.weight) + '</span>';
-      return '<tr><td>' + esc(c.label) + '<br><span class="rv-stars">' + stars + '</span></td>' + nights.map(function (n) { return cellForHotel(c, n, ci); }).join('') + '</tr>';
+      var starBtns = '';
+      for (var w = 1; w <= 5; w++) {
+        starBtns += '<button data-rv-cw="' + c.id + '" data-rv-w="' + w + '" title="Set weight to ' + w + '" style="border:0;background:none;padding:0 1px;font-size:14px;cursor:pointer;color:' + (w <= c.weight ? '#BB9979' : '#e4e2dc') + '">●</button>';
+      }
+      return '<tr><td>' + esc(c.label) + '<br><span class="rv-stars">' + starBtns + '</span></td>' + nights.map(function (n) { return cellForHotel(c, n, ci); }).join('') + '</tr>';
     }).join('');
 
     return hero() + viewTabs() +
-      '<div class="rv-card"><h3>Compset — next ' + days + ' nights</h3><p class="sub">Displayed consumer rate · G = Booking Genius estimate (−10%). Weighted comp set ● × N / 5. Our Classic double in bold.</p>' +
+      '<div class="rv-card"><h3>Compset — next ' + days + ' nights</h3><p class="sub">Displayed consumer rate · G = Booking Genius estimate (−10%). Our Classic double shows the engine\'s recommended rate (and current BAR). Click the ● stars to adjust each hotel\'s weight 1–5 — changes feed the comp reference and re-run the engine.</p>' +
       '<div style="overflow-x:auto"><table class="rv-t"><thead><tr><th>Hotel</th>' + headerDates + '</tr></thead><tbody>' + usRow + compRows + '</tbody></table></div>' +
-      '<p class="rv-note">When live, this comes from the SerpApi Google Hotels shopper (<code>tools/hosrev-rateshop.mjs</code>) writing <code>hosrev-comp.json</code> once a day at 05:30 London. Right now the figures above are a stable demo distribution for layout review.</p>' +
+      '<p class="rv-note">When live, comp rates come from the SerpApi Google Hotels shopper (<code>tools/hosrev-rateshop.mjs</code>) writing <code>hosrev-comp.json</code> once a day at 05:30 London.</p>' +
       '</div>';
   }
 
@@ -486,14 +575,23 @@
         borderWidth: 1.5, pointRadius: 2, tension: 0.25
       });
     });
-    // Us bold navy
+    // Us bold navy — the recommended rate per night (dynamic)
+    var ourRows = nightsFor('classic_dbl', 30);
+    var decs = getDecisions();
     datasets.push({
-      label: 'Brandon Hall (Classic double)',
-      data: nights.map(function (n) {
-        var row = nightComputedFor('classic_dbl', n, null);
-        return row.current;
+      label: 'Brandon Hall (recommended)',
+      data: ourRows.map(function (r) {
+        var dec = decs['classic_dbl|' + r.d];
+        if (dec && dec.d) return dec.p;
+        return r.recommended;
       }),
       borderColor: NAVY, backgroundColor: NAVY + '22', borderWidth: 3, pointRadius: 3, tension: 0.2
+    });
+    // Also show current BAR as a dotted reference line so the gap is visible
+    datasets.push({
+      label: 'Brandon Hall (current BAR)',
+      data: ourRows.map(function (r) { return r.current; }),
+      borderColor: '#86847d', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, tension: 0
     });
     var el = $('rv-trend-chart'); if (!el) return;
     if (charts.trend) { try { charts.trend.destroy(); } catch (e) {} }
@@ -548,21 +646,42 @@
   function viewForecast() {
     var html = hero() + viewTabs() +
       '<div class="rv-grid2">' +
-        '<div class="rv-card"><h3>Forecast occupancy — next 30 nights</h3><p class="sub">Across all room types</p>' +
+        '<div class="rv-card"><h3>Occupancy — past 30 days + next 30 nights</h3><p class="sub">Past bars are real occupancy from the Guestline feed · forward bars are the engine\'s forecast</p>' +
           '<div class="rv-chartbox"><canvas id="rv-fc-occ"></canvas></div>' +
         '</div>' +
         '<div class="rv-card"><h3>Net room profit per night — Executive double</h3><p class="sub">At the recommended price</p>' +
           '<div class="rv-chartbox"><canvas id="rv-fc-prof"></canvas></div>' +
         '</div>' +
       '</div>' +
-      '<p class="rv-note" style="text-align:center">Both charts fill from the Guestline on-books feed the moment it is wired in; today they use the demo distribution.</p>';
+      '<p class="rv-note" style="text-align:center">Historic bars come from closed-day Guestline pulls (already live). Forward occupancy becomes live too the moment the Report Data API key lands.</p>';
     return html;
   }
   function drawForecastCharts() {
     if (!window.Chart) return;
     buildNights();
     var nights = NIGHTS.slice(0, 30);
-    var labels = nights.map(function (n) { return shortD(n.d); });
+
+    // Try to pull real history from the Guestline feed — past 30 closed days
+    var histLabels = [], histData = [];
+    try {
+      var S = (window.Trading && window.Trading.S) ? window.Trading.S() : null;
+      if (S && S.gl && S.gl.byDay) {
+        var lettable = 114;
+        var allDays = Object.keys(S.gl.byDay).sort();
+        var tail = allDays.slice(-30);
+        tail.forEach(function (d) {
+          var row = S.gl.byDay[d];
+          var occPct = row && row.sold ? Math.round((row.sold / lettable) * 100) : null;
+          histLabels.push(shortD(d));
+          histData.push(occPct);
+        });
+      }
+    } catch (e) {}
+
+    var fcLabels = nights.map(function (n) { return shortD(n.d); });
+    var labels = histLabels.concat(['— today —']).concat(fcLabels);
+    var histPadded = histData.concat([null]).concat(nights.map(function () { return null; }));
+    var fcPadded = histLabels.map(function () { return null; }).concat([null]).concat(nights.map(function (n) { return Math.round(n.baseOcc * 100); }));
 
     var occ = $('rv-fc-occ');
     if (occ) {
@@ -571,20 +690,31 @@
         type: 'bar',
         data: {
           labels: labels,
-          datasets: [{
-            label: 'Forecast occupancy',
-            data: nights.map(function (n) { return Math.round(n.baseOcc * 100); }),
-            backgroundColor: nights.map(function (n) {
-              return n.baseOcc < 0.3 ? '#d0362b' : (n.baseOcc > 0.8 ? '#1a8f63' : TEAL);
-            }),
-            borderRadius: 3, maxBarThickness: 18
-          }]
+          datasets: [
+            {
+              label: 'Actual occupancy (past)',
+              data: histPadded,
+              backgroundColor: '#1a2b3a',
+              borderRadius: 3, maxBarThickness: 12
+            },
+            {
+              label: 'Forecast occupancy',
+              data: fcPadded,
+              backgroundColor: nights.map(function (n) {
+                return n.baseOcc < 0.3 ? '#d0362b' : (n.baseOcc > 0.8 ? '#1a8f63' : TEAL);
+              }),
+              borderRadius: 3, maxBarThickness: 12
+            }
+          ]
         },
         options: {
           maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return c.parsed.y + '% occ'; } } } },
+          plugins: {
+            legend: { display: true, position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 11 } } },
+            tooltip: { callbacks: { label: function (c) { return (c.parsed.y == null ? '' : c.parsed.y + '% ' + c.dataset.label); } } }
+          },
           scales: {
-            x: { grid: { display: false } },
+            x: { grid: { display: false }, stacked: false, ticks: { maxRotation: 60, minRotation: 50, font: { size: 9 } } },
             y: { max: 100, grid: { color: '#ebe9e3' }, border: { display: false }, ticks: { callback: function (v) { return v + '%'; } } }
           }
         }
@@ -623,18 +753,20 @@
     }).join('');
 
     return hero() + viewTabs() +
+      '<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="v16-chip" data-rv-reset title="Restore all parameters and comp weights to their defaults from the brief">↺ Reset to defaults</button></div>' +
       '<div class="rv-grid2">' +
-        '<div class="rv-card"><h3>Costs &amp; value</h3><p class="sub">The <code>v</code>, <code>a</code> and <code>c</code> that feed the profit formula</p>' +
-          '<div class="rv-row"><label>Commission / channel cost<small>c</small></label><input class="rv-input" value="' + (SETTINGS.commission * 100) + '">%</div>' +
-          '<div class="rv-row"><label>Variable cost / occupied room<small>v</small></label><input class="rv-input" value="' + SETTINGS.variable + '"> £</div>' +
-          '<div class="rv-row"><label>Ancillary value / occupied room<small>a</small></label><input class="rv-input" value="' + SETTINGS.ancillary + '"> £</div>' +
-          '<div class="rv-row"><label>Max daily change<small>£</small></label><input class="rv-input" value="' + SETTINGS.maxDailyChange + '"> £</div>' +
+        '<div class="rv-card"><h3>Costs &amp; value</h3><p class="sub">The <code>v</code>, <code>a</code> and <code>c</code> that feed the profit formula · changes save instantly and re-run the engine</p>' +
+          '<div class="rv-row"><label>Commission / channel cost<small>c</small></label><input class="rv-input" type="number" step="0.5" min="0" max="35" data-rv-set="commission" data-rv-unit="pct" value="' + (SETTINGS.commission * 100) + '"> %</div>' +
+          '<div class="rv-row"><label>Variable cost / occupied room<small>v</small></label><input class="rv-input" type="number" step="1" min="0" data-rv-set="variable" value="' + SETTINGS.variable + '"> £</div>' +
+          '<div class="rv-row"><label>Ancillary value / occupied room<small>a</small></label><input class="rv-input" type="number" step="1" min="0" data-rv-set="ancillary" value="' + SETTINGS.ancillary + '"> £</div>' +
+          '<div class="rv-row"><label>Max daily change</label><input class="rv-input" type="number" step="1" min="0" data-rv-set="maxDailyChange" value="' + SETTINGS.maxDailyChange + '"> £</div>' +
+          '<p class="rv-note">Profit per occupied room = price × (1 − <code>c</code>) − <code>v</code> + <code>a</code>. Raising <code>a</code> tells the engine breakfast/F&amp;B upsell is more valuable so soft nights are worth filling; raising <code>c</code> pushes recommendations up to cover channel cost.</p>' +
         '</div>' +
-        '<div class="rv-card"><h3>Input weights (1–5)</h3><p class="sub">How hard each signal pulls the recommendation</p>' +
-          '<div class="rv-row"><label>Comp reference</label><input class="rv-input" value="' + SETTINGS.weights.comp + '"></div>' +
-          '<div class="rv-row"><label>Forecast occupancy</label><input class="rv-input" value="' + SETTINGS.weights.forecast + '"></div>' +
-          '<div class="rv-row"><label>Events</label><input class="rv-input" value="' + SETTINGS.weights.events + '"></div>' +
-          '<div class="rv-row"><label>Pickup &amp; pace</label><input class="rv-input" value="' + SETTINGS.weights.pickup + '"></div>' +
+        '<div class="rv-card"><h3>Input weights (1–5)</h3><p class="sub">How hard each signal pulls the recommendation · 1 = ignore, 5 = dominant</p>' +
+          '<div class="rv-row"><label>Comp reference</label><input class="rv-input" type="number" step="1" min="1" max="5" data-rv-wgt="comp" value="' + SETTINGS.weights.comp + '"></div>' +
+          '<div class="rv-row"><label>Forecast occupancy</label><input class="rv-input" type="number" step="1" min="1" max="5" data-rv-wgt="forecast" value="' + SETTINGS.weights.forecast + '"></div>' +
+          '<div class="rv-row"><label>Events</label><input class="rv-input" type="number" step="1" min="1" max="5" data-rv-wgt="events" value="' + SETTINGS.weights.events + '"></div>' +
+          '<div class="rv-row"><label>Pickup &amp; pace</label><input class="rv-input" type="number" step="1" min="1" max="5" data-rv-wgt="pickup" value="' + SETTINGS.weights.pickup + '"></div>' +
           '<p class="rv-note">Pickup needs ~3 months of daily snapshots to be meaningful; for now it uses DOW average.</p>' +
         '</div>' +
       '</div>' +
@@ -687,15 +819,45 @@
   /* ---------- events ---------- */
   document.addEventListener('click', function (e) {
     var t = e.target; if (!t.closest) return;
+
+    // Export CSV
+    if (t.closest('[data-rv-csv]')) { exportCsv(); return; }
+
+    // Reset settings to defaults
+    if (t.closest('[data-rv-reset]')) {
+      if (confirm('Reset all costs, weights and comp weights to the defaults from the brief?')) {
+        SETTINGS.commission = 0.14; SETTINGS.variable = 18; SETTINGS.ancillary = 14; SETTINGS.maxDailyChange = 15;
+        SETTINGS.weights = { comp: 4, forecast: 4, events: 2, pickup: 3 };
+        var defs = { coombe: 5, dthilton: 4, windmill: 4, ramada: 3, chesford: 4, nailcote: 3, mallory: 2 };
+        COMP_SET.forEach(function (c) { if (defs[c.id] != null) c.weight = defs[c.id]; });
+        persistSettings(); persistCompWeights(); bustCache(); render();
+      }
+      return;
+    }
+
+    // Tab switch
     var vb = t.closest('[data-rv-view]');
     if (vb) { UI.view = vb.getAttribute('data-rv-view'); render(); return; }
+
+    // Comp star — click to set weight 1..5
+    var cs = t.closest('[data-rv-cw]');
+    if (cs) {
+      var id = cs.getAttribute('data-rv-cw');
+      var w = +cs.getAttribute('data-rv-w');
+      var c = COMP_SET.filter(function (x) { return x.id === id; })[0];
+      if (c) { c.weight = w; persistCompWeights(); bustCache(); render(); }
+      return;
+    }
+
+    // Room-type selector in Calendar
     var rb = t.closest('[data-rv-rt]');
-    if (rb && !t.closest('[data-rv-dec]')) {
-      // Room-type selector in Calendar
+    if (rb && !t.closest('[data-rv-dec]') && !t.closest('[data-rv-over-in]')) {
       UI.roomType = rb.getAttribute('data-rv-rt');
       if (UI.view === 'calendar') render();
       return;
     }
+
+    // Decision chip
     var db = t.closest('[data-rv-dec]');
     if (db) {
       var rt = db.getAttribute('data-rv-rt');
@@ -703,8 +865,67 @@
       var dec = db.getAttribute('data-rv-dec');
       var p = +db.getAttribute('data-rv-p');
       var existing = decisionFor(rt, d);
+      if (dec === 'over') {
+        // Toggle: if already overriding this night, clear it; else open the inline input
+        if (existing && existing.d === 'over') { setDecision(rt, d, null); render(); return; }
+        UI.overrideOpen = rt + '|' + d;
+        render();
+        setTimeout(function () {
+          var inp = document.querySelector('[data-rv-over-in="' + rt + '|' + d + '"]');
+          if (inp) { inp.focus(); inp.select(); }
+        }, 20);
+        return;
+      }
       if (existing && existing.d === dec) { setDecision(rt, d, null); }
       else { setDecision(rt, d, dec, p); }
+      UI.overrideOpen = null;
+      render();
+    }
+  });
+
+  // Live edits on Settings — commit on input, debounce slightly so we don't re-run the engine mid-keystroke
+  var editDebounce = 0;
+  function scheduleRender() {
+    clearTimeout(editDebounce);
+    editDebounce = setTimeout(function () { bustCache(); render(); }, 220);
+  }
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (!t || !t.getAttribute) return;
+    var setKey = t.getAttribute('data-rv-set');
+    var wgtKey = t.getAttribute('data-rv-wgt');
+    if (setKey) {
+      var v = parseFloat(t.value); if (!isFinite(v)) return;
+      if (t.getAttribute('data-rv-unit') === 'pct') v = v / 100;
+      SETTINGS[setKey] = v;
+      persistSettings();
+      scheduleRender();
+      return;
+    }
+    if (wgtKey) {
+      var w = Math.max(1, Math.min(5, parseInt(t.value, 10) || 1));
+      SETTINGS.weights[wgtKey] = w;
+      persistSettings();
+      scheduleRender();
+      return;
+    }
+  });
+
+  // Override typed-rate input: Enter commits, Esc closes
+  document.addEventListener('keydown', function (e) {
+    var t = e.target; if (!t || !t.getAttribute) return;
+    var key = t.getAttribute('data-rv-over-in');
+    if (!key) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      var v = parseFloat(t.value); if (!isFinite(v)) return;
+      var parts = key.split('|');
+      setDecision(parts[0], parts[1], 'over', Math.round(v));
+      UI.overrideOpen = null;
+      render();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      UI.overrideOpen = null;
       render();
     }
   });
@@ -715,6 +936,7 @@
      "Management accounts not found" banner — HosREV doesn't need them. */
   function wireIn() {
     if (!window.Profit || !window.Profit.register) { setTimeout(wireIn, 50); return; }
+    mergeSaved();
     window.Profit.register('rev', render);
     var orig = window.Profit.show;
     window.Profit.show = function (name) {
