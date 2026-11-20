@@ -104,6 +104,8 @@
       '#pf-rev .rv-compcell{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}',
       '#pf-rev .rv-compcell .g{font-size:10.5px;color:#7b8494}',
       '#pf-rev .rv-compcell.us{color:#1a2b3a;font-weight:700}',
+      '#pf-rev .rv-compcell.live{color:#145866}',
+      '#pf-rev table.rv-t td:has(.rv-compcell.live){background:#f3f7f8}',
       '#pf-rev .rv-eventtype{display:inline-block;padding:2px 8px;background:#f1efe9;border-radius:999px;font-size:11px;color:#52514e}',
       /* v34: AI insights */
       '#pf-rev .rv-ai-card{background:linear-gradient(180deg,#fafafa 0%,#f3f7f8 100%);border-color:#d6e4e8}',
@@ -123,7 +125,61 @@
       '#pf-rev .rv-act{text-align:left;background:#fff;border:1px solid #e4e2dc;border-left:4px solid #BB9979;border-radius:10px;padding:12px 14px;font:inherit;cursor:pointer;transition:all .1s ease}',
       '#pf-rev .rv-act:hover{background:#fdf8ee;border-color:#BB9979;transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.06)}',
       '#pf-rev .rv-act b{display:block;font-size:13px;color:#1a2b3a;margin-bottom:2px}',
-      '#pf-rev .rv-act small{display:block;font-size:11.5px;color:#7b8494}'
+      '#pf-rev .rv-act small{display:block;font-size:11.5px;color:#7b8494}',
+      /* v36: Ask the Agent */
+      '#pf-rev .rv-ag-wrap{display:grid;grid-template-columns:340px 1fr;gap:16px;margin-top:16px}',
+      '@media (max-width:1100px){#pf-rev .rv-ag-wrap{grid-template-columns:1fr}}',
+      '#pf-rev .rv-ag-left{background:#fff;border:1px solid #e4e2dc;border-radius:12px;padding:16px;max-height:calc(100vh - 220px);overflow-y:auto}',
+      '#pf-rev .rv-ag-leftH{margin-bottom:12px}',
+      '#pf-rev .rv-ag-tag{margin:8px 0 0;font-size:12px;color:#7b8494;line-height:1.5}',
+      '#pf-rev .rv-ag-cat{margin:14px 0 4px}',
+      '#pf-rev .rv-ag-cat h4{font-size:11.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#52514e;margin:0 0 8px;padding-bottom:4px;border-bottom:1px solid #f1efe9}',
+      '#pf-rev .rv-ag-q{display:flex;gap:10px;width:100%;text-align:left;background:#fafaf6;border:1px solid #e4e2dc;border-radius:9px;padding:8px 10px;margin-bottom:6px;font:inherit;font-size:12.5px;color:#1a2b3a;cursor:pointer;line-height:1.35;transition:all .12s ease}',
+      '#pf-rev .rv-ag-q:hover{background:#eef5f6;border-color:#1F7A8C;transform:translateX(2px)}',
+      '#pf-rev .rv-ag-qi{flex:0 0 22px;height:22px;text-align:center;line-height:22px;background:#fff;border-radius:6px;font-size:13px}',
+      '#pf-rev .rv-ag-qt{flex:1 1 auto}',
+      '#pf-rev .rv-ag-right{display:flex;flex-direction:column;background:#fff;border:1px solid #e4e2dc;border-radius:12px;padding:16px;min-height:calc(100vh - 220px)}',
+      '#pf-rev .rv-ag-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}',
+      '#pf-rev .rv-ag-results{flex:1 1 auto;overflow-y:auto;padding:4px 2px;min-height:300px}',
+      '#pf-rev .rv-ag-welcome{color:#52514e;font-size:13px;line-height:1.55;padding:16px;background:#fafaf6;border-radius:10px;border:1px dashed #e4e2dc}',
+      '#pf-rev .rv-ag-welcome b{color:#1a2b3a}',
+      '#pf-rev .rv-ag-welcome ul{margin:8px 0 10px 18px;padding:0}',
+      '#pf-rev .rv-ag-welcome li{margin-bottom:3px}',
+      '#pf-rev .rv-ag-tip{font-size:12px;color:#7b8494;font-style:italic;margin:6px 0 0}',
+      '#pf-rev .rv-ag-turn{margin:0 0 20px;padding:0 0 18px;border-bottom:1px solid #f1efe9}',
+      '#pf-rev .rv-ag-turn:last-child{border-bottom:0}',
+      '#pf-rev .rv-ag-you{margin-bottom:12px;padding:10px 12px;background:#f3f7f8;border-left:3px solid #1F7A8C;border-radius:0 8px 8px 0}',
+      '#pf-rev .rv-ag-ans{padding:0 2px}',
+      '#pf-rev .rv-ag-whoY,#pf-rev .rv-ag-whoA{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:2px 7px;border-radius:5px;margin-bottom:6px}',
+      '#pf-rev .rv-ag-whoY{background:#1a2b3a;color:#fff}',
+      '#pf-rev .rv-ag-whoA{background:linear-gradient(90deg,#1F7A8C,#145866);color:#fff}',
+      '#pf-rev .rv-ag-you p{margin:0;font-size:13px;color:#1a2b3a;line-height:1.5}',
+      '#pf-rev .rv-ag-md{font-size:13.5px;color:#1a2b3a;line-height:1.6}',
+      '#pf-rev .rv-ag-md p{margin:6px 0}',
+      '#pf-rev .rv-ag-md h3{font-size:14.5px;font-weight:700;color:#1a2b3a;margin:14px 0 6px}',
+      '#pf-rev .rv-ag-md h4{font-size:13px;font-weight:700;color:#52514e;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.3px}',
+      '#pf-rev .rv-ag-md ul,#pf-rev .rv-ag-md ol{margin:6px 0 6px 20px;padding:0}',
+      '#pf-rev .rv-ag-md li{margin-bottom:3px}',
+      '#pf-rev .rv-ag-md strong{color:#145866}',
+      '#pf-rev .rv-ag-md code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#fafaf6;border:1px solid #e4e2dc;border-radius:4px;padding:1px 5px;font-size:92%;color:#1a2b3a}',
+      '#pf-rev .rv-ag-md a{color:#1F7A8C;text-decoration:underline;text-decoration-color:#7fb9c4}',
+      '#pf-rev .rv-ag-searched{margin:10px 0 2px;font-size:11.5px;color:#7b8494}',
+      '#pf-rev .rv-ag-searched code{font-size:11px;padding:1px 5px;background:#fafaf6;border-radius:4px;border:1px solid #e4e2dc}',
+      '#pf-rev .rv-ag-sources{margin:8px 0 2px;font-size:11.5px;color:#52514e;line-height:1.5}',
+      '#pf-rev .rv-ag-sources a{color:#1F7A8C;text-decoration:none}',
+      '#pf-rev .rv-ag-sources a:hover{text-decoration:underline}',
+      '#pf-rev .rv-ag-sep{margin:0 5px;color:#c9c7bf}',
+      '#pf-rev .rv-ag-meta{margin:6px 0 0;font-size:10.5px;color:#9b9992;font-style:italic}',
+      '#pf-rev .rv-ag-input{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid #f1efe9}',
+      '#pf-rev .rv-ag-input textarea{flex:1 1 auto;border:1px solid #e4e2dc;background:#fafaf6;border-radius:9px;padding:10px 12px;font:inherit;font-size:13px;line-height:1.4;resize:vertical;max-height:200px}',
+      '#pf-rev .rv-ag-input textarea:focus{outline:2px solid rgba(31,122,140,.2);border-color:#1F7A8C;background:#fff}',
+      '#pf-rev .rv-ag-send{background:linear-gradient(90deg,#1F7A8C,#145866);color:#fff;border:0;border-radius:9px;padding:10px 20px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;align-self:flex-start}',
+      '#pf-rev .rv-ag-send:hover{background:linear-gradient(90deg,#258ea3,#1F7A8C)}',
+      '#pf-rev .rv-ag-thinking{color:#1F7A8C;font-size:13px;font-style:italic;margin:4px 0}',
+      '#pf-rev .rv-ag-dot{display:inline-block;animation:rv-blink 1.4s infinite}',
+      '#pf-rev .rv-ag-dot:nth-child(2){animation-delay:.2s}',
+      '#pf-rev .rv-ag-dot:nth-child(3){animation-delay:.4s}',
+      '@keyframes rv-blink{0%,80%,100%{opacity:.25}40%{opacity:1}}'
     ].join('\n');
     document.head.appendChild(s);
   }
@@ -348,6 +404,7 @@
   function viewTabs() {
     var tabs = [
       ['dash',     'Dashboard'],
+      ['agent',    '✨ Ask the Agent'],
       ['calendar', 'Calendar'],
       ['compset',  'Compset'],
       ['events',   'Events'],
@@ -359,12 +416,22 @@
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v35';
-  var AI_ENDPOINT = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/hosrevAi';
+  var HOSREV_VERSION = 'v36';
+  var FN_BASE = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/';
+  var AI_ENDPOINT = FN_BASE + 'hosrevAi';
+  var AGENT_ENDPOINT = FN_BASE + 'hosrevAgent';
+  var EVENTS_ENDPOINT = FN_BASE + 'hosrevEvents';
+  var COMP_ENDPOINT = FN_BASE + 'hosrevComp';
   var AI_TOKEN_KEY = 'hosbusiness_gl_token';
   var AI_CACHE_KEY = 'hosrev_ai_cache';
-  var AI_CACHE_TTL = 10 * 60 * 1000;   // 10 minutes
+  var EVENTS_CACHE_KEY = 'hosrev_events_cache';
+  var COMP_CACHE_KEY = 'hosrev_comp_cache';
+  var AGENT_HIST_KEY = 'hosrev_agent_history';
+  var AI_CACHE_TTL = 10 * 60 * 1000;    // 10 minutes
+  var EVENTS_CACHE_TTL = 24 * 60 * 60 * 1000;    // 24 hours client cache (server caches 7 days)
+  var COMP_CACHE_TTL = 6 * 60 * 60 * 1000;    // 6 hours client cache
   var AI_INFLIGHT = false;
+  var AGENT_INFLIGHT = false;
   function hero() {
     return '<div class="rv-hero"><div><h2>Revenue Management</h2><p>Maximising net room margin across the next 365 nights · Recommendations refresh every 30 mins against latest on-books · Comp rates refreshed daily at 05:30</p></div><div class="rv-demo">Phase 1 · Demo · ' + HOSREV_VERSION + '</div></div>';
   }
@@ -523,6 +590,8 @@
     try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { token = null; }
     if (!token) return;    // no token, can't call the function — stay on rule-based
     AI_INFLIGHT = true;
+    var liveEv = getCachedEvents();
+    var liveCo = getCachedComp();
     var payload = {
       today: new Date().toISOString().slice(0, 10),
       horizon: horizon,
@@ -530,7 +599,9 @@
         return { d: n.d, day: n.day, occ: n.occ, compRef: n.compRef, current: n.current, recommended: n.recommended, eventScore: n.eventScore || 0, reasons: n.reasons || [] };
       }),
       decisions: decs,
-      settings: { commission: SETTINGS.commission, variable: SETTINGS.variable, ancillary: SETTINGS.ancillary, weights: SETTINGS.weights }
+      settings: { commission: SETTINGS.commission, variable: SETTINGS.variable, ancillary: SETTINGS.ancillary, weights: SETTINGS.weights },
+      liveEvents: liveEv && liveEv.events ? liveEv.events.slice(0, 10) : null,
+      liveComp: liveCo && liveCo.byDate ? { updatedTs: liveCo.serverTs, sample: liveCo.byDate } : null
     };
     fetch(AI_ENDPOINT, {
       method: 'POST',
@@ -730,12 +801,20 @@
 
     var ourRows = nightsFor('classic_dbl', days);
     var decs = getDecisions();
+    var liveComp = getCachedComp();   // latest SerpApi snapshot or null
 
     function cellForHotel(comp, night, ci, idx) {
-      var seed = (comp ? (comp.id.length * 13 + ci * 7) : 0) + parseISO(night.d).getDate();
-      function pseudo(s) { var x = Math.sin(s * 9301 + 49297) * 233280; return x - Math.floor(x); }
       var displayed, genius;
       if (comp) {
+        // If we have a live SerpApi rate for this hotel+date, use it
+        if (liveComp && liveComp.byDate && liveComp.byDate[night.d] && liveComp.byDate[night.d][comp.id] && liveComp.byDate[night.d][comp.id].rate) {
+          displayed = liveComp.byDate[night.d][comp.id].rate;
+          genius = Math.round(displayed * 0.9);
+          return '<td class="n"><div class="rv-compcell live">' + gbp(displayed) + '<span class="g">G ' + gbp(genius) + '</span></div></td>';
+        }
+        // Fall back to demo distribution
+        var seed = (comp.id.length * 13 + ci * 7) + parseISO(night.d).getDate();
+        var pseudo = function (s) { var x = Math.sin(s * 9301 + 49297) * 233280; return x - Math.floor(x); };
         var dowLift = [0.86, 0.85, 0.92, 0.96, 1.04, 1.18, 1.12][night.day];
         var drift = 1 + (pseudo(seed) - 0.5) * 0.14;
         displayed = Math.round(comp.base * drift * dowLift);
@@ -750,6 +829,9 @@
       return '<td class="n"><div class="rv-compcell us">' + gbp(sell) + '<span class="g">G ' + gbp(genius) + ' · BAR £' + r.current + '</span></div></td>';
     }
 
+    // Kick off a background fetch of live comp data
+    setTimeout(function () { maybeFetchComp(); }, 0);
+
     var usRow = '<tr><td><b>Brandon Hall</b><br><small style="color:#7b8494">Classic double · recommended</small></td>' + nights.map(function (n, i) { return cellForHotel(null, n, 0, i); }).join('') + '</tr>';
     var compRows = COMP_SET.map(function (c, ci) {
       var starBtns = '';
@@ -759,11 +841,48 @@
       return '<tr><td>' + esc(c.label) + '<br><span class="rv-stars">' + starBtns + '</span></td>' + nights.map(function (n) { return cellForHotel(c, n, ci); }).join('') + '</tr>';
     }).join('');
 
+    var liveBadge = liveComp && liveComp.byDate
+      ? '<span class="rv-ai-badge">Live SerpApi</span> <span class="rv-ai-mode" style="margin-left:6px">updated ' + fmtAgo(liveComp.ts) + '</span>'
+      : '<span class="rv-ai-mode">Demo rates · SerpApi shopper runs Sunday 05:30 if the key is set</span>';
     return hero() + viewTabs() +
-      '<div class="rv-card"><h3>Compset — next ' + days + ' nights</h3><p class="sub">Displayed consumer rate · G = Booking Genius estimate (−10%). Our Classic double shows the engine\'s recommended rate (and current BAR). Click the ● stars to adjust each hotel\'s weight 1–5 — changes feed the comp reference and re-run the engine.</p>' +
+      '<div class="rv-card">' +
+      '<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px">' +
+        '<div><h3>Compset — next ' + days + ' nights</h3><p class="sub" style="margin:2px 0 0">' + liveBadge + '</p></div>' +
+      '</div>' +
+      '<p class="sub" style="margin:10px 0 12px">Displayed consumer rate · G = Booking Genius estimate (−10%). Our Classic double shows the engine\'s recommended rate (and current BAR). Click the ● stars to adjust each hotel\'s weight 1–5.</p>' +
       '<div style="overflow-x:auto"><table class="rv-t"><thead><tr><th>Hotel</th>' + headerDates + '</tr></thead><tbody>' + usRow + compRows + '</tbody></table></div>' +
-      '<p class="rv-note">When live, comp rates come from the SerpApi Google Hotels shopper (<code>tools/hosrev-rateshop.mjs</code>) writing <code>hosrev-comp.json</code> once a day at 05:30 London.</p>' +
+      '<p class="rv-note">Live comp rates come from the SerpApi Google Hotels shopper (weekly Sunday run, Firestore-cached). Cells with live data have a subtle green tint.</p>' +
       '</div>';
+  }
+
+  /* v36: live comp rates — cached locally, backed by hosrevComp (Firestore). */
+  function getCachedComp() {
+    try {
+      var raw = localStorage.getItem(COMP_CACHE_KEY); if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !o.ts || (Date.now() - o.ts) > COMP_CACHE_TTL) return null;
+      return o;
+    } catch (e) { return null; }
+  }
+  function setCachedComp(o) { try { localStorage.setItem(COMP_CACHE_KEY, JSON.stringify(o)); } catch (e) {} }
+  var COMP_INFLIGHT = false;
+  function maybeFetchComp() {
+    if (COMP_INFLIGHT) return;
+    if (getCachedComp()) return;
+    var token; try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { return; }
+    if (!token) return;
+    COMP_INFLIGHT = true;
+    fetch(COMP_ENDPOINT, { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        COMP_INFLIGHT = false;
+        if (!j || !j.ok || !j.snapshot || !Array.isArray(j.snapshot.nights) || !j.snapshot.nights.length) return;
+        // Index by date for fast lookup
+        var byDate = {};
+        j.snapshot.nights.forEach(function (n) { byDate[n.date] = n.hotels || {}; });
+        setCachedComp({ ts: Date.now(), byDate: byDate, serverTs: j.snapshot.ts });
+        if (UI.view === 'compset' || UI.view === 'forecast') render();
+      }).catch(function () { COMP_INFLIGHT = false; });
   }
 
   /* ---- Trend ---- */
@@ -851,18 +970,305 @@
     { date: null, label: 'Corporate AGM — major client',   venue: 'NEC Birmingham',                  type: 'Conference',  impact: 3, attendance: 1800,  offset: 9 },
     { date: null, label: 'Brandon village fair',           venue: 'Brandon Wood',                    type: 'Local',       impact: 1, attendance: 400,   offset: 22 }
   ];
+  /* ============================================================
+     v36: Ask the Agent — grounded Gemini with a Brandon Hall-specific
+     question library. Pre-built questions on the left, live research
+     results on the right, free text at the bottom.
+     ============================================================ */
+  var AGENT_QUESTIONS = [
+    { cat: 'Morning brief', icon: '☀', q: 'Give me the morning brief: where we stand, the three things to action today, and anything unusual from overnight.' },
+    { cat: 'Morning brief', icon: '📈', q: 'What are the biggest revenue opportunities in the next 7 days and what should I approve to capture them?' },
+    { cat: 'Morning brief', icon: '⚠', q: 'Where am I leaving money on the table this month, and where am I overpricing and risking occupancy?' },
+    { cat: 'Market intelligence', icon: '◎', q: 'What are the current weekend rates in our comp set across Coventry and Warwickshire? Compare ours (Classic double £157 BAR) to theirs, remembering Booking Genius is −10%.' },
+    { cat: 'Market intelligence', icon: '◎', q: 'Are any of our competitors (Coombe Abbey, DoubleTree Coventry, Chesford Grange, Windmill Village, Mallory Court, Nailcote Hall, Ramada) running promotional offers right now?' },
+    { cat: 'Market intelligence', icon: '◎', q: 'Have any new hotels opened or refurbished within 15 miles of Brandon in the last 12 months that could affect our comp set?' },
+    { cat: 'Market intelligence', icon: '◎', q: 'What are the UK Midlands 4-star hotel occupancy and ADR benchmarks running at this quarter?' },
+    { cat: 'Local events', icon: '★', q: 'What events, concerts, exhibitions, matches and conferences are happening in Coventry, the NEC, Resorts World Arena, Silverstone and Warwick in the next 30 days?' },
+    { cat: 'Local events', icon: '★', q: 'When are the next UK school holidays and university term breaks, and how do they usually affect our Fri–Sun occupancy?' },
+    { cat: 'Local events', icon: '★', q: 'Any upcoming University of Warwick graduation ceremonies or open days that could push parent/student overnight demand?' },
+    { cat: 'Local events', icon: '★', q: 'What major sports fixtures (Coventry City, Wasps rugby, Silverstone, Edgbaston cricket) are in the next 60 days?' },
+    { cat: 'Weather & seasonality', icon: '☁', q: 'What is the weather forecast for Coventry / Brandon over the next 7 days, and how should I nudge rates or promote the Spa / Restaurant accordingly?' },
+    { cat: 'Weather & seasonality', icon: '☁', q: 'What was our occupancy pattern for the same month last year, and what seasonal shift should I expect over the next 30 days?' },
+    { cat: 'F&B & packages', icon: '🍽', q: 'What dinner-inclusive packages could I promote to drive midweek F&B and occupancy at Brandon Hall over the next 30 days?' },
+    { cat: 'F&B & packages', icon: '🍽', q: 'What afternoon tea and Sunday roast offers are 4-star hotels in the Midlands running right now? Where should we position?' },
+    { cat: 'F&B & packages', icon: '🍽', q: 'Should we offer a Christmas party or New Year package based on current market demand in the Coventry area?' },
+    { cat: 'F&B & packages', icon: '🍽', q: 'What Spa packages typically perform well at this time of year — day spa, overnight spa, couples, bridal?' },
+    { cat: 'Yield recommendations', icon: '↑', q: 'Which nights in the next 30 days should I lock at current BAR, and which should I push? Give me the specific dates and new rates.' },
+    { cat: 'Yield recommendations', icon: '↑', q: 'Based on the current engine snapshot, what is the single highest-impact pricing change I should make today?' },
+    { cat: 'Yield recommendations', icon: '↑', q: 'How should the Executive supplement (£15) flex across the next 30 nights given our forecast occupancy and comp position?' },
+    { cat: 'Strategic', icon: '♜', q: 'What is the best pricing strategy for our next Wedding Open Day weekend — hold firm, discount to drive volume, or bundle with F&B?' },
+    { cat: 'Strategic', icon: '♜', q: 'How should we respond if Coombe Abbey cuts their rates by 10%? Model the demand impact and give a recommended response.' },
+    { cat: 'Strategic', icon: '♜', q: 'A group is requesting 40 rooms for a specific weekend at £95 per room. What is the opportunity cost given our forecast, and should we accept, counter or walk away?' },
+    { cat: 'Strategic', icon: '♜', q: 'Looking at Q1 2027 pickup pace vs same-time-last-year, what rate strategy should we run for January, February and March?' }
+  ];
+
+  function agentCategories() {
+    var cats = {}; var order = [];
+    AGENT_QUESTIONS.forEach(function (q) {
+      if (!cats[q.cat]) { cats[q.cat] = []; order.push(q.cat); }
+      cats[q.cat].push(q);
+    });
+    return order.map(function (c) { return { name: c, items: cats[c] }; });
+  }
+
+  function viewAgent() {
+    var cats = agentCategories();
+    var sidebar = cats.map(function (c) {
+      return '<div class="rv-ag-cat"><h4>' + esc(c.name) + '</h4>' +
+        c.items.map(function (q, i) {
+          return '<button class="rv-ag-q" data-rv-agent-q="' + esc(c.name + '|' + i) + '" title="' + esc(q.q) + '">' +
+            '<span class="rv-ag-qi">' + q.icon + '</span>' +
+            '<span class="rv-ag-qt">' + esc(q.q.length > 90 ? q.q.slice(0, 88) + '…' : q.q) + '</span></button>';
+        }).join('') +
+      '</div>';
+    }).join('');
+
+    return hero() + viewTabs() +
+      '<div class="rv-ag-wrap">' +
+        '<div class="rv-ag-left">' +
+          '<div class="rv-ag-leftH"><span class="rv-ai-badge">Pre-built questions</span><p class="rv-ag-tag">Click any question — the Agent researches live and answers in a few seconds. All questions are tuned to Brandon Hall.</p></div>' +
+          sidebar +
+        '</div>' +
+        '<div class="rv-ag-right">' +
+          '<div class="rv-ag-head">' +
+            '<div><h3>Ask the Agent</h3><p class="sub">Grounded by Google Search + the engine\'s current snapshot. Answers include sources you can click through.</p></div>' +
+            '<button class="v16-chip" data-rv-agent-clear title="Clear history">↺ Clear history</button>' +
+          '</div>' +
+          '<div id="rv-ag-results" class="rv-ag-results">' +
+            '<div class="rv-ag-welcome">' +
+              '<p><b>Welcome.</b> Pick a pre-built question on the left to get started, or type your own below. Try asking about:</p>' +
+              '<ul><li>today\'s morning brief and what to action</li><li>live comp-set rates and market positioning</li><li>upcoming local events that could drive demand</li><li>F&amp;B promos and package ideas for the next 30 days</li><li>yield recommendations by specific date</li><li>strategic calls — group requests, comp moves, Open Day pricing</li></ul>' +
+              '<p class="rv-ag-tip">All answers are grounded in your current engine state and in live Google Search results. Sources are listed at the bottom of each answer.</p>' +
+            '</div>' +
+          '</div>' +
+          '<div class="rv-ag-input">' +
+            '<textarea id="rv-ag-text" placeholder="Ask anything about Brandon Hall revenue — e.g. &quot;Should we drop the Exec supplement next Tue–Thu?&quot;" rows="2"></textarea>' +
+            '<button class="rv-ag-send" data-rv-agent-ask>Ask →</button>' +
+          '</div>' +
+          '<p class="rv-note" style="margin-top:8px">Model: gemini-2.0-flash · tool: Google Search grounding · ~3-10 seconds per answer · cost: pennies per day.</p>' +
+        '</div>' +
+      '</div>';
+  }
+
+  /* --- Agent runtime: ask, render, history --- */
+  function getAgentHistory() {
+    try { return JSON.parse(localStorage.getItem(AGENT_HIST_KEY)) || []; } catch (e) { return []; }
+  }
+  function setAgentHistory(h) {
+    try { localStorage.setItem(AGENT_HIST_KEY, JSON.stringify(h.slice(-20))); } catch (e) {}
+  }
+  function restoreAgentHistory() {
+    var h = getAgentHistory();
+    if (!h.length) return;
+    var el = document.getElementById('rv-ag-results'); if (!el) return;
+    // Hide welcome, render each turn
+    el.innerHTML = h.map(renderAgentTurn).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+  function renderAgentTurn(t) {
+    var sources = (t.sources || []).map(function (s) {
+      return '<a href="' + esc(s.uri) + '" target="_blank" rel="noopener noreferrer">' + esc(s.title || s.uri) + '</a>';
+    }).join('<span class="rv-ag-sep">·</span>');
+    var searchLine = t.searchQueries && t.searchQueries.length
+      ? '<p class="rv-ag-searched">Searched: ' + t.searchQueries.map(function (q) { return '<code>' + esc(q) + '</code>'; }).join(', ') + '</p>' : '';
+    return '<div class="rv-ag-turn">' +
+      '<div class="rv-ag-you"><span class="rv-ag-whoY">You</span><p>' + esc(t.question) + '</p></div>' +
+      '<div class="rv-ag-ans"><span class="rv-ag-whoA">Agent</span><div class="rv-ag-md">' + mdLite(t.answer) + '</div>' +
+        searchLine +
+        (sources ? '<p class="rv-ag-sources"><b>Sources:</b> ' + sources + '</p>' : '') +
+        (t.model ? '<p class="rv-ag-meta">' + esc(t.model) + ' · ' + fmtAgo(t.ts) + '</p>' : '') +
+      '</div>' +
+    '</div>';
+  }
+  function askAgent(question) {
+    if (!question || !question.trim() || AGENT_INFLIGHT) return;
+    AGENT_INFLIGHT = true;
+    var el = document.getElementById('rv-ag-results');
+    if (!el) { AGENT_INFLIGHT = false; return; }
+    // Append a placeholder turn
+    var placeholder = '<div class="rv-ag-turn rv-ag-pending" id="rv-ag-pending">' +
+      '<div class="rv-ag-you"><span class="rv-ag-whoY">You</span><p>' + esc(question) + '</p></div>' +
+      '<div class="rv-ag-ans"><span class="rv-ag-whoA">Agent</span><p class="rv-ag-thinking">Thinking <span class="rv-ag-dot">·</span><span class="rv-ag-dot">·</span><span class="rv-ag-dot">·</span> researching live…</p></div>' +
+    '</div>';
+    // If welcome block is still showing, replace it; else append
+    if (el.querySelector('.rv-ag-welcome')) el.innerHTML = placeholder;
+    else el.insertAdjacentHTML('beforeend', placeholder);
+    el.scrollTop = el.scrollHeight;
+
+    var token = null; try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    if (!token) {
+      finalizePending(question, '**Please sign out and sign back in** to refresh your session, then try again.', [], [], null);
+      AGENT_INFLIGHT = false; return;
+    }
+    var snapshot = buildEngineSnapshot(60);
+    fetch(AGENT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ question: question, snapshot: snapshot, ground: true })
+    }).then(function (r) { return r.json(); })
+      .then(function (j) {
+        AGENT_INFLIGHT = false;
+        if (!j || !j.ok) {
+          var reason = j && j.reason === 'no-key'
+            ? 'The Gemini API key isn\'t configured on the server. Deploy the function with a `GEMINI_API_KEY` secret and try again.'
+            : 'The Agent couldn\'t answer: ' + ((j && j.error) || 'unknown error');
+          finalizePending(question, reason, [], [], null);
+          return;
+        }
+        finalizePending(question, j.answer, j.sources || [], j.searchQueries || [], j.model);
+      }).catch(function (e) {
+        AGENT_INFLIGHT = false;
+        finalizePending(question, 'Network error contacting the Agent: ' + (e && e.message || e), [], [], null);
+      });
+  }
+  function finalizePending(question, answer, sources, searchQueries, model) {
+    var el = document.getElementById('rv-ag-results'); if (!el) return;
+    var pending = document.getElementById('rv-ag-pending');
+    var turn = { ts: Date.now(), question: question, answer: answer, sources: sources, searchQueries: searchQueries, model: model };
+    var hist = getAgentHistory(); hist.push(turn); setAgentHistory(hist);
+    if (pending) pending.outerHTML = renderAgentTurn(turn);
+    else el.insertAdjacentHTML('beforeend', renderAgentTurn(turn));
+    el.scrollTop = el.scrollHeight;
+  }
+
+  /* Snapshot of the engine's near-term state — the Agent sees this on every call. */
+  function buildEngineSnapshot(horizon) {
+    var nights = nightsFor('exec_dbl', horizon || 60);
+    var decs = getDecisions();
+    var avg = function (fn) { return Math.round(nights.reduce(function (t, n) { return t + fn(n); }, 0) / nights.length); };
+    return {
+      today: new Date().toISOString().slice(0, 10),
+      horizonNights: horizon || 60,
+      hotel: 'Brandon Hall Hotel & Spa (114 lettable)',
+      roomType: 'Executive double (48 rooms, BAR £172)',
+      averages: {
+        currentBAR: avg(function (n) { return n.current; }),
+        recommendedRate: avg(function (n) { return n.recommended; }),
+        compReference: avg(function (n) { return n.compRef; }),
+        forecastOccupancyPct: avg(function (n) { return n.occ * 100; })
+      },
+      counts: {
+        needingDecision: nights.filter(function (n) { return !decs['exec_dbl|' + n.d]; }).length,
+        bigMoves: nights.filter(function (n) { return Math.abs(n.recommended - n.current) >= 20; }).length,
+        softNights: nights.filter(function (n) { return n.occ < 0.35; }).length,
+        strongNights: nights.filter(function (n) { return n.occ > 0.85; }).length
+      },
+      biggestMoves: nights.filter(function (n) { return Math.abs(n.recommended - n.current) >= 10; })
+        .sort(function (a, b) { return Math.abs(b.recommended - b.current) - Math.abs(a.recommended - a.current); })
+        .slice(0, 5)
+        .map(function (n) { return { d: n.d, dow: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][n.day], current: n.current, recommended: n.recommended, occ: Math.round(n.occ * 100), compRef: n.compRef, reasons: n.reasons }; }),
+      settings: { commission: SETTINGS.commission, variable: SETTINGS.variable, ancillary: SETTINGS.ancillary, weights: SETTINGS.weights }
+    };
+  }
+
+  /* Minimal markdown → HTML. Covers the shape Gemini returns:
+     ## heading, **bold**, *italic*, bullet lists, numbered lists, links, paragraphs. */
+  function mdLite(md) {
+    if (!md) return '';
+    var out = String(md).replace(/\r\n/g, '\n');
+    // Escape HTML first
+    out = out.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+    // Headings ## and ###
+    out = out.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+    out = out.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+    out = out.replace(/^# (.+)$/gm, '<h3>$1</h3>');
+    // Bold and italic
+    out = out.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    out = out.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+    // Inline code
+    out = out.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    // Links [text](url)
+    out = out.replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    // Lists — group consecutive - or * items
+    out = out.replace(/^(?:- |\* )(.+)(?:\n(?:- |\* ).+)*/gm, function (block) {
+      var items = block.split(/\n/).map(function (l) { return l.replace(/^[-*] /, ''); });
+      return '<ul>' + items.map(function (i) { return '<li>' + i + '</li>'; }).join('') + '</ul>';
+    });
+    // Numbered lists
+    out = out.replace(/^(?:\d+\. )(.+)(?:\n\d+\. .+)*/gm, function (block) {
+      var items = block.split(/\n/).map(function (l) { return l.replace(/^\d+\. /, ''); });
+      return '<ol>' + items.map(function (i) { return '<li>' + i + '</li>'; }).join('') + '</ol>';
+    });
+    // Paragraphs — split on blank lines, skip anything that's already a block tag
+    out = out.split(/\n{2,}/).map(function (p) {
+      if (/^<(h3|h4|ul|ol|pre|blockquote)/.test(p.trim())) return p;
+      return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+    }).join('\n');
+    return out;
+  }
+
   function viewEvents() {
     var start = new Date(); start.setHours(0, 0, 0, 0);
     var stars = function (n) { return '<span class="rv-stars">' + '★'.repeat(n) + '<span class="dim">' + '☆'.repeat(5 - n) + '</span></span>'; };
-    var rows = DEMO_EVENTS.map(function (e) {
-      var d = addDays(start, e.offset);
-      return '<tr><td><b>' + esc(shortD(iso(d))) + '</b></td><td>' + esc(e.label) + '</td><td>' + esc(e.venue) + '</td><td><span class="rv-eventtype">' + esc(e.type) + '</span></td><td>' + stars(e.impact) + '</td><td class="n">' + num(e.attendance) + '</td></tr>';
-    }).join('');
+
+    // Prefer live events (cached) over the demo list
+    var live = getCachedEvents();
+    var useLive = !!(live && live.events && live.events.length);
+    var rows;
+    if (useLive) {
+      rows = live.events.map(function (e) {
+        return '<tr><td><b>' + esc(shortD(e.date)) + '</b></td><td>' + esc(e.event) + '</td><td>' + esc(e.venue) + '</td><td><span class="rv-eventtype">' + esc(e.type) + '</span></td><td>' + stars(e.impact) + '</td><td class="n">' + num(e.attendance) + '</td></tr>';
+      }).join('');
+    } else {
+      rows = DEMO_EVENTS.map(function (e) {
+        var d = addDays(start, e.offset);
+        return '<tr><td><b>' + esc(shortD(iso(d))) + '</b></td><td>' + esc(e.label) + '</td><td>' + esc(e.venue) + '</td><td><span class="rv-eventtype">' + esc(e.type) + '</span></td><td>' + stars(e.impact) + '</td><td class="n">' + num(e.attendance) + '</td></tr>';
+      }).join('');
+    }
+
+    var sourcesH = '';
+    if (useLive && live.sources && live.sources.length) {
+      sourcesH = '<p class="rv-ag-sources" style="margin-top:14px"><b>Sources:</b> ' + live.sources.slice(0, 8).map(function (s) {
+        return '<a href="' + esc(s.uri) + '" target="_blank" rel="noopener noreferrer">' + esc(s.title || s.uri) + '</a>';
+      }).join('<span class="rv-ag-sep">·</span>') + '</p>';
+    }
+
+    var mode = useLive
+      ? '<span class="rv-ai-badge">Live research</span> <span class="rv-ai-mode" style="margin-left:6px">Gemini + Google Search · updated ' + fmtAgo(live.ts) + '</span>'
+      : '<span class="rv-ai-mode">Demo events · click Refresh to pull real events live</span>';
+
+    // Kick off a background refresh if cache is stale
+    setTimeout(function () { maybeFetchEvents(); }, 0);
+
     return hero() + viewTabs() +
-      '<div class="rv-card"><h3>Events — next 60 days</h3><p class="sub">Local events within ~20 miles + our own diary · scored 1–5 for impact. The engine nudges rates up on strong nights but does not double-count — competitors already price events into their own rates.</p>' +
+      '<div class="rv-card">' +
+      '<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px">' +
+        '<div><h3>Events — next 60 days</h3><p class="sub" style="margin:2px 0 0">' + mode + '</p></div>' +
+        '<button class="v16-chip" data-rv-events-refresh title="Clear cache and re-research events via Gemini">↻ Refresh events</button>' +
+      '</div>' +
+      '<p class="sub" style="margin:10px 0 12px">Local events within ~20 miles + our own diary · scored 1–5 for impact. The engine nudges rates on strong nights but does not double-count — competitors already price events into their own rates.</p>' +
       '<table class="rv-t"><thead><tr><th>Date</th><th>Event</th><th>Venue</th><th>Type</th><th>Impact</th><th class="n">Attendance</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-      '<p class="rv-note">Phase 2: a PredictHQ events feed + weather; our weddings and groups read directly from HosVENUE and HosSALES rather than being keyed by hand.</p>' +
+      sourcesH +
       '</div>';
+  }
+
+  /* v36: live events — cached locally, backed by hosrevEvents Firebase function */
+  function getCachedEvents() {
+    try {
+      var raw = localStorage.getItem(EVENTS_CACHE_KEY); if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !o.ts || (Date.now() - o.ts) > EVENTS_CACHE_TTL) return null;
+      return o;
+    } catch (e) { return null; }
+  }
+  function setCachedEvents(o) { try { localStorage.setItem(EVENTS_CACHE_KEY, JSON.stringify(o)); } catch (e) {} }
+  var EVENTS_INFLIGHT = false;
+  function maybeFetchEvents(force) {
+    if (EVENTS_INFLIGHT) return;
+    if (!force && getCachedEvents()) return;
+    var token; try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { return; }
+    if (!token) return;
+    EVENTS_INFLIGHT = true;
+    var method = force ? 'POST' : 'GET';
+    var opts = { method: method, headers: { Authorization: 'Bearer ' + token } };
+    if (force) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify({ refresh: true, days: 60 }); }
+    fetch(EVENTS_ENDPOINT, opts).then(function (r) { return r.json(); })
+      .then(function (j) {
+        EVENTS_INFLIGHT = false;
+        if (!j || !j.ok || !Array.isArray(j.events) || !j.events.length) return;
+        setCachedEvents({ ts: Date.now(), events: j.events, sources: j.sources || [], model: j.model });
+        if (UI.view === 'events') render();
+      }).catch(function () { EVENTS_INFLIGHT = false; });
   }
 
   /* ---- Forecast ---- */
@@ -1029,6 +1435,7 @@
     var view = UI.view;
     var html = '<div class="rv-wrap">';
     if (view === 'dash')         html += viewDash();
+    else if (view === 'agent')    html += viewAgent();
     else if (view === 'calendar') html += viewCalendar();
     else if (view === 'compset')  html += viewCompset();
     else if (view === 'events')   html += viewEvents();
@@ -1037,6 +1444,7 @@
     html += '</div>';
     el.innerHTML = html;
     if (view === 'forecast') setTimeout(function () { drawForecastCharts(); drawTrendChart(); }, 20);
+    if (view === 'agent')    setTimeout(restoreAgentHistory, 20);
   }
 
   /* ---------- events ---------- */
@@ -1049,6 +1457,42 @@
       var modeEl = document.getElementById('rv-ai-mode');
       if (modeEl) modeEl.textContent = 'Asking Gemini…';
       render();
+      return;
+    }
+
+    // Agent — prebuilt question click
+    var aq = t.closest('[data-rv-agent-q]');
+    if (aq) {
+      var key = aq.getAttribute('data-rv-agent-q');
+      var parts = key.split('|'); var cat = parts[0]; var i = +parts[1];
+      var cats = agentCategories();
+      var q = null;
+      cats.forEach(function (c) { if (c.name === cat) q = c.items[i]; });
+      if (q) askAgent(q.q);
+      return;
+    }
+    // Agent — ask button (free text)
+    if (t.closest('[data-rv-agent-ask]')) {
+      var ta = document.getElementById('rv-ag-text');
+      var q2 = ta && ta.value ? ta.value.trim() : '';
+      if (q2) { askAgent(q2); if (ta) ta.value = ''; }
+      return;
+    }
+    // Agent — clear history
+    if (t.closest('[data-rv-agent-clear]')) {
+      if (confirm('Clear all Agent conversation history?')) {
+        try { localStorage.removeItem(AGENT_HIST_KEY); } catch (e) {}
+        render();
+      }
+      return;
+    }
+
+    // Events — force refresh via Gemini
+    if (t.closest('[data-rv-events-refresh]')) {
+      try { localStorage.removeItem(EVENTS_CACHE_KEY); } catch (e) {}
+      maybeFetchEvents(true);
+      var mel = document.querySelector('#pf-rev .rv-ai-mode');
+      if (mel) mel.textContent = 'Researching events via Gemini + Google Search…';
       return;
     }
 
@@ -1151,18 +1595,26 @@
   document.addEventListener('keydown', function (e) {
     var t = e.target; if (!t || !t.getAttribute) return;
     var key = t.getAttribute('data-rv-over-in');
-    if (!key) return;
-    if (e.key === 'Enter') {
+    if (key) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var v = parseFloat(t.value); if (!isFinite(v)) return;
+        var parts = key.split('|');
+        setDecision(parts[0], parts[1], 'over', Math.round(v));
+        UI.overrideOpen = null;
+        render();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        UI.overrideOpen = null;
+        render();
+      }
+      return;
+    }
+    // Agent — Cmd/Ctrl+Enter submits the free-text question
+    if (t.id === 'rv-ag-text' && e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
-      var v = parseFloat(t.value); if (!isFinite(v)) return;
-      var parts = key.split('|');
-      setDecision(parts[0], parts[1], 'over', Math.round(v));
-      UI.overrideOpen = null;
-      render();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      UI.overrideOpen = null;
-      render();
+      var q = t.value.trim();
+      if (q) { askAgent(q); t.value = ''; }
     }
   });
 
