@@ -179,7 +179,46 @@
       '#pf-rev .rv-ag-dot{display:inline-block;animation:rv-blink 1.4s infinite}',
       '#pf-rev .rv-ag-dot:nth-child(2){animation-delay:.2s}',
       '#pf-rev .rv-ag-dot:nth-child(3){animation-delay:.4s}',
-      '@keyframes rv-blink{0%,80%,100%{opacity:.25}40%{opacity:1}}'
+      '@keyframes rv-blink{0%,80%,100%{opacity:.25}40%{opacity:1}}',
+      /* v37: Market view section headers */
+      '#pf-rev h3.rv-sect-h{margin:24px 0 10px;font-size:16px;color:#1a2b3a;border-left:4px solid #1F7A8C;padding-left:10px}',
+      /* v37: Day Plan CTA + output */
+      '#pf-rev .rv-plan-cta{display:flex;align-items:center;gap:20px;background:linear-gradient(135deg,#145866 0%,#1F7A8C 100%);color:#fff;border:0;border-radius:14px;padding:22px 26px;margin-bottom:18px;box-shadow:0 6px 20px rgba(20,88,102,.25)}',
+      '#pf-rev .rv-plan-cta h3{color:#fff;font-size:20px;margin:0 0 6px}',
+      '#pf-rev .rv-plan-cta p.sub{color:rgba(255,255,255,.85);margin:0 0 6px;font-size:13.5px;line-height:1.5}',
+      '#pf-rev .rv-plan-cta p.rv-note{color:rgba(255,255,255,.6);font-size:11.5px;margin:4px 0 0}',
+      '#pf-rev .rv-plan-cta-left{flex:1 1 auto}',
+      '#pf-rev .rv-plan-cta-right{flex:0 0 auto}',
+      '#pf-rev .rv-plan-btn{background:#fff;color:#145866;border:0;border-radius:11px;padding:14px 22px;font:inherit;font-size:14.5px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:transform .1s ease}',
+      '#pf-rev .rv-plan-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.14)}',
+      '#pf-rev .rv-plan-pending h3{color:#1F7A8C}',
+      '#pf-rev .rv-plan-steps{list-style:none;padding:0;margin:14px 0;display:flex;gap:6px;flex-wrap:wrap}',
+      '#pf-rev .rv-plan-steps li{padding:6px 12px;background:#fafaf6;border:1px solid #e4e2dc;border-radius:8px;font-size:12px;color:#7b8494}',
+      '#pf-rev .rv-plan-steps li.on{background:#e6f4ee;color:#1a6442;border-color:#bfe3d0}',
+      '#pf-rev .rv-plan-steps li.work{background:#fdf8ee;color:#9d7d5f;border-color:#efe4c7;animation:rv-blink 1.4s infinite}',
+      '#pf-rev .rv-plan-out{border-color:#d6e4e8}',
+      '#pf-rev .rv-plan-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}',
+      '#pf-rev .rv-plan-head-r{display:flex;gap:6px;flex-wrap:wrap}',
+      '#pf-rev .rv-plan-top{background:#fdf8ee;border:1px solid #efe4c7;border-radius:10px;padding:10px 14px;margin:10px 0 14px}',
+      '#pf-rev .rv-plan-top b{color:#9d7d5f;font-size:12px;text-transform:uppercase;letter-spacing:.3px}',
+      '#pf-rev .rv-plan-top ol{margin:6px 0 0 18px;padding:0;font-size:13px;color:#1a2b3a}',
+      '#pf-rev .rv-plan-top ol li{margin-bottom:3px}',
+      '#pf-rev .rv-plan-top ol li b{color:#1a2b3a;font-size:13px;text-transform:none;letter-spacing:0}',
+      '#pf-rev .rv-plan-watch{margin-top:10px;font-size:12.5px;color:#52514e}',
+      '#pf-rev .rv-plan-watch ul{margin:4px 0 0 18px;padding:0}',
+      '#pf-rev .rv-plan-tbl{font-size:12.5px}',
+      /* confidence pills (used on Calendar too) */
+      '#pf-rev .rv-conf{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}',
+      '#pf-rev .rv-conf-hi{background:#e6f4ee;color:#1a6442}',
+      '#pf-rev .rv-conf-md{background:#fdf8ee;color:#9d7d5f}',
+      '#pf-rev .rv-conf-lo{background:#fbe9e7;color:#8a1e15}',
+      /* plan action badges */
+      '#pf-rev .rv-planact{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.3px}',
+      '#pf-rev .rv-planact-app{background:#e6f4ee;color:#1a6442}',
+      '#pf-rev .rv-planact-push{background:#e8f0fd;color:#1646a6}',
+      '#pf-rev .rv-planact-lock{background:#efecf9;color:#4e3fa5}',
+      '#pf-rev .rv-planact-soft{background:#fdf0e6;color:#9d4712}',
+      '#pf-rev .rv-planact-pro{background:#fdeaf4;color:#9d1e5c}'
     ].join('\n');
     document.head.appendChild(s);
   }
@@ -381,6 +420,18 @@
     return out;
   }
 
+  /* v37: confidence heuristic for a night row — High / medium / low.
+     - Big swings outside ± max daily change → low
+     - Stable move (within ±£10) + event or strong forecast occ → high
+     - Everything else → medium */
+  function computeConfidence(n) {
+    var absMove = Math.abs(n.recommended - n.current);
+    if (absMove > SETTINGS.maxDailyChange * 1.4) return 'low';
+    if (absMove <= 10 && (n.eventScore >= 3 || n.occ >= 0.85 || n.occ <= 0.2)) return 'high';
+    if (absMove <= 15) return 'medium';
+    return 'medium';
+  }
+
   /* ---------- decisions (localStorage) ---------- */
   function getDecisions() {
     var st = loadState();
@@ -406,9 +457,7 @@
       ['dash',     'Dashboard'],
       ['agent',    '✨ Ask the Agent'],
       ['calendar', 'Calendar'],
-      ['compset',  'Compset'],
-      ['events',   'Events'],
-      ['forecast', 'Forecast & Trends'],
+      ['market',   'Market view'],
       ['settings', 'Settings']
     ];
     return '<div class="rv-tabs">' + tabs.map(function (t) {
@@ -416,22 +465,27 @@
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v36';
+  var HOSREV_VERSION = 'v37';
   var FN_BASE = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/';
   var AI_ENDPOINT = FN_BASE + 'hosrevAi';
   var AGENT_ENDPOINT = FN_BASE + 'hosrevAgent';
   var EVENTS_ENDPOINT = FN_BASE + 'hosrevEvents';
   var COMP_ENDPOINT = FN_BASE + 'hosrevComp';
+  var PLAN_ENDPOINT = FN_BASE + 'hosrevPlan';
   var AI_TOKEN_KEY = 'hosbusiness_gl_token';
   var AI_CACHE_KEY = 'hosrev_ai_cache';
   var EVENTS_CACHE_KEY = 'hosrev_events_cache';
   var COMP_CACHE_KEY = 'hosrev_comp_cache';
   var AGENT_HIST_KEY = 'hosrev_agent_history';
-  var AI_CACHE_TTL = 10 * 60 * 1000;    // 10 minutes
-  var EVENTS_CACHE_TTL = 24 * 60 * 60 * 1000;    // 24 hours client cache (server caches 7 days)
-  var COMP_CACHE_TTL = 6 * 60 * 60 * 1000;    // 6 hours client cache
+  var PLAN_CACHE_KEY = 'hosrev_plan_cache';
+  var ACCURACY_KEY = 'hosrev_accuracy';
+  var AI_CACHE_TTL = 10 * 60 * 1000;
+  var EVENTS_CACHE_TTL = 24 * 60 * 60 * 1000;
+  var COMP_CACHE_TTL = 6 * 60 * 60 * 1000;
+  var PLAN_CACHE_TTL = 60 * 60 * 1000;   // 1 hour for a day-plan
   var AI_INFLIGHT = false;
   var AGENT_INFLIGHT = false;
+  var PLAN_INFLIGHT = false;
   function hero() {
     return '<div class="rv-hero"><div><h2>Revenue Management</h2><p>Maximising net room margin across the next 365 nights · Recommendations refresh every 30 mins against latest on-books · Comp rates refreshed daily at 05:30</p></div><div class="rv-demo">Phase 1 · Demo · ' + HOSREV_VERSION + '</div></div>';
   }
@@ -473,6 +527,9 @@
     }).join('');
 
     return hero() + viewTabs() +
+      // v37: Build My Day Plan — the one-click workflow
+      planCard() +
+
       '<div class="rv-tiles">' +
         tile('Nights priced', num(totalNights), 'next 365 nights', '') +
         tile('Needing a decision', num(needDec), 'next ' + horizon + ' nights · Exec dbl', needDec > 20 ? 'warn' : '') +
@@ -481,6 +538,7 @@
         tile('Avg suggested rate', gbp(avgReco), 'next ' + horizon + ' · Exec dbl', '') +
         tile('Avg comp reference', gbp(avgComp), 'weighted comp set', '') +
         tile('Event nights', num(eventN), 'impact ≥ 3/5', '') +
+        accuracyTile() +   // v37
       '</div>' +
 
       /* v34: AI insights (rule-based for now; wires to Gemini/Claude when Gary ships the key) */
@@ -623,6 +681,263 @@
       }).catch(function () { AI_INFLIGHT = false; });
   }
 
+  /* ============================================================
+     v37: Build My Day Plan — the one-click workflow.
+     ============================================================ */
+  function getCachedPlan() {
+    try {
+      var raw = localStorage.getItem(PLAN_CACHE_KEY); if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !o.ts || (Date.now() - o.ts) > PLAN_CACHE_TTL) return null;
+      return o;
+    } catch (e) { return null; }
+  }
+  function setCachedPlan(o) { try { localStorage.setItem(PLAN_CACHE_KEY, JSON.stringify(o)); } catch (e) {} }
+
+  function planCard() {
+    var cached = getCachedPlan();
+    if (cached && cached.plan) {
+      return renderPlanCard(cached);
+    }
+    return '<div class="rv-card rv-plan-cta">' +
+      '<div class="rv-plan-cta-left">' +
+        '<h3>Build my Day Plan</h3>' +
+        '<p class="sub">One click. The Agent bundles your engine snapshot, Guestline history, live comp rates, local events and the weather, then returns a day-by-day 30-night action plan with one-tap approvals.</p>' +
+        '<p class="rv-note">Usually takes 10–20 seconds. Costs about a penny. Uses Gemini + Google Search grounding.</p>' +
+      '</div>' +
+      '<div class="rv-plan-cta-right">' +
+        '<button class="rv-plan-btn" data-rv-plan-build>Build 30-night plan →</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderPlanCard(c) {
+    var p = c.plan || {};
+    var days = Array.isArray(p.days) ? p.days : [];
+    var topThree = Array.isArray(p.topThree) ? p.topThree : [];
+    var watch = Array.isArray(p.watchFor) ? p.watchFor : [];
+
+    var confBadge = function (level) {
+      var klass = level === 'high' ? 'hi' : (level === 'low' ? 'lo' : 'md');
+      return '<span class="rv-conf rv-conf-' + klass + '">' + esc(level || 'med') + '</span>';
+    };
+    var actionBadge = function (action) {
+      var map = {
+        approve: ['app', 'Approve'],
+        push:    ['push', 'Push up'],
+        lock:    ['lock', 'Lock'],
+        soften:  ['soft', 'Soften'],
+        promo:   ['pro', 'Promo']
+      };
+      var m = map[action] || ['app', action || 'Approve'];
+      return '<span class="rv-planact rv-planact-' + m[0] + '">' + esc(m[1]) + '</span>';
+    };
+
+    var rows = days.map(function (d, i) {
+      var delta = (d.recommended - d.currentBAR) || 0;
+      var deltaH = delta > 0 ? '<span class="rv-pill up">+£' + delta + '</span>' : (delta < 0 ? '<span class="rv-pill dn">−£' + Math.abs(delta) + '</span>' : '<span class="rv-pill flat">hold</span>');
+      var evL = (d.events && d.events.length) ? '<br><small style="color:#BB9979">★ ' + esc(d.events.join(', ')) + '</small>' : '';
+      return '<tr>' +
+        '<td><b>' + esc(d.date ? shortD(d.date) : '—') + '</b>' + evL + '</td>' +
+        '<td class="n">' + gbp(d.currentBAR) + '</td>' +
+        '<td class="n"><b style="color:#1F7A8C">' + gbp(d.recommended) + '</b> ' + deltaH + '</td>' +
+        '<td>' + actionBadge(d.action) + '</td>' +
+        '<td>' + confBadge(d.confidence) + '</td>' +
+        '<td class="rv-why">' + esc(d.reason || '') + '</td>' +
+        '<td><button class="rv-ag-refresh" data-rv-plan-apply="' + i + '">Apply</button></td>' +
+      '</tr>';
+    }).join('');
+
+    var topThreeH = topThree.map(function (t) {
+      return '<li><b>' + esc(t.title || '') + '</b> — ' + esc(t.body || '') + '</li>';
+    }).join('');
+    var watchH = watch.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('');
+
+    var sources = (c.sources || []).map(function (s) {
+      return '<a href="' + esc(s.uri) + '" target="_blank" rel="noopener noreferrer">' + esc(s.title || s.uri) + '</a>';
+    }).join('<span class="rv-ag-sep">·</span>');
+
+    var stanceColor = { push: '#1a8f63', hold: '#52514e', soften: '#eb6834', mixed: '#7a4fc4' }[p.stance || ''] || '#1a2b3a';
+
+    return '<div class="rv-card rv-plan-out">' +
+      '<div class="rv-plan-head">' +
+        '<div>' +
+          '<span class="rv-ai-badge">Day Plan</span>' +
+          '<span class="rv-ai-mode" style="margin-left:6px">' + esc(c.model || 'Gemini') + ' · updated ' + fmtAgo(c.ts) + '</span>' +
+        '</div>' +
+        '<div class="rv-plan-head-r">' +
+          '<button class="v16-chip" data-rv-plan-apply-all>Approve all</button>' +
+          '<button class="v16-chip" data-rv-plan-apply-weekends>Approve weekends</button>' +
+          '<button class="v16-chip" data-rv-plan-build>↻ Rebuild</button>' +
+        '</div>' +
+      '</div>' +
+      '<h3 style="margin:14px 0 4px">' + esc(p.summary || 'Day plan') + '</h3>' +
+      '<p class="sub" style="margin:0 0 14px">Stance: <b style="color:' + stanceColor + '">' + esc(p.stance || '—') + '</b> · Confidence: <b>' + esc(p.confidence || '—') + '</b>' + (p.forecastAccuracyNote ? ' · <em>' + esc(p.forecastAccuracyNote) + '</em>' : '') + '</p>' +
+      (topThreeH ? '<div class="rv-plan-top"><b>Top three actions today</b><ol>' + topThreeH + '</ol></div>' : '') +
+      '<div style="overflow-x:auto"><table class="rv-t rv-plan-tbl"><thead><tr><th>Night</th><th class="n">BAR</th><th class="n">Recommended</th><th>Action</th><th>Conf.</th><th>Reason</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      (watchH ? '<div class="rv-plan-watch"><b>Watch for</b><ul>' + watchH + '</ul></div>' : '') +
+      (sources ? '<p class="rv-ag-sources"><b>Sources:</b> ' + sources + '</p>' : '') +
+    '</div>';
+  }
+
+  /* Build the plan by calling hosrevPlan Firebase function. */
+  function buildDayPlan() {
+    if (PLAN_INFLIGHT) return;
+    var token; try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { return; }
+    if (!token) { alert('Please sign out and sign back in to refresh your session, then try again.'); return; }
+
+    PLAN_INFLIGHT = true;
+
+    // Build a snapshot — same shape as agent snapshot
+    var snapshot = buildEngineSnapshot(30);
+    // Last 60 days actual ADR from the Guestline feed
+    var history = buildHistoryPayload(60);
+    // Events + comp (may be null if not fetched yet)
+    var ev = getCachedEvents();
+    var co = getCachedComp();
+    var payload = {
+      today: new Date().toISOString().slice(0, 10),
+      horizonDays: 30,
+      snapshot: snapshot,
+      history: history,
+      events: ev && ev.events ? ev.events.slice(0, 12) : null,
+      comp: co && co.byDate ? { byDate: co.byDate } : null,
+      weather: null    // Gemini will pull weather via grounding
+    };
+
+    // Swap the CTA for a progress stepper
+    var sect = document.querySelector('#pf-rev .rv-plan-cta, #pf-rev .rv-plan-out');
+    if (sect) {
+      sect.outerHTML = '<div class="rv-card rv-plan-pending" id="rv-plan-pending">' +
+        '<h3>Building your Day Plan…</h3>' +
+        '<p class="sub">Bundling snapshot + 60 days history + live events + comp + weather, then asking Gemini for a 30-night plan.</p>' +
+        '<ol class="rv-plan-steps">' +
+          '<li class="on">Collect inputs</li>' +
+          '<li class="on">Send to Gemini</li>' +
+          '<li class="work">Thinking …</li>' +
+          '<li>Render plan</li>' +
+        '</ol>' +
+        '<p class="rv-ag-thinking">This usually takes 10–20 seconds.</p>' +
+      '</div>';
+    }
+
+    fetch(PLAN_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json(); })
+      .then(function (j) {
+        PLAN_INFLIGHT = false;
+        if (!j || !j.ok) {
+          var p = document.getElementById('rv-plan-pending');
+          if (p) p.outerHTML = '<div class="rv-card"><h3>Plan build failed</h3><p class="sub">' + esc((j && j.error) || (j && j.reason === 'no-key' ? 'Gemini API key not set' : 'Unknown error')) + '</p><button class="rv-plan-btn" data-rv-plan-build>Try again</button></div>';
+          return;
+        }
+        var saved = { ts: Date.now(), plan: j.plan, sources: j.sources || [], model: j.model };
+        setCachedPlan(saved);
+        render();
+      }).catch(function (e) {
+        PLAN_INFLIGHT = false;
+        var p = document.getElementById('rv-plan-pending');
+        if (p) p.outerHTML = '<div class="rv-card"><h3>Plan build failed</h3><p class="sub">Network error: ' + esc(e && e.message || e) + '</p><button class="rv-plan-btn" data-rv-plan-build>Try again</button></div>';
+      });
+  }
+
+  /* Pull last 60 days actual ADR + occupancy from the Guestline feed */
+  function buildHistoryPayload(days) {
+    try {
+      var S = (window.Trading && window.Trading.S) ? window.Trading.S() : null;
+      if (!S || !S.gl || !S.gl.byDay) return null;
+      var allDays = Object.keys(S.gl.byDay).sort().slice(-(days || 60));
+      return allDays.map(function (d) {
+        var r = S.gl.byDay[d];
+        return {
+          d: d,
+          adr: r.adr ? Math.round(r.adr) : null,
+          occ: (r.sold && r.stock) ? Math.round((r.sold / 114) * 100) : null,
+          rooms: r.sold || 0
+        };
+      }).filter(function (x) { return x.adr != null; });
+    } catch (e) { return null; }
+  }
+
+  /* Apply one day from the plan as a decision */
+  function applyPlanDay(idx) {
+    var c = getCachedPlan(); if (!c || !c.plan || !c.plan.days) return;
+    var d = c.plan.days[idx]; if (!d) return;
+    var action = d.action === 'lock' ? 'lock' : (d.action === 'soften' || d.action === 'promo' || d.action === 'push' ? 'over' : 'approve');
+    var price = (action === 'lock') ? d.currentBAR : d.recommended;
+    setDecision('exec_dbl', d.date, action, price);
+    render();
+  }
+  function applyAllPlanDays(weekendsOnly) {
+    var c = getCachedPlan(); if (!c || !c.plan || !c.plan.days) return;
+    var n = 0;
+    c.plan.days.forEach(function (d) {
+      if (!d.date) return;
+      if (weekendsOnly) {
+        var dow = parseISO(d.date).getDay(); if (dow !== 5 && dow !== 6) return;
+      }
+      var action = d.action === 'lock' ? 'lock' : (d.action === 'soften' || d.action === 'promo' || d.action === 'push' ? 'over' : 'approve');
+      var price = (action === 'lock') ? d.currentBAR : d.recommended;
+      setDecision('exec_dbl', d.date, action, price); n++;
+    });
+    alert('Applied ' + n + ' decisions from the Day Plan.');
+    render();
+  }
+
+  /* v37: forecast accuracy — snapshot approved recommendations, then compare
+     against Guestline actuals as nights close. Stores a rolling MAPE in state. */
+  function snapshotForAccuracy() {
+    try {
+      var st = loadState();
+      st.forecasts = st.forecasts || {};
+      var decs = getDecisions();
+      Object.keys(decs).forEach(function (k) {
+        if (st.forecasts[k]) return;
+        var parts = k.split('|'); if (parts.length !== 2) return;
+        var rt = parts[0], d = parts[1];
+        var row = (nightsFor(rt, 60) || []).filter(function (n) { return n.d === d; })[0];
+        if (!row) return;
+        st.forecasts[k] = { d: d, rt: rt, forecastOcc: Math.round(row.occ * 100), forecastRate: row.recommended, decided: Date.now() };
+      });
+      saveState(st);
+    } catch (e) {}
+  }
+  function reconcileAccuracy() {
+    try {
+      var S = (window.Trading && window.Trading.S) ? window.Trading.S() : null;
+      if (!S || !S.gl || !S.gl.byDay) return;
+      var st = loadState();
+      st.forecasts = st.forecasts || {};
+      st.accuracy = st.accuracy || { count: 0, mape: 0, sum: 0 };
+      Object.keys(st.forecasts).forEach(function (k) {
+        var f = st.forecasts[k]; if (!f || f.closed) return;
+        var row = S.gl.byDay[f.d]; if (!row) return;
+        var actualOcc = row.sold ? Math.round((row.sold / 114) * 100) : null;
+        if (actualOcc == null) return;
+        var ape = Math.abs((actualOcc - f.forecastOcc) / Math.max(1, actualOcc)) * 100;
+        f.closed = true; f.actualOcc = actualOcc; f.ape = ape;
+        st.accuracy.sum += ape; st.accuracy.count += 1;
+        st.accuracy.mape = st.accuracy.sum / st.accuracy.count;
+      });
+      st.forecasts = st.forecasts;
+      saveState(st);
+    } catch (e) {}
+  }
+
+  /* v37: Forecast accuracy tile — placeholder for now; builds as decisions close */
+  function accuracyTile() {
+    var st = loadState();
+    var acc = st.accuracy || null;
+    if (!acc || !acc.count) {
+      return tile('Forecast accuracy', '—', 'builds as nights close', '');
+    }
+    var mape = Math.round(acc.mape * 10) / 10;
+    var klass = mape <= 5 ? 'good' : (mape <= 12 ? '' : 'warn');
+    return tile('Forecast accuracy', (100 - mape).toFixed(0) + '%', acc.count + ' closed · MAPE ' + mape + '%', klass);
+  }
+
   /* ---------- v34: Actions — bulk operations ---------- */
   function actionsCard(nights, decs, horizon) {
     var near = nights.slice(0, horizon);
@@ -733,6 +1048,10 @@
         overBtn = '<button data-rv-dec="over" data-rv-rt="' + UI.roomType + '" data-rv-d="' + n.d + '" data-rv-p="' + n.recommended + '"' + (dec && dec.d === 'over' ? ' class="on over"' : '') + '>Override' + (dec && dec.d === 'over' ? ' £' + dec.p : '') + '</button>';
       }
 
+      // v37: confidence per night
+      var conf = computeConfidence(n);
+      var confKlass = conf === 'high' ? 'hi' : (conf === 'low' ? 'lo' : 'md');
+
       return '<tr class="' + cls + '">' +
         '<td><b>' + esc(shortD(n.d)) + '</b></td>' +
         '<td class="n">' + num(n.onBooks) + ' / ' + num(n.capacity) + '</td>' +
@@ -741,6 +1060,7 @@
         '<td class="n">' + gbp(n.current) + '</td>' +
         '<td class="n">' + recoCell + ' ' + pill + '</td>' +
         '<td class="n">' + gbp(n.netPerRoom, 2) + '</td>' +
+        '<td><span class="rv-conf rv-conf-' + confKlass + '">' + conf + '</span></td>' +
         '<td class="rv-why">' + n.reasons.map(esc).join('<br>') + '</td>' +
         '<td><div class="rv-dec">' +
           '<button data-rv-dec="approve" data-rv-rt="' + UI.roomType + '" data-rv-d="' + n.d + '" data-rv-p="' + n.recommended + '"' + (dec && dec.d === 'approve' ? ' class="on"' : '') + '>Approve</button>' +
@@ -761,7 +1081,7 @@
         '<button class="v16-chip" data-rv-csv title="Download the next ' + days + ' nights as CSV for Patrik to review offline">↓ Export CSV</button>' +
       '</div>' +
       '<div class="rv-roomsel" style="margin-top:12px">' + roomBtns + '</div>' +
-      '<table class="rv-t"><thead><tr><th>Night</th><th class="n">On books</th><th class="n">Fcast occ</th><th class="n">Comp ref</th><th class="n">Current BAR</th><th class="n">Sell at</th><th class="n">Net / room</th><th>Why</th><th>Decision</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<table class="rv-t"><thead><tr><th>Night</th><th class="n">On books</th><th class="n">Fcast occ</th><th class="n">Comp ref</th><th class="n">Current BAR</th><th class="n">Sell at</th><th class="n">Net / room</th><th>Conf.</th><th>Why</th><th>Decision</th></tr></thead><tbody>' + rows + '</tbody></table>' +
       '<p class="rv-note">Guardrails in force: floor £' + rt.floor + ', ceiling £' + rt.ceiling + ', max daily change £' + SETTINGS.maxDailyChange + '. Decisions are stored locally until the Guestline write-back is wired (Phase 2+, test site first).</p>' +
       '</div>';
   }
@@ -853,6 +1173,97 @@
       '<div style="overflow-x:auto"><table class="rv-t"><thead><tr><th>Hotel</th>' + headerDates + '</tr></thead><tbody>' + usRow + compRows + '</tbody></table></div>' +
       '<p class="rv-note">Live comp rates come from the SerpApi Google Hotels shopper (weekly Sunday run, Firestore-cached). Cells with live data have a subtle green tint.</p>' +
       '</div>';
+  }
+
+  /* v37: Market view — combines the ex-separate Compset, Events, Forecast&Trends tabs
+     into one scrollable page with three sections and a "Then vs Now" overview chart
+     at the top. Each section below is produced by stripping the hero+tabs from the
+     original view so we don't duplicate them. */
+  function viewMarket() {
+    // Each legacy view returns hero() + viewTabs() + content. Strip the prefix.
+    var pre = hero() + viewTabs();
+    function stripPre(s) { return s.indexOf(pre) === 0 ? s.slice(pre.length) : s; }
+    var compHtml = stripPre(viewCompset());
+    var evHtml = stripPre(viewEvents());
+    var fcHtml = stripPre(viewForecast());
+    return pre +
+      // Section 0 — Then vs Now overview
+      '<div class="rv-card"><h3>Then vs Now — our ADR history + engine forward + comp average</h3><p class="sub">Last 60 days actual ADR from Guestline closed-day · next 60 nights engine recommended for the Executive double · comp set average (when live)</p>' +
+        '<div class="rv-chartbox" style="height:380px"><canvas id="rv-tn-chart"></canvas></div>' +
+        '<div class="rv-leg" id="rv-tn-leg"></div>' +
+      '</div>' +
+      // Section 1 — Compset
+      '<h3 class="rv-sect-h">Compset</h3>' + compHtml +
+      // Section 2 — Events
+      '<h3 class="rv-sect-h">Events</h3>' + evHtml +
+      // Section 3 — Forecast charts (occupancy, net profit, trend by hotel)
+      '<h3 class="rv-sect-h">Forecast &amp; trend charts</h3>' + fcHtml;
+  }
+
+  /* Then-vs-Now chart — real past ADR + engine forward recommended + comp avg */
+  function drawThenNowChart() {
+    if (!window.Chart) return;
+    var el = $('rv-tn-chart'); if (!el) return;
+    buildNights();
+
+    // Pull real past ADR from the Guestline feed
+    var histLabels = [], histAdr = [];
+    try {
+      var S = (window.Trading && window.Trading.S) ? window.Trading.S() : null;
+      if (S && S.gl && S.gl.byDay) {
+        var allDays = Object.keys(S.gl.byDay).sort();
+        var tail = allDays.slice(-60);
+        tail.forEach(function (d) {
+          var row = S.gl.byDay[d];
+          histLabels.push(shortD(d));
+          histAdr.push(row && row.adr ? Math.round(row.adr) : null);
+        });
+      }
+    } catch (e) {}
+
+    // Forward 60 — engine recommended for Exec double
+    var fwdRows = nightsFor('exec_dbl', 60);
+    var fwdLabels = fwdRows.map(function (r) { return shortD(r.d); });
+    var fwdReco = fwdRows.map(function (r) { return r.recommended; });
+
+    // Comp set avg (if live)
+    var liveComp = getCachedComp();
+    var compAvg = fwdRows.map(function (r) {
+      if (!liveComp || !liveComp.byDate || !liveComp.byDate[r.d]) return null;
+      var rates = Object.values(liveComp.byDate[r.d]).map(function (h) { return h.rate; }).filter(function (x) { return x; });
+      if (!rates.length) return null;
+      return Math.round(rates.reduce(function (t, x) { return t + x; }, 0) / rates.length);
+    });
+
+    var labels = histLabels.concat(['— today —']).concat(fwdLabels);
+    var histPadded = histAdr.concat([null]).concat(fwdRows.map(function () { return null; }));
+    var fwdPadded = histLabels.map(function () { return null; }).concat([null]).concat(fwdReco);
+    var compPadded = histLabels.map(function () { return null; }).concat([null]).concat(compAvg);
+
+    if (charts.thenNow) { try { charts.thenNow.destroy(); } catch (e) {} }
+    charts.thenNow = new Chart(el, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Our actual ADR (past 60 days)', data: histPadded, borderColor: '#1a2b3a', backgroundColor: '#1a2b3a22', borderWidth: 2.5, pointRadius: 2, tension: 0.2, spanGaps: false },
+          { label: 'Engine recommended (next 60 nights)', data: fwdPadded, borderColor: TEAL, backgroundColor: TEAL + '22', borderWidth: 2.5, pointRadius: 2, tension: 0.2, spanGaps: false },
+          { label: 'Comp set average', data: compPadded, borderColor: '#BB9979', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, tension: 0.2, spanGaps: false }
+        ]
+      },
+      options: {
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 11 } } },
+          tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': £' + (c.parsed.y || '–'); } } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxRotation: 60, minRotation: 50, font: { size: 9 }, maxTicksLimit: 30 } },
+          y: { grid: { color: '#ebe9e3' }, border: { display: false }, ticks: { callback: function (v) { return '£' + v; } } }
+        }
+      }
+    });
   }
 
   /* v36: live comp rates — cached locally, backed by hosrevComp (Firestore). */
@@ -1430,6 +1841,7 @@
   /* ---------- top-level renderer ---------- */
   function render() {
     injectCSS();
+    try { snapshotForAccuracy(); reconcileAccuracy(); } catch (e) {}
     var el = $('pf-rev');
     if (!el) return;
     var view = UI.view;
@@ -1437,13 +1849,11 @@
     if (view === 'dash')         html += viewDash();
     else if (view === 'agent')    html += viewAgent();
     else if (view === 'calendar') html += viewCalendar();
-    else if (view === 'compset')  html += viewCompset();
-    else if (view === 'events')   html += viewEvents();
-    else if (view === 'forecast') html += viewForecast();
+    else if (view === 'market')   html += viewMarket();
     else if (view === 'settings') html += viewSettings();
     html += '</div>';
     el.innerHTML = html;
-    if (view === 'forecast') setTimeout(function () { drawForecastCharts(); drawTrendChart(); }, 20);
+    if (view === 'market')   setTimeout(function () { drawForecastCharts(); drawTrendChart(); drawThenNowChart(); }, 20);
     if (view === 'agent')    setTimeout(restoreAgentHistory, 20);
   }
 
@@ -1495,6 +1905,14 @@
       if (mel) mel.textContent = 'Researching events via Gemini + Google Search…';
       return;
     }
+
+    // v37: Build/rebuild Day Plan
+    if (t.closest('[data-rv-plan-build]')) { try { localStorage.removeItem(PLAN_CACHE_KEY); } catch (e) {} buildDayPlan(); return; }
+    // v37: Apply single plan day
+    var pa = t.closest('[data-rv-plan-apply]');
+    if (pa) { applyPlanDay(+pa.getAttribute('data-rv-plan-apply')); return; }
+    if (t.closest('[data-rv-plan-apply-all]')) { applyAllPlanDays(false); return; }
+    if (t.closest('[data-rv-plan-apply-weekends]')) { applyAllPlanDays(true); return; }
 
     // Bulk action
     var ac = t.closest('[data-rv-act]');
