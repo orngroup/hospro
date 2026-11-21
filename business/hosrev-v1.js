@@ -571,7 +571,7 @@
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v39';
+  var HOSREV_VERSION = 'v39.1';
   function phaseBadge() {
     var liveBooks = getCachedBooks();
     var liveOnBooks = !!(liveBooks && liveBooks.byDate);
@@ -2064,21 +2064,43 @@
   }
   function refreshAlfredBrief() {
     var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
-    if (!tok || ALFRED_BRIEF_INFLIGHT) return;
+    if (!tok) { renderAlfredErr('You need to sign in again — the session has expired.'); return; }
     ALFRED_BRIEF_INFLIGHT = true;
     var statusEl = document.querySelector('[data-rv-alf-status]');
     if (statusEl) statusEl.textContent = 'Alfred is preparing a fresh brief…';
     fetch(ALFRED_BRIEF_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ horizon: 60, ground: true }) })
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
-        if (j && j.ok && j.brief) setCachedAlfredBrief({ ts: Date.now(), brief: j.brief });
+      .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }).catch(function () { return { status: r.status, body: null }; }); })
+      .then(function (wrap) {
         ALFRED_BRIEF_INFLIGHT = false;
-        if (UI.view === 'alfred') render();
+        if (wrap.body && wrap.body.ok && wrap.body.brief) {
+          setCachedAlfredBrief({ ts: Date.now(), brief: wrap.body.brief });
+          if (UI.view === 'alfred') render();
+          return;
+        }
+        // Server returned an error — show it to the user instead of leaving the top-hat stuck
+        var msg = wrap.body && wrap.body.error ? wrap.body.error : ('Alfred could not reach Gemini (HTTP ' + wrap.status + ')');
+        renderAlfredErr(msg);
       })
-      .catch(function () {
+      .catch(function (e) {
         ALFRED_BRIEF_INFLIGHT = false;
-        if (statusEl) statusEl.textContent = 'Alfred had trouble reaching Gemini — try again in a moment.';
+        renderAlfredErr('Alfred could not reach the server — network issue. Try again in a moment.');
       });
+  }
+
+  /* v39.1: render an error on the Alfred tab if the brief request fails. */
+  function renderAlfredErr(msg) {
+    var el = $('pf-rev');
+    if (!el || UI.view !== 'alfred') return;
+    var safe = esc(msg || 'Alfred could not generate a brief.');
+    el.innerHTML = '<div class="rv-wrap">' + hero() + viewTabs() +
+      '<div class="rv-alf-loading">' +
+        '<div style="font-size:48px;margin-bottom:8px">🎩</div>' +
+        '<h3 style="color:#2c3440;margin:0 0 8px">Alfred could not prepare this morning\'s brief.</h3>' +
+        '<p style="max-width:560px;margin:0 auto 16px;color:#52514e;line-height:1.5">' + safe + '</p>' +
+        '<p><button class="rv-alf-btn" data-rv-alf-refresh>Try again</button></p>' +
+        '<p style="margin-top:20px;font-size:12px;opacity:.65">If this persists, check that the Gemini API key has credit at ai.studio and that the Firebase function has fresh logs.</p>' +
+      '</div>' +
+    '</div>';
   }
   function maybeFetchAlerts(force) {
     if (ALFRED_ALERTS_INFLIGHT) return;
@@ -2456,6 +2478,12 @@
     // Alfred — refresh the brief (clear cache, re-generate)
     if (t.closest('[data-rv-alf-refresh]')) {
       try { localStorage.removeItem(ALFRED_BRIEF_CACHE_KEY); } catch (e) {}
+      ALFRED_BRIEF_INFLIGHT = false;   // v39.1: always allow a click to retry
+      // immediate visible feedback so user knows the click landed
+      var btn = t.closest('[data-rv-alf-refresh]');
+      if (btn) { btn.disabled = true; btn.textContent = 'Asking Alfred…'; }
+      var loadEl = document.querySelector('.rv-alf-loading p');
+      if (loadEl) loadEl.textContent = 'Alfred is reading your overnight data…';
       refreshAlfredBrief();
       return;
     }
