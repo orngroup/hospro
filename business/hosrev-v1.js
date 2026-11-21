@@ -220,7 +220,91 @@
       '#pf-rev .rv-planact-push{background:#e8f0fd;color:#1646a6}',
       '#pf-rev .rv-planact-lock{background:#efecf9;color:#4e3fa5}',
       '#pf-rev .rv-planact-soft{background:#fdf0e6;color:#9d4712}',
-      '#pf-rev .rv-planact-pro{background:#fdeaf4;color:#9d1e5c}'
+      '#pf-rev .rv-planact-pro{background:#fdeaf4;color:#9d1e5c}',
+      /* ---------- v39 Alfred styles ---------- */
+      '#pf-rev .rv-alert-pip{display:inline-block;background:#d0362b;color:#fff;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;margin-left:5px;vertical-align:middle}',
+      '#pf-rev .rv-alf-hero{background:linear-gradient(135deg,#1a2238 0%,#0f1424 100%);color:#fff;padding:26px 30px;border-radius:14px;margin-bottom:18px;position:relative;overflow:hidden;box-shadow:0 6px 20px rgba(15,20,36,.25)}',
+      '#pf-rev .rv-alf-hero::after{content:"🎩";position:absolute;right:28px;top:16px;font-size:72px;opacity:.08}',
+      '#pf-rev .rv-alf-hero h2{margin:0 0 4px;font-size:16px;font-weight:600;letter-spacing:.3px;opacity:.85;text-transform:uppercase}',
+      '#pf-rev .rv-alf-hero .headline{margin:0;font-size:22px;font-weight:600;line-height:1.35;max-width:880px;letter-spacing:-.2px}',
+      '#pf-rev .rv-alf-hero .position{margin:14px 0 0;font-size:14px;opacity:.88;line-height:1.55;max-width:880px}',
+      '#pf-rev .rv-alf-hero .meta{display:flex;gap:18px;margin-top:16px;font-size:12px;opacity:.75;flex-wrap:wrap}',
+      '#pf-rev .rv-alf-hero .meta b{opacity:1;font-weight:600}',
+      '#pf-rev .rv-alf-hero .rv-btn{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25);padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;margin-right:8px}',
+      '#pf-rev .rv-alf-hero .rv-btn:hover{background:rgba(255,255,255,.22)}',
+      '#pf-rev .rv-alf-hero .rv-btn.primary{background:#2ba57a;border-color:#2ba57a}',
+      '#pf-rev .rv-alf-hero .rv-btn.primary:hover{background:#249b70}',
+      '#pf-rev .rv-alf-section{margin:24px 0 10px;font-size:11.5px;font-weight:700;letter-spacing:.6px;color:#52514e;text-transform:uppercase}',
+      '#pf-rev .rv-alf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:14px}',
+      '#pf-rev .rv-alf-act{background:#fff;border:1px solid #e4e2dc;border-radius:12px;padding:18px 20px;position:relative;box-shadow:0 1px 2px rgba(8,16,26,.04);transition:border-color .15s,box-shadow .15s}',
+      '#pf-rev .rv-alf-act.approved{border-color:#2ba57a;background:#f4fbf7}',
+      '#pf-rev .rv-alf-act.rejected{border-color:#c0392b;background:#fdf6f5;opacity:.75}',
+      '#pf-rev .rv-alf-act.snoozed{border-color:#eb6834;background:#fdf8f3;opacity:.85}',
+      '#pf-rev .rv-alf-act .top{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}',
+      '#pf-rev .rv-alf-act h4{margin:0;font-size:15px;font-weight:700;color:#1a2238;flex:1;line-height:1.35}',
+      '#pf-rev .rv-alf-cat{font-size:10.5px;font-weight:700;letter-spacing:.3px;padding:3px 8px;border-radius:5px;text-transform:uppercase;display:inline-block;background:#eef3f8;color:#1a3b60;flex-shrink:0}',
+      '#pf-rev .rv-alf-cat.pricing{background:#e8f0fd;color:#1646a6}',
+      '#pf-rev .rv-alf-cat.inventory{background:#efecf9;color:#4e3fa5}',
+      '#pf-rev .rv-alf-cat.promotion{background:#fdeaf4;color:#9d1e5c}',
+      '#pf-rev .rv-alf-cat.comp{background:#fdf0e6;color:#9d4712}',
+      '#pf-rev .rv-alf-cat.operations{background:#eceff1;color:#455a64}',
+      '#pf-rev .rv-alf-cat.fnb{background:#e6f4ee;color:#1a6442}',
+      '#pf-rev .rv-alf-scope{font-size:12px;color:#7b8494;margin-bottom:10px;font-weight:500}',
+      '#pf-rev .rv-alf-line{margin:8px 0;font-size:13px;line-height:1.5;color:#2c3440}',
+      '#pf-rev .rv-alf-line b{font-weight:600;color:#1a2238;text-transform:uppercase;font-size:10.5px;letter-spacing:.4px;display:inline-block;min-width:78px;margin-right:6px;color:#52514e}',
+      '#pf-rev .rv-alf-action-text{background:#f8f6ef;border-left:3px solid #d4a94e;padding:10px 12px;margin:10px 0 12px;border-radius:0 6px 6px 0;font-size:13px;color:#2c3440;font-weight:500}',
+      '#pf-rev .rv-alf-meter{display:flex;gap:14px;margin:10px 0 12px;align-items:center;font-size:11.5px;color:#7b8494}',
+      '#pf-rev .rv-alf-meter .bar{flex:1;height:6px;background:#eceae3;border-radius:3px;overflow:hidden;max-width:140px}',
+      '#pf-rev .rv-alf-meter .fill{height:100%;background:linear-gradient(90deg,#2ba57a,#1a8f63);transition:width .3s}',
+      '#pf-rev .rv-alf-meter .impact{font-weight:700;color:#1a6442;font-size:13px}',
+      '#pf-rev .rv-alf-btns{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}',
+      '#pf-rev .rv-alf-btn{border:1px solid #d4d2cb;background:#fff;color:#2c3440;font:inherit;font-size:12.5px;font-weight:600;padding:7px 12px;border-radius:7px;cursor:pointer;transition:background .15s,border-color .15s}',
+      '#pf-rev .rv-alf-btn:hover{background:#f6f4ee}',
+      '#pf-rev .rv-alf-btn.approve{background:#2ba57a;border-color:#2ba57a;color:#fff}',
+      '#pf-rev .rv-alf-btn.approve:hover{background:#249b70}',
+      '#pf-rev .rv-alf-btn.reject:hover{background:#fdf6f5;border-color:#c0392b;color:#c0392b}',
+      '#pf-rev .rv-alf-btn.snooze:hover{background:#fdf8f3;border-color:#eb6834;color:#eb6834}',
+      '#pf-rev .rv-alf-btn.edit:hover{background:#eef3f8;border-color:#1a3b60;color:#1a3b60}',
+      '#pf-rev .rv-alf-done{font-size:12px;font-weight:600;color:#1a6442;margin-top:10px;padding:7px 10px;background:#e6f4ee;border-radius:6px;display:inline-block}',
+      '#pf-rev .rv-alf-done.rej{color:#8a1e15;background:#fbe9e7}',
+      '#pf-rev .rv-alf-done.snz{color:#9d4712;background:#fdf0e6}',
+      '#pf-rev .rv-alf-lists{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}',
+      '#pf-rev .rv-alf-list{background:#fff;border:1px solid #e4e2dc;border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px rgba(8,16,26,.04)}',
+      '#pf-rev .rv-alf-list h3{margin:0 0 10px;font-size:13.5px;font-weight:700;color:#1a2238;display:flex;align-items:center;gap:8px}',
+      '#pf-rev .rv-alf-list ul{margin:0;padding:0;list-style:none}',
+      '#pf-rev .rv-alf-list li{padding:9px 0;border-bottom:1px solid #f1efe9;font-size:13px;line-height:1.5}',
+      '#pf-rev .rv-alf-list li:last-child{border-bottom:0}',
+      '#pf-rev .rv-alf-list li b{color:#1a2238;display:block;font-size:13px;margin-bottom:2px}',
+      '#pf-rev .rv-alf-list li .dt{color:#7b8494;font-size:11.5px;font-weight:600;margin-top:4px}',
+      '#pf-rev .rv-alf-list li .mit{color:#1a6442;font-size:12px;margin-top:4px;font-style:italic}',
+      '#pf-rev .rv-alf-pace{background:#fdfcf7;border:1px solid #e9e3ca;border-radius:12px;padding:16px 20px;margin-top:14px;font-size:13.5px;line-height:1.6;color:#2c3440}',
+      '#pf-rev .rv-alf-pace b{display:block;margin-bottom:6px;color:#9d7d5f;font-size:11.5px;letter-spacing:.4px;text-transform:uppercase}',
+      '#pf-rev .rv-alf-watch{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}',
+      '#pf-rev .rv-alf-watch .chip{background:#fff;border:1px solid #e4e2dc;border-radius:8px;padding:8px 12px;font-size:12px;color:#2c3440}',
+      '#pf-rev .rv-alf-watch .chip b{color:#1a2238;display:block;font-size:12px;font-weight:700;margin-bottom:2px}',
+      '#pf-rev .rv-alf-scorecard{background:#fff;border:1px solid #e4e2dc;border-radius:12px;padding:18px 20px;margin-top:14px}',
+      '#pf-rev .rv-alf-scorecard .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:10px}',
+      '#pf-rev .rv-alf-scorecard .st{background:#f8f6ef;border-radius:8px;padding:10px 12px;text-align:left}',
+      '#pf-rev .rv-alf-scorecard .st .l{font-size:10.5px;color:#7b8494;text-transform:uppercase;letter-spacing:.3px;font-weight:600}',
+      '#pf-rev .rv-alf-scorecard .st .v{font-size:19px;font-weight:700;color:#1a2238;margin-top:3px}',
+      '#pf-rev .rv-alf-learn{background:#fff;border:1px solid #e4e2dc;border-radius:12px;padding:16px 20px;margin-top:14px}',
+      '#pf-rev .rv-alf-learn h3{margin:0 0 6px;font-size:13.5px;font-weight:700;color:#1a2238}',
+      '#pf-rev .rv-alf-learn .sub{color:#7b8494;font-size:12px;margin:0 0 10px}',
+      '#pf-rev .rv-alf-learn ul{margin:0;padding-left:18px}',
+      '#pf-rev .rv-alf-learn li{font-size:13px;line-height:1.55;color:#2c3440;margin-bottom:5px}',
+      '#pf-rev .rv-alf-alerts-panel{background:#fff;border:1px solid #e4e2dc;border-radius:12px;padding:0;margin-bottom:14px;overflow:hidden}',
+      '#pf-rev .rv-alf-alert-item{padding:11px 16px;border-bottom:1px solid #f1efe9;display:flex;gap:10px;align-items:flex-start;font-size:13px}',
+      '#pf-rev .rv-alf-alert-item:last-child{border-bottom:0}',
+      '#pf-rev .rv-alf-alert-item .dot{width:8px;height:8px;border-radius:50%;background:#1F7A8C;margin-top:5px;flex-shrink:0}',
+      '#pf-rev .rv-alf-alert-item.high .dot{background:#c0362b}',
+      '#pf-rev .rv-alf-alert-item.low .dot{background:#999}',
+      '#pf-rev .rv-alf-alert-item b{color:#1a2238;font-weight:700;display:block}',
+      '#pf-rev .rv-alf-alert-item .dtl{color:#52514e;font-size:12.5px;margin-top:2px;line-height:1.45}',
+      '#pf-rev .rv-alf-alert-item .meta{color:#7b8494;font-size:11px;margin-top:3px}',
+      '#pf-rev .rv-alf-empty{text-align:center;padding:40px 20px;color:#7b8494}',
+      '#pf-rev .rv-alf-empty h3{color:#2c3440;font-weight:700;margin:0 0 8px}',
+      '#pf-rev .rv-alf-loading{text-align:center;padding:60px 20px;color:#7b8494;font-size:14px}',
+      '#pf-rev .rv-alf-note-input{display:block;width:100%;margin-top:8px;padding:8px 10px;border:1px solid #d4d2cb;border-radius:6px;font:inherit;font-size:13px;box-sizing:border-box}'
     ].join('\n');
     document.head.appendChild(s);
   }
@@ -233,7 +317,7 @@
   function saveState(s) {
     try { localStorage.setItem(STATE_KEY, JSON.stringify(s)); } catch (e) {}
   }
-  var UI = { view: 'dash', roomType: 'exec_dbl' };
+  var UI = { view: 'alfred', roomType: 'exec_dbl' };
 
   function mergeSaved() {
     var st = loadState();
@@ -471,22 +555,28 @@
   /* ---------- VIEWS ---------- */
 
   function viewTabs() {
+    var al = getCachedAlerts();
+    var unread = (al && al.alerts) ? al.alerts.length : 0;
+    var alertBadge = unread > 0 ? ' <span class="rv-alert-pip">' + unread + '</span>' : '';
     var tabs = [
+      ['alfred',   '🎩 Alfred' + alertBadge],
       ['dash',     'Dashboard'],
-      ['agent',    '✨ Ask the Agent'],
+      ['agent',    '✨ Ask Alfred'],
       ['calendar', 'Calendar'],
       ['market',   'Market view'],
       ['settings', 'Settings']
     ];
     return '<div class="rv-tabs">' + tabs.map(function (t) {
-      return '<button data-rv-view="' + t[0] + '"' + (UI.view === t[0] ? ' class="on"' : '') + '>' + esc(t[1]) + '</button>';
+      return '<button data-rv-view="' + t[0] + '"' + (UI.view === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>';
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v38';
+  var HOSREV_VERSION = 'v39';
   function phaseBadge() {
     var liveBooks = getCachedBooks();
     var liveOnBooks = !!(liveBooks && liveBooks.byDate);
+    var brief = getCachedAlfredBrief();
+    if (brief && brief.brief) return 'Phase 2 · Alfred · ' + HOSREV_VERSION;
     if (liveOnBooks) return 'Phase 1 · LIVE · ' + HOSREV_VERSION;
     return 'Phase 1 · Demo · ' + HOSREV_VERSION;
   }
@@ -497,6 +587,23 @@
   var COMP_ENDPOINT = FN_BASE + 'hosrevComp';
   var PLAN_ENDPOINT = FN_BASE + 'hosrevPlan';
   var BOOKS_ENDPOINT = FN_BASE + 'hosrevBooks';
+  /* v39 — Alfred endpoints */
+  var ALFRED_BRIEF_GET_ENDPOINT = FN_BASE + 'alfredBriefGet';
+  var ALFRED_BRIEF_ENDPOINT     = FN_BASE + 'alfredBrief';
+  var ALFRED_DECISION_ENDPOINT  = FN_BASE + 'alfredDecision';
+  var ALFRED_ALERTS_ENDPOINT    = FN_BASE + 'alfredAlerts';
+  var ALFRED_SCORECARD_ENDPOINT = FN_BASE + 'alfredScorecard';
+  var ALFRED_LEARNINGS_ENDPOINT = FN_BASE + 'alfredLearnings';
+  var ALFRED_BRIEF_CACHE_KEY    = 'hosrev_alfred_brief_cache';
+  var ALFRED_ALERTS_CACHE_KEY   = 'hosrev_alfred_alerts_cache';
+  var ALFRED_SCORE_CACHE_KEY    = 'hosrev_alfred_score_cache';
+  var ALFRED_LEARN_CACHE_KEY    = 'hosrev_alfred_learn_cache';
+  var ALFRED_BRIEF_CACHE_TTL    = 30 * 60 * 1000;   // 30 min
+  var ALFRED_ALERTS_CACHE_TTL   =  5 * 60 * 1000;   // 5 min
+  var ALFRED_SCORE_CACHE_TTL    = 30 * 60 * 1000;   // 30 min
+  var ALFRED_LEARN_CACHE_TTL    = 24 * 60 * 60 * 1000; // 24h
+  var ALFRED_BRIEF_INFLIGHT = false;
+  var ALFRED_ALERTS_INFLIGHT = false;
   var AI_TOKEN_KEY = 'hosbusiness_gl_token';
   var AI_CACHE_KEY = 'hosrev_ai_cache';
   var EVENTS_CACHE_KEY = 'hosrev_events_cache';
@@ -1899,15 +2006,362 @@
   }
 
   /* ---------- top-level renderer ---------- */
+  /* ============================================================
+     v39 — Alfred: morning brief, alerts, scorecard, learnings
+     ============================================================ */
+
+  /* ---- caches ---- */
+  function getCachedAlfredBrief() { try { var o = JSON.parse(localStorage.getItem(ALFRED_BRIEF_CACHE_KEY) || 'null'); if (!o) return null; if (Date.now() - o.ts > ALFRED_BRIEF_CACHE_TTL) return o; return o; } catch (e) { return null; } }
+  function setCachedAlfredBrief(o) { try { localStorage.setItem(ALFRED_BRIEF_CACHE_KEY, JSON.stringify(o)); } catch (e) {} }
+  function getCachedAlerts() { try { var o = JSON.parse(localStorage.getItem(ALFRED_ALERTS_CACHE_KEY) || 'null'); if (!o) return null; return o; } catch (e) { return null; } }
+  function setCachedAlerts(o) { try { localStorage.setItem(ALFRED_ALERTS_CACHE_KEY, JSON.stringify(o)); } catch (e) {} }
+  function getCachedScore() { try { return JSON.parse(localStorage.getItem(ALFRED_SCORE_CACHE_KEY) || 'null'); } catch (e) { return null; } }
+  function setCachedScore(o) { try { localStorage.setItem(ALFRED_SCORE_CACHE_KEY, JSON.stringify(o)); } catch (e) {} }
+  function getCachedLearn() { try { return JSON.parse(localStorage.getItem(ALFRED_LEARN_CACHE_KEY) || 'null'); } catch (e) { return null; } }
+  function setCachedLearn(o) { try { localStorage.setItem(ALFRED_LEARN_CACHE_KEY, JSON.stringify(o)); } catch (e) {} }
+
+  /* ---- local decision state (optimistic; echoes server) ---- */
+  function getAlfredDecisions() { try { return JSON.parse(localStorage.getItem('hosrev_alfred_decisions') || '{}'); } catch (e) { return {}; } }
+  function setAlfredDecisionLocal(actionId, state, note) {
+    try {
+      var o = getAlfredDecisions();
+      o[actionId] = { state: state, note: note || '', ts: Date.now() };
+      localStorage.setItem('hosrev_alfred_decisions', JSON.stringify(o));
+    } catch (e) {}
+  }
+  function alfredDecisionFor(actionId) { var o = getAlfredDecisions(); return o[actionId] || null; }
+
+  /* ---- fetchers (silent, background) ---- */
+  function maybeFetchAlfredBrief(force) {
+    if (ALFRED_BRIEF_INFLIGHT) return;
+    if (!force) {
+      var cached = getCachedAlfredBrief();
+      if (cached && cached.ts && (Date.now() - cached.ts) < ALFRED_BRIEF_CACHE_TTL) return;
+    }
+    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    if (!tok) return;
+    ALFRED_BRIEF_INFLIGHT = true;
+    // first try GET (cheap read), if empty then POST (generate)
+    fetch(ALFRED_BRIEF_GET_ENDPOINT, { headers: { 'Authorization': 'Bearer ' + tok } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j && j.ok && j.brief && j.brief.brief) {
+          setCachedAlfredBrief({ ts: Date.now(), brief: j.brief });
+          ALFRED_BRIEF_INFLIGHT = false;
+          if (UI.view === 'alfred') render();
+          return;
+        }
+        // No stored brief — ask Alfred to generate one now
+        return fetch(ALFRED_BRIEF_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ horizon: 60, ground: true }) })
+          .then(function (r) { return r.json(); })
+          .then(function (j2) {
+            if (j2 && j2.ok && j2.brief) setCachedAlfredBrief({ ts: Date.now(), brief: j2.brief });
+            ALFRED_BRIEF_INFLIGHT = false;
+            if (UI.view === 'alfred') render();
+          });
+      })
+      .catch(function () { ALFRED_BRIEF_INFLIGHT = false; });
+  }
+  function refreshAlfredBrief() {
+    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    if (!tok || ALFRED_BRIEF_INFLIGHT) return;
+    ALFRED_BRIEF_INFLIGHT = true;
+    var statusEl = document.querySelector('[data-rv-alf-status]');
+    if (statusEl) statusEl.textContent = 'Alfred is preparing a fresh brief…';
+    fetch(ALFRED_BRIEF_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ horizon: 60, ground: true }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j && j.ok && j.brief) setCachedAlfredBrief({ ts: Date.now(), brief: j.brief });
+        ALFRED_BRIEF_INFLIGHT = false;
+        if (UI.view === 'alfred') render();
+      })
+      .catch(function () {
+        ALFRED_BRIEF_INFLIGHT = false;
+        if (statusEl) statusEl.textContent = 'Alfred had trouble reaching Gemini — try again in a moment.';
+      });
+  }
+  function maybeFetchAlerts(force) {
+    if (ALFRED_ALERTS_INFLIGHT) return;
+    if (!force) {
+      var c = getCachedAlerts();
+      if (c && c.ts && (Date.now() - c.ts) < ALFRED_ALERTS_CACHE_TTL) return;
+    }
+    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    if (!tok) return;
+    ALFRED_ALERTS_INFLIGHT = true;
+    fetch(ALFRED_ALERTS_ENDPOINT, { headers: { 'Authorization': 'Bearer ' + tok } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        ALFRED_ALERTS_INFLIGHT = false;
+        if (j && j.ok) {
+          setCachedAlerts({ ts: Date.now(), alerts: j.alerts || [] });
+          render();
+        }
+      })
+      .catch(function () { ALFRED_ALERTS_INFLIGHT = false; });
+  }
+  function maybeFetchScorecard() {
+    var c = getCachedScore();
+    if (c && c.ts && (Date.now() - c.ts) < ALFRED_SCORE_CACHE_TTL) return;
+    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    if (!tok) return;
+    fetch(ALFRED_SCORECARD_ENDPOINT + '?days=14', { headers: { 'Authorization': 'Bearer ' + tok } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j && j.ok) {
+          setCachedScore({ ts: Date.now(), scorecard: j.scorecard });
+          if (UI.view === 'alfred') render();
+        }
+      })
+      .catch(function () {});
+  }
+  function maybeFetchLearnings() {
+    var c = getCachedLearn();
+    if (c && c.ts && (Date.now() - c.ts) < ALFRED_LEARN_CACHE_TTL) return;
+    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    if (!tok) return;
+    fetch(ALFRED_LEARNINGS_ENDPOINT, { headers: { 'Authorization': 'Bearer ' + tok } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j && j.ok) {
+          setCachedLearn({ ts: Date.now(), learnings: j.learnings });
+          if (UI.view === 'alfred') render();
+        }
+      })
+      .catch(function () {});
+  }
+
+  function postAlfredDecision(payload) {
+    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    if (!tok) return Promise.resolve({ ok: false });
+    return fetch(ALFRED_DECISION_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify(payload) })
+      .then(function (r) { return r.json(); })
+      .catch(function () { return { ok: false }; });
+  }
+
+  function markAlertsRead(ids) {
+    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    if (!tok) return;
+    fetch(ALFRED_ALERTS_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify(ids === 'all' ? { markAllRead: true } : { markRead: ids }) })
+      .then(function () {
+        try { localStorage.removeItem(ALFRED_ALERTS_CACHE_KEY); } catch (e) {}
+        maybeFetchAlerts(true);
+      });
+  }
+
+  /* ---- rendering ---- */
+  function renderAlfredAction(a) {
+    var dec = alfredDecisionFor(a.id);
+    var klass = dec ? (' ' + dec.state) : '';
+    var confPct = Math.round((a.confidence || 0) * 100);
+    var impactStr = a.revenue_impact_gbp ? ('+' + gbp(a.revenue_impact_gbp)) : '';
+    var cat = a.category || 'pricing';
+    var done = '';
+    if (dec) {
+      var lbl = { approved: '✓ Approved', rejected: '✗ Rejected', snoozed: '⏱ Snoozed', edited: '✎ Edited' }[dec.state] || dec.state;
+      var cls = dec.state === 'rejected' ? ' rej' : (dec.state === 'snoozed' ? ' snz' : '');
+      done = '<div class="rv-alf-done' + cls + '">' + lbl + (dec.note ? ' — ' + esc(dec.note) : '') + '</div>';
+    }
+    return (
+      '<div class="rv-alf-act' + klass + '">' +
+        '<div class="top">' +
+          '<h4>' + esc(a.title) + '</h4>' +
+          '<span class="rv-alf-cat ' + cat + '">' + esc(cat) + '</span>' +
+        '</div>' +
+        (a.scope ? '<div class="rv-alf-scope">📅 ' + esc(a.scope) + '</div>' : '') +
+        '<div class="rv-alf-line"><b>Observed</b> ' + esc(a.observation || '') + '</div>' +
+        '<div class="rv-alf-line"><b>Reasoning</b> ' + esc(a.reasoning || '') + '</div>' +
+        '<div class="rv-alf-action-text"><b>Alfred suggests</b> — ' + esc(a.action || '') + '</div>' +
+        '<div class="rv-alf-meter">' +
+          '<span>Confidence</span>' +
+          '<span class="bar"><span class="fill" style="width:' + confPct + '%"></span></span>' +
+          '<span>' + confPct + '%</span>' +
+          (impactStr ? '<span style="margin-left:auto" class="impact">' + impactStr + '</span>' : '') +
+        '</div>' +
+        (done ? done :
+        '<div class="rv-alf-btns">' +
+          '<button class="rv-alf-btn approve" data-rv-alf-dec="' + esc(a.id) + '" data-rv-alf-state="approved">Approve</button>' +
+          '<button class="rv-alf-btn reject" data-rv-alf-dec="' + esc(a.id) + '" data-rv-alf-state="rejected">Reject</button>' +
+          '<button class="rv-alf-btn snooze" data-rv-alf-dec="' + esc(a.id) + '" data-rv-alf-state="snoozed">Snooze 24h</button>' +
+          '<button class="rv-alf-btn edit" data-rv-alf-edit="' + esc(a.id) + '">Edit</button>' +
+        '</div>') +
+      '</div>'
+    );
+  }
+
+  function renderAlfredBriefBody(briefDoc) {
+    var b = briefDoc.brief || {};
+    var genAt = briefDoc.generatedAt ? fmtAgo(new Date(briefDoc.generatedAt).getTime()) : '—';
+    var actions = Array.isArray(b.priority_actions) ? b.priority_actions : [];
+
+    var heroHtml = (
+      '<div class="rv-alf-hero">' +
+        '<h2>Alfred · Morning Brief · ' + esc(briefDoc.date || '') + '</h2>' +
+        '<p class="headline">' + esc(b.headline || 'Alfred is preparing your brief.') + '</p>' +
+        (b.position ? '<p class="position">' + esc(b.position) + '</p>' : '') +
+        '<div class="meta">' +
+          '<span><b>Generated</b> ' + genAt + '</span>' +
+          '<span><b>Priority actions</b> ' + actions.length + '</span>' +
+          '<span><b>Potential upside</b> ' + gbp(actions.reduce(function (t, a) { return t + (a.revenue_impact_gbp || 0); }, 0)) + '</span>' +
+          (briefDoc.sources && briefDoc.sources.length ? '<span><b>Sources</b> ' + briefDoc.sources.length + ' web citations</span>' : '') +
+        '</div>' +
+        '<div style="margin-top:16px">' +
+          '<button class="rv-btn primary" data-rv-alf-refresh>Refresh Alfred</button>' +
+          '<button class="rv-btn" data-rv-view="calendar">Open Calendar</button>' +
+          '<button class="rv-btn" data-rv-view="agent">Ask Alfred a question</button>' +
+          '<span data-rv-alf-status style="margin-left:12px;font-size:12px;opacity:.7"></span>' +
+        '</div>' +
+      '</div>'
+    );
+
+    // Alerts panel
+    var ac = getCachedAlerts();
+    var alerts = ac && Array.isArray(ac.alerts) ? ac.alerts : [];
+    var alertsHtml = '';
+    if (alerts.length) {
+      alertsHtml = (
+        '<div class="rv-alf-section">Alfred noticed · ' + alerts.length + '</div>' +
+        '<div class="rv-alf-alerts-panel">' +
+          alerts.slice(0, 6).map(function (a) {
+            var sev = a.severity || 'medium';
+            return '<div class="rv-alf-alert-item ' + esc(sev) + '"><span class="dot"></span><div><b>' + esc(a.title || '') + '</b><div class="dtl">' + esc(a.detail || '') + '</div><div class="meta">' + esc(a.date || '') + ' · ' + esc(a.kind || '') + ' · ' + fmtAgo(a.createdAt || Date.now()) + '</div></div></div>';
+          }).join('') +
+          (alerts.length ? '<div style="padding:10px 16px;background:#fafaf6;text-align:right"><button class="rv-alf-btn" data-rv-alf-alerts-mark-read>Mark all as read</button></div>' : '') +
+        '</div>'
+      );
+    }
+
+    // Priority actions
+    var actionsHtml = '';
+    if (actions.length) {
+      actionsHtml = (
+        '<div class="rv-alf-section">Priority actions · ranked by potential upside</div>' +
+        '<div class="rv-alf-grid">' + actions.map(renderAlfredAction).join('') + '</div>'
+      );
+    } else {
+      actionsHtml = '<div class="rv-alf-empty"><h3>Nothing worth flagging this morning, sir.</h3><p>Alfred found no priority actions in the current data.</p></div>';
+    }
+
+    // Opportunities + risks
+    var opps = Array.isArray(b.opportunities) ? b.opportunities : [];
+    var risks = Array.isArray(b.risks) ? b.risks : [];
+    var listsHtml = '';
+    if (opps.length || risks.length) {
+      listsHtml = (
+        '<div class="rv-alf-section">Opportunities &amp; risks</div>' +
+        '<div class="rv-alf-lists">' +
+          '<div class="rv-alf-list"><h3>↑ Opportunities</h3>' +
+            (opps.length ? '<ul>' + opps.map(function (o) {
+              return '<li><b>' + esc(o.title) + '</b>' + esc(o.detail) + (o.dates ? '<div class="dt">' + esc(o.dates) + '</div>' : '') + '</li>';
+            }).join('') + '</ul>' : '<p style="color:#7b8494;font-size:13px;margin:0">None noted.</p>') +
+          '</div>' +
+          '<div class="rv-alf-list"><h3>⚠ Risks</h3>' +
+            (risks.length ? '<ul>' + risks.map(function (r) {
+              return '<li><b>' + esc(r.title) + '</b>' + esc(r.detail) + (r.mitigation ? '<div class="mit">→ ' + esc(r.mitigation) + '</div>' : '') + '</li>';
+            }).join('') + '</ul>' : '<p style="color:#7b8494;font-size:13px;margin:0">None noted.</p>') +
+          '</div>' +
+        '</div>'
+      );
+    }
+
+    // Pace commentary + watchlist
+    var paceHtml = '';
+    if (b.pace_commentary) paceHtml += '<div class="rv-alf-pace"><b>Pace commentary</b>' + esc(b.pace_commentary) + '</div>';
+    var watch = Array.isArray(b.watchlist) ? b.watchlist : [];
+    if (watch.length) {
+      paceHtml += (
+        '<div class="rv-alf-section">Watchlist · nights to monitor</div>' +
+        '<div class="rv-alf-watch">' + watch.map(function (w) {
+          return '<div class="chip"><b>' + esc(w.date) + '</b>' + esc(w.note) + '</div>';
+        }).join('') + '</div>'
+      );
+    }
+
+    // Scorecard
+    var sc = getCachedScore();
+    var scoreHtml = '';
+    if (sc && sc.scorecard && sc.scorecard.rolling && sc.scorecard.rolling.total) {
+      var r = sc.scorecard.rolling;
+      scoreHtml = (
+        '<div class="rv-alf-section">Scorecard · last ' + (r.days || 14) + ' days</div>' +
+        '<div class="rv-alf-scorecard">' +
+          '<p style="font-size:13px;margin:0;color:#52514e">Every recommendation Alfred has made, with your verdict and the realised outcome. The audit trail matters.</p>' +
+          '<div class="tiles">' +
+            '<div class="st"><div class="l">Actions proposed</div><div class="v">' + r.total + '</div></div>' +
+            '<div class="st"><div class="l">Approval rate</div><div class="v">' + r.approvalRate + '%</div></div>' +
+            '<div class="st"><div class="l">Approved</div><div class="v" style="color:#1a6442">' + (r.approved + r.edited) + '</div></div>' +
+            '<div class="st"><div class="l">Rejected</div><div class="v" style="color:#8a1e15">' + r.rejected + '</div></div>' +
+            '<div class="st"><div class="l">Potential revenue</div><div class="v">' + gbp(r.potentialRevenue) + '</div></div>' +
+            '<div class="st"><div class="l">Actioned revenue</div><div class="v" style="color:#1a6442">' + gbp(r.actionedRevenue) + '</div></div>' +
+          '</div>' +
+        '</div>'
+      );
+    }
+
+    // Learnings
+    var learnObj = getCachedLearn();
+    var learnHtml = '';
+    if (learnObj && learnObj.learnings && Array.isArray(learnObj.learnings.patterns) && learnObj.learnings.patterns.length) {
+      var ll = learnObj.learnings;
+      learnHtml = (
+        '<div class="rv-alf-learn">' +
+          '<h3>What Alfred has learned about you</h3>' +
+          '<p class="sub">Distilled from your last ' + (ll.windowDays || 30) + ' days of decisions · Alfred adjusts his future briefs accordingly</p>' +
+          '<ul>' + ll.patterns.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul>' +
+        '</div>'
+      );
+    }
+
+    // Sources
+    var sourcesHtml = '';
+    if (Array.isArray(briefDoc.sources) && briefDoc.sources.length) {
+      sourcesHtml = (
+        '<div class="rv-alf-section">Alfred\'s sources</div>' +
+        '<div style="font-size:12.5px;color:#52514e;line-height:1.75">' +
+          briefDoc.sources.slice(0, 10).map(function (s, i) {
+            return '[' + (i + 1) + '] <a href="' + esc(s.uri) + '" target="_blank" rel="noopener" style="color:#1F7A8C">' + esc(s.title) + '</a>';
+          }).join(' · ') +
+        '</div>'
+      );
+    }
+
+    return heroHtml + alertsHtml + actionsHtml + listsHtml + paceHtml + scoreHtml + learnHtml + sourcesHtml;
+  }
+
+  function viewAlfred() {
+    var cached = getCachedAlfredBrief();
+    var brief = cached && cached.brief ? cached.brief : null;
+    var header = hero();          // keep the standard HosREV hero for consistency
+    var tabs = viewTabs();
+    var body;
+    if (!brief) {
+      body = (
+        '<div class="rv-alf-loading">' +
+          '<div style="font-size:48px;margin-bottom:8px">🎩</div>' +
+          '<p>Alfred is preparing your morning brief…</p>' +
+          '<p style="font-size:12px;opacity:.7">On first run this takes 30–60 seconds while he reads the overnight data.</p>' +
+          '<p style="margin-top:16px"><button class="rv-alf-btn" data-rv-alf-refresh>Ask Alfred to begin</button></p>' +
+        '</div>'
+      );
+    } else {
+      body = renderAlfredBriefBody(brief);
+    }
+    return header + tabs + body;
+  }
+
   function render() {
     injectCSS();
     try { snapshotForAccuracy(); reconcileAccuracy(); } catch (e) {}
-    try { maybeFetchBooks(); } catch (e) {}   // v38 — fire-and-forget fetch of live on-books
+    try { maybeFetchBooks(); } catch (e) {}
+    /* v39 — background fetch Alfred's materials so the first paint of the tab is instant */
+    try { maybeFetchAlerts(); } catch (e) {}
+    try { if (UI.view === 'alfred') { maybeFetchAlfredBrief(); maybeFetchScorecard(); maybeFetchLearnings(); } } catch (e) {}
     var el = $('pf-rev');
     if (!el) return;
     var view = UI.view;
     var html = '<div class="rv-wrap">';
-    if (view === 'dash')         html += viewDash();
+    if (view === 'alfred')       html += viewAlfred();
+    else if (view === 'dash')         html += viewDash();
     else if (view === 'agent')    html += viewAgent();
     else if (view === 'calendar') html += viewCalendar();
     else if (view === 'market')   html += viewMarket();
@@ -1997,6 +2451,87 @@
     // Tab switch
     var vb = t.closest('[data-rv-view]');
     if (vb) { UI.view = vb.getAttribute('data-rv-view'); render(); return; }
+
+    /* ---- v39 Alfred handlers ---- */
+    // Alfred — refresh the brief (clear cache, re-generate)
+    if (t.closest('[data-rv-alf-refresh]')) {
+      try { localStorage.removeItem(ALFRED_BRIEF_CACHE_KEY); } catch (e) {}
+      refreshAlfredBrief();
+      return;
+    }
+    // Alfred — approve / reject / snooze decision
+    var alfDec = t.closest('[data-rv-alf-dec]');
+    if (alfDec) {
+      var actionId = alfDec.getAttribute('data-rv-alf-dec');
+      var state = alfDec.getAttribute('data-rv-alf-state');
+      var cached = getCachedAlfredBrief();
+      if (!cached || !cached.brief || !cached.brief.brief) return;
+      var brief = cached.brief;
+      var action = (brief.brief.priority_actions || []).filter(function (a) { return a.id === actionId; })[0];
+      if (!action) return;
+      setAlfredDecisionLocal(actionId, state, '');
+      postAlfredDecision({
+        briefId: brief.date, actionId: actionId, actionTitle: action.title,
+        category: action.category, date: (action.scope.match(/(\d{4}-\d{2}-\d{2})/) || [])[1] || null,
+        state: state, note: '', confidence: action.confidence, impact: action.revenue_impact_gbp,
+        user: 'Ajay'
+      });
+      render();
+      return;
+    }
+    // Alfred — open edit input for an action
+    var alfEdit = t.closest('[data-rv-alf-edit]');
+    if (alfEdit) {
+      var editId = alfEdit.getAttribute('data-rv-alf-edit');
+      var row = alfEdit.closest('.rv-alf-act');
+      if (!row) return;
+      var inputHtml = (
+        '<div style="margin-top:10px">' +
+          '<input class="rv-alf-note-input" type="text" data-rv-alf-note-for="' + esc(editId) + '" placeholder="How would you edit this action? (e.g. &quot;raise £5 not £8&quot;)">' +
+          '<div class="rv-alf-btns" style="margin-top:6px">' +
+            '<button class="rv-alf-btn approve" data-rv-alf-note-save="' + esc(editId) + '">Save edit</button>' +
+            '<button class="rv-alf-btn" data-rv-alf-note-cancel="' + esc(editId) + '">Cancel</button>' +
+          '</div>' +
+        '</div>'
+      );
+      var btnWrap = row.querySelector('.rv-alf-btns');
+      if (btnWrap) {
+        btnWrap.style.display = 'none';
+        btnWrap.insertAdjacentHTML('afterend', inputHtml);
+        var inp = row.querySelector('[data-rv-alf-note-for="' + editId + '"]');
+        if (inp) inp.focus();
+      }
+      return;
+    }
+    // Alfred — save edited action
+    var alfSave = t.closest('[data-rv-alf-note-save]');
+    if (alfSave) {
+      var sid = alfSave.getAttribute('data-rv-alf-note-save');
+      var inp = document.querySelector('[data-rv-alf-note-for="' + sid + '"]');
+      var note = inp ? inp.value.trim() : '';
+      var cached2 = getCachedAlfredBrief();
+      if (!cached2 || !cached2.brief) return;
+      var brief2 = cached2.brief;
+      var action2 = (brief2.brief.priority_actions || []).filter(function (a) { return a.id === sid; })[0];
+      if (!action2) return;
+      setAlfredDecisionLocal(sid, 'edited', note);
+      postAlfredDecision({
+        briefId: brief2.date, actionId: sid, actionTitle: action2.title,
+        category: action2.category, date: (action2.scope.match(/(\d{4}-\d{2}-\d{2})/) || [])[1] || null,
+        state: 'edited', note: note, editedAction: note,
+        confidence: action2.confidence, impact: action2.revenue_impact_gbp, user: 'Ajay'
+      });
+      render();
+      return;
+    }
+    // Alfred — cancel edit
+    var alfCancel = t.closest('[data-rv-alf-note-cancel]');
+    if (alfCancel) { render(); return; }
+    // Alfred — mark all alerts read
+    if (t.closest('[data-rv-alf-alerts-mark-read]')) {
+      markAlertsRead('all');
+      return;
+    }
 
     // Comp star — click to set weight 1..5
     var cs = t.closest('[data-rv-cw]');
