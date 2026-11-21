@@ -567,9 +567,9 @@
     var unread = (al && al.alerts) ? al.alerts.length : 0;
     var alertBadge = unread > 0 ? ' <span class="rv-alert-pip">' + unread + '</span>' : '';
     var tabs = [
-      ['alfred',   '🎩 Alfred' + alertBadge],
+      ['alfred',   '<img src="img/aria.png" style="width:16px;height:16px;vertical-align:-3px;margin-right:4px;border-radius:3px"> ARIA' + alertBadge],
       ['dash',     'Dashboard'],
-      ['agent',    '✨ Ask Alfred'],
+      ['agent',    '✨ Ask ARIA'],
       ['calendar', 'Calendar'],
       ['market',   'Market view'],
       ['settings', 'Settings']
@@ -579,12 +579,12 @@
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v39.3';
+  var HOSREV_VERSION = 'v39.5';
   function phaseBadge() {
     var liveBooks = getCachedBooks();
     var liveOnBooks = !!(liveBooks && liveBooks.byDate);
     var brief = getCachedAlfredBrief();
-    if (brief && brief.brief) return 'Phase 2 · Alfred · ' + HOSREV_VERSION;
+    if (brief && brief.brief) return 'Phase 2 · ARIA · ' + HOSREV_VERSION;
     if (liveOnBooks) return 'Phase 1 · LIVE · ' + HOSREV_VERSION;
     return 'Phase 1 · Demo · ' + HOSREV_VERSION;
   }
@@ -2075,7 +2075,7 @@
     if (!tok) { renderAlfredErr('You need to sign in again — the session has expired.'); return; }
     ALFRED_BRIEF_INFLIGHT = true;
     var statusEl = document.querySelector('[data-rv-alf-status]');
-    if (statusEl) statusEl.textContent = 'Alfred is preparing a fresh brief…';
+    if (statusEl) statusEl.textContent = 'ARIA is preparing a fresh brief…';
     fetch(ALFRED_BRIEF_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ horizon: 60, ground: true }) })
       .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }).catch(function () { return { status: r.status, body: null }; }); })
       .then(function (wrap) {
@@ -2086,12 +2086,12 @@
           return;
         }
         // Server returned an error — show it to the user instead of leaving the top-hat stuck
-        var msg = wrap.body && wrap.body.error ? wrap.body.error : ('Alfred could not reach Gemini (HTTP ' + wrap.status + ')');
+        var msg = wrap.body && wrap.body.error ? wrap.body.error : ('ARIA could not reach Gemini (HTTP ' + wrap.status + ')');
         renderAlfredErr(msg);
       })
       .catch(function (e) {
         ALFRED_BRIEF_INFLIGHT = false;
-        renderAlfredErr('Alfred could not reach the server — network issue. Try again in a moment.');
+        renderAlfredErr('ARIA could not reach the server — network issue. Try again in a moment.');
       });
   }
 
@@ -2099,11 +2099,11 @@
   function renderAlfredErr(msg) {
     var el = $('pf-rev');
     if (!el || UI.view !== 'alfred') return;
-    var safe = esc(msg || 'Alfred could not generate a brief.');
+    var safe = esc(msg || 'ARIA could not generate a brief.');
     el.innerHTML = '<div class="rv-wrap">' + hero() + viewTabs() +
       '<div class="rv-alf-loading">' +
         '<div style="font-size:48px;margin-bottom:8px">🎩</div>' +
-        '<h3 style="color:#2c3440;margin:0 0 8px">Alfred could not prepare this morning\'s brief.</h3>' +
+        '<h3 style="color:#2c3440;margin:0 0 8px">ARIA could not prepare this morning\'s brief.</h3>' +
         '<p style="max-width:560px;margin:0 auto 16px;color:#52514e;line-height:1.5">' + safe + '</p>' +
         '<p><button class="rv-alf-btn" data-rv-alf-refresh>Try again</button></p>' +
         '<p style="margin-top:20px;font-size:12px;opacity:.65">If this persists, check that the Gemini API key has credit at ai.studio and that the Firebase function has fresh logs.</p>' +
@@ -2201,7 +2201,7 @@
         (a.scope ? '<div class="rv-alf-scope">📅 ' + esc(a.scope) + '</div>' : '') +
         '<div class="rv-alf-line"><b>Observed</b> ' + esc(a.observation || '') + '</div>' +
         '<div class="rv-alf-line"><b>Reasoning</b> ' + esc(a.reasoning || '') + '</div>' +
-        '<div class="rv-alf-action-text"><b>Alfred suggests</b> — ' + esc(a.action || '') + '</div>' +
+        '<div class="rv-alf-action-text"><b>ARIA suggests</b> — ' + esc(a.action || '') + '</div>' +
         '<div class="rv-alf-meter">' +
           '<span>Confidence</span>' +
           '<span class="bar"><span class="fill" style="width:' + confPct + '%"></span></span>' +
@@ -2226,8 +2226,8 @@
 
     var heroHtml = (
       '<div class="rv-alf-hero">' +
-        '<h2>Alfred · Morning Brief · ' + esc(briefDoc.date || '') + '</h2>' +
-        '<p class="headline">' + esc(b.headline || 'Alfred is preparing your brief.') + '</p>' +
+        '<h2><img src="img/aria.png" style="width:22px;height:22px;vertical-align:-5px;margin-right:6px;border-radius:5px"> ARIA · Morning Brief · ' + esc(briefDoc.date || '') + '</h2>' +
+        '<p class="headline">' + esc(b.headline || 'ARIA is preparing your brief.') + '</p>' +
         (b.position ? '<p class="position">' + esc(b.position) + '</p>' : '') +
         '<div class="meta">' +
           '<span><b>Generated</b> ' + genAt + '</span>' +
@@ -2236,10 +2236,10 @@
           (briefDoc.sources && briefDoc.sources.length ? '<span><b>Sources</b> ' + briefDoc.sources.length + ' web citations</span>' : '') +
         '</div>' +
         '<div style="margin-top:16px">' +
-          '<button class="rv-btn primary" data-rv-alf-refresh>Refresh Alfred</button>' +
+          '<button class="rv-btn primary" data-rv-alf-refresh>Refresh ARIA</button>' +
           '<button class="rv-btn" data-rv-alf-pdf>📄 Download Brief as PDF</button>' +
           '<button class="rv-btn" data-rv-view="calendar">Open Calendar</button>' +
-          '<button class="rv-btn" data-rv-view="agent">Ask Alfred a question</button>' +
+          '<button class="rv-btn" data-rv-view="agent">Ask ARIA a question</button>' +
           '<span data-rv-alf-status style="margin-left:12px;font-size:12px;opacity:.7"></span>' +
         '</div>' +
       '</div>'
@@ -2251,7 +2251,7 @@
     var alertsHtml = '';
     if (alerts.length) {
       alertsHtml = (
-        '<div class="rv-alf-section">Alfred noticed · ' + alerts.length + '</div>' +
+        '<div class="rv-alf-section">ARIA noticed · ' + alerts.length + '</div>' +
         '<div class="rv-alf-alerts-panel">' +
           alerts.slice(0, 6).map(function (a) {
             var sev = a.severity || 'medium';
@@ -2262,20 +2262,20 @@
       );
     }
 
-    // v39.2: Market Watch chart — current BAR vs comp median vs Alfred's suggested rate
+    // v39.2: Market Watch chart — current BAR vs comp median vs ARIA’s suggested rate
     var actionDates = {};
     actions.forEach(function (a) {
       var m = /(\d{4}-\d{2}-\d{2})/.exec(a.scope || '');
       if (m) actionDates[m[1]] = true;
     });
     var marketHtml = (
-      '<div class="rv-alf-section">Market Watch · next 30 nights — current BAR · comp median · Alfred\'s suggested</div>' +
+      '<div class="rv-alf-section">Market Watch · next 30 nights — current BAR · comp median · ARIA\'s suggested</div>' +
       '<div class="rv-alf-market-card">' +
         '<div class="rv-alf-market-legend">' +
           '<span><i style="background:#86847d"></i>Current BAR</span>' +
           '<span><i style="background:#eb6834"></i>Comp median</span>' +
-          '<span><i style="background:#2ba57a"></i>Alfred\'s suggested</span>' +
-          '<span><i style="background:#d4a94e;border-radius:50%"></i>Alfred recommends action</span>' +
+          '<span><i style="background:#2ba57a"></i>ARIA\'s suggested</span>' +
+          '<span><i style="background:#d4a94e;border-radius:50%"></i>ARIA recommends action</span>' +
           '<span><i style="background:#c0362b;border-radius:50%"></i>95%+ occupancy (sold)</span>' +
         '</div>' +
         '<div class="rv-alf-market-chart"><canvas id="rv-alf-market" data-action-dates="' + esc(JSON.stringify(actionDates)) + '"></canvas></div>' +
@@ -2291,7 +2291,7 @@
         '<div class="rv-alf-grid">' + actions.map(renderAlfredAction).join('') + '</div>'
       );
     } else {
-      actionsHtml = '<div class="rv-alf-empty"><h3>Nothing worth flagging this morning, sir.</h3><p>Alfred found no priority actions in the current data.</p></div>';
+      actionsHtml = '<div class="rv-alf-empty"><h3>Nothing worth flagging this morning, sir.</h3><p>ARIA found no priority actions in the current data.</p></div>';
     }
 
     // Opportunities + risks
@@ -2337,7 +2337,7 @@
       scoreHtml = (
         '<div class="rv-alf-section">Scorecard · last ' + (r.days || 14) + ' days</div>' +
         '<div class="rv-alf-scorecard">' +
-          '<p style="font-size:13px;margin:0;color:#52514e">Every recommendation Alfred has made, with your verdict and the realised outcome. The audit trail matters.</p>' +
+          '<p style="font-size:13px;margin:0;color:#52514e">Every recommendation ARIA has made, with your verdict and the realised outcome. The audit trail matters.</p>' +
           '<div class="tiles">' +
             '<div class="st"><div class="l">Actions proposed</div><div class="v">' + r.total + '</div></div>' +
             '<div class="st"><div class="l">Approval rate</div><div class="v">' + r.approvalRate + '%</div></div>' +
@@ -2357,8 +2357,8 @@
       var ll = learnObj.learnings;
       learnHtml = (
         '<div class="rv-alf-learn">' +
-          '<h3>What Alfred has learned about you</h3>' +
-          '<p class="sub">Distilled from your last ' + (ll.windowDays || 30) + ' days of decisions · Alfred adjusts his future briefs accordingly</p>' +
+          '<h3>What ARIA has learned about you</h3>' +
+          '<p class="sub">Distilled from your last ' + (ll.windowDays || 30) + ' days of decisions · ARIA adjusts her future briefs accordingly</p>' +
           '<ul>' + ll.patterns.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul>' +
         '</div>'
       );
@@ -2368,7 +2368,7 @@
     var sourcesHtml = '';
     if (Array.isArray(briefDoc.sources) && briefDoc.sources.length) {
       sourcesHtml = (
-        '<div class="rv-alf-section">Alfred\'s sources</div>' +
+        '<div class="rv-alf-section">ARIA\'s sources</div>' +
         '<div style="font-size:12.5px;color:#52514e;line-height:1.75">' +
           briefDoc.sources.slice(0, 10).map(function (s, i) {
             return '[' + (i + 1) + '] <a href="' + esc(s.uri) + '" target="_blank" rel="noopener" style="color:#1F7A8C">' + esc(s.title) + '</a>';
@@ -2385,7 +2385,7 @@
      The user's browser handles the actual "Save as PDF" step. */
   function downloadAlfredPDF() {
     var cached = getCachedAlfredBrief();
-    if (!cached || !cached.brief) { alert('No brief to download — Alfred hasn\'t prepared one yet.'); return; }
+    if (!cached || !cached.brief) { alert('No brief to download — ARIA hasn\'t prepared one yet.'); return; }
     var b = cached.brief.brief || {};
     var date = cached.brief.date || iso(new Date());
     var gen = cached.brief.generatedAt ? new Date(cached.brief.generatedAt).toLocaleString('en-GB') : '';
@@ -2398,7 +2398,7 @@
     function catBadge(c) { return '<span style="font-size:9px;font-weight:700;letter-spacing:.3px;padding:2px 6px;border-radius:3px;background:#eef3f8;color:#1a3b60;text-transform:uppercase">' + esc(c || '') + '</span>'; }
 
     var html =
-      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Alfred\'s Morning Brief · ' + esc(date) + '</title>' +
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>ARIA\'s Morning Brief · ' + esc(date) + '</title>' +
       '<style>' +
       '@page{size:A4;margin:14mm 14mm 16mm 14mm}' +
       'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a2238;line-height:1.5;font-size:11pt;margin:0}' +
@@ -2442,7 +2442,7 @@
       '.sig .line{border-top:1px solid #1a2238;padding-top:6px;font-size:9.5pt;color:#52514e}' +
       '</style></head><body>' +
 
-      '<div class="hdr"><div><h1>🎩 Alfred\'s Morning Brief</h1><div class="sub">Brandon Hall Hotel &amp; Spa · Revenue Management</div></div>' +
+      '<div class="hdr"><div><h1>ARIA\'s Morning Brief</h1><div class="sub">Brandon Hall Hotel &amp; Spa · Revenue Management</div></div>' +
       '<div class="meta">Date: <b>' + esc(date) + '</b><br>Generated: ' + esc(gen) + '<br>Model: ' + esc(cached.brief.model || 'gemini') + '</div></div>' +
 
       '<p class="headline">' + esc(b.headline || '') + '</p>' +
@@ -2493,7 +2493,7 @@
 
     // Signatures for the audit trail
     html += '<div class="sig"><div class="line">Actioned by (Front Office)<br><br><br></div><div class="line">Reviewed by (CCO)<br><br><br></div></div>';
-    html += '<div class="footer">Alfred · AI Revenue Management Agent · Brandon Hall Hotel &amp; Spa<br>Not a decision document — recommendations for review by a human revenue manager.</div>';
+    html += '<div class="footer">ARIA · Advanced Revenue Intelligence Agent · Brandon Hall Hotel &amp; Spa<br>Not a decision document — recommendations for review by a human revenue manager.</div>';
     html += '</body></html>';
 
     var w = window.open('', 'alfred-brief', 'width=820,height=900');
@@ -2503,8 +2503,8 @@
   }
 
   /* v39.2 — Market Watch line chart on the Alfred tab.
-     Three series over the next 30 nights: current BAR, comp median, Alfred's suggested rate.
-     Highlights nights Alfred flagged for action, plus nights at 95%+ occupancy. */
+     Three series over the next 30 nights: current BAR, comp median, ARIA’s suggested rate.
+     Highlights nights ARIA flagged for action, plus nights at 95%+ occupancy. */
   function drawAlfredMarketChart() {
     if (!window.Chart) return;
     var canvas = document.getElementById('rv-alf-market');
@@ -2541,7 +2541,7 @@
       return Math.round(157 * drift * dowLift);
     });
 
-    // Row 3 — Alfred's suggested (pricing engine recommendation for Classic double)
+    // Row 3 — ARIA’s suggested (pricing engine recommendation for Classic double)
     var suggested = nights.map(function (n) {
       try {
         var r = nightComputedFor('classic_dbl', n);
@@ -2566,7 +2566,7 @@
     var datasets = [
       { label: 'Current BAR', data: currentBar, borderColor: '#86847d', backgroundColor: '#86847d22', borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, tension: 0 },
       { label: 'Comp median', data: compMedian, borderColor: '#eb6834', backgroundColor: '#eb683422', borderWidth: 2, pointRadius: 2, tension: 0.25 },
-      { label: 'Alfred\'s suggested', data: suggested, borderColor: '#2ba57a', backgroundColor: '#2ba57a22', borderWidth: 3, pointRadius: pointRadius, pointBackgroundColor: pointColors, pointBorderColor: pointColors, pointBorderWidth: 2, tension: 0.2 }
+      { label: 'ARIA\'s suggested', data: suggested, borderColor: '#2ba57a', backgroundColor: '#2ba57a22', borderWidth: 3, pointRadius: pointRadius, pointBackgroundColor: pointColors, pointBorderColor: pointColors, pointBorderWidth: 2, tension: 0.2 }
     ];
 
     if (window.__alfMarketChart) { try { window.__alfMarketChart.destroy(); } catch (e) {} }
@@ -2588,7 +2588,7 @@
                 var book = (liveBooks && liveBooks.byDate && liveBooks.byDate[d.d] && liveBooks.byDate[d.d].totals) ? liveBooks.byDate[d.d].totals.rooms : null;
                 var lines = [];
                 if (book !== null) lines.push('On books: ' + book + ' / 114 (' + Math.round((book / 114) * 100) + '%)');
-                if (actionDates[d.d]) lines.push('🎩 Alfred flagged this night');
+                if (actionDates[d.d]) lines.push('ARIA flagged this night');
                 return lines.join('\n');
               }
             }
@@ -2613,7 +2613,7 @@
       var vs = sugAvg - curAvg;
       var compSource = (compCache && compCache.byDate && Object.keys(compCache.byDate).length) ? 'live SerpApi (' + (compCache.serverTs ? fmtAgo(compCache.serverTs) : 'cached') + ')' : 'demo data — SerpApi will populate on the next daily refresh';
       note.innerHTML =
-        '<b>Next 14 nights</b> · Alfred suggests avg <b>£' + Math.round(sugAvg) + '</b> · ' +
+        '<b>Next 14 nights</b> · ARIA suggests avg <b>£' + Math.round(sugAvg) + '</b> · ' +
         (vs >= 0 ? '<span style="color:#1a6442">+£' + Math.round(vs) + ' vs current BAR</span>' : '<span style="color:#c0362b">−£' + Math.round(-vs) + ' vs current BAR</span>') + ' · ' +
         (gap >= 0 ? '<span style="color:#1a6442">+£' + Math.round(gap) + ' above comp median</span>' : '<span style="color:#c0362b">−£' + Math.round(-gap) + ' below comp median</span>') +
         '<br><span style="opacity:.6;font-size:11px">Comp source: ' + esc(compSource) + '</span>';
@@ -2630,9 +2630,9 @@
       body = (
         '<div class="rv-alf-loading">' +
           '<div style="font-size:48px;margin-bottom:8px">🎩</div>' +
-          '<p>Alfred is preparing your morning brief…</p>' +
+          '<p>ARIA is preparing your morning brief…</p>' +
           '<p style="font-size:12px;opacity:.7">On first run this takes 30–60 seconds while he reads the overnight data.</p>' +
-          '<p style="margin-top:16px"><button class="rv-alf-btn" data-rv-alf-refresh>Ask Alfred to begin</button></p>' +
+          '<p style="margin-top:16px"><button class="rv-alf-btn" data-rv-alf-refresh>Ask ARIA to begin</button></p>' +
         '</div>'
       );
     } else {
@@ -2645,7 +2645,7 @@
     injectCSS();
     try { snapshotForAccuracy(); reconcileAccuracy(); } catch (e) {}
     try { maybeFetchBooks(); } catch (e) {}
-    /* v39 — background fetch Alfred's materials so the first paint of the tab is instant */
+    /* v39 — background fetch ARIA’s materials so the first paint of the tab is instant */
     try { maybeFetchAlerts(); } catch (e) {}
     try { if (UI.view === 'alfred') { maybeFetchAlfredBrief(); maybeFetchScorecard(); maybeFetchLearnings(); } } catch (e) {}
     var el = $('pf-rev');
@@ -2752,9 +2752,9 @@
       ALFRED_BRIEF_INFLIGHT = false;   // v39.1: always allow a click to retry
       // immediate visible feedback so user knows the click landed
       var btn = t.closest('[data-rv-alf-refresh]');
-      if (btn) { btn.disabled = true; btn.textContent = 'Asking Alfred…'; }
+      if (btn) { btn.disabled = true; btn.textContent = 'Asking ARIA…'; }
       var loadEl = document.querySelector('.rv-alf-loading p');
-      if (loadEl) loadEl.textContent = 'Alfred is reading your overnight data…';
+      if (loadEl) loadEl.textContent = 'ARIA is reading your overnight data…';
       refreshAlfredBrief();
       return;
     }
