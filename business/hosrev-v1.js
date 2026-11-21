@@ -579,7 +579,7 @@
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v39.2';
+  var HOSREV_VERSION = 'v39.3';
   function phaseBadge() {
     var liveBooks = getCachedBooks();
     var liveOnBooks = !!(liveBooks && liveBooks.byDate);
@@ -2237,6 +2237,7 @@
         '</div>' +
         '<div style="margin-top:16px">' +
           '<button class="rv-btn primary" data-rv-alf-refresh>Refresh Alfred</button>' +
+          '<button class="rv-btn" data-rv-alf-pdf>📄 Download Brief as PDF</button>' +
           '<button class="rv-btn" data-rv-view="calendar">Open Calendar</button>' +
           '<button class="rv-btn" data-rv-view="agent">Ask Alfred a question</button>' +
           '<span data-rv-alf-status style="margin-left:12px;font-size:12px;opacity:.7"></span>' +
@@ -2377,6 +2378,128 @@
     }
 
     return heroHtml + alertsHtml + marketHtml + actionsHtml + listsHtml + paceHtml + scoreHtml + learnHtml + sourcesHtml;
+  }
+
+  /* v39.3 — Download the current brief as a PDF.
+     Opens a new window with a print-optimised layout and triggers window.print().
+     The user's browser handles the actual "Save as PDF" step. */
+  function downloadAlfredPDF() {
+    var cached = getCachedAlfredBrief();
+    if (!cached || !cached.brief) { alert('No brief to download — Alfred hasn\'t prepared one yet.'); return; }
+    var b = cached.brief.brief || {};
+    var date = cached.brief.date || iso(new Date());
+    var gen = cached.brief.generatedAt ? new Date(cached.brief.generatedAt).toLocaleString('en-GB') : '';
+    var actions = Array.isArray(b.priority_actions) ? b.priority_actions : [];
+    var opps = Array.isArray(b.opportunities) ? b.opportunities : [];
+    var risks = Array.isArray(b.risks) ? b.risks : [];
+    var watch = Array.isArray(b.watchlist) ? b.watchlist : [];
+    var decisions = getAlfredDecisions();
+
+    function catBadge(c) { return '<span style="font-size:9px;font-weight:700;letter-spacing:.3px;padding:2px 6px;border-radius:3px;background:#eef3f8;color:#1a3b60;text-transform:uppercase">' + esc(c || '') + '</span>'; }
+
+    var html =
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Alfred\'s Morning Brief · ' + esc(date) + '</title>' +
+      '<style>' +
+      '@page{size:A4;margin:14mm 14mm 16mm 14mm}' +
+      'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1a2238;line-height:1.5;font-size:11pt;margin:0}' +
+      '.hdr{border-bottom:2px solid #1a2238;padding-bottom:10px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end}' +
+      '.hdr h1{margin:0;font-size:22pt;font-weight:700;letter-spacing:-.3px}' +
+      '.hdr .sub{font-size:10pt;color:#52514e;margin-top:4px}' +
+      '.hdr .meta{font-size:9pt;color:#7b8494;text-align:right}' +
+      '.headline{font-size:14pt;font-weight:600;line-height:1.4;margin:12px 0 4px;color:#1a2238}' +
+      '.position{font-size:11pt;color:#2c3440;margin-bottom:16px}' +
+      '.section{margin-top:16px;font-size:9.5pt;font-weight:700;letter-spacing:.5px;color:#52514e;text-transform:uppercase;border-bottom:1px solid #d4d2cb;padding-bottom:4px;margin-bottom:10px}' +
+      '.action{border:1px solid #d4d2cb;border-radius:6px;padding:11px 14px;margin-bottom:10px;page-break-inside:avoid}' +
+      '.action.approved{border-color:#2ba57a;background:#f4fbf7}' +
+      '.action.rejected{border-color:#c0362b;background:#fdf6f5}' +
+      '.action.snoozed{border-color:#eb6834;background:#fdf8f3}' +
+      '.action h3{margin:0 0 4px;font-size:12pt;font-weight:700}' +
+      '.action .scope{font-size:9.5pt;color:#7b8494;margin-bottom:8px}' +
+      '.action .line{margin:4px 0;font-size:10.5pt}' +
+      '.action .line b{font-weight:600;color:#52514e;font-size:9pt;text-transform:uppercase;letter-spacing:.3px;display:inline-block;min-width:80px}' +
+      '.action .move{background:#fdf8ee;border-left:3px solid #d4a94e;padding:8px 10px;margin:8px 0;font-weight:600;font-size:11pt}' +
+      '.action .meta{display:flex;gap:16px;margin-top:8px;font-size:9.5pt;color:#52514e;border-top:1px solid #efece5;padding-top:8px}' +
+      '.action .meta b{font-weight:700;color:#1a2238}' +
+      '.action .verdict{margin-top:8px;font-size:9.5pt;font-weight:700;padding:5px 8px;border-radius:4px;display:inline-block}' +
+      '.action .verdict.a{color:#1a6442;background:#e6f4ee}' +
+      '.action .verdict.r{color:#8a1e15;background:#fbe9e7}' +
+      '.action .verdict.s{color:#9d4712;background:#fdf0e6}' +
+      '.lists{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px}' +
+      '.lists h4{margin:0 0 6px;font-size:11pt;color:#1a2238}' +
+      '.lists ul{margin:0;padding-left:18px}' +
+      '.lists li{margin-bottom:6px;font-size:10pt;line-height:1.4}' +
+      '.lists li b{font-weight:700}' +
+      '.pace{background:#fdfcf7;border:1px solid #e9e3ca;border-radius:6px;padding:10px 14px;margin:12px 0;font-size:10.5pt;line-height:1.5}' +
+      '.watch{display:flex;gap:8px;flex-wrap:wrap}' +
+      '.watch .c{border:1px solid #d4d2cb;border-radius:5px;padding:5px 10px;font-size:9.5pt}' +
+      '.watch .c b{display:block;font-weight:700;font-size:9.5pt}' +
+      '.sum{background:#1a2238;color:#fff;border-radius:8px;padding:14px 18px;margin:16px 0}' +
+      '.sum .total{font-size:20pt;font-weight:700;margin:4px 0}' +
+      '.sum .lbl{font-size:9.5pt;opacity:.85;text-transform:uppercase;letter-spacing:.5px}' +
+      '.sum .brk{font-size:10pt;opacity:.85;margin-top:6px}' +
+      '.footer{margin-top:24px;padding-top:12px;border-top:1px solid #d4d2cb;font-size:9pt;color:#7b8494;text-align:center}' +
+      '.sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px}' +
+      '.sig .line{border-top:1px solid #1a2238;padding-top:6px;font-size:9.5pt;color:#52514e}' +
+      '</style></head><body>' +
+
+      '<div class="hdr"><div><h1>🎩 Alfred\'s Morning Brief</h1><div class="sub">Brandon Hall Hotel &amp; Spa · Revenue Management</div></div>' +
+      '<div class="meta">Date: <b>' + esc(date) + '</b><br>Generated: ' + esc(gen) + '<br>Model: ' + esc(cached.brief.model || 'gemini') + '</div></div>' +
+
+      '<p class="headline">' + esc(b.headline || '') + '</p>' +
+      '<p class="position">' + esc(b.position || '') + '</p>';
+
+    // Summary tile
+    var totalImpact = actions.reduce(function (t, a) { return t + (a.revenue_impact_gbp || 0); }, 0);
+    var approvedImpact = actions.filter(function (a) { var d = decisions[a.id]; return d && (d.state === 'approved' || d.state === 'edited'); }).reduce(function (t, a) { return t + (a.revenue_impact_gbp || 0); }, 0);
+    html += '<div class="sum"><div class="lbl">Potential upside this morning</div><div class="total">' + gbp(totalImpact) + '</div>' +
+      '<div class="brk">' + actions.length + ' priority actions · ' + opps.length + ' opportunities · ' + risks.length + ' risks · approved so far: ' + gbp(approvedImpact) + '</div></div>';
+
+    // Priority actions
+    if (actions.length) {
+      html += '<div class="section">Priority actions · ranked by revenue impact</div>';
+      actions.forEach(function (a) {
+        var dec = decisions[a.id];
+        var klass = dec ? ' ' + dec.state : '';
+        var conf = Math.round((a.confidence || 0) * 100);
+        html += '<div class="action' + klass + '">' +
+          '<h3>' + esc(a.title) + ' &nbsp; ' + catBadge(a.category) + '</h3>' +
+          (a.scope ? '<div class="scope">📅 ' + esc(a.scope) + '</div>' : '') +
+          '<div class="line"><b>Observed</b> ' + esc(a.observation) + '</div>' +
+          '<div class="line"><b>Reasoning</b> ' + esc(a.reasoning) + '</div>' +
+          '<div class="move">→ ' + esc(a.action) + '</div>' +
+          '<div class="meta"><span><b>Confidence</b> ' + conf + '%</span>' +
+          '<span><b>Revenue impact</b> ' + gbp(a.revenue_impact_gbp || 0) + '</span>' +
+          '<span><b>Effort</b> ' + esc(a.effort) + '</span></div>' +
+          (dec ? '<div class="verdict ' + (dec.state === 'approved' ? 'a' : dec.state === 'rejected' ? 'r' : 's') + '">' +
+            { approved: '✓ APPROVED', rejected: '✗ REJECTED', snoozed: '⏱ SNOOZED', edited: '✎ EDITED' }[dec.state] +
+            (dec.note ? ' — ' + esc(dec.note) : '') + '</div>' : '') +
+          '</div>';
+      });
+    }
+
+    // Opps + risks
+    if (opps.length || risks.length) {
+      html += '<div class="section">Opportunities &amp; risks</div><div class="lists">' +
+        '<div><h4>↑ Opportunities</h4>' +
+        (opps.length ? '<ul>' + opps.map(function (o) { return '<li><b>' + esc(o.title) + '</b> — ' + esc(o.detail) + (o.dates ? ' <i>(' + esc(o.dates) + ')</i>' : '') + '</li>'; }).join('') + '</ul>' : '<p>None noted.</p>') +
+        '</div><div><h4>⚠ Risks</h4>' +
+        (risks.length ? '<ul>' + risks.map(function (r) { return '<li><b>' + esc(r.title) + '</b> — ' + esc(r.detail) + (r.mitigation ? '<br><i>→ ' + esc(r.mitigation) + '</i>' : '') + '</li>'; }).join('') + '</ul>' : '<p>None noted.</p>') +
+        '</div></div>';
+    }
+
+    // Pace + watchlist
+    if (b.pace_commentary) html += '<div class="section">Pace commentary</div><div class="pace">' + esc(b.pace_commentary) + '</div>';
+    if (watch.length) html += '<div class="section">Watchlist · nights to monitor</div><div class="watch">' + watch.map(function (w) { return '<div class="c"><b>' + esc(w.date) + '</b>' + esc(w.note) + '</div>'; }).join('') + '</div>';
+
+    // Signatures for the audit trail
+    html += '<div class="sig"><div class="line">Actioned by (Front Office)<br><br><br></div><div class="line">Reviewed by (CCO)<br><br><br></div></div>';
+    html += '<div class="footer">Alfred · AI Revenue Management Agent · Brandon Hall Hotel &amp; Spa<br>Not a decision document — recommendations for review by a human revenue manager.</div>';
+    html += '</body></html>';
+
+    var w = window.open('', 'alfred-brief', 'width=820,height=900');
+    if (!w) { alert('Pop-up blocked — allow pop-ups for this site to download the brief.'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+    setTimeout(function () { try { w.focus(); w.print(); } catch (e) {} }, 400);
   }
 
   /* v39.2 — Market Watch line chart on the Alfred tab.
@@ -2706,6 +2829,11 @@
     // Alfred — mark all alerts read
     if (t.closest('[data-rv-alf-alerts-mark-read]')) {
       markAlertsRead('all');
+      return;
+    }
+    // Alfred — download brief as PDF (via browser print dialog with print stylesheet)
+    if (t.closest('[data-rv-alf-pdf]')) {
+      downloadAlfredPDF();
       return;
     }
 

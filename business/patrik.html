@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Revenue Management Questionnaire · Brandon Hall</title>
+<style>
+:root{--navy:#1a2238;--teal:#1F7A8C;--gold:#d4a94e;--cream:#fdfcf7;--grey:#52514e;--border:#e4e2dc}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.55}
+.wrap{max-width:780px;margin:0 auto;padding:30px 20px 80px}
+.hero{background:linear-gradient(135deg,#1a2238 0%,#0f1424 100%);color:#fff;padding:32px 36px;border-radius:14px;margin-bottom:24px;box-shadow:0 6px 20px rgba(15,20,36,.25);position:relative;overflow:hidden}
+.hero::after{content:"🎩";position:absolute;right:28px;top:16px;font-size:68px;opacity:.1}
+.hero h1{margin:0 0 6px;font-size:24px;font-weight:700}
+.hero p{margin:0;opacity:.88;font-size:14.5px;max-width:560px;line-height:1.55}
+.hero .intro{margin-top:14px;font-size:13.5px;opacity:.78;max-width:580px}
+.sect{background:#fff;border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin-bottom:16px;box-shadow:0 1px 2px rgba(8,16,26,.04)}
+.sect h2{margin:0 0 4px;font-size:16px;font-weight:700;color:var(--teal)}
+.sect .ssub{margin:0 0 16px;font-size:12.5px;color:var(--grey)}
+.q{margin-bottom:18px}
+.q:last-child{margin-bottom:0}
+.q label.ql{display:block;font-weight:600;font-size:14px;margin-bottom:6px;color:var(--navy)}
+.q .hint{font-size:12px;color:var(--grey);margin-top:-2px;margin-bottom:6px}
+.q input[type=text],.q input[type=number],.q input[type=email],.q textarea,.q select{width:100%;padding:9px 11px;border:1px solid #d4d2cb;border-radius:7px;font:inherit;font-size:14px;background:#fff;color:var(--navy)}
+.q textarea{min-height:70px;resize:vertical}
+.q input:focus,.q textarea:focus,.q select:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 2px rgba(31,122,140,.15)}
+.q .chks{display:flex;flex-wrap:wrap;gap:6px}
+.q .chks label{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid #d4d2cb;border-radius:6px;cursor:pointer;font-size:13.5px;background:#fff}
+.q .chks label:hover{background:#f6f4ee}
+.q .chks input{margin:0}
+.q .chks label.on{background:#e6f1f4;border-color:var(--teal);color:var(--teal)}
+.q .scale{display:flex;gap:4px;margin-top:4px}
+.q .scale label{flex:1;text-align:center;padding:9px 0;border:1px solid #d4d2cb;border-radius:6px;cursor:pointer;background:#fff;font-weight:600;font-size:14px}
+.q .scale input{display:none}
+.q .scale label:hover{background:#f6f4ee}
+.q .scale input:checked+span{background:var(--teal);color:#fff;border-radius:6px;padding:9px 0;display:block;margin:-9px 0 -9px}
+.q .scalewrap{display:flex;gap:4px;align-items:center}
+.q .scaleitem{flex:1;text-align:center;padding:9px 0;border:1px solid #d4d2cb;border-radius:6px;cursor:pointer;background:#fff;font-weight:600;font-size:14px;transition:.1s}
+.q .scaleitem:hover{background:#f6f4ee}
+.q .scaleitem.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+.q .anchor{display:flex;justify-content:space-between;font-size:11.5px;color:var(--grey);margin-top:4px}
+.submit{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--border);padding:16px 20px;margin:0 -20px;text-align:center;border-radius:0 0 0 0;box-shadow:0 -4px 20px rgba(8,16,26,.08)}
+.submit button{background:var(--teal);color:#fff;border:none;padding:13px 32px;font:inherit;font-size:15.5px;font-weight:700;border-radius:8px;cursor:pointer;box-shadow:0 2px 6px rgba(31,122,140,.3)}
+.submit button:hover{background:#166678}
+.submit button:disabled{background:#999;cursor:wait}
+.submit .note{font-size:12px;color:var(--grey);margin-top:8px}
+.thanks{display:none;text-align:center;padding:60px 20px;background:#fff;border-radius:12px;border:1px solid var(--border)}
+.thanks h2{color:var(--teal);font-size:22px;margin:0 0 10px}
+.thanks p{color:var(--grey);max-width:420px;margin:0 auto}
+@media (max-width:600px){.wrap{padding:16px 10px 70px}.sect{padding:18px 20px}.hero{padding:22px 22px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>Revenue Management · a few questions for Patrik</h1>
+    <p>We're building Alfred — the AI revenue agent for Brandon Hall. To make him actually useful, we need to understand how <b>you</b> currently run revenue management.</p>
+    <div class="intro">Takes about 10 minutes. There are no wrong answers — we're mapping how it works today so we can fill the gaps. Ajay will see your answers but nothing is shared outside Brandon Hall.</div>
+  </div>
+
+  <form id="form">
+    <input type="hidden" name="submittedAt" id="submittedAt">
+
+    <div class="sect">
+      <h2>About you</h2>
+      <p class="ssub">Just so we know who's answering.</p>
+      <div class="q">
+        <label class="ql">Your name</label>
+        <input type="text" name="name" value="Patrik Vlach" required>
+      </div>
+      <div class="q">
+        <label class="ql">Role</label>
+        <input type="text" name="role" value="Front Office Manager" required>
+      </div>
+      <div class="q">
+        <label class="ql">How long have you been doing revenue management?</label>
+        <select name="years" required>
+          <option value="">Choose…</option>
+          <option>Less than 1 year</option>
+          <option>1–3 years</option>
+          <option>3–5 years</option>
+          <option>5–10 years</option>
+          <option>More than 10 years</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h2>1. Your morning routine</h2>
+      <p class="ssub">What you do first thing, before anyone else is in.</p>
+      <div class="q">
+        <label class="ql">What's the first thing you check when you arrive?</label>
+        <textarea name="morning_first" placeholder="e.g. Yesterday's close, tonight's arrivals, overnight pickup…"></textarea>
+      </div>
+      <div class="q">
+        <label class="ql">Which systems do you log into first? (tick all that apply)</label>
+        <div class="chks" data-chks="systems">
+          <label><input type="checkbox" value="Rezlynx"> Rezlynx</label>
+          <label><input type="checkbox" value="Booking.com Extranet"> Booking.com Extranet</label>
+          <label><input type="checkbox" value="Expedia Partner Central"> Expedia Partner Central</label>
+          <label><input type="checkbox" value="SiteMinder"> SiteMinder / Channel Manager</label>
+          <label><input type="checkbox" value="Lighthouse (OTA Insight)"> Lighthouse / OTA Insight</label>
+          <label><input type="checkbox" value="Google Hotel Ads"> Google Hotel Ads</label>
+          <label><input type="checkbox" value="HosBUSINESS"> HosBUSINESS</label>
+          <label><input type="checkbox" value="Spreadsheets"> Our own spreadsheets</label>
+        </div>
+      </div>
+      <div class="q">
+        <label class="ql">Roughly how much time do you spend per day on rate-setting and revenue decisions?</label>
+        <select name="time_per_day">
+          <option value="">Choose…</option>
+          <option>Less than 30 min</option>
+          <option>30 min – 1 hour</option>
+          <option>1–2 hours</option>
+          <option>2–4 hours</option>
+          <option>More than 4 hours</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h2>2. Rate setting</h2>
+      <p class="ssub">How you decide what the rate should be.</p>
+      <div class="q">
+        <label class="ql">How do you decide tonight's rate versus next week's rate?</label>
+        <textarea name="rate_decision" placeholder="e.g. Tonight I look at walk-in potential and comp rate; next week I look at pickup pace and events…"></textarea>
+      </div>
+      <div class="q">
+        <label class="ql">Do you use fixed BAR rates or do you change them during the day?</label>
+        <select name="rate_change_freq">
+          <option value="">Choose…</option>
+          <option>Set once a week, rarely change</option>
+          <option>Set daily in the morning, hold until next day</option>
+          <option>Change 2–3 times per day when needed</option>
+          <option>Change frequently throughout the day</option>
+        </select>
+      </div>
+      <div class="q">
+        <label class="ql">What's the largest rate change in one jump you'd be comfortable making? (£)</label>
+        <input type="text" name="max_rate_jump" placeholder="e.g. £15">
+      </div>
+      <div class="q">
+        <label class="ql">How do you handle Sunday nights versus weekends?</label>
+        <textarea name="sunday_approach" placeholder="e.g. Sundays we drop rate / offer spa packages / use minimum stay…"></textarea>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h2>3. Comp set</h2>
+      <p class="ssub">How you track what competitors are doing.</p>
+      <div class="q">
+        <label class="ql">Which hotels do you actively monitor rates for? (tick all)</label>
+        <div class="chks" data-chks="comp">
+          <label><input type="checkbox" value="Coombe Abbey"> Coombe Abbey</label>
+          <label><input type="checkbox" value="DoubleTree Coventry"> DoubleTree by Hilton Coventry</label>
+          <label><input type="checkbox" value="Windmill Village"> Windmill Village</label>
+          <label><input type="checkbox" value="Ramada Coventry"> Ramada Coventry</label>
+          <label><input type="checkbox" value="Chesford Grange"> Chesford Grange</label>
+          <label><input type="checkbox" value="Nailcote Hall"> Nailcote Hall</label>
+          <label><input type="checkbox" value="Mallory Court"> Mallory Court</label>
+          <label><input type="checkbox" value="Ardencote"> Ardencote</label>
+        </div>
+      </div>
+      <div class="q">
+        <label class="ql">Are there any other properties you watch we haven't listed?</label>
+        <input type="text" name="comp_other" placeholder="e.g. Hilton Birmingham Metropole, Crown Plaza NEC…">
+      </div>
+      <div class="q">
+        <label class="ql">How often do you check comp rates?</label>
+        <select name="comp_freq">
+          <option value="">Choose…</option>
+          <option>Multiple times per day</option>
+          <option>Once per day</option>
+          <option>2–3 times per week</option>
+          <option>Once per week</option>
+          <option>When something unusual happens</option>
+        </select>
+      </div>
+      <div class="q">
+        <label class="ql">What triggers an urgent rate change for you?</label>
+        <textarea name="rate_trigger" placeholder="e.g. Comp drops £20, event cancels, pickup pace lagging, overbooking risk…"></textarea>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h2>4. Inventory &amp; restrictions</h2>
+      <p class="ssub">Controls you use beyond rate.</p>
+      <div class="q">
+        <label class="ql">Do you ever close out OTAs on certain nights? If so, when?</label>
+        <textarea name="ota_closeout" placeholder="e.g. Yes on peak Christmas nights; or No, always open…"></textarea>
+      </div>
+      <div class="q">
+        <label class="ql">How do you decide the split between group blocks and transient inventory?</label>
+        <textarea name="group_split" placeholder="e.g. Hold 30 rooms for transient on wedding dates…"></textarea>
+      </div>
+      <div class="q">
+        <label class="ql">Do you use minimum length of stay (MLOS)?</label>
+        <div class="chks" data-chks="mlos">
+          <label><input type="checkbox" value="Never"> Never</label>
+          <label><input type="checkbox" value="Christmas / NYE only"> Christmas / NYE only</label>
+          <label><input type="checkbox" value="Wedding Saturdays"> Wedding Saturdays</label>
+          <label><input type="checkbox" value="High-demand events"> High-demand event nights</label>
+          <label><input type="checkbox" value="Routine weekends"> Routine weekends</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h2>5. Events &amp; demand drivers</h2>
+      <p class="ssub">What you watch outside the hotel.</p>
+      <div class="q">
+        <label class="ql">Which local event sources do you check?</label>
+        <div class="chks" data-chks="events">
+          <label><input type="checkbox" value="NEC Birmingham"> NEC Birmingham events</label>
+          <label><input type="checkbox" value="Ricoh Arena"> Ricoh Arena / Coventry Building Society Arena</label>
+          <label><input type="checkbox" value="University of Warwick"> University of Warwick calendar</label>
+          <label><input type="checkbox" value="JLR works"> JLR shutdowns / works</label>
+          <label><input type="checkbox" value="VisitEngland"> VisitEngland / regional events feed</label>
+          <label><input type="checkbox" value="Local weddings"> Local wedding bookings elsewhere</label>
+          <label><input type="checkbox" value="None"> None — I mostly react to pickup</label>
+        </div>
+      </div>
+      <div class="q">
+        <label class="ql">How far ahead do you typically adjust rates for a known event?</label>
+        <select name="event_lead">
+          <option value="">Choose…</option>
+          <option>Same week</option>
+          <option>2–4 weeks ahead</option>
+          <option>1–3 months ahead</option>
+          <option>3–6 months ahead</option>
+          <option>More than 6 months ahead</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h2>6. Pain points &amp; gaps</h2>
+      <p class="ssub">Where today's workflow hurts.</p>
+      <div class="q">
+        <label class="ql">What takes the most time in your day?</label>
+        <textarea name="time_sink" placeholder="e.g. Manually comparing comp rates across 7 hotels and 30 nights…"></textarea>
+      </div>
+      <div class="q">
+        <label class="ql">Where do you wish you had better data?</label>
+        <textarea name="data_gaps" placeholder="e.g. Real pace by segment, wedding enquiries in a pipeline, F&B contribution per room…"></textarea>
+      </div>
+      <div class="q">
+        <label class="ql">What decision do you find the hardest?</label>
+        <textarea name="hardest_decision" placeholder="e.g. Whether to accept a group that displaces transient, how low to drop a distressed night…"></textarea>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h2>7. Alfred</h2>
+      <p class="ssub">What you'd want Alfred to do.</p>
+      <div class="q">
+        <label class="ql">Of these, pick the TWO most useful things Alfred could do for you right now</label>
+        <div class="chks" data-chks="alfred_pri">
+          <label><input type="checkbox" value="Auto-check comp rates daily"> Auto-check comp rates daily</label>
+          <label><input type="checkbox" value="Flag quiet nights for action"> Flag quiet nights for action</label>
+          <label><input type="checkbox" value="Draft group-vs-transient recommendations"> Draft group-vs-transient recommendations</label>
+          <label><input type="checkbox" value="Produce a morning rate action list"> Produce a morning rate action list</label>
+          <label><input type="checkbox" value="Push rate changes direct to Rezlynx"> Push rate changes direct to Rezlynx</label>
+          <label><input type="checkbox" value="Monitor overnight pickup and alert"> Monitor overnight pickup and alert</label>
+          <label><input type="checkbox" value="Produce weekly pricing scorecards"> Produce weekly pricing scorecards</label>
+        </div>
+      </div>
+      <div class="q">
+        <label class="ql">Would you be comfortable letting Alfred auto-push rates (without asking first)?</label>
+        <div class="scalewrap" data-scale="trust">
+          <div class="scaleitem" data-v="1">1</div>
+          <div class="scaleitem" data-v="2">2</div>
+          <div class="scaleitem" data-v="3">3</div>
+          <div class="scaleitem" data-v="4">4</div>
+          <div class="scaleitem" data-v="5">5</div>
+        </div>
+        <div class="anchor"><span>1 · Absolutely not</span><span>3 · Only within guardrails</span><span>5 · Yes, fully autonomous</span></div>
+      </div>
+      <div class="q">
+        <label class="ql">What would make you trust Alfred more?</label>
+        <textarea name="trust_criteria" placeholder="e.g. 4 weeks of seeing his recommendations, agreed guardrails on max change per day, revert within 24h…"></textarea>
+      </div>
+      <div class="q">
+        <label class="ql">Anything we've missed — tell us what you'd want from a revenue system that no-one asks about</label>
+        <textarea name="free_text" placeholder="Over to you."></textarea>
+      </div>
+    </div>
+
+    <input type="hidden" name="systems" id="h_systems">
+    <input type="hidden" name="comp" id="h_comp">
+    <input type="hidden" name="mlos" id="h_mlos">
+    <input type="hidden" name="events" id="h_events">
+    <input type="hidden" name="alfred_pri" id="h_alfred_pri">
+    <input type="hidden" name="trust" id="h_trust">
+
+    <div class="submit">
+      <button type="submit" id="go">Submit answers</button>
+      <div class="note">Answers are stored in the Brandon Hall project only. Nothing shared outside.</div>
+    </div>
+  </form>
+
+  <div class="thanks" id="thx">
+    <h2>Thank you, Patrik.</h2>
+    <p>Your answers have been sent to Ajay. We'll use them to make Alfred genuinely useful to you — not just another dashboard. Expect a chat next week.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  // chip-style multiselect toggling
+  document.querySelectorAll('[data-chks]').forEach(function(wrap){
+    wrap.addEventListener('click', function(e){
+      var lbl = e.target.closest('label'); if (!lbl) return;
+      var cb = lbl.querySelector('input'); if (!cb) return;
+      setTimeout(function(){ lbl.classList.toggle('on', cb.checked); }, 0);
+    });
+  });
+  // 1-5 scale toggling
+  document.querySelectorAll('[data-scale]').forEach(function(wrap){
+    wrap.addEventListener('click', function(e){
+      var it = e.target.closest('.scaleitem'); if (!it) return;
+      wrap.querySelectorAll('.scaleitem').forEach(function(x){ x.classList.remove('on'); });
+      it.classList.add('on');
+      wrap.setAttribute('data-value', it.getAttribute('data-v'));
+    });
+  });
+
+  var form = document.getElementById('form');
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    document.getElementById('submittedAt').value = new Date().toISOString();
+
+    // collect multiselects
+    ['systems','comp','mlos','events','alfred_pri'].forEach(function(k){
+      var wrap = document.querySelector('[data-chks="'+k+'"]');
+      var vals = Array.from(wrap.querySelectorAll('input:checked')).map(function(x){return x.value});
+      document.getElementById('h_'+k).value = vals.join(', ');
+    });
+    var trustWrap = document.querySelector('[data-scale="trust"]');
+    document.getElementById('h_trust').value = trustWrap.getAttribute('data-value') || '';
+
+    // Serialise to object
+    var data = {};
+    new FormData(form).forEach(function(v,k){ data[k] = v; });
+
+    var btn = document.getElementById('go');
+    btn.disabled = true; btn.textContent = 'Submitting…';
+
+    fetch('https://europe-west2-brandonhall-7bdef.cloudfunctions.net/alfredQuestionnaire', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(function(r){ return r.json(); }).then(function(j){
+      if (j && j.ok) {
+        form.style.display = 'none';
+        document.getElementById('thx').style.display = 'block';
+        window.scrollTo(0, 0);
+      } else {
+        btn.disabled = false; btn.textContent = 'Submit answers';
+        alert('Could not submit — please try again. If this persists, let Ajay know.');
+      }
+    }).catch(function(){
+      btn.disabled = false; btn.textContent = 'Submit answers';
+      alert('Could not reach the server. Please try again in a moment.');
+    });
+  });
+})();
+</script>
+</body>
+</html>
