@@ -3,17 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Revenue Management Questionnaire · Brandon Hall</title>
+<title>Revenue Management · Brandon Hall</title>
 <style>
 :root{--navy:#1a2238;--teal:#1F7A8C;--gold:#d4a94e;--cream:#fdfcf7;--grey:#52514e;--border:#e4e2dc}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.55}
 .wrap{max-width:780px;margin:0 auto;padding:30px 20px 80px}
-.hero{background:linear-gradient(135deg,#1a2238 0%,#0f1424 100%);color:#fff;padding:32px 36px;border-radius:14px;margin-bottom:24px;box-shadow:0 6px 20px rgba(15,20,36,.25);position:relative;overflow:hidden}
-.hero::after{content:"🎩";position:absolute;right:28px;top:16px;font-size:68px;opacity:.1}
-.hero h1{margin:0 0 6px;font-size:24px;font-weight:700}
-.hero p{margin:0;opacity:.88;font-size:14.5px;max-width:560px;line-height:1.55}
-.hero .intro{margin-top:14px;font-size:13.5px;opacity:.78;max-width:580px}
+.hero{background:linear-gradient(135deg,#1F7A8C 0%,#145866 100%);color:#fff;padding:32px 36px;border-radius:14px;margin-bottom:24px;box-shadow:0 6px 20px rgba(20,88,102,.2)}
+.hero h1{margin:0 0 6px;font-size:24px;font-weight:700;letter-spacing:-.2px}
+.hero p{margin:0;opacity:.92;font-size:14.5px;max-width:580px;line-height:1.55}
+.hero .intro{margin-top:14px;font-size:13.5px;opacity:.82;max-width:600px}
 .sect{background:#fff;border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin-bottom:16px;box-shadow:0 1px 2px rgba(8,16,26,.04)}
 .sect h2{margin:0 0 4px;font-size:16px;font-weight:700;color:var(--teal)}
 .sect .ssub{margin:0 0 16px;font-size:12.5px;color:var(--grey)}
@@ -29,17 +28,12 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
 .q .chks label:hover{background:#f6f4ee}
 .q .chks input{margin:0}
 .q .chks label.on{background:#e6f1f4;border-color:var(--teal);color:var(--teal)}
-.q .scale{display:flex;gap:4px;margin-top:4px}
-.q .scale label{flex:1;text-align:center;padding:9px 0;border:1px solid #d4d2cb;border-radius:6px;cursor:pointer;background:#fff;font-weight:600;font-size:14px}
-.q .scale input{display:none}
-.q .scale label:hover{background:#f6f4ee}
-.q .scale input:checked+span{background:var(--teal);color:#fff;border-radius:6px;padding:9px 0;display:block;margin:-9px 0 -9px}
-.q .scalewrap{display:flex;gap:4px;align-items:center}
+.q .scalewrap{display:flex;gap:4px;align-items:center;margin-top:6px}
 .q .scaleitem{flex:1;text-align:center;padding:9px 0;border:1px solid #d4d2cb;border-radius:6px;cursor:pointer;background:#fff;font-weight:600;font-size:14px;transition:.1s}
 .q .scaleitem:hover{background:#f6f4ee}
 .q .scaleitem.on{background:var(--teal);color:#fff;border-color:var(--teal)}
 .q .anchor{display:flex;justify-content:space-between;font-size:11.5px;color:var(--grey);margin-top:4px}
-.submit{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--border);padding:16px 20px;margin:0 -20px;text-align:center;border-radius:0 0 0 0;box-shadow:0 -4px 20px rgba(8,16,26,.08)}
+.submit{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--border);padding:16px 20px;margin:0 -20px;text-align:center;box-shadow:0 -4px 20px rgba(8,16,26,.08)}
 .submit button{background:var(--teal);color:#fff;border:none;padding:13px 32px;font:inherit;font-size:15.5px;font-weight:700;border-radius:8px;cursor:pointer;box-shadow:0 2px 6px rgba(31,122,140,.3)}
 .submit button:hover{background:#166678}
 .submit button:disabled{background:#999;cursor:wait}
@@ -53,9 +47,9 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
 <body>
 <div class="wrap">
   <div class="hero">
-    <h1>Revenue Management · a few questions for Patrik</h1>
-    <p>We're building Alfred — the AI revenue agent for Brandon Hall. To make him actually useful, we need to understand how <b>you</b> currently run revenue management.</p>
-    <div class="intro">Takes about 10 minutes. There are no wrong answers — we're mapping how it works today so we can fill the gaps. Ajay will see your answers but nothing is shared outside Brandon Hall.</div>
+    <h1>Revenue Management · about how you do it</h1>
+    <p>We're building better tools for the commercial team at Brandon Hall. Before we design anything, we want to understand how revenue management is done here today — the detail, the judgment calls, the things that work, the things that don't.</p>
+    <div class="intro">This takes about 10 minutes. There are no wrong answers — we're mapping the process so we can support it properly. Nothing here is a test. Ajay will see your answers; nothing is shared outside Brandon Hall.</div>
   </div>
 
   <form id="form">
@@ -90,7 +84,7 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
       <p class="ssub">What you do first thing, before anyone else is in.</p>
       <div class="q">
         <label class="ql">What's the first thing you check when you arrive?</label>
-        <textarea name="morning_first" placeholder="e.g. Yesterday's close, tonight's arrivals, overnight pickup…"></textarea>
+        <textarea name="morning_first" placeholder="e.g. Yesterday's close, tonight's arrivals, overnight pickup, in-house guest list…"></textarea>
       </div>
       <div class="q">
         <label class="ql">Which systems do you log into first? (tick all that apply)</label>
@@ -103,6 +97,7 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
           <label><input type="checkbox" value="Google Hotel Ads"> Google Hotel Ads</label>
           <label><input type="checkbox" value="HosBUSINESS"> HosBUSINESS</label>
           <label><input type="checkbox" value="Spreadsheets"> Our own spreadsheets</label>
+          <label><input type="checkbox" value="Email"> Email / overnight reports</label>
         </div>
       </div>
       <div class="q">
@@ -116,14 +111,18 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
           <option>More than 4 hours</option>
         </select>
       </div>
+      <div class="q">
+        <label class="ql">Walk us through a typical morning — the first 60 minutes of your day</label>
+        <textarea name="morning_walkthrough" placeholder="Don't edit — just describe the order. e.g. First I pull the arrivals list, then I check who left reviews overnight, then…" rows="5"></textarea>
+      </div>
     </div>
 
     <div class="sect">
-      <h2>2. Rate setting</h2>
+      <h2>2. Rate setting · your thinking</h2>
       <p class="ssub">How you decide what the rate should be.</p>
       <div class="q">
         <label class="ql">How do you decide tonight's rate versus next week's rate?</label>
-        <textarea name="rate_decision" placeholder="e.g. Tonight I look at walk-in potential and comp rate; next week I look at pickup pace and events…"></textarea>
+        <textarea name="rate_decision" placeholder="What's your thought process? What's different between a same-day call and a next-week call?"></textarea>
       </div>
       <div class="q">
         <label class="ql">Do you use fixed BAR rates or do you change them during the day?</label>
@@ -141,7 +140,11 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
       </div>
       <div class="q">
         <label class="ql">How do you handle Sunday nights versus weekends?</label>
-        <textarea name="sunday_approach" placeholder="e.g. Sundays we drop rate / offer spa packages / use minimum stay…"></textarea>
+        <textarea name="sunday_approach" placeholder="e.g. Sundays we drop rate / offer spa packages / use minimum stay / hold firm…"></textarea>
+      </div>
+      <div class="q">
+        <label class="ql">Describe the most recent rate change you made and why</label>
+        <textarea name="recent_change" placeholder="What date, from £X to £Y, and what prompted it"></textarea>
       </div>
     </div>
 
@@ -163,7 +166,7 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
       </div>
       <div class="q">
         <label class="ql">Are there any other properties you watch we haven't listed?</label>
-        <input type="text" name="comp_other" placeholder="e.g. Hilton Birmingham Metropole, Crown Plaza NEC…">
+        <input type="text" name="comp_other" placeholder="e.g. Hilton Birmingham Metropole, Crowne Plaza NEC…">
       </div>
       <div class="q">
         <label class="ql">How often do you check comp rates?</label>
@@ -175,6 +178,10 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
           <option>Once per week</option>
           <option>When something unusual happens</option>
         </select>
+      </div>
+      <div class="q">
+        <label class="ql">How exactly do you check them? (walk us through the steps)</label>
+        <textarea name="comp_how" placeholder="e.g. Open Booking.com in incognito, search for a Sat night, screenshot the top 5 results…"></textarea>
       </div>
       <div class="q">
         <label class="ql">What triggers an urgent rate change for you?</label>
@@ -194,7 +201,7 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
         <textarea name="group_split" placeholder="e.g. Hold 30 rooms for transient on wedding dates…"></textarea>
       </div>
       <div class="q">
-        <label class="ql">Do you use minimum length of stay (MLOS)?</label>
+        <label class="ql">Do you use minimum length of stay (MLOS)? When?</label>
         <div class="chks" data-chks="mlos">
           <label><input type="checkbox" value="Never"> Never</label>
           <label><input type="checkbox" value="Christmas / NYE only"> Christmas / NYE only</label>
@@ -235,9 +242,9 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
 
     <div class="sect">
       <h2>6. Pain points &amp; gaps</h2>
-      <p class="ssub">Where today's workflow hurts.</p>
+      <p class="ssub">Where today's workflow is painful.</p>
       <div class="q">
-        <label class="ql">What takes the most time in your day?</label>
+        <label class="ql">What takes the most time in your day — and feels like it shouldn't?</label>
         <textarea name="time_sink" placeholder="e.g. Manually comparing comp rates across 7 hotels and 30 nights…"></textarea>
       </div>
       <div class="q">
@@ -245,43 +252,53 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
         <textarea name="data_gaps" placeholder="e.g. Real pace by segment, wedding enquiries in a pipeline, F&B contribution per room…"></textarea>
       </div>
       <div class="q">
-        <label class="ql">What decision do you find the hardest?</label>
+        <label class="ql">What decision do you find the hardest, and why?</label>
         <textarea name="hardest_decision" placeholder="e.g. Whether to accept a group that displaces transient, how low to drop a distressed night…"></textarea>
+      </div>
+      <div class="q">
+        <label class="ql">If you could delete one task from your day forever, what would it be?</label>
+        <textarea name="delete_task" placeholder="Over to you."></textarea>
       </div>
     </div>
 
     <div class="sect">
-      <h2>7. Alfred</h2>
-      <p class="ssub">What you'd want Alfred to do.</p>
+      <h2>7. A better daily tool</h2>
+      <p class="ssub">What would genuinely help.</p>
       <div class="q">
-        <label class="ql">Of these, pick the TWO most useful things Alfred could do for you right now</label>
-        <div class="chks" data-chks="alfred_pri">
-          <label><input type="checkbox" value="Auto-check comp rates daily"> Auto-check comp rates daily</label>
-          <label><input type="checkbox" value="Flag quiet nights for action"> Flag quiet nights for action</label>
-          <label><input type="checkbox" value="Draft group-vs-transient recommendations"> Draft group-vs-transient recommendations</label>
-          <label><input type="checkbox" value="Produce a morning rate action list"> Produce a morning rate action list</label>
-          <label><input type="checkbox" value="Push rate changes direct to Rezlynx"> Push rate changes direct to Rezlynx</label>
-          <label><input type="checkbox" value="Monitor overnight pickup and alert"> Monitor overnight pickup and alert</label>
-          <label><input type="checkbox" value="Produce weekly pricing scorecards"> Produce weekly pricing scorecards</label>
+        <label class="ql">Of these, pick the TWO things you'd find most useful in a daily revenue tool</label>
+        <div class="chks" data-chks="helpful">
+          <label><input type="checkbox" value="Comp rates refreshed automatically each morning"> Comp rates refreshed automatically each morning</label>
+          <label><input type="checkbox" value="Quiet nights flagged with a suggested action"> Quiet nights flagged with a suggested action</label>
+          <label><input type="checkbox" value="A morning rate action list ready to work through"> A morning rate action list ready to work through</label>
+          <label><input type="checkbox" value="Alerts on overnight pickup changes"> Alerts when overnight pickup shifts materially</label>
+          <label><input type="checkbox" value="A clean comp-vs-us chart across 30 nights"> A clean comp-vs-us chart across 30 nights</label>
+          <label><input type="checkbox" value="A group-vs-transient displacement calculator"> A group-vs-transient displacement calculator</label>
+          <label><input type="checkbox" value="A weekly scorecard of rate decisions"> A weekly scorecard of rate decisions</label>
+          <label><input type="checkbox" value="One-click rate updates into Rezlynx"> One-click rate updates into Rezlynx</label>
+          <label><input type="checkbox" value="A printable morning brief to work from"> A printable morning brief to work from</label>
         </div>
       </div>
       <div class="q">
-        <label class="ql">Would you be comfortable letting Alfred auto-push rates (without asking first)?</label>
-        <div class="scalewrap" data-scale="trust">
+        <label class="ql">If a new tool could do just three things for you, what would they be?</label>
+        <textarea name="three_things" placeholder="1. …&#10;2. …&#10;3. …" rows="5"></textarea>
+      </div>
+      <div class="q">
+        <label class="ql">What's the one report or view you wish you had in front of you every morning?</label>
+        <textarea name="morning_view" placeholder="e.g. A single page showing tonight's position, next 14 nights pickup vs budget, and the three nights at risk…"></textarea>
+      </div>
+      <div class="q">
+        <label class="ql">How involved would you want to be in setting up the rules the tool follows?</label>
+        <div class="scalewrap" data-scale="involvement">
           <div class="scaleitem" data-v="1">1</div>
           <div class="scaleitem" data-v="2">2</div>
           <div class="scaleitem" data-v="3">3</div>
           <div class="scaleitem" data-v="4">4</div>
           <div class="scaleitem" data-v="5">5</div>
         </div>
-        <div class="anchor"><span>1 · Absolutely not</span><span>3 · Only within guardrails</span><span>5 · Yes, fully autonomous</span></div>
+        <div class="anchor"><span>1 · Set it and forget it</span><span>3 · Review monthly</span><span>5 · I want to control every rule</span></div>
       </div>
       <div class="q">
-        <label class="ql">What would make you trust Alfred more?</label>
-        <textarea name="trust_criteria" placeholder="e.g. 4 weeks of seeing his recommendations, agreed guardrails on max change per day, revert within 24h…"></textarea>
-      </div>
-      <div class="q">
-        <label class="ql">Anything we've missed — tell us what you'd want from a revenue system that no-one asks about</label>
+        <label class="ql">Anything else — things you've always wanted, things you've seen elsewhere, things nobody asks about</label>
         <textarea name="free_text" placeholder="Over to you."></textarea>
       </div>
     </div>
@@ -290,24 +307,23 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
     <input type="hidden" name="comp" id="h_comp">
     <input type="hidden" name="mlos" id="h_mlos">
     <input type="hidden" name="events" id="h_events">
-    <input type="hidden" name="alfred_pri" id="h_alfred_pri">
-    <input type="hidden" name="trust" id="h_trust">
+    <input type="hidden" name="helpful" id="h_helpful">
+    <input type="hidden" name="involvement" id="h_involvement">
 
     <div class="submit">
       <button type="submit" id="go">Submit answers</button>
-      <div class="note">Answers are stored in the Brandon Hall project only. Nothing shared outside.</div>
+      <div class="note">Answers are stored securely in the Brandon Hall project only. Nothing shared outside.</div>
     </div>
   </form>
 
   <div class="thanks" id="thx">
-    <h2>Thank you, Patrik.</h2>
-    <p>Your answers have been sent to Ajay. We'll use them to make Alfred genuinely useful to you — not just another dashboard. Expect a chat next week.</p>
+    <h2>Thank you.</h2>
+    <p>Your answers have been sent to Ajay. We'll use them to shape what we build next — properly, around how you actually work. Expect a chat soon.</p>
   </div>
 </div>
 
 <script>
 (function(){
-  // chip-style multiselect toggling
   document.querySelectorAll('[data-chks]').forEach(function(wrap){
     wrap.addEventListener('click', function(e){
       var lbl = e.target.closest('label'); if (!lbl) return;
@@ -315,7 +331,6 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
       setTimeout(function(){ lbl.classList.toggle('on', cb.checked); }, 0);
     });
   });
-  // 1-5 scale toggling
   document.querySelectorAll('[data-scale]').forEach(function(wrap){
     wrap.addEventListener('click', function(e){
       var it = e.target.closest('.scaleitem'); if (!it) return;
@@ -330,16 +345,14 @@ html,body{margin:0;padding:0;background:#f6f4ee;color:var(--navy);font-family:-a
     e.preventDefault();
     document.getElementById('submittedAt').value = new Date().toISOString();
 
-    // collect multiselects
-    ['systems','comp','mlos','events','alfred_pri'].forEach(function(k){
+    ['systems','comp','mlos','events','helpful'].forEach(function(k){
       var wrap = document.querySelector('[data-chks="'+k+'"]');
       var vals = Array.from(wrap.querySelectorAll('input:checked')).map(function(x){return x.value});
       document.getElementById('h_'+k).value = vals.join(', ');
     });
-    var trustWrap = document.querySelector('[data-scale="trust"]');
-    document.getElementById('h_trust').value = trustWrap.getAttribute('data-value') || '';
+    var invWrap = document.querySelector('[data-scale="involvement"]');
+    document.getElementById('h_involvement').value = invWrap.getAttribute('data-value') || '';
 
-    // Serialise to object
     var data = {};
     new FormData(form).forEach(function(v,k){ data[k] = v; });
 
