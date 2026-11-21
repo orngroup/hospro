@@ -304,7 +304,15 @@
       '#pf-rev .rv-alf-empty{text-align:center;padding:40px 20px;color:#7b8494}',
       '#pf-rev .rv-alf-empty h3{color:#2c3440;font-weight:700;margin:0 0 8px}',
       '#pf-rev .rv-alf-loading{text-align:center;padding:60px 20px;color:#7b8494;font-size:14px}',
-      '#pf-rev .rv-alf-note-input{display:block;width:100%;margin-top:8px;padding:8px 10px;border:1px solid #d4d2cb;border-radius:6px;font:inherit;font-size:13px;box-sizing:border-box}'
+      '#pf-rev .rv-alf-note-input{display:block;width:100%;margin-top:8px;padding:8px 10px;border:1px solid #d4d2cb;border-radius:6px;font:inherit;font-size:13px;box-sizing:border-box}',
+      /* v39.2 Market Watch */
+      '#pf-rev .rv-alf-market-card{background:#fff;border:1px solid #e4e2dc;border-radius:12px;padding:16px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(8,16,26,.04)}',
+      '#pf-rev .rv-alf-market-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#52514e;margin-bottom:12px}',
+      '#pf-rev .rv-alf-market-legend span{display:inline-flex;align-items:center;gap:6px}',
+      '#pf-rev .rv-alf-market-legend i{display:inline-block;width:14px;height:3px;border-radius:2px}',
+      '#pf-rev .rv-alf-market-chart{position:relative;height:280px;margin:0 -4px}',
+      '#pf-rev .rv-alf-market-note{margin-top:12px;padding:10px 12px;background:#f8f6ef;border-radius:8px;font-size:12.5px;color:#2c3440;line-height:1.5}',
+      '#pf-rev .rv-alf-market-note b{font-weight:700;color:#1a2238}'
     ].join('\n');
     document.head.appendChild(s);
   }
@@ -571,7 +579,7 @@
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v39.1';
+  var HOSREV_VERSION = 'v39.2';
   function phaseBadge() {
     var liveBooks = getCachedBooks();
     var liveOnBooks = !!(liveBooks && liveBooks.byDate);
@@ -2253,6 +2261,27 @@
       );
     }
 
+    // v39.2: Market Watch chart — current BAR vs comp median vs Alfred's suggested rate
+    var actionDates = {};
+    actions.forEach(function (a) {
+      var m = /(\d{4}-\d{2}-\d{2})/.exec(a.scope || '');
+      if (m) actionDates[m[1]] = true;
+    });
+    var marketHtml = (
+      '<div class="rv-alf-section">Market Watch · next 30 nights — current BAR · comp median · Alfred\'s suggested</div>' +
+      '<div class="rv-alf-market-card">' +
+        '<div class="rv-alf-market-legend">' +
+          '<span><i style="background:#86847d"></i>Current BAR</span>' +
+          '<span><i style="background:#eb6834"></i>Comp median</span>' +
+          '<span><i style="background:#2ba57a"></i>Alfred\'s suggested</span>' +
+          '<span><i style="background:#d4a94e;border-radius:50%"></i>Alfred recommends action</span>' +
+          '<span><i style="background:#c0362b;border-radius:50%"></i>95%+ occupancy (sold)</span>' +
+        '</div>' +
+        '<div class="rv-alf-market-chart"><canvas id="rv-alf-market" data-action-dates="' + esc(JSON.stringify(actionDates)) + '"></canvas></div>' +
+        '<div class="rv-alf-market-note" id="rv-alf-market-note"></div>' +
+      '</div>'
+    );
+
     // Priority actions
     var actionsHtml = '';
     if (actions.length) {
@@ -2347,7 +2376,125 @@
       );
     }
 
-    return heroHtml + alertsHtml + actionsHtml + listsHtml + paceHtml + scoreHtml + learnHtml + sourcesHtml;
+    return heroHtml + alertsHtml + marketHtml + actionsHtml + listsHtml + paceHtml + scoreHtml + learnHtml + sourcesHtml;
+  }
+
+  /* v39.2 — Market Watch line chart on the Alfred tab.
+     Three series over the next 30 nights: current BAR, comp median, Alfred's suggested rate.
+     Highlights nights Alfred flagged for action, plus nights at 95%+ occupancy. */
+  function drawAlfredMarketChart() {
+    if (!window.Chart) return;
+    var canvas = document.getElementById('rv-alf-market');
+    if (!canvas) return;
+    try { buildNights(); } catch (e) {}
+    var nights = (typeof NIGHTS !== 'undefined' && NIGHTS) ? NIGHTS.slice(0, 30) : [];
+    if (!nights.length) return;
+
+    // Real on-books cache
+    var liveBooks = getCachedBooks();
+    var compCache = getCachedComp();
+
+    var labels = nights.map(function (n) { return shortD(n.d); });
+
+    // Row 1 — Current BAR (Classic double as benchmark)
+    var currentBar = nights.map(function (n) {
+      try {
+        var r = nightComputedFor('classic_dbl', n);
+        return r && r.current ? r.current : null;
+      } catch (e) { return null; }
+    });
+
+    // Row 2 — Comp median (from SerpApi cache if present, pseudo otherwise)
+    function pseudo(s) { var x = Math.sin(s * 9301 + 49297) * 233280; return x - Math.floor(x); }
+    var compMedian = nights.map(function (n, ni) {
+      if (compCache && compCache.byDate && compCache.byDate[n.d]) {
+        var hotels = compCache.byDate[n.d];
+        var rates = Object.keys(hotels).map(function (k) { return +(hotels[k] && hotels[k].rate) || 0; }).filter(function (r) { return r > 0; });
+        if (rates.length) { rates.sort(function (a, b) { return a - b; }); return rates[Math.floor(rates.length / 2)]; }
+      }
+      // graceful fallback — demo comp
+      var dowLift = [0.86, 0.85, 0.92, 0.96, 1.04, 1.18, 1.12][n.day];
+      var drift = 1 + (pseudo(ni * 17) - 0.5) * 0.08;
+      return Math.round(157 * drift * dowLift);
+    });
+
+    // Row 3 — Alfred's suggested (pricing engine recommendation for Classic double)
+    var suggested = nights.map(function (n) {
+      try {
+        var r = nightComputedFor('classic_dbl', n);
+        return r && r.recommended ? r.recommended : null;
+      } catch (e) { return null; }
+    });
+
+    // Point markers for action nights (gold) and sellout nights (red)
+    var actionDates = {};
+    try { actionDates = JSON.parse(canvas.getAttribute('data-action-dates') || '{}'); } catch (e) {}
+    var pointColors = nights.map(function (n) {
+      if (actionDates[n.d]) return '#d4a94e';
+      if (liveBooks && liveBooks.byDate && liveBooks.byDate[n.d] && liveBooks.byDate[n.d].totals && liveBooks.byDate[n.d].totals.rooms / 114 >= 0.95) return '#c0362b';
+      return 'transparent';
+    });
+    var pointRadius = nights.map(function (n) {
+      if (actionDates[n.d]) return 6;
+      if (liveBooks && liveBooks.byDate && liveBooks.byDate[n.d] && liveBooks.byDate[n.d].totals && liveBooks.byDate[n.d].totals.rooms / 114 >= 0.95) return 5;
+      return 0;
+    });
+
+    var datasets = [
+      { label: 'Current BAR', data: currentBar, borderColor: '#86847d', backgroundColor: '#86847d22', borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, tension: 0 },
+      { label: 'Comp median', data: compMedian, borderColor: '#eb6834', backgroundColor: '#eb683422', borderWidth: 2, pointRadius: 2, tension: 0.25 },
+      { label: 'Alfred\'s suggested', data: suggested, borderColor: '#2ba57a', backgroundColor: '#2ba57a22', borderWidth: 3, pointRadius: pointRadius, pointBackgroundColor: pointColors, pointBorderColor: pointColors, pointBorderWidth: 2, tension: 0.2 }
+    ];
+
+    if (window.__alfMarketChart) { try { window.__alfMarketChart.destroy(); } catch (e) {} }
+    window.__alfMarketChart = new Chart(canvas, {
+      type: 'line',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (c) { return c.dataset.label + ': £' + (c.parsed.y != null ? Math.round(c.parsed.y) : '—'); },
+              afterBody: function (ctx) {
+                if (!ctx || !ctx[0]) return '';
+                var d = nights[ctx[0].dataIndex];
+                if (!d) return '';
+                var book = (liveBooks && liveBooks.byDate && liveBooks.byDate[d.d] && liveBooks.byDate[d.d].totals) ? liveBooks.byDate[d.d].totals.rooms : null;
+                var lines = [];
+                if (book !== null) lines.push('On books: ' + book + ' / 114 (' + Math.round((book / 114) * 100) + '%)');
+                if (actionDates[d.d]) lines.push('🎩 Alfred flagged this night');
+                return lines.join('\n');
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: { grid: { color: '#ebe9e3' }, border: { display: false }, ticks: { callback: function (v) { return '£' + v; } } }
+        }
+      }
+    });
+
+    // Note under the chart — summarise the gap
+    var note = document.getElementById('rv-alf-market-note');
+    if (note) {
+      var comp14 = compMedian.slice(0, 14).reduce(function (t, v) { return t + v; }, 0) / 14;
+      var sug14 = suggested.slice(0, 14).filter(function (v) { return v != null; });
+      var sugAvg = sug14.length ? sug14.reduce(function (t, v) { return t + v; }, 0) / sug14.length : 0;
+      var cur14 = currentBar.slice(0, 14).filter(function (v) { return v != null; });
+      var curAvg = cur14.length ? cur14.reduce(function (t, v) { return t + v; }, 0) / cur14.length : 0;
+      var gap = sugAvg - comp14;
+      var vs = sugAvg - curAvg;
+      var compSource = (compCache && compCache.byDate && Object.keys(compCache.byDate).length) ? 'live SerpApi (' + (compCache.serverTs ? fmtAgo(compCache.serverTs) : 'cached') + ')' : 'demo data — SerpApi will populate on the next daily refresh';
+      note.innerHTML =
+        '<b>Next 14 nights</b> · Alfred suggests avg <b>£' + Math.round(sugAvg) + '</b> · ' +
+        (vs >= 0 ? '<span style="color:#1a6442">+£' + Math.round(vs) + ' vs current BAR</span>' : '<span style="color:#c0362b">−£' + Math.round(-vs) + ' vs current BAR</span>') + ' · ' +
+        (gap >= 0 ? '<span style="color:#1a6442">+£' + Math.round(gap) + ' above comp median</span>' : '<span style="color:#c0362b">−£' + Math.round(-gap) + ' below comp median</span>') +
+        '<br><span style="opacity:.6;font-size:11px">Comp source: ' + esc(compSource) + '</span>';
+    }
   }
 
   function viewAlfred() {
@@ -2392,6 +2539,7 @@
     el.innerHTML = html;
     if (view === 'market')   setTimeout(function () { drawForecastCharts(); drawTrendChart(); drawThenNowChart(); }, 20);
     if (view === 'agent')    setTimeout(restoreAgentHistory, 20);
+    if (view === 'alfred')   setTimeout(function () { try { drawAlfredMarketChart(); } catch (e) {} }, 40);
   }
 
   /* ---------- events ---------- */
