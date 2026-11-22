@@ -140,7 +140,7 @@
     var el = $('pf-home'), T = window.Trading, S = T ? T.S() : {}, a = acc(), PD = window.Profit.data(), h = '', card = {}, H = highlights();
     var who = (window.Profit.user() || '').split(/\s+/)[0], hr = new Date().getHours();
 
-    /* v39.10 — Manager's Flash slot. Fills in asynchronously via fetchManagerFlash(). */
+    /* v39.9 — Manager's Flash slot. Fills in asynchronously via fetchManagerFlash(). */
     h += '<div id="mf-slot" class="mf-slot"><div class="mf-load">🎩 ARIA is preparing your Manager\'s Flash…</div></div>';
 
     h += '<div class="hp-hero"><div><h2>' + (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (who ? ', ' + esc(who) : '') + '</h2><p>Business intelligence for Brandon Hall Hotel &amp; Spa: trading, profit and costs in one place</p></div>' +
@@ -183,7 +183,7 @@
   }
 
   /* ============================================================
-     v39.10 — Manager's Flash section
+     v39.9 — Manager's Flash section
      ============================================================ */
 
   var FN_BASE = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/';
@@ -601,8 +601,9 @@
 
   /* ---------- Food & beverage ---------- */
   var fbCharts = [];
-  var fbView = 'over', DOWN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  function fbSeg(P) { var TP = window.Trading && window.Trading.S().x ? window.Trading.S().x.plu : null; return '<div class="segs">' + [['over', 'Overview'], ['term', 'By terminal'], ['brk', 'Breakfast'], ['menu', 'What we sell']].map(function (v) { var off = v[0] === 'term' ? !TP : (v[0] !== 'over' && !P); return '<button class="' + (fbView === v[0] ? 'on' : '') + '" data-fb="' + v[0] + '"' + (off ? ' disabled title="' + (v[0] === 'term' ? 'Needs the till item sales reports' : 'Needs the Rezlynx Postings report') + '"' : '') + '>' + v[1] + '</button>'; }).join('') + '</div>'; }
+  var fbView = 'cov', DOWN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  // v39.11: added 'cov' (Covers) tab at the top of the F&B sub-nav
+  function fbSeg(P) { var TP = window.Trading && window.Trading.S().x ? window.Trading.S().x.plu : null; return '<div class="segs">' + [['cov', 'Covers'], ['over', 'Overview'], ['term', 'By terminal'], ['brk', 'Breakfast'], ['menu', 'What we sell']].map(function (v) { var off = v[0] === 'term' ? !TP : ((v[0] === 'brk' || v[0] === 'menu') && !P); return '<button class="' + (fbView === v[0] ? 'on' : '') + '" data-fb="' + v[0] + '"' + (off ? ' disabled title="' + (v[0] === 'term' ? 'Needs the till item sales reports' : 'Needs the Rezlynx Postings report') + '"' : '') + '>' + v[1] + '</button>'; }).join('') + '</div>'; }
   function dshort(k) { return +k.slice(8) + ' ' + MN[+k.slice(5, 7) - 1]; }
   function postingsNote(P) { return '<p class="note">Source: Rezlynx Postings report, ' + dlabel(P.from) + ' to ' + dlabel(P.to) + ' ' + P.to.slice(0, 4) + ', run ' + when(P.asOf) + '. Net of VAT. It covers the restaurant, room service and breakfast codes; bar till sales (analysis code BAR1BEV) are not in this export. Deleted postings (' + P.deleted.c + ', ' + gbp(P.deleted.v) + ') are left out; refunds and adjustments (' + P.refunds.c + ', ' + gbp(P.refunds.v) + ') are netted off. Guest names are not kept. Guestline cannot email this report, so it is exported by hand.</p>'; }
   function renderBrk(el, S, P) {
@@ -695,7 +696,7 @@
     if ($('tm-1-leg')) $('tm-1-leg').innerHTML = o.places.map(function (p, i) { return '<span><i style="background:' + PALT[i % 3] + '"></i>' + esc(p) + ' till</span>'; }).join('');
     fbCharts.push(new Chart($('tm-1'), { type: 'bar', data: { labels: o.meals, datasets: o.places.map(function (p, i) { return { label: p + ' till', data: o.meals.map(function (m) { var c = o.cell[m + '|' + p]; return c ? Math.round(c.net) : 0; }), backgroundColor: PALT[i % 3], borderRadius: 4, maxBarThickness: 54 }; }) }, options: { maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + gbp(c.parsed.y); } } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false }, ticks: { maxTicksLimit: 5, callback: function (v) { return v >= 1000 ? '£' + v / 1000 + 'k' : '£' + v; } } } } } }));
   }
-  /* v39.10 — Covers section at top of F&B tab. Reads from backend /fbCovers endpoint.
+  /* v39.9 — Covers section at top of F&B tab. Reads from backend /fbCovers endpoint.
      Breakfast is exact from gl_days.bk counter; lunch/dinner are inferred from main-course items in gl_items. */
   var FB_COVERS_CACHE = null, FB_COVERS_INFLIGHT = false;
   var FB_FN_BASE = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/';
@@ -748,11 +749,21 @@
       .catch(function (e) { FB_COVERS_INFLIGHT = false; onDone('<div class="card"><h2>Covers</h2><p class="sub">Network issue loading covers</p></div>'); });
   }
 
+  /* v39.11 — Covers sub-tab renderer. Shows the covers card (from fbCovers endpoint) as its own tab. */
+  function renderCov(el, S, P) {
+    var h = fbSeg(P);
+    h += '<div id="fb-covers-slot"><div class="card"><h2>Covers · last 30 days ' + fbGlTick() + '</h2><p class="sub">Loading…</p></div></div>';
+    el.innerHTML = h;
+    if (FB_COVERS_CACHE) { var slot = $('fb-covers-slot'); if (slot) slot.innerHTML = fbCoversHtml(FB_COVERS_CACHE); }
+    else fetchFbCovers(function (html) { var slot = $('fb-covers-slot'); if (slot) slot.innerHTML = html; });
+  }
+
   function renderFb() {
     var el = $('pf-fb'), T = window.Trading, S = T ? T.S() : {}; fbCharts.forEach(function (c) { c.destroy(); }); fbCharts = [];
     if (!S.af) { el.innerHTML = '<div class="card"><h2>No Guestline data loaded</h2></div>'; return; }
-    var P = S.x && S.x.postings; if (!P && (fbView === 'brk' || fbView === 'menu')) fbView = 'over';
-    if (fbView === 'term' && !(S.x && S.x.plu)) fbView = 'over';
+    var P = S.x && S.x.postings; if (!P && (fbView === 'brk' || fbView === 'menu')) fbView = 'cov';
+    if (fbView === 'term' && !(S.x && S.x.plu)) fbView = 'cov';
+    if (fbView === 'cov') return renderCov(el, S, P);
     if (fbView === 'term') return renderTerm(el, S, P); if (fbView === 'brk') return renderBrk(el, S, P); if (fbView === 'menu') return renderMenu(el, S, P);
     var cut = T.asOfDay(), m = cut.slice(0, 7), pe = T.pePeriod('month', m), act = T.agg(T.rowsFor(m, 'actual')), h = '';
     if (!pe) { el.innerHTML = '<div class="card"><h2>No Period End report for this month</h2><p class="sub">Food and drink sales by outlet come from the Rezlynx Period End / End of Day report.</p></div>'; return; }
@@ -777,11 +788,8 @@
     if (X.company) { var top = X.company.rows.slice(0, 8); h += '<div class="grid g2"><div class="card"><h2>Food and drink on the bill, by booking source</h2><p class="sub">Rezlynx Company report, ' + esc(X.company.period.replace('(Actual) ', '')) + ', including VAT</p><table><tr><th>Source</th><th class="n">Room nights</th><th class="n">F&amp;B on the bill</th><th class="n">F&amp;B per room night</th></tr>' + top.map(function (r) { return '<tr><td>' + esc(r.ref) + '</td><td class="n">' + num(r.rn) + '</td><td class="n">' + gbp(r.fb) + '</td><td class="n">' + gbp(r.fb / r.rn, 2) + '</td></tr>'; }).join('') + '</table></div>'; }
     else h += '<div class="grid g2"><div></div>';
     h += '<div class="card"><h2>What is still missing for food and drink</h2><p class="sub">Rezlynx only sees totals posted from the tills</p><div class="finding warn"><h3>Exact covers per clerk</h3><p>Rezlynx only assigns covers to the clerk who opens a table, so servers who join later show zero. We now infer covers above from main-course items in the POS feed as an interim measure. Asking Glen for a per-meal or per-service cover report.</p></div><div class="finding warn"><h3>Voids and discounts</h3><p>The Clerk Function Counts report shows totals per operator; we are working on scheduling it weekly into HosBUSINESS.</p></div><div class="finding warn"><h3>Events and functions</h3><p>Weddings, conferences and private dining appear only as provisional revenue in the market segment forecast. An event-by-event revenue report would separate them from the restaurant.</p></div></div></div>';
-    // v39.10: prepend covers section, then fetch async
-    h = '<div id="fb-covers-slot"><div class="card"><h2>Covers · last 30 days</h2><p class="sub">Loading…</p></div></div>' + h;
+    // v39.11: covers moved to its own dedicated 'cov' sub-tab (was stacked on Overview in v39.9/10)
     el.innerHTML = h;
-    if (FB_COVERS_CACHE) { var slot = $('fb-covers-slot'); if (slot) slot.innerHTML = fbCoversHtml(FB_COVERS_CACHE); }
-    else fetchFbCovers(function (html) { var slot = $('fb-covers-slot'); if (slot) slot.innerHTML = html; });
     var opt = function (horiz, f) { return { indexAxis: horiz ? 'y' : 'x', maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return gbp(horiz ? c.parsed.x : c.parsed.y); } } } }, scales: { x: { grid: horiz ? { color: '#ebe9e3', drawTicks: false } : { display: false }, border: { display: false }, ticks: horiz ? { callback: f, maxTicksLimit: 6 } : {} }, y: { grid: horiz ? { display: false } : { color: '#ebe9e3', drawTicks: false }, border: { display: false }, beginAtZero: true, ticks: horiz ? {} : { callback: f, maxTicksLimit: 5 } } } }; }, k = function (v) { return '£' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(0) + 'k' : v); };
     fbCharts.push(new Chart($('fb-c1'), { type: 'bar', data: { labels: lines.map(function (l) { return l[0]; }), datasets: [{ data: lines.map(function (l) { return Math.round(l[1]); }), backgroundColor: lines.map(function (l) { return l[2] === 'Food' ? '#1a8f63' : '#b9791a'; }), borderRadius: 4, maxBarThickness: 20 }] }, options: opt(true, k) }));
     var mk = Object.keys(meal).filter(function (x) { return meal[x] > 0.5; });
