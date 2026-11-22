@@ -140,7 +140,7 @@
     var el = $('pf-home'), T = window.Trading, S = T ? T.S() : {}, a = acc(), PD = window.Profit.data(), h = '', card = {}, H = highlights();
     var who = (window.Profit.user() || '').split(/\s+/)[0], hr = new Date().getHours();
 
-    /* v39.6 — Manager's Flash slot. Fills in asynchronously via fetchManagerFlash(). */
+    /* v39.7 — Manager's Flash slot. Fills in asynchronously via fetchManagerFlash(). */
     h += '<div id="mf-slot" class="mf-slot"><div class="mf-load">🎩 ARIA is preparing your Manager\'s Flash…</div></div>';
 
     h += '<div class="hp-hero"><div><h2>' + (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (who ? ', ' + esc(who) : '') + '</h2><p>Business intelligence for Brandon Hall Hotel &amp; Spa: trading, profit and costs in one place</p></div>' +
@@ -183,7 +183,7 @@
   }
 
   /* ============================================================
-     v39.6 — Manager's Flash section
+     v39.7 — Manager's Flash section
      ============================================================ */
 
   var FN_BASE = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/';
@@ -251,6 +251,7 @@
   function renderFlash(flash, commentary, briefHeadline) {
     if (!flash) return '';
     var d = flash.day, w = flash.week, m = flash.month, y = flash.year, la = flash.lookAhead;
+    var dow = flash.dow || [], t7 = flash.trailing7 || [], items = flash.items || null;
     var dateHuman = flash.forDate ? new Date(flash.forDate + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
     function cell(v, f) { return '<td class="mf-n">' + (f ? f(v) : v) + '</td>'; }
@@ -258,43 +259,174 @@
       return '<tr><td class="mf-l">' + esc(label) + '</td>' + cell(da, f) + cell(wa, f) + cell(ma, f) + cell(ya, f) + '</tr>';
     }
 
+    // ARIA Commentary — four paragraphs
     var commentaryHtml = '';
     if (commentary) {
-      commentaryHtml = '<div class="mf-com"><div class="mf-com-hd">🎩 ARIA · Overnight Commentary</div>' +
+      commentaryHtml = '<div class="mf-com"><div class="mf-com-hd">🎩 ARIA · Daily Commentary</div>' +
         (commentary.overnight ? '<p><b>Overnight.</b> ' + esc(commentary.overnight) + '</p>' : '') +
         (commentary.period ? '<p><b>Period view.</b> ' + esc(commentary.period) + '</p>' : '') +
+        (commentary.weekday ? '<p><b>Weekday pattern.</b> ' + esc(commentary.weekday) + '</p>' : '') +
         (commentary.ahead ? '<p><b>Ahead.</b> ' + esc(commentary.ahead) + '</p>' : '') +
         '</div>';
     }
+
+    // Spotlight deep-dive (rotating lens, varies daily)
+    var spotlightHtml = '';
+    if (commentary && commentary.spotlight) {
+      spotlightHtml = '<div class="mf-spot"><div class="mf-spot-hd">🔎 Today\'s spotlight</div>' +
+        '<p>' + esc(commentary.spotlight) + '</p></div>';
+    }
+
+    // Flags row — anomalies / wins / misses
+    var flagsHtml = '';
+    if (commentary && ((commentary.anomalies || []).length || (commentary.wins || []).length || (commentary.misses || []).length)) {
+      var flagCols = '';
+      if (commentary.anomalies && commentary.anomalies.length) {
+        flagCols += '<div class="mf-flag mf-flag-anom"><div class="mf-flag-hd">⚡ Anomalies spotted</div><ul>' +
+          commentary.anomalies.slice(0, 4).map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>';
+      }
+      if (commentary.wins && commentary.wins.length) {
+        flagCols += '<div class="mf-flag mf-flag-win"><div class="mf-flag-hd">✓ Wins</div><ul>' +
+          commentary.wins.slice(0, 3).map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>';
+      }
+      if (commentary.misses && commentary.misses.length) {
+        flagCols += '<div class="mf-flag mf-flag-miss"><div class="mf-flag-hd">⚠ Watch-items</div><ul>' +
+          commentary.misses.slice(0, 3).map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>';
+      }
+      flagsHtml = '<div class="mf-flags">' + flagCols + '</div>';
+    }
+
+    // Departmental actions
+    var actionsHtml = '';
+    if (commentary && commentary.actions && commentary.actions.length) {
+      actionsHtml = '<h3 class="mf-sh">Actions for today · by department</h3><div class="mf-acts">' +
+        commentary.actions.map(function (a) {
+          var dept = (a.dept || '').replace(/[^a-z]/gi, '').toLowerCase();
+          var pri  = ((a.priority || 'medium') + '').toLowerCase();
+          return '<div class="mf-act mf-act-' + dept + '">' +
+            '<div class="mf-act-top">' +
+              '<div class="mf-act-dept">' + esc(a.dept || '') + (a.owner ? ' · ' + esc(a.owner) : '') + '</div>' +
+              '<span class="mf-act-pri mf-pri-' + pri + '">' + esc((a.priority || 'med').slice(0,4).toUpperCase()) + '</span>' +
+            '</div>' +
+            '<div class="mf-act-text">' + esc(a.action || '') + '</div>' +
+            (a.why ? '<div class="mf-act-why">Why: ' + esc(a.why) + '</div>' : '') +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }
+
     var briefHtml = briefHeadline ? '<div class="mf-brief"><b>ARIA\'s brief today:</b> ' + esc(briefHeadline) + '</div>' : '';
+
+    // KPI row
+    var kpiHtml = '<div class="mf-kpi">' +
+      '<div class="mf-kpi-t mf-kpi-occ"><div class="mf-kpi-l">Occupancy</div><div class="mf-kpi-v">' + mfPct(d.occ) + '</div><div class="mf-kpi-s">' + d.sold + ' of ' + d.stock + ' rooms</div></div>' +
+      '<div class="mf-kpi-t mf-kpi-adr"><div class="mf-kpi-l">ADR (net)</div><div class="mf-kpi-v">' + mfGbpDp(d.adrNet) + '</div><div class="mf-kpi-s">accommodation</div></div>' +
+      '<div class="mf-kpi-t mf-kpi-rev"><div class="mf-kpi-l">RevPAR</div><div class="mf-kpi-v">' + mfGbpDp(d.revparNet) + '</div><div class="mf-kpi-s">net, per available room</div></div>' +
+      '<div class="mf-kpi-t mf-kpi-tot"><div class="mf-kpi-l">Total Revenue</div><div class="mf-kpi-v">' + mfGbp(d.revNet) + '</div><div class="mf-kpi-s">TRevPAR ' + mfGbpDp(d.trevparNet) + '</div></div>' +
+      '</div>';
+
+    // Last 7 nights mini chart
+    var chartHtml = '';
+    if (t7 && t7.length) {
+      var maxRev = 1; t7.forEach(function (x) { var r = +x.rev || 0; if (r > maxRev) maxRev = r; });
+      chartHtml = '<h3 class="mf-sh">Last 7 nights · total revenue</h3><div class="mf-chart">' +
+        t7.map(function (x) {
+          var h = Math.round(((+x.rev || 0) / maxRev) * 110);
+          var cls = (x.d === flash.forDate) ? ' mf-bar-y' : '';
+          var dd = (x.d || '').slice(8) + '/' + (x.d || '').slice(5, 7);
+          return '<div class="mf-bar-col"><div class="mf-bar-v">' + mfGbp(x.rev) + '</div><div class="mf-bar' + cls + '" style="height:' + h + 'px"></div><div class="mf-bar-dow">' + esc(x.dow) + '</div><div class="mf-bar-d">' + esc(dd) + '</div></div>';
+        }).join('') +
+      '</div>';
+    }
+
+    // F&B breakdown
+    var fbHtml = '<h3 class="mf-sh">Food &amp; Beverage</h3>' +
+      '<table class="mf-t"><thead><tr><th>Metric</th><th>Day</th><th>WTD</th><th>MTD</th><th>YTD</th></tr></thead><tbody>' +
+        rrow('Total F&B', d.fbNet, w.fbNet, m.fbNet, y.fbNet, mfGbp) +
+        rrow('— Food', d.foodNet, w.foodNet, m.foodNet, y.foodNet, mfGbp) +
+        rrow('— Beverage', d.bevNet, w.bevNet, m.bevNet, y.bevNet, mfGbp) +
+        rrow('— Conference', d.confNet, w.confNet, m.confNet, y.confNet, mfGbp) +
+        rrow('F&B per occupied room', d.perRoomFB, w.perRoomFB, m.perRoomFB, y.perRoomFB, mfGbpDp) +
+      '</tbody></table>';
+
+    // Yesterday's items
+    var itemsHtml = '';
+    if (items) {
+      var ps = items.postingSplit || {};
+      var total = ((ps.till && ps.till.rev) || 0) + ((ps.roomCharge && ps.roomCharge.rev) || 0) + ((ps.manual && ps.manual.rev) || 0);
+      var tillPct = total ? Math.round((ps.till.rev / total) * 100) : 0;
+      var roomPct = total ? Math.round((ps.roomCharge.rev / total) * 100) : 0;
+      var manPct  = total ? Math.round((ps.manual.rev / total) * 100) : 0;
+      itemsHtml = '<h3 class="mf-sh">Yesterday\'s restaurant &amp; bar · how it was posted</h3>' +
+        '<div class="mf-posts">' +
+          '<div class="mf-post mf-post-till"><div class="mf-post-l">Till · paid direct</div><div class="mf-post-v">' + mfGbp(ps.till ? ps.till.rev : 0) + '</div><div class="mf-post-s">' + (ps.till ? ps.till.qty : 0) + ' lines · ' + tillPct + '%</div></div>' +
+          '<div class="mf-post mf-post-room"><div class="mf-post-l">Charged to room</div><div class="mf-post-v">' + mfGbp(ps.roomCharge ? ps.roomCharge.rev : 0) + '</div><div class="mf-post-s">' + (ps.roomCharge ? ps.roomCharge.qty : 0) + ' lines · ' + roomPct + '%</div></div>' +
+          '<div class="mf-post mf-post-man"><div class="mf-post-l">Posted by hand</div><div class="mf-post-v">' + mfGbp(ps.manual ? ps.manual.rev : 0) + '</div><div class="mf-post-s">' + (ps.manual ? ps.manual.qty : 0) + ' lines · ' + manPct + '%</div></div>' +
+        '</div>';
+
+      if (items.topByRev && items.topByRev.length) {
+        itemsHtml += '<h3 class="mf-sh">Top items sold yesterday · by revenue</h3>' +
+          '<table class="mf-t mf-items"><thead><tr><th>Code</th><th>Item</th><th class="mf-n">Qty</th><th class="mf-n">Net</th></tr></thead><tbody>' +
+            items.topByRev.map(function (it) {
+              return '<tr><td class="mf-code">' + esc(it.code || '') + '</td><td>' + esc(it.name || '') + '</td>' +
+                '<td class="mf-n">' + (it.qty || 0) + '</td><td class="mf-n"><b>' + mfGbp(it.net) + '</b></td></tr>';
+            }).join('') +
+          '</tbody></table>';
+      }
+    }
+
+    // DOW table
+    var dowHtml = '';
+    if (dow.length) {
+      dowHtml = '<h3 class="mf-sh">Weekday pattern · last 30 days</h3>' +
+        '<table class="mf-t"><thead><tr><th>Weekday</th><th class="mf-n">Sampled</th><th class="mf-n">Occ</th><th class="mf-n">ADR</th><th class="mf-n">RevPAR</th><th class="mf-n">Revenue</th></tr></thead><tbody>' +
+          dow.map(function (x) {
+            return '<tr><td class="mf-l"><b>' + esc(x.day) + '</b></td><td class="mf-n">' + x.n + '</td>' +
+              '<td class="mf-n">' + (x.occ != null ? mfPct(x.occ) : '–') + '</td>' +
+              '<td class="mf-n">' + (x.adr != null ? mfGbpDp(x.adr) : '–') + '</td>' +
+              '<td class="mf-n">' + (x.revpar != null ? mfGbpDp(x.revpar) : '–') + '</td>' +
+              '<td class="mf-n"><b>' + (x.rev != null ? mfGbp(x.rev) : '–') + '</b></td></tr>';
+          }).join('') +
+        '</tbody></table>';
+    }
 
     var laHtml = '';
     if (la) {
-      var items = [
+      var laItems = [
         ['Today', la.today], ['Next 7 nights', la.next7], ['Next 4 weeks', la.next28],
         ['End of month', la.monthEnd], ['End of year', la.yearEnd]
       ];
       laHtml = '<div class="mf-la"><div class="mf-la-hd">Look Ahead · occupancy</div><div class="mf-la-row">' +
-        items.map(function (x) { return '<div class="mf-la-t"><div class="mf-la-l">' + x[0] + '</div><div class="mf-la-v">' + mfPct(x[1]) + '</div></div>'; }).join('') +
+        laItems.map(function (x) { return '<div class="mf-la-t"><div class="mf-la-l">' + x[0] + '</div><div class="mf-la-v">' + mfPct(x[1]) + '</div></div>'; }).join('') +
         '</div></div>';
     }
 
     return (
       '<div class="mf-card">' +
         '<div class="mf-hd">' +
-          '<div><div class="mf-hd-kicker">Manager\'s Flash · ' + esc(flash.hotel) + '</div>' +
+          '<div><div class="mf-hd-kicker">Daily Business Update · ' + esc(flash.hotel) + '</div>' +
           '<h2>' + esc(dateHuman) + '</h2></div>' +
           '<div class="mf-hd-r"><button class="mf-btn" data-mf-refresh>↻ Refresh</button></div>' +
         '</div>' +
-        commentaryHtml + briefHtml +
+        commentaryHtml +
+        spotlightHtml +
+        flagsHtml +
+        briefHtml +
+        actionsHtml +
+        kpiHtml +
         '<h3 class="mf-sh">Revenue · net of VAT</h3>' +
         '<table class="mf-t"><thead><tr><th>Metric</th><th>Day</th><th>WTD</th><th>MTD</th><th>YTD</th></tr></thead><tbody>' +
           rrow('Total revenue', d.revNet, w.revNet, m.revNet, y.revNet, mfGbp) +
           rrow('— Accommodation', d.accomNet, w.accomNet, m.accomNet, y.accomNet, mfGbp) +
           rrow('— Food & Beverage', d.fbNet, w.fbNet, m.fbNet, y.fbNet, mfGbp) +
-          rrow('— Other', d.otherNet, w.otherNet, m.otherNet, y.otherNet, mfGbp) +
+          rrow('— Conference', d.confNet, w.confNet, m.confNet, y.confNet, mfGbp) +
+          rrow('— Misc & Sundries', (d.otherNet - d.confNet), (w.otherNet - w.confNet), (m.otherNet - m.confNet), (y.otherNet - y.confNet), mfGbp) +
           rrow('Payments received', d.payments, w.payments, m.payments, y.payments, mfGbp) +
         '</tbody></table>' +
+        fbHtml +
+        itemsHtml +
+        chartHtml +
+        dowHtml +
         '<h3 class="mf-sh">Rooms &amp; rates</h3>' +
         '<table class="mf-t"><thead><tr><th>Metric</th><th>Day</th><th>WTD</th><th>MTD</th><th>YTD</th></tr></thead><tbody>' +
           rrow('Rooms sold', d.sold, w.sold, m.sold, y.sold, mfNum) +
@@ -309,7 +441,7 @@
           rrow('Rooms DFS', d.dfs, w.dfs, m.dfs, y.dfs, mfNum) +
         '</tbody></table>' +
         laHtml +
-        '<div class="mf-ft">All figures net of VAT. WTD = Monday to yesterday. MTD = 1st of month to yesterday. YTD = 1 January to yesterday. · Live from the Guestline API feed and ARIA.</div>' +
+        '<div class="mf-ft">All figures net of VAT. WTD = Monday to yesterday. MTD = 1st of month to yesterday. YTD = 1 January to yesterday. Items shown from Rezlynx POS postings; manual entries carry no item name so are shown as totals only. · Live from the Guestline API feed and ARIA.</div>' +
       '</div>'
     );
   }
@@ -359,7 +491,69 @@
       '.mf-la-l{font-size:10.5px;color:#7b8494;text-transform:uppercase;letter-spacing:.3px;font-weight:600}',
       '.mf-la-v{font-size:19px;font-weight:700;color:#1a2238;margin-top:3px}',
       '.mf-ft{font-size:11px;color:#7b8494;margin-top:14px;padding-top:12px;border-top:1px solid #efece5;line-height:1.5}',
-      '@media (max-width:720px){.mf-la-row{grid-template-columns:repeat(2,1fr)}}'
+      // KPI row
+      '.mf-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 18px}',
+      '.mf-kpi-t{padding:14px 12px;border-radius:8px;text-align:center;color:#fff}',
+      '.mf-kpi-occ{background:linear-gradient(135deg,#1a2238,#0f1424)}',
+      '.mf-kpi-adr{background:linear-gradient(135deg,#1F7A8C,#145866)}',
+      '.mf-kpi-rev{background:linear-gradient(135deg,#9d7d5f,#7a5e42)}',
+      '.mf-kpi-tot{background:linear-gradient(135deg,#d4a94e,#b8902f);color:#2c2415}',
+      '.mf-kpi-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;opacity:.85}',
+      '.mf-kpi-v{font-size:22px;font-weight:800;margin-top:3px;letter-spacing:-.2px}',
+      '.mf-kpi-s{font-size:10.5px;margin-top:2px;opacity:.78}',
+      // Mini chart
+      '.mf-chart{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;align-items:end;height:170px;padding:10px 0;margin-bottom:6px}',
+      '.mf-bar-col{text-align:center;display:flex;flex-direction:column;align-items:center;height:100%}',
+      '.mf-bar-v{font-size:11px;font-weight:700;color:#1a2238;margin-bottom:4px}',
+      '.mf-bar{width:36px;background:linear-gradient(180deg,#1F7A8C,#145866);border-radius:4px 4px 0 0;margin-top:auto}',
+      '.mf-bar-y{background:linear-gradient(180deg,#d4a94e,#9d7d5f)}',
+      '.mf-bar-dow{font-size:10.5px;font-weight:600;color:#52514e;margin-top:5px}',
+      '.mf-bar-d{font-size:10px;color:#7b8494}',
+      // Posting split cards
+      '.mf-posts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}',
+      '.mf-post{padding:12px 14px;border-radius:6px;text-align:center}',
+      '.mf-post-till{background:#e6f1f4;border:1px solid #c8d9dd}',
+      '.mf-post-room{background:#f8f6ef;border:1px solid #e9e3ca}',
+      '.mf-post-man{background:#f6f4ee;border:1px solid #d4d2cb}',
+      '.mf-post-l{font-size:10.5px;color:#1a3b60;text-transform:uppercase;font-weight:700;letter-spacing:.3px}',
+      '.mf-post-room .mf-post-l{color:#9d7d5f}',
+      '.mf-post-man .mf-post-l{color:#7b8494}',
+      '.mf-post-v{font-size:18px;color:#1a2238;font-weight:700;margin-top:4px}',
+      '.mf-post-s{font-size:11px;color:#52514e;margin-top:2px}',
+      // Items table
+      '.mf-items .mf-code{color:#7b8494;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}',
+      // Spotlight (gradient card)
+      '.mf-spot{background:linear-gradient(135deg,#1a2238 0%,#1F7A8C 100%);color:#fff;border-radius:8px;padding:16px 20px;margin-bottom:16px}',
+      '.mf-spot-hd{font-size:11px;font-weight:700;letter-spacing:.8px;color:#d4a94e;text-transform:uppercase;margin-bottom:9px}',
+      '.mf-spot p{margin:0;font-size:14px;line-height:1.65;color:rgba(255,255,255,.95)}',
+      // Flags row (anomalies / wins / misses)
+      '.mf-flags{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px}',
+      '.mf-flag{padding:13px 16px;border-radius:8px;border:1px solid}',
+      '.mf-flag ul{margin:0;padding-left:16px;font-size:12.5px;color:#2c3440;line-height:1.5}',
+      '.mf-flag li{margin-bottom:4px}',
+      '.mf-flag-hd{font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:7px}',
+      '.mf-flag-anom{background:#fdf6f5;border-color:#f0d6d2}.mf-flag-anom .mf-flag-hd{color:#8a1e15}',
+      '.mf-flag-win{background:#f0f6ea;border-color:#d4e3c3}.mf-flag-win .mf-flag-hd{color:#486128}',
+      '.mf-flag-miss{background:#f8f6ef;border-color:#e9e3ca}.mf-flag-miss .mf-flag-hd{color:#9d7d5f}',
+      // Action cards grid
+      '.mf-acts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:6px}',
+      '.mf-act{padding:13px 16px;border-radius:6px;border:1px solid #d4d2cb;border-left:4px solid #2c3440;background:#f6f4ee}',
+      '.mf-act-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}',
+      '.mf-act-dept{font-size:10.5px;font-weight:700;letter-spacing:.3px;color:#52514e;text-transform:uppercase;flex:1}',
+      '.mf-act-pri{display:inline-block;padding:2px 7px;color:#fff;font-size:9px;font-weight:700;letter-spacing:.3px;border-radius:9px;text-transform:uppercase}',
+      '.mf-pri-high{background:#c0362b}.mf-pri-medium{background:#9d7d5f}.mf-pri-low{background:#7b8494}',
+      '.mf-act-text{font-size:13.5px;color:#2c3440;font-weight:600;line-height:1.45}',
+      '.mf-act-why{font-size:11.5px;color:#52514e;margin-top:4px;font-style:italic;line-height:1.45}',
+      '.mf-act-frontoffice{background:#eef3f8;border-color:#c8d9dd;border-left-color:#1a3b60}.mf-act-frontoffice .mf-act-dept{color:#1a3b60}',
+      '.mf-act-kitchen{background:#fdf6f0;border-color:#eacfae;border-left-color:#9d6b2f}.mf-act-kitchen .mf-act-dept{color:#9d6b2f}',
+      '.mf-act-fb{background:#fdfcf7;border-color:#e9e3ca;border-left-color:#9d7d5f}.mf-act-fb .mf-act-dept{color:#9d7d5f}',
+      '.mf-act-housekeeping{background:#f0f6ea;border-color:#d4e3c3;border-left-color:#486128}.mf-act-housekeeping .mf-act-dept{color:#486128}',
+      '.mf-act-events{background:#f6f0f6;border-color:#dcc8dc;border-left-color:#7a3f7a}.mf-act-events .mf-act-dept{color:#7a3f7a}',
+      '.mf-act-revenue{background:linear-gradient(135deg,#1a2238,#0f1424);color:#fff;border-color:#1a2238;border-left-color:#d4a94e}',
+      '.mf-act-revenue .mf-act-dept{color:#d4a94e}.mf-act-revenue .mf-act-text{color:#fff}.mf-act-revenue .mf-act-why{color:rgba(255,255,255,.75)}',
+      '@media (max-width:1100px){.mf-flags,.mf-acts{grid-template-columns:1fr}}',
+      '@media (max-width:1100px){.mf-kpi{grid-template-columns:repeat(2,1fr)}.mf-posts{grid-template-columns:1fr}}',
+      '@media (max-width:720px){.mf-la-row{grid-template-columns:repeat(2,1fr)}.mf-chart{grid-template-columns:repeat(7,1fr);height:140px}.mf-bar{width:22px}}'
     ].join('\n');
     document.head.appendChild(s);
   })();
