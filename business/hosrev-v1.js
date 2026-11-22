@@ -579,7 +579,7 @@
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v39.8';
+  var HOSREV_VERSION = 'v39.9';
   function phaseBadge() {
     var liveBooks = getCachedBooks();
     var liveOnBooks = !!(liveBooks && liveBooks.byDate);
@@ -613,7 +613,7 @@
   var ALFRED_BRIEF_INFLIGHT = false;
   var ALFRED_ALERTS_INFLIGHT = false;
   var AI_TOKEN_KEY = 'hosbusiness_gl_token';
-  /* v39.8: the sign-in flow writes the token to sessionStorage, but earlier code read it from localStorage
+  /* v39.9: the sign-in flow writes the token to sessionStorage, but earlier code read it from localStorage
      and threw spurious "session expired" errors. Read from BOTH storages so every call finds it. */
   function aiTok() { try { return localStorage.getItem(AI_TOKEN_KEY) || sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { return null; } }
   var AI_CACHE_KEY = 'hosrev_ai_cache';

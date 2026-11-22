@@ -140,7 +140,7 @@
     var el = $('pf-home'), T = window.Trading, S = T ? T.S() : {}, a = acc(), PD = window.Profit.data(), h = '', card = {}, H = highlights();
     var who = (window.Profit.user() || '').split(/\s+/)[0], hr = new Date().getHours();
 
-    /* v39.8 — Manager's Flash slot. Fills in asynchronously via fetchManagerFlash(). */
+    /* v39.9 — Manager's Flash slot. Fills in asynchronously via fetchManagerFlash(). */
     h += '<div id="mf-slot" class="mf-slot"><div class="mf-load">🎩 ARIA is preparing your Manager\'s Flash…</div></div>';
 
     h += '<div class="hp-hero"><div><h2>' + (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (who ? ', ' + esc(who) : '') + '</h2><p>Business intelligence for Brandon Hall Hotel &amp; Spa: trading, profit and costs in one place</p></div>' +
@@ -183,7 +183,7 @@
   }
 
   /* ============================================================
-     v39.8 — Manager's Flash section
+     v39.9 — Manager's Flash section
      ============================================================ */
 
   var FN_BASE = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/';
@@ -695,6 +695,63 @@
     if ($('tm-1-leg')) $('tm-1-leg').innerHTML = o.places.map(function (p, i) { return '<span><i style="background:' + PALT[i % 3] + '"></i>' + esc(p) + ' till</span>'; }).join('');
     fbCharts.push(new Chart($('tm-1'), { type: 'bar', data: { labels: o.meals, datasets: o.places.map(function (p, i) { return { label: p + ' till', data: o.meals.map(function (m) { var c = o.cell[m + '|' + p]; return c ? Math.round(c.net) : 0; }), backgroundColor: PALT[i % 3], borderRadius: 4, maxBarThickness: 54 }; }) }, options: { maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + gbp(c.parsed.y); } } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false }, ticks: { maxTicksLimit: 5, callback: function (v) { return v >= 1000 ? '£' + v / 1000 + 'k' : '£' + v; } } } } } }));
   }
+  /* v39.9 — Covers section at top of F&B tab. Reads from backend /fbCovers endpoint.
+     Breakfast is exact from gl_days.bk counter; lunch/dinner are inferred from main-course items in gl_items. */
+  var FB_COVERS_CACHE = null, FB_COVERS_INFLIGHT = false;
+  var FB_FN_BASE = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/';
+  function fbTok() { try { return localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) { return null; } }
+  function fbGbp(n) { return (n == null || isNaN(n)) ? '–' : '£' + Math.round(n).toLocaleString('en-GB'); }
+  function fbGbpDp(n) { return (n == null || isNaN(n)) ? '–' : '£' + (+n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function fbCoversHtml(data) {
+    if (!data || !data.totals) return '<div class="card"><h2>Covers · last 30 days</h2><p class="sub">Loading…</p></div>';
+    var t = data.totals, d = t.derived || {};
+    var lunchResAvg = t.lunch.restaurant.covers > 0 ? t.lunch.restaurant.revenue / t.lunch.restaurant.covers : 0;
+    var dinnerResAvg = t.dinner.restaurant.covers > 0 ? t.dinner.restaurant.revenue / t.dinner.restaurant.covers : 0;
+    var lunchBarAvg  = t.lunch.bar.covers > 0 ? t.lunch.bar.revenue / t.lunch.bar.covers : 0;
+    var dinnerBarAvg = t.dinner.bar.covers > 0 ? t.dinner.bar.revenue / t.dinner.bar.covers : 0;
+    var totalFoodCovers = t.breakfast.covers + t.lunch.restaurant.covers + t.lunch.bar.covers + t.dinner.restaurant.covers + t.dinner.bar.covers;
+    var h = '<div class="card"><h2>Covers · last ' + t.nights + ' days</h2>' +
+      '<p class="sub">Breakfast is the exact count from Guestline\'s bk counter. Lunch and dinner covers are inferred from main-course items in the restaurant (RES1) and bar (BAR1) tills — set menus named "Lunch" or "Dinner" count as one cover; mains are detected by name pattern (steak, fillet, salmon, chicken, lamb, pork, fish, beef, duck, burger, pasta, risotto, pie, wellington, curry). Sides, desserts, drinks don\'t count as covers.</p>' +
+      '<div class="tiles">' +
+        '<div class="tile"><div class="l">Breakfast covers</div><div class="v">' + (t.breakfast.covers).toLocaleString('en-GB') + '</div><div class="d">avg spend ' + fbGbpDp(t.breakfast.covers > 0 ? t.breakfast.revenue / t.breakfast.covers : 0) + '</div></div>' +
+        '<div class="tile"><div class="l">Lunch covers · Restaurant</div><div class="v">' + (t.lunch.restaurant.covers).toLocaleString('en-GB') + '</div><div class="d">avg ' + fbGbpDp(lunchResAvg) + ' · ' + fbGbp(t.lunch.restaurant.revenue) + ' total</div></div>' +
+        '<div class="tile"><div class="l">Lunch covers · Bar</div><div class="v">' + (t.lunch.bar.covers).toLocaleString('en-GB') + '</div><div class="d">avg ' + fbGbpDp(lunchBarAvg) + ' · ' + fbGbp(t.lunch.bar.revenue) + ' total</div></div>' +
+        '<div class="tile"><div class="l">Dinner covers · Restaurant</div><div class="v">' + (t.dinner.restaurant.covers).toLocaleString('en-GB') + '</div><div class="d">avg ' + fbGbpDp(dinnerResAvg) + ' · ' + fbGbp(t.dinner.restaurant.revenue) + ' total</div></div>' +
+        '<div class="tile"><div class="l">Dinner covers · Bar</div><div class="v">' + (t.dinner.bar.covers).toLocaleString('en-GB') + '</div><div class="d">avg ' + fbGbpDp(dinnerBarAvg) + ' · ' + fbGbp(t.dinner.bar.revenue) + ' total</div></div>' +
+        '<div class="tile"><div class="l">Covers total</div><div class="v">' + totalFoodCovers.toLocaleString('en-GB') + '</div><div class="d">avg ' + Math.round(totalFoodCovers / t.nights) + ' per day</div></div>' +
+      '</div>' +
+      '<p class="sub" style="margin-top:16px">Covers per day · reverse chronological (newest first)</p>' +
+      '<div class="scroll" style="max-height:360px"><table><thead><tr><th>Date</th><th class="n">Breakfast</th><th class="n">Lunch res</th><th class="n">Lunch bar</th><th class="n">Dinner res</th><th class="n">Dinner bar</th><th class="n">Total</th><th class="n">F&B revenue</th><th class="n">£/cover</th></tr></thead><tbody>' +
+        data.daily.slice().reverse().map(function (x) {
+          var tot = x.breakfast.covers + x.lunch.restaurant.covers + x.lunch.bar.covers + x.dinner.restaurant.covers + x.dinner.bar.covers;
+          var rev = x.breakfast.revenue + x.lunch.restaurant.revenue + x.lunch.bar.revenue + x.dinner.restaurant.revenue + x.dinner.bar.revenue + x.beverage.restaurant.revenue + x.beverage.bar.revenue;
+          var avg = tot > 0 ? rev / tot : 0;
+          var dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(x.date + 'T12:00:00').getDay()];
+          return '<tr><td>' + dow + ' ' + x.date.slice(8) + '/' + x.date.slice(5, 7) + '</td>' +
+            '<td class="n">' + x.breakfast.covers + '</td>' +
+            '<td class="n">' + x.lunch.restaurant.covers + '</td>' +
+            '<td class="n">' + x.lunch.bar.covers + '</td>' +
+            '<td class="n">' + x.dinner.restaurant.covers + '</td>' +
+            '<td class="n">' + x.dinner.bar.covers + '</td>' +
+            '<td class="n"><b>' + tot + '</b></td>' +
+            '<td class="n">' + fbGbp(rev) + '</td>' +
+            '<td class="n">' + fbGbpDp(avg) + '</td></tr>';
+        }).join('') +
+      '</tbody></table></div>' +
+      '<p class="note">Cover inference limits: a diner who orders a starter + side but no main won\'t show as a cover; two diners sharing one main course show as one cover. These edges even out at volume but can skew a single quiet night. For exact covers we need to pair this with a pulled POS cover report (see "What is still missing" below).</p>' +
+    '</div>';
+    return h;
+  }
+  function fetchFbCovers(onDone) {
+    if (FB_COVERS_INFLIGHT) return;
+    var tok = fbTok(); if (!tok) { onDone('<div class="card"><h2>Covers</h2><p class="sub">Sign in again to load covers data</p></div>'); return; }
+    FB_COVERS_INFLIGHT = true;
+    fetch(FB_FN_BASE + 'fbCovers?days=30', { headers: { 'Authorization': 'Bearer ' + tok } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { FB_COVERS_INFLIGHT = false; if (j && j.ok) { FB_COVERS_CACHE = j; onDone(fbCoversHtml(j)); } else onDone('<div class="card"><h2>Covers</h2><p class="sub">Could not load covers — ' + ((j && j.error) || 'unknown error') + '</p></div>'); })
+      .catch(function (e) { FB_COVERS_INFLIGHT = false; onDone('<div class="card"><h2>Covers</h2><p class="sub">Network issue loading covers</p></div>'); });
+  }
+
   function renderFb() {
     var el = $('pf-fb'), T = window.Trading, S = T ? T.S() : {}; fbCharts.forEach(function (c) { c.destroy(); }); fbCharts = [];
     if (!S.af) { el.innerHTML = '<div class="card"><h2>No Guestline data loaded</h2></div>'; return; }
@@ -723,8 +780,12 @@
     var X = S.x || {};
     if (X.company) { var top = X.company.rows.slice(0, 8); h += '<div class="grid g2"><div class="card"><h2>Food and drink on the bill, by booking source</h2><p class="sub">Rezlynx Company report, ' + esc(X.company.period.replace('(Actual) ', '')) + ', including VAT</p><table><tr><th>Source</th><th class="n">Room nights</th><th class="n">F&amp;B on the bill</th><th class="n">F&amp;B per room night</th></tr>' + top.map(function (r) { return '<tr><td>' + esc(r.ref) + '</td><td class="n">' + num(r.rn) + '</td><td class="n">' + gbp(r.fb) + '</td><td class="n">' + gbp(r.fb / r.rn, 2) + '</td></tr>'; }).join('') + '</table></div>'; }
     else h += '<div class="grid g2"><div></div>';
-    h += '<div class="card"><h2>What is still missing for food and drink</h2><p class="sub">Rezlynx only sees totals posted from the tills</p><div class="finding warn"><h3>Item sales from the tills (EPoS)</h3><p>Which dishes and drinks sell, in what quantity and at what price. Needed for menu margins and to match keg purchases to pints sold. Report: Daily Items Sold.</p></div><div class="finding warn"><h3>Covers</h3><p>Number of diners per meal, so spend per cover can be tracked for breakfast, lunch and dinner. Breakfast currently has to be judged per guest night.</p></div><div class="finding warn"><h3>Voids and discounts</h3><p>Voided Items by operator, the standard control report for a bar and restaurant.</p></div><div class="finding warn"><h3>Events and functions</h3><p>Weddings, conferences and private dining appear only as provisional revenue in the market segment forecast. An event-by-event revenue report would separate them from the restaurant.</p></div></div></div>';
+    h += '<div class="card"><h2>What is still missing for food and drink</h2><p class="sub">Rezlynx only sees totals posted from the tills</p><div class="finding warn"><h3>Exact covers per clerk</h3><p>Rezlynx only assigns covers to the clerk who opens a table, so servers who join later show zero. We now infer covers above from main-course items in the POS feed as an interim measure. Asking Glen for a per-meal or per-service cover report.</p></div><div class="finding warn"><h3>Voids and discounts</h3><p>The Clerk Function Counts report shows totals per operator; we are working on scheduling it weekly into HosBUSINESS.</p></div><div class="finding warn"><h3>Events and functions</h3><p>Weddings, conferences and private dining appear only as provisional revenue in the market segment forecast. An event-by-event revenue report would separate them from the restaurant.</p></div></div></div>';
+    // v39.9: prepend covers section, then fetch async
+    h = '<div id="fb-covers-slot"><div class="card"><h2>Covers · last 30 days</h2><p class="sub">Loading…</p></div></div>' + h;
     el.innerHTML = h;
+    if (FB_COVERS_CACHE) { var slot = $('fb-covers-slot'); if (slot) slot.innerHTML = fbCoversHtml(FB_COVERS_CACHE); }
+    else fetchFbCovers(function (html) { var slot = $('fb-covers-slot'); if (slot) slot.innerHTML = html; });
     var opt = function (horiz, f) { return { indexAxis: horiz ? 'y' : 'x', maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return gbp(horiz ? c.parsed.x : c.parsed.y); } } } }, scales: { x: { grid: horiz ? { color: '#ebe9e3', drawTicks: false } : { display: false }, border: { display: false }, ticks: horiz ? { callback: f, maxTicksLimit: 6 } : {} }, y: { grid: horiz ? { display: false } : { color: '#ebe9e3', drawTicks: false }, border: { display: false }, beginAtZero: true, ticks: horiz ? {} : { callback: f, maxTicksLimit: 5 } } } }; }, k = function (v) { return '£' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(0) + 'k' : v); };
     fbCharts.push(new Chart($('fb-c1'), { type: 'bar', data: { labels: lines.map(function (l) { return l[0]; }), datasets: [{ data: lines.map(function (l) { return Math.round(l[1]); }), backgroundColor: lines.map(function (l) { return l[2] === 'Food' ? '#1a8f63' : '#b9791a'; }), borderRadius: 4, maxBarThickness: 20 }] }, options: opt(true, k) }));
     var mk = Object.keys(meal).filter(function (x) { return meal[x] > 0.5; });
