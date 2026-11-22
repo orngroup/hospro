@@ -702,19 +702,23 @@
     var el = $('pf-fb'); if (!el) return;
     // Add our POS tab button to the existing segs if not there
     var seg = el.querySelector('.segs');
+    // v39.13: inject POS and Meal Plan AFTER the 'Overview' button so Overview stays first-left
+    var overBtn = seg ? seg.querySelector('[data-fb="over"]') : null;
     if (seg && !seg.querySelector('[data-fb="pos"]')) {
       var btn = document.createElement('button');
       btn.className = 'seg'; btn.setAttribute('data-fb', 'pos');
       btn.innerHTML = 'POS <span class="v13-tick" style="width:14px;height:14px;font-size:9.5px" title="Live from Guestline API"></span>';
-      seg.insertBefore(btn, seg.firstChild);
+      if (overBtn) seg.insertBefore(btn, overBtn.nextSibling);
+      else seg.insertBefore(btn, seg.firstChild);
     }
-    // v29: add Meal Plan segment
     if (seg && !seg.querySelector('[data-fb="mealplan"]')) {
       var btnMP = document.createElement('button');
       btnMP.className = 'seg'; btnMP.setAttribute('data-fb', 'mealplan');
       btnMP.innerHTML = 'Meal Plan <span class="v13-tick" style="width:14px;height:14px;font-size:9.5px" title="From the Rezlynx Meal Plan export"></span>';
       var posBtn = seg.querySelector('[data-fb="pos"]');
-      if (posBtn) seg.insertBefore(btnMP, posBtn.nextSibling); else seg.insertBefore(btnMP, seg.firstChild);
+      if (posBtn) seg.insertBefore(btnMP, posBtn.nextSibling);
+      else if (overBtn) seg.insertBefore(btnMP, overBtn.nextSibling);
+      else seg.insertBefore(btnMP, seg.firstChild);
     }
     // Capitalise the heading if it says "Food & beverage"
     el.querySelectorAll('h1,h2,h3').forEach(function (h) {
@@ -779,19 +783,16 @@
       }
       var fb = e.target.closest ? e.target.closest('[data-fb]') : null;
       if (fb && (fb.getAttribute('data-fb') === 'pos' || fb.getAttribute('data-fb') === 'mealplan')) {
-        // make the segment active and render our view; stop the hub's own click handler from running renderFb
+        // v39.13: render immediately (no 40ms setTimeout flash) and stop the hub handler
         e.stopPropagation(); e.preventDefault();
         var el = $('pf-fb'); if (!el) return;
-        // go to F&B tab first if we're not on it
         if (!document.querySelector('#t-pf-fb.on')) { var navBtn = document.querySelector('#nav button[data-t="pf-fb"]'); if (navBtn) navBtn.click(); }
         Array.from(el.querySelectorAll('.seg')).forEach(function (b) { b.classList.remove('on'); });
         fb.classList.add('on');
         var kind = fb.getAttribute('data-fb');
-        setTimeout(function () {
-          var S = window.Trading ? window.Trading.S() : {};
-          if (kind === 'pos') renderPosView(el, S, lastClosed());
-          else if (kind === 'mealplan') renderMealPlanView(el);
-        }, 40);
+        var S = window.Trading ? window.Trading.S() : {};
+        if (kind === 'pos') renderPosView(el, S, lastClosed());
+        else if (kind === 'mealplan') renderMealPlanView(el);
       }
     }, true);
     document.addEventListener('change', function (e) {
@@ -1416,10 +1417,10 @@
      in home.js fbSeg() + the POS/Meal Plan tabs injected by augmentFb() in this file. */
   function fbNavHtml(active) {
     var tabs = [
+      ['over', 'Overview'],
       ['pos', 'POS <span class="v13-tick" style="width:14px;height:14px;font-size:9.5px"></span>'],
       ['mealplan', 'Meal Plan <span class="v13-tick" style="width:14px;height:14px;font-size:9.5px"></span>'],
       ['cov', 'Covers'],
-      ['over', 'Overview'],
       ['term', 'By terminal'],
       ['brk', 'Breakfast'],
       ['menu', 'What we sell']
@@ -1656,7 +1657,9 @@
       // ignore mutations we caused
       var ours = muts.every(function (m) { return Array.from(m.addedNodes || []).every(function (n) { return n && n.nodeType === 1 && (n.classList && (n.classList.contains('v13-hl') || n.classList.contains('v13-hero-badge') || n.classList.contains('v13-src'))); }); });
       if (ours) return;
-      clearTimeout(moT); moT = setTimeout(function () { augmentHome(); augmentFb(); augmentTrading(); var act = document.querySelector('section.tab.on'); if (act) augmentHubPage(act.id.slice(2)); }, 150);
+      // v39.13: debounce reduced from 150ms → 16ms (one animation frame) so F&B summary strip
+      // doesn't visibly disappear and come back when the user switches sub-tabs
+      clearTimeout(moT); moT = setTimeout(function () { augmentHome(); augmentFb(); augmentTrading(); var act = document.querySelector('section.tab.on'); if (act) augmentHubPage(act.id.slice(2)); }, 16);
     });
     if (document.body) mo.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
     augmentHome(); augmentFb(); augmentTrading();
