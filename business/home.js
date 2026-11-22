@@ -140,7 +140,7 @@
     var el = $('pf-home'), T = window.Trading, S = T ? T.S() : {}, a = acc(), PD = window.Profit.data(), h = '', card = {}, H = highlights();
     var who = (window.Profit.user() || '').split(/\s+/)[0], hr = new Date().getHours();
 
-    /* v39.9 — Manager's Flash slot. Fills in asynchronously via fetchManagerFlash(). */
+    /* v39.10 — Manager's Flash slot. Fills in asynchronously via fetchManagerFlash(). */
     h += '<div id="mf-slot" class="mf-slot"><div class="mf-load">🎩 ARIA is preparing your Manager\'s Flash…</div></div>';
 
     h += '<div class="hp-hero"><div><h2>' + (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (who ? ', ' + esc(who) : '') + '</h2><p>Business intelligence for Brandon Hall Hotel &amp; Spa: trading, profit and costs in one place</p></div>' +
@@ -183,7 +183,7 @@
   }
 
   /* ============================================================
-     v39.9 — Manager's Flash section
+     v39.10 — Manager's Flash section
      ============================================================ */
 
   var FN_BASE = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/';
@@ -695,50 +695,46 @@
     if ($('tm-1-leg')) $('tm-1-leg').innerHTML = o.places.map(function (p, i) { return '<span><i style="background:' + PALT[i % 3] + '"></i>' + esc(p) + ' till</span>'; }).join('');
     fbCharts.push(new Chart($('tm-1'), { type: 'bar', data: { labels: o.meals, datasets: o.places.map(function (p, i) { return { label: p + ' till', data: o.meals.map(function (m) { var c = o.cell[m + '|' + p]; return c ? Math.round(c.net) : 0; }), backgroundColor: PALT[i % 3], borderRadius: 4, maxBarThickness: 54 }; }) }, options: { maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + gbp(c.parsed.y); } } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false }, ticks: { maxTicksLimit: 5, callback: function (v) { return v >= 1000 ? '£' + v / 1000 + 'k' : '£' + v; } } } } } }));
   }
-  /* v39.9 — Covers section at top of F&B tab. Reads from backend /fbCovers endpoint.
+  /* v39.10 — Covers section at top of F&B tab. Reads from backend /fbCovers endpoint.
      Breakfast is exact from gl_days.bk counter; lunch/dinner are inferred from main-course items in gl_items. */
   var FB_COVERS_CACHE = null, FB_COVERS_INFLIGHT = false;
   var FB_FN_BASE = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/';
   function fbTok() { try { return localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) { return null; } }
   function fbGbp(n) { return (n == null || isNaN(n)) ? '–' : '£' + Math.round(n).toLocaleString('en-GB'); }
   function fbGbpDp(n) { return (n == null || isNaN(n)) ? '–' : '£' + (+n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function fbGlTick() { return '<span style="display:inline-block;width:8px;height:8px;background:#1a8f63;border-radius:50%;margin-left:8px;vertical-align:middle;position:relative;top:-2px" title="Live from Guestline API"></span><span style="font-size:11px;color:#1a8f63;margin-left:6px;font-weight:600;letter-spacing:.2px;text-transform:uppercase">Guestline API</span>'; }
   function fbCoversHtml(data) {
-    if (!data || !data.totals) return '<div class="card"><h2>Covers · last 30 days</h2><p class="sub">Loading…</p></div>';
+    if (!data || !data.totals) return '<div class="card"><h2>Covers · last 30 days ' + fbGlTick() + '</h2><p class="sub">Loading…</p></div>';
     var t = data.totals, d = t.derived || {};
-    var lunchResAvg = t.lunch.restaurant.covers > 0 ? t.lunch.restaurant.revenue / t.lunch.restaurant.covers : 0;
-    var dinnerResAvg = t.dinner.restaurant.covers > 0 ? t.dinner.restaurant.revenue / t.dinner.restaurant.covers : 0;
-    var lunchBarAvg  = t.lunch.bar.covers > 0 ? t.lunch.bar.revenue / t.lunch.bar.covers : 0;
-    var dinnerBarAvg = t.dinner.bar.covers > 0 ? t.dinner.bar.revenue / t.dinner.bar.covers : 0;
-    var totalFoodCovers = t.breakfast.covers + t.lunch.restaurant.covers + t.lunch.bar.covers + t.dinner.restaurant.covers + t.dinner.bar.covers;
-    var h = '<div class="card"><h2>Covers · last ' + t.nights + ' days</h2>' +
-      '<p class="sub">Breakfast is the exact count from Guestline\'s bk counter. Lunch and dinner covers are inferred from main-course items in the restaurant (RES1) and bar (BAR1) tills — set menus named "Lunch" or "Dinner" count as one cover; mains are detected by name pattern (steak, fillet, salmon, chicken, lamb, pork, fish, beef, duck, burger, pasta, risotto, pie, wellington, curry). Sides, desserts, drinks don\'t count as covers.</p>' +
+    var h = '<div class="card"><h2>Covers · last ' + t.nights + ' days ' + fbGlTick() + '</h2>' +
+      '<p class="sub">Three cover counts per day, worked out from the live POS feed: breakfast counted from priced breakfast items; lunch and dinner inferred from main-course items. Sides, desserts and drinks aren\'t counted as covers. A diner who skipped a main won\'t register; two sharing one main show as one. For an exact per-clerk cover count we\'re waiting on Glen to export the Rezlynx POS cover report.</p>' +
       '<div class="tiles">' +
-        '<div class="tile"><div class="l">Breakfast covers</div><div class="v">' + (t.breakfast.covers).toLocaleString('en-GB') + '</div><div class="d">avg spend ' + fbGbpDp(t.breakfast.covers > 0 ? t.breakfast.revenue / t.breakfast.covers : 0) + '</div></div>' +
-        '<div class="tile"><div class="l">Lunch covers · Restaurant</div><div class="v">' + (t.lunch.restaurant.covers).toLocaleString('en-GB') + '</div><div class="d">avg ' + fbGbpDp(lunchResAvg) + ' · ' + fbGbp(t.lunch.restaurant.revenue) + ' total</div></div>' +
-        '<div class="tile"><div class="l">Lunch covers · Bar</div><div class="v">' + (t.lunch.bar.covers).toLocaleString('en-GB') + '</div><div class="d">avg ' + fbGbpDp(lunchBarAvg) + ' · ' + fbGbp(t.lunch.bar.revenue) + ' total</div></div>' +
-        '<div class="tile"><div class="l">Dinner covers · Restaurant</div><div class="v">' + (t.dinner.restaurant.covers).toLocaleString('en-GB') + '</div><div class="d">avg ' + fbGbpDp(dinnerResAvg) + ' · ' + fbGbp(t.dinner.restaurant.revenue) + ' total</div></div>' +
-        '<div class="tile"><div class="l">Dinner covers · Bar</div><div class="v">' + (t.dinner.bar.covers).toLocaleString('en-GB') + '</div><div class="d">avg ' + fbGbpDp(dinnerBarAvg) + ' · ' + fbGbp(t.dinner.bar.revenue) + ' total</div></div>' +
-        '<div class="tile"><div class="l">Covers total</div><div class="v">' + totalFoodCovers.toLocaleString('en-GB') + '</div><div class="d">avg ' + Math.round(totalFoodCovers / t.nights) + ' per day</div></div>' +
+        '<div class="tile"><div class="l">Breakfast covers</div><div class="v">' + (t.breakfast.covers).toLocaleString('en-GB') + '</div><div class="d">avg spend ' + fbGbpDp(d.breakfastAvg) + ' · ' + fbGbp(t.breakfast.revenue) + ' total</div></div>' +
+        '<div class="tile"><div class="l">Lunch covers</div><div class="v">' + (t.lunch.covers).toLocaleString('en-GB') + '</div><div class="d">avg ' + fbGbpDp(d.lunchAvg) + ' · ' + fbGbp(t.lunch.revenue) + ' food only</div></div>' +
+        '<div class="tile"><div class="l">Dinner covers</div><div class="v">' + (t.dinner.covers).toLocaleString('en-GB') + '</div><div class="d">avg ' + fbGbpDp(d.dinnerAvg) + ' · ' + fbGbp(t.dinner.revenue) + ' food only</div></div>' +
+        '<div class="tile"><div class="l">Covers total</div><div class="v">' + (d.totalCovers || 0).toLocaleString('en-GB') + '</div><div class="d">avg ' + Math.round((d.totalCovers || 0) / Math.max(1, t.nights)) + ' per day over ' + t.nights + ' days</div></div>' +
+        '<div class="tile"><div class="l">Beverage · Restaurant till</div><div class="v">' + fbGbp(t.beverage.restaurant.revenue) + '</div><div class="d">' + ((1 - d.barBeverageShare) * 100).toFixed(0) + '% of total beverage</div></div>' +
+        '<div class="tile"><div class="l">Beverage · Bar till</div><div class="v">' + fbGbp(t.beverage.bar.revenue) + '</div><div class="d">' + (d.barBeverageShare * 100).toFixed(0) + '% of total beverage</div></div>' +
       '</div>' +
-      '<p class="sub" style="margin-top:16px">Covers per day · reverse chronological (newest first)</p>' +
-      '<div class="scroll" style="max-height:360px"><table><thead><tr><th>Date</th><th class="n">Breakfast</th><th class="n">Lunch res</th><th class="n">Lunch bar</th><th class="n">Dinner res</th><th class="n">Dinner bar</th><th class="n">Total</th><th class="n">F&B revenue</th><th class="n">£/cover</th></tr></thead><tbody>' +
+      '<p class="sub" style="margin-top:16px">Covers per day · newest first</p>' +
+      '<div class="scroll" style="max-height:360px"><table><thead><tr><th>Date</th><th class="n">Breakfast</th><th class="n">Lunch</th><th class="n">Dinner</th><th class="n">Total</th><th class="n">Food rev</th><th class="n">Bev rev</th><th class="n">£/cover</th></tr></thead><tbody>' +
         data.daily.slice().reverse().map(function (x) {
-          var tot = x.breakfast.covers + x.lunch.restaurant.covers + x.lunch.bar.covers + x.dinner.restaurant.covers + x.dinner.bar.covers;
-          var rev = x.breakfast.revenue + x.lunch.restaurant.revenue + x.lunch.bar.revenue + x.dinner.restaurant.revenue + x.dinner.bar.revenue + x.beverage.restaurant.revenue + x.beverage.bar.revenue;
-          var avg = tot > 0 ? rev / tot : 0;
+          var tot = x.breakfast.covers + x.lunch.covers + x.dinner.covers;
+          var foodRev = x.breakfast.revenue + x.lunch.revenue + x.dinner.revenue;
+          var bevRev = x.beverage.restaurant.revenue + x.beverage.bar.revenue;
+          var totRev = foodRev + bevRev;
+          var avg = tot > 0 ? totRev / tot : 0;
           var dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(x.date + 'T12:00:00').getDay()];
           return '<tr><td>' + dow + ' ' + x.date.slice(8) + '/' + x.date.slice(5, 7) + '</td>' +
             '<td class="n">' + x.breakfast.covers + '</td>' +
-            '<td class="n">' + x.lunch.restaurant.covers + '</td>' +
-            '<td class="n">' + x.lunch.bar.covers + '</td>' +
-            '<td class="n">' + x.dinner.restaurant.covers + '</td>' +
-            '<td class="n">' + x.dinner.bar.covers + '</td>' +
+            '<td class="n">' + x.lunch.covers + '</td>' +
+            '<td class="n">' + x.dinner.covers + '</td>' +
             '<td class="n"><b>' + tot + '</b></td>' +
-            '<td class="n">' + fbGbp(rev) + '</td>' +
+            '<td class="n">' + fbGbp(foodRev) + '</td>' +
+            '<td class="n">' + fbGbp(bevRev) + '</td>' +
             '<td class="n">' + fbGbpDp(avg) + '</td></tr>';
         }).join('') +
       '</tbody></table></div>' +
-      '<p class="note">Cover inference limits: a diner who orders a starter + side but no main won\'t show as a cover; two diners sharing one main course show as one cover. These edges even out at volume but can skew a single quiet night. For exact covers we need to pair this with a pulled POS cover report (see "What is still missing" below).</p>' +
     '</div>';
     return h;
   }
@@ -774,14 +770,14 @@
     h += '<div class="card"><h2>Sales against purchases</h2><p class="sub">Rezlynx sales beside Xero supplier invoices for the same month</p><table><tr><th></th><th class="n">Sales</th><th class="n">Purchases</th><th class="n">Purchases % of sales</th></tr>' + rw('Food', food, xf) + rw('Drinks', bev, xb) + '</table><p class="note">Purchases are invoices dated in the month, not stock used, and Xero may be behind. Read it as a direction, not a margin.</p></div></div></div>';
     var rtx = S.x && S.x.rates;
     if (rtx && rtx.byDay && Object.keys(rtx.byDay).length) { var byD = {}; S.af.rows.forEach(function (r) { byD[r.d] = r; }); h += '<div class="card"><h2>Meal plans by night</h2><p class="sub">Rooms on each basis, from the Daily Rate Analysis export run ' + when(rtx.asOf) + '. DBB is dinner, bed and breakfast.</p><table><tr><th>Night</th><th class="n">Dinner, bed and breakfast</th><th class="n">Bed and breakfast</th><th class="n">Room only or no charge</th><th class="n">Rooms with breakfast next morning</th><th class="n">Breakfast guests (estimate)</th><th class="n">Dinner-inclusive guests (estimate)</th></tr>' + Object.keys(rtx.byDay).sort().map(function (k) { var d = rtx.byDay[k], a = byD[k], gpr = a && a.rooms ? (a.ad + a.ch) / a.rooms : null, bk = (d.dbb || 0) + (d.bb || 0); return '<tr><td>' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(k + 'T12:00:00').getDay()] + ' ' + dlabel(k) + '</td><td class="n">' + num(d.dbb || 0) + '</td><td class="n">' + num(d.bb || 0) + '</td><td class="n">' + num((d.ro || 0) + (d.other || 0)) + '</td><td class="n"><b>' + num(bk) + '</b></td><td class="n">' + (gpr ? num(bk * gpr) : '–') + '</td><td class="n">' + (gpr ? num((d.dbb || 0) * gpr) : '–') + '</td></tr>'; }).join('') + '</table><p class="note">The report counts rooms, not people. Guest estimates multiply rooms by that night’s average guests per room, so treat them as a guide for the kitchen, not a cover count. Guestline cannot email this report, so it needs exporting by hand.</p></div>'; }
-    if (S.daily) { var dk = Object.keys(S.daily).sort().slice(-14).reverse(); if (dk.length) h += '<div class="card"><h2>Food and beverage by day</h2><p class="sub">From Guestline’s End of Day and Key Performance emails, net of VAT, latest first</p><div class="scroll" style="max-height:330px"><table><tr><th>Day</th><th class="n">Food</th><th class="n">Beverage</th><th class="n">Food and beverage</th><th class="n">Rooms sold</th><th class="n">Per occupied room</th><th class="n">All revenue</th></tr>' + dk.map(function (k) { var d = S.daily[k], fbv = (d.food || 0) + (d.bev || 0); return '<tr><td>' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(k + 'T12:00:00').getDay()] + ' ' + dlabel(k) + '</td><td class="n">' + gbp(d.food) + '</td><td class="n">' + gbp(d.bev) + '</td><td class="n">' + gbp(fbv) + '</td><td class="n">' + num(d.rooms) + '</td><td class="n">' + gbp(d.rooms ? fbv / d.rooms : null, 2) + '</td><td class="n">' + gbp(d.net) + '</td></tr>'; }).join('') + '</table></div><p class="note">Guestline groups revenue as food, beverage, conference, miscellaneous and sundries each day. The split between restaurant and bar tills is only in the month-to-date Period End report above.</p></div>'; }
+    if (S.daily) { var dk = Object.keys(S.daily).sort().slice(-14).reverse(); if (dk.length) h += '<div class="card"><h2>Food and beverage by day <span style="display:inline-block;width:8px;height:8px;background:#1a8f63;border-radius:50%;margin-left:8px;vertical-align:middle;position:relative;top:-2px" title="Live from Guestline API"></span><span style="font-size:11px;color:#1a8f63;margin-left:6px;font-weight:600;letter-spacing:.2px;text-transform:uppercase">Guestline API</span></h2><p class="sub">From Guestline’s End of Day and Key Performance emails, net of VAT, latest first</p><div class="scroll" style="max-height:330px"><table><tr><th>Day</th><th class="n">Food</th><th class="n">Beverage</th><th class="n">Food and beverage</th><th class="n">Rooms sold</th><th class="n">Per occupied room</th><th class="n">All revenue</th></tr>' + dk.map(function (k) { var d = S.daily[k], fbv = (d.food || 0) + (d.bev || 0); return '<tr><td>' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(k + 'T12:00:00').getDay()] + ' ' + dlabel(k) + '</td><td class="n">' + gbp(d.food) + '</td><td class="n">' + gbp(d.bev) + '</td><td class="n">' + gbp(fbv) + '</td><td class="n">' + num(d.rooms) + '</td><td class="n">' + gbp(d.rooms ? fbv / d.rooms : null, 2) + '</td><td class="n">' + gbp(d.net) + '</td></tr>'; }).join('') + '</table></div><p class="note">Guestline groups revenue as food, beverage, conference, miscellaneous and sundries each day. The split between restaurant and bar tills is only in the month-to-date Period End report above.</p></div>'; }
     h += window.HubTermCard();
-    h += '<div class="card"><h2>Food and drink sales by night</h2><p class="sub">From the Actual &amp; Forecast report; nights after ' + dlabel(cut) + ' show only what is pre-booked with rooms</p><div class="chartbox" style="height:220px"><canvas id="fb-c3"></canvas></div></div>';
+    h += '<div class="card"><h2>Food and drink sales by night <span style="display:inline-block;width:8px;height:8px;background:#1a8f63;border-radius:50%;margin-left:8px;vertical-align:middle;position:relative;top:-2px" title="Live from Guestline API"></span><span style="font-size:11px;color:#1a8f63;margin-left:6px;font-weight:600;letter-spacing:.2px;text-transform:uppercase">Guestline API</span></h2><p class="sub">From the Actual &amp; Forecast report; nights after ' + dlabel(cut) + ' show only what is pre-booked with rooms</p><div class="chartbox" style="height:220px"><canvas id="fb-c3"></canvas></div></div>';
     var X = S.x || {};
     if (X.company) { var top = X.company.rows.slice(0, 8); h += '<div class="grid g2"><div class="card"><h2>Food and drink on the bill, by booking source</h2><p class="sub">Rezlynx Company report, ' + esc(X.company.period.replace('(Actual) ', '')) + ', including VAT</p><table><tr><th>Source</th><th class="n">Room nights</th><th class="n">F&amp;B on the bill</th><th class="n">F&amp;B per room night</th></tr>' + top.map(function (r) { return '<tr><td>' + esc(r.ref) + '</td><td class="n">' + num(r.rn) + '</td><td class="n">' + gbp(r.fb) + '</td><td class="n">' + gbp(r.fb / r.rn, 2) + '</td></tr>'; }).join('') + '</table></div>'; }
     else h += '<div class="grid g2"><div></div>';
     h += '<div class="card"><h2>What is still missing for food and drink</h2><p class="sub">Rezlynx only sees totals posted from the tills</p><div class="finding warn"><h3>Exact covers per clerk</h3><p>Rezlynx only assigns covers to the clerk who opens a table, so servers who join later show zero. We now infer covers above from main-course items in the POS feed as an interim measure. Asking Glen for a per-meal or per-service cover report.</p></div><div class="finding warn"><h3>Voids and discounts</h3><p>The Clerk Function Counts report shows totals per operator; we are working on scheduling it weekly into HosBUSINESS.</p></div><div class="finding warn"><h3>Events and functions</h3><p>Weddings, conferences and private dining appear only as provisional revenue in the market segment forecast. An event-by-event revenue report would separate them from the restaurant.</p></div></div></div>';
-    // v39.9: prepend covers section, then fetch async
+    // v39.10: prepend covers section, then fetch async
     h = '<div id="fb-covers-slot"><div class="card"><h2>Covers · last 30 days</h2><p class="sub">Loading…</p></div></div>' + h;
     el.innerHTML = h;
     if (FB_COVERS_CACHE) { var slot = $('fb-covers-slot'); if (slot) slot.innerHTML = fbCoversHtml(FB_COVERS_CACHE); }
