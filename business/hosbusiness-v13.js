@@ -254,12 +254,7 @@
       var v = (a - b) / Math.abs(b);
       return '<span class="' + (v >= 0 ? 'up' : 'dn') + '">' + (v >= 0 ? '+' : '−') + Math.abs(v * 100).toFixed(0) + '%</span>';
     }
-    h = '<div class="segs"><button class="seg on" data-fb="pos">POS <span class="v13-tick" style="width:14px;height:14px;font-size:9.5px"></span></button>' +
-      '<button class="seg" data-fb="over">Overview</button>' +
-      '<button class="seg" data-fb="term">By terminal</button>' +
-      '<button class="seg" data-fb="brk">Breakfast</button>' +
-      '<button class="seg" data-fb="menu">What we sell</button></div>' +
-      drBar('fb_pos', { forward: false });
+    h = fbNavHtml('pos') + drBar('fb_pos', { forward: false });
 
     h += '<div class="v13-note"><b>Note.</b> The bar till posts to the restaurant analysis codes (RES1*) rather than the bar codes (BAR1*). Until Patrik fixes the till mapping, food and drink shown under Restaurant include sales that happened at the bar. The totals and the "Charged to room vs paid at till" split are not affected.</div>';
 
@@ -1416,10 +1411,28 @@
     return (window.MEALPLAN_DATA && window.MEALPLAN_DATA.asOf) || null;
   }
 
+  /* v39.12: shared F&B sub-nav builder used by renderPosView and renderMealPlanView so
+     clicking those tabs doesn't blow away the navigation. Mirrors the tab list defined
+     in home.js fbSeg() + the POS/Meal Plan tabs injected by augmentFb() in this file. */
+  function fbNavHtml(active) {
+    var tabs = [
+      ['pos', 'POS <span class="v13-tick" style="width:14px;height:14px;font-size:9.5px"></span>'],
+      ['mealplan', 'Meal Plan <span class="v13-tick" style="width:14px;height:14px;font-size:9.5px"></span>'],
+      ['cov', 'Covers'],
+      ['over', 'Overview'],
+      ['term', 'By terminal'],
+      ['brk', 'Breakfast'],
+      ['menu', 'What we sell']
+    ];
+    return '<div class="segs">' + tabs.map(function (t) {
+      return '<button class="seg' + (t[0] === active ? ' on' : '') + '" data-fb="' + t[0] + '">' + t[1] + '</button>';
+    }).join('') + '</div>';
+  }
+
   function renderMealPlanView(el) {
     if (!el) return;
     if (!window.MEALPLAN_DATA) {
-      el.innerHTML = '<div class="card"><h2>Meal Plan report not loaded</h2><p class="sub">Load the Rezlynx Meal Plan export via Data &amp; reports to show adults, children, breakfasts and dinners by day.</p></div>';
+      el.innerHTML = fbNavHtml('mealplan') + '<div class="card"><h2>Meal Plan report not loaded</h2><p class="sub">Load the Rezlynx Meal Plan export via Data &amp; reports to show adults, children, breakfasts and dinners by day.</p></div>';
       return;
     }
     var T = window.Trading;
@@ -1439,7 +1452,8 @@
       return dayLabel + ' ' + t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
     }
 
-    var h = '<div class="card"><h2>Meal Plan <span class="v13-src">Rezlynx export · ' + mpAsOfLabel() + '</span></h2>' +
+    var h = fbNavHtml('mealplan');
+    h += '<div class="card"><h2>Meal Plan <span class="v13-src">Rezlynx export · ' + mpAsOfLabel() + '</span></h2>' +
       '<p class="sub">Rooms, adults and children by meal plan basis (Room Only · Bed &amp; Breakfast · Dinner, Bed &amp; Breakfast). Breakfast and dinner counts drive the Forecast staffing when uploaded.</p>';
 
     // Tonight snapshot tiles
