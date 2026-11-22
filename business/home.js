@@ -139,6 +139,10 @@
   function renderHome() {
     var el = $('pf-home'), T = window.Trading, S = T ? T.S() : {}, a = acc(), PD = window.Profit.data(), h = '', card = {}, H = highlights();
     var who = (window.Profit.user() || '').split(/\s+/)[0], hr = new Date().getHours();
+
+    /* v39.6 — Manager's Flash slot. Fills in asynchronously via fetchManagerFlash(). */
+    h += '<div id="mf-slot" class="mf-slot"><div class="mf-load">🎩 ARIA is preparing your Manager\'s Flash…</div></div>';
+
     h += '<div class="hp-hero"><div><h2>' + (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (who ? ', ' + esc(who) : '') + '</h2><p>Business intelligence for Brandon Hall Hotel &amp; Spa: trading, profit and costs in one place</p></div>' +
       '<div class="hp-btns"><button class="pillbtn bad" data-drawer="bad"><b>' + openCount(H.bad) + '</b>Actions</button><button class="pillbtn warn" data-drawer="warn"><b>' + openCount(H.warn) + '</b>Watch list</button><button class="iconbtn" data-go="pf-brief" title="Project brief">' + icon('brief', 30) + '<span>Project brief</span></button><button class="iconbtn" data-go="pf-help" title="How figures are worked out">' + icon('kpi', 30) + '<span>How it’s worked out</span></button></div></div>';
     var today = '', mark = h.length;
@@ -175,7 +179,190 @@
       '<p class="hp-foot"><a data-go="pf-data">Data references</a> · where every figure comes from and when it was imported &nbsp;|&nbsp; <a data-go="pf-help">How figures are worked out</a> &nbsp;|&nbsp; <a data-go="pf-brief">Project brief</a></p>';
     el.innerHTML = h;
     hubChart();
+    try { fetchAndRenderFlash(); } catch (e) {}
   }
+
+  /* ============================================================
+     v39.6 — Manager's Flash section
+     ============================================================ */
+
+  var FN_BASE = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/';
+  var MF_CACHE_KEY = 'hosbusiness_mf_cache';
+  var MF_CACHE_TTL = 30 * 60 * 1000;
+  var MF_INFLIGHT = false;
+
+  function mfToken() { try { return localStorage.getItem('hosbusiness_gl_token'); } catch (e) { return null; } }
+  function mfGetCache() { try { var o = JSON.parse(localStorage.getItem(MF_CACHE_KEY) || 'null'); if (!o) return null; return o; } catch (e) { return null; } }
+  function mfSetCache(o) { try { localStorage.setItem(MF_CACHE_KEY, JSON.stringify(o)); } catch (e) {} }
+
+  function mfGbp(n) { if (n == null || !isFinite(n)) return '–'; return (n < 0 ? '−' : '') + '£' + Math.abs(Math.round(n)).toLocaleString('en-GB'); }
+  function mfGbpDp(n) { if (n == null || !isFinite(n)) return '–'; return (n < 0 ? '−' : '') + '£' + Math.abs(n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function mfPct(n) { if (n == null) return '–'; return (n * 100).toFixed(1) + '%'; }
+  function mfNum(n) { if (n == null) return '–'; return Number(n).toLocaleString('en-GB'); }
+
+  function fetchAndRenderFlash() {
+    var slot = document.getElementById('mf-slot');
+    if (!slot) return;
+    var tok = mfToken();
+    if (!tok) { slot.innerHTML = ''; return; }
+    var cached = mfGetCache();
+    if (cached && cached.ts && (Date.now() - cached.ts) < MF_CACHE_TTL && cached.flash) {
+      slot.innerHTML = renderFlash(cached.flash, cached.commentary);
+      // refresh in background
+      refreshFlash(true);
+    } else {
+      refreshFlash(false);
+    }
+  }
+
+  function refreshFlash(silent) {
+    if (MF_INFLIGHT) return;
+    var tok = mfToken(); if (!tok) return;
+    MF_INFLIGHT = true;
+    var slot = document.getElementById('mf-slot');
+    // First fetch the data (fast — no Gemini)
+    fetch(FN_BASE + 'managerFlash', { headers: { 'Authorization': 'Bearer ' + tok } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j || !j.ok || !j.flash) throw new Error('bad flash response');
+        var cached = mfGetCache() || {};
+        cached.ts = Date.now(); cached.flash = j.flash;
+        mfSetCache(cached);
+        if (slot) slot.innerHTML = renderFlash(j.flash, cached.commentary);
+        // Then fetch the commentary (slower — triggers Gemini). Only if we don't have a fresh one.
+        if (!cached.commentary || !cached.commentaryTs || (Date.now() - cached.commentaryTs) > 60 * 60 * 1000) {
+          return fetch(FN_BASE + 'managerFlashCommentary', {
+            method: 'POST', headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: '{}'
+          }).then(function (r) { return r.json(); }).then(function (j2) {
+            if (j2 && j2.ok) {
+              cached.commentary = j2.commentary; cached.briefHeadline = j2.briefHeadline; cached.commentaryTs = Date.now();
+              mfSetCache(cached);
+              if (slot) slot.innerHTML = renderFlash(j2.flash || cached.flash, j2.commentary, j2.briefHeadline);
+            }
+          }).catch(function () {});
+        }
+      })
+      .catch(function () {
+        if (slot && !silent) slot.innerHTML = '<div class="mf-err">Manager\'s Flash couldn\'t be loaded. The hub session may have expired.</div>';
+      })
+      .finally(function () { MF_INFLIGHT = false; });
+  }
+
+  function renderFlash(flash, commentary, briefHeadline) {
+    if (!flash) return '';
+    var d = flash.day, w = flash.week, m = flash.month, y = flash.year, la = flash.lookAhead;
+    var dateHuman = flash.forDate ? new Date(flash.forDate + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+
+    function cell(v, f) { return '<td class="mf-n">' + (f ? f(v) : v) + '</td>'; }
+    function rrow(label, da, wa, ma, ya, f) {
+      return '<tr><td class="mf-l">' + esc(label) + '</td>' + cell(da, f) + cell(wa, f) + cell(ma, f) + cell(ya, f) + '</tr>';
+    }
+
+    var commentaryHtml = '';
+    if (commentary) {
+      commentaryHtml = '<div class="mf-com"><div class="mf-com-hd">🎩 ARIA · Overnight Commentary</div>' +
+        (commentary.overnight ? '<p><b>Overnight.</b> ' + esc(commentary.overnight) + '</p>' : '') +
+        (commentary.period ? '<p><b>Period view.</b> ' + esc(commentary.period) + '</p>' : '') +
+        (commentary.ahead ? '<p><b>Ahead.</b> ' + esc(commentary.ahead) + '</p>' : '') +
+        '</div>';
+    }
+    var briefHtml = briefHeadline ? '<div class="mf-brief"><b>ARIA\'s brief today:</b> ' + esc(briefHeadline) + '</div>' : '';
+
+    var laHtml = '';
+    if (la) {
+      var items = [
+        ['Today', la.today], ['Next 7 nights', la.next7], ['Next 4 weeks', la.next28],
+        ['End of month', la.monthEnd], ['End of year', la.yearEnd]
+      ];
+      laHtml = '<div class="mf-la"><div class="mf-la-hd">Look Ahead · occupancy</div><div class="mf-la-row">' +
+        items.map(function (x) { return '<div class="mf-la-t"><div class="mf-la-l">' + x[0] + '</div><div class="mf-la-v">' + mfPct(x[1]) + '</div></div>'; }).join('') +
+        '</div></div>';
+    }
+
+    return (
+      '<div class="mf-card">' +
+        '<div class="mf-hd">' +
+          '<div><div class="mf-hd-kicker">Manager\'s Flash · ' + esc(flash.hotel) + '</div>' +
+          '<h2>' + esc(dateHuman) + '</h2></div>' +
+          '<div class="mf-hd-r"><button class="mf-btn" data-mf-refresh>↻ Refresh</button></div>' +
+        '</div>' +
+        commentaryHtml + briefHtml +
+        '<h3 class="mf-sh">Revenue · net of VAT</h3>' +
+        '<table class="mf-t"><thead><tr><th>Metric</th><th>Day</th><th>WTD</th><th>MTD</th><th>YTD</th></tr></thead><tbody>' +
+          rrow('Total revenue', d.revNet, w.revNet, m.revNet, y.revNet, mfGbp) +
+          rrow('— Accommodation', d.accomNet, w.accomNet, m.accomNet, y.accomNet, mfGbp) +
+          rrow('— Food & Beverage', d.fbNet, w.fbNet, m.fbNet, y.fbNet, mfGbp) +
+          rrow('— Other', d.otherNet, w.otherNet, m.otherNet, y.otherNet, mfGbp) +
+          rrow('Payments received', d.payments, w.payments, m.payments, y.payments, mfGbp) +
+        '</tbody></table>' +
+        '<h3 class="mf-sh">Rooms &amp; rates</h3>' +
+        '<table class="mf-t"><thead><tr><th>Metric</th><th>Day</th><th>WTD</th><th>MTD</th><th>YTD</th></tr></thead><tbody>' +
+          rrow('Rooms sold', d.sold, w.sold, m.sold, y.sold, mfNum) +
+          rrow('Occupancy %', d.occ, w.occ, m.occ, y.occ, mfPct) +
+          rrow('ADR (net)', d.adrNet, w.adrNet, m.adrNet, y.adrNet, mfGbpDp) +
+          rrow('RevPAR (net)', d.revparNet, w.revparNet, m.revparNet, y.revparNet, mfGbpDp) +
+          rrow('TRevPAR (net)', d.trevparNet, w.trevparNet, m.trevparNet, y.trevparNet, mfGbpDp) +
+          rrow('Revenue / occupied room', d.perRoom, w.perRoom, m.perRoom, y.perRoom, mfGbpDp) +
+          rrow('F&B / occupied room', d.perRoomFB, w.perRoomFB, m.perRoomFB, y.perRoomFB, mfGbpDp) +
+          rrow('Total guests', d.sleepers, w.sleepers, m.sleepers, y.sleepers, mfNum) +
+          rrow('Rooms OOS', d.oos, w.oos, m.oos, y.oos, mfNum) +
+          rrow('Rooms DFS', d.dfs, w.dfs, m.dfs, y.dfs, mfNum) +
+        '</tbody></table>' +
+        laHtml +
+        '<div class="mf-ft">All figures net of VAT. WTD = Monday to yesterday. MTD = 1st of month to yesterday. YTD = 1 January to yesterday. · Live from the Guestline API feed and ARIA.</div>' +
+      '</div>'
+    );
+  }
+
+  // Refresh click
+  document.addEventListener('click', function (e) {
+    if (e.target && e.target.closest && e.target.closest('[data-mf-refresh]')) {
+      try { localStorage.removeItem(MF_CACHE_KEY); } catch (err) {}
+      refreshFlash(false);
+    }
+  });
+
+  // Inject Manager's Flash CSS once
+  (function () {
+    if (document.getElementById('mf-css')) return;
+    var s = document.createElement('style'); s.id = 'mf-css';
+    s.textContent = [
+      '.mf-slot{max-width:1680px;margin:0 auto 18px}',
+      '.mf-load{background:#fff;border:1px dashed #d4d2cb;border-radius:12px;padding:30px;text-align:center;color:#7b8494;font-size:14px}',
+      '.mf-err{background:#fdf6f5;border:1px solid #c0362b;border-radius:12px;padding:16px;color:#8a1e15;font-size:13px}',
+      '.mf-card{background:#fff;border:1px solid #e4e2dc;border-radius:14px;padding:22px 26px;box-shadow:0 2px 8px rgba(8,16,26,.05)}',
+      '.mf-hd{display:flex;align-items:flex-start;gap:16px;border-bottom:1px solid #efece5;padding-bottom:12px;margin-bottom:16px}',
+      '.mf-hd-kicker{font-size:11px;font-weight:700;letter-spacing:.5px;color:#9d7d5f;text-transform:uppercase}',
+      '.mf-hd h2{margin:3px 0 0;font-size:20px;font-weight:700;color:#1a2238;letter-spacing:-.2px}',
+      '.mf-hd-r{margin-left:auto}',
+      '.mf-btn{background:#f6f4ee;border:1px solid #d4d2cb;color:#2c3440;padding:7px 12px;border-radius:6px;cursor:pointer;font:inherit;font-size:12.5px;font-weight:600}',
+      '.mf-btn:hover{background:#eceae3}',
+      '.mf-com{background:#fdfcf7;border:1px solid #e9e3ca;border-left:4px solid #d4a94e;border-radius:6px;padding:14px 16px;margin-bottom:16px}',
+      '.mf-com-hd{font-size:11px;font-weight:700;letter-spacing:.5px;color:#9d7d5f;text-transform:uppercase;margin-bottom:8px}',
+      '.mf-com p{margin:0 0 8px;font-size:13.5px;line-height:1.55;color:#2c3440}',
+      '.mf-com p:last-child{margin-bottom:0}',
+      '.mf-com p b{color:#1a2238}',
+      '.mf-brief{background:#eef3f8;border-left:3px solid #1F7A8C;border-radius:6px;padding:9px 12px;font-size:13px;color:#2c3440;margin-bottom:16px}',
+      '.mf-brief b{color:#1a3b60;font-weight:700}',
+      '.mf-sh{font-size:12px;font-weight:700;letter-spacing:.4px;color:#52514e;text-transform:uppercase;margin:16px 0 8px}',
+      '.mf-t{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:6px}',
+      '.mf-t th{background:#f6f4ee;text-align:left;padding:8px 12px;font-size:11px;letter-spacing:.3px;font-weight:600;color:#52514e;text-transform:uppercase;border-bottom:1px solid #e9e7e0}',
+      '.mf-t th:not(:first-child){text-align:right}',
+      '.mf-t td{padding:7px 12px;border-bottom:1px solid #f1efe9;font-size:13.5px;color:#2c3440}',
+      '.mf-t td.mf-l{color:#52514e}',
+      '.mf-t td.mf-n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:#1a2238}',
+      '.mf-t tr:hover td{background:#fafaf6}',
+      '.mf-la{margin-top:16px;padding:14px 16px;background:#f8f6ef;border-radius:8px}',
+      '.mf-la-hd{font-size:11px;font-weight:700;letter-spacing:.5px;color:#52514e;text-transform:uppercase;margin-bottom:10px}',
+      '.mf-la-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}',
+      '.mf-la-t{background:#fff;border:1px solid #e9e7e0;border-radius:6px;padding:10px;text-align:center}',
+      '.mf-la-l{font-size:10.5px;color:#7b8494;text-transform:uppercase;letter-spacing:.3px;font-weight:600}',
+      '.mf-la-v{font-size:19px;font-weight:700;color:#1a2238;margin-top:3px}',
+      '.mf-ft{font-size:11px;color:#7b8494;margin-top:14px;padding-top:12px;border-top:1px solid #efece5;line-height:1.5}',
+      '@media (max-width:720px){.mf-la-row{grid-template-columns:repeat(2,1fr)}}'
+    ].join('\n');
+    document.head.appendChild(s);
+  })();
 
   var hubC = null;
   function hubChart() {

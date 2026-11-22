@@ -579,7 +579,7 @@
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v39.5';
+  var HOSREV_VERSION = 'v39.6';
   function phaseBadge() {
     var liveBooks = getCachedBooks();
     var liveOnBooks = !!(liveBooks && liveBooks.byDate);
