@@ -140,7 +140,7 @@
     var el = $('pf-home'), T = window.Trading, S = T ? T.S() : {}, a = acc(), PD = window.Profit.data(), h = '', card = {}, H = highlights();
     var who = (window.Profit.user() || '').split(/\s+/)[0], hr = new Date().getHours();
 
-    /* v39.7 — Manager's Flash slot. Fills in asynchronously via fetchManagerFlash(). */
+    /* v39.8 — Manager's Flash slot. Fills in asynchronously via fetchManagerFlash(). */
     h += '<div id="mf-slot" class="mf-slot"><div class="mf-load">🎩 ARIA is preparing your Manager\'s Flash…</div></div>';
 
     h += '<div class="hp-hero"><div><h2>' + (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (who ? ', ' + esc(who) : '') + '</h2><p>Business intelligence for Brandon Hall Hotel &amp; Spa: trading, profit and costs in one place</p></div>' +
@@ -183,7 +183,7 @@
   }
 
   /* ============================================================
-     v39.7 — Manager's Flash section
+     v39.8 — Manager's Flash section
      ============================================================ */
 
   var FN_BASE = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/';
@@ -191,7 +191,7 @@
   var MF_CACHE_TTL = 30 * 60 * 1000;
   var MF_INFLIGHT = false;
 
-  function mfToken() { try { return localStorage.getItem('hosbusiness_gl_token'); } catch (e) { return null; } }
+  function mfToken() { try { return localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) { return null; } }
   function mfGetCache() { try { var o = JSON.parse(localStorage.getItem(MF_CACHE_KEY) || 'null'); if (!o) return null; return o; } catch (e) { return null; } }
   function mfSetCache(o) { try { localStorage.setItem(MF_CACHE_KEY, JSON.stringify(o)); } catch (e) {} }
 

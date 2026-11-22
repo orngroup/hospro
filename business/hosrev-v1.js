@@ -579,7 +579,7 @@
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v39.6';
+  var HOSREV_VERSION = 'v39.8';
   function phaseBadge() {
     var liveBooks = getCachedBooks();
     var liveOnBooks = !!(liveBooks && liveBooks.byDate);
@@ -613,6 +613,9 @@
   var ALFRED_BRIEF_INFLIGHT = false;
   var ALFRED_ALERTS_INFLIGHT = false;
   var AI_TOKEN_KEY = 'hosbusiness_gl_token';
+  /* v39.8: the sign-in flow writes the token to sessionStorage, but earlier code read it from localStorage
+     and threw spurious "session expired" errors. Read from BOTH storages so every call finds it. */
+  function aiTok() { try { return localStorage.getItem(AI_TOKEN_KEY) || sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { return null; } }
   var AI_CACHE_KEY = 'hosrev_ai_cache';
   var EVENTS_CACHE_KEY = 'hosrev_events_cache';
   var COMP_CACHE_KEY = 'hosrev_comp_cache';
@@ -790,7 +793,7 @@
     var live = getCachedAi();
     if (live && live.insights && live.insights.length) return;    // still fresh
     var token;
-    try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { token = null; }
+    token = aiTok();
     if (!token) return;    // no token, can't call the function — stay on rule-based
     AI_INFLIGHT = true;
     var liveEv = getCachedEvents();
@@ -928,7 +931,7 @@
   /* Build the plan by calling hosrevPlan Firebase function. */
   function buildDayPlan() {
     if (PLAN_INFLIGHT) return;
-    var token; try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { return; }
+    var token; token = aiTok(); if (!token) return;
     if (!token) { alert('Please sign out and sign back in to refresh your session, then try again.'); return; }
 
     PLAN_INFLIGHT = true;
@@ -1426,7 +1429,7 @@
   function maybeFetchBooks() {
     if (BOOKS_INFLIGHT) return;
     if (getCachedBooks()) return;
-    var token; try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { return; }
+    var token; token = aiTok(); if (!token) return;
     if (!token) return;
     BOOKS_INFLIGHT = true;
     fetch(BOOKS_ENDPOINT, { headers: { Authorization: 'Bearer ' + token } })
@@ -1455,7 +1458,7 @@
   function maybeFetchComp() {
     if (COMP_INFLIGHT) return;
     if (getCachedComp()) return;
-    var token; try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { return; }
+    var token; token = aiTok(); if (!token) return;
     if (!token) return;
     COMP_INFLIGHT = true;
     fetch(COMP_ENDPOINT, { headers: { Authorization: 'Bearer ' + token } })
@@ -1681,7 +1684,7 @@
     else el.insertAdjacentHTML('beforeend', placeholder);
     el.scrollTop = el.scrollHeight;
 
-    var token = null; try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    var token = null; token = aiTok();
     if (!token) {
       finalizePending(question, '**Please sign out and sign back in** to refresh your session, then try again.', [], [], null);
       AGENT_INFLIGHT = false; return;
@@ -1842,7 +1845,7 @@
   function maybeFetchEvents(force) {
     if (EVENTS_INFLIGHT) return;
     if (!force && getCachedEvents()) return;
-    var token; try { token = sessionStorage.getItem(AI_TOKEN_KEY); } catch (e) { return; }
+    var token; token = aiTok(); if (!token) return;
     if (!token) return;
     EVENTS_INFLIGHT = true;
     var method = force ? 'POST' : 'GET';
@@ -2046,7 +2049,7 @@
       var cached = getCachedAlfredBrief();
       if (cached && cached.ts && (Date.now() - cached.ts) < ALFRED_BRIEF_CACHE_TTL) return;
     }
-    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    var tok = null; tok = aiTok();
     if (!tok) return;
     ALFRED_BRIEF_INFLIGHT = true;
     // first try GET (cheap read), if empty then POST (generate)
@@ -2071,7 +2074,7 @@
       .catch(function () { ALFRED_BRIEF_INFLIGHT = false; });
   }
   function refreshAlfredBrief() {
-    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    var tok = null; tok = aiTok();
     if (!tok) { renderAlfredErr('You need to sign in again — the session has expired.'); return; }
     ALFRED_BRIEF_INFLIGHT = true;
     var statusEl = document.querySelector('[data-rv-alf-status]');
@@ -2116,7 +2119,7 @@
       var c = getCachedAlerts();
       if (c && c.ts && (Date.now() - c.ts) < ALFRED_ALERTS_CACHE_TTL) return;
     }
-    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    var tok = null; tok = aiTok();
     if (!tok) return;
     ALFRED_ALERTS_INFLIGHT = true;
     fetch(ALFRED_ALERTS_ENDPOINT, { headers: { 'Authorization': 'Bearer ' + tok } })
@@ -2133,7 +2136,7 @@
   function maybeFetchScorecard() {
     var c = getCachedScore();
     if (c && c.ts && (Date.now() - c.ts) < ALFRED_SCORE_CACHE_TTL) return;
-    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    var tok = null; tok = aiTok();
     if (!tok) return;
     fetch(ALFRED_SCORECARD_ENDPOINT + '?days=14', { headers: { 'Authorization': 'Bearer ' + tok } })
       .then(function (r) { return r.json(); })
@@ -2148,7 +2151,7 @@
   function maybeFetchLearnings() {
     var c = getCachedLearn();
     if (c && c.ts && (Date.now() - c.ts) < ALFRED_LEARN_CACHE_TTL) return;
-    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    var tok = null; tok = aiTok();
     if (!tok) return;
     fetch(ALFRED_LEARNINGS_ENDPOINT, { headers: { 'Authorization': 'Bearer ' + tok } })
       .then(function (r) { return r.json(); })
@@ -2162,7 +2165,7 @@
   }
 
   function postAlfredDecision(payload) {
-    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    var tok = null; tok = aiTok();
     if (!tok) return Promise.resolve({ ok: false });
     return fetch(ALFRED_DECISION_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify(payload) })
       .then(function (r) { return r.json(); })
@@ -2170,7 +2173,7 @@
   }
 
   function markAlertsRead(ids) {
-    var tok = null; try { tok = localStorage.getItem(AI_TOKEN_KEY); } catch (e) {}
+    var tok = null; tok = aiTok();
     if (!tok) return;
     fetch(ALFRED_ALERTS_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify(ids === 'all' ? { markAllRead: true } : { markRead: ids }) })
       .then(function () {
