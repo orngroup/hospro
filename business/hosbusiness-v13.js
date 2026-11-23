@@ -608,7 +608,12 @@
       // Forward-looking anchors (always shown)
       t('Tonight, on the books', to ? num(to.rooms) + ' <small>rooms</small>' : '–', to ? gbp(tonightAdr, 2) + ' ADR · ' + gbp(tonightAcc) + ' rooms revenue' : ''),
       t('Next 7 nights, on the books', n7.rooms ? num(n7.rooms) + ' <small>rooms</small> <span>' + pc(n7.occ) + '</span>' : '–', n7.rooms ? gbp(n7.acc) + ' rooms revenue' : ''),
-      t(MN[+m.slice(5) - 1] + ', with bookings held', gbp(allMonth), pc(allMonthOcc) + ' occupancy for the month')
+      // v13 — 3 revenue boxes replacing the old single "Nov, with bookings held" tile.
+      // Real data from Trading engine: act.total = MTD closed, bks.total = forward
+      // on-books, sum = full-month forecast. Refreshes with overnight glTick + 2h hosbookTick.
+      t('Revenue closed', gbp(act.total), num(act.rooms) + ' rooms sold · MTD actual from Guestline'),
+      t('Revenue on books', gbp(bks.total), num(bks.rooms || 0) + ' rooms forward · confirmed bookings'),
+      t('Total for month · ' + MN[+m.slice(5) - 1], gbp(allMonth), pc(allMonthOcc) + ' occupancy · closed + on books')
     ].join('');
     return '<div class="tiles">' + tiles + '</div>';
   }
