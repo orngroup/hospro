@@ -95,6 +95,11 @@
       '#pf-rev .rv-leg span{display:inline-flex;align-items:center;gap:6px}',
       '#pf-rev .rv-leg i{width:14px;height:3px;border-radius:2px;display:inline-block}',
       '#pf-rev .rv-note{font-size:11.5px;color:#7b8494;margin-top:10px;line-height:1.5}',
+      /* v39.14 — num/pos/neg/muted helpers for the 12-month forecast table */
+      '#pf-rev table.rv-t th.num,#pf-rev table.rv-t td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}',
+      '#pf-rev table.rv-t td.num.pos{color:#1a6442;font-weight:600}',
+      '#pf-rev table.rv-t td.num.neg{color:#8a1e15;font-weight:600}',
+      '#pf-rev table.rv-t td.num.muted{color:#7b8494}',
       '#pf-rev .rv-stars{color:#BB9979;letter-spacing:1px;font-size:13px}',
       '#pf-rev .rv-stars .dim{color:#e4e2dc}',
       '#pf-rev .rv-input{border:1px solid #e4e2dc;background:#fff;border-radius:7px;padding:5px 9px;font:inherit;font-size:13px;width:80px}',
@@ -376,19 +381,23 @@
     commission: 0.14,      // c — channel cost (OTA + payment)
     variable: 18,          // v — cost per occupied room (hskp, laundry, utilities)
     ancillary: 14,         // a — ancillary value per room (bkfst upsell, F&B spill)
-    maxDailyChange: 15,    // £ guardrail
-    weights: { comp: 4, forecast: 4, events: 2, pickup: 3 }  // 1-5
+    maxDailyChange: 20,    // £ guardrail — v39.14: raised £15 → £20 to match Patrik's stated normal (max £50 rare)
+    sundayFloor: 65,       // v39.14: hard floor for Sunday RO (no spa therapist currently)
+    weights: { comp: 5, forecast: 3, events: 2, pickup: 3 }  // v39.14: comp bumped 4→5 per Patrik ("competition first, occupancy second")
   };
 
   /* ---------- comp set ---------- */
+  /* v39.14: realigned to Patrik's actively-monitored set — Coombe, DoubleTree, Windmill, Ramada, Novotel.
+     Chesford, Nailcote, Mallory kept at low weight for market visibility but not drivers. */
   var COMP_SET = [
     { id: 'coombe',   label: 'Coombe Abbey',               weight: 5, base: 185 },
-    { id: 'dthilton', label: 'DoubleTree by Hilton Coventry',weight:4, base: 142 },
+    { id: 'dthilton', label: 'DoubleTree by Hilton Coventry',weight:5, base: 142 },
     { id: 'windmill', label: 'Windmill Village',           weight: 4, base: 128 },
-    { id: 'ramada',   label: 'Ramada',                     weight: 3, base: 95  },
-    { id: 'chesford', label: 'Chesford Grange',            weight: 4, base: 134 },
-    { id: 'nailcote', label: 'Nailcote Hall',              weight: 3, base: 149 },
-    { id: 'mallory',  label: 'Mallory Court',              weight: 2, base: 215 }
+    { id: 'ramada',   label: 'Ramada Coventry',            weight: 4, base: 95  },
+    { id: 'novotel',  label: 'Novotel Coventry',           weight: 4, base: 118 },
+    { id: 'chesford', label: 'Chesford Grange',            weight: 1, base: 134 },
+    { id: 'nailcote', label: 'Nailcote Hall',              weight: 1, base: 149 },
+    { id: 'mallory',  label: 'Mallory Court',              weight: 1, base: 215 }
   ];
 
   /* ---------- demand curve (simple logistic — demo only) ---------- */
@@ -412,13 +421,16 @@
     return rooms;
   }
 
-  function priceSearch(baseOcc, compRef, capacity, floor, ceiling, prevReco) {
+  function priceSearch(baseOcc, compRef, capacity, floor, ceiling, prevReco, dowIndex) {
     var best = null, bestP = null;
     var lo = Math.max(floor, (prevReco || compRef || 100) - SETTINGS.maxDailyChange);
     var hi = Math.min(ceiling, (prevReco || compRef || 100) + SETTINGS.maxDailyChange);
     if (lo < floor) lo = floor; if (hi > ceiling) hi = ceiling;
     // If no previous reco, search the whole band
     if (!prevReco) { lo = floor; hi = ceiling; }
+    // v39.14 — Sunday RO floor per Patrik's rule (no spa therapist — Sundays go to the bottom but never below £65)
+    if (dowIndex === 0 && lo < SETTINGS.sundayFloor) lo = SETTINGS.sundayFloor;
+    if (dowIndex === 0 && hi < SETTINGS.sundayFloor) hi = SETTINGS.sundayFloor;
     for (var p = lo; p <= hi; p += 1) {
       var d = demandAt(p, baseOcc, compRef, capacity);
       var profit = (p * (1 - SETTINGS.commission) - SETTINGS.variable + SETTINGS.ancillary) * d;
@@ -496,7 +508,9 @@
     if (rt.cat === 'suite') compRef += 45;
     // Lift for event nights
     compRef = round(compRef * (1 + 0.025 * night.eventScore), 0);
-    var pr = priceSearch(occ, compRef, rt.rooms, rt.floor, rt.ceiling, prevReco);
+    // v39.14 — pass day-of-week so priceSearch can apply the Sunday floor (dow 0 = Sun)
+    var nDow = (new Date(night.d + 'T00:00:00Z')).getUTCDay();
+    var pr = priceSearch(occ, compRef, rt.rooms, rt.floor, rt.ceiling, prevReco, nDow);
     var current = rt.bar;
     // On-books: prefer live from Guestline; fall back to demo
     var onBooks = liveRoomsThisType != null ? liveRoomsThisType : Math.round(rt.rooms * occ * 0.72);
@@ -567,10 +581,16 @@
     var unread = (al && al.alerts) ? al.alerts.length : 0;
     var alertBadge = unread > 0 ? ' <span class="rv-alert-pip">' + unread + '</span>' : '';
     var tabs = [
+      ['morning',  '☀ Morning View'],
       ['alfred',   '<img src="img/aria.png" style="width:16px;height:16px;vertical-align:-3px;margin-right:4px;border-radius:3px"> ARIA' + alertBadge],
       ['dash',     'Dashboard'],
       ['agent',    '✨ Ask ARIA'],
       ['calendar', 'Calendar'],
+      ['twelve',   '12-Month Forecast'],
+      ['bulk',     'Bulk Rates'],
+      ['groupq',   'Group Offer'],
+      ['discrep',  'Discrepancies'],
+      ['team',     'Team Input'],
       ['market',   'Market view'],
       ['settings', 'Settings']
     ];
@@ -579,7 +599,7 @@
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v39.9';
+  var HOSREV_VERSION = 'v39.14';
   function phaseBadge() {
     var liveBooks = getCachedBooks();
     var liveOnBooks = !!(liveBooks && liveBooks.byDate);
@@ -602,6 +622,26 @@
   var ALFRED_ALERTS_ENDPOINT    = FN_BASE + 'alfredAlerts';
   var ALFRED_SCORECARD_ENDPOINT = FN_BASE + 'alfredScorecard';
   var ALFRED_LEARNINGS_ENDPOINT = FN_BASE + 'alfredLearnings';
+  /* v39.14 — 12-month forecast + Manager Flash history + Team Input endpoints */
+  var FORECAST_ENDPOINT         = FN_BASE + 'hosbookForecastGet';
+  var FORECAST_LONG_RUN_ENDPOINT = FN_BASE + 'hosbookLongRun';
+  var FLASH_HIST_ENDPOINT       = FN_BASE + 'managerFlashHistoryGet';
+  var TEAM_INPUT_ENDPOINT       = FN_BASE + 'alfredQuestionnaireGet';
+  var NOTIF_USERS_GET_ENDPOINT    = FN_BASE + 'notificationUsersGet';
+  var NOTIF_USERS_SET_ENDPOINT    = FN_BASE + 'notificationUsersSet';
+  var NOTIF_USERS_DELETE_ENDPOINT = FN_BASE + 'notificationUsersDelete';
+  var NOTIF_USERS_CACHE_KEY       = 'hosrev_notif_users_cache';
+  var NOTIF_USERS_CACHE_TTL       = 5 * 60 * 1000;
+  var NOTIF_USERS_INFLIGHT = false;
+  var FORECAST_CACHE_KEY        = 'hosrev_forecast_12m_cache';
+  var FLASH_HIST_CACHE_KEY      = 'hosrev_flash_hist_cache';
+  var TEAM_INPUT_CACHE_KEY      = 'hosrev_team_input_cache';
+  var FORECAST_CACHE_TTL        = 60 * 60 * 1000;    // 1 hour
+  var FLASH_HIST_CACHE_TTL      = 10 * 60 * 1000;    // 10 min
+  var TEAM_INPUT_CACHE_TTL      = 15 * 60 * 1000;    // 15 min
+  var FORECAST_INFLIGHT = false;
+  var FLASH_HIST_INFLIGHT = false;
+  var TEAM_INPUT_INFLIGHT = false;
   var ALFRED_BRIEF_CACHE_KEY    = 'hosrev_alfred_brief_cache';
   var ALFRED_ALERTS_CACHE_KEY   = 'hosrev_alfred_alerts_cache';
   var ALFRED_SCORE_CACHE_KEY    = 'hosrev_alfred_score_cache';
@@ -1323,6 +1363,894 @@
       '</div>';
   }
 
+  /* ============================================================
+     v39.14 — 12-Month Forecast view
+     ============================================================ */
+  function viewTwelveMonth() {
+    var c = getCachedForecast();
+    var f = c && c.forecast;
+    var cachedAge = c && c.ts ? Math.round((Date.now() - c.ts) / 60000) : null;
+
+    var body;
+    if (!f) {
+      body = (
+        '<div class="rv-card">' +
+          '<h3>12-month forecast</h3>' +
+          '<p class="sub">Loading the on-books pull + per-month aggregation. This runs nightly at 03:30 London and rebuilds at 07:40 before the daily email.</p>' +
+          '<div class="rv-alf-loading" style="padding:20px;text-align:center;color:#7b8494">Fetching forecast…</div>' +
+        '</div>'
+      );
+    } else {
+      var months = f.months || [];
+      var roll = f.rollup || {};
+      var ratios = f.ratios || {};
+      var builtAt = f.builtAt ? new Date(f.builtAt).toLocaleString('en-GB') : (f.asOf || '—');
+      var cells = {
+        pctCell: function (v) {
+          if (v == null) return '<td class="num muted">–</td>';
+          var up = v > 0;
+          var abs = Math.abs(v);
+          var cls = abs < 0.02 ? 'muted' : (up ? 'pos' : 'neg');
+          var arrow = abs < 0.02 ? '◆' : (up ? '▲' : '▼');
+          return '<td class="num ' + cls + '">' + arrow + ' ' + (v > 0 ? '+' : '') + (v * 100).toFixed(1) + '%</td>';
+        }
+      };
+
+      body = (
+        '<div class="rv-card">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:8px">' +
+            '<div>' +
+              '<h3 style="margin:0">Next 12 months · forecast vs last year</h3>' +
+              '<p class="sub" style="margin:4px 0 0">On-books accommodation at booking net rate + modelled F&amp;B/Other from trailing per-occupied-room ratio. Compared against same month a year ago (closed-day actuals).</p>' +
+            '</div>' +
+            '<div style="font-size:11px;color:#7b8494;text-align:right">' +
+              '<div>Built: ' + esc(builtAt) + '</div>' +
+              (cachedAge != null ? '<div>Cached ' + cachedAge + ' min ago</div>' : '') +
+              '<button class="rv-alf-btn" data-rv-fc-rebuild style="margin-top:6px">Rebuild forecast</button>' +
+            '</div>' +
+          '</div>' +
+
+          // Rollup cards
+          '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 18px">' +
+            '<div class="rv-k" style="background:#1a2238;color:#fff;padding:14px;border-radius:8px">' +
+              '<div style="font-size:10px;letter-spacing:.3px;text-transform:uppercase;color:#9bb5c8;font-weight:700">12-month forecast</div>' +
+              '<div style="font-size:22px;font-weight:700;margin-top:4px">' + gbp(roll.forecastTotal || 0) + '</div>' +
+              '<div style="font-size:11px;color:#9bb5c8;margin-top:3px">' + (roll.rooms || 0) + ' rooms</div>' +
+            '</div>' +
+            '<div class="rv-k" style="background:#eef3f8;padding:14px;border-radius:8px;border:1px solid #c8d9dd">' +
+              '<div style="font-size:10px;letter-spacing:.3px;text-transform:uppercase;color:#1a3b60;font-weight:700">On books now</div>' +
+              '<div style="font-size:22px;font-weight:700;margin-top:4px;color:#1a2238">' + gbp(roll.onBooksTotal || 0) + '</div>' +
+              '<div style="font-size:11px;color:#52647a;margin-top:3px">firm bookings in system</div>' +
+            '</div>' +
+            '<div class="rv-k" style="background:#eef3f8;padding:14px;border-radius:8px;border:1px solid #c8d9dd">' +
+              '<div style="font-size:10px;letter-spacing:.3px;text-transform:uppercase;color:#1a3b60;font-weight:700">Last 12 months actual</div>' +
+              '<div style="font-size:22px;font-weight:700;margin-top:4px;color:#1a2238">' + gbp(roll.lyTotal || 0) + '</div>' +
+              '<div style="font-size:11px;color:#52647a;margin-top:3px">' + (roll.lyRooms || 0) + ' rooms LY</div>' +
+            '</div>' +
+            '<div class="rv-k" style="background:' + ((roll.vsLYPct || 0) >= 0 ? '#eff7f0' : '#fdf6f5') + ';padding:14px;border-radius:8px;border:1px solid ' + ((roll.vsLYPct || 0) >= 0 ? '#c3dcc7' : '#f0d6d2') + '">' +
+              '<div style="font-size:10px;letter-spacing:.3px;text-transform:uppercase;color:' + ((roll.vsLYPct || 0) >= 0 ? '#486128' : '#8a1e15') + ';font-weight:700">vs Last Year</div>' +
+              '<div style="font-size:22px;font-weight:700;margin-top:4px;color:' + ((roll.vsLYPct || 0) >= 0 ? '#1a6442' : '#8a1e15') + '">' + (roll.vsLYPct == null ? '–' : ((roll.vsLYPct > 0 ? '+' : '') + (roll.vsLYPct * 100).toFixed(1) + '%')) + '</div>' +
+              '<div style="font-size:11px;color:#52647a;margin-top:3px">forecast vs actual</div>' +
+            '</div>' +
+          '</div>' +
+
+          // Chart
+          '<div class="rv-chartbox" style="height:340px;margin-bottom:18px"><canvas id="rv-fc12-chart"></canvas></div>' +
+
+          // Month-by-month table
+          '<div style="overflow-x:auto">' +
+          '<table class="rv-t">' +
+            '<thead><tr>' +
+              '<th style="text-align:left">Month</th>' +
+              '<th class="num">On books</th>' +
+              '<th class="num">Accom (forecast)</th>' +
+              '<th class="num">F&amp;B (modelled)</th>' +
+              '<th class="num">Other (modelled)</th>' +
+              '<th class="num">Total forecast</th>' +
+              '<th class="num">Rooms</th>' +
+              '<th class="num">Occ</th>' +
+              '<th class="num">LY actual</th>' +
+              '<th class="num">vs LY</th>' +
+            '</tr></thead><tbody>' +
+            months.map(function (r) {
+              var hl = r.isCurrent ? ' style="background:#fdf6ea"' : '';
+              return '<tr' + hl + '>' +
+                '<td style="text-align:left;font-weight:600' + (r.isCurrent ? ';color:#1a2238' : '') + '">' + esc(r.label) + (r.isCurrent ? ' <span style="font-size:10px;color:#8a6e3f">MTD</span>' : '') + '</td>' +
+                '<td class="num">' + gbp(r.onBooks.accom) + '</td>' +
+                '<td class="num">' + gbp(r.forecast.accom) + '</td>' +
+                '<td class="num">' + gbp(r.forecast.fb) + '</td>' +
+                '<td class="num">' + gbp(r.forecast.other) + '</td>' +
+                '<td class="num" style="font-weight:700;color:#1a2238">' + gbp(r.forecast.total) + '</td>' +
+                '<td class="num">' + (r.forecast.rooms || 0) + '</td>' +
+                '<td class="num">' + ((r.forecast.occPct || 0) * 100).toFixed(1) + '%</td>' +
+                '<td class="num">' + (r.lastYear ? gbp(r.lastYear.total) : '–') + '</td>' +
+                cells.pctCell(r.vsLYPct) +
+              '</tr>';
+            }).join('') +
+            '</tbody>' +
+            '<tfoot><tr style="background:#eef3f8;font-weight:700">' +
+              '<td style="text-align:left">12-month rollup</td>' +
+              '<td class="num">–</td>' +
+              '<td class="num">–</td>' +
+              '<td class="num">–</td>' +
+              '<td class="num">–</td>' +
+              '<td class="num" style="color:#1a2238">' + gbp(roll.forecastTotal || 0) + '</td>' +
+              '<td class="num">' + (roll.rooms || 0) + '</td>' +
+              '<td class="num">–</td>' +
+              '<td class="num">' + gbp(roll.lyTotal || 0) + '</td>' +
+              cells.pctCell(roll.vsLYPct) +
+            '</tr></tfoot>' +
+          '</table>' +
+          '</div>' +
+
+          // Methodology footer
+          '<div style="margin-top:14px;padding:12px 14px;background:#f6f8fb;border-left:3px solid #1F7A8C;border-radius:4px;font-size:12px;line-height:1.55;color:#52647a">' +
+            '<b style="color:#1a3b60">Methodology.</b> ' +
+            'Accommodation forecast is <b>firm</b> — it comes from the actual booked net rate per room-night, aggregated to monthly totals. ' +
+            'F&amp;B and Other for forward nights are <b>modelled</b> using the trailing 28-night per-occupied-room ratio: ' +
+            '<b>£' + (ratios.perRoomFB || 0).toFixed(2) + '</b> F&amp;B per occupied room and ' +
+            '<b>£' + (ratios.perRoomOther || 0).toFixed(2) + '</b> Other per occupied room ' +
+            '(sampled over ' + (ratios.sampleNights || 0) + ' nights / ' + (ratios.sampleRooms || 0) + ' occupied rooms). ' +
+            'The current month row blends actual MTD gl_days data with on-books forward for the rest of the month. ' +
+            'Last-year comparisons pull the same month of the previous year from closed-day gl_days actuals.' +
+          '</div>' +
+        '</div>'
+      );
+    }
+    return hero() + viewTabs() + body;
+  }
+
+  function drawTwelveMonthChart() {
+    if (!window.Chart) return;
+    var el = $('rv-fc12-chart'); if (!el) return;
+    var c = getCachedForecast();
+    if (!c || !c.forecast) return;
+    var months = c.forecast.months || [];
+    try { if (charts.fc12) charts.fc12.destroy(); } catch (e) {}
+    charts.fc12 = new Chart(el, {
+      type: 'bar',
+      data: {
+        labels: months.map(function (r) { return r.label; }),
+        datasets: [
+          { label: 'Forecast accommodation', data: months.map(function (r) { return Math.round(r.forecast.accom); }), backgroundColor: '#1a2238', stack: 'forecast', borderRadius: 3, maxBarThickness: 32 },
+          { label: 'Forecast F&B', data: months.map(function (r) { return Math.round(r.forecast.fb); }), backgroundColor: '#1F7A8C', stack: 'forecast', borderRadius: 3, maxBarThickness: 32 },
+          { label: 'Forecast Other', data: months.map(function (r) { return Math.round(r.forecast.other); }), backgroundColor: '#C7A87A', stack: 'forecast', borderRadius: 3, maxBarThickness: 32 },
+          { label: 'Last year actual', data: months.map(function (r) { return r.lastYear ? Math.round(r.lastYear.total) : null; }), type: 'line', borderColor: '#8a1e15', backgroundColor: '#8a1e15', borderDash: [5, 4], pointRadius: 3, tension: 0.2, yAxisID: 'y' }
+        ]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 11 } } } },
+        scales: {
+          x: { stacked: true, grid: { display: false } },
+          y: { stacked: true, ticks: { callback: function (v) { return '£' + (v / 1000).toFixed(0) + 'k'; } }, grid: { color: '#ebe9e3' } }
+        }
+      }
+    });
+  }
+
+  /* ============================================================
+     v39.14 — Discrepancies view (reads manager_flash history)
+     ============================================================ */
+  function viewDiscrepancies() {
+    var c = getCachedFlashHist();
+    var hist = c && c.history ? c.history : [];
+    var latest = c && c.latest;
+    var latestCom = latest && latest.commentary;
+    var latestDate = latest && latest.flash ? latest.flash.forDate : (hist[0] && hist[0].forDate) || '—';
+    var cachedAge = c && c.ts ? Math.round((Date.now() - c.ts) / 60000) : null;
+
+    var body;
+    if (!c || !latestCom) {
+      body = (
+        '<div class="rv-card">' +
+          '<h3>Discrepancies &amp; watch-items</h3>' +
+          '<p class="sub">Loading ARIA\'s daily anomalies, wins and watch-items from the most recent runs.</p>' +
+          '<div class="rv-alf-loading" style="padding:20px;text-align:center;color:#7b8494">Fetching flash history…</div>' +
+        '</div>'
+      );
+    } else {
+      var anomCount = (latestCom.anomalies || []).length;
+      var winCount = (latestCom.wins || []).length;
+      var missCount = (latestCom.misses || []).length;
+      var actCount = (latestCom.actions || []).length;
+
+      // Today's anomalies, wins, misses
+      var todayHtml = (
+        '<div class="rv-card">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:10px">' +
+            '<div>' +
+              '<h3 style="margin:0">Today\'s watch-items</h3>' +
+              '<p class="sub" style="margin:4px 0 0">ARIA\'s findings from the ' + esc(latestDate) + ' Daily Business Update (' + anomCount + ' anomalies · ' + winCount + ' wins · ' + missCount + ' watch-items · ' + actCount + ' actions)</p>' +
+            '</div>' +
+            '<div style="font-size:11px;color:#7b8494;text-align:right">' +
+              (latest.lastSentAt ? '<div>Email sent: ' + new Date(latest.lastSentAt).toLocaleString('en-GB') + '</div>' : '') +
+              (cachedAge != null ? '<div>Cached ' + cachedAge + ' min ago</div>' : '') +
+              '<button class="rv-alf-btn" data-rv-flash-refresh style="margin-top:6px">Refresh</button>' +
+            '</div>' +
+          '</div>' +
+
+          (latestCom.spotlight ? (
+            '<div style="background:#1a2238;color:#fff;padding:16px 18px;border-radius:8px;margin-bottom:16px">' +
+              '<div style="font-size:10.5px;font-weight:700;letter-spacing:.8px;color:#C7A87A;text-transform:uppercase;margin-bottom:8px">🔎 Today\'s spotlight</div>' +
+              '<p style="margin:0;font-size:14px;line-height:1.6">' + esc(latestCom.spotlight) + '</p>' +
+            '</div>'
+          ) : '') +
+
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px">' +
+            // Anomalies
+            '<div style="padding:14px 16px;background:#fdf6f5;border:1px solid #f0d6d2;border-radius:8px">' +
+              '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#8a1e15;text-transform:uppercase;margin-bottom:8px">⚡ Anomalies spotted</div>' +
+              '<ul style="margin:0;padding-left:16px;font-size:13px;color:#2c3440;line-height:1.5">' +
+                ((latestCom.anomalies || []).length ? (latestCom.anomalies || []).map(function (a) { return '<li style="margin-bottom:6px">' + esc(a) + '</li>'; }).join('') : '<li style="color:#7b8494">No anomalies today</li>') +
+              '</ul>' +
+            '</div>' +
+            // Wins
+            '<div style="padding:14px 16px;background:#f0f6ea;border:1px solid #d4e3c3;border-radius:8px">' +
+              '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#486128;text-transform:uppercase;margin-bottom:8px">✓ Wins</div>' +
+              '<ul style="margin:0;padding-left:16px;font-size:13px;color:#2c3440;line-height:1.5">' +
+                ((latestCom.wins || []).length ? (latestCom.wins || []).map(function (a) { return '<li style="margin-bottom:6px">' + esc(a) + '</li>'; }).join('') : '<li style="color:#7b8494">No notable wins</li>') +
+              '</ul>' +
+            '</div>' +
+            // Watch items / misses
+            '<div style="padding:14px 16px;background:#fffbe8;border:1px solid #ecd584;border-radius:8px">' +
+              '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#7a5f0b;text-transform:uppercase;margin-bottom:8px">⚠ Watch items</div>' +
+              '<ul style="margin:0;padding-left:16px;font-size:13px;color:#2c3440;line-height:1.5">' +
+                ((latestCom.misses || []).length ? (latestCom.misses || []).map(function (a) { return '<li style="margin-bottom:6px">' + esc(a) + '</li>'; }).join('') : '<li style="color:#7b8494">Nothing concerning</li>') +
+              '</ul>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+
+      // Today's actions
+      var actionsHtml = '';
+      if (latestCom.actions && latestCom.actions.length) {
+        var deptColors = {
+          'Front Office': '#1a3b60', 'Kitchen': '#145866', 'F&B': '#1F7A8C',
+          'Housekeeping': '#486128', 'Events': '#4a3a7a', 'Revenue': '#1a2238'
+        };
+        var priColors = { high: '#c0362b', medium: '#1F7A8C', low: '#7b8494' };
+        actionsHtml = (
+          '<div class="rv-card">' +
+            '<h3>Actions for today · by department</h3>' +
+            latestCom.actions.map(function (a) {
+              var dc = deptColors[a.dept] || '#2c3440';
+              var pc = priColors[(a.priority || 'medium').toLowerCase()] || priColors.medium;
+              return '<div style="padding:12px 14px;margin:8px 0;background:#f6f8fb;border-left:4px solid ' + dc + ';border-radius:4px;display:flex;justify-content:space-between;gap:12px">' +
+                '<div style="flex:1">' +
+                  '<div style="font-size:10.5px;font-weight:700;letter-spacing:.4px;color:' + dc + ';text-transform:uppercase">' + esc(a.dept || '') + (a.owner ? ' · ' + esc(a.owner) : '') + '</div>' +
+                  '<div style="font-size:14px;color:#1a2238;font-weight:600;margin-top:4px;line-height:1.45">' + esc(a.action || '') + '</div>' +
+                  (a.why ? '<div style="font-size:12px;color:#52647a;margin-top:3px;font-style:italic">Why: ' + esc(a.why) + '</div>' : '') +
+                '</div>' +
+                '<div style="flex:0 0 auto"><span style="display:inline-block;padding:3px 10px;background:' + pc + ';color:#fff;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase">' + esc((a.priority || 'med')) + '</span></div>' +
+              '</div>';
+            }).join('') +
+          '</div>'
+        );
+      }
+
+      // History — last N days
+      var histHtml = '';
+      if (hist.length) {
+        histHtml = (
+          '<div class="rv-card">' +
+            '<h3>Past ' + hist.length + ' days of findings</h3>' +
+            '<p class="sub">Scroll back through earlier commentaries. Click a date to expand.</p>' +
+            hist.map(function (h, idx) {
+              var com = h.commentary || {};
+              var hAnom = (com.anomalies || []).length;
+              var hWin = (com.wins || []).length;
+              var hMiss = (com.misses || []).length;
+              var dateLbl = h.forDate ? new Date(h.forDate + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+              return (
+                '<details style="margin:8px 0;padding:10px 14px;background:#f6f8fb;border:1px solid #e9e7e0;border-radius:6px"' + (idx === 0 ? ' open' : '') + '>' +
+                  '<summary style="cursor:pointer;font-size:13.5px;color:#1a2238;font-weight:600">' + esc(dateLbl) +
+                    ' <span style="font-weight:400;color:#7b8494;margin-left:8px">' + hAnom + ' anomalies · ' + hWin + ' wins · ' + hMiss + ' watch</span>' +
+                  '</summary>' +
+                  '<div style="margin-top:10px;font-size:12.5px;color:#2c3440;line-height:1.5">' +
+                    (com.overnight ? '<p style="margin:0 0 6px"><b>Overnight.</b> ' + esc(com.overnight) + '</p>' : '') +
+                    (com.period ? '<p style="margin:0 0 6px"><b>Period.</b> ' + esc(com.period) + '</p>' : '') +
+                    (com.spotlight ? '<p style="margin:6px 0 6px"><b>Spotlight.</b> ' + esc(com.spotlight) + '</p>' : '') +
+                    ((com.anomalies || []).length ? '<div style="margin-top:8px"><b style="color:#8a1e15">Anomalies:</b><ul style="margin:3px 0 0 16px">' + com.anomalies.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>' : '') +
+                    ((com.misses || []).length ? '<div style="margin-top:8px"><b style="color:#7a5f0b">Watch:</b><ul style="margin:3px 0 0 16px">' + com.misses.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>' : '') +
+                  '</div>' +
+                '</details>'
+              );
+            }).join('') +
+          '</div>'
+        );
+      }
+
+      body = todayHtml + actionsHtml + histHtml;
+    }
+    return hero() + viewTabs() + body;
+  }
+
+  /* ============================================================
+     v39.14 — Team Input view (Patrik's questionnaire etc.)
+     ============================================================ */
+
+  /* Known question slugs → human labels, grouped by section. Any field present
+     in the submission that isn't listed here is shown in a final "Other" group. */
+  /* v39.14 — field keys match patrik.html's actual form field names */
+  var QUESTIONNAIRE_SCHEMA = [
+    { section: 'About', fields: [
+      { key: 'name', label: 'Your name' },
+      { key: 'role', label: 'Role' },
+      { key: 'years', label: 'Years doing revenue management' },
+      { key: 'involvement', label: 'Involvement in rate decisions (1-5)' }
+    ] },
+    { section: '1. Morning routine', fields: [
+      { key: 'morning_first', label: 'First thing you check when you arrive' },
+      { key: 'systems', label: 'Systems you log into first' },
+      { key: 'time_per_day', label: 'Time per day on rate-setting & revenue decisions' },
+      { key: 'morning_walkthrough', label: 'A typical morning — the first 60 minutes' }
+    ] },
+    { section: '2. Rate setting · your thinking', fields: [
+      { key: 'rate_decision', label: "Tonight's rate vs next week's rate" },
+      { key: 'rate_change_freq', label: 'Fixed BAR vs changing during the day' },
+      { key: 'max_rate_jump', label: "Largest rate jump you'd make (£)" },
+      { key: 'sunday_approach', label: 'Sunday nights vs weekends' },
+      { key: 'recent_change', label: 'The most recent rate change you made & why' },
+      { key: 'rate_trigger', label: 'What triggers you to change a rate?' }
+    ] },
+    { section: '3. Comp set', fields: [
+      { key: 'comp', label: 'Hotels actively monitored' },
+      { key: 'comp_other', label: 'Any other hotels to add?' },
+      { key: 'comp_freq', label: 'How often you check comp rates' },
+      { key: 'comp_how', label: 'How you check comp rates' }
+    ] },
+    { section: '4. Inventory & restrictions', fields: [
+      { key: 'mlos', label: 'When you use minimum length of stay' },
+      { key: 'ota_closeout', label: 'When you close out OTA channels' },
+      { key: 'group_split', label: 'Group block release approach' }
+    ] },
+    { section: '5. Events & demand drivers', fields: [
+      { key: 'events', label: 'Local events you watch for' },
+      { key: 'event_lead', label: 'Lead time you set rates for known events' }
+    ] },
+    { section: '6. Pain points & gaps', fields: [
+      { key: 'time_sink', label: 'Biggest time sink in your current workflow' },
+      { key: 'data_gaps', label: 'Data gaps you feel you have' },
+      { key: 'hardest_decision', label: 'Hardest revenue decision you make' },
+      { key: 'delete_task', label: "One task you'd delete from your week" }
+    ] },
+    { section: '7. A better daily tool', fields: [
+      { key: 'morning_view', label: 'Your ideal morning view in one screen' },
+      { key: 'three_things', label: 'Top three features you want' },
+      { key: 'helpful', label: 'Which features would be most helpful' },
+      { key: 'free_text', label: 'Anything else' }
+    ] }
+  ];
+
+  function renderQuestionnaireAnswer(val) {
+    if (val == null || val === '') return '<span style="color:#7b8494;font-style:italic">— not answered —</span>';
+    var str = String(val);
+    // Preserve line breaks in longer textarea answers
+    if (str.indexOf('\n') !== -1 || str.length > 80) {
+      return '<div style="white-space:pre-wrap;line-height:1.6;color:#2c3440">' + esc(str) + '</div>';
+    }
+    return '<span style="color:#2c3440">' + esc(str) + '</span>';
+  }
+
+  function renderOneSubmission(sub) {
+    if (!sub) return '';
+    var who = sub.name || '—';
+    var role = sub.role || '';
+    var when = sub.receivedAt || sub.submittedAt || '—';
+    var whenDate = when && when !== '—' ? new Date(when).toLocaleString('en-GB') : when;
+    var known = {};
+    QUESTIONNAIRE_SCHEMA.forEach(function (s) { s.fields.forEach(function (f) { known[f.key] = true; }); });
+
+    var sectionsHtml = QUESTIONNAIRE_SCHEMA.map(function (sect) {
+      var answered = sect.fields.filter(function (f) { return sub[f.key] != null && sub[f.key] !== ''; });
+      if (!answered.length && sect.section !== 'About') return '';
+      return (
+        '<div style="margin:16px 0;padding:14px 16px;background:#f6f8fb;border-left:3px solid #1F7A8C;border-radius:4px">' +
+          '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#1a3b60;text-transform:uppercase;margin-bottom:10px">' + esc(sect.section) + '</div>' +
+          sect.fields.map(function (f) {
+            return (
+              '<div style="margin-bottom:12px">' +
+                '<div style="font-size:12px;font-weight:600;color:#52647a;margin-bottom:4px">' + esc(f.label) + '</div>' +
+                renderQuestionnaireAnswer(sub[f.key]) +
+              '</div>'
+            );
+          }).join('') +
+        '</div>'
+      );
+    }).join('');
+
+    // Anything the schema doesn't cover — render as "Other fields"
+    var otherKeys = Object.keys(sub).filter(function (k) {
+      return !known[k] && ['id', 'receivedAt', 'submittedAt'].indexOf(k) === -1;
+    });
+    var otherHtml = '';
+    if (otherKeys.length) {
+      otherHtml = (
+        '<div style="margin:16px 0;padding:14px 16px;background:#fdf6ea;border-left:3px solid #C7A87A;border-radius:4px">' +
+          '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#8a6e3f;text-transform:uppercase;margin-bottom:10px">Other fields</div>' +
+          otherKeys.map(function (k) {
+            return (
+              '<div style="margin-bottom:10px">' +
+                '<div style="font-size:12px;font-weight:600;color:#52647a;margin-bottom:4px">' + esc(k) + '</div>' +
+                renderQuestionnaireAnswer(sub[k]) +
+              '</div>'
+            );
+          }).join('') +
+        '</div>'
+      );
+    }
+
+    return (
+      '<div style="margin-bottom:8px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding:10px 14px;background:#1a2238;color:#fff;border-radius:6px">' +
+          '<div style="font-size:14px;font-weight:700">' + esc(who) + (role ? ' <span style="opacity:.7;font-weight:400">· ' + esc(role) + '</span>' : '') + '</div>' +
+          '<div style="font-size:11.5px;color:#9bb5c8">Submitted ' + esc(whenDate) + '</div>' +
+        '</div>' +
+        sectionsHtml +
+        otherHtml +
+      '</div>'
+    );
+  }
+
+  function viewTeam() {
+    var c = getCachedTeamInput();
+    var subs = c && c.submissions ? c.submissions : null;
+    var cachedAge = c && c.ts ? Math.round((Date.now() - c.ts) / 60000) : null;
+
+    var body;
+    if (!subs) {
+      body = (
+        '<div class="rv-card">' +
+          '<h3>Team input</h3>' +
+          '<p class="sub">Loading the questionnaire submissions from the team.</p>' +
+          '<div class="rv-alf-loading" style="padding:20px;text-align:center;color:#7b8494">Fetching submissions…</div>' +
+        '</div>'
+      );
+    } else if (!subs.length) {
+      body = (
+        '<div class="rv-card">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:10px">' +
+            '<div>' +
+              '<h3 style="margin:0">Team input · revenue management questionnaire</h3>' +
+              '<p class="sub" style="margin:4px 0 0">Submissions arrive from brandon.hospro.co.uk/business/patrik.html. ARIA uses the most recent submission in its answers.</p>' +
+            '</div>' +
+            '<div style="font-size:11px;color:#7b8494;text-align:right">' +
+              (cachedAge != null ? '<div>Checked ' + cachedAge + ' min ago</div>' : '') +
+              '<button class="rv-alf-btn" data-rv-team-refresh style="margin-top:6px">Check again</button>' +
+            '</div>' +
+          '</div>' +
+          '<div style="padding:30px;text-align:center;color:#7b8494;background:#f6f8fb;border-radius:8px">' +
+            '<div style="font-size:14px;margin-bottom:6px">No submissions yet.</div>' +
+            '<div style="font-size:12px">When Patrik (or anyone) submits the questionnaire at <code>/business/patrik.html</code>, it will appear here.</div>' +
+          '</div>' +
+        '</div>'
+      );
+    } else {
+      var latest = subs[0];
+      var rest = subs.slice(1);
+
+      body = (
+        '<div class="rv-card">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:12px">' +
+            '<div>' +
+              '<h3 style="margin:0">Team input · revenue management questionnaire</h3>' +
+              '<p class="sub" style="margin:4px 0 0">' + subs.length + ' submission' + (subs.length === 1 ? '' : 's') + '. The most recent one is wired into ARIA\'s context — Ask ARIA answers now reflect how the team actually works.</p>' +
+            '</div>' +
+            '<div style="font-size:11px;color:#7b8494;text-align:right">' +
+              (cachedAge != null ? '<div>Cached ' + cachedAge + ' min ago</div>' : '') +
+              '<button class="rv-alf-btn" data-rv-team-refresh style="margin-top:6px">Refresh</button>' +
+            '</div>' +
+          '</div>' +
+
+          renderOneSubmission(latest) +
+        '</div>' +
+
+        (rest.length ? (
+          '<div class="rv-card">' +
+            '<h3>Earlier submissions</h3>' +
+            '<p class="sub">Collapsed — click a row to open.</p>' +
+            rest.map(function (s, idx) {
+              var dateLbl = s.receivedAt || s.submittedAt || '—';
+              if (dateLbl !== '—') { try { dateLbl = new Date(dateLbl).toLocaleString('en-GB'); } catch (e) {} }
+              return (
+                '<details style="margin:8px 0;padding:10px 14px;background:#f6f8fb;border:1px solid #e9e7e0;border-radius:6px">' +
+                  '<summary style="cursor:pointer;font-size:13.5px;color:#1a2238;font-weight:600">' + esc(s.name || '—') + (s.role ? ' · ' + esc(s.role) : '') +
+                    ' <span style="font-weight:400;color:#7b8494;margin-left:8px">' + esc(dateLbl) + '</span>' +
+                  '</summary>' +
+                  '<div style="margin-top:10px">' +
+                    renderOneSubmission(s) +
+                  '</div>' +
+                '</details>'
+              );
+            }).join('') +
+          '</div>'
+        ) : '')
+      );
+    }
+
+    return hero() + viewTabs() + body;
+  }
+
+  /* ============================================================
+     v39.14 — Patrik's Morning View
+     "Competition rates vs ours for the next 14 days together with our occupancy"
+     (direct quote from his questionnaire). Opens with ARIA's suggested adjustment
+     per night. One-click approve.
+     ============================================================ */
+
+  function inferCompOcc(compId, todayRate, baseRate) {
+    // Rough inference: if a comp has dropped >15% from their base, they are soft.
+    // >30% drop = struggling.
+    var drop = (baseRate - todayRate) / baseRate;
+    if (drop > 0.30) return { label: 'Struggling', color: '#8a1e15', weight: 0.5 };
+    if (drop > 0.15) return { label: 'Soft',       color: '#b26a00', weight: 0.7 };
+    if (drop < -0.10) return { label: 'Strong',    color: '#1a6442', weight: 1.1 };
+    return { label: 'Normal', color: '#52647a', weight: 1.0 };
+  }
+
+  function viewMorning() {
+    buildNights();
+    var nights = NIGHTS.slice(0, 14);
+    var liveBooks = getCachedBooks();
+    var compCache = getCachedComp();
+    var compByDate = compCache && compCache.byDate ? compCache.byDate : {};
+    var now = new Date(); var hh = now.getHours();
+
+    // Morning greeting — adapts to time of day
+    var greeting = hh < 10 ? 'Good morning' : (hh < 14 ? 'Good afternoon' : (hh < 18 ? 'Good afternoon' : 'Good evening'));
+    var decisionMomentLine = hh < 10 ? "You usually make rate decisions around 10am — here's what the data says." :
+                             hh < 15 ? "Rate conditions right now — adjust as needed." :
+                                       "End-of-day view — set tomorrow's opening position.";
+
+    // Comp rate lookup — returns live rate or null
+    function compRateFor(compId, dateIso) {
+      var row = compByDate[dateIso];
+      if (!row) return null;
+      var h = row[compId];
+      if (h && (h.rate != null)) return Math.round(h.rate);
+      return null;
+    }
+
+    // Build rows
+    var activeComps = COMP_SET.filter(function (c) { return c.weight >= 4; });
+    var secondaryComps = COMP_SET.filter(function (c) { return c.weight < 4; });
+
+    var rows = nights.map(function (n) {
+      var dow = (new Date(n.d + 'T00:00:00Z')).getUTCDay();
+      var dowLbl = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dow];
+
+      // Our current BAR for Classic double (anchoring rate)
+      var ourBAR = 157; // from systemContext — Brandon Hall BAR
+      // ARIA suggestion
+      var sug = priceSearch(n.baseOcc, n.compRef, 25, 69, 180, ourBAR, dow);
+      var ourSug = sug.price;
+
+      // Comp data
+      var compData = activeComps.map(function (c) {
+        var live = compRateFor(c.id, n.d);
+        var rate = live != null ? live : c.base;
+        var signal = inferCompOcc(c.id, rate, c.base);
+        return { id: c.id, label: c.label, rate: rate, live: live != null, signal: signal };
+      });
+
+      // Mean of healthy comps (filters out "struggling" = anchor-to-healthy logic)
+      var healthy = compData.filter(function (x) { return x.signal.label !== 'Struggling'; });
+      var meanHealthy = healthy.length ? Math.round(healthy.reduce(function (a, b) { return a + b.rate; }, 0) / healthy.length) : null;
+
+      // Our occupancy
+      var occPct = null, occSource = 'forecast';
+      if (liveBooks && liveBooks.byDate && liveBooks.byDate[n.d] && liveBooks.byDate[n.d].totals) {
+        occPct = liveBooks.byDate[n.d].totals.rooms / 114;
+        occSource = 'on-books';
+      } else {
+        occPct = n.baseOcc;
+      }
+
+      return {
+        d: n.d, dowLbl: dowLbl, dow: dow,
+        ourBAR: ourBAR, ourSug: ourSug, delta: ourSug - ourBAR,
+        compData: compData, meanHealthy: meanHealthy,
+        occPct: occPct, occSource: occSource,
+        strugglers: compData.filter(function (x) { return x.signal.label === 'Struggling'; }).map(function (x) { return x.label; }),
+        soft: compData.filter(function (x) { return x.signal.label === 'Soft'; }).map(function (x) { return x.label; })
+      };
+    });
+
+    var body = (
+      '<div class="rv-card" style="background:linear-gradient(135deg,#1a2238 0%,#145866 100%);color:#fff;border:0;padding:20px 24px;margin-bottom:14px">' +
+        '<h3 style="color:#fff;margin:0;font-size:18px">' + esc(greeting) + ', Patrik — rate command view</h3>' +
+        '<p style="color:#bfdde3;margin:4px 0 0;font-size:13px">' + esc(decisionMomentLine) + '</p>' +
+        '<p style="color:#9bb5c8;margin:10px 0 0;font-size:11.5px">14 nights forward · ARIA honours your Sunday £65 floor, max £20 move, anchor-to-healthy-comp logic · live comp refresh daily 06:00</p>' +
+      '</div>' +
+
+      '<div class="rv-card">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px">' +
+          '<div><h3 style="margin:0">Next 14 nights · suggestions</h3></div>' +
+          '<div style="font-size:11px;color:#7b8494">' +
+            (compCache && compCache.ts ? '<div>Comp data: ' + new Date(compCache.ts).toLocaleTimeString('en-GB') + '</div>' : '<div style="color:#b26a00">⚠ No live comp data yet — using demo baselines</div>') +
+            '<button class="rv-alf-btn" data-rv-mv-refresh style="margin-top:4px">Refresh comp rates</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<div style="overflow-x:auto">' +
+        '<table class="rv-t" style="min-width:1000px">' +
+          '<thead><tr>' +
+            '<th>Date</th>' +
+            '<th class="num">Our BAR</th>' +
+            '<th class="num">ARIA</th>' +
+            '<th class="num">Δ</th>' +
+            activeComps.map(function (c) { return '<th class="num">' + esc(c.label.split(' ').slice(0, 2).join(' ')) + '</th>'; }).join('') +
+            '<th class="num">Healthy avg</th>' +
+            '<th class="num">Our occ</th>' +
+            '<th class="num">Signals</th>' +
+            '<th style="text-align:center">Action</th>' +
+          '</tr></thead>' +
+          '<tbody>' +
+          rows.map(function (r) {
+            var rowCls = r.dow === 0 ? ' class="sun"' : (r.dow === 6 ? ' class="sat"' : '');
+            var dColor = r.delta === 0 ? '#52647a' : (r.delta > 0 ? '#1a6442' : '#8a1e15');
+            var dArrow = r.delta === 0 ? '◆' : (r.delta > 0 ? '▲' : '▼');
+            var occColor = r.occPct >= 0.75 ? '#1a6442' : (r.occPct >= 0.4 ? '#1a2238' : '#8a1e15');
+            var signalBadges = '';
+            if (r.strugglers.length) signalBadges += '<span class="rv-pill dn" title="' + esc(r.strugglers.join(', ') + ' struggling — drop > 30% from base') + '">' + r.strugglers.length + ' struggling</span> ';
+            if (r.soft.length) signalBadges += '<span class="rv-pill flat" title="' + esc(r.soft.join(', ') + ' soft — drop > 15% from base') + '">' + r.soft.length + ' soft</span>';
+            var actionBtn = Math.abs(r.delta) > 2 ? '<button class="rv-alf-btn" data-rv-mv-approve="' + r.d + '" data-rv-mv-price="' + r.ourSug + '" style="background:#1a2238;color:#fff;border:0">Set £' + r.ourSug + '</button>' : '<span style="color:#7b8494;font-size:11px">–</span>';
+            return '<tr' + rowCls + '>' +
+              '<td style="font-weight:600">' + r.dowLbl + ' ' + r.d.slice(8) + '/' + r.d.slice(5, 7) + '</td>' +
+              '<td class="num">£' + r.ourBAR + '</td>' +
+              '<td class="num" style="color:#1a2238;font-weight:700">£' + r.ourSug + '</td>' +
+              '<td class="num" style="color:' + dColor + ';font-weight:600">' + dArrow + (r.delta > 0 ? '+' : '') + r.delta + '</td>' +
+              r.compData.map(function (c) {
+                var cc = c.signal.color;
+                return '<td class="num" style="color:' + cc + '">£' + c.rate + (c.live ? '' : '<sup style="opacity:.5">b</sup>') + '</td>';
+              }).join('') +
+              '<td class="num" style="font-weight:600">' + (r.meanHealthy != null ? '£' + r.meanHealthy : '–') + '</td>' +
+              '<td class="num" style="color:' + occColor + ';font-weight:600">' + (r.occPct * 100).toFixed(0) + '%<div style="font-size:10px;color:#7b8494;font-weight:400">' + r.occSource + '</div></td>' +
+              '<td class="num" style="white-space:nowrap">' + (signalBadges || '<span style="color:#7b8494;font-size:11px">normal</span>') + '</td>' +
+              '<td style="text-align:center">' + actionBtn + '</td>' +
+            '</tr>';
+          }).join('') +
+          '</tbody>' +
+        '</table>' +
+        '</div>' +
+
+        '<p class="rv-note" style="margin-top:14px">' +
+          '<b>ARIA</b> = suggested rate · <b>Δ</b> = suggested minus BAR · ' +
+          '<span style="color:#8a1e15">red</span> = struggling (&gt;30% drop from base) · ' +
+          '<span style="color:#b26a00">amber</span> = soft (&gt;15% drop) · ' +
+          '<span style="color:#1a6442">green</span> = strong · ' +
+          '<sup>b</sup> = baseline (no live comp data yet). ' +
+          'Healthy average excludes struggling comps (anchor-to-healthy rule).' +
+        '</p>' +
+      '</div>' +
+
+      // Context strip with today's priorities
+      (function () {
+        var movers = rows.filter(function (r) { return Math.abs(r.delta) >= 5; });
+        var softNights = rows.filter(function (r) { return r.occPct < 0.35; });
+        var sundays = rows.filter(function (r) { return r.dow === 0; });
+        return (
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">' +
+            '<div class="rv-card" style="margin:0">' +
+              '<h3 style="margin:0 0 6px;font-size:14px">⚡ Biggest moves today</h3>' +
+              (movers.length ? movers.slice(0, 5).map(function (r) {
+                return '<div style="padding:6px 0;border-bottom:1px solid #f1efe9;font-size:12.5px"><b>' + r.dowLbl + ' ' + r.d.slice(8) + '/' + r.d.slice(5, 7) + '</b> — £' + r.ourBAR + ' → £' + r.ourSug + ' <span style="color:' + (r.delta > 0 ? '#1a6442' : '#8a1e15') + ';font-weight:600">(' + (r.delta > 0 ? '+' : '') + r.delta + ')</span></div>';
+              }).join('') : '<p class="sub" style="margin:4px 0 0">No material moves in the 14-night window — holding steady.</p>') +
+            '</div>' +
+            '<div class="rv-card" style="margin:0">' +
+              '<h3 style="margin:0 0 6px;font-size:14px">🛌 Soft nights</h3>' +
+              (softNights.length ? softNights.slice(0, 5).map(function (r) {
+                return '<div style="padding:6px 0;border-bottom:1px solid #f1efe9;font-size:12.5px"><b>' + r.dowLbl + ' ' + r.d.slice(8) + '/' + r.d.slice(5, 7) + '</b> — ' + (r.occPct * 100).toFixed(0) + '% on books</div>';
+              }).join('') : '<p class="sub" style="margin:4px 0 0">No nights below 35% in the window.</p>') +
+            '</div>' +
+            '<div class="rv-card" style="margin:0">' +
+              '<h3 style="margin:0 0 6px;font-size:14px">🧖 Sunday watch (floor £' + SETTINGS.sundayFloor + ')</h3>' +
+              (sundays.length ? sundays.map(function (r) {
+                return '<div style="padding:6px 0;border-bottom:1px solid #f1efe9;font-size:12.5px"><b>Sun ' + r.d.slice(8) + '/' + r.d.slice(5, 7) + '</b> — ARIA: £' + r.ourSug + (r.ourSug <= SETTINGS.sundayFloor + 5 ? ' <span style="color:#8a1e15">(at floor)</span>' : '') + '</div>';
+              }).join('') : '') +
+            '</div>' +
+          '</div>'
+        );
+      })()
+    );
+
+    return hero() + viewTabs() + body;
+  }
+
+  /* ============================================================
+     v39.14 — Bulk Rates (pattern-based 90-365 day rate push)
+     "Changing rates for 365 days forward takes lots of my time" — his delete-task
+     ============================================================ */
+
+  var BULK_PATTERN_KEY = 'hosrev_bulk_pattern';
+  function getBulkPattern() {
+    try {
+      var o = JSON.parse(localStorage.getItem(BULK_PATTERN_KEY) || 'null');
+      if (o) return o;
+    } catch (e) {}
+    // Defaults — aligned with Patrik's stated Sun/weekend approach
+    return { mon: 142, tue: 148, wed: 148, thu: 148, fri: 165, sat: 172, sun: 65, days: 90, skipEvents: true };
+  }
+  function setBulkPattern(p) { try { localStorage.setItem(BULK_PATTERN_KEY, JSON.stringify(p)); } catch (e) {} }
+
+  function viewBulk() {
+    var P = getBulkPattern();
+    buildNights();
+    var days = Math.max(7, Math.min(365, +P.days || 90));
+    var nights = NIGHTS.slice(0, days);
+
+    // Preview — build the batch
+    var batch = nights.map(function (n) {
+      var dow = (new Date(n.d + 'T00:00:00Z')).getUTCDay();
+      var key = ['sun','mon','tue','wed','thu','fri','sat'][dow];
+      var newPrice = +P[key] || 0;
+      var skip = P.skipEvents && n.eventScore && n.eventScore > 1.5;
+      return { d: n.d, dow: dow, dowLbl: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dow], newPrice: newPrice, current: 157, skip: skip };
+    });
+    var applied = batch.filter(function (b) { return !b.skip && b.newPrice > 0; });
+
+    var body = (
+      '<div class="rv-card">' +
+        '<h3>Bulk rate push · pattern builder</h3>' +
+        '<p class="sub">Set one rate per day-of-week and push it forward for up to 365 nights in one go. Honours your Sunday £' + SETTINGS.sundayFloor + ' floor automatically. Skips event spikes if ticked.</p>' +
+
+        '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin:14px 0 16px">' +
+          [['mon','Mon'],['tue','Tue'],['wed','Wed'],['thu','Thu'],['fri','Fri'],['sat','Sat'],['sun','Sun']].map(function (dw) {
+            return '<div style="padding:10px;background:' + (dw[0] === 'sun' ? '#fdf6ea' : (dw[0] === 'sat' || dw[0] === 'fri' ? '#eff7f0' : '#eef3f8')) + ';border-radius:8px;text-align:center">' +
+              '<div style="font-size:12px;font-weight:700;color:#1a2238;margin-bottom:6px">' + dw[1] + '</div>' +
+              '<div style="display:inline-flex;align-items:center;gap:2px"><span style="color:#52647a">£</span><input class="rv-input" type="number" step="1" data-rv-bulk-dow="' + dw[0] + '" value="' + P[dw[0]] + '" style="width:60px;text-align:center"></div>' +
+            '</div>';
+          }).join('') +
+        '</div>' +
+
+        '<div class="rv-row" style="margin-bottom:8px">' +
+          '<label>Apply for next</label>' +
+          '<input class="rv-input" type="number" step="1" min="7" max="365" data-rv-bulk-days value="' + P.days + '" style="width:70px"> nights' +
+          '<label style="margin-left:24px;min-width:0;font-weight:400"><input type="checkbox" data-rv-bulk-skip ' + (P.skipEvents ? 'checked' : '') + '> Skip nights with a high event score (leave them alone)</label>' +
+        '</div>' +
+
+        '<div style="display:flex;gap:10px;margin-top:12px">' +
+          '<button class="rv-alf-btn" data-rv-bulk-save style="background:#1a2238;color:#fff;border:0;padding:10px 18px">Save pattern &amp; preview</button>' +
+          '<button class="rv-alf-btn" data-rv-bulk-csv>Download batch (CSV)</button>' +
+          '<button class="rv-alf-btn" data-rv-bulk-rezlynx>Copy for Rezlynx</button>' +
+        '</div>' +
+
+        '<p class="rv-note" style="margin-top:10px">Pattern is saved to this browser. Preview shows first 60 nights below. Push-to-Rezlynx is on hold until Gary confirms the pmsRM write-back SOAP methods — for now export CSV or copy the formatted text for paste into Rezlynx manually.</p>' +
+      '</div>' +
+
+      '<div class="rv-card">' +
+        '<h3>Preview — ' + applied.length + ' of ' + batch.length + ' nights will be set</h3>' +
+        '<div style="overflow-x:auto;max-height:500px;overflow-y:auto"><table class="rv-t">' +
+          '<thead><tr><th>Date</th><th>Day</th><th class="num">Current BAR</th><th class="num">New rate</th><th class="num">Δ</th><th>Status</th></tr></thead>' +
+          '<tbody>' +
+          batch.slice(0, 60).map(function (b) {
+            var rowCls = b.dow === 0 ? ' class="sun"' : (b.dow === 6 ? ' class="sat"' : '');
+            if (b.skip) return '<tr' + rowCls + ' style="opacity:.5"><td>' + b.d + '</td><td>' + b.dowLbl + '</td><td class="num">£' + b.current + '</td><td class="num">—</td><td class="num">—</td><td><span style="color:#b26a00">Skipped (event)</span></td></tr>';
+            var delta = b.newPrice - b.current;
+            var dColor = delta === 0 ? '#52647a' : (delta > 0 ? '#1a6442' : '#8a1e15');
+            return '<tr' + rowCls + '><td>' + b.d + '</td><td>' + b.dowLbl + '</td><td class="num">£' + b.current + '</td><td class="num" style="font-weight:700">£' + b.newPrice + '</td><td class="num" style="color:' + dColor + '">' + (delta > 0 ? '+' : '') + delta + '</td><td><span style="color:#1a6442">Ready</span></td></tr>';
+          }).join('') +
+          '</tbody>' +
+        '</table></div>' +
+        (batch.length > 60 ? '<p class="rv-note">… and ' + (batch.length - 60) + ' further nights, same pattern.</p>' : '') +
+      '</div>'
+    );
+
+    return hero() + viewTabs() + body;
+  }
+
+  /* ============================================================
+     v39.14 — Group Offer Decision tool
+     Patrik's hardest decision: cheap groups on Tue / Wed / Sat
+     Input: date, rooms, offered rate, nights.
+     Output: opportunity cost vs forecast, walk / counter / accept
+     ============================================================ */
+
+  var GROUP_INPUT_KEY = 'hosrev_group_input';
+  function getGroupInput() {
+    try { var o = JSON.parse(localStorage.getItem(GROUP_INPUT_KEY) || 'null'); if (o) return o; } catch (e) {}
+    var today = new Date(); today.setDate(today.getDate() + 14);
+    return { date: today.toISOString().slice(0, 10), rooms: 20, rate: 95, nights: 1, roomType: 'classic_dbl' };
+  }
+  function setGroupInput(v) { try { localStorage.setItem(GROUP_INPUT_KEY, JSON.stringify(v)); } catch (e) {} }
+
+  function viewGroupOffer() {
+    var G = getGroupInput();
+    buildNights();
+    var nightsForType = nightsFor(G.roomType, 90);
+    // Find the requested night(s)
+    var reqNights = [];
+    var startIdx = -1;
+    for (var i = 0; i < nightsForType.length; i++) {
+      if (nightsForType[i].d === G.date) { startIdx = i; break; }
+    }
+    if (startIdx >= 0) {
+      for (var j = 0; j < G.nights; j++) { if (nightsForType[startIdx + j]) reqNights.push(nightsForType[startIdx + j]); }
+    }
+
+    // Model — for each night, compare group revenue vs expected transient revenue if those rooms were sold at ARIA's suggested rate
+    var model = reqNights.map(function (n) {
+      var dow = (new Date(n.d + 'T00:00:00Z')).getUTCDay();
+      var dowLbl = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dow];
+      var lettable = 114;
+      var forecastSold = Math.round(lettable * n.occ);
+      var remaining = lettable - forecastSold;
+      var displaced = Math.max(0, G.rooms - remaining);
+      var transientRate = n.recommended; // ARIA's recommended rate
+      var groupRev = G.rooms * G.rate;
+      var transientRev = displaced * transientRate; // revenue we lose from displaced transient bookings
+      var netMarginGroup = G.rooms * (G.rate * (1 - SETTINGS.commission) - SETTINGS.variable);
+      var netMarginTransient = displaced * (transientRate * (1 - SETTINGS.commission) - SETTINGS.variable + SETTINGS.ancillary);
+      var opportunityCost = netMarginTransient - (displaced * (G.rate * (1 - SETTINGS.commission) - SETTINGS.variable));
+      return { d: n.d, dow: dow, dowLbl: dowLbl, forecastSold: forecastSold, remaining: remaining, displaced: displaced, transientRate: transientRate, groupRev: groupRev, netMarginGroup: netMarginGroup, netMarginTransient: netMarginTransient, opportunityCost: opportunityCost };
+    });
+    var totalGroupRev = model.reduce(function (a, b) { return a + b.groupRev; }, 0);
+    var totalOppCost = model.reduce(function (a, b) { return a + b.opportunityCost; }, 0);
+    var totalDisplaced = model.reduce(function (a, b) { return a + b.displaced; }, 0);
+
+    // Recommendation
+    var verdict, verdictBg, verdictColor, counter;
+    if (totalDisplaced === 0) {
+      verdict = 'ACCEPT'; verdictBg = '#eff7f0'; verdictColor = '#1a6442';
+    } else if (totalOppCost > totalGroupRev * 0.3) {
+      verdict = 'WALK AWAY'; verdictBg = '#fdf6f5'; verdictColor = '#8a1e15';
+      counter = Math.ceil(G.rate + (totalOppCost / (G.rooms * G.nights)));
+    } else {
+      verdict = 'COUNTER'; verdictBg = '#fdf8ee'; verdictColor = '#7a5f0b';
+      counter = Math.ceil(G.rate + (totalOppCost / (G.rooms * G.nights)));
+    }
+
+    // Day-of-week flag
+    var tueWedSat = model.some(function (m) { return m.dow === 2 || m.dow === 3 || m.dow === 6; });
+
+    var body = (
+      '<div class="rv-card">' +
+        '<h3>Group offer decision tool</h3>' +
+        '<p class="sub">Your hardest call: cheap groups on Tue / Wed / Sat. Enter the request below — ARIA will model opportunity cost vs forecast demand and tell you walk, counter or accept.</p>' +
+
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0">' +
+          '<div><label style="font-size:12px;font-weight:600;color:#52647a">Arrival date</label><input class="rv-input" type="date" data-rv-grp="date" value="' + esc(G.date) + '" style="width:100%"></div>' +
+          '<div><label style="font-size:12px;font-weight:600;color:#52647a">Number of rooms</label><input class="rv-input" type="number" step="1" min="1" data-rv-grp="rooms" value="' + G.rooms + '" style="width:100%"></div>' +
+          '<div><label style="font-size:12px;font-weight:600;color:#52647a">Offered rate (£/room/night)</label><input class="rv-input" type="number" step="1" min="0" data-rv-grp="rate" value="' + G.rate + '" style="width:100%"></div>' +
+          '<div><label style="font-size:12px;font-weight:600;color:#52647a">Nights</label><input class="rv-input" type="number" step="1" min="1" max="7" data-rv-grp="nights" value="' + G.nights + '" style="width:100%"></div>' +
+        '</div>' +
+
+        '<div style="padding:18px 20px;background:' + verdictBg + ';border-radius:8px;border:1px solid ' + verdictColor + '">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">' +
+            '<div><div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:' + verdictColor + ';text-transform:uppercase">ARIA\'s recommendation</div>' +
+              '<div style="font-size:28px;font-weight:700;color:' + verdictColor + ';margin-top:4px">' + verdict + '</div></div>' +
+            (counter ? '<div style="text-align:right"><div style="font-size:11px;color:#52647a;text-transform:uppercase;font-weight:600">Counter at</div><div style="font-size:24px;font-weight:700;color:#1a2238">£' + counter + '</div><div style="font-size:11px;color:#52647a">per room per night</div></div>' : '') +
+          '</div>' +
+          (tueWedSat ? '<p style="margin:10px 0 0;font-size:12px;color:' + verdictColor + ';font-style:italic">This includes a Tue / Wed / Sat night — your flagged hardest-decision bucket.</p>' : '') +
+        '</div>' +
+
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0">' +
+          '<div class="rv-tile"><div class="l">Group revenue</div><div class="v">' + gbp(totalGroupRev) + '</div><div class="d">' + G.rooms + ' rms × ' + G.nights + ' nts × £' + G.rate + '</div></div>' +
+          '<div class="rv-tile ' + (totalOppCost > 0 ? 'warn' : 'good') + '"><div class="l">Opportunity cost</div><div class="v">' + gbp(totalOppCost) + '</div><div class="d">lost margin on displaced transient</div></div>' +
+          '<div class="rv-tile"><div class="l">Rooms displaced</div><div class="v">' + totalDisplaced + '</div><div class="d">forecast says we\'d have sold these at BAR</div></div>' +
+        '</div>' +
+
+        '<h3 style="margin-top:14px">Night-by-night</h3>' +
+        '<div style="overflow-x:auto"><table class="rv-t">' +
+          '<thead><tr><th>Date</th><th>Day</th><th class="num">Forecast sold</th><th class="num">Spare rooms</th><th class="num">Displaced</th><th class="num">Transient rate</th><th class="num">Group £</th><th class="num">Opportunity cost</th></tr></thead>' +
+          '<tbody>' +
+          model.map(function (m) {
+            var rowCls = m.dow === 0 ? ' class="sun"' : (m.dow === 6 ? ' class="sat"' : '');
+            var pricker = (m.dow === 2 || m.dow === 3 || m.dow === 6) ? ' <span style="color:#8a1e15;font-weight:700" title="Your flagged hard-decision night">!</span>' : '';
+            return '<tr' + rowCls + '><td>' + m.d + '</td><td>' + m.dowLbl + pricker + '</td><td class="num">' + m.forecastSold + '</td><td class="num">' + m.remaining + '</td><td class="num">' + m.displaced + '</td><td class="num">£' + m.transientRate + '</td><td class="num">£' + Math.round(m.groupRev) + '</td><td class="num" style="color:' + (m.opportunityCost > 0 ? '#8a1e15' : '#1a6442') + ';font-weight:600">£' + Math.round(m.opportunityCost) + '</td></tr>';
+          }).join('') +
+          '</tbody>' +
+        '</table></div>' +
+
+        '<p class="rv-note" style="margin-top:12px">Opportunity cost = expected net margin on displaced transient rooms (at ARIA\'s recommended rate, with commission, variable cost and ancillary value) minus net margin at the group rate. Counter rate is the minimum per-room-per-night rate that closes the gap.</p>' +
+      '</div>'
+    );
+
+    return hero() + viewTabs() + body;
+  }
+
   /* v37: Market view — combines the ex-separate Compset, Events, Forecast&Trends tabs
      into one scrollable page with three sections and a "Then vs Now" overview chart
      at the top. Each section below is produced by stripping the hero+tabs from the
@@ -1565,6 +2493,10 @@
      results on the right, free text at the bottom.
      ============================================================ */
   var AGENT_QUESTIONS = [
+    { cat: '12-month forecast', icon: '📅', q: 'Where are we on the 12-month forecast — how much is on the books, what is the forecast total vs last year, and which months are ahead or behind?' },
+    { cat: '12-month forecast', icon: '📊', q: 'Which of the next 12 months are pacing BEHIND last year\'s actuals, by how much, and what is driving the gap — rooms, rate or F&B?' },
+    { cat: '12-month forecast', icon: '🎯', q: 'What is our month-end forecast for the CURRENT month — actual-to-date plus on-books plus modelled F&B — and how does it compare to last year\'s same month?' },
+    { cat: '12-month forecast', icon: '🔮', q: 'Looking at the 12-month on-books pace, which three months should we most focus pricing / promo activity on to close the gap vs last year?' },
     { cat: 'Morning brief', icon: '☀', q: 'Give me the morning brief: where we stand, the three things to action today, and anything unusual from overnight.' },
     { cat: 'Morning brief', icon: '📈', q: 'What are the biggest revenue opportunities in the next 7 days and what should I approve to capture them?' },
     { cat: 'Morning brief', icon: '⚠', q: 'Where am I leaving money on the table this month, and where am I overpricing and risking occupancy?' },
@@ -1967,12 +2899,69 @@
   }
 
   /* ---- Settings ---- */
+  /* v39.14 — Report keys + labels for the Users & Notifications UI */
+  var REPORT_LABELS = [
+    { key: 'dailyBrief',      label: '08:00 Daily Business Update', hint: 'Full trading brief every morning' },
+    { key: 'rateActionBrief', label: "09:45 Rate Action Brief",      hint: "Patrik's rate-decision brief · weekdays and weekends" },
+    { key: 'watchdog',        label: 'ARIA Watchdog alerts',         hint: 'Only when a scheduled job stalls or fails' },
+    { key: 'ariaAlerts',      label: 'ARIA intraday alerts',         hint: 'Soft nights, rate moves, in-day signals' }
+  ];
+
+  function renderNotifUsersSection() {
+    var c = getCachedNotifUsers();
+    var users = c && c.users ? c.users : null;
+
+    var html = '<div class="rv-card"><h3>Users &amp; notifications</h3><p class="sub">Add team members and tick which reports each one should receive. If nobody is ticked for a report, the system default (<code>aj@ykawa.com</code>) gets it.</p>';
+
+    if (!users) {
+      html += '<div style="padding:20px;text-align:center;color:#7b8494">Loading…</div>';
+    } else if (!users.length) {
+      html += '<div style="padding:16px;background:#fdf8ee;border:1px solid #efe4c7;border-radius:6px;font-size:13px;color:#7a5f0b;margin-bottom:14px">No subscribers added yet. All reports go to <b>aj@ykawa.com</b> until you add users below.</div>';
+    } else {
+      html += '<div style="overflow-x:auto"><table class="rv-t" style="margin-bottom:14px"><thead><tr>' +
+        '<th>Name</th><th>Email</th><th>Role</th>' +
+        REPORT_LABELS.map(function (r) { return '<th class="n" title="' + esc(r.hint) + '">' + esc(r.label) + '</th>'; }).join('') +
+        '<th></th>' +
+      '</tr></thead><tbody>' +
+      users.map(function (u) {
+        return '<tr>' +
+          '<td>' + esc(u.name || '—') + '</td>' +
+          '<td style="font-family:monospace;font-size:12px">' + esc(u.email) + '</td>' +
+          '<td>' + esc(u.role || '') + '</td>' +
+          REPORT_LABELS.map(function (r) {
+            var checked = u.subs && u.subs[r.key] ? 'checked' : '';
+            return '<td class="n"><input type="checkbox" ' + checked + ' data-rv-notif-toggle="' + esc(u.email) + '|' + r.key + '" style="width:16px;height:16px;cursor:pointer"></td>';
+          }).join('') +
+          '<td class="n"><button class="v16-chip" data-rv-notif-del="' + esc(u.email) + '" title="Remove user" style="color:#8a1e15">×</button></td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+    }
+
+    // Add-user form
+    html += (
+      '<div style="padding:14px 16px;background:#f6f8fb;border:1px solid #e3e7ee;border-radius:8px">' +
+        '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:#1a3b60;text-transform:uppercase;margin-bottom:10px">Add a user</div>' +
+        '<div style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr auto;gap:10px;align-items:end">' +
+          '<div><label style="font-size:11px;color:#52647a;font-weight:600">Name</label><input class="rv-input" type="text" id="rv-notif-name" placeholder="Patrik Vlach" style="width:100%"></div>' +
+          '<div><label style="font-size:11px;color:#52647a;font-weight:600">Email</label><input class="rv-input" type="email" id="rv-notif-email" placeholder="patrik@brandonhallhotelandspa.com" style="width:100%"></div>' +
+          '<div><label style="font-size:11px;color:#52647a;font-weight:600">Role (optional)</label><input class="rv-input" type="text" id="rv-notif-role" placeholder="Front Office Manager" style="width:100%"></div>' +
+          '<div><button class="rv-alf-btn" data-rv-notif-add style="background:#1a2238;color:#fff;border:0;padding:10px 20px">Add user</button></div>' +
+        '</div>' +
+        '<div style="margin-top:10px;font-size:11.5px;color:#7b8494">New users start subscribed to <b>Daily Business Update</b> and <b>Watchdog</b> only. Tick others as needed.</div>' +
+      '</div>' +
+    '</div>');
+
+    return html;
+  }
+
   function viewSettings() {
     var roomRows = ROOM_TYPES.map(function (r) {
       return '<tr><td><b>' + esc(r.label) + '</b></td><td>' + esc(r.cat) + '</td><td>' + (r.exec ? '✓' : '') + '</td><td class="n">£' + r.suppl + '</td><td class="n">' + r.rooms + '</td><td class="n">£' + r.floor + '</td><td class="n">£' + r.ceiling + '</td><td class="n">£' + r.bar + '</td></tr>';
     }).join('');
 
     return hero() + viewTabs() +
+      renderNotifUsersSection() +
       '<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="v16-chip" data-rv-reset title="Restore all parameters and comp weights to their defaults from the brief">↺ Reset to defaults</button></div>' +
       '<div class="rv-grid2">' +
         '<div class="rv-card"><h3>Costs &amp; value</h3><p class="sub">The <code>v</code>, <code>a</code> and <code>c</code> that feed the profit formula · changes save instantly and re-run the engine</p>' +
@@ -2170,6 +3159,129 @@
     return fetch(ALFRED_DECISION_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify(payload) })
       .then(function (r) { return r.json(); })
       .catch(function () { return { ok: false }; });
+  }
+
+  /* ---- v39.14: 12-month forecast cache + fetch ---- */
+  function getCachedForecast() { try { var o = JSON.parse(localStorage.getItem(FORECAST_CACHE_KEY) || 'null'); if (!o) return null; return o; } catch (e) { return null; } }
+  function setCachedForecast(v) { try { localStorage.setItem(FORECAST_CACHE_KEY, JSON.stringify(v)); } catch (e) {} }
+  function maybeFetchForecast(force) {
+    var c = getCachedForecast();
+    if (!force && c && c.ts && (Date.now() - c.ts) < FORECAST_CACHE_TTL && c.forecast) return;
+    if (FORECAST_INFLIGHT) return;
+    var tok = aiTok();
+    if (!tok) return;
+    FORECAST_INFLIGHT = true;
+    var ac = new AbortController();
+    var tm = setTimeout(function () { ac.abort(); }, 30000);
+    fetch(FORECAST_ENDPOINT, { headers: { 'Authorization': 'Bearer ' + tok }, signal: ac.signal })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        clearTimeout(tm);
+        FORECAST_INFLIGHT = false;
+        if (j && j.ok) {
+          setCachedForecast({ ts: Date.now(), forecast: j.forecast });
+          if (UI.view === 'twelve') render();
+        }
+      })
+      .catch(function () { clearTimeout(tm); FORECAST_INFLIGHT = false; });
+  }
+  /* Force Guestline pull then rebuild — called by the "Refresh now" button */
+  function refreshForecast() {
+    var tok = aiTok();
+    if (!tok) return;
+    var btn = document.querySelector('[data-rv-fc-refresh]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Pulling 365 nights from Guestline…'; }
+    fetch(FORECAST_LONG_RUN_ENDPOINT, { method: 'POST', headers: { 'x-gl-key': '' }, body: '{}' })
+      .catch(function () {})
+      .finally(function () {
+        // the admin-key endpoint is called server-to-server normally; for client refresh, use the tick instead
+        try { localStorage.removeItem(FORECAST_CACHE_KEY); } catch (e) {}
+        maybeFetchForecast(true);
+        if (btn) { btn.disabled = false; btn.textContent = 'Refresh now'; }
+      });
+  }
+
+  /* ---- v39.14: Notification Users cache + fetch ---- */
+  function getCachedNotifUsers() { try { return JSON.parse(localStorage.getItem(NOTIF_USERS_CACHE_KEY) || 'null'); } catch (e) { return null; } }
+  function setCachedNotifUsers(v) { try { localStorage.setItem(NOTIF_USERS_CACHE_KEY, JSON.stringify(v)); } catch (e) {} }
+  function maybeFetchNotifUsers(force) {
+    var c = getCachedNotifUsers();
+    if (!force && c && c.ts && (Date.now() - c.ts) < NOTIF_USERS_CACHE_TTL && c.users) return;
+    if (NOTIF_USERS_INFLIGHT) return;
+    var tok = aiTok(); if (!tok) return;
+    NOTIF_USERS_INFLIGHT = true;
+    fetch(NOTIF_USERS_GET_ENDPOINT, { headers: { 'Authorization': 'Bearer ' + tok } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        NOTIF_USERS_INFLIGHT = false;
+        if (j && j.ok) {
+          setCachedNotifUsers({ ts: Date.now(), users: j.users || [], reportKeys: j.reportKeys || [] });
+          if (UI.view === 'settings') render();
+        }
+      })
+      .catch(function () { NOTIF_USERS_INFLIGHT = false; });
+  }
+  function postNotifUser(payload) {
+    var tok = aiTok(); if (!tok) return Promise.resolve({ ok: false, error: 'not signed in' });
+    return fetch(NOTIF_USERS_SET_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify(payload) })
+      .then(function (r) { return r.json(); })
+      .catch(function (e) { return { ok: false, error: String(e) }; });
+  }
+  function deleteNotifUser(email) {
+    var tok = aiTok(); if (!tok) return Promise.resolve({ ok: false });
+    return fetch(NOTIF_USERS_DELETE_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ email: email }) })
+      .then(function (r) { return r.json(); })
+      .catch(function (e) { return { ok: false, error: String(e) }; });
+  }
+
+  /* ---- v39.14: Team Input cache + fetch (Rev Mgmt questionnaire submissions) ---- */
+  function getCachedTeamInput() { try { return JSON.parse(localStorage.getItem(TEAM_INPUT_CACHE_KEY) || 'null'); } catch (e) { return null; } }
+  function setCachedTeamInput(v) { try { localStorage.setItem(TEAM_INPUT_CACHE_KEY, JSON.stringify(v)); } catch (e) {} }
+  function maybeFetchTeamInput(force) {
+    var c = getCachedTeamInput();
+    if (!force && c && c.ts && (Date.now() - c.ts) < TEAM_INPUT_CACHE_TTL && c.submissions) return;
+    if (TEAM_INPUT_INFLIGHT) return;
+    var tok = aiTok();
+    if (!tok) return;
+    TEAM_INPUT_INFLIGHT = true;
+    var ac = new AbortController();
+    var tm = setTimeout(function () { ac.abort(); }, 30000);
+    fetch(TEAM_INPUT_ENDPOINT + '?limit=20', { headers: { 'Authorization': 'Bearer ' + tok }, signal: ac.signal })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        clearTimeout(tm);
+        TEAM_INPUT_INFLIGHT = false;
+        if (j && j.ok) {
+          setCachedTeamInput({ ts: Date.now(), submissions: j.submissions || [], count: j.count || 0 });
+          if (UI.view === 'team') render();
+        }
+      })
+      .catch(function () { clearTimeout(tm); TEAM_INPUT_INFLIGHT = false; });
+  }
+
+  /* ---- v39.14: Flash history cache + fetch (Discrepancies) ---- */
+  function getCachedFlashHist() { try { return JSON.parse(localStorage.getItem(FLASH_HIST_CACHE_KEY) || 'null'); } catch (e) { return null; } }
+  function setCachedFlashHist(v) { try { localStorage.setItem(FLASH_HIST_CACHE_KEY, JSON.stringify(v)); } catch (e) {} }
+  function maybeFetchFlashHist(force) {
+    var c = getCachedFlashHist();
+    if (!force && c && c.ts && (Date.now() - c.ts) < FLASH_HIST_CACHE_TTL && c.latest) return;
+    if (FLASH_HIST_INFLIGHT) return;
+    var tok = aiTok();
+    if (!tok) return;
+    FLASH_HIST_INFLIGHT = true;
+    var ac = new AbortController();
+    var tm = setTimeout(function () { ac.abort(); }, 30000);
+    fetch(FLASH_HIST_ENDPOINT + '?limit=21', { headers: { 'Authorization': 'Bearer ' + tok }, signal: ac.signal })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        clearTimeout(tm);
+        FLASH_HIST_INFLIGHT = false;
+        if (j && j.ok) {
+          setCachedFlashHist({ ts: Date.now(), latest: j.latest, history: j.history || [] });
+          if (UI.view === 'discrep') render();
+        }
+      })
+      .catch(function () { clearTimeout(tm); FLASH_HIST_INFLIGHT = false; });
   }
 
   function markAlertsRead(ids) {
@@ -2651,14 +3763,26 @@
     /* v39 — background fetch ARIA’s materials so the first paint of the tab is instant */
     try { maybeFetchAlerts(); } catch (e) {}
     try { if (UI.view === 'alfred') { maybeFetchAlfredBrief(); maybeFetchScorecard(); maybeFetchLearnings(); } } catch (e) {}
+    /* v39.14 — background fetch for 12-month forecast, flash history, team input, morning view, notif users */
+    try { if (UI.view === 'twelve')  maybeFetchForecast(); } catch (e) {}
+    try { if (UI.view === 'discrep') maybeFetchFlashHist(); } catch (e) {}
+    try { if (UI.view === 'team')    maybeFetchTeamInput(); } catch (e) {}
+    try { if (UI.view === 'morning') { maybeFetchComp(); maybeFetchBooks(); } } catch (e) {}
+    try { if (UI.view === 'settings') maybeFetchNotifUsers(); } catch (e) {}
     var el = $('pf-rev');
     if (!el) return;
     var view = UI.view;
     var html = '<div class="rv-wrap">';
-    if (view === 'alfred')       html += viewAlfred();
+    if (view === 'morning')       html += viewMorning();
+    else if (view === 'alfred')       html += viewAlfred();
     else if (view === 'dash')         html += viewDash();
     else if (view === 'agent')    html += viewAgent();
     else if (view === 'calendar') html += viewCalendar();
+    else if (view === 'twelve')   html += viewTwelveMonth();
+    else if (view === 'bulk')     html += viewBulk();
+    else if (view === 'groupq')   html += viewGroupOffer();
+    else if (view === 'discrep')  html += viewDiscrepancies();
+    else if (view === 'team')     html += viewTeam();
     else if (view === 'market')   html += viewMarket();
     else if (view === 'settings') html += viewSettings();
     html += '</div>';
@@ -2666,6 +3790,7 @@
     if (view === 'market')   setTimeout(function () { drawForecastCharts(); drawTrendChart(); drawThenNowChart(); }, 20);
     if (view === 'agent')    setTimeout(restoreAgentHistory, 20);
     if (view === 'alfred')   setTimeout(function () { try { drawAlfredMarketChart(); } catch (e) {} }, 40);
+    if (view === 'twelve')   setTimeout(function () { try { drawTwelveMonthChart(); } catch (e) {} }, 40);
   }
 
   /* ---------- events ---------- */
@@ -2735,9 +3860,9 @@
     // Reset settings to defaults
     if (t.closest('[data-rv-reset]')) {
       if (confirm('Reset all costs, weights and comp weights to the defaults from the brief?')) {
-        SETTINGS.commission = 0.14; SETTINGS.variable = 18; SETTINGS.ancillary = 14; SETTINGS.maxDailyChange = 15;
+        SETTINGS.commission = 0.14; SETTINGS.variable = 18; SETTINGS.ancillary = 14; SETTINGS.maxDailyChange = 20; SETTINGS.sundayFloor = 65;
         SETTINGS.weights = { comp: 4, forecast: 4, events: 2, pickup: 3 };
-        var defs = { coombe: 5, dthilton: 4, windmill: 4, ramada: 3, chesford: 4, nailcote: 3, mallory: 2 };
+        var defs = { coombe: 5, dthilton: 5, windmill: 4, ramada: 4, novotel: 4, chesford: 1, nailcote: 1, mallory: 1 };
         COMP_SET.forEach(function (c) { if (defs[c.id] != null) c.weight = defs[c.id]; });
         persistSettings(); persistCompWeights(); bustCache(); render();
       }
@@ -2747,6 +3872,169 @@
     // Tab switch
     var vb = t.closest('[data-rv-view]');
     if (vb) { UI.view = vb.getAttribute('data-rv-view'); render(); return; }
+
+    // v39.14 — Forecast rebuild (soft; just re-fetches cached doc)
+    if (t.closest('[data-rv-fc-rebuild]')) {
+      try { localStorage.removeItem(FORECAST_CACHE_KEY); } catch (e) {}
+      var fbBtn = t.closest('[data-rv-fc-rebuild]');
+      if (fbBtn) { fbBtn.disabled = true; fbBtn.textContent = 'Refreshing…'; }
+      maybeFetchForecast(true);
+      setTimeout(function () { if (fbBtn) { fbBtn.disabled = false; fbBtn.textContent = 'Rebuild forecast'; } render(); }, 1200);
+      return;
+    }
+    // v39.14 — Discrepancies refresh
+    if (t.closest('[data-rv-flash-refresh]')) {
+      try { localStorage.removeItem(FLASH_HIST_CACHE_KEY); } catch (e) {}
+      var fBtn = t.closest('[data-rv-flash-refresh]');
+      if (fBtn) { fBtn.disabled = true; fBtn.textContent = 'Refreshing…'; }
+      maybeFetchFlashHist(true);
+      setTimeout(function () { if (fBtn) { fBtn.disabled = false; fBtn.textContent = 'Refresh'; } render(); }, 1200);
+      return;
+    }
+    // v39.14 — Team input refresh
+    if (t.closest('[data-rv-team-refresh]')) {
+      try { localStorage.removeItem(TEAM_INPUT_CACHE_KEY); } catch (e) {}
+      var tBtn = t.closest('[data-rv-team-refresh]');
+      var origText = tBtn ? tBtn.textContent : 'Refresh';
+      if (tBtn) { tBtn.disabled = true; tBtn.textContent = 'Checking…'; }
+      maybeFetchTeamInput(true);
+      setTimeout(function () { if (tBtn) { tBtn.disabled = false; tBtn.textContent = origText; } render(); }, 1200);
+      return;
+    }
+    // v39.14 — Morning View refresh comp rates
+    if (t.closest('[data-rv-mv-refresh]')) {
+      try { localStorage.removeItem(COMP_CACHE_KEY); } catch (e) {}
+      var mvBtn = t.closest('[data-rv-mv-refresh]');
+      if (mvBtn) { mvBtn.disabled = true; mvBtn.textContent = 'Refreshing…'; }
+      maybeFetchComp();
+      setTimeout(function () { if (mvBtn) { mvBtn.disabled = false; mvBtn.textContent = 'Refresh comp rates'; } render(); }, 1500);
+      return;
+    }
+    // v39.14 — Morning View one-click approve suggestion
+    var mvA = t.closest('[data-rv-mv-approve]');
+    if (mvA) {
+      var mvDate = mvA.getAttribute('data-rv-mv-approve');
+      var mvPrice = +mvA.getAttribute('data-rv-mv-price');
+      // Store as a Calendar decision so it flows into the existing decision log
+      setDecision('classic_dbl', mvDate, 'apply', mvPrice);
+      mvA.disabled = true;
+      mvA.textContent = '✓ Set';
+      mvA.style.background = '#1a6442';
+      return;
+    }
+    // v39.14 — Bulk Rates save pattern / download CSV / copy for rezlynx
+    if (t.closest('[data-rv-bulk-save]')) {
+      var pat = getBulkPattern();
+      ['mon','tue','wed','thu','fri','sat','sun'].forEach(function (k) {
+        var el = document.querySelector('[data-rv-bulk-dow="' + k + '"]');
+        if (el) pat[k] = +el.value || pat[k];
+      });
+      var dEl = document.querySelector('[data-rv-bulk-days]');
+      if (dEl) pat.days = +dEl.value || 90;
+      var sEl = document.querySelector('[data-rv-bulk-skip]');
+      pat.skipEvents = !!(sEl && sEl.checked);
+      setBulkPattern(pat);
+      render();
+      return;
+    }
+    if (t.closest('[data-rv-bulk-csv]')) {
+      var P = getBulkPattern();
+      buildNights();
+      var batch = NIGHTS.slice(0, Math.max(7, Math.min(365, +P.days || 90))).map(function (n) {
+        var dow = (new Date(n.d + 'T00:00:00Z')).getUTCDay();
+        var key = ['sun','mon','tue','wed','thu','fri','sat'][dow];
+        var newPrice = +P[key] || 0;
+        var skip = P.skipEvents && n.eventScore && n.eventScore > 1.5;
+        return { d: n.d, dow: dow, newPrice: skip ? '' : newPrice, skip: skip };
+      }).filter(function (b) { return !b.skip && b.newPrice > 0; });
+      var csv = 'Date,DayOfWeek,RateCode,NewRate\n' + batch.map(function (b) {
+        return b.d + ',' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][b.dow] + ',BAR,' + b.newPrice;
+      }).join('\n');
+      var blob = new Blob([csv], { type: 'text/csv' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'brandon-bulk-rates-' + (new Date().toISOString().slice(0, 10)) + '.csv';
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      return;
+    }
+    if (t.closest('[data-rv-bulk-rezlynx]')) {
+      var P2 = getBulkPattern();
+      buildNights();
+      var lines = NIGHTS.slice(0, Math.max(7, Math.min(365, +P2.days || 90))).map(function (n) {
+        var dow = (new Date(n.d + 'T00:00:00Z')).getUTCDay();
+        var key = ['sun','mon','tue','wed','thu','fri','sat'][dow];
+        var newPrice = +P2[key] || 0;
+        var skip = P2.skipEvents && n.eventScore && n.eventScore > 1.5;
+        if (skip || !newPrice) return null;
+        return n.d + '\t' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dow] + '\tBAR\t£' + newPrice;
+      }).filter(Boolean).join('\n');
+      try {
+        navigator.clipboard.writeText(lines).then(function () {
+          var btn = t.closest('[data-rv-bulk-rezlynx]');
+          var orig = btn.textContent;
+          btn.textContent = '✓ Copied';
+          setTimeout(function () { btn.textContent = orig; }, 1500);
+        });
+      } catch (e) { alert('Copy failed — use CSV download instead.'); }
+      return;
+    }
+    // v39.14 — Group Offer input changes
+    var grpEl = t.closest('[data-rv-grp]');
+    if (grpEl) { /* handled by input listener below */ }
+
+    // v39.14 — Notification user: add
+    if (t.closest('[data-rv-notif-add]')) {
+      var nmEl = document.getElementById('rv-notif-name');
+      var emEl = document.getElementById('rv-notif-email');
+      var rlEl = document.getElementById('rv-notif-role');
+      var payload = {
+        name: nmEl ? nmEl.value.trim() : '',
+        email: emEl ? emEl.value.trim() : '',
+        role: rlEl ? rlEl.value.trim() : '',
+        subs: { dailyBrief: true, rateActionBrief: false, watchdog: true, ariaAlerts: false }
+      };
+      if (!payload.email) { alert('Email is required'); return; }
+      var btn = t.closest('[data-rv-notif-add]');
+      btn.disabled = true; btn.textContent = 'Adding…';
+      postNotifUser(payload).then(function (r) {
+        btn.disabled = false; btn.textContent = 'Add user';
+        if (!r.ok) { alert('Add failed: ' + (r.error || 'unknown')); return; }
+        try { localStorage.removeItem(NOTIF_USERS_CACHE_KEY); } catch (e) {}
+        maybeFetchNotifUsers(true);
+      });
+      return;
+    }
+    // v39.14 — Notification user: delete
+    var nDel = t.closest('[data-rv-notif-del]');
+    if (nDel) {
+      var em = nDel.getAttribute('data-rv-notif-del');
+      if (!confirm('Remove ' + em + ' from the notification list?')) return;
+      deleteNotifUser(em).then(function (r) {
+        if (!r.ok) { alert('Delete failed: ' + (r.error || 'unknown')); return; }
+        try { localStorage.removeItem(NOTIF_USERS_CACHE_KEY); } catch (e) {}
+        maybeFetchNotifUsers(true);
+      });
+      return;
+    }
+    // v39.14 — Notification user: toggle a subscription
+    var tgl = t.closest('[data-rv-notif-toggle]');
+    if (tgl) {
+      var parts = tgl.getAttribute('data-rv-notif-toggle').split('|');
+      var emailT = parts[0], reportKey = parts[1];
+      var checked = tgl.checked;
+      var c = getCachedNotifUsers();
+      var u = c && c.users ? c.users.filter(function (x) { return x.email === emailT; })[0] : null;
+      if (!u) return;
+      var subs = Object.assign({}, u.subs || {}); subs[reportKey] = checked;
+      // Optimistic update
+      u.subs = subs;
+      setCachedNotifUsers(c);
+      postNotifUser({ email: emailT, name: u.name, role: u.role, subs: subs }).then(function (r) {
+        if (!r.ok) { alert('Update failed: ' + (r.error || 'unknown')); maybeFetchNotifUsers(true); }
+      });
+      return;
+    }
 
     /* ---- v39 Alfred handlers ---- */
     // Alfred — refresh the brief (clear cache, re-generate)
@@ -2908,6 +4196,17 @@
       SETTINGS.weights[wgtKey] = w;
       persistSettings();
       scheduleRender();
+      return;
+    }
+    // v39.14 — Group Offer input changes (date/rooms/rate/nights)
+    var grpKey = t.getAttribute('data-rv-grp');
+    if (grpKey) {
+      var G = getGroupInput();
+      if (grpKey === 'date') G[grpKey] = t.value;
+      else G[grpKey] = Math.max(1, parseInt(t.value, 10) || 1);
+      setGroupInput(G);
+      clearTimeout(editDebounce);
+      editDebounce = setTimeout(function () { render(); }, 300);
       return;
     }
   });

@@ -602,8 +602,8 @@
   /* ---------- Food & beverage ---------- */
   var fbCharts = [];
   var fbView = 'over', DOWN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  // v39.13: Overview first, then POS/Meal Plan injected after by v13.js augmentFb
-  function fbSeg(P) { var TP = window.Trading && window.Trading.S().x ? window.Trading.S().x.plu : null; return '<div class="segs">' + [['over', 'Overview'], ['cov', 'Covers'], ['term', 'By terminal'], ['brk', 'Breakfast'], ['menu', 'What we sell']].map(function (v) { var off = v[0] === 'term' ? !TP : ((v[0] === 'brk' || v[0] === 'menu') && !P); return '<button class="' + (fbView === v[0] ? 'on' : '') + '" data-fb="' + v[0] + '"' + (off ? ' disabled title="' + (v[0] === 'term' ? 'Needs the till item sales reports' : 'Needs the Rezlynx Postings report') + '"' : '') + '>' + v[1] + '</button>'; }).join('') + '</div>'; }
+  // v39.14: added Discount Impact sub-tab
+  function fbSeg(P) { var TP = window.Trading && window.Trading.S().x ? window.Trading.S().x.plu : null; return '<div class="segs">' + [['over', 'Overview'], ['cov', 'Covers'], ['disc', 'Discount impact'], ['term', 'By terminal'], ['brk', 'Breakfast'], ['menu', 'What we sell']].map(function (v) { var off = v[0] === 'term' ? !TP : ((v[0] === 'brk' || v[0] === 'menu') && !P); return '<button class="' + (fbView === v[0] ? 'on' : '') + '" data-fb="' + v[0] + '"' + (off ? ' disabled title="' + (v[0] === 'term' ? 'Needs the till item sales reports' : 'Needs the Rezlynx Postings report') + '"' : '') + '>' + v[1] + '</button>'; }).join('') + '</div>'; }
   function dshort(k) { return +k.slice(8) + ' ' + MN[+k.slice(5, 7) - 1]; }
   function postingsNote(P) { return '<p class="note">Source: Rezlynx Postings report, ' + dlabel(P.from) + ' to ' + dlabel(P.to) + ' ' + P.to.slice(0, 4) + ', run ' + when(P.asOf) + '. Net of VAT. It covers the restaurant, room service and breakfast codes; bar till sales (analysis code BAR1BEV) are not in this export. Deleted postings (' + P.deleted.c + ', ' + gbp(P.deleted.v) + ') are left out; refunds and adjustments (' + P.refunds.c + ', ' + gbp(P.refunds.v) + ') are netted off. Guest names are not kept. Guestline cannot email this report, so it is exported by hand.</p>'; }
   function renderBrk(el, S, P) {
@@ -758,12 +758,148 @@
     else fetchFbCovers(function (html) { var slot = $('fb-covers-slot'); if (slot) slot.innerHTML = html; });
   }
 
+  /* v39.14 — Discount impact section. Reads from TP.terms (Postings report)
+     for discount totals + item-level breakdown. Awaits start-date input to
+     drive the before/after analysis. */
+  var DISCOUNT_SETTINGS_KEY = 'hosbusiness_discount_settings';
+  function getDiscSettings() {
+    try { var o = JSON.parse(localStorage.getItem(DISCOUNT_SETTINGS_KEY) || 'null'); if (o) return o; } catch (e) {}
+    return { startDate: '2026-11-01', scope: '15% off food, all diners', pct: 15 };
+  }
+  function setDiscSettings(s) { try { localStorage.setItem(DISCOUNT_SETTINGS_KEY, JSON.stringify(s)); } catch (e) {} }
+
+  function renderDisc(el, S, P) {
+    var settings = getDiscSettings();
+    var h = fbSeg(P);
+    var TP = S.x && S.x.plu ? S.x.plu : null;
+
+    // Total discount from Postings report (TP.terms[k].adj)
+    var totalDisc = 0, totalGross = 0, totalNet = 0, termSplit = {};
+    if (TP) {
+      Object.keys(TP.terms).forEach(function (k) {
+        var t = TP.terms[k];
+        totalDisc += t.adj || 0;
+        totalGross += t.gross || 0;
+        totalNet += t.net || 0;
+        termSplit[k] = { adj: t.adj || 0, gross: t.gross || 0, net: t.net || 0, items: t.items || [] };
+      });
+    }
+    var discPct = totalGross > 0 ? -totalDisc / totalGross : 0;
+    var days = TP ? Math.round((Date.parse(TP.to || P.to) - Date.parse(TP.from || P.from)) / 864e5) + 1 : 0;
+
+    // Top discounted items across all tills
+    var allDiscItems = [];
+    if (TP) {
+      Object.keys(TP.terms).forEach(function (k) {
+        (TP.terms[k].items || []).forEach(function (it) {
+          if (it[3] && it[3] < 0) allDiscItems.push({ name: it[0], qty: it[1], net: it[4], disc: it[3], till: k });
+        });
+      });
+    }
+    allDiscItems.sort(function (a, b) { return a.disc - b.disc; }); // most negative first
+    var topDisc = allDiscItems.slice(0, 15);
+
+    h += (
+      // Config strip
+      '<div class="card"><h2>Food discount tracker</h2><p class="sub">Measures the ongoing 15% food discount — how much we are giving away, which tills, which dishes, and whether it is driving incremental covers. Awaits start-date to split before / after.</p>' +
+        '<div class="filters" style="margin:12px 0 0">' +
+          '<label>Discount start date <input type="date" id="disc-start" value="' + (settings.startDate || '') + '" style="margin-left:6px"></label>' +
+          '<label>Discount % <input type="number" id="disc-pct" value="' + settings.pct + '" min="0" max="100" style="width:60px;margin-left:6px"></label>' +
+          '<label style="flex:1;min-width:300px">Scope <input type="text" id="disc-scope" value="' + (settings.scope || '') + '" placeholder="e.g. 15% off food for in-house guests, lunch & dinner" style="width:100%"></label>' +
+          '<button class="btn" id="disc-save">Save</button>' +
+        '</div>' +
+      '</div>' +
+
+      // Totals tiles
+      (TP ? (
+        '<div class="tiles">' +
+          tile('Total discount given', gbp(-totalDisc), 'Over ' + days + ' days from Postings report') +
+          tile('Discount %', pc(discPct) + ' of gross', 'of £' + Math.round(totalGross).toLocaleString('en-GB') + ' menu price incl VAT') +
+          tile('Daily average', gbp(days > 0 ? -totalDisc / days : 0), 'given away per day') +
+          tile('Estimated annual run-rate', gbp(days > 0 ? (-totalDisc / days) * 365 : 0), 'at current pace') +
+        '</div>'
+      ) : '<div class="card"><h2>No Postings data loaded yet</h2><p class="sub">Discount totals come from the Rezlynx Postings report. Ask Glen to upload the latest report via the <em>Costs</em> tab, or wait for Gary to wire the automatic feed.</p></div>') +
+
+      // By till
+      (TP ? (
+        '<div class="card"><h2>Discount by till</h2><p class="sub">Where the money is going</p>' +
+          '<table><tr><th>Till</th><th class="n">Gross sales</th><th class="n">Discount given</th><th class="n">% of gross</th><th class="n">Net sales</th></tr>' +
+          Object.keys(termSplit).sort(function (a, b) { return termSplit[a].adj - termSplit[b].adj; }).map(function (k) {
+            var t = termSplit[k];
+            var pct = t.gross > 0 ? -t.adj / t.gross : 0;
+            return '<tr><td>' + esc(k) + '</td><td class="n">' + gbp(t.gross) + '</td><td class="n" style="color:#c0392b">' + gbp(t.adj) + '</td><td class="n">' + pc(pct) + '</td><td class="n">' + gbp(t.net) + '</td></tr>';
+          }).join('') +
+          '</table>' +
+        '</div>'
+      ) : '') +
+
+      // Before / after — needs start date
+      '<div class="card"><h2>Before vs after · did it work?</h2>' +
+        (!settings.startDate ? (
+          '<p class="sub">Set the discount start date above to run the before/after analysis — this compares F&amp;B revenue per occupied room, total covers, and total F&amp;B revenue in the equivalent windows before and after the discount launch.</p>' +
+          '<p class="sub"><em>Waiting on start date input to compute.</em></p>'
+        ) : (function () {
+          // Simple before/after using S.af rows (closed-day actuals)
+          var rows = (S.af && S.af.rows) ? S.af.rows : [];
+          var start = settings.startDate;
+          var after = rows.filter(function (r) { return r.d >= start; });
+          var before = rows.filter(function (r) { return r.d < start; });
+          var N = after.length;
+          var beforeSlice = before.slice(-N);
+          var sumFB = function (arr) { return arr.reduce(function (t, r) { return t + (r.food || 0) + (r.bev || 0); }, 0); };
+          var sumRooms = function (arr) { return arr.reduce(function (t, r) { return t + (r.sold || 0); }, 0); };
+          var bFB = sumFB(beforeSlice), aFB = sumFB(after);
+          var bRm = sumRooms(beforeSlice), aRm = sumRooms(after);
+          var bPerRm = bRm > 0 ? bFB / bRm : 0, aPerRm = aRm > 0 ? aFB / aRm : 0;
+          var deltaFB = aFB - bFB, deltaPerRm = aPerRm - bPerRm;
+          var verdict = deltaPerRm > 2 ? 'Likely working — F&B per occupied room lifted £' + deltaPerRm.toFixed(2) + ' vs the equivalent earlier window' :
+                        deltaPerRm < -2 ? 'Not covering the give-away — F&B per room DOWN £' + Math.abs(deltaPerRm).toFixed(2) + ' vs the earlier window, plus we give £' + Math.round(-totalDisc / days).toLocaleString('en-GB') + '/day away' :
+                        'Inconclusive — F&B per occupied room changed by only £' + deltaPerRm.toFixed(2) + ' either way';
+          return '<p class="sub">Comparing the ' + N + ' nights since ' + start + ' vs the ' + N + ' nights immediately before.</p>' +
+            '<div class="tiles">' +
+              tile('F&B — after', gbp(aFB), aRm + ' occupied rooms · ' + gbp(aPerRm, 2) + ' per room') +
+              tile('F&B — before', gbp(bFB), bRm + ' occupied rooms · ' + gbp(bPerRm, 2) + ' per room') +
+              tile('F&B per room change', (deltaPerRm >= 0 ? '+' : '') + gbp(deltaPerRm, 2), 'with ' + settings.pct + '% discount active') +
+              tile('Total F&B change', (deltaFB >= 0 ? '+' : '') + gbp(deltaFB), N + ' nights each side') +
+            '</div>' +
+            '<div class="finding ' + (deltaPerRm > 2 ? 'good' : deltaPerRm < -2 ? 'bad' : 'warn') + '"><h3>Verdict</h3><p>' + esc(verdict) + '</p></div>';
+        })()) +
+      '</div>' +
+
+      // Top discounted items
+      (topDisc.length ? (
+        '<div class="card"><h2>Top 15 most-discounted dishes</h2><p class="sub">Sorted by total discount £. Discount is shown as a negative number (£ given away)</p>' +
+          '<table><tr><th>Dish</th><th>Till</th><th class="n">Qty sold</th><th class="n">Net sales</th><th class="n">Discount</th><th class="n">% off</th></tr>' +
+          topDisc.map(function (d) {
+            var pct = d.net > 0 ? -d.disc / (d.net + -d.disc) : 0;
+            return '<tr><td>' + esc(d.name) + '</td><td>' + esc(d.till) + '</td><td class="n">' + d.qty + '</td><td class="n">' + gbp(d.net) + '</td><td class="n" style="color:#c0392b">' + gbp(d.disc) + '</td><td class="n">' + pc(pct) + '</td></tr>';
+          }).join('') +
+          '</table>' +
+        '</div>'
+      ) : '')
+    );
+
+    el.innerHTML = h;
+
+    // Wire the save handler
+    var sBtn = document.getElementById('disc-save');
+    if (sBtn) sBtn.onclick = function () {
+      var startEl = document.getElementById('disc-start');
+      var pctEl = document.getElementById('disc-pct');
+      var scopeEl = document.getElementById('disc-scope');
+      var newSettings = { startDate: startEl ? startEl.value : '', pct: pctEl ? +pctEl.value : 15, scope: scopeEl ? scopeEl.value : '' };
+      setDiscSettings(newSettings);
+      renderFb();
+    };
+  }
+
   function renderFb() {
     var el = $('pf-fb'), T = window.Trading, S = T ? T.S() : {}; fbCharts.forEach(function (c) { c.destroy(); }); fbCharts = [];
     if (!S.af) { el.innerHTML = '<div class="card"><h2>No Guestline data loaded</h2></div>'; return; }
     var P = S.x && S.x.postings; if (!P && (fbView === 'brk' || fbView === 'menu')) fbView = 'over';
     if (fbView === 'term' && !(S.x && S.x.plu)) fbView = 'over';
     if (fbView === 'cov') return renderCov(el, S, P);
+    if (fbView === 'disc') return renderDisc(el, S, P);
     if (fbView === 'term') return renderTerm(el, S, P); if (fbView === 'brk') return renderBrk(el, S, P); if (fbView === 'menu') return renderMenu(el, S, P);
     var cut = T.asOfDay(), m = cut.slice(0, 7), pe = T.pePeriod('month', m), act = T.agg(T.rowsFor(m, 'actual')), h = '';
     if (!pe) { el.innerHTML = '<div class="card"><h2>No Period End report for this month</h2><p class="sub">Food and drink sales by outlet come from the Rezlynx Period End / End of Day report.</p></div>'; return; }
