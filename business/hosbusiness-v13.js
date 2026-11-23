@@ -584,6 +584,17 @@
     function t(label, value, sub) {
       return '<div class="tile"><div class="l">' + label + '</div><div class="v">' + value + '</div>' + (sub ? '<div class="d">' + sub + '</div>' : '') + '</div>';
     }
+    // Coloured variant — used for the three revenue tiles (Revenue closed / on books / total).
+    // Inline styles override the stock .tile palette so every child picks up the bg + text colour.
+    function tc(label, value, sub, bg, fg) {
+      var subFg = fg === '#ffffff' ? 'rgba(255,255,255,.88)' : 'rgba(0,0,0,.72)';
+      var labFg = fg === '#ffffff' ? 'rgba(255,255,255,.78)' : 'rgba(0,0,0,.65)';
+      return '<div class="tile" style="background:' + bg + ' !important;border-color:' + bg + ' !important;color:' + fg + ' !important">' +
+        '<div class="l" style="color:' + labFg + ' !important">' + label + '</div>' +
+        '<div class="v" style="color:' + fg + ' !important">' + value + '</div>' +
+        (sub ? '<div class="d" style="color:' + subFg + ' !important">' + sub + '</div>' : '') +
+      '</div>';
+    }
 
     var LET3 = tally.lettable || 114;
     var avail = LET3 * (tally.nights || 0);
@@ -605,15 +616,18 @@
         return t('Guests in the hotel', num(mp.guests), mp.total.ad + ' adults · ' + mp.total.ch + ' children' + (mp.total.inf ? ' · ' + mp.total.inf + ' infants' : ''));
       })(),
       t('Revenue lost to OOS', gbp(tally.oosLoss), (tally.oos || 0) + ' room nights × that night\'s ADR'),
-      // Forward-looking anchors (always shown)
+      // Forward-looking anchor — "Tonight, on the books". Next 7 nights lives in the Forecast tab.
       t('Tonight, on the books', to ? num(to.rooms) + ' <small>rooms</small>' : '–', to ? gbp(tonightAdr, 2) + ' ADR · ' + gbp(tonightAcc) + ' rooms revenue' : ''),
-      t('Next 7 nights, on the books', n7.rooms ? num(n7.rooms) + ' <small>rooms</small> <span>' + pc(n7.occ) + '</span>' : '–', n7.rooms ? gbp(n7.acc) + ' rooms revenue' : ''),
-      // v13 — 3 revenue boxes replacing the old single "Nov, with bookings held" tile.
+      // v13 — Three coloured revenue boxes as the final trio on row 2.
       // Real data from Trading engine: act.total = MTD closed, bks.total = forward
       // on-books, sum = full-month forecast. Refreshes with overnight glTick + 2h hosbookTick.
-      t('Revenue closed', gbp(act.total), num(act.rooms) + ' rooms sold · MTD actual from Guestline'),
-      t('Revenue on books', gbp(bks.total), num(bks.rooms || 0) + ' rooms forward · confirmed bookings'),
-      t('Total for month · ' + MN[+m.slice(5) - 1], gbp(allMonth), pc(allMonthOcc) + ' occupancy · closed + on books')
+      // Red/white · Amber/black · Dark-green/white.
+      tc('Revenue closed', gbp(act.total), num(act.rooms) + ' rooms sold · MTD actual from Guestline',
+         '#b3261e', '#ffffff'),
+      tc('Revenue on books', gbp(bks.total), num(bks.rooms || 0) + ' rooms forward · confirmed bookings',
+         '#f5a623', '#1a2238'),
+      tc('Total for month · ' + MN[+m.slice(5) - 1], gbp(allMonth), pc(allMonthOcc) + ' occupancy · closed + on books',
+         '#1a6442', '#ffffff')
     ].join('');
     return '<div class="tiles">' + tiles + '</div>';
   }
