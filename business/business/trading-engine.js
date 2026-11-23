@@ -1,0 +1,282 @@
+/* Brandon Hall — Rezlynx (Guestline) report readers for the Trading tab.
+   Used by the dashboard in the browser and by the build script in Node. */
+(function (root) {
+  'use strict';
+
+  function csv(text) {
+    var rows = [], row = [], cur = '', q = false;
+    text = String(text).replace(/^﻿/, '');
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(cur); cur = ''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cur); cur = ''; if (row.length > 1 || row[0] !== '') rows.push(row); row = []; }
+      else cur += c;
+    }
+    if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+    return rows;
+  }
+  function iso(dmy) { var p = String(dmy).split('/'); return p.length === 3 ? p[2] + '-' + p[1] + '-' + p[0] : null; }
+  function n(v) { var x = parseFloat(String(v).replace(/,/g, '')); return isNaN(x) ? 0 : x; }
+
+  /* Actual & Forecast CSV -> one record per night */
+  function isAF(text) { return /^﻿?Date,DayOfWeek,Avail,Total,Indv,Multi,Blocks,Occ,/.test(String(text).slice(0, 80)); }
+  function parseAF(text) {
+    var rows = csv(text), h = rows[0], ix = {};
+    h.forEach(function (k, i) { ix[k.trim()] = i; });
+    var out = [];
+    rows.slice(1).forEach(function (r) {
+      var d = iso(r[ix.Date]); if (!d) return;
+      var stock = n(r[ix.InStock]), occ = n(r[ix.Occ]);
+      out.push({ d: d, dow: r[ix.DayOfWeek], listed: n(r[ix.Total]), indv: n(r[ix.Indv]), multi: n(r[ix.Multi]), blocks: n(r[ix.Blocks]),
+        occPct: occ, rooms: Math.round(occ / 100 * stock), ad: n(r[ix.Ad]), ch: n(r[ix.Ch]),
+        acc: n(r[ix.Accomm]), fb: n(r[ix.FB]), oth: n(r[ix.Other]), roos: n(r[ix.ROOS]), dfs: n(r[ix.DFS]), stock: stock });
+    });
+    return out;
+  }
+
+  /* Period End workbook (array of rows) -> revenue by analysis code, payments, deposits, ledger */
+  function isPE(aoa) { return aoa && aoa[1] && String(aoa[1][0] || aoa[1].join(' ')).indexOf('Period Status') !== -1 || (aoa || []).slice(0, 6).some(function (r) { return (r || []).join(' ').indexOf('Period ID') !== -1; }); }
+  function parsePE(aoa) {
+    var clean = aoa.map(function (r) { return (r || []).filter(function (c) { return c !== '' && c !== null && c !== undefined; }); });
+    var pe = { type: '', id: '', opened: '', closed: '', status: '', groups: [], total: null, payments: [], other: {} };
+    var sec = '', grp = null;
+    clean.forEach(function (r) {
+      if (!r.length) return;
+      var a = String(r[0]);
+      if (/^Page \d+ of/.test(a)) return;
+      if (a === 'Brandon Hall Hotel and Spa' || /Hotel/.test(a) && r.length === 2 && /^End of/.test(String(r[1]))) { if (!pe.type) pe.type = String(r[1]).replace('End of ', '').toLowerCase(); return; }
+      if (a === 'Period Status') { pe.status = String(r[1]); return; }
+      if (a === 'Period ID') { pe.id = String(r[1]); return; }
+      if (a === 'Period Opened') { pe.opened = String(r[1]); pe.closed = String(r[3] || ''); return; }
+      if (r.length === 1 && typeof r[0] === 'string') { sec = a; grp = null; return; }
+      if (sec === 'Analysis Codes Revenue') {
+        if (r[1] === 'Code' && r[2] === 'Description') { grp = { g: a, lines: [], total: null }; pe.groups.push(grp); return; }
+        if (a === 'Totals') { pe.total = [r[1], r[2], r[3]]; return; }
+        if (r[1] === 'Total' && grp && a === grp.g) { grp.total = [r[2], r[3], r[4]]; return; }
+        if (grp && typeof r[2] === 'number') { grp.lines.push([a, String(r[1]), r[2], r[3], r[4]]); return; }
+        return;
+      }
+      if (sec === 'Payment Totals') { if (typeof r[r.length - 1] === 'number' && r.length >= 3) pe.payments.push([a, String(r[1]), r[2]]); return; }
+      if (typeof r[r.length - 1] === 'number' && r.length >= 3 && /^[A-Z_]+$/.test(a)) pe.other[a] = r[2];
+    });
+    var m = pe.opened.match(/(\d\d)\/(\d\d)\/(\d{4})/); pe.from = m ? m[3] + '-' + m[2] + '-' + m[1] : '';
+    return pe;
+  }
+
+  /* Merge a newly read file into the stored trading data */
+  function merge(store, kind, parsed, meta) {
+    store = store || {}; store.received = store.received || []; store.snaps = store.snaps || {}; store.pe = store.pe || {};
+    var day = meta.asOf.slice(0, 10);
+    if (kind === 'af') {
+      var have = {}, nb = meta.basis || 'gross';
+      if (store.af && store.af.basis !== nb) { /* gross CSV replaced by net PDF (or back): never mix the two */
+        var k2 = nb === 'net' ? 1 / 1.2 : 1.2; Object.keys(store.snaps).forEach(function (sd) { Object.keys(store.snaps[sd]).forEach(function (x) { store.snaps[sd][x][1] = Math.round(store.snaps[sd][x][1] * k2); }); });
+      } else (store.af && store.af.rows || []).forEach(function (r) { have[r.d] = r; });
+      parsed.forEach(function (r) { have[r.d] = r; });
+      store.af = { asOf: meta.asOf, basis: meta.basis || 'gross', rows: Object.keys(have).sort().map(function (k) { return have[k]; }) };
+      var snap = {}; parsed.forEach(function (r) { if (r.d >= day && (r.rooms || r.acc)) snap[r.d] = [r.rooms, Math.round(r.acc)]; });
+      store.snaps[day] = snap;
+      /* a long forecast range makes each daily snapshot large: keep 45 days of dailies, then one a week */
+      var ks = Object.keys(store.snaps).sort(), cut = ks.length - 45;
+      ks.forEach(function (k, i) { if (i < cut && new Date(k).getDay() !== 1) delete store.snaps[k]; });
+    }
+    if (kind === 'pe') { parsed.asOf = meta.asOf; store.pe[parsed.type + '|' + parsed.from] = parsed; }
+    store.received.unshift({ ts: meta.asOf, kind: kind, file: meta.file, rows: kind === 'af' ? parsed.length : parsed.groups.length });
+    store.received = store.received.slice(0, 60);
+    return store;
+  }
+
+
+  /* ---------- other Rezlynx reports: aggregated on load, no guest names kept ---------- */
+  var MON = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+  function d2(s) { var m = String(s).match(/(\d{1,2})\/(\w{3})\/(\d{4})/); if (m && MON[m[2]]) return m[3] + '-' + MON[m[2]] + '-' + ('0' + m[1]).slice(-2); m = String(s).match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; }
+  function bump(o, k, f) { o[k] = o[k] || {}; Object.keys(f).forEach(function (x) { o[k][x] = (o[k][x] || 0) + f[x]; }); }
+  function flat(r) { return (r || []).map(function (c) { return String(c === null || c === undefined ? '' : c); }); }
+  function title(aoa) { return aoa.slice(0, 5).map(function (r) { return flat(r).join(' '); }).join(' | '); }
+  function family(plan) { return String(plan).split('_')[0] || 'Other'; }
+  function board(plan) { var p = String(plan); return /_DBB/.test(p) ? 'Dinner, bed and breakfast' : /_BB/.test(p) ? 'Bed and breakfast' : /_RO/.test(p) ? 'Room only' : 'Other'; }
+
+  function readReport(aoa, fname, head) {
+    var t = title(aoa), out;
+    if (/Company Report/.test(t)) {
+      out = { kind: 'company', period: flat(aoa[0]).join('').trim(), rows: [], total: {} };
+      for (var i = 6; i < aoa.length; i++) {
+        var r = aoa[i] || [], nx = aoa[i + 1] || [];
+        if (r[0] === 'Grand Total') { out.total = { acc: n(r[5]), fb: n(r[6]), oth: n(r[7]), lostRev: n(r[18]), rn: n(nx[2]), tot: n(nx[8]), lostNights: n(nx[17]) }; break; }
+        if (typeof r[5] !== 'number' || !n(r[2])) continue;
+        out.rows.push({ ref: String(r[0] || '').trim() || '(no company)', arr: n(r[1]), rn: n(r[2]), acc: r[5], fb: n(r[6]), oth: n(r[7]), tot: n(r[8]), lead: n(r[12]), stay: n(r[13]), rate: n(r[14]), lostRev: n(r[18]), lostNights: n(nx[17]) });
+      }
+      out.rows.sort(function (a, b) { return b.rn - a.rn; });
+    } else if (/Rate Override Report/.test(t)) {
+      out = { kind: 'overrides', count: 0, down: 0, up: 0, pre: 0, post: 0, byPlan: {}, byOp: {}, byMonth: {}, from: '', to: '' };
+      aoa.forEach(function (r) {
+        if (!r || typeof r[11] !== 'number' || typeof r[13] !== 'number' || !r[9]) return;
+        var d = d2(r[1]), diff = r[13], f = { c: 1, pre: r[11], post: r[12], diff: diff };
+        out.count++; out.pre += r[11]; out.post += r[12]; if (diff < 0) out.down += diff; else out.up += diff;
+        var op = String(r[0]).replace(/\s+/g, ''); out._ops = out._ops || {}; if (!/^RMLYNX/.test(op)) out._ops[op] = 1;
+        bump(out.byPlan, String(r[9]), f); bump(out.byOp, /^RMLYNX/.test(op) ? 'Automatic (system)' : 'Staff', f); bump(out.byMonth, d.slice(0, 7), f);
+        if (d && (!out.from || d < out.from)) out.from = d; if (d > out.to) out.to = d;
+      });
+      out.staffUsers = Object.keys(out._ops || {}).length; delete out._ops;
+    } else if (/Room Usage/.test(t)) {
+      out = { kind: 'rooms', total: 0, byType: {}, byStatus: {}, oos: [] };
+      aoa.forEach(function (r) {
+        if (!r || !r[4] || r[0] === 'Room ID' || !/^\d+$/.test(String(r[0]).trim())) return;
+        out.total++; var st = String(r[8] || '').trim();
+        bump(out.byType, String(r[4]), { c: 1, oos: /out of service/i.test(st) ? 1 : 0 }); out.byStatus[st] = (out.byStatus[st] || 0) + 1;
+        out.byType[String(r[4])].desc = String(r[2]);
+        if (/out of service/i.test(st)) out.oos.push({ id: String(r[0]), desc: String(r[2]), floor: String(r[6] || ''), since: d2(r[12]), until: d2(r[14]), lastDep: d2(r[16]) });
+      });
+    } else if (/Cancellations Report/.test(t)) {
+      out = { kind: 'cancels', count: 0, lost: 0, byMonth: {}, byAgent: {}, byLead: {}, byDay: {}, from: '', to: '' };
+      for (var j = 0; j < aoa.length; j++) {
+        var c = aoa[j] || [], d = aoa[j + 1] || [];
+        if (!/^CN\d+/.test(String(c[0])) || typeof c[18] !== 'number') continue;
+        var cd = d2(c[1]), ad = d2(d[11]), lead = cd && ad ? Math.round((Date.parse(ad) - Date.parse(cd)) / 864e5) : null;
+        var bk = lead === null ? 'Unknown' : lead <= 0 ? 'On the day' : lead <= 2 ? '1 to 2 days before' : lead <= 7 ? '3 to 7 days before' : lead <= 30 ? '8 to 30 days before' : 'Over 30 days before';
+        var f2 = { c: 1, lost: c[18] };
+        out.count++; out.lost += c[18]; if (cd) out.byDay[cd] = (out.byDay[cd] || 0) + 1; bump(out.byMonth, cd.slice(0, 7), f2); bump(out.byAgent, String(d[6] || '').trim() || '(direct or no agent)', f2); bump(out.byLead, bk, f2);
+        if (cd && (!out.from || cd < out.from)) out.from = cd; if (cd > out.to) out.to = cd;
+      }
+      Object.keys(out.byDay).sort().slice(0, -120).forEach(function (k) { delete out.byDay[k]; });
+    } else if (/No Shows Report/.test(t)) {
+      out = { kind: 'noshows', count: 0, byMonth: {}, byFamily: {} };
+      for (var k = 0; k < aoa.length; k++) {
+        var a = aoa[k] || [], b = aoa[k + 1] || [];
+        if (!/^BK\d+/.test(String(a[6])) || !a[20]) continue;
+        out.count++; bump(out.byMonth, d2(b[10]).slice(0, 7), { c: 1 }); bump(out.byFamily, family(a[20]), { c: 1 });
+      }
+    } else if (/Daily Rate Analysis/.test(t)) {
+      out = { kind: 'rates', range: flat(aoa[0])[1] || '', nights: 0, value: 0, byPlan: {}, byFamily: {}, byBoard: {}, byDay: {} };
+      var colDay = {};
+      aoa.forEach(function (r) {
+        if (r && r[0] === 'BookRef') { for (var c = 1; c < r.length; c++) if (d2(r[c])) colDay[c] = d2(r[c]); return; }
+        if (!r || !/^BK\d+/.test(String(r[0]))) return;
+        for (var x = 1; x < r.length; x++) { var m = String(r[x] || '').match(/^([A-Z0-9_]+)\s*\n\s*([\d.]+)/); if (!m) continue; var f = { n: 1, v: parseFloat(m[2]) }; if (colDay[x]) { var bd = {}; bd[/_DBB/.test(m[1]) ? 'dbb' : /_BB/.test(m[1]) ? 'bb' : /_RO/.test(m[1]) ? 'ro' : 'other'] = 1; bd.n = 1; bump(out.byDay, colDay[x], bd); } out.nights++; out.value += f.v; bump(out.byPlan, m[1], f); bump(out.byFamily, family(m[1]), f); bump(out.byBoard, board(m[1]), f); }
+      });
+    } else if (/Forecast Revenue By Market Segment/.test(t)) {
+      var fr = flat(aoa[1]), to = flat(aoa[2]);
+      out = { kind: 'segments', from: d2(fr[fr.indexOf('From') + 1] || fr.join(' ')), to: d2(to[to.indexOf('To') + 1] || to.join(' ')), basis: /Gross/.test(to.join(' ')) ? 'gross' : 'net', rows: [] };
+      aoa.forEach(function (r) { if (!r || typeof r[6] !== 'number' || !r[0] || /^(Total|Avg)/.test(String(r[0]))) return; out.rows.push({ seg: String(r[0]), acc: r[6], fb: n(r[12]), rooms: n(r[18]), confirmed: n(r[14]), reserved: n(r[16]), allot: n(r[17]) }); });
+      out.rows.sort(function (a, b) { return b.acc - a.acc; });
+    } else if (/Block Forecast Report/.test(t)) {
+      out = { kind: 'blocks', month: flat(aoa[1]).join('').trim(), rows: [] };
+      aoa.forEach(function (r) { if (!r || !/^G[A-Z]\d+/.test(String(r[0]))) return; var days = []; for (var x = 4; x < 35; x++) if (n(r[x])) days.push(x - 3); out.rows.push({ ref: String(r[0]), name: String(r[1]), status: String(r[3]).replace(/\s+/g, ' '), total: n(r[35]), first: days[0], last: days[days.length - 1], nights: days.length }); });
+    } else if (/Plu Sales Report/i.test(t + ' ' + (head || '')) || /PLU Description Qty Gross Adjustment/i.test(t.replace(/\s+/g, ' '))) {
+      /* till (EPoS) item sales for one terminal and meal period. The terminal is not named inside the report, so it is taken from the file name. */
+      var fn = String(fname || ''), meal = /lunch/i.test(fn) ? 'Lunch' : /dinner/i.test(fn) ? 'Dinner' : /break/i.test(fn) ? 'Breakfast' : '', place = /bar/i.test(fn) ? 'Bar' : /rest/i.test(fn) ? 'Restaurant' : /room/i.test(fn) ? 'Room service' : '';
+      var pr = /From\s+(\d\d)\/(\d\d)\/(\d{4})\s+To\s+(\d\d)\/(\d\d)\/(\d{4})/i.exec(t + ' ' + (head || '')) || [];
+      out = { kind: 'plu', term: (meal && place) ? meal + ' · ' + place : (fn.replace(/^[0-9a-f]{8}-/, '').replace(/\.\w+$/, '').replace(/_/g, ' ') || 'Unlabelled'), meal: meal, place: place, from: pr[3] ? pr[3] + '-' + pr[2] + '-' + pr[1] : '', to: pr[6] ? pr[6] + '-' + pr[5] + '-' + pr[4] : '', qty: 0, gross: 0, adj: 0, net: 0, items: [] };
+      aoa.forEach(function (r) {
+        if (!r) return; var d = String(r[1] || '').trim(), code = String(r[0] || '').trim();
+        if (/^Grand Total/i.test(d)) { out.qty = n(r[2]); out.gross = n(r[3]); out.adj = n(r[4]); out.net = n(r[7]); return; }
+        if (!/^\d+$/.test(code) || !d) return;
+        if (n(r[2]) || n(r[3]) || n(r[4])) out.items.push([d, n(r[2]), n(r[3]), n(r[4]), n(r[7])]);
+      });
+      out.items.sort(function (a, b) { return b[4] - a[4]; });
+    } else if (/Postings Report/.test(t)) {
+      /* every till and folio posting: reduced to counts and values by day and by item. Guest names, rooms and operators are dropped. */
+      out = { kind: 'postings', from: '', to: '', net: 0, count: 0, byDay: {}, byHour: {}, sect: {}, brkPrice: {}, deleted: { c: 0, v: 0 }, refunds: { c: 0, v: 0 }, codes: {} };
+      var IT = {}, SECT = function (c) { return /BRK/.test(c) ? 'brk' : /BEV/.test(c) ? 'bev' : /^RS_/.test(c) ? 'rs' : /LUN/.test(c) ? 'lun' : /DIN/.test(c) ? 'din' : 'oth'; };
+      aoa.forEach(function (r) {
+        var ts = String(r && r[0] || ''), m = /^(\d\d)\/(\d\d)\/(\d{4}) (\d\d):/.exec(ts); if (!m || !r[3]) return;
+        var code = String(r[3]).replace(/\s+/g, ''), desc = String(r[6] || '').replace(/\s+/g, ' ').trim(), nett = n(r[14]), st = String(r[18] || '').replace(/\s+/g, ' ').trim(), ity = String(r[19] || '').replace(/\s+/g, ' ').trim();
+        if (st === 'Deleted') { out.deleted.c++; out.deleted.v += nett; return; }
+        var day = m[3] + '-' + m[2] + '-' + m[1], mx = /^(\d+) x (.*)$/.exec(desc), units = n(r[13]) * (mx ? +mx[1] : 1) * (nett < 0 ? -1 : 1), name = mx ? mx[2] : desc, sc = SECT(code), auto = String(r[9]).trim() === 'AUTO';
+        if (nett < 0) { out.refunds.c++; out.refunds.v += nett; }
+        out.count++; out.net += nett; if (!out.from || day < out.from) out.from = day; if (day > out.to) out.to = day;
+        bump(out.codes, code, { c: 1, v: nett });
+        var D = out.byDay[day] = out.byDay[day] || { bi: 0, biv: 0, bp: 0, bpv: 0, lun: 0, din: 0, bev: 0, rs: 0, oth: 0, cov: 0 };
+        if (sc === 'brk') { if (/^Auto/i.test(ity)) { D.bi += units; D.biv += nett; } else { D.bp += units; D.bpv += nett; } if (nett > 0) { var pk = Math.abs(n(r[11]) / (mx ? +mx[1] : 1)).toFixed(2); bump(out.brkPrice, (/^Auto/i.test(ity) ? 'inc ' : 'paid ') + pk, { c: Math.abs(units) }); } }
+        else D[sc] += nett;
+        if (!auto) bump(out.byHour, m[4], (function () { var o = {}; o[sc === 'brk' ? 'brk' : sc === 'bev' ? 'bev' : 'food'] = nett; return o; })());
+        if (sc !== 'brk' && nett !== 0 && !/refund|adjust|discrepan/i.test(name)) { var key = sc + '|' + name.toLowerCase().replace(/btl/g, 'bottle').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean).sort().join(' '); var I = IT[key] = IT[key] || { s: sc, names: {}, q: 0, v: 0 }; I.q += units; I.v += nett; I.names[name] = (I.names[name] || 0) + 1; }
+      });
+      Object.keys(out.byDay).forEach(function (k) { var D = out.byDay[k]; Object.keys(D).forEach(function (f) { D[f] = Math.round(D[f] * 100) / 100; }); });
+      ['lun', 'din', 'bev', 'rs'].forEach(function (sc) {
+        var list = Object.keys(IT).map(function (k) { return IT[k]; }).filter(function (I) { return I.s === sc; }), tv = 0; list.forEach(function (I) { tv += I.v; });
+        list.sort(function (a, b) { return b.v - a.v; });
+        out.sect[sc] = { items: list.length, net: Math.round(tv * 100) / 100, top: list.slice(0, 40).map(function (I) { var nm = Object.keys(I.names).sort(function (a, b) { return I.names[b] - I.names[a]; })[0]; return [nm, Math.round(I.q), Math.round(I.v * 100) / 100]; }) };
+      });
+      out.net = Math.round(out.net * 100) / 100;
+    } else if (/Business Done Report/.test(t)) { out = { kind: 'bizdone', skipped: true };
+    } else if (/Agent Commission Report/.test(t)) { out = { kind: 'commission', skipped: true };
+    } else return null;
+    return out;
+  }
+  function mergeReport(store, rep, meta) {
+    store = store || {}; store.x = store.x || {}; store.received = store.received || [];
+    if (rep.kind === 'plu') {
+      /* one export per terminal and meal period: keep them side by side */
+      var pt = store.x.plu && store.x.plu.terms ? store.x.plu.terms : {};
+      pt[rep.term] = { meal: rep.meal, place: rep.place, from: rep.from, to: rep.to, qty: rep.qty, gross: rep.gross, adj: rep.adj, net: rep.net, items: rep.items, asOf: meta.asOf };
+      store.x.plu = { kind: 'plu', terms: pt, asOf: meta.asOf, file: meta.file };
+    } else if (rep.kind === 'blocks' && !rep.skipped) {
+      /* one export per month: keep every month loaded, newest export of each */
+      var prev = store.x.blocks && store.x.blocks.months ? store.x.blocks.months : {};
+      prev[rep.month] = { rows: rep.rows, asOf: meta.asOf };
+      store.x.blocks = { kind: 'blocks', months: prev, asOf: meta.asOf, file: meta.file };
+    } else if (!rep.skipped) { rep.asOf = meta.asOf; rep.file = meta.file; store.x[rep.kind] = rep; }
+    store.received.unshift({ ts: meta.asOf, kind: rep.kind, file: meta.file, rows: rep.count || (rep.rows ? rep.rows.length : rep.total || rep.nights || 0) });
+    store.received = store.received.slice(0, 60);
+    return store;
+  }
+
+
+  /* ---------- daily emails from Guestline: PDF cells and End of Day email text ---------- */
+  function nn(v) { var x = parseFloat(String(v === undefined ? '' : v).replace(/[\s,]/g, '')); return isFinite(x) ? x : 0; }
+  var DOW = { Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' };
+  function isAFCells(rows) { return rows.slice(0, 6).some(function (r) { return r[0] === 'Date' && r.indexOf('TRevPAR') !== -1 && r.indexOf('Accom') !== -1; }); }
+  /* Actual & Forecast PDF (figures are net of VAT). Rooms sold = accommodation / ADR, which matches the End of Day count. */
+  function parseAFCells(rows) {
+    var hdr = rows.filter(function (r) { return r[0] === 'Date' && r.indexOf('Accom') !== -1; })[0]; if (!hdr) return [];
+    var ix = function (n) { return hdr.indexOf(n); }, out = [];
+    rows.forEach(function (r) {
+      var m = /^(\d\d)\/(\d\d)\/(\d{4})$/.exec(r[0] || ''); if (!m || r.length < hdr.length) return;
+      var g = function (n) { return nn(r[ix(n)]); }, acc = g('Accom'), adr = g('ADR');
+      out.push({ d: m[3] + '-' + m[2] + '-' + m[1], dow: DOW[r[1]] || r[1], listed: g('Sold'), indv: g('Indv'), multi: g('Multi'), blocks: g('Blocks'), occPct: g('Occ'), rooms: adr > 0 ? Math.round(acc / adr) : 0,
+        ad: g('Adults'), ch: g('Children'), acc: acc, fb: g('F&B'), oth: g('Other'), roos: g('ROOS'), dfs: g('DFS'), stock: null, arr: g('Arrivals'), dep: g('Departures') });
+    });
+    return out;
+  }
+  function shift(d, n) { var t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+  function isKPCells(rows) { return rows.slice(0, 3).some(function (r) { return /Key Performance Report/.test(r[0] || ''); }); }
+  /* Key Performance PDF: seven days of revenue by group and balances. Columns are headed with the date each day was closed, so the trading day is the day before. */
+  function parseKPCells(rows) {
+    var days = {}, cols = null;
+    rows.forEach(function (r) {
+      if (r[0] === 'Description') { cols = r.slice(1).map(function (c) { var m = /(\d\d)\/(\w{3})\/(\d{4})/.exec(c); return m && MON[m[2]] ? shift(m[3] + '-' + MON[m[2]] + '-' + m[1], -1) : null; }); return; }
+      if (!cols) return;
+      var key = { 'Rooms Sold': 'rooms', 'Occupancy%': 'occ', 'Accommodation': 'accom', 'BEVERAGE': 'bev', 'CONFERENCE': 'conf', 'FOOD': 'food', 'MISC': 'misc', 'Sundries': 'sund', 'Revenue Nett Total': 'net', 'Deposit Balance (Actual)': 'deposits', 'Ledger Balance (Actual)': 'ledger', 'InHouse/Balance of Folios': 'inhouse', 'Total Non Ledger Payments Received': 'paid' }[r[0]];
+      if (!key) return;
+      cols.forEach(function (d, i) { if (!d || r[i + 1] === undefined) return; days[d] = days[d] || {}; if (days[d][key] === undefined || key === 'accom' || key === 'bev' || key === 'food') { if (days[d][key] === undefined) days[d][key] = nn(r[i + 1]); } });
+    });
+    return days;
+  }
+  function isEODText(t) { return /End\s+of\s+Day\s+Stats/i.test(t); }
+  /* End of Day email body. Works whether a label and its figure share a line or not. */
+  function parseEODText(t) {
+    var m = /Closed\s+on\s+(\d{1,2})\/(\w{3})\/(\d{4})/i.exec(t); if (!m || !MON[m[2]]) return null;
+    var closed = m[3] + '-' + MON[m[2]] + '-' + ('0' + m[1]).slice(-2), flat = t.replace(/\s+/g, ' ');
+    var wk = flat.search(/Week to Date/i), mo = flat.search(/Month to Date/i), day = flat.slice(0, wk < 0 ? flat.length : wk), mtd = mo < 0 ? '' : flat.slice(mo);
+    var get = function (src, label) { var x = new RegExp('(?:^| )' + label + ' (-?[\\d,]+\\.?\\d*)').exec(src); return x ? nn(x[1]) : 0; };
+    var rev = function (src) { return { accom: get(src, 'ACCOM'), bev: get(src, 'BEVERAGE'), conf: get(src, 'CONFERENCE'), food: get(src, 'FOOD'), misc: get(src, 'MISC'), sund: get(src, 'SUNDRIES') }; };
+    var d = rev(day); d.net = d.accom + d.bev + d.conf + d.food + d.misc + d.sund;
+    d.rooms = get(day, 'Rooms Sold'); d.occ = get(day, 'Occ%'); d.deposits = get(day, 'Deposits'); d.ledger = get(day, 'Sales Ledger'); d.inhouse = get(day, 'In-House');
+    return { closed: closed, day: shift(closed, -1), d: d, mtd: mtd ? rev(mtd) : null };
+  }
+  function mergeDaily(store, days, meta) {
+    store = store || {}; store.daily = store.daily || {}; store.received = store.received || [];
+    Object.keys(days).forEach(function (k) { var o = store.daily[k] || {}; Object.keys(days[k]).forEach(function (f) { o[f] = days[k][f]; }); o.src = meta.kind; store.daily[k] = o; });
+    var ks = Object.keys(store.daily).sort(); ks.slice(0, -120).forEach(function (k) { delete store.daily[k]; });
+    if (meta.mtd) store.eodMtd = { asOf: meta.asOf, to: meta.to, rev: meta.mtd };
+    store.received.unshift({ ts: meta.asOf, kind: meta.kind === 'eod' ? 'pe' : meta.kind, file: meta.file, rows: Object.keys(days).length });
+    store.received = store.received.slice(0, 60);
+    return store;
+  }
+
+  var api = { csv: csv, isAF: isAF, parseAF: parseAF, isPE: isPE, parsePE: parsePE, merge: merge, readReport: readReport, mergeReport: mergeReport, isAFCells: isAFCells, parseAFCells: parseAFCells, isKPCells: isKPCells, parseKPCells: parseKPCells, isEODText: isEODText, parseEODText: parseEODText, mergeDaily: mergeDaily };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TradingEngine = api;
+})(typeof window !== 'undefined' ? window : this);
