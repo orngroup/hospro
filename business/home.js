@@ -131,7 +131,7 @@
   function closeDrawer() { document.body.classList.remove('drawer-open'); }
 
   /* ---------- Hub ---------- */
-  var CARDS = [['pf-trading', 'trading', 'Trading', 'Occupancy, rate, RevPAR and revenue by night'], ['pf-demand', 'demand', 'Channels & rates', 'Booking sources, rate plans, cancellations, no-shows'], ['pf-fb', 'fb', 'Food & beverage', 'Sales by outlet and meal against what was bought'], ['pf-profit', 'profit', 'Profitability', 'Revenue, costs and profit by month and department'], ['pf-labour', 'labour', 'Labour', 'Payroll by department, agency and employer costs'], ['pf-trends', 'kpi', 'Trends', 'ADR, RevPAR, TRevPAR, revenue and costs over time'], ['pf-stock', 'stock', 'Purchased vs consumed', 'Purchases against cost of sales in the accounts'], ['explore', 'explore', 'Supplier costs', 'Every cost line by supplier, type, section and month'], ['bar', 'bar', 'Bar & keg prices', 'Keg price history and market comparison'], ['rooms', 'rooms', 'Rooms, linen & housekeeping', 'Linen, cleaning, guest supplies and waste'], ['pf-actions', 'actions', 'Action Centre', 'Actions, watch list, savings and checks'], ['pf-data', 'data', 'Data & reports', 'What has been imported, when, and the Gmail feed']];
+  var CARDS = [['pf-trading', 'trading', 'Trading', 'Occupancy, rate, RevPAR and revenue by night'], ['pf-demand', 'demand', 'Channels & rates', 'Booking sources, rate plans, cancellations, no-shows'], ['pf-fb', 'fb', 'Food & beverage', 'Sales by outlet and meal against what was bought'], ['pf-cnb', 'events', 'Conference & Events', 'Weddings, meetings, dinners · live from Guestline C&B'], ['pf-profit', 'profit', 'Profitability', 'Revenue, costs and profit by month and department'], ['pf-labour', 'labour', 'Labour', 'Payroll by department, agency and employer costs'], ['pf-trends', 'kpi', 'Trends', 'ADR, RevPAR, TRevPAR, revenue and costs over time'], ['pf-stock', 'stock', 'Purchased vs consumed', 'Purchases against cost of sales in the accounts'], ['explore', 'explore', 'Supplier costs', 'Every cost line by supplier, type, section and month'], ['bar', 'bar', 'Bar & keg prices', 'Keg price history and market comparison'], ['rooms', 'rooms', 'Rooms, linen & housekeeping', 'Linen, cleaning, guest supplies and waste'], ['pf-actions', 'actions', 'Action Centre', 'Actions, watch list, savings and checks'], ['pf-data', 'data', 'Data & reports', 'What has been imported, when, and the Gmail feed']];
   /* card photographs: add a file to costs/img and name it here, e.g. trading: 'card-trading.jpg' */
   var CARD_IMG = {}, CARD_DEFAULT = 'card-default.jpg';
   var TITLES = { 'pf-kpi': 'Trends · Monthly KPI tables', 'pf-home': 'Hub', 'pf-brief': 'Project brief', 'pf-help': 'How figures are worked out', save: 'Action Centre · Savings & checks', update: 'Data & reports · Load Xero exports' };
@@ -1981,6 +1981,89 @@
     if ($(legId)) $(legId).innerHTML = series.map(function (x, i) { return '<span><i style="background:' + PAL[i] + '"></i>' + x[0] + '</span>'; }).join('') + (note ? '<span style="color:#86847d">' + note + '</span>' : '');
     (store || trCharts).push(new Chart($(id), { type: 'line', data: { labels: labels, datasets: series.map(function (x, i) { return { label: x[0], data: x[1], borderColor: PAL[i], backgroundColor: PAL[i], borderWidth: 2, pointRadius: labels.length > 20 ? 0 : 3, pointHoverRadius: 5, tension: 0.25, spanGaps: true }; }) }, options: { maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + fmt(c.parsed.y); } } } }, scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } }, y: { beginAtZero: true, grid: { color: '#ebe9e3', drawTicks: false }, border: { display: false }, ticks: { callback: function (v) { return fmt(v, 1); }, maxTicksLimit: 6 } } } } }));
   }
+  /* v39.23 — Conference & Banqueting tab. Fetches /hosfuncFunctionsGet and shows
+     all forward events with filters + per-type aggregates. */
+  var CNB_CACHE = null;
+  function fetchCnb(cb) {
+    var tok = null;
+    try { tok = localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) {}
+    if (!tok) { cb({ error: 'Sign in required' }); return; }
+    fetch('https://europe-west2-brandonhall-7bdef.cloudfunctions.net/hosfuncFunctionsGet', { headers: { 'Authorization': 'Bearer ' + tok } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { CNB_CACHE = j; cb(j); })
+      .catch(function (e) { cb({ error: String(e) }); });
+  }
+  var cnbStatus = 'all', cnbType = 'all';
+  function renderCnb() {
+    var el = $('pf-cnb'); if (!el) return;
+    var cache = CNB_CACHE;
+    var h = '<div class="card"><h2>Conference &amp; Events <span style="display:inline-block;width:8px;height:8px;background:' + (cache && cache.ok ? '#1a8f63' : '#b26a00') + ';border-radius:50%;margin-left:8px;vertical-align:middle;position:relative;top:-2px"></span><span style="font-size:11px;color:' + (cache && cache.ok ? '#1a8f63' : '#b26a00') + ';margin-left:6px;font-weight:600;letter-spacing:.2px;text-transform:uppercase">Guestline C&amp;B</span></h2>' +
+      '<p class="sub">Every function, wedding, meeting and private event on the books from Guestline Conference &amp; Banqueting.</p>';
+
+    if (!cache) {
+      h += '<div style="padding:16px;text-align:center;color:#7b8494">Loading…</div></div>';
+      el.innerHTML = h;
+      fetchCnb(function () { renderCnb(); });
+      return;
+    }
+
+    if (cache.error || !cache.ok) {
+      h += '<div style="padding:16px;background:#fdf6f5;border:1px solid #e3b9b9;border-radius:8px;color:#8a1e15;font-size:13px">' +
+        '<b>Feed not yet live.</b> Run the C&amp;B SOAP probe to find the correct Rezlynx method:<br>' +
+        '<code style="display:block;margin-top:8px;padding:8px;background:#fff;border-radius:4px;font-size:11.5px">curl "https://europe-west2-brandonhall-7bdef.cloudfunctions.net/hosfuncProbe" -H "x-gl-key: YOUR_ADMIN_KEY"</code>' +
+        'When it returns a method name, run <code>hosfuncPull</code> to populate Firestore.' +
+        (cache.error ? '<p style="margin:8px 0 0;color:#7b8494;font-size:11.5px">' + esc(cache.error) + '</p>' : '') +
+      '</div></div>';
+      el.innerHTML = h;
+      return;
+    }
+
+    var rows = (cache.rows || []).filter(function (r) {
+      if (cnbStatus !== 'all' && !new RegExp('^' + cnbStatus, 'i').test(r.status)) return false;
+      if (cnbType !== 'all' && r.functionType !== cnbType) return false;
+      return true;
+    });
+    var totals = cache.totals || {};
+    var types = Object.keys(totals.byType || {}).sort();
+
+    h += '<div class="tiles" style="margin-top:14px">' +
+      tile('Events on the books', num((totals.total || {}).count), gbp((totals.total || {}).revenue || 0) + ' est. revenue · ' + num((totals.total || {}).delegates) + ' delegates') +
+      tile('Confirmed', num((totals.confirmed || {}).count), gbp((totals.confirmed || {}).revenue || 0)) +
+      tile('Provisional', num((totals.provisional || {}).count), gbp((totals.provisional || {}).revenue || 0) + ' · needs chasing') +
+      tile('Last pulled', cache.lastPull ? new Date(cache.lastPull.at).toLocaleString('en-GB') : '—', cache.lastPull ? cache.lastPull.method + ' · ' + cache.lastPull.rowsStored + ' rows' : 'feed pending wire-up') +
+      '</div></div>';
+
+    // Filters + table
+    h += '<div class="card"><h2>Forward events</h2>' +
+      '<div style="display:flex;gap:10px;margin:10px 0;flex-wrap:wrap">' +
+        '<label style="font-size:12px;color:#52647a">Status <select id="cnb-status" style="padding:7px 10px;border:1px solid #c8d9dd;border-radius:5px;margin-left:4px"><option value="all"' + (cnbStatus === 'all' ? ' selected' : '') + '>All</option><option value="confirm"' + (cnbStatus === 'confirm' ? ' selected' : '') + '>Confirmed</option><option value="provisi"' + (cnbStatus === 'provisi' ? ' selected' : '') + '>Provisional</option><option value="cancel"' + (cnbStatus === 'cancel' ? ' selected' : '') + '>Cancelled</option></select></label>' +
+        '<label style="font-size:12px;color:#52647a">Type <select id="cnb-type" style="padding:7px 10px;border:1px solid #c8d9dd;border-radius:5px;margin-left:4px"><option value="all">All</option>' + types.map(function (t) { return '<option value="' + esc(t) + '"' + (cnbType === t ? ' selected' : '') + '>' + esc(t) + ' (' + totals.byType[t].count + ')</option>'; }).join('') + '</select></label>' +
+        '<span style="font-size:11.5px;color:#7b8494;align-self:center">' + rows.length + ' events shown</span>' +
+      '</div>' +
+      '<div style="overflow-x:auto;max-height:620px;overflow-y:auto"><table><thead style="position:sticky;top:0;background:#eef3f8;z-index:1"><tr>' +
+        '<th>Date</th><th>Ref</th><th>Type</th><th>Location</th><th>Contact</th><th>Company</th><th class="n">Delegates</th><th>Status</th><th class="n">Revenue</th>' +
+      '</tr></thead><tbody>' +
+      rows.map(function (r) {
+        var sc = /^confirm/i.test(r.status) ? '#1a7f4b' : (/^cancel/i.test(r.status) ? '#c0362b' : '#b26a00');
+        return '<tr>' +
+          '<td><b>' + esc(r.from) + '</b>' + (r.to && r.to !== r.from ? '<div style="font-size:10.5px;color:#7b8494">→ ' + esc(r.to) + '</div>' : '') + '</td>' +
+          '<td style="font-family:monospace;font-size:11.5px">' + esc(r.bookRef) + '</td>' +
+          '<td>' + esc(r.functionType || '—') + '</td>' +
+          '<td>' + esc(r.location || '—') + '</td>' +
+          '<td>' + esc(r.contact || '—') + (r.description ? '<div style="font-size:10.5px;color:#7b8494;margin-top:2px">' + esc(r.description).slice(0, 80) + '</div>' : '') + '</td>' +
+          '<td>' + esc(r.company || '—') + '</td>' +
+          '<td class="n">' + num(r.delegates) + '</td>' +
+          '<td style="color:' + sc + ';font-weight:600">' + esc(r.status) + '</td>' +
+          '<td class="n"><b>' + gbp(r.revenue) + '</b></td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table></div></div>';
+
+    el.innerHTML = h;
+    var s = document.getElementById('cnb-status'); if (s) s.onchange = function () { cnbStatus = s.value; renderCnb(); };
+    var t = document.getElementById('cnb-type'); if (t) t.onchange = function () { cnbType = t.value; renderCnb(); };
+  }
+
   function renderTrends() {
     var el = $('pf-trends'), T = window.Trading, S = T ? T.S() : {}, PD = window.Profit.data(), h = ''; trCharts.forEach(function (c) { c.destroy(); }); trCharts = [];
     var rows = [], cut = '';
@@ -2235,7 +2318,7 @@
   document.addEventListener('hub-signin', function () { unlock(); liveFeed().then(glFeed); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
   window.HubAccounts = renderAccounts;
-  if (window.Profit && window.Profit.register) { ['home', renderHome, 'actions', renderActions, 'fb', renderFb, 'data', renderData, 'help', renderHelp, 'trends', renderTrends].forEach(function (v, i, arr) { if (i % 2 === 0) window.Profit.register(v, arr[i + 1]); }); }
+  if (window.Profit && window.Profit.register) { ['home', renderHome, 'actions', renderActions, 'fb', renderFb, 'cnb', renderCnb, 'data', renderData, 'help', renderHelp, 'trends', renderTrends].forEach(function (v, i, arr) { if (i % 2 === 0) window.Profit.register(v, arr[i + 1]); }); }
   document.addEventListener('DOMContentLoaded', function () {
     unlock(); crumb('pf-home'); if (window.Profit.signedIn()) liveFeed().then(glFeed); else chip();
     var sv = $('t-save'); if (sv && !sv.querySelector('.segs')) sv.insertAdjacentHTML('afterbegin', '<div id="save-pills"></div>');
