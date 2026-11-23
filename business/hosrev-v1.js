@@ -3052,6 +3052,7 @@
   var REPORT_LABELS = [
     { key: 'dailyBrief',      label: '08:00 Daily Business Update', hint: 'Full trading brief every morning' },
     { key: 'rateActionBrief', label: "09:45 Rate Action Brief",      hint: "Patrik's rate-decision brief · weekdays and weekends" },
+    { key: 'hodBrief',        label: '17:00 HOD Daily Report',       hint: 'End-of-day snapshot across every operational area (Business, Housekeeping, F&B, Front Office, Sales & Events)' },
     { key: 'watchdog',        label: 'ARIA Watchdog alerts',         hint: 'Only when a scheduled job stalls or fails' },
     { key: 'ariaAlerts',      label: 'ARIA intraday alerts',         hint: 'Soft nights, rate moves, in-day signals' }
   ];

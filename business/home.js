@@ -248,6 +248,15 @@
       .finally(function () { MF_INFLIGHT = false; });
   }
 
+  /* v39.18 — tooltip helper. Produces an ⓘ icon with hover-expanded info panel.
+     `title` is the bold headline, `body` is the full explanation (HTML-safe via esc), `formula` an optional formula line. */
+  function mfTip(title, body, formula) {
+    return '<span class="mf-i" tabindex="0" title="' + esc(title + ' — ' + body) + '">i' +
+      '<span class="mf-tt"><b>' + esc(title) + '</b><br>' + esc(body) +
+      (formula ? '<div class="mf-tt-f">Formula: ' + esc(formula) + '</div>' : '') +
+      '</span></span>';
+  }
+
   function renderFlash(flash, commentary, briefHeadline) {
     if (!flash) return '';
     var d = flash.day, w = flash.week, m = flash.month, y = flash.year, la = flash.lookAhead;
@@ -340,17 +349,22 @@
       projHtml =
         '<div class="mf-proj">' +
           '<div class="mf-proj-hd">' +
-            '<div><div class="mf-proj-k">Month-end projection · ' + esc(monthName) + '</div>' +
+            '<div><div class="mf-proj-k">Month-end projection · ' + esc(monthName) +
+              ' <span style="font-style:italic;cursor:help;margin-left:8px;color:#C7A87A" title="How this is built: Actual-to-date comes from closed Rezlynx days (gl_days). On-books comes from the forward SOAP pull of the next ~30 nights (hosbookTick every 2 hours). Modelled F&amp;B uses a 28-night trailing per-occupied-room ratio applied to forward rooms. vs Last Year compares against the same calendar month in the prior year.">ⓘ</span>' +
+            '</div>' +
               '<div class="mf-proj-sub">Actual to yesterday + confirmed bookings + modelled F&amp;B · updated ' + (mf.asOf ? new Date(mf.asOf).toLocaleTimeString('en-GB').slice(0, 5) : 'today') + '</div>' +
             '</div>' +
             (lyTotal != null ? '<div class="mf-proj-ly"><div class="mf-proj-ly-l">vs Last Year same month</div><div class="mf-proj-ly-v">' + mfGbp(lyTotal) + ' ' + vsLYHtml + '</div></div>' : '') +
           '</div>' +
           '<div class="mf-proj-row">' +
-            '<div class="mf-proj-t mf-proj-act"><div class="mf-proj-l">Actual to date</div><div class="mf-proj-v">' + mfGbp(actTotal) + '</div><div class="mf-proj-s">' + (mf.actual ? mf.actual.nights : 0) + ' closed nights · ' + (mf.actual ? mf.actual.rooms : 0) + ' rooms sold</div></div>' +
+            '<div class="mf-proj-t mf-proj-act" title="Closed-day actuals from Guestline. Day is closed overnight — the figure for today appears tomorrow.">' +
+              '<div class="mf-proj-l">Actual to date</div><div class="mf-proj-v">' + mfGbp(actTotal) + '</div><div class="mf-proj-s">' + (mf.actual ? mf.actual.nights : 0) + ' closed nights · ' + (mf.actual ? mf.actual.rooms : 0) + ' rooms sold</div></div>' +
             '<div class="mf-proj-plus">+</div>' +
-            '<div class="mf-proj-t mf-proj-ob"><div class="mf-proj-l">On the books</div><div class="mf-proj-v">' + mfGbp(obTotal) + '</div><div class="mf-proj-s">' + (mf.onBooks ? mf.onBooks.nights : 0) + ' forward nights · ' + (mf.onBooks ? mf.onBooks.rooms : 0) + ' booked</div></div>' +
+            '<div class="mf-proj-t mf-proj-ob" title="Confirmed bookings in Rezlynx for the remaining nights of the month, pulled via the pmsint_GetArrivals SOAP every 2 hours.">' +
+              '<div class="mf-proj-l">On the books</div><div class="mf-proj-v">' + mfGbp(obTotal) + '</div><div class="mf-proj-s">' + (mf.onBooks ? mf.onBooks.nights : 0) + ' forward nights · ' + (mf.onBooks ? mf.onBooks.rooms : 0) + ' booked</div></div>' +
             '<div class="mf-proj-plus">=</div>' +
-            '<div class="mf-proj-t mf-proj-end"><div class="mf-proj-l">Month-end forecast</div><div class="mf-proj-v">' + mfGbp(endTotal) + '</div><div class="mf-proj-s">' + (mf.monthEnd.rooms || 0) + ' rooms · ' + ((mf.monthEnd.occPct || 0) * 100).toFixed(1) + '% occupancy</div></div>' +
+            '<div class="mf-proj-t mf-proj-end" title="Actual + On-books + modelled F&B and Other. Matches Alia\'s WhatsApp forecast methodology.">' +
+              '<div class="mf-proj-l">Month-end forecast</div><div class="mf-proj-v">' + mfGbp(endTotal) + '</div><div class="mf-proj-s">' + (mf.monthEnd.rooms || 0) + ' rooms · ' + ((mf.monthEnd.occPct || 0) * 100).toFixed(1) + '% occupancy</div></div>' +
           '</div>' +
           '<div class="mf-proj-ft">' +
             'Accommodation: ' + mfGbp(mf.actual && mf.actual.accomNet) + ' actual + ' + mfGbp(mf.onBooks && mf.onBooks.accomNet) + ' booked = <b>' + mfGbp(mf.monthEnd.accomNet) + '</b>' +
@@ -464,18 +478,21 @@
         '<div class="mf-hd">' +
           '<div><div class="mf-hd-kicker">Daily Business Update · ' + esc(flash.hotel) + '</div>' +
           '<h2>' + esc(dateHuman) + '</h2></div>' +
-          '<div class="mf-hd-r"><button class="mf-btn" data-mf-refresh>↻ Refresh</button></div>' +
+          '<div class="mf-hd-r">' +
+            '<a href="#revenue" class="mf-btn" style="text-decoration:none;margin-right:6px">ARIA commentary & actions →</a>' +
+            '<button class="mf-btn" data-mf-refresh>↻ Refresh</button>' +
+          '</div>' +
         '</div>' +
-        // v39.17 — Month-end projection headline first. Shows where the month is landing, not just where it is today.
+        // v39.18 — Business Today is now pure numbers. ARIA commentary, spotlight,
+        // anomalies, wins, misses and actions moved to the Revenue Management tab
+        // (Discrepancies sub-tab) and remain in the 08:00 email.
         projHtml +
         tmHtml +
-        commentaryHtml +
-        spotlightHtml +
-        flagsHtml +
-        briefHtml +
-        actionsHtml +
         kpiHtml +
-        '<h3 class="mf-sh">Revenue · net of VAT</h3>' +
+        '<h3 class="mf-sh">Revenue · net of VAT' +
+          mfTip('Revenue — net of VAT', 'All figures exclude 20% VAT. Day = yesterday\'s close. WTD = Monday of this week to yesterday. MTD = 1st of month to yesterday. YTD = 1 January to yesterday. Comes from the Guestline Rezlynx daily financial feed (gl_days collection) — populated by the 05:00 overnight pull.',
+            'Net = Gross − VAT, pulled from Rezlynx analysis-code groups (ACCOM, FOOD, BEVERAGE, CONFERENCE, MISC, SUNDRIES)') +
+        '</h3>' +
         '<table class="mf-t"><thead><tr><th>Metric</th><th>Day</th><th>WTD</th><th>MTD</th><th>YTD</th></tr></thead><tbody>' +
           rrow('Total revenue', d.revNet, w.revNet, m.revNet, y.revNet, mfGbp) +
           rrow('— Accommodation', d.accomNet, w.accomNet, m.accomNet, y.accomNet, mfGbp) +
@@ -488,7 +505,10 @@
         itemsHtml +
         chartHtml +
         dowHtml +
-        '<h3 class="mf-sh">Rooms &amp; rates</h3>' +
+        '<h3 class="mf-sh">Rooms &amp; rates' +
+          mfTip('Rooms & rates', 'ADR, RevPAR, TRevPAR and per-room productivity metrics. All based on 114 lettable rooms (120 total minus 5 staff + 1 storage). Rooms sold comes from Rezlynx overnight audit.',
+            'ADR = Accom revenue ÷ rooms sold · RevPAR = Accom revenue ÷ 114 lettable · TRevPAR = Total revenue ÷ 114') +
+        '</h3>' +
         '<table class="mf-t"><thead><tr><th>Metric</th><th>Day</th><th>WTD</th><th>MTD</th><th>YTD</th></tr></thead><tbody>' +
           rrow('Rooms sold', d.sold, w.sold, m.sold, y.sold, mfNum) +
           rrow('Occupancy %', d.occ, w.occ, m.occ, y.occ, mfPct) +
@@ -553,6 +573,14 @@
       '.mf-la-v{font-size:19px;font-weight:700;color:#1a2238;margin-top:3px}',
       '.mf-ft{font-size:11px;color:#7b8494;margin-top:14px;padding-top:12px;border-top:1px solid #efece5;line-height:1.5}',
       // KPI row
+      /* v39.18 — info tooltips for section headers. Hover the ⓘ icon to see
+         what the data is and how it's calculated. Accessible via title fallback. */
+      '.mf-i{display:inline-block;width:14px;height:14px;line-height:14px;text-align:center;border-radius:50%;background:#c8d9dd;color:#1a3b60;font-size:10px;font-weight:700;cursor:help;position:relative;margin-left:6px;vertical-align:middle;font-style:italic}',
+      '.mf-i:hover{background:#1F7A8C;color:#fff}',
+      '.mf-i .mf-tt{display:none;position:absolute;top:22px;left:-10px;width:300px;background:#1a2238;color:#fff;font-size:12px;font-weight:400;font-style:normal;line-height:1.5;padding:10px 12px;border-radius:6px;box-shadow:0 6px 16px rgba(0,0,0,.25);z-index:100;text-align:left;letter-spacing:0}',
+      '.mf-i:hover .mf-tt{display:block}',
+      '.mf-i .mf-tt b{color:#C7A87A}',
+      '.mf-i .mf-tt .mf-tt-f{font-size:11px;color:#9bb5c8;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.15)}',
       '.mf-kpi-h{font-size:11px;font-weight:700;letter-spacing:.4px;color:#52647a;text-transform:uppercase;margin:18px 0 6px}',
       '.mf-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 18px}',
       /* v39.17 — Month-end projection headline */
