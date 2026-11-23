@@ -326,52 +326,59 @@
 
     var briefHtml = briefHeadline ? '<div class="mf-brief"><b>ARIA\'s brief today:</b> ' + esc(briefHeadline) + '</div>' : '';
 
-    // v39.17 — Month-end projection headline. Sits above the daily KPI tiles
-    // so the GM / Ajay see where the month is LANDING, not just where it is today.
-    // Data comes from flash.monthForecast (built by backend forecastTick / buildFlash).
+    // v39.20 — "Latest trading position" strip at the top (compact, matches Alia's
+    // reporting style). Replaces the earlier three big tiles (Actual / On-books / Month-end)
+    // which duplicated info already shown in the KPI row and revenue table below.
+    // Core data from flash.monthForecast (actual MTD + on-books). Twelve-month vs-LY banner stays.
     var mf = flash.monthForecast;
     var tm = flash.twelveMonth;
-    var projHtml = '';
+    var tradingHtml = '';
     if (mf && mf.monthEnd) {
       var monthName = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
       var actTotal = mf.actual ? (mf.actual.total || 0) : 0;
       var obTotal  = mf.onBooks ? (mf.onBooks.total || 0) : 0;
       var endTotal = mf.monthEnd.total || 0;
-      // LY comparison from twelveMonth[0] if present
+      var actNights = mf.actual ? mf.actual.nights : 0;
+      var actRooms = mf.actual ? mf.actual.rooms : 0;
+      var obNights = mf.onBooks ? mf.onBooks.nights : 0;
+      var obRooms  = mf.onBooks ? mf.onBooks.rooms : 0;
+      var endOcc = ((mf.monthEnd.occPct || 0) * 100).toFixed(1);
+      // LY comparison
       var lyTotal = null, vsLY = null;
       if (tm && tm.months && tm.months.length) {
         var cur = tm.months.filter(function (r) { return r.isCurrent; })[0] || tm.months[0];
         if (cur && cur.lastYear) { lyTotal = cur.lastYear.total; vsLY = cur.vsLYPct; }
       }
-      var vsLYHtml = (vsLY == null) ? '' :
-        '<span style="color:' + (vsLY >= 0 ? '#1a6442' : '#8a1e15') + ';font-weight:700">' + (vsLY >= 0 ? '▲ +' : '▼ ') + (vsLY * 100).toFixed(1) + '%</span>';
+      var vsLYChip = (vsLY == null) ? '' :
+        '<span style="color:' + (vsLY >= 0 ? '#1a6442' : '#8a1e15') + ';font-weight:700;margin-left:6px">' + (vsLY >= 0 ? '▲ +' : '▼ ') + (vsLY * 100).toFixed(1) + '% vs LY</span>';
 
-      projHtml =
-        '<div class="mf-proj">' +
-          '<div class="mf-proj-hd">' +
-            '<div><div class="mf-proj-k">Month-end projection · ' + esc(monthName) +
-              ' <span style="font-style:italic;cursor:help;margin-left:8px;color:#C7A87A" title="How this is built: Actual-to-date comes from closed Rezlynx days (gl_days). On-books comes from the forward SOAP pull of the next ~30 nights (hosbookTick every 2 hours). Modelled F&amp;B uses a 28-night trailing per-occupied-room ratio applied to forward rooms. vs Last Year compares against the same calendar month in the prior year.">ⓘ</span>' +
+      tradingHtml =
+        '<div class="mf-trading">' +
+          '<div class="mf-trading-hd">' +
+            '<div>Latest trading position · <b>' + esc(monthName) + '</b>' +
+              '<span style="font-size:11.5px;color:#7b8494;font-weight:500;margin-left:10px">updated ' + (mf.asOf ? new Date(mf.asOf).toLocaleTimeString('en-GB').slice(0, 5) : 'today') + '</span>' +
             '</div>' +
-              '<div class="mf-proj-sub">Actual to yesterday + confirmed bookings + modelled F&amp;B · updated ' + (mf.asOf ? new Date(mf.asOf).toLocaleTimeString('en-GB').slice(0, 5) : 'today') + '</div>' +
+            (lyTotal != null ? '<div style="font-size:12px;color:#52647a">vs LY ' + mfGbp(lyTotal) + vsLYChip + '</div>' : '') +
+          '</div>' +
+          // Three split boxes: Revenue closed · Revenue on books · Month so far (Alia-style)
+          '<div class="mf-trading-row">' +
+            '<div class="mf-trading-box mf-tb-closed">' +
+              '<div class="mf-tb-l">Revenue closed</div>' +
+              '<div class="mf-tb-v">' + mfGbp(actTotal) + '</div>' +
+              '<div class="mf-tb-s">' + actNights + ' nights · ' + actRooms + ' rooms sold</div>' +
             '</div>' +
-            (lyTotal != null ? '<div class="mf-proj-ly"><div class="mf-proj-ly-l">vs Last Year same month</div><div class="mf-proj-ly-v">' + mfGbp(lyTotal) + ' ' + vsLYHtml + '</div></div>' : '') +
+            '<div class="mf-trading-box mf-tb-books">' +
+              '<div class="mf-tb-l">Revenue on books</div>' +
+              '<div class="mf-tb-v">' + mfGbp(obTotal) + '</div>' +
+              '<div class="mf-tb-s">' + obNights + ' nights · ' + obRooms + ' rooms forward</div>' +
+            '</div>' +
+            '<div class="mf-trading-box mf-tb-month">' +
+              '<div class="mf-tb-l">Month so far (forecast)</div>' +
+              '<div class="mf-tb-v">' + mfGbp(endTotal) + '</div>' +
+              '<div class="mf-tb-s">' + (mf.monthEnd.rooms || 0) + ' rooms · ' + endOcc + '% occupancy</div>' +
+            '</div>' +
           '</div>' +
-          '<div class="mf-proj-row">' +
-            '<div class="mf-proj-t mf-proj-act" title="Closed-day actuals from Guestline. Day is closed overnight — the figure for today appears tomorrow.">' +
-              '<div class="mf-proj-l">Actual to date</div><div class="mf-proj-v">' + mfGbp(actTotal) + '</div><div class="mf-proj-s">' + (mf.actual ? mf.actual.nights : 0) + ' closed nights · ' + (mf.actual ? mf.actual.rooms : 0) + ' rooms sold</div></div>' +
-            '<div class="mf-proj-plus">+</div>' +
-            '<div class="mf-proj-t mf-proj-ob" title="Confirmed bookings in Rezlynx for the remaining nights of the month, pulled via the pmsint_GetArrivals SOAP every 2 hours.">' +
-              '<div class="mf-proj-l">On the books</div><div class="mf-proj-v">' + mfGbp(obTotal) + '</div><div class="mf-proj-s">' + (mf.onBooks ? mf.onBooks.nights : 0) + ' forward nights · ' + (mf.onBooks ? mf.onBooks.rooms : 0) + ' booked</div></div>' +
-            '<div class="mf-proj-plus">=</div>' +
-            '<div class="mf-proj-t mf-proj-end" title="Actual + On-books + modelled F&B and Other. Matches Alia\'s WhatsApp forecast methodology.">' +
-              '<div class="mf-proj-l">Month-end forecast</div><div class="mf-proj-v">' + mfGbp(endTotal) + '</div><div class="mf-proj-s">' + (mf.monthEnd.rooms || 0) + ' rooms · ' + ((mf.monthEnd.occPct || 0) * 100).toFixed(1) + '% occupancy</div></div>' +
-          '</div>' +
-          '<div class="mf-proj-ft">' +
-            'Accommodation: ' + mfGbp(mf.actual && mf.actual.accomNet) + ' actual + ' + mfGbp(mf.onBooks && mf.onBooks.accomNet) + ' booked = <b>' + mfGbp(mf.monthEnd.accomNet) + '</b>' +
-            ' · F&amp;B: ' + mfGbp(mf.actual && mf.actual.fbNet) + ' actual + ' + mfGbp(mf.onBooks && mf.onBooks.fbNet) + ' modelled = <b>' + mfGbp(mf.monthEnd.fbNet) + '</b>' +
-            ' · Other: ' + mfGbp(mf.actual && mf.actual.otherNet) + ' actual + ' + mfGbp(mf.onBooks && mf.onBooks.otherNet) + ' modelled = <b>' + mfGbp(mf.monthEnd.otherNet) + '</b>' +
-            (mf.fbForecastBasis ? ' · F&amp;B modelled at £' + (mf.fbForecastBasis).toFixed(2) + '/room (28-night trailing)' : '') +
-          '</div>' +
+          '<div class="mf-trading-ft">Closed + on books + modelled F&amp;B = month forecast · matches Alia\'s reporting method · F&amp;B modelled at £' + ((mf.fbForecastBasis || 0).toFixed(2)) + '/room</div>' +
         '</div>';
     }
 
@@ -411,9 +418,9 @@
       '</div>';
     }
 
-    // F&B breakdown
-    var fbHtml = '<h3 class="mf-sh">Food &amp; Beverage</h3>' +
-      '<table class="mf-t"><thead><tr><th>Metric</th><th>Day</th><th>WTD</th><th>MTD</th><th>YTD</th></tr></thead><tbody>' +
+    // F&B breakdown — v39.20: dropped the inner "Food & Beverage" sub-heading;
+    // the parent "Food & Beverage Overview" section header sits immediately above.
+    var fbHtml = '<table class="mf-t"><thead><tr><th>Metric</th><th>Day</th><th>WTD</th><th>MTD</th><th>YTD</th></tr></thead><tbody>' +
         rrow('Total F&B', d.fbNet, w.fbNet, m.fbNet, y.fbNet, mfGbp) +
         rrow('— Food', d.foodNet, w.foodNet, m.foodNet, y.foodNet, mfGbp) +
         rrow('— Beverage', d.bevNet, w.bevNet, m.bevNet, y.bevNet, mfGbp) +
@@ -486,7 +493,7 @@
         // v39.18 — Business Today is now pure numbers. ARIA commentary, spotlight,
         // anomalies, wins, misses and actions moved to the Revenue Management tab
         // (Discrepancies sub-tab) and remain in the 08:00 email.
-        projHtml +
+        tradingHtml +
         tmHtml +
         kpiHtml +
         '<h3 class="mf-sh">Revenue · net of VAT' +
@@ -501,6 +508,11 @@
           rrow('— Misc & Sundries', (d.otherNet - d.confNet), (w.otherNet - w.confNet), (m.otherNet - m.confNet), (y.otherNet - y.confNet), mfGbp) +
           rrow('Payments received', d.payments, w.payments, m.payments, y.payments, mfGbp) +
         '</tbody></table>' +
+        // v39.20 — new section heading before F&B block so it's clearly its own area
+        '<h3 class="mf-sh mf-sh-fb" style="margin-top:28px;border-top:2px solid #C7A87A;padding-top:16px;font-size:17px">Food &amp; Beverage Overview' +
+          mfTip('Food & Beverage Overview', 'F&B revenue, covers, posting split and spend per cover. Covers the restaurant, bar and conference F&B. Food cost margin is in the F&B tab under Food Margins.',
+            'F&B per occupied room = (Food + Beverage Net) ÷ rooms sold') +
+        '</h3>' +
         fbHtml +
         itemsHtml +
         chartHtml +
@@ -584,6 +596,23 @@
       '.mf-kpi-h{font-size:11px;font-weight:700;letter-spacing:.4px;color:#52647a;text-transform:uppercase;margin:18px 0 6px}',
       '.mf-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 18px}',
       /* v39.17 — Month-end projection headline */
+      // v39.20 — "Latest trading position" card (replaces the old mf-proj block).
+      // Lighter, Alia-style 3-box split: Revenue closed · Revenue on books · Month so far.
+      '.mf-trading{background:#fff;border:1px solid #e4e2dc;border-left:4px solid #C7A87A;border-radius:10px;padding:16px 20px;margin-bottom:14px;box-shadow:0 1px 4px rgba(8,16,26,.04)}',
+      '.mf-trading-hd{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700;color:#1a2238;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #efece5;flex-wrap:wrap;gap:8px}',
+      '.mf-trading-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}',
+      '.mf-trading-box{padding:14px 16px;border-radius:8px;border:1px solid #e4e2dc;background:#fdfbf6}',
+      '.mf-tb-closed{background:#eef7f9;border-color:#b9d4da}',
+      '.mf-tb-books{background:#eef3f8;border-color:#c8d9dd}',
+      '.mf-tb-month{background:#1a2238;border-color:#1a2238;color:#fff}',
+      '.mf-tb-l{font-size:10.5px;font-weight:700;letter-spacing:.4px;color:#52514e;text-transform:uppercase;margin-bottom:4px}',
+      '.mf-tb-month .mf-tb-l{color:#C7A87A}',
+      '.mf-tb-v{font-size:26px;font-weight:800;letter-spacing:-.4px;color:#1a2238;margin:2px 0}',
+      '.mf-tb-month .mf-tb-v{color:#fff}',
+      '.mf-tb-s{font-size:11.5px;color:#7b8494;margin-top:2px}',
+      '.mf-tb-month .mf-tb-s{color:#bfdde3}',
+      '.mf-trading-ft{font-size:11px;color:#7b8494;padding-top:8px;border-top:1px solid #efece5;line-height:1.5}',
+      // Legacy mf-proj block kept for anywhere it may still be referenced.
       '.mf-proj{background:linear-gradient(135deg,#1a2238 0%,#145866 100%);color:#fff;border-radius:12px;padding:20px 22px;margin-bottom:14px;box-shadow:0 4px 14px rgba(20,34,56,.18)}',
       '.mf-proj-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px;flex-wrap:wrap}',
       '.mf-proj-k{font-size:11px;font-weight:700;letter-spacing:.8px;color:#C7A87A;text-transform:uppercase;margin-bottom:3px}',
