@@ -602,8 +602,8 @@
   /* ---------- Food & beverage ---------- */
   var fbCharts = [];
   var fbView = 'over', DOWN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  // v39.14: added Discount Impact sub-tab
-  function fbSeg(P) { var TP = window.Trading && window.Trading.S().x ? window.Trading.S().x.plu : null; return '<div class="segs">' + [['over', 'Overview'], ['cov', 'Covers'], ['disc', 'Discount impact'], ['term', 'By terminal'], ['brk', 'Breakfast'], ['menu', 'What we sell']].map(function (v) { var off = v[0] === 'term' ? !TP : ((v[0] === 'brk' || v[0] === 'menu') && !P); return '<button class="' + (fbView === v[0] ? 'on' : '') + '" data-fb="' + v[0] + '"' + (off ? ' disabled title="' + (v[0] === 'term' ? 'Needs the till item sales reports' : 'Needs the Rezlynx Postings report') + '"' : '') + '>' + v[1] + '</button>'; }).join('') + '</div>'; }
+  // v39.16: added Food Costs sub-tab (invoice upload + mapping + margin)
+  function fbSeg(P) { var TP = window.Trading && window.Trading.S().x ? window.Trading.S().x.plu : null; return '<div class="segs">' + [['over', 'Overview'], ['cov', 'Covers'], ['costs', 'Food Costs'], ['fbdisc', 'F&B Discrepancies'], ['disc', 'Discount impact'], ['term', 'By terminal'], ['brk', 'Breakfast'], ['menu', 'What we sell']].map(function (v) { var off = v[0] === 'term' ? !TP : ((v[0] === 'brk' || v[0] === 'menu') && !P); return '<button class="' + (fbView === v[0] ? 'on' : '') + '" data-fb="' + v[0] + '"' + (off ? ' disabled title="' + (v[0] === 'term' ? 'Needs the till item sales reports' : 'Needs the Rezlynx Postings report') + '"' : '') + '>' + v[1] + '</button>'; }).join('') + '</div>'; }
   function dshort(k) { return +k.slice(8) + ' ' + MN[+k.slice(5, 7) - 1]; }
   function postingsNote(P) { return '<p class="note">Source: Rezlynx Postings report, ' + dlabel(P.from) + ' to ' + dlabel(P.to) + ' ' + P.to.slice(0, 4) + ', run ' + when(P.asOf) + '. Net of VAT. It covers the restaurant, room service and breakfast codes; bar till sales (analysis code BAR1BEV) are not in this export. Deleted postings (' + P.deleted.c + ', ' + gbp(P.deleted.v) + ') are left out; refunds and adjustments (' + P.refunds.c + ', ' + gbp(P.refunds.v) + ') are netted off. Guest names are not kept. Guestline cannot email this report, so it is exported by hand.</p>'; }
   function renderBrk(el, S, P) {
@@ -893,12 +893,441 @@
     };
   }
 
+  /* v39.15 — F&B Discrepancies sub-tab. Pulls issues from live gl_days + Postings report. */
+  function renderFbDisc(el, S, P) {
+    var h = fbSeg(P);
+    var TP = S.x && S.x.plu ? S.x.plu : null;
+    var rows = (S.af && S.af.rows) ? S.af.rows : [];
+    var discSettings = getDiscSettings();
+
+    // Compute discrepancies
+    var findings = [];
+
+    // 1. Discount running above threshold
+    if (TP) {
+      var totalDisc = 0, totalGross = 0;
+      Object.keys(TP.terms).forEach(function (k) { totalDisc += TP.terms[k].adj || 0; totalGross += TP.terms[k].gross || 0; });
+      var discPct = totalGross > 0 ? -totalDisc / totalGross : 0;
+      if (discPct > (discSettings.pct || 15) / 100 * 1.2) {
+        findings.push({
+          cat: 'anom', severity: 'high',
+          title: 'Discount running ' + pc(discPct) + ' of gross — above target ' + (discSettings.pct || 15) + '%',
+          detail: 'Total discount of ' + gbp(-totalDisc) + ' on ' + gbp(totalGross) + ' menu price (incl VAT). Target is ' + (discSettings.pct || 15) + '%; current is ' + Math.round(discPct * 100) + '%. Consider tightening eligibility, or raise menu prices to compensate.',
+          figures: ['Given away: ' + gbp(-totalDisc), 'Of: ' + gbp(totalGross), '%: ' + pc(discPct)]
+        });
+      }
+    }
+
+    // 2. Till-level discount concentration
+    if (TP) {
+      var worst = null;
+      Object.keys(TP.terms).forEach(function (k) {
+        var t = TP.terms[k];
+        if (!t.gross) return;
+        var p = -t.adj / t.gross;
+        if (!worst || p > worst.pct) worst = { till: k, adj: t.adj, gross: t.gross, pct: p };
+      });
+      if (worst && worst.pct > 0.15) {
+        findings.push({
+          cat: 'miss', severity: 'medium',
+          title: worst.till + ' discounted at ' + pc(worst.pct) + ' of menu price',
+          detail: 'The ' + worst.till + ' till has the highest discount rate — ' + gbp(-worst.adj) + ' taken off ' + gbp(worst.gross) + '. If this is intentional (loyalty, residents, staff), fine. If not, review the discount buttons on that terminal with Glen.',
+          figures: ['Discount: ' + gbp(-worst.adj), 'Gross: ' + gbp(worst.gross), '%: ' + pc(worst.pct)]
+        });
+      }
+    }
+
+    // 3. Specific dishes with very heavy discount
+    if (TP) {
+      var heavyItems = [];
+      Object.keys(TP.terms).forEach(function (k) {
+        (TP.terms[k].items || []).forEach(function (it) {
+          if (!it[3] || !it[4]) return;
+          var disc = -it[3], sold = it[4] + -it[3];
+          if (sold <= 0) return;
+          var pct = disc / sold;
+          if (pct > 0.25 && disc > 50) heavyItems.push({ name: it[0], till: k, qty: it[1], sold: sold, disc: disc, pct: pct });
+        });
+      });
+      heavyItems.sort(function (a, b) { return b.disc - a.disc; });
+      if (heavyItems.length) {
+        findings.push({
+          cat: 'miss', severity: 'low',
+          title: heavyItems.length + ' dish' + (heavyItems.length === 1 ? '' : 'es') + ' discounted >25% of menu price',
+          detail: heavyItems.slice(0, 5).map(function (x) { return x.name + ' (' + x.till + '): ' + x.qty + ' sold, ' + gbp(x.disc) + ' discount — ' + pc(x.pct); }).join(' · ') + (heavyItems.length > 5 ? ' …plus ' + (heavyItems.length - 5) + ' more' : ''),
+          figures: heavyItems.slice(0, 3).map(function (x) { return x.name + ': ' + gbp(x.disc); })
+        });
+      }
+    }
+
+    // 4. F&B per occupied room trend — last 7 vs prior 7
+    if (rows.length >= 14) {
+      var tail = rows.slice(-14);
+      var l7 = tail.slice(-7), p7 = tail.slice(0, 7);
+      var fbPer = function (arr) {
+        var fb = 0, rm = 0;
+        arr.forEach(function (r) { fb += (r.food || 0) + (r.bev || 0); rm += r.sold || 0; });
+        return rm > 0 ? fb / rm : 0;
+      };
+      var now7 = fbPer(l7), prev7 = fbPer(p7);
+      var delta = prev7 > 0 ? (now7 - prev7) / prev7 : 0;
+      if (delta < -0.10) {
+        findings.push({
+          cat: 'anom', severity: 'high',
+          title: 'F&B per occupied room DOWN ' + pc(-delta) + ' vs prior 7',
+          detail: 'Last 7 nights averaged ' + gbp(now7, 2) + ' F&B per occupied room vs ' + gbp(prev7, 2) + ' the prior 7 (' + pc(delta) + '). Likely causes: softer dining demand, more room-only bookings, or Glen\'s pricing/menu change not holding attach rate.',
+          figures: ['Now: ' + gbp(now7, 2) + '/room', 'Prev: ' + gbp(prev7, 2) + '/room', 'Δ: ' + pc(delta)]
+        });
+      } else if (delta > 0.10) {
+        findings.push({
+          cat: 'win', severity: 'info',
+          title: 'F&B per occupied room UP ' + pc(delta) + ' vs prior 7',
+          detail: 'F&B per occupied room lifted from ' + gbp(prev7, 2) + ' to ' + gbp(now7, 2) + '. If the discount launched 1 Nov and this covers the discounted window, it\'s a strong signal that the discount is driving incremental covers — see the Discount Impact tab for the full before/after.',
+          figures: ['Now: ' + gbp(now7, 2) + '/room', 'Prev: ' + gbp(prev7, 2) + '/room', 'Δ: +' + pc(delta)]
+        });
+      }
+    }
+
+    // 5. Covers below trend (if covers data available)
+    if (window.FB_COVERS_CACHE && window.FB_COVERS_CACHE.days) {
+      var days = window.FB_COVERS_CACHE.days;
+      if (days.length >= 14) {
+        var sumCov = function (arr) {
+          return arr.reduce(function (t, d) { return t + ((d.breakfast || 0) + (d.lunch || 0) + (d.dinner || 0)); }, 0);
+        };
+        var cv7 = sumCov(days.slice(-7)), cvP = sumCov(days.slice(-14, -7));
+        var cvDelta = cvP > 0 ? (cv7 - cvP) / cvP : 0;
+        if (cvDelta < -0.08) {
+          findings.push({
+            cat: 'anom', severity: 'medium',
+            title: 'Covers down ' + pc(-cvDelta) + ' vs prior 7 nights',
+            detail: 'Last 7 nights served ' + cv7 + ' covers vs ' + cvP + ' the prior 7. Review with Glen: is it an occupancy effect (fewer in-house guests) or an attach-rate effect (same guests eating out elsewhere)?',
+            figures: ['Last 7: ' + cv7 + ' covers', 'Prior 7: ' + cvP + ' covers', 'Δ: ' + pc(cvDelta)]
+          });
+        }
+      }
+    }
+
+    // Render
+    h += (
+      '<div class="card"><h2>F&B Discrepancies &amp; watch-items</h2>' +
+        '<p class="sub">ARIA auto-scans the F&B data for anomalies — discount concentration, specific dishes losing money, cover trend shifts, attach-rate changes. Click any finding to expand.</p>' +
+        (findings.length === 0 ? (
+          '<div class="finding good"><h3>Nothing to flag today</h3><p>F&B signals are within normal patterns. Keep an eye on the Discount Impact tab for the ongoing before/after on the 15% food discount.</p></div>'
+        ) : (
+          '<div style="margin-top:10px">' +
+            findings.map(function (f) {
+              var clr = f.cat === 'anom' ? '#8a1e15' : (f.cat === 'win' ? '#1a6442' : '#7a5f0b');
+              var bg = f.cat === 'anom' ? '#fdf6f5' : (f.cat === 'win' ? '#f0f6ea' : '#fffbe8');
+              var bd = f.cat === 'anom' ? '#f0d6d2' : (f.cat === 'win' ? '#d4e3c3' : '#ecd584');
+              var icon = f.cat === 'anom' ? '⚡' : (f.cat === 'win' ? '✓' : '⚠');
+              var sev = f.severity === 'high' ? '<span style="background:#c0362b;color:#fff;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:700;margin-left:6px">HIGH</span>' : (f.severity === 'medium' ? '<span style="background:#eb6834;color:#fff;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:700;margin-left:6px">MED</span>' : '');
+              return '<details style="margin:6px 0;padding:0;background:' + bg + ';border:1px solid ' + bd + ';border-left:3px solid ' + clr + ';border-radius:6px">' +
+                '<summary style="cursor:pointer;padding:12px 14px;font-size:13.5px;color:#1a2238;font-weight:600;list-style:none">' +
+                  '<span style="color:' + clr + ';margin-right:6px">' + icon + '</span>' + esc(f.title) + sev +
+                  '<span style="float:right;color:#7b8494;font-size:11px;margin-left:8px">▸ details</span>' +
+                '</summary>' +
+                '<div style="padding:4px 16px 14px;border-top:1px solid ' + bd + ';margin-top:4px">' +
+                  '<p style="margin:12px 0 0;font-size:13px;line-height:1.55;color:#2c3440">' + esc(f.detail) + '</p>' +
+                  (f.figures && f.figures.length ? '<p style="margin:10px 0 0;font-size:11.5px;color:#7b8494"><b>Key figures:</b> ' + f.figures.map(function (x) { return '<span style="background:#fff;padding:2px 6px;border-radius:3px;margin-right:4px;font-family:monospace;color:#1a2238">' + esc(x) + '</span>'; }).join(' ') + '</p>' : '') +
+                '</div>' +
+              '</details>';
+            }).join('') +
+          '</div>'
+        )) +
+      '</div>' +
+
+      // Context cards
+      '<div class="grid g2" style="margin-top:14px">' +
+        '<div class="card"><h2>What this watches for</h2><ul style="margin:8px 0;padding-left:20px;font-size:13px;line-height:1.7">' +
+          '<li>Discount % of gross above your target (currently ' + (discSettings.pct || 15) + '%)</li>' +
+          '<li>Single till discounting above 15% of its gross</li>' +
+          '<li>Individual dishes being discounted >25% from menu price</li>' +
+          '<li>F&B per occupied room trend shifts (±10% vs prior 7 nights)</li>' +
+          '<li>Cover count trend shifts (±8% vs prior 7 nights)</li>' +
+        '</ul></div>' +
+        '<div class="card"><h2>Coming next (when data lands)</h2><ul style="margin:8px 0;padding-left:20px;font-size:13px;line-height:1.7">' +
+          '<li><b>Dish-level GP%</b> — needs food invoices (upload folder when ready)</li>' +
+          '<li><b>Stock-on-hand</b> — bought vs sold reconciliation</li>' +
+          '<li><b>Waste tracking</b> — unaccounted stock as a weekly anomaly</li>' +
+          '<li><b>Breakfast attach rate</b> — vs expected based on in-house guests</li>' +
+          '<li><b>Live postings scan</b> — tag discount lines from gl_items feed automatically (needs discount analysis code from Glen)</li>' +
+        '</ul></div>' +
+      '</div>'
+    );
+
+    el.innerHTML = h;
+  }
+
+  /* v39.16 — Food Costs sub-tab. Upload PDF invoices, view parsed line items,
+     map supplier items to POS items, see aggregate spend. */
+  var FB_COSTS_CACHE = null;
+  function fetchFbCosts(cb) {
+    var tok = null;
+    try { tok = localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) {}
+    if (!tok) { cb({ error: 'Sign in required' }); return; }
+    fetch('https://europe-west2-brandonhall-7bdef.cloudfunctions.net/fbInvoicesGet', { headers: { 'Authorization': 'Bearer ' + tok } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { FB_COSTS_CACHE = j; cb(j); })
+      .catch(function (e) { cb({ error: String(e) }); });
+  }
+  function uploadFbInvoices(files, onProgress) {
+    var tok = null;
+    try { tok = localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) {}
+    if (!tok) return Promise.reject(new Error('Sign in required'));
+    var fd = new FormData();
+    for (var i = 0; i < files.length; i++) fd.append('invoice' + i, files[i], files[i].name);
+    return fetch('https://europe-west2-brandonhall-7bdef.cloudfunctions.net/fbInvoiceUpload', { method: 'POST', headers: { 'Authorization': 'Bearer ' + tok }, body: fd })
+      .then(function (r) { return r.json(); });
+  }
+  function setFbMapping(payload) {
+    var tok = null;
+    try { tok = localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) {}
+    if (!tok) return Promise.reject(new Error('Sign in required'));
+    return fetch('https://europe-west2-brandonhall-7bdef.cloudfunctions.net/fbMappingSet', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify(payload) })
+      .then(function (r) { return r.json(); });
+  }
+  function suggestMapping(supplierItemName) {
+    var tok = null;
+    try { tok = localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) {}
+    if (!tok) return Promise.reject(new Error('Sign in required'));
+    return fetch('https://europe-west2-brandonhall-7bdef.cloudfunctions.net/fbMappingSuggest', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ supplierItemName: supplierItemName }) })
+      .then(function (r) { return r.json(); });
+  }
+
+  function renderFoodCosts(el, S, P) {
+    var h = fbSeg(P);
+    var cache = FB_COSTS_CACHE;
+    var invoices = cache && cache.invoices ? cache.invoices : null;
+    var aggregated = cache && cache.aggregated ? cache.aggregated : [];
+    var mappings = cache && cache.mappings ? cache.mappings : {};
+    var totalSpend = (aggregated || []).reduce(function (t, x) { return t + (x.totalSpend || 0); }, 0);
+    var uniqueItems = (aggregated || []).length;
+    var mappedCount = Object.keys(mappings).length;
+
+    h += (
+      '<div class="card"><h2>Food costs · supplier invoices</h2>' +
+        '<p class="sub">Upload supplier PDFs (Bosworth, Philip Dennis — more suppliers added as needed). Line items are parsed automatically and stored for GP% calculation. Veronica\'s existing invoice stack can be bulk-uploaded in one go.</p>' +
+
+        // Upload zone
+        '<div id="fb-upload-zone" style="padding:30px;border:2px dashed #BB9979;border-radius:12px;background:#fdf8ee;text-align:center;cursor:pointer;margin:14px 0">' +
+          '<div style="font-size:30px;margin-bottom:8px">📄</div>' +
+          '<div style="font-size:15px;font-weight:600;color:#1a2b3a">Drop PDF invoices here, or click to browse</div>' +
+          '<div style="font-size:12px;color:#7b8494;margin-top:4px">Supports multiple files · one or many</div>' +
+          '<input type="file" id="fb-upload-input" multiple accept="application/pdf" style="display:none">' +
+          '<div id="fb-upload-progress" style="margin-top:10px;font-size:12px;color:#1F7A8C;font-weight:600"></div>' +
+        '</div>' +
+
+        // Summary tiles
+        (invoices === null ? '<div style="padding:16px;text-align:center;color:#7b8494">Loading…</div>' :
+          '<div class="tiles" style="margin-top:14px">' +
+            tile('Invoices stored', num(invoices.length), 'parsed and in Firestore') +
+            tile('Line items', num(aggregated.length), 'unique supplier items') +
+            tile('Total spend', gbp(totalSpend), 'across all uploaded invoices') +
+            tile('Mapped to POS', num(mappedCount), 'of ' + aggregated.length + ' (' + pc(aggregated.length ? mappedCount / aggregated.length : 0) + ')') +
+          '</div>'
+        ) +
+      '</div>'
+    );
+
+    if (invoices && invoices.length) {
+      // Invoice list
+      h += (
+        '<div class="card"><h2>Uploaded invoices</h2>' +
+          '<div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table><thead><tr>' +
+            '<th>Date</th><th>Supplier</th><th>Invoice #</th><th class="n">Grand total</th><th class="n">Line items</th><th>Uploaded</th>' +
+          '</tr></thead><tbody>' +
+          invoices.map(function (inv) {
+            return '<tr>' +
+              '<td>' + esc(inv.invoiceDate || '—') + '</td>' +
+              '<td>' + esc(inv.supplier || '—') + '</td>' +
+              '<td style="font-family:monospace;font-size:12px">' + esc(inv.invoiceId || '—') + '</td>' +
+              '<td class="n">' + gbp(inv.grandTotal || 0) + '</td>' +
+              '<td class="n">' + ((inv.lineItems || []).length) + '</td>' +
+              '<td style="font-size:11.5px;color:#7b8494">' + esc((inv.uploadedAt || '').slice(0, 10)) + '</td>' +
+            '</tr>';
+          }).join('') +
+          '</tbody></table></div>' +
+        '</div>'
+      );
+
+      // Top items by spend + mapping status
+      var topItems = (aggregated || []).slice().sort(function (a, b) { return b.totalSpend - a.totalSpend; }).slice(0, 30);
+      h += (
+        '<div class="card"><h2>Top 30 supplier items by spend</h2>' +
+          '<p class="sub">Click <b>Map</b> to link a supplier item to a POS menu item. Once mapped, GP% can be calculated.</p>' +
+          '<div style="overflow-x:auto"><table><thead><tr>' +
+            '<th>Supplier</th><th>Code</th><th>Name</th><th class="n">Qty total</th><th class="n">£ spent</th><th class="n">Prices seen</th><th>Status</th><th></th>' +
+          '</tr></thead><tbody>' +
+          topItems.map(function (x) {
+            var mapKey = x.supplierCode + '|' + x.code;
+            var mapped = mappings[mapKey];
+            return '<tr>' +
+              '<td style="font-size:11.5px">' + esc((x.supplier || '').replace(' Foodservice', '')) + '</td>' +
+              '<td style="font-family:monospace;font-size:11.5px">' + esc(x.code) + '</td>' +
+              '<td>' + esc(x.name) + '</td>' +
+              '<td class="n">' + x.totalQty.toFixed(x.totalQty < 10 ? 2 : 0) + '</td>' +
+              '<td class="n">' + gbp(x.totalSpend) + '</td>' +
+              '<td class="n" style="font-size:11.5px;color:#7b8494">' + (x.pricesSeen || []).map(function (p) { return '£' + p.toFixed(2); }).join(', ') + '</td>' +
+              '<td>' + (mapped ? '<span style="color:#1a7f4b;font-weight:600">✓ ' + esc(mapped.posItemName || mapped.posItemCode || '') + '</span>' : '<span style="color:#7b8494">unmapped</span>') + '</td>' +
+              '<td><button class="btn" data-fb-map="' + esc(mapKey) + '" data-fb-map-name="' + esc(x.name) + '" data-fb-map-sc="' + esc(x.supplierCode) + '" data-fb-map-ic="' + esc(x.code) + '">' + (mapped ? 'Edit' : 'Map') + '</button></td>' +
+            '</tr>';
+          }).join('') +
+          '</tbody></table></div>' +
+        '</div>'
+      );
+    }
+
+    el.innerHTML = h;
+
+    // Wire upload zone
+    var zone = document.getElementById('fb-upload-zone');
+    var input = document.getElementById('fb-upload-input');
+    var prog = document.getElementById('fb-upload-progress');
+    if (zone && input) {
+      zone.onclick = function () { input.click(); };
+      zone.ondragover = function (e) { e.preventDefault(); zone.style.background = '#f6f4ee'; };
+      zone.ondragleave = function () { zone.style.background = '#fdf8ee'; };
+      zone.ondrop = function (e) {
+        e.preventDefault(); zone.style.background = '#fdf8ee';
+        handleUpload(e.dataTransfer.files);
+      };
+      input.onchange = function () { handleUpload(input.files); };
+    }
+    function handleUpload(files) {
+      if (!files || !files.length) return;
+      var filesArr = Array.prototype.slice.call(files);
+      prog.textContent = 'Uploading & parsing ' + filesArr.length + ' file(s)…';
+      uploadFbInvoices(filesArr).then(function (res) {
+        if (res && res.ok) {
+          var ok = res.results.filter(function (r) { return r.ok; }).length;
+          var failed = res.results.filter(function (r) { return !r.ok; });
+          prog.innerHTML = '<span style="color:#1a7f4b">✓ ' + ok + ' parsed</span>' + (failed.length ? '<br><span style="color:#c0392b">' + failed.length + ' failed: ' + esc(failed.map(function (r) { return r.filename + ' – ' + r.error; }).join('; ')) + '</span>' : '');
+          FB_COSTS_CACHE = null;
+          setTimeout(function () { fetchFbCosts(function () { renderFb(); }); }, 400);
+        } else {
+          prog.innerHTML = '<span style="color:#c0392b">Upload failed: ' + esc((res && res.error) || 'unknown') + '</span>';
+        }
+      }).catch(function (e) {
+        prog.innerHTML = '<span style="color:#c0392b">Upload failed: ' + esc(String(e)) + '</span>';
+      });
+    }
+
+    // Mapping modal
+    document.querySelectorAll('[data-fb-map]').forEach(function (btn) {
+      btn.onclick = function () {
+        var supName = btn.getAttribute('data-fb-map-name');
+        var sc = btn.getAttribute('data-fb-map-sc');
+        var ic = btn.getAttribute('data-fb-map-ic');
+        openMappingModal({ supplierItemName: supName, supplierCode: sc, supplierItemCode: ic });
+      };
+    });
+
+    // Trigger initial load
+    if (invoices === null) fetchFbCosts(function () { renderFb(); });
+  }
+
+  // Simple mapping modal — AI suggests, user picks or edits
+  function openMappingModal(ctx) {
+    var modal = document.getElementById('fb-map-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'fb-map-modal';
+      modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,15,20,.55);z-index:9999;display:flex;align-items:center;justify-content:center';
+      document.body.appendChild(modal);
+    }
+    modal.innerHTML = (
+      '<div style="background:#fff;border-radius:12px;max-width:620px;width:92%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">' +
+          '<div><h3 style="margin:0">Map supplier item to POS menu item</h3>' +
+            '<p class="sub" style="margin:4px 0 0">Supplier item: <b>' + esc(ctx.supplierItemName) + '</b></p>' +
+          '</div>' +
+          '<button class="btn" data-close-modal>×</button>' +
+        '</div>' +
+        '<div id="fb-map-suggestions" style="margin:14px 0;padding:14px;background:#f6f8fb;border-radius:8px;min-height:60px">' +
+          '<div style="color:#7b8494;font-size:13px">🧠 Asking ARIA for suggestions…</div>' +
+        '</div>' +
+        '<div style="margin-top:14px">' +
+          '<label style="font-size:12px;color:#52647a;font-weight:600">Or enter manually:</label>' +
+          '<div style="display:flex;gap:8px;margin-top:6px">' +
+            '<input type="text" id="fb-map-manual-code" placeholder="POS item code (e.g. RES1RMP)" style="flex:1;padding:8px;border:1px solid #e3e7ee;border-radius:6px;font-size:13px">' +
+            '<input type="text" id="fb-map-manual-name" placeholder="POS item name" style="flex:2;padding:8px;border:1px solid #e3e7ee;border-radius:6px;font-size:13px">' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;margin-top:8px">' +
+            '<label style="font-size:12px;color:#52647a;align-self:center">Portions per unit:</label>' +
+            '<input type="number" id="fb-map-portions" step="0.1" min="0" placeholder="e.g. 4" style="width:80px;padding:8px;border:1px solid #e3e7ee;border-radius:6px;font-size:13px">' +
+            '<button class="btn" data-fb-map-save style="background:#1a2b3a;color:#fff;border:0;padding:8px 18px;flex:1">Save mapping</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+    // Close handlers
+    modal.querySelector('[data-close-modal]').onclick = function () { modal.remove(); };
+    modal.addEventListener('click', function (e) { if (e.target === modal) modal.remove(); });
+    // Save handler
+    modal.querySelector('[data-fb-map-save]').onclick = function () {
+      var code = document.getElementById('fb-map-manual-code').value.trim();
+      var name = document.getElementById('fb-map-manual-name').value.trim();
+      var portions = +document.getElementById('fb-map-portions').value;
+      setFbMapping({
+        supplierCode: ctx.supplierCode,
+        supplierItemCode: ctx.supplierItemCode,
+        supplierItemName: ctx.supplierItemName,
+        posItemCode: code, posItemName: name,
+        portionYield: portions || null
+      }).then(function (res) {
+        if (res && res.ok) {
+          modal.remove();
+          FB_COSTS_CACHE = null;
+          fetchFbCosts(function () { renderFb(); });
+        } else {
+          alert('Save failed: ' + (res && res.error || 'unknown'));
+        }
+      });
+    };
+    // Load suggestions
+    suggestMapping(ctx.supplierItemName).then(function (res) {
+      var slot = modal.querySelector('#fb-map-suggestions');
+      if (!slot) return;
+      var sugs = (res && res.suggestions) || [];
+      if (!sugs.length) {
+        slot.innerHTML = '<div style="color:#7b8494;font-size:13px">No automatic suggestions' + (res.note ? ' · ' + esc(res.note) : '') + '. Enter the mapping manually below.</div>';
+        return;
+      }
+      slot.innerHTML = '<div style="font-size:11px;font-weight:700;letter-spacing:.3px;color:#1a3b60;text-transform:uppercase;margin-bottom:8px">ARIA suggestions</div>' +
+        sugs.map(function (s) {
+          var pct = Math.round((s.confidence || 0) * 100);
+          var color = pct >= 80 ? '#1a7f4b' : (pct >= 50 ? '#b26a00' : '#7b8494');
+          return '<div class="fb-map-sug" style="padding:10px 12px;background:#fff;border:1px solid #e3e7ee;border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:10px">' +
+            '<div><div style="font-weight:600;color:#1a2b3a">' + esc(s.posItemName || '?') + '</div>' +
+              '<div style="font-size:11px;color:#7b8494;font-family:monospace">' + esc(s.posItemCode || '?') + '</div>' +
+              (s.reasoning ? '<div style="font-size:11.5px;color:#52647a;margin-top:4px;font-style:italic">' + esc(s.reasoning) + '</div>' : '') +
+            '</div>' +
+            '<div style="text-align:right;flex-shrink:0">' +
+              '<div style="font-size:11px;color:' + color + ';font-weight:700;margin-bottom:6px">' + pct + '%</div>' +
+              '<button class="btn" data-fb-sug-use style="background:#1F7A8C;color:#fff;border:0;padding:5px 14px" data-pos-code="' + esc(s.posItemCode || '') + '" data-pos-name="' + esc(s.posItemName || '') + '">Use</button>' +
+            '</div></div>';
+        }).join('');
+      slot.querySelectorAll('[data-fb-sug-use]').forEach(function (b) {
+        b.onclick = function () {
+          document.getElementById('fb-map-manual-code').value = b.getAttribute('data-pos-code');
+          document.getElementById('fb-map-manual-name').value = b.getAttribute('data-pos-name');
+        };
+      });
+    }).catch(function (e) {
+      var slot = modal.querySelector('#fb-map-suggestions');
+      if (slot) slot.innerHTML = '<div style="color:#c0392b;font-size:13px">Suggestions unavailable: ' + esc(String(e)) + '. Enter manually below.</div>';
+    });
+  }
+
   function renderFb() {
     var el = $('pf-fb'), T = window.Trading, S = T ? T.S() : {}; fbCharts.forEach(function (c) { c.destroy(); }); fbCharts = [];
     if (!S.af) { el.innerHTML = '<div class="card"><h2>No Guestline data loaded</h2></div>'; return; }
     var P = S.x && S.x.postings; if (!P && (fbView === 'brk' || fbView === 'menu')) fbView = 'over';
     if (fbView === 'term' && !(S.x && S.x.plu)) fbView = 'over';
     if (fbView === 'cov') return renderCov(el, S, P);
+    if (fbView === 'costs') return renderFoodCosts(el, S, P);
+    if (fbView === 'fbdisc') return renderFbDisc(el, S, P);
     if (fbView === 'disc') return renderDisc(el, S, P);
     if (fbView === 'term') return renderTerm(el, S, P); if (fbView === 'brk') return renderBrk(el, S, P); if (fbView === 'menu') return renderMenu(el, S, P);
     var cut = T.asOfDay(), m = cut.slice(0, 7), pe = T.pePeriod('month', m), act = T.agg(T.rowsFor(m, 'actual')), h = '';

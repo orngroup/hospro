@@ -599,7 +599,7 @@
     }).join('') + '</div>';
   }
 
-  var HOSREV_VERSION = 'v39.14';
+  var HOSREV_VERSION = 'v39.15';
   function phaseBadge() {
     var liveBooks = getCachedBooks();
     var liveOnBooks = !!(liveBooks && liveBooks.byDate);
@@ -1532,11 +1532,86 @@
   /* ============================================================
      v39.14 — Discrepancies view (reads manager_flash history)
      ============================================================ */
+  /* v39.15 — Expandable detail panel for each anomaly / win / watch item.
+     Takes the text, category, and the full commentary object. Returns a
+     <details> block. Clicking expands to show: the full text, matching actions,
+     a mini metric chart where we can derive it from flash.day/trailing7/dow,
+     and an "Ask ARIA more" button that pre-fills Ask ARIA. */
+  function expandableItem(category, text, com, flash, idx) {
+    var clr = { anom: '#8a1e15', win: '#1a6442', miss: '#7a5f0b' }[category];
+    var bg = { anom: '#fdf6f5', win: '#f0f6ea', miss: '#fffbe8' }[category];
+    var bd = { anom: '#f0d6d2', win: '#d4e3c3', miss: '#ecd584' }[category];
+    var icon = { anom: '⚡', win: '✓', miss: '⚠' }[category];
+
+    // Try to match a related action from commentary.actions using word overlap
+    var textLower = (text || '').toLowerCase();
+    var matched = (com && com.actions ? com.actions : []).filter(function (a) {
+      var aTxt = ((a.action || '') + ' ' + (a.why || '')).toLowerCase();
+      // 3+ word overlap of significant terms
+      var txtWords = textLower.split(/\W+/).filter(function (w) { return w.length > 4; });
+      var hits = 0;
+      txtWords.forEach(function (w) { if (aTxt.indexOf(w) !== -1) hits++; });
+      return hits >= 2;
+    });
+
+    // Extract numbers from the text for emphasis
+    var numMatches = (text || '').match(/£[\d,\.]+|\d+\.?\d*%|\d{2,}/g) || [];
+
+    // Mini sparkline — if the text mentions a day-of-week metric or trailing7, we can show last-7 revenue
+    var sparkHtml = '';
+    if (flash && flash.trailing7 && flash.trailing7.length) {
+      var vals = flash.trailing7.map(function (r) { return r.rev || 0; });
+      var mx = Math.max.apply(Math.max, vals), mn = Math.min.apply(Math.min, vals);
+      sparkHtml = '<div style="margin-top:10px"><div style="font-size:10.5px;color:#7b8494;text-transform:uppercase;font-weight:600;letter-spacing:.3px;margin-bottom:4px">Last 7 nights · total revenue</div>' +
+        '<div style="display:flex;align-items:flex-end;gap:3px;height:50px">' +
+          flash.trailing7.map(function (r, i) {
+            var h = mx > 0 ? Math.max(4, Math.round(((r.rev || 0) / mx) * 48)) : 4;
+            var isYday = i === flash.trailing7.length - 1;
+            return '<div title="' + esc(r.d) + ': £' + Math.round(r.rev || 0) + '" style="flex:1;height:' + h + 'px;background:' + (isYday ? '#1a2238' : '#1F7A8C') + ';border-radius:2px 2px 0 0" ></div>';
+          }).join('') +
+        '</div>' +
+        '<div style="display:flex;gap:3px;margin-top:3px"><div style="flex:1;font-size:9.5px;color:#7b8494;text-align:center">' +
+          flash.trailing7.map(function (r) { return r.dow || ''; }).join('</div><div style="flex:1;font-size:9.5px;color:#7b8494;text-align:center">') +
+        '</div></div></div>';
+    }
+
+    // Short headline (first 60 chars for the summary label)
+    var shortTxt = text && text.length > 90 ? text.slice(0, 88) + '…' : (text || '');
+
+    var askPrompt = encodeURIComponent('Tell me more about this finding: "' + (text || '') + '". What specifically triggered it, and what should we actually do?');
+
+    return (
+      '<details style="margin:4px 0;padding:0;background:' + bg + ';border:1px solid ' + bd + ';border-left:3px solid ' + clr + ';border-radius:6px">' +
+        '<summary style="cursor:pointer;padding:9px 12px;font-size:12.5px;color:#2c3440;line-height:1.45;list-style:none">' +
+          '<span style="color:' + clr + ';margin-right:4px">' + icon + '</span>' + esc(shortTxt) +
+          '<span style="float:right;color:#7b8494;font-size:11px;margin-left:8px">▸ details</span>' +
+        '</summary>' +
+        '<div style="padding:4px 14px 14px;border-top:1px solid ' + bd + ';margin-top:4px">' +
+          '<p style="margin:10px 0 0;font-size:13px;line-height:1.55;color:#2c3440"><b>Full finding:</b> ' + esc(text || '') + '</p>' +
+          (numMatches.length ? '<p style="margin:8px 0 0;font-size:11.5px;color:#7b8494"><b>Key figures:</b> ' + numMatches.slice(0, 5).map(function (n) { return '<span style="background:#fff;padding:2px 6px;border-radius:3px;margin-right:4px;font-family:monospace;color:#1a2238">' + esc(n) + '</span>'; }).join(' ') + '</p>' : '') +
+          (matched.length ? (
+            '<div style="margin-top:10px;padding:10px 12px;background:#fff;border-radius:4px;border-left:2px solid #1F7A8C">' +
+              '<div style="font-size:10.5px;color:#1F7A8C;text-transform:uppercase;font-weight:700;letter-spacing:.3px;margin-bottom:4px">Related action' + (matched.length > 1 ? 's' : '') + ' ARIA suggested</div>' +
+              matched.map(function (a) {
+                return '<div style="font-size:12.5px;color:#1a2238;margin-top:4px"><b>' + esc(a.dept || '') + (a.owner ? ' · ' + esc(a.owner) : '') + ':</b> ' + esc(a.action || '') + '</div>';
+              }).join('') +
+            '</div>'
+          ) : '') +
+          sparkHtml +
+          '<div style="margin-top:12px;display:flex;gap:8px">' +
+            '<button class="rv-alf-btn" data-rv-ask-prefill="' + askPrompt + '" style="font-size:11.5px;padding:5px 10px">💬 Ask ARIA for more detail</button>' +
+          '</div>' +
+        '</div>' +
+      '</details>'
+    );
+  }
+
   function viewDiscrepancies() {
     var c = getCachedFlashHist();
     var hist = c && c.history ? c.history : [];
     var latest = c && c.latest;
     var latestCom = latest && latest.commentary;
+    var latestFlash = latest && latest.flash;
     var latestDate = latest && latest.flash ? latest.flash.forDate : (hist[0] && hist[0].forDate) || '—';
     var cachedAge = c && c.ts ? Math.round((Date.now() - c.ts) / 60000) : null;
 
@@ -1577,27 +1652,23 @@
             '</div>'
           ) : '') +
 
-          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px">' +
+          // v39.15 — each item is now expandable. Click any to see full detail, key figures, matching action, sparkline, and "Ask ARIA for more"
+          '<p class="sub" style="margin:10px 0 8px;font-size:12px;color:#7b8494">Click any item to expand — see the full finding, key numbers, related ARIA action, and get more detail on demand.</p>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px;align-items:start">' +
             // Anomalies
-            '<div style="padding:14px 16px;background:#fdf6f5;border:1px solid #f0d6d2;border-radius:8px">' +
-              '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#8a1e15;text-transform:uppercase;margin-bottom:8px">⚡ Anomalies spotted</div>' +
-              '<ul style="margin:0;padding-left:16px;font-size:13px;color:#2c3440;line-height:1.5">' +
-                ((latestCom.anomalies || []).length ? (latestCom.anomalies || []).map(function (a) { return '<li style="margin-bottom:6px">' + esc(a) + '</li>'; }).join('') : '<li style="color:#7b8494">No anomalies today</li>') +
-              '</ul>' +
+            '<div>' +
+              '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#8a1e15;text-transform:uppercase;margin-bottom:8px">⚡ Anomalies spotted (' + (latestCom.anomalies || []).length + ')</div>' +
+              ((latestCom.anomalies || []).length ? (latestCom.anomalies || []).map(function (a, i) { return expandableItem('anom', a, latestCom, latestFlash, i); }).join('') : '<p style="font-size:12.5px;color:#7b8494;margin:0">No anomalies today</p>') +
             '</div>' +
             // Wins
-            '<div style="padding:14px 16px;background:#f0f6ea;border:1px solid #d4e3c3;border-radius:8px">' +
-              '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#486128;text-transform:uppercase;margin-bottom:8px">✓ Wins</div>' +
-              '<ul style="margin:0;padding-left:16px;font-size:13px;color:#2c3440;line-height:1.5">' +
-                ((latestCom.wins || []).length ? (latestCom.wins || []).map(function (a) { return '<li style="margin-bottom:6px">' + esc(a) + '</li>'; }).join('') : '<li style="color:#7b8494">No notable wins</li>') +
-              '</ul>' +
+            '<div>' +
+              '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#486128;text-transform:uppercase;margin-bottom:8px">✓ Wins (' + (latestCom.wins || []).length + ')</div>' +
+              ((latestCom.wins || []).length ? (latestCom.wins || []).map(function (a, i) { return expandableItem('win', a, latestCom, latestFlash, i); }).join('') : '<p style="font-size:12.5px;color:#7b8494;margin:0">No notable wins</p>') +
             '</div>' +
             // Watch items / misses
-            '<div style="padding:14px 16px;background:#fffbe8;border:1px solid #ecd584;border-radius:8px">' +
-              '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#7a5f0b;text-transform:uppercase;margin-bottom:8px">⚠ Watch items</div>' +
-              '<ul style="margin:0;padding-left:16px;font-size:13px;color:#2c3440;line-height:1.5">' +
-                ((latestCom.misses || []).length ? (latestCom.misses || []).map(function (a) { return '<li style="margin-bottom:6px">' + esc(a) + '</li>'; }).join('') : '<li style="color:#7b8494">Nothing concerning</li>') +
-              '</ul>' +
+            '<div>' +
+              '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#7a5f0b;text-transform:uppercase;margin-bottom:8px">⚠ Watch items (' + (latestCom.misses || []).length + ')</div>' +
+              ((latestCom.misses || []).length ? (latestCom.misses || []).map(function (a, i) { return expandableItem('miss', a, latestCom, latestFlash, i); }).join('') : '<p style="font-size:12.5px;color:#7b8494;margin:0">Nothing concerning</p>') +
             '</div>' +
           '</div>' +
         '</div>'
@@ -1890,9 +1961,16 @@
     return { label: 'Normal', color: '#52647a', weight: 1.0 };
   }
 
+  /* v39.15 — horizon selector. Persists in UI state so a browser refresh keeps it.
+     14 / 30 / 90 / 365 days. The 90 and 365 views roll up to weekly / monthly
+     averages so you can see rate-vs-comp positioning at a glance without a
+     1,500-row table. */
+  if (!UI.mvHorizon) UI.mvHorizon = 14;
+
   function viewMorning() {
     buildNights();
-    var nights = NIGHTS.slice(0, 14);
+    var horizon = UI.mvHorizon || 14;
+    var nights = NIGHTS.slice(0, horizon);
     var liveBooks = getCachedBooks();
     var compCache = getCachedComp();
     var compByDate = compCache && compCache.byDate ? compCache.byDate : {};
@@ -1958,17 +2036,86 @@
       };
     });
 
+    // v39.15 — bucket rows for 90/365 horizons into weekly / monthly rollups
+    function bucketRows(all, mode) {
+      if (mode === 'daily') return all.map(function (r) { return Object.assign({}, r, { bucketLabel: r.dowLbl + ' ' + r.d.slice(8) + '/' + r.d.slice(5, 7), bucketKey: r.d, isBucket: false, items: [r] }); });
+      var buckets = {}, keys = [];
+      all.forEach(function (r) {
+        var key, lbl;
+        if (mode === 'weekly') {
+          // ISO week: Mon-Sun. Start of week key
+          var dt = new Date(r.d + 'T00:00:00Z');
+          var dow = dt.getUTCDay() === 0 ? 6 : dt.getUTCDay() - 1;
+          dt.setUTCDate(dt.getUTCDate() - dow);
+          key = dt.toISOString().slice(0, 10);
+          lbl = 'Wk of ' + (dt.getUTCDate()) + '/' + (dt.getUTCMonth() + 1);
+        } else { // monthly
+          key = r.d.slice(0, 7);
+          var m = new Date(key + '-01T00:00:00Z');
+          lbl = m.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+        }
+        if (!buckets[key]) { buckets[key] = { bucketKey: key, bucketLabel: lbl, items: [], isBucket: true }; keys.push(key); }
+        buckets[key].items.push(r);
+      });
+      return keys.sort().map(function (k) {
+        var b = buckets[k], items = b.items;
+        // Aggregate
+        var ourBAR = items[0].ourBAR;
+        var sugAvg = Math.round(items.reduce(function (t, i) { return t + i.ourSug; }, 0) / items.length);
+        var occAvg = items.reduce(function (t, i) { return t + i.occPct; }, 0) / items.length;
+        // Per-comp average across items
+        var compAvg = items[0].compData.map(function (cd, idx) {
+          var vals = items.map(function (it) { return it.compData[idx].rate; });
+          var avgR = Math.round(vals.reduce(function (t, v) { return t + v; }, 0) / vals.length);
+          var sig = inferCompOcc(cd.id, avgR, cd.rate && !items[0].compData[idx].live ? cd.rate : avgR); // keep normal if baseline
+          return { id: cd.id, label: cd.label, rate: avgR, live: items.every(function (it) { return it.compData[idx].live; }), signal: sig };
+        });
+        var healthy = compAvg.filter(function (x) { return x.signal.label !== 'Struggling'; });
+        var meanHealthy = healthy.length ? Math.round(healthy.reduce(function (a, b2) { return a + b2.rate; }, 0) / healthy.length) : null;
+        var strugglingNights = items.filter(function (i) { return i.strugglers.length > 0; }).length;
+        var softNights2 = items.filter(function (i) { return i.soft.length > 0; }).length;
+        return Object.assign({}, b, {
+          ourBAR: ourBAR, ourSug: sugAvg, delta: sugAvg - ourBAR,
+          compData: compAvg, meanHealthy: meanHealthy,
+          occPct: occAvg, occSource: 'avg',
+          strugglers: strugglingNights ? [strugglingNights + ' nights'] : [],
+          soft: softNights2 ? [softNights2 + ' nights'] : [],
+          nightsCount: items.length
+        });
+      });
+    }
+
+    var mode = horizon <= 30 ? 'daily' : (horizon <= 90 ? 'weekly' : 'monthly');
+    var displayRows = bucketRows(rows, mode);
+
+    var horizonLabels = { 14: 'Next 14 nights (daily)', 30: 'Next 30 nights (daily)', 90: 'Next 90 nights (weekly rollup)', 365: 'Next 12 months (monthly rollup)' };
+    var horizonHint = { 14: 'Patrik\'s default view — one row per night', 30: 'Extended daily view', 90: 'Weekly averages — spot soft weeks at a glance', 365: '12-month strategic view — spot soft months to drive campaigns' };
+
     var body = (
       '<div class="rv-card" style="background:linear-gradient(135deg,#1a2238 0%,#145866 100%);color:#fff;border:0;padding:20px 24px;margin-bottom:14px">' +
         '<h3 style="color:#fff;margin:0;font-size:18px">' + esc(greeting) + ', Patrik — rate command view</h3>' +
         '<p style="color:#bfdde3;margin:4px 0 0;font-size:13px">' + esc(decisionMomentLine) + '</p>' +
-        '<p style="color:#9bb5c8;margin:10px 0 0;font-size:11.5px">14 nights forward · ARIA honours your Sunday £65 floor, max £20 move, anchor-to-healthy-comp logic · live comp refresh daily 06:00</p>' +
+        '<p style="color:#9bb5c8;margin:10px 0 0;font-size:11.5px">' + esc(horizonLabels[horizon] || horizonLabels[14]) + ' · ARIA honours your Sunday £65 floor, max £20 move, anchor-to-healthy-comp logic · live comp refresh daily 06:00</p>' +
+      '</div>' +
+
+      // v39.15 — horizon selector
+      '<div class="rv-card" style="padding:12px 16px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">' +
+          '<div style="display:flex;gap:6px;align-items:center">' +
+            '<span style="font-size:12px;color:#52647a;font-weight:600;margin-right:4px">Horizon:</span>' +
+            [[14,'14 d'],[30,'30 d'],[90,'90 d · weekly'],[365,'12 months · monthly']].map(function (opt) {
+              var on = horizon === opt[0];
+              return '<button data-rv-mv-horizon="' + opt[0] + '" class="rv-alf-btn" style="padding:6px 12px;' + (on ? 'background:#1a2238;color:#fff;border:0;font-weight:600' : 'background:#eef3f8;color:#1a3b60;border:1px solid #c8d9dd') + '">' + opt[1] + '</button>';
+            }).join('') +
+            '<span style="font-size:11.5px;color:#7b8494;margin-left:10px;font-style:italic">' + esc(horizonHint[horizon] || '') + '</span>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
 
       '<div class="rv-card">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px">' +
-          '<div><h3 style="margin:0">Next 14 nights · suggestions</h3></div>' +
-          '<div style="font-size:11px;color:#7b8494">' +
+          '<div><h3 style="margin:0">' + esc(horizonLabels[horizon] || horizonLabels[14]) + '</h3></div>' +
+          '<div style="font-size:11px;color:#7b8494;text-align:right">' +
             (compCache && compCache.ts ? '<div>Comp data: ' + new Date(compCache.ts).toLocaleTimeString('en-GB') + '</div>' : '<div style="color:#b26a00">⚠ No live comp data yet — using demo baselines</div>') +
             '<button class="rv-alf-btn" data-rv-mv-refresh style="margin-top:4px">Refresh comp rates</button>' +
           '</div>' +
@@ -1977,28 +2124,29 @@
         '<div style="overflow-x:auto">' +
         '<table class="rv-t" style="min-width:1000px">' +
           '<thead><tr>' +
-            '<th>Date</th>' +
+            '<th>' + (mode === 'daily' ? 'Date' : (mode === 'weekly' ? 'Week' : 'Month')) + '</th>' +
             '<th class="num">Our BAR</th>' +
-            '<th class="num">ARIA</th>' +
+            '<th class="num">' + (mode === 'daily' ? 'ARIA' : 'ARIA avg') + '</th>' +
             '<th class="num">Δ</th>' +
             activeComps.map(function (c) { return '<th class="num">' + esc(c.label.split(' ').slice(0, 2).join(' ')) + '</th>'; }).join('') +
             '<th class="num">Healthy avg</th>' +
-            '<th class="num">Our occ</th>' +
+            '<th class="num">' + (mode === 'daily' ? 'Our occ' : 'Avg occ') + '</th>' +
             '<th class="num">Signals</th>' +
-            '<th style="text-align:center">Action</th>' +
+            (mode === 'daily' ? '<th style="text-align:center">Action</th>' : '') +
           '</tr></thead>' +
           '<tbody>' +
-          rows.map(function (r) {
-            var rowCls = r.dow === 0 ? ' class="sun"' : (r.dow === 6 ? ' class="sat"' : '');
+          displayRows.map(function (r) {
+            var rowCls = (mode === 'daily' && r.dow === 0) ? ' class="sun"' : (mode === 'daily' && r.dow === 6 ? ' class="sat"' : '');
             var dColor = r.delta === 0 ? '#52647a' : (r.delta > 0 ? '#1a6442' : '#8a1e15');
             var dArrow = r.delta === 0 ? '◆' : (r.delta > 0 ? '▲' : '▼');
             var occColor = r.occPct >= 0.75 ? '#1a6442' : (r.occPct >= 0.4 ? '#1a2238' : '#8a1e15');
             var signalBadges = '';
-            if (r.strugglers.length) signalBadges += '<span class="rv-pill dn" title="' + esc(r.strugglers.join(', ') + ' struggling — drop > 30% from base') + '">' + r.strugglers.length + ' struggling</span> ';
-            if (r.soft.length) signalBadges += '<span class="rv-pill flat" title="' + esc(r.soft.join(', ') + ' soft — drop > 15% from base') + '">' + r.soft.length + ' soft</span>';
-            var actionBtn = Math.abs(r.delta) > 2 ? '<button class="rv-alf-btn" data-rv-mv-approve="' + r.d + '" data-rv-mv-price="' + r.ourSug + '" style="background:#1a2238;color:#fff;border:0">Set £' + r.ourSug + '</button>' : '<span style="color:#7b8494;font-size:11px">–</span>';
+            if (r.strugglers.length) signalBadges += '<span class="rv-pill dn" title="' + esc(r.strugglers.join(', ')) + '">' + r.strugglers[0] + ' struggling</span> ';
+            if (r.soft.length) signalBadges += '<span class="rv-pill flat" title="' + esc(r.soft.join(', ')) + '">' + r.soft[0] + ' soft</span>';
+            var actionBtn = mode === 'daily' ? (Math.abs(r.delta) > 2 ? '<button class="rv-alf-btn" data-rv-mv-approve="' + r.d + '" data-rv-mv-price="' + r.ourSug + '" style="background:#1a2238;color:#fff;border:0">Set £' + r.ourSug + '</button>' : '<span style="color:#7b8494;font-size:11px">–</span>') : '';
+            var lblCell = mode === 'daily' ? (r.dowLbl + ' ' + r.d.slice(8) + '/' + r.d.slice(5, 7)) : (r.bucketLabel + '<div style="font-size:10px;color:#7b8494;font-weight:400">' + r.nightsCount + ' nights</div>');
             return '<tr' + rowCls + '>' +
-              '<td style="font-weight:600">' + r.dowLbl + ' ' + r.d.slice(8) + '/' + r.d.slice(5, 7) + '</td>' +
+              '<td style="font-weight:600">' + lblCell + '</td>' +
               '<td class="num">£' + r.ourBAR + '</td>' +
               '<td class="num" style="color:#1a2238;font-weight:700">£' + r.ourSug + '</td>' +
               '<td class="num" style="color:' + dColor + ';font-weight:600">' + dArrow + (r.delta > 0 ? '+' : '') + r.delta + '</td>' +
@@ -2007,9 +2155,9 @@
                 return '<td class="num" style="color:' + cc + '">£' + c.rate + (c.live ? '' : '<sup style="opacity:.5">b</sup>') + '</td>';
               }).join('') +
               '<td class="num" style="font-weight:600">' + (r.meanHealthy != null ? '£' + r.meanHealthy : '–') + '</td>' +
-              '<td class="num" style="color:' + occColor + ';font-weight:600">' + (r.occPct * 100).toFixed(0) + '%<div style="font-size:10px;color:#7b8494;font-weight:400">' + r.occSource + '</div></td>' +
+              '<td class="num" style="color:' + occColor + ';font-weight:600">' + (r.occPct * 100).toFixed(0) + '%' + (mode === 'daily' ? '<div style="font-size:10px;color:#7b8494;font-weight:400">' + r.occSource + '</div>' : '') + '</td>' +
               '<td class="num" style="white-space:nowrap">' + (signalBadges || '<span style="color:#7b8494;font-size:11px">normal</span>') + '</td>' +
-              '<td style="text-align:center">' + actionBtn + '</td>' +
+              (mode === 'daily' ? '<td style="text-align:center">' + actionBtn + '</td>' : '') +
             '</tr>';
           }).join('') +
           '</tbody>' +
@@ -2022,7 +2170,8 @@
           '<span style="color:#b26a00">amber</span> = soft (&gt;15% drop) · ' +
           '<span style="color:#1a6442">green</span> = strong · ' +
           '<sup>b</sup> = baseline (no live comp data yet). ' +
-          'Healthy average excludes struggling comps (anchor-to-healthy rule).' +
+          (mode !== 'daily' ? 'Values are averages across the ' + (mode === 'weekly' ? 'week' : 'month') + '. One-click approvals are only available on the daily (14 / 30 d) views. ' : '') +
+          'Healthy average excludes struggling comps.' +
         '</p>' +
       '</div>' +
 
@@ -3908,6 +4057,25 @@
       if (mvBtn) { mvBtn.disabled = true; mvBtn.textContent = 'Refreshing…'; }
       maybeFetchComp();
       setTimeout(function () { if (mvBtn) { mvBtn.disabled = false; mvBtn.textContent = 'Refresh comp rates'; } render(); }, 1500);
+      return;
+    }
+    // v39.15 — Morning View horizon selector
+    var mvH = t.closest('[data-rv-mv-horizon]');
+    if (mvH) {
+      UI.mvHorizon = +mvH.getAttribute('data-rv-mv-horizon') || 14;
+      render();
+      return;
+    }
+    // v39.15 — Discrepancies "Ask ARIA for more" prefill — switches to agent tab with text ready
+    var askP = t.closest('[data-rv-ask-prefill]');
+    if (askP) {
+      var pre = decodeURIComponent(askP.getAttribute('data-rv-ask-prefill') || '');
+      UI.view = 'agent';
+      render();
+      setTimeout(function () {
+        var ta = document.getElementById('rv-ag-text');
+        if (ta) { ta.value = pre; ta.focus(); ta.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }, 100);
       return;
     }
     // v39.14 — Morning View one-click approve suggestion
