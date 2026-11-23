@@ -717,7 +717,7 @@
   var fbCharts = [];
   var fbView = 'over', DOWN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   // v39.16: added Food Costs sub-tab (invoice upload + mapping + margin)
-  function fbSeg(P) { var TP = window.Trading && window.Trading.S().x ? window.Trading.S().x.plu : null; return '<div class="segs">' + [['over', 'Overview'], ['cov', 'Covers'], ['costs', 'Food Costs'], ['fbdisc', 'F&B Discrepancies'], ['disc', 'Discount impact'], ['term', 'By terminal'], ['brk', 'Breakfast'], ['menu', 'What we sell']].map(function (v) { var off = v[0] === 'term' ? !TP : ((v[0] === 'brk' || v[0] === 'menu') && !P); return '<button class="' + (fbView === v[0] ? 'on' : '') + '" data-fb="' + v[0] + '"' + (off ? ' disabled title="' + (v[0] === 'term' ? 'Needs the till item sales reports' : 'Needs the Rezlynx Postings report') + '"' : '') + '>' + v[1] + '</button>'; }).join('') + '</div>'; }
+  function fbSeg(P) { var TP = window.Trading && window.Trading.S().x ? window.Trading.S().x.plu : null; return '<div class="segs">' + [['over', 'Overview'], ['cov', 'Covers'], ['costs', 'Food Costs'], ['margins', 'Food Margins'], ['fbdisc', 'F&B Discrepancies'], ['disc', 'Discount impact'], ['term', 'By terminal'], ['brk', 'Breakfast'], ['menu', 'What we sell']].map(function (v) { var off = v[0] === 'term' ? !TP : ((v[0] === 'brk' || v[0] === 'menu') && !P); return '<button class="' + (fbView === v[0] ? 'on' : '') + '" data-fb="' + v[0] + '"' + (off ? ' disabled title="' + (v[0] === 'term' ? 'Needs the till item sales reports' : 'Needs the Rezlynx Postings report') + '"' : '') + '>' + v[1] + '</button>'; }).join('') + '</div>'; }
   function dshort(k) { return +k.slice(8) + ' ' + MN[+k.slice(5, 7) - 1]; }
   function postingsNote(P) { return '<p class="note">Source: Rezlynx Postings report, ' + dlabel(P.from) + ' to ' + dlabel(P.to) + ' ' + P.to.slice(0, 4) + ', run ' + when(P.asOf) + '. Net of VAT. It covers the restaurant, room service and breakfast codes; bar till sales (analysis code BAR1BEV) are not in this export. Deleted postings (' + P.deleted.c + ', ' + gbp(P.deleted.v) + ') are left out; refunds and adjustments (' + P.refunds.c + ', ' + gbp(P.refunds.v) + ') are netted off. Guest names are not kept. Guestline cannot email this report, so it is exported by hand.</p>'; }
   function renderBrk(el, S, P) {
@@ -1434,6 +1434,141 @@
     });
   }
 
+  /* v39.19 — Food Margins — joins uploaded invoices (purchases) with POS sales (gl_items)
+     through the mapping table to show bought vs sold per item with GP%. */
+  var FB_MARGIN_CACHE = null, FB_MARGIN_RANGE = null;
+  function fetchFbMargin(from, to, cb) {
+    var tok = null;
+    try { tok = localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) {}
+    if (!tok) { cb({ error: 'Sign in required' }); return; }
+    var qs = [];
+    if (from) qs.push('from=' + encodeURIComponent(from));
+    if (to) qs.push('to=' + encodeURIComponent(to));
+    var url = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/fbMarginGet' + (qs.length ? ('?' + qs.join('&')) : '');
+    fetch(url, { headers: { 'Authorization': 'Bearer ' + tok } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { FB_MARGIN_CACHE = j; FB_MARGIN_RANGE = { from: from, to: to }; cb(j); })
+      .catch(function (e) { cb({ error: String(e) }); });
+  }
+
+  function renderFoodMargins(el, S, P) {
+    var h = fbSeg(P);
+    var today = new Date().toISOString().slice(0, 10);
+    var monthStart = today.slice(0, 7) + '-01';
+    var cache = FB_MARGIN_CACHE;
+    var fromVal = (FB_MARGIN_RANGE && FB_MARGIN_RANGE.from) || monthStart;
+    var toVal = (FB_MARGIN_RANGE && FB_MARGIN_RANGE.to) || today;
+
+    h += (
+      '<div class="card"><h2>Food margins · bought vs sold</h2>' +
+        '<p class="sub">Supplier invoices joined with POS sales for the period. Each mapped item shows purchase cost, average cost per portion, revenue earned and gross-profit %. Unmapped items need a POS link in the Food Costs tab before they show here.</p>' +
+
+        '<div style="display:flex;gap:10px;align-items:center;margin:14px 0;flex-wrap:wrap">' +
+          '<label style="font-size:12px;color:#52647a">From <input type="date" id="fb-marg-from" value="' + esc(fromVal) + '" style="padding:6px 8px;border:1px solid #c8d9dd;border-radius:4px"></label>' +
+          '<label style="font-size:12px;color:#52647a">To <input type="date" id="fb-marg-to" value="' + esc(toVal) + '" style="padding:6px 8px;border:1px solid #c8d9dd;border-radius:4px"></label>' +
+          '<button class="btn" id="fb-marg-run" style="background:#1F7A8C;color:#fff;border:0;padding:7px 18px;border-radius:5px;font-weight:600;cursor:pointer">Run report</button>' +
+          '<span style="font-size:11.5px;color:#7b8494">Default: 1st of this month → today</span>' +
+        '</div>' +
+      '</div>'
+    );
+
+    if (!cache) {
+      h += '<div class="card"><p class="sub">Loading margin data…</p></div>';
+    } else if (cache.error || !cache.ok) {
+      h += '<div class="card"><p style="color:#c0392b">Could not load margin report: ' + esc(cache.error || 'unknown error') + '</p></div>';
+    } else {
+      var r = cache.report || {};
+      var s = r.summary || {};
+      var c = r.counts || {};
+      var mapped = r.mapped || [];
+      var unmapped = r.unmapped || [];
+
+      h += (
+        '<div class="card"><h2>Summary · ' + esc(r.from || '') + ' → ' + esc(r.to || '') + '</h2>' +
+          '<div class="tiles">' +
+            tile('Purchase cost', gbp(s.totalPurchaseCost || 0), c.invoices + ' invoices · ' + c.supplierItems + ' items') +
+            tile('Mapped sales', gbp(s.totalMappedSoldRevenue || 0), c.mappedItems + ' mapped items') +
+            tile('COGS (mapped)', gbp(s.totalMappedCogs || 0), 'Cost of what was sold') +
+            tile('GP · mapped', gbp(s.totalMappedGP || 0), pc(s.mappedMarginPct || 0) + ' margin') +
+          '</div>' +
+          (c.mappedItems === 0 ? (
+            '<div style="padding:14px;margin-top:10px;background:#fff8ef;border-left:3px solid #C7A87A;border-radius:4px;font-size:13px;color:#6b4f1f">' +
+              'No items are mapped yet — the margin join needs supplier items linked to POS codes. Head to <b>Food Costs → Map</b> on the top items to start.' +
+            '</div>'
+          ) : '') +
+        '</div>'
+      );
+
+      if (mapped.length) {
+        h += (
+          '<div class="card"><h2>Mapped items · purchases vs sales</h2>' +
+            '<p class="sub">Each row: how much we bought (cost), how much we sold (revenue), and the gross profit on what sold. Yield column = portions per unit (e.g. 1 rump steak → 1 steakburger).</p>' +
+            '<div style="overflow-x:auto"><table><thead><tr>' +
+              '<th>Supplier item</th><th>POS item</th><th class="n">Bought</th><th class="n">Cost</th><th class="n">£/unit</th><th class="n">Yield</th><th class="n">£/portion</th><th class="n">Sold qty</th><th class="n">Revenue</th><th class="n">Avg sale £</th><th class="n">COGS</th><th class="n">GP</th><th class="n">Margin %</th>' +
+            '</tr></thead><tbody>' +
+            mapped.map(function (m) {
+              var marginColor = m.marginPct >= 0.6 ? '#1a7f4b' : (m.marginPct >= 0.3 ? '#b26a00' : '#c0392b');
+              return '<tr>' +
+                '<td style="font-size:12px"><div>' + esc(m.supplierItem || m.supplierItemCode) + '</div><div style="font-size:10.5px;color:#7b8494">' + esc(m.supplier || '') + '</div></td>' +
+                '<td style="font-size:12px"><div>' + esc(m.posItemName) + '</div><div style="font-size:10.5px;color:#7b8494;font-family:monospace">' + esc(m.posItemCode) + '</div></td>' +
+                '<td class="n">' + num(m.boughtQty) + '<span style="font-size:10px;color:#7b8494"> ' + esc(m.unit || '') + '</span></td>' +
+                '<td class="n">' + gbp(m.boughtCost) + '</td>' +
+                '<td class="n" style="font-size:11.5px">' + gbp(m.avgUnitCost) + '</td>' +
+                '<td class="n">' + num(m.portionYield) + '</td>' +
+                '<td class="n" style="font-size:11.5px">£' + (m.costPerPortion || 0).toFixed(2) + '</td>' +
+                '<td class="n">' + num(m.soldQty) + '</td>' +
+                '<td class="n">' + gbp(m.soldRevenue) + '</td>' +
+                '<td class="n" style="font-size:11.5px">£' + (m.avgSalePrice || 0).toFixed(2) + '</td>' +
+                '<td class="n">' + gbp(m.totalCogs) + '</td>' +
+                '<td class="n" style="font-weight:600">' + gbp(m.gp) + '</td>' +
+                '<td class="n" style="font-weight:700;color:' + marginColor + '">' + pc(m.marginPct) + '</td>' +
+              '</tr>';
+            }).join('') +
+            '</tbody></table></div>' +
+          '</div>'
+        );
+      }
+
+      if (unmapped.length) {
+        h += (
+          '<div class="card"><h2>Unmapped items · top ' + unmapped.length + '</h2>' +
+            '<p class="sub">These are supplier items we have invoices for but no POS link yet. Map them in the Food Costs tab (ARIA suggests the match) and they will appear in the margin table above.</p>' +
+            '<div style="overflow-x:auto;max-height:420px;overflow-y:auto"><table><thead><tr>' +
+              '<th>Supplier</th><th>Code</th><th>Name</th><th class="n">Bought qty</th><th class="n">Cost</th><th class="n">£/unit</th>' +
+            '</tr></thead><tbody>' +
+            unmapped.map(function (u) {
+              return '<tr>' +
+                '<td style="font-size:11.5px">' + esc((u.supplier || '').replace(' Foodservice', '')) + '</td>' +
+                '<td style="font-family:monospace;font-size:11.5px">' + esc(u.supplierItemCode) + '</td>' +
+                '<td style="font-size:12px">' + esc(u.supplierItemName || '') + '</td>' +
+                '<td class="n">' + num(u.qty) + '<span style="font-size:10px;color:#7b8494"> ' + esc(u.unit || '') + '</span></td>' +
+                '<td class="n">' + gbp(u.cost) + '</td>' +
+                '<td class="n" style="font-size:11.5px">' + gbp(u.avgUnitCost) + '</td>' +
+              '</tr>';
+            }).join('') +
+            '</tbody></table></div>' +
+          '</div>'
+        );
+      }
+    }
+
+    el.innerHTML = h;
+
+    // Wire the date range + run button
+    var runBtn = document.getElementById('fb-marg-run');
+    if (runBtn) {
+      runBtn.onclick = function () {
+        var f = document.getElementById('fb-marg-from').value;
+        var t = document.getElementById('fb-marg-to').value;
+        FB_MARGIN_CACHE = null;
+        renderFoodMargins(el, S, P);  // show loading state
+        fetchFbMargin(f, t, function () { renderFoodMargins(el, S, P); });
+      };
+    }
+    // Initial fetch
+    if (!cache) fetchFbMargin(fromVal, toVal, function () { renderFoodMargins(el, S, P); });
+  }
+
   function renderFb() {
     var el = $('pf-fb'), T = window.Trading, S = T ? T.S() : {}; fbCharts.forEach(function (c) { c.destroy(); }); fbCharts = [];
     if (!S.af) { el.innerHTML = '<div class="card"><h2>No Guestline data loaded</h2></div>'; return; }
@@ -1441,6 +1576,7 @@
     if (fbView === 'term' && !(S.x && S.x.plu)) fbView = 'over';
     if (fbView === 'cov') return renderCov(el, S, P);
     if (fbView === 'costs') return renderFoodCosts(el, S, P);
+    if (fbView === 'margins') return renderFoodMargins(el, S, P);
     if (fbView === 'fbdisc') return renderFbDisc(el, S, P);
     if (fbView === 'disc') return renderDisc(el, S, P);
     if (fbView === 'term') return renderTerm(el, S, P); if (fbView === 'brk') return renderBrk(el, S, P); if (fbView === 'menu') return renderMenu(el, S, P);
