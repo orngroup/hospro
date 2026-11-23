@@ -317,12 +317,70 @@
 
     var briefHtml = briefHeadline ? '<div class="mf-brief"><b>ARIA\'s brief today:</b> ' + esc(briefHeadline) + '</div>' : '';
 
-    // KPI row
-    var kpiHtml = '<div class="mf-kpi">' +
+    // v39.17 — Month-end projection headline. Sits above the daily KPI tiles
+    // so the GM / Ajay see where the month is LANDING, not just where it is today.
+    // Data comes from flash.monthForecast (built by backend forecastTick / buildFlash).
+    var mf = flash.monthForecast;
+    var tm = flash.twelveMonth;
+    var projHtml = '';
+    if (mf && mf.monthEnd) {
+      var monthName = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+      var actTotal = mf.actual ? (mf.actual.total || 0) : 0;
+      var obTotal  = mf.onBooks ? (mf.onBooks.total || 0) : 0;
+      var endTotal = mf.monthEnd.total || 0;
+      // LY comparison from twelveMonth[0] if present
+      var lyTotal = null, vsLY = null;
+      if (tm && tm.months && tm.months.length) {
+        var cur = tm.months.filter(function (r) { return r.isCurrent; })[0] || tm.months[0];
+        if (cur && cur.lastYear) { lyTotal = cur.lastYear.total; vsLY = cur.vsLYPct; }
+      }
+      var vsLYHtml = (vsLY == null) ? '' :
+        '<span style="color:' + (vsLY >= 0 ? '#1a6442' : '#8a1e15') + ';font-weight:700">' + (vsLY >= 0 ? '▲ +' : '▼ ') + (vsLY * 100).toFixed(1) + '%</span>';
+
+      projHtml =
+        '<div class="mf-proj">' +
+          '<div class="mf-proj-hd">' +
+            '<div><div class="mf-proj-k">Month-end projection · ' + esc(monthName) + '</div>' +
+              '<div class="mf-proj-sub">Actual to yesterday + confirmed bookings + modelled F&amp;B · updated ' + (mf.asOf ? new Date(mf.asOf).toLocaleTimeString('en-GB').slice(0, 5) : 'today') + '</div>' +
+            '</div>' +
+            (lyTotal != null ? '<div class="mf-proj-ly"><div class="mf-proj-ly-l">vs Last Year same month</div><div class="mf-proj-ly-v">' + mfGbp(lyTotal) + ' ' + vsLYHtml + '</div></div>' : '') +
+          '</div>' +
+          '<div class="mf-proj-row">' +
+            '<div class="mf-proj-t mf-proj-act"><div class="mf-proj-l">Actual to date</div><div class="mf-proj-v">' + mfGbp(actTotal) + '</div><div class="mf-proj-s">' + (mf.actual ? mf.actual.nights : 0) + ' closed nights · ' + (mf.actual ? mf.actual.rooms : 0) + ' rooms sold</div></div>' +
+            '<div class="mf-proj-plus">+</div>' +
+            '<div class="mf-proj-t mf-proj-ob"><div class="mf-proj-l">On the books</div><div class="mf-proj-v">' + mfGbp(obTotal) + '</div><div class="mf-proj-s">' + (mf.onBooks ? mf.onBooks.nights : 0) + ' forward nights · ' + (mf.onBooks ? mf.onBooks.rooms : 0) + ' booked</div></div>' +
+            '<div class="mf-proj-plus">=</div>' +
+            '<div class="mf-proj-t mf-proj-end"><div class="mf-proj-l">Month-end forecast</div><div class="mf-proj-v">' + mfGbp(endTotal) + '</div><div class="mf-proj-s">' + (mf.monthEnd.rooms || 0) + ' rooms · ' + ((mf.monthEnd.occPct || 0) * 100).toFixed(1) + '% occupancy</div></div>' +
+          '</div>' +
+          '<div class="mf-proj-ft">' +
+            'Accommodation: ' + mfGbp(mf.actual && mf.actual.accomNet) + ' actual + ' + mfGbp(mf.onBooks && mf.onBooks.accomNet) + ' booked = <b>' + mfGbp(mf.monthEnd.accomNet) + '</b>' +
+            ' · F&amp;B: ' + mfGbp(mf.actual && mf.actual.fbNet) + ' actual + ' + mfGbp(mf.onBooks && mf.onBooks.fbNet) + ' modelled = <b>' + mfGbp(mf.monthEnd.fbNet) + '</b>' +
+            ' · Other: ' + mfGbp(mf.actual && mf.actual.otherNet) + ' actual + ' + mfGbp(mf.onBooks && mf.onBooks.otherNet) + ' modelled = <b>' + mfGbp(mf.monthEnd.otherNet) + '</b>' +
+            (mf.fbForecastBasis ? ' · F&amp;B modelled at £' + (mf.fbForecastBasis).toFixed(2) + '/room (28-night trailing)' : '') +
+          '</div>' +
+        '</div>';
+    }
+
+    // 12-month forecast banner — one line, clickable
+    var tmHtml = '';
+    if (tm && tm.rollup) {
+      var vsLY12 = tm.rollup.vsLYPct;
+      var vsLY12Html = (vsLY12 == null) ? '' :
+        '<span style="color:' + (vsLY12 >= 0 ? '#1a6442' : '#8a1e15') + ';font-weight:700">' + (vsLY12 >= 0 ? '▲ +' : '▼ ') + (vsLY12 * 100).toFixed(1) + '%</span>';
+      tmHtml =
+        '<div class="mf-12m">' +
+          '<div class="mf-12m-l">Next 12 months forecast · <b>' + mfGbp(tm.rollup.forecastTotal || 0) + '</b> vs LY ' + mfGbp(tm.rollup.lyTotal || 0) + ' ' + vsLY12Html + '</div>' +
+          '<div class="mf-12m-r">On books: <b>' + mfGbp(tm.rollup.onBooksTotal || 0) + '</b> · ' + (tm.rollup.rooms || 0) + ' rooms forward</div>' +
+        '</div>';
+    }
+
+    // KPI row — now labelled DAY so the headline Month-end projection isn't confused with it
+    var kpiHtml = '<div class="mf-kpi-h">Yesterday · ' + esc(flash.forDate ? new Date(flash.forDate + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }) : '') + '</div>' +
+      '<div class="mf-kpi">' +
       '<div class="mf-kpi-t mf-kpi-occ"><div class="mf-kpi-l">Occupancy</div><div class="mf-kpi-v">' + mfPct(d.occ) + '</div><div class="mf-kpi-s">' + d.sold + ' of ' + d.stock + ' rooms</div></div>' +
       '<div class="mf-kpi-t mf-kpi-adr"><div class="mf-kpi-l">ADR (net)</div><div class="mf-kpi-v">' + mfGbpDp(d.adrNet) + '</div><div class="mf-kpi-s">accommodation</div></div>' +
       '<div class="mf-kpi-t mf-kpi-rev"><div class="mf-kpi-l">RevPAR</div><div class="mf-kpi-v">' + mfGbpDp(d.revparNet) + '</div><div class="mf-kpi-s">net, per available room</div></div>' +
-      '<div class="mf-kpi-t mf-kpi-tot"><div class="mf-kpi-l">Total Revenue</div><div class="mf-kpi-v">' + mfGbp(d.revNet) + '</div><div class="mf-kpi-s">TRevPAR ' + mfGbpDp(d.trevparNet) + '</div></div>' +
+      '<div class="mf-kpi-t mf-kpi-tot"><div class="mf-kpi-l">Day revenue</div><div class="mf-kpi-v">' + mfGbp(d.revNet) + '</div><div class="mf-kpi-s">TRevPAR ' + mfGbpDp(d.trevparNet) + '</div></div>' +
       '</div>';
 
     // Last 7 nights mini chart
@@ -408,6 +466,9 @@
           '<h2>' + esc(dateHuman) + '</h2></div>' +
           '<div class="mf-hd-r"><button class="mf-btn" data-mf-refresh>↻ Refresh</button></div>' +
         '</div>' +
+        // v39.17 — Month-end projection headline first. Shows where the month is landing, not just where it is today.
+        projHtml +
+        tmHtml +
         commentaryHtml +
         spotlightHtml +
         flagsHtml +
@@ -492,7 +553,32 @@
       '.mf-la-v{font-size:19px;font-weight:700;color:#1a2238;margin-top:3px}',
       '.mf-ft{font-size:11px;color:#7b8494;margin-top:14px;padding-top:12px;border-top:1px solid #efece5;line-height:1.5}',
       // KPI row
-      '.mf-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 18px}',
+      '.mf-kpi-h{font-size:11px;font-weight:700;letter-spacing:.4px;color:#52647a;text-transform:uppercase;margin:18px 0 6px}',
+      '.mf-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 18px}',
+      /* v39.17 — Month-end projection headline */
+      '.mf-proj{background:linear-gradient(135deg,#1a2238 0%,#145866 100%);color:#fff;border-radius:12px;padding:20px 22px;margin-bottom:14px;box-shadow:0 4px 14px rgba(20,34,56,.18)}',
+      '.mf-proj-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px;flex-wrap:wrap}',
+      '.mf-proj-k{font-size:11px;font-weight:700;letter-spacing:.8px;color:#C7A87A;text-transform:uppercase;margin-bottom:3px}',
+      '.mf-proj-sub{font-size:12px;color:#bfdde3;margin-top:3px}',
+      '.mf-proj-ly{text-align:right;background:rgba(255,255,255,.08);padding:8px 14px;border-radius:8px}',
+      '.mf-proj-ly-l{font-size:10px;font-weight:700;letter-spacing:.4px;color:#9bb5c8;text-transform:uppercase}',
+      '.mf-proj-ly-v{font-size:14px;font-weight:700;margin-top:2px;color:#fff}',
+      '.mf-proj-row{display:grid;grid-template-columns:1fr auto 1fr auto 1.2fr;align-items:center;gap:10px;margin-bottom:12px}',
+      '.mf-proj-t{padding:14px 16px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);text-align:left}',
+      '.mf-proj-end{background:#C7A87A !important;color:#1a2238 !important;border-color:transparent !important}',
+      '.mf-proj-end .mf-proj-l{color:#5a4320 !important}',
+      '.mf-proj-end .mf-proj-s{color:#5a4320 !important;opacity:.85}',
+      '.mf-proj-plus{font-size:28px;font-weight:300;color:#9bb5c8;text-align:center}',
+      '.mf-proj-l{font-size:10.5px;font-weight:700;letter-spacing:.4px;color:#9bb5c8;text-transform:uppercase;margin-bottom:4px}',
+      '.mf-proj-v{font-size:30px;font-weight:800;letter-spacing:-.4px;margin:2px 0;color:#fff}',
+      '.mf-proj-s{font-size:11px;color:#9bb5c8;margin-top:2px}',
+      '.mf-proj-ft{font-size:11.5px;color:#bfdde3;line-height:1.55;padding-top:10px;border-top:1px solid rgba(255,255,255,.1)}',
+      '.mf-proj-ft b{color:#fff}',
+      '@media (max-width:900px){.mf-proj-row{grid-template-columns:1fr !important}.mf-proj-plus{display:none}}',
+      /* 12-month strip */
+      '.mf-12m{background:#eef3f8;border:1px solid #c8d9dd;border-left:4px solid #1F7A8C;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:#2c3440}',
+      '.mf-12m b{color:#1a2238}',
+      '.mf-12m-r{color:#52647a;font-size:12px}',
       '.mf-kpi-t{padding:14px 12px;border-radius:8px;text-align:center;color:#fff}',
       '.mf-kpi-occ{background:#1a2238}',
       '.mf-kpi-adr{background:#1F7A8C}',
