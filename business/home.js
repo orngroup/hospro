@@ -1430,18 +1430,25 @@
         '</div>'
       );
 
-      // Top items by spend + mapping status
-      var topItems = (aggregated || []).slice().sort(function (a, b) { return b.totalSpend - a.totalSpend; }).slice(0, 30);
+      // v39.22 — ALL supplier items by spend (no more Top 30 slice). Keeps a search
+      // box so Veronica can jump straight to what she needs on long invoice runs.
+      var allItems = (aggregated || []).slice().sort(function (a, b) { return b.totalSpend - a.totalSpend; });
+      var unmappedCount = allItems.filter(function (x) { return !mappings[x.supplierCode + '|' + x.code]; }).length;
       h += (
-        '<div class="card"><h2>Top 30 supplier items by spend</h2>' +
-          '<p class="sub">Click <b>Map</b> to link a supplier item to a POS menu item. Once mapped, GP% can be calculated.</p>' +
-          '<div style="overflow-x:auto"><table><thead><tr>' +
+        '<div class="card"><h2>All supplier items · ' + allItems.length + ' total <span style="font-size:13px;color:#7b8494;font-weight:400">· ' + unmappedCount + ' unmapped</span></h2>' +
+          '<p class="sub">Click <b>Map</b> to link a supplier item to a POS menu item. Once mapped, GP% can be calculated. Search filters as you type.</p>' +
+          '<div style="display:flex;gap:10px;margin:10px 0;align-items:center;flex-wrap:wrap">' +
+            '<input type="text" id="fb-items-search" placeholder="🔍 Search by name or code…" style="flex:1;min-width:220px;padding:8px 12px;border:1px solid #c8d9dd;border-radius:6px;font-size:13.5px">' +
+            '<label style="font-size:12.5px;color:#52647a;display:flex;align-items:center;gap:6px"><input type="checkbox" id="fb-items-unmapped-only"> Unmapped only</label>' +
+          '</div>' +
+          '<div style="overflow-x:auto;max-height:720px;overflow-y:auto"><table id="fb-items-table"><thead style="position:sticky;top:0;background:#eef3f8;z-index:1"><tr>' +
             '<th>Supplier</th><th>Code</th><th>Name</th><th class="n">Qty total</th><th class="n">£ spent</th><th class="n">Prices seen</th><th>Status</th><th></th>' +
           '</tr></thead><tbody>' +
-          topItems.map(function (x) {
+          allItems.map(function (x) {
             var mapKey = x.supplierCode + '|' + x.code;
             var mapped = mappings[mapKey];
-            return '<tr>' +
+            var searchKey = ((x.name || '') + ' ' + (x.code || '') + ' ' + (x.supplier || '')).toLowerCase();
+            return '<tr data-fb-search="' + esc(searchKey) + '" data-fb-mapped="' + (mapped ? '1' : '0') + '">' +
               '<td style="font-size:11.5px">' + esc((x.supplier || '').replace(' Foodservice', '')) + '</td>' +
               '<td style="font-family:monospace;font-size:11.5px">' + esc(x.code) + '</td>' +
               '<td>' + esc(x.name) + '</td>' +
@@ -1503,6 +1510,27 @@
         });
       };
     }
+
+    // v39.22 — Search + "Unmapped only" filter for the ALL supplier items table.
+    var searchBox = document.getElementById('fb-items-search');
+    var unmappedChk = document.getElementById('fb-items-unmapped-only');
+    if (searchBox || unmappedChk) {
+      function applyItemFilter() {
+        var q = (searchBox ? searchBox.value : '').trim().toLowerCase();
+        var unmappedOnly = unmappedChk ? unmappedChk.checked : false;
+        var rows = document.querySelectorAll('#fb-items-table tbody tr');
+        rows.forEach(function (r) {
+          var sk = r.getAttribute('data-fb-search') || '';
+          var isMapped = r.getAttribute('data-fb-mapped') === '1';
+          var textMatch = !q || sk.indexOf(q) !== -1;
+          var mapMatch = !unmappedOnly || !isMapped;
+          r.style.display = (textMatch && mapMatch) ? '' : 'none';
+        });
+      }
+      if (searchBox) searchBox.oninput = applyItemFilter;
+      if (unmappedChk) unmappedChk.onchange = applyItemFilter;
+    }
+
     function handleUpload(files) {
       if (!files || !files.length) return;
       var filesArr = Array.prototype.slice.call(files);
