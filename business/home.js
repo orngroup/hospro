@@ -140,8 +140,9 @@
     var el = $('pf-home'), T = window.Trading, S = T ? T.S() : {}, a = acc(), PD = window.Profit.data(), h = '', card = {}, H = highlights();
     var who = (window.Profit.user() || '').split(/\s+/)[0], hr = new Date().getHours();
 
-    /* v39.9 — Manager's Flash slot. Fills in asynchronously via fetchManagerFlash(). */
-    h += '<div id="mf-slot" class="mf-slot"><div class="mf-load">🎩 ARIA is preparing your Manager\'s Flash…</div></div>';
+    // v39.22 — mf-slot moved to AFTER the today card so the page renders in the
+    // correct mock-up order: Hero → Latest trading position + chart → Highlights →
+    // tables. Previously mf-slot sat first and pushed the hero + chart to the bottom.
 
     h += '<div class="hp-hero"><div><h2>' + (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (who ? ', ' + esc(who) : '') + '</h2><p>Business intelligence for Brandon Hall Hotel &amp; Spa: trading, profit and costs in one place</p></div>' +
       '<div class="hp-btns"><button class="pillbtn bad" data-drawer="bad"><b>' + openCount(H.bad) + '</b>Actions</button><button class="pillbtn warn" data-drawer="warn"><b>' + openCount(H.warn) + '</b>Watch list</button><button class="iconbtn" data-go="pf-brief" title="Project brief">' + icon('brief', 30) + '<span>Project brief</span></button><button class="iconbtn" data-go="pf-help" title="How figures are worked out">' + icon('kpi', 30) + '<span>How it’s worked out</span></button></div></div>';
@@ -174,6 +175,9 @@
     }
     if (window.CostsApp) { var tx = window.CostsApp.tx(), t = 0; tx.forEach(function (r) { t += r.net || 0; }); if (t) card.explore = gbp(t) + ' of supplier costs analysed'; }
     h = h.slice(0, mark) + today + h.slice(mark);
+    // v39.22 — mf-slot (Manager's Flash → Highlights + tables + F&B overview) now
+    // renders RIGHT HERE, after the today card (hero + trading tiles + big chart).
+    h += '<div id="mf-slot" class="mf-slot"><div class="mf-load">🎩 ARIA is preparing your Manager\'s Flash…</div></div>';
     card.actions = openCount(H.bad) + ' actions · ' + openCount(H.warn) + ' to watch'; card.data = (S.received ? S.received.length : 0) + ' Guestline reports on record';
     h += '<div class="hp-cards">' + CARDS.map(function (c) { return '<button class="hp-card' + (c[1] === 'trading' ? ' hot' : '') + '" data-go="' + c[0] + '" style="--c:' + COL[c[1]] + ';--img:url(img/' + (CARD_IMG[c[1]] || CARD_DEFAULT) + ')">' + icon(c[1]) + '<span><b>' + c[2] + '</b><small>' + c[3] + '</small>' + (card[c[1]] ? '<em>' + esc(card[c[1]]) + '</em>' : '') + '</span></button>'; }).join('') + '</div>' +
       '<p class="hp-foot"><a data-go="pf-data">Data references</a> · where every figure comes from and when it was imported &nbsp;|&nbsp; <a data-go="pf-help">How figures are worked out</a> &nbsp;|&nbsp; <a data-go="pf-brief">Project brief</a></p>';
