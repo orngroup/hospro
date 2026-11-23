@@ -61,7 +61,7 @@
     <div class="photo-prev" id="prev"></div>
 
     <button class="sub" id="submit" onclick="submitFault()">🔧 Send to the maintenance team</button>
-    <div class="hint">This goes straight to HosFIX and the maintenance team (Herman &amp; Pete). Glenn can reassign if needed.</div>
+    <div class="hint">This goes straight to HosFIX. Raj and the maintenance team are alerted on their phones and will allocate it to Glenn, Pete or Herman.</div>
     <div class="err" id="err"></div>
   </div>
 
@@ -127,7 +127,13 @@
     var m=loc.match(/^Room\s+(\d+)/i); var roomNo=m?m[1]:'';
     try{
       var job=await HH.raiseFixJob({ area:area, location:loc, room:roomNo, description:desc, workType:wtype, priority:prio, by:by||'Reception', source:'Reception', photos:photo?[photo]:[] });
-      $('donemsg').innerHTML='Job <b>'+(job&&job.id?job.id:'')+'</b> raised for <b>'+loc.replace(/</g,'')+'</b> and sent to the maintenance team.';
+      // Push the new fault straight to the manager phones (Raj + management) so it
+      // never waits for anyone to have the app open. Matches the in-app reporter flow.
+      try{
+        var ev=(prio==='urgent')?'job_urgent':'job_new';
+        fetch('https://europe-west1-brandonhall-7bdef.cloudfunctions.net/notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:ev, job:{id:(job&&job.id)||'', title:(job&&job.title)||desc, area:area, areaLabel:(AREAS[area]&&AREAS[area].label)||area, location:loc, priority:prio}, assignees:[], adminIds:['raj','ajay','alia','glenn'], senderId:''})}).catch(function(){});
+      }catch(e){}
+      $('donemsg').innerHTML='Job <b>'+(job&&job.id?job.id:'')+'</b> raised for <b>'+loc.replace(/</g,'')+'</b>. Raj and the maintenance team have been alerted and will allocate it.';
       $('form').style.display='none'; $('done').style.display='block';
       try{ window.scrollTo(0,0); }catch(e){}
     }catch(e){
