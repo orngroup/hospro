@@ -535,24 +535,22 @@
 
     return (
       '<div class="mf-card">' +
-        '<div class="mf-hd">' +
-          '<div><div class="mf-hd-kicker">Daily Business Update · ' + esc(flash.hotel) + '</div>' +
-          '<h2>' + esc(dateHuman) + '</h2></div>' +
-          '<div class="mf-hd-r">' +
-            '<a href="#revenue" class="mf-btn" style="text-decoration:none;margin-right:6px">ARIA commentary & actions →</a>' +
-            '<button class="mf-btn" data-mf-refresh>↻ Refresh</button>' +
-          '</div>' +
+        // v39.22 — removed the "DAILY BUSINESS UPDATE" header and the duplicate
+        // Latest trading position grid. The top of the Business Today page already
+        // renders the Latest trading position card (13 tiles + big multi-series line
+        // chart) from the `today` function. Keeping them in both was duplication.
+        //
+        // What stays in this renderFlash block: Highlights, 12-month forecast banner,
+        // Revenue · net of VAT table, F&B Overview, posting split, items, charts and
+        // Rooms & Rates. Everything below in the exact mock-up order (1 → 1A → 2 → 3).
+        '<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px">' +
+          '<a href="#revenue" class="mf-btn" style="text-decoration:none">ARIA commentary &amp; actions →</a>' +
+          '<button class="mf-btn" data-mf-refresh>↻ Refresh</button>' +
         '</div>' +
-        // v39.18 — Business Today is now pure numbers. ARIA commentary, spotlight,
-        // anomalies, wins, misses and actions moved to the Revenue Management tab
-        // (Discrepancies sub-tab) and remain in the 08:00 email.
-        tradingHtml +
+        /* tradingHtml removed — already in the `today` card at the top of the page */
         highlightsHtml +
         tmHtml +
-        // v39.22 — kpiHtml removed: its tiles (Occupancy, ADR, RevPAR, Day revenue)
-        // are already in the Latest trading position grid above. Kept the computation
-        // for use by downstream callers that may still read flash.day fields.
-        '' + /* kpiHtml */
+        '' + /* kpiHtml removed in v39.22 — info already in the trading tiles above */
         '<h3 class="mf-sh">Revenue · net of VAT' +
           mfTip('Revenue — net of VAT', 'All figures exclude 20% VAT. Day = yesterday\'s close. WTD = Monday of this week to yesterday. MTD = 1st of month to yesterday. YTD = 1 January to yesterday. Comes from the Guestline Rezlynx daily financial feed (gl_days collection) — populated by the 05:00 overnight pull.',
             'Net = Gross − VAT, pulled from Rezlynx analysis-code groups (ACCOM, FOOD, BEVERAGE, CONFERENCE, MISC, SUNDRIES)') +
@@ -566,13 +564,9 @@
           rrow('Payments received', d.payments, w.payments, m.payments, y.payments, mfGbp) +
         '</tbody></table>' +
         // v39.20 — new section heading before F&B block so it's clearly its own area
-        '<h3 class="mf-sh mf-sh-fb" style="margin-top:28px;border-top:2px solid #C7A87A;padding-top:16px;font-size:17px">Food &amp; Beverage Overview' +
-          mfTip('Food & Beverage Overview', 'F&B revenue, covers, posting split and spend per cover. Covers the restaurant, bar and conference F&B. Food cost margin is in the F&B tab under Food Margins.',
-            'F&B per occupied room = (Food + Beverage Net) ÷ rooms sold') +
-        '</h3>' +
-        fbHtml +
-        itemsHtml +
-        chartHtml +
+        // v39.22 — Reordered per mock-up (image 2 before image 3):
+        //   (2) Weekday pattern → Rooms & Rates → Look Ahead Occupancy
+        //   (3) Food & Beverage Overview → Yesterday's posting → Top items
         dowHtml +
         '<h3 class="mf-sh">Rooms &amp; rates' +
           mfTip('Rooms & rates', 'ADR, RevPAR, TRevPAR and per-room productivity metrics. All based on 114 lettable rooms (120 total minus 5 staff + 1 storage). Rooms sold comes from Rezlynx overnight audit.',
@@ -591,6 +585,14 @@
           rrow('Rooms DFS', d.dfs, w.dfs, m.dfs, y.dfs, mfNum) +
         '</tbody></table>' +
         laHtml +
+        // (3) Food & Beverage Overview
+        '<h3 class="mf-sh mf-sh-fb" style="margin-top:28px;border-top:2px solid #C7A87A;padding-top:16px;font-size:17px">Food &amp; Beverage Overview' +
+          mfTip('Food & Beverage Overview', 'F&B revenue, covers, posting split and spend per cover. Covers the restaurant, bar and conference F&B. Food cost margin is in the F&B tab under Food Margins.',
+            'F&B per occupied room = (Food + Beverage Net) ÷ rooms sold') +
+        '</h3>' +
+        fbHtml +
+        itemsHtml +
+        chartHtml +
         '<div class="mf-ft">All figures net of VAT. WTD = Monday to yesterday. MTD = 1st of month to yesterday. YTD = 1 January to yesterday. Items shown from Rezlynx POS postings; manual entries carry no item name so are shown as totals only. · Live from the Guestline API feed and ARIA.</div>' +
       '</div>'
     );
