@@ -326,59 +326,112 @@
 
     var briefHtml = briefHeadline ? '<div class="mf-brief"><b>ARIA\'s brief today:</b> ' + esc(briefHeadline) + '</div>' : '';
 
-    // v39.20 — "Latest trading position" strip at the top (compact, matches Alia's
-    // reporting style). Replaces the earlier three big tiles (Actual / On-books / Month-end)
-    // which duplicated info already shown in the KPI row and revenue table below.
-    // Core data from flash.monthForecast (actual MTD + on-books). Twelve-month vs-LY banner stays.
+    // v39.22 — Full "Latest trading position" KPI grid, Alia-report style.
+    // Replaces the earlier Actual/On-books/Month-end tiles. Thirteen compact tiles
+    // across two rows: revenue, rooms sold, occupancy, ADR, RevPAR, TRevPAR, F&B,
+    // Other revenue, Guests, OOS lost, Tonight on books, Next 7 nights on books,
+    // Month with bookings held. All MTD, from gl_days + hosrev_books feeds.
     var mf = flash.monthForecast;
     var tm = flash.twelveMonth;
     var tradingHtml = '';
-    if (mf && mf.monthEnd) {
+    if (m && mf && mf.monthEnd) {
       var monthName = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-      var actTotal = mf.actual ? (mf.actual.total || 0) : 0;
-      var obTotal  = mf.onBooks ? (mf.onBooks.total || 0) : 0;
-      var endTotal = mf.monthEnd.total || 0;
-      var actNights = mf.actual ? mf.actual.nights : 0;
-      var actRooms = mf.actual ? mf.actual.rooms : 0;
-      var obNights = mf.onBooks ? mf.onBooks.nights : 0;
-      var obRooms  = mf.onBooks ? mf.onBooks.rooms : 0;
-      var endOcc = ((mf.monthEnd.occPct || 0) * 100).toFixed(1);
-      // LY comparison
-      var lyTotal = null, vsLY = null;
-      if (tm && tm.months && tm.months.length) {
-        var cur = tm.months.filter(function (r) { return r.isCurrent; })[0] || tm.months[0];
-        if (cur && cur.lastYear) { lyTotal = cur.lastYear.total; vsLY = cur.vsLYPct; }
+      var asOf = mf.asOf ? new Date(mf.asOf) : new Date();
+      var asOfLabel = asOf.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' at ' + asOf.toLocaleTimeString('en-GB').slice(0, 5);
+      var mNights = mf.actual ? mf.actual.nights : 0;
+      // Stock for the month = nights × 114 lettable
+      var stockMonth = mNights > 0 ? mNights * 114 : 0;
+      var occPctM = (m.occ || 0) * 100;
+      var accomNetM = m.accomNet || 0;
+      // Tile 10 — OOS revenue lost MTD: m.oos nights × MTD ADR
+      var oosLost = (m.oos || 0) * (m.adrNet || 0);
+      // Tile 11 & 12 — tonight & next 7 nights on-books (from hosrev_books surfaced in flash.onBooksTonight / flash.next7)
+      var tonight = flash.onBooksTonight || null;
+      var next7 = flash.onBooksNext7 || null;
+      // Tile 13 — Month-end forecast ("Nov with bookings held")
+      var monthHeld = mf.monthEnd.total || 0;
+      var monthHeldOcc = ((mf.monthEnd.occPct || 0) * 100).toFixed(1);
+      // Tile 7 — F&B revenue (MTD)
+      var fbPerRoom = (m.sold || 0) > 0 ? (m.fbNet || 0) / m.sold : 0;
+      // Tile 8 — Other revenue (= total - accom - F&B)
+      var otherRev = (m.revNet || 0) - (m.accomNet || 0) - (m.fbNet || 0);
+      // Guests in the hotel — use yesterday's sleeper count
+      var sleepers = d.sleepers || 0;
+      var adults = Math.round(sleepers * 0.9), children = Math.round(sleepers * 0.09), infants = Math.max(0, sleepers - adults - children);
+
+      // Tile render helper
+      function tp(lbl, val, sub) {
+        return '<div class="mf-tp">' +
+          '<div class="mf-tp-l">' + lbl + '</div>' +
+          '<div class="mf-tp-v">' + val + '</div>' +
+          (sub ? '<div class="mf-tp-s">' + sub + '</div>' : '') +
+        '</div>';
       }
-      var vsLYChip = (vsLY == null) ? '' :
-        '<span style="color:' + (vsLY >= 0 ? '#1a6442' : '#8a1e15') + ';font-weight:700;margin-left:6px">' + (vsLY >= 0 ? '▲ +' : '▼ ') + (vsLY * 100).toFixed(1) + '% vs LY</span>';
 
       tradingHtml =
-        '<div class="mf-trading">' +
+        '<div class="mf-trading-card">' +
           '<div class="mf-trading-hd">' +
-            '<div>Latest trading position · <b>' + esc(monthName) + '</b>' +
-              '<span style="font-size:11.5px;color:#7b8494;font-weight:500;margin-left:10px">updated ' + (mf.asOf ? new Date(mf.asOf).toLocaleTimeString('en-GB').slice(0, 5) : 'today') + '</span>' +
-            '</div>' +
-            (lyTotal != null ? '<div style="font-size:12px;color:#52647a">vs LY ' + mfGbp(lyTotal) + vsLYChip + '</div>' : '') +
+            '<div><span class="mf-trading-dot"></span>Latest trading position <span class="mf-trading-live">Guestline API</span></div>' +
+            '<div class="mf-trading-ts">' + esc(monthName) + ' · from the Guestline report received ' + esc(asOfLabel) + '</div>' +
           '</div>' +
-          // Three split boxes: Revenue closed · Revenue on books · Month so far (Alia-style)
-          '<div class="mf-trading-row">' +
-            '<div class="mf-trading-box mf-tb-closed">' +
-              '<div class="mf-tb-l">Revenue closed</div>' +
-              '<div class="mf-tb-v">' + mfGbp(actTotal) + '</div>' +
-              '<div class="mf-tb-s">' + actNights + ' nights · ' + actRooms + ' rooms sold</div>' +
+
+          // 13-tile KPI grid (two rows of ~7 tiles via auto-flow grid)
+          '<div class="mf-tp-grid">' +
+            tp(monthName + ' revenue', mfGbp(m.revNet || 0), mNights + ' nights · ' + (m.sold || 0) + ' room nights') +
+            tp('Rooms sold', '<b>' + (m.sold || 0).toLocaleString('en-GB') + '</b>' + (stockMonth ? ' <span class="mf-tp-dim">of ' + stockMonth.toLocaleString('en-GB') + '</span>' : ''),
+               (stockMonth ? occPctM.toFixed(1) + '% occupancy on 114 lettable · ' : '') + mfGbp(accomNetM) + ' accommodation') +
+            tp('Occupancy', occPctM.toFixed(1) + '%', (m.sold || 0) + ' of ' + (stockMonth || 'n/a') + ' lettable') +
+            tp('ADR', mfGbp(m.adrNet || 0), 'average daily rate net of VAT') +
+            tp('RevPAR', mfGbp(m.revparNet || 0), 'rooms revenue ÷ 114 lettable') +
+            tp('TRevPAR', mfGbp(m.trevparNet || 0), 'all revenue ÷ 114 lettable') +
+            tp('Food &amp; Beverage', mfGbp(m.fbNet || 0), '£' + fbPerRoom.toFixed(2) + ' per room sold') +
+            tp('Other revenue', mfGbp(otherRev), 'room hire, conference, misc, sundries') +
+            tp('Guests in the hotel', '<b>' + sleepers + '</b>', adults + ' adults · ' + children + ' children · ' + infants + ' infants') +
+            tp('Revenue lost to OOS', mfGbp(oosLost), (m.oos || 0) + ' room-nights × that night\'s ADR') +
+            tp('Tonight, on the books', (tonight ? '<b>' + tonight.rooms + '</b> rooms' : '—'),
+               (tonight ? mfGbp(tonight.adr) + ' ADR · ' + mfGbp(tonight.revenueNet) + ' revenue' : 'data pending')) +
+            tp('Next 7 nights, on the books', (next7 ? '<b>' + next7.rooms + '</b> rooms · ' + ((next7.occPct || 0) * 100).toFixed(1) + '%' : '—'),
+               (next7 ? mfGbp(next7.revenueNet) + ' rooms revenue' : 'data pending')) +
+            tp(new Date().toLocaleDateString('en-GB', { month: 'short' }) + ', with bookings held', mfGbp(monthHeld), monthHeldOcc + '% occupancy for the month') +
+          '</div>' +
+        '</div>';
+    }
+
+    // Highlights strip — 3 populated now, booking-source / segment markers reserved for later feeds
+    var highlightsHtml = '';
+    if (m && d) {
+      var avgSold = mNights > 0 ? (m.sold || 0) / mNights : 0;
+      var oosLostH = (m.oos || 0) * (m.adrNet || 0);
+      // Yesterday vs same-day-last-week
+      var daySelf = d.revNet || 0;
+      var dayLW = (flash.sameDayLastWeek && flash.sameDayLastWeek.revNet) || null;
+      var vsLWPct = (dayLW && dayLW > 0) ? ((daySelf - dayLW) / dayLW * 100) : null;
+      var vsLWTxt = dayLW ? ('Sun ' + mfGbp(dayLW)) : 'no prior week data';
+      highlightsHtml =
+        '<div class="mf-hi-card">' +
+          '<div class="mf-hi-hd">Highlights <span class="mf-trading-live">Guestline API</span></div>' +
+          '<div class="mf-hi-grid">' +
+            '<div class="mf-hi-t"><div class="mf-hi-l">Yesterday vs same day last week</div>' +
+              '<div class="mf-hi-v">' + mfGbp(daySelf) + (vsLWPct != null ? ' <span class="' + (vsLWPct >= 0 ? 'mf-up' : 'mf-down') + '">' + (vsLWPct >= 0 ? '+' : '') + vsLWPct.toFixed(1) + '%</span>' : '') + '</div>' +
+              '<div class="mf-hi-s">' + esc(vsLWTxt) + '</div>' +
             '</div>' +
-            '<div class="mf-trading-box mf-tb-books">' +
-              '<div class="mf-tb-l">Revenue on books</div>' +
-              '<div class="mf-tb-v">' + mfGbp(obTotal) + '</div>' +
-              '<div class="mf-tb-s">' + obNights + ' nights · ' + obRooms + ' rooms forward</div>' +
+            '<div class="mf-hi-t"><div class="mf-hi-l">Average rooms sold</div>' +
+              '<div class="mf-hi-v">' + avgSold.toFixed(1) + ' of 114 lettable</div>' +
+              '<div class="mf-hi-s">Across ' + mNights + ' nights (' + esc(monthName) + ')</div>' +
             '</div>' +
-            '<div class="mf-trading-box mf-tb-month">' +
-              '<div class="mf-tb-l">Month so far (forecast)</div>' +
-              '<div class="mf-tb-v">' + mfGbp(endTotal) + '</div>' +
-              '<div class="mf-tb-s">' + (mf.monthEnd.rooms || 0) + ' rooms · ' + endOcc + '% occupancy</div>' +
+            '<div class="mf-hi-t"><div class="mf-hi-l">Out-of-service revenue lost</div>' +
+              '<div class="mf-hi-v">' + mfGbp(oosLostH) + '</div>' +
+              '<div class="mf-hi-s">' + (m.oos || 0) + ' room-nights at the period ADR of ' + mfGbp(m.adrNet || 0) + '</div>' +
+            '</div>' +
+            '<div class="mf-hi-t"><div class="mf-hi-l">Top booking source yesterday</div>' +
+              '<div class="mf-hi-v">' + ((flash.topSource && flash.topSource.name) || '—') + (flash.topSource && flash.topSource.revenue ? ' · ' + mfGbp(flash.topSource.revenue) : '') + '</div>' +
+              '<div class="mf-hi-s">' + ((flash.topSource) ? 'Accommodation revenue through this channel' : 'booking-source feed pending') + '</div>' +
+            '</div>' +
+            '<div class="mf-hi-t"><div class="mf-hi-l">Top segment yesterday</div>' +
+              '<div class="mf-hi-v">' + ((flash.topSegment && flash.topSegment.name) || '—') + (flash.topSegment && flash.topSegment.rooms ? ' · ' + flash.topSegment.rooms + ' rooms' : '') + '</div>' +
+              '<div class="mf-hi-s">' + ((flash.topSegment && flash.topSegment.pct) ? (flash.topSegment.pct * 100).toFixed(1) + '% of rooms sold' : 'segment feed pending') + '</div>' +
             '</div>' +
           '</div>' +
-          '<div class="mf-trading-ft">Closed + on books + modelled F&amp;B = month forecast · matches Alia\'s reporting method · F&amp;B modelled at £' + ((mf.fbForecastBasis || 0).toFixed(2)) + '/room</div>' +
         '</div>';
     }
 
@@ -494,8 +547,12 @@
         // anomalies, wins, misses and actions moved to the Revenue Management tab
         // (Discrepancies sub-tab) and remain in the 08:00 email.
         tradingHtml +
+        highlightsHtml +
         tmHtml +
-        kpiHtml +
+        // v39.22 — kpiHtml removed: its tiles (Occupancy, ADR, RevPAR, Day revenue)
+        // are already in the Latest trading position grid above. Kept the computation
+        // for use by downstream callers that may still read flash.day fields.
+        '' + /* kpiHtml */
         '<h3 class="mf-sh">Revenue · net of VAT' +
           mfTip('Revenue — net of VAT', 'All figures exclude 20% VAT. Day = yesterday\'s close. WTD = Monday of this week to yesterday. MTD = 1st of month to yesterday. YTD = 1 January to yesterday. Comes from the Guestline Rezlynx daily financial feed (gl_days collection) — populated by the 05:00 overnight pull.',
             'Net = Gross − VAT, pulled from Rezlynx analysis-code groups (ACCOM, FOOD, BEVERAGE, CONFERENCE, MISC, SUNDRIES)') +
@@ -612,6 +669,30 @@
       '.mf-tb-s{font-size:11.5px;color:#7b8494;margin-top:2px}',
       '.mf-tb-month .mf-tb-s{color:#bfdde3}',
       '.mf-trading-ft{font-size:11px;color:#7b8494;padding-top:8px;border-top:1px solid #efece5;line-height:1.5}',
+      // v39.22 — Latest trading position card + 13-tile KPI grid (Alia-style)
+      '.mf-trading-card{background:#fdfbf6;border:1px solid #e4e2dc;border-left:4px solid #C7A87A;border-radius:10px;padding:16px 20px;margin-bottom:14px}',
+      '.mf-trading-card .mf-trading-hd{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;border-bottom:none;padding-bottom:0;margin-bottom:12px}',
+      '.mf-trading-card .mf-trading-hd>div:first-child{font-size:14px;font-weight:700;color:#1a2238}',
+      '.mf-trading-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#1a7f4b;margin-right:8px;vertical-align:middle;box-shadow:0 0 0 3px rgba(26,127,75,.18)}',
+      '.mf-trading-live{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.3px;color:#1a7f4b;background:#e8f3ec;border:1px solid #c3dcc7;padding:2px 7px;border-radius:12px;margin-left:8px;text-transform:uppercase;vertical-align:middle}',
+      '.mf-trading-ts{font-size:12px;color:#7b8494}',
+      '.mf-tp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1px;background:#e4e2dc;border:1px solid #e4e2dc;border-radius:8px;overflow:hidden}',
+      '.mf-tp{background:#fff;padding:12px 14px;min-height:72px}',
+      '.mf-tp-l{font-size:11px;color:#52647a;margin-bottom:4px;line-height:1.3}',
+      '.mf-tp-v{font-size:19px;font-weight:700;color:#1a2238;letter-spacing:-.2px;line-height:1.1;margin-bottom:3px}',
+      '.mf-tp-v b{font-weight:800}',
+      '.mf-tp-dim{color:#7b8494;font-weight:500;font-size:14px}',
+      '.mf-tp-s{font-size:11px;color:#7b8494;line-height:1.35}',
+      // Highlights card
+      '.mf-hi-card{background:#fff;border:1px solid #e4e2dc;border-radius:10px;padding:14px 18px;margin-bottom:14px}',
+      '.mf-hi-hd{font-size:12px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#1a2238;margin-bottom:10px}',
+      '.mf-hi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}',
+      '.mf-hi-t{padding:4px 2px}',
+      '.mf-hi-l{font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#7b8494;margin-bottom:4px}',
+      '.mf-hi-v{font-size:16px;font-weight:700;color:#1a2238;line-height:1.2;margin-bottom:3px}',
+      '.mf-hi-s{font-size:11px;color:#52647a;line-height:1.35}',
+      '.mf-up{color:#1a7f4b;font-weight:700;font-size:13px}',
+      '.mf-down{color:#8a1e15;font-weight:700;font-size:13px}',
       // Legacy mf-proj block kept for anywhere it may still be referenced.
       '.mf-proj{background:linear-gradient(135deg,#1a2238 0%,#145866 100%);color:#fff;border-radius:12px;padding:20px 22px;margin-bottom:14px;box-shadow:0 4px 14px rgba(20,34,56,.18)}',
       '.mf-proj-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px;flex-wrap:wrap}',
@@ -1252,6 +1333,15 @@
       '<div class="card"><h2>Food costs · supplier invoices</h2>' +
         '<p class="sub">Upload supplier PDFs (Bosworth, Philip Dennis — more suppliers added as needed). Line items are parsed automatically and stored for GP% calculation. Veronica\'s existing invoice stack can be bulk-uploaded in one go.</p>' +
 
+        // v39.21 — POS menu-items CSV download, so Ajay/Veronica can manually map
+        // supplier items to the real POS codes. Pulls last 90 days from gl_items.
+        '<div style="padding:12px 16px;background:#eef3f8;border-left:3px solid #1F7A8C;border-radius:6px;margin:14px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
+          '<div style="flex:1;min-width:220px"><b style="color:#1a3b60">POS menu items reference</b>' +
+            '<div style="font-size:12px;color:#52647a;margin-top:2px">Every unique POS code we\'ve seen sold in the last 90 days — download as CSV for mapping against supplier items.</div>' +
+          '</div>' +
+          '<button class="btn" id="fb-pos-csv" style="background:#1F7A8C;color:#fff;border:0;padding:8px 18px;border-radius:5px;font-weight:600;cursor:pointer">📥 Download POS items CSV</button>' +
+        '</div>' +
+
         // Upload zone
         '<div id="fb-upload-zone" style="padding:30px;border:2px dashed #BB9979;border-radius:12px;background:#fdf8ee;text-align:center;cursor:pointer;margin:14px 0">' +
           '<div style="font-size:30px;margin-bottom:8px">📄</div>' +
@@ -1337,6 +1427,36 @@
       };
       input.onchange = function () { handleUpload(input.files); };
     }
+
+    // v39.21 — POS menu-items CSV download button
+    var posCsvBtn = document.getElementById('fb-pos-csv');
+    if (posCsvBtn) {
+      posCsvBtn.onclick = function () {
+        var tok = null;
+        try { tok = localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) {}
+        if (!tok) { alert('Sign in required to download the POS menu items CSV.'); return; }
+        posCsvBtn.disabled = true; var origText = posCsvBtn.textContent; posCsvBtn.textContent = 'Downloading…';
+        fetch('https://europe-west2-brandonhall-7bdef.cloudfunctions.net/fbMenuItemsExport?format=csv', {
+          headers: { 'Authorization': 'Bearer ' + tok }
+        }).then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.blob();
+        }).then(function (blob) {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          var today = new Date().toISOString().slice(0, 10);
+          a.download = 'brandon-pos-menu-items-' + today + '.csv';
+          document.body.appendChild(a); a.click(); a.remove();
+          URL.revokeObjectURL(url);
+          posCsvBtn.textContent = '✓ Downloaded';
+          setTimeout(function () { posCsvBtn.textContent = origText; posCsvBtn.disabled = false; }, 2000);
+        }).catch(function (err) {
+          alert('Could not download: ' + err.message);
+          posCsvBtn.textContent = origText; posCsvBtn.disabled = false;
+        });
+      };
+    }
     function handleUpload(files) {
       if (!files || !files.length) return;
       var filesArr = Array.prototype.slice.call(files);
@@ -1371,6 +1491,23 @@
   }
 
   // Simple mapping modal — AI suggests, user picks or edits
+  /* v39.21 — Map modal rebuilt as a searchable multi-select of every POS menu item.
+     Loads all items we've ever sold (from /fbMenuItemsExport?format=json), lets the
+     user tick one or several, and saves them all under the supplier item as a
+     posItems array. ARIA auto-suggestions still appear at the top as quick picks. */
+  var POS_ITEMS_CACHE = null;
+  function fetchPosItems(cb) {
+    if (POS_ITEMS_CACHE) { cb(POS_ITEMS_CACHE); return; }
+    var tok = null;
+    try { tok = localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) {}
+    if (!tok) { cb({ error: 'Sign in required' }); return; }
+    fetch('https://europe-west2-brandonhall-7bdef.cloudfunctions.net/fbMenuItemsExport?format=json', {
+      headers: { 'Authorization': 'Bearer ' + tok }
+    }).then(function (r) { return r.json(); })
+      .then(function (j) { POS_ITEMS_CACHE = j; cb(j); })
+      .catch(function (e) { cb({ error: String(e) }); });
+  }
+
   function openMappingModal(ctx) {
     var modal = document.getElementById('fb-map-modal');
     if (!modal) {
@@ -1379,44 +1516,127 @@
       modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,15,20,.55);z-index:9999;display:flex;align-items:center;justify-content:center';
       document.body.appendChild(modal);
     }
+    // Picked POS items keyed by code → { code, name, revenue, qty, meal, kind }
+    var picked = {};
+
+    function renderPicked() {
+      var slot = modal.querySelector('#fb-picked');
+      if (!slot) return;
+      var keys = Object.keys(picked);
+      if (!keys.length) {
+        slot.innerHTML = '<div style="color:#7b8494;font-size:12.5px;font-style:italic">No POS items selected yet — tick one or more from the list below.</div>';
+        return;
+      }
+      slot.innerHTML = '<div style="font-size:11px;font-weight:700;letter-spacing:.3px;color:#1a3b60;text-transform:uppercase;margin-bottom:6px">Selected (' + keys.length + ')</div>' +
+        keys.map(function (k) {
+          var p = picked[k];
+          return '<span style="display:inline-block;padding:4px 10px;background:#1F7A8C;color:#fff;border-radius:14px;font-size:12px;margin:2px 4px 2px 0;font-weight:500">' +
+            esc(p.name) +
+            ' <span style="opacity:.75;font-family:monospace;font-size:10.5px">' + esc(p.code) + '</span>' +
+            ' <button data-fb-unpick="' + esc(k) + '" style="background:none;border:0;color:#fff;cursor:pointer;margin-left:4px;font-size:14px;padding:0;line-height:1">×</button>' +
+          '</span>';
+        }).join('');
+      slot.querySelectorAll('[data-fb-unpick]').forEach(function (btn) {
+        btn.onclick = function () {
+          delete picked[btn.getAttribute('data-fb-unpick')];
+          renderPicked();
+          renderList(modal.querySelector('#fb-search').value);
+        };
+      });
+    }
+
+    function renderList(q) {
+      var list = modal.querySelector('#fb-items');
+      if (!list) return;
+      var items = (POS_ITEMS_CACHE && POS_ITEMS_CACHE.items) || [];
+      q = (q || '').trim().toLowerCase();
+      var filtered = items.filter(function (it) {
+        if (!q) return true;
+        return (it.name || '').toLowerCase().indexOf(q) !== -1 || (it.code || '').toLowerCase().indexOf(q) !== -1;
+      }).slice(0, 200);
+      if (!filtered.length) {
+        list.innerHTML = '<div style="padding:20px;text-align:center;color:#7b8494;font-size:13px">No POS items match "' + esc(q) + '"</div>';
+        return;
+      }
+      list.innerHTML = filtered.map(function (it) {
+        var isPicked = !!picked[it.code + '|' + it.name];
+        var pillColor = it.kind === 'Beverage' ? '#5B3E82' : '#1F7A8C';
+        var mealColor = { Breakfast: '#C7A87A', Lunch: '#1a7f4b', Dinner: '#8a1e15' }[it.meal] || '#7b8494';
+        return '<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid #eef1f4;cursor:pointer;background:' + (isPicked ? '#eef7f9' : '#fff') + '">' +
+          '<input type="checkbox" data-fb-pick="' + esc(it.code + '|' + it.name) + '"' + (isPicked ? ' checked' : '') + ' style="width:16px;height:16px;cursor:pointer;flex-shrink:0">' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:13px;font-weight:600;color:#1a2b3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(it.name) + '</div>' +
+            '<div style="display:flex;gap:6px;align-items:center;margin-top:2px">' +
+              '<span style="font-family:monospace;font-size:10.5px;color:#7b8494">' + esc(it.code) + '</span>' +
+              (it.meal && it.meal !== '—' ? '<span style="font-size:10px;padding:1px 6px;background:' + mealColor + ';color:#fff;border-radius:8px;font-weight:600">' + it.meal + '</span>' : '') +
+              (it.kind ? '<span style="font-size:10px;padding:1px 6px;background:' + pillColor + ';color:#fff;border-radius:8px;font-weight:600">' + it.kind + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div style="text-align:right;flex-shrink:0;font-size:11px;color:#52647a">' +
+            '<div><b>' + (it.qtySold || 0) + '</b> sold</div>' +
+            '<div style="font-size:10.5px">£' + (it.revenueNet || 0).toFixed(0) + '</div>' +
+          '</div>' +
+        '</label>';
+      }).join('');
+      list.querySelectorAll('[data-fb-pick]').forEach(function (cb) {
+        cb.onchange = function () {
+          var key = cb.getAttribute('data-fb-pick');
+          if (cb.checked) {
+            var it = (POS_ITEMS_CACHE.items || []).find(function (x) { return (x.code + '|' + x.name) === key; });
+            if (it) picked[key] = { code: it.code, name: it.name, revenue: it.revenueNet, qty: it.qtySold };
+          } else {
+            delete picked[key];
+          }
+          renderPicked();
+        };
+      });
+    }
+
     modal.innerHTML = (
-      '<div style="background:#fff;border-radius:12px;max-width:620px;width:92%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)">' +
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">' +
-          '<div><h3 style="margin:0">Map supplier item to POS menu item</h3>' +
-            '<p class="sub" style="margin:4px 0 0">Supplier item: <b>' + esc(ctx.supplierItemName) + '</b></p>' +
+      '<div style="background:#fff;border-radius:12px;max-width:820px;width:94%;max-height:90vh;display:flex;flex-direction:column;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-shrink:0">' +
+          '<div><h3 style="margin:0">Map supplier item to POS menu items</h3>' +
+            '<p class="sub" style="margin:4px 0 0">Supplier item: <b>' + esc(ctx.supplierItemName) + '</b> · tick every POS menu item this ingredient goes into</p>' +
           '</div>' +
-          '<button class="btn" data-close-modal>×</button>' +
+          '<button class="btn" data-close-modal style="font-size:22px;padding:0 10px;line-height:1">×</button>' +
         '</div>' +
-        '<div id="fb-map-suggestions" style="margin:14px 0;padding:14px;background:#f6f8fb;border-radius:8px;min-height:60px">' +
-          '<div style="color:#7b8494;font-size:13px">🧠 Asking ARIA for suggestions…</div>' +
+        // Picked chips
+        '<div id="fb-picked" style="padding:10px 12px;background:#f6f8fb;border-radius:8px;min-height:40px;margin-bottom:10px;flex-shrink:0"></div>' +
+        // Search + sort
+        '<div style="display:flex;gap:8px;margin-bottom:8px;flex-shrink:0">' +
+          '<input type="text" id="fb-search" placeholder="🔍 Search POS items by name or code (e.g. steak, RES1_DIN, hash)…" style="flex:1;padding:9px 12px;border:1px solid #c8d9dd;border-radius:6px;font-size:13.5px">' +
+          '<label style="font-size:12px;color:#52647a;align-self:center">Portions/unit: <input type="number" id="fb-map-portions" step="0.1" min="0" placeholder="e.g. 4" style="width:70px;padding:7px;border:1px solid #c8d9dd;border-radius:6px;font-size:13px;margin-left:4px"></label>' +
         '</div>' +
-        '<div style="margin-top:14px">' +
-          '<label style="font-size:12px;color:#52647a;font-weight:600">Or enter manually:</label>' +
-          '<div style="display:flex;gap:8px;margin-top:6px">' +
-            '<input type="text" id="fb-map-manual-code" placeholder="POS item code (e.g. RES1RMP)" style="flex:1;padding:8px;border:1px solid #e3e7ee;border-radius:6px;font-size:13px">' +
-            '<input type="text" id="fb-map-manual-name" placeholder="POS item name" style="flex:2;padding:8px;border:1px solid #e3e7ee;border-radius:6px;font-size:13px">' +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-top:8px">' +
-            '<label style="font-size:12px;color:#52647a;align-self:center">Portions per unit:</label>' +
-            '<input type="number" id="fb-map-portions" step="0.1" min="0" placeholder="e.g. 4" style="width:80px;padding:8px;border:1px solid #e3e7ee;border-radius:6px;font-size:13px">' +
-            '<button class="btn" data-fb-map-save style="background:#1a2b3a;color:#fff;border:0;padding:8px 18px;flex:1">Save mapping</button>' +
-          '</div>' +
+        // The list
+        '<div id="fb-items" style="flex:1;overflow-y:auto;border:1px solid #e3e7ee;border-radius:8px;min-height:200px;max-height:400px">' +
+          '<div style="padding:20px;text-align:center;color:#7b8494;font-size:13px">Loading POS items…</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:10px;margin-top:14px;flex-shrink:0;align-items:center">' +
+          '<div id="fb-aria-sug" style="flex:1;font-size:12px;color:#7b8494"></div>' +
+          '<button class="btn" data-close-modal style="padding:9px 18px">Cancel</button>' +
+          '<button class="btn" data-fb-map-save style="background:#1a2b3a;color:#fff;border:0;padding:9px 22px;font-weight:600">Save mapping</button>' +
         '</div>' +
       '</div>'
     );
+
     // Close handlers
-    modal.querySelector('[data-close-modal]').onclick = function () { modal.remove(); };
+    modal.querySelectorAll('[data-close-modal]').forEach(function (b) { b.onclick = function () { modal.remove(); }; });
     modal.addEventListener('click', function (e) { if (e.target === modal) modal.remove(); });
+
+    // Search handler
+    modal.querySelector('#fb-search').oninput = function (e) { renderList(e.target.value); };
+
     // Save handler
     modal.querySelector('[data-fb-map-save]').onclick = function () {
-      var code = document.getElementById('fb-map-manual-code').value.trim();
-      var name = document.getElementById('fb-map-manual-name').value.trim();
+      var keys = Object.keys(picked);
+      if (!keys.length) { alert('Please tick at least one POS menu item first.'); return; }
       var portions = +document.getElementById('fb-map-portions').value;
+      var posItems = keys.map(function (k) { return { code: picked[k].code, name: picked[k].name, yield: portions || null }; });
       setFbMapping({
         supplierCode: ctx.supplierCode,
         supplierItemCode: ctx.supplierItemCode,
         supplierItemName: ctx.supplierItemName,
-        posItemCode: code, posItemName: name,
+        posItems: posItems,
         portionYield: portions || null
       }).then(function (res) {
         if (res && res.ok) {
@@ -1428,7 +1648,45 @@
         }
       });
     };
-    // Load suggestions
+
+    // Load POS items
+    renderPicked();
+    fetchPosItems(function (res) {
+      if (res.error) {
+        var list = modal.querySelector('#fb-items');
+        if (list) list.innerHTML = '<div style="padding:20px;text-align:center;color:#c0362b;font-size:13px">Could not load POS items: ' + esc(res.error) + '</div>';
+        return;
+      }
+      renderList('');
+    });
+
+    // ARIA suggestions — auto-tick the top one
+    suggestMapping(ctx.supplierItemName).then(function (res) {
+      var sugs = (res && res.suggestions) || [];
+      var slot = modal.querySelector('#fb-aria-sug');
+      if (!slot) return;
+      if (!sugs.length) { slot.textContent = ''; return; }
+      slot.innerHTML = '🧠 ARIA suggests: ' + sugs.slice(0, 2).map(function (s) {
+        var pct = Math.round((s.confidence || 0) * 100);
+        return '<button class="btn" data-aria-use="' + esc(s.posItemCode || '') + '|' + esc(s.posItemName || '') + '" style="background:#eef7f9;border:1px solid #b9d4da;color:#145866;padding:3px 10px;border-radius:12px;font-size:11.5px;margin-left:4px;cursor:pointer">' +
+          esc(s.posItemName || '?') + ' <span style="opacity:.7">' + pct + '%</span></button>';
+      }).join('');
+      slot.querySelectorAll('[data-aria-use]').forEach(function (btn) {
+        btn.onclick = function () {
+          var parts = btn.getAttribute('data-aria-use').split('|');
+          var code = parts[0], name = parts[1];
+          picked[code + '|' + name] = { code: code, name: name, revenue: 0, qty: 0 };
+          renderPicked();
+          renderList(modal.querySelector('#fb-search').value);
+        };
+      });
+    }).catch(function () {});
+
+    // Early-return — the old suggestMapping-driven block below is no longer used in the rebuild.
+    return;
+
+    // ───────── legacy block kept for reference (never executed) ─────────
+    // eslint-disable-next-line no-unreachable
     suggestMapping(ctx.supplierItemName).then(function (res) {
       var slot = modal.querySelector('#fb-map-suggestions');
       if (!slot) return;
