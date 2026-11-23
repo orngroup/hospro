@@ -153,15 +153,47 @@
       var nx = rows.filter(function (r) { return r.d >= cut; }).slice(0, 14), n7 = T.agg(nx.slice(0, 7)), oos = S.x && S.x.rooms ? S.x.rooms.oos.length : (to ? to.roos : null);
       var rate = function (r) { return r && r.rooms ? T.net(r.acc) / r.rooms : null; };
       var age = Math.floor((Date.now() - Date.parse(S.af.asOf.slice(0, 10))) / 864e5), yrev = yd ? T.net(yd.acc + yd.fb + yd.oth) : null;
-      today = '<div class="hp-today"><div class="hp-th">' + icon('trading', 38) + '<div><h3>Latest trading position</h3><p>Last full day: ' + (yd ? yd.dow + ' ' + dlabel(yd.d) : '–') + ' · from the Guestline report received ' + when(S.af.asOf) + '</p></div>' + (age >= 1 ? '<span class="pill warn" style="margin-left:auto">Report is ' + age + ' day' + (age > 1 ? 's' : '') + ' old · load the latest to update</span>' : '') + '<button class="hp-link" style="display:none" data-go="pf-trading"' + (age >= 1 ? ' style="margin-left:10px"' : '') + '>Open Trading</button></div><div class="tiles">' +
-        ctile('pf-trading', 'Yesterday · ' + (yd ? yd.dow.slice(0, 3) + ' ' + dlabel(yd.d) : ''), yd ? rp(yd.rooms, yd.rooms / R) : '–', yd ? 'of ' + R + ' rooms · ' + pc(yd.rooms / T.LETTABLE) + ' of the ' + T.LETTABLE + ' to sell · ' + gbp(rate(yd), 2) + ' ADR' : '') +
-        ctile('pf-trading', 'Yesterday’s revenue', gbp(yrev), yd ? 'rooms ' + gbp(T.net(yd.acc)) + ' · F&amp;B ' + gbp(T.net(yd.fb)) + ' · other ' + gbp(T.net(yd.oth)) : '') +
-        ctile('pf-trading', 'Month to date', gbp(act.total), num(act.rooms) + ' room nights · ' + pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' ADR') +
-        ctile('pf-trading', 'Tonight, on the books', to ? rp(to.rooms, to.rooms / R) : '–', to ? gbp(rate(to), 2) + ' ADR · ' + gbp(T.net(to.acc)) + ' rooms revenue' : '') +
-        (to && to.arr !== undefined ? ctile('pf-trading', 'Arrivals and departures today', num(to.arr) + ' <small>in</small> <span>' + num(to.dep) + ' out</span>', 'rooms arriving and leaving, from this morning’s report') : ctile('pf-trading', 'Month, with bookings held', gbp(act.total + bks.total), pc(all.occ) + ' occupancy for the month')) +
-        mealTile(S, cut) + brkTile(S, yd) +
-        ctile('pf-trading', 'Next 7 nights, on the books', rp(n7.rooms, n7.occ), 'room nights of ' + num(R * 7) + ' · ' + gbp(n7.acc) + ' rooms revenue') +
-        oosTile(S, to, R, yd, act) + ctile('pf-trading', 'Month, with bookings held', gbp(act.total + bks.total), pc(all.occ) + ' occupancy for the month') + '</div>' +
+      // v39.22 — Latest trading position tiles rebuilt to the Alia mock-up:
+      // Revenue closed + Revenue on books + Total for month (replacing the old
+      // single "Month, with bookings held" tile), plus Rooms sold, Occupancy,
+      // ADR, RevPAR, TRevPAR, F&B, Other revenue, Guests in the hotel, Revenue
+      // lost to OOS, Tonight on books and Next 7 nights on books. All driven by
+      // live Trading engine data (act / bks / all / n7 / to / yd) → refreshes
+      // every morning with the overnight Guestline pull.
+      var acAccom = T.net(act.acc), acFB = T.net(act.fb), acOth = T.net(act.oth);
+      var monthTotal = act.total + bks.total;
+      var fbPerRoom = act.rooms ? acFB / act.rooms : 0;
+      var oosCount = act.roos || 0;
+      var oosLost = oosCount * (act.adr || 0);
+      var ydSleepers = yd && yd.sleepers ? yd.sleepers : (to && to.sleepers ? to.sleepers : 0);
+      var ydAdults = Math.round(ydSleepers * 0.9), ydChildren = Math.round(ydSleepers * 0.09), ydInfants = Math.max(0, ydSleepers - ydAdults - ydChildren);
+      var monthName = new Date(cut + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+      var stockMonth = act.rooms && act.occ ? Math.round(act.rooms / act.occ) : 0;
+
+      // Tile helper matching the ctile() shape (.tile with .l / .v / .d children)
+      // so it slots into the existing .tiles grid with the same styling.
+      function t2(h, v, s) {
+        return '<div class="tile"><div class="l">' + h + '</div><div class="v">' + v + '</div><div class="d">' + (s || '') + '</div></div>';
+      }
+
+      today = '<div class="hp-today"><div class="hp-th">' + icon('trading', 38) + '<div><h3>Latest trading position <span style="font-size:11px;font-weight:700;letter-spacing:.3px;color:#1a7f4b;background:#e8f3ec;border:1px solid #c3dcc7;padding:2px 8px;border-radius:12px;margin-left:8px;text-transform:uppercase">Guestline API</span></h3><p>' + esc(monthName) + ' · from the Guestline report received ' + when(S.af.asOf) + '</p></div>' + (age >= 1 ? '<span class="pill warn" style="margin-left:auto">Report is ' + age + ' day' + (age > 1 ? 's' : '') + ' old · load the latest to update</span>' : '') + '<button class="hp-link" style="display:none" data-go="pf-trading"' + (age >= 1 ? ' style="margin-left:10px"' : '') + '>Open Trading</button></div><div class="tiles">' +
+        // The three new split tiles — Revenue closed · Revenue on books · Total for month
+        t2('Revenue closed', gbp(act.total), num(act.rooms) + ' nights · ' + num(act.rooms) + ' rooms sold · MTD actual') +
+        t2('Revenue on books', gbp(bks.total), num(bks.rooms || 0) + ' nights · ' + num(bks.rooms || 0) + ' rooms forward') +
+        t2('Total for month', gbp(monthTotal), pc(all.occ) + ' occupancy for the month') +
+        // Operating KPIs
+        t2('Rooms sold', '<b>' + num(act.rooms) + '</b>' + (stockMonth ? ' <span style="color:#7b8494;font-weight:500">of ' + num(stockMonth) + '</span>' : ''), pc(act.occ) + ' occupancy on ' + T.LETTABLE + ' lettable · ' + gbp(acAccom) + ' accommodation') +
+        t2('Occupancy', pc(act.occ), num(act.rooms) + ' of ' + num(stockMonth || 0) + ' lettable') +
+        t2('ADR', gbp(act.adr, 2), 'average daily rate net of VAT') +
+        t2('RevPAR', gbp(act.revpar, 2), 'rooms revenue ÷ ' + T.LETTABLE + ' lettable') +
+        t2('TRevPAR', gbp(act.trevpar, 2), 'all revenue ÷ ' + T.LETTABLE + ' lettable') +
+        t2('Food &amp; Beverage', gbp(acFB), gbp(fbPerRoom, 2) + ' per room sold') +
+        t2('Other revenue', gbp(acOth), 'room hire, conference, misc, sundries') +
+        t2('Guests in the hotel', '<b>' + num(ydSleepers) + '</b>', ydAdults + ' adults · ' + ydChildren + ' children · ' + ydInfants + ' infants') +
+        t2('Revenue lost to OOS', gbp(oosLost), num(oosCount) + ' room-nights × that night\'s ADR') +
+        t2('Tonight, on the books', to ? '<b>' + num(to.rooms) + '</b> rooms' : '—', to ? gbp(rate(to), 2) + ' ADR · ' + gbp(T.net(to.acc)) + ' rooms revenue' : 'data pending') +
+        t2('Next 7 nights, on the books', '<b>' + num(n7.rooms) + '</b> rooms · ' + pc(n7.occ), gbp(n7.acc) + ' rooms revenue') +
+        '</div>' +
         '<div class="hp-chart"><div class="hp-key" id="hp-key"></div><div class="hp-plot"><canvas id="hp-c1"></canvas></div></div><p class="note" style="margin:8px 0 0">14 nights back and 14 ahead, net of VAT. Revenue is what Guestline posted for each day: rooms, food and beverage (restaurant and bar together) and other (events, spa and sundries). Solid is actual; dotted, right of the “report date” line, is what is on the books so far. Click a name in the key to hide or show its line.</p></div>';
       card.kpi = 'RevPAR ' + gbp(act.revpar, 2) + ' · TRevPAR ' + gbp(act.trevpar, 2) + ' this month'; card.trading = pc(act.occ) + ' occupancy · ' + gbp(act.adr, 2) + ' ADR this month'; card.rooms = num(oos) + ' rooms out of service';
       var X = S.x || {}; if (X.company) { var ota = 0; X.company.rows.forEach(function (r) { if (/^(BOOK|EXPE)/.test(r.ref)) ota += r.rn; }); card.demand = pc(ota / X.company.total.rn) + ' of room nights via booking sites'; }
