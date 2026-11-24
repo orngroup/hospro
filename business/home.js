@@ -2003,18 +2003,35 @@
       return 'Other';
     }
 
+    /* Scope to the selected date. A PLU term can span multiple days (e.g. a
+       week's export). We include it only if the date falls inside its range,
+       and divide its figures by the number of days it covers so we show a
+       per-day estimate rather than the aggregate across the loaded period. */
+    function spanDays(from, to) {
+      if (!from || !to) return 1;
+      var d = Math.round((Date.parse(to) - Date.parse(from)) / 864e5) + 1;
+      return d > 0 ? d : 1;
+    }
+    function covers(dateIso, from, to) {
+      if (!from || !to) return false;
+      return dateIso >= from && dateIso <= to;
+    }
+    var multiDay = false;
     if (TP && TP.terms) {
       Object.keys(TP.terms).forEach(function (k) {
         var t = TP.terms[k];
+        if (!covers(dateIso, t.from, t.to)) return;
+        var days = spanDays(t.from, t.to);
+        if (days > 1) multiDay = true;
         var target = /bar/i.test(k) ? bar : /restaurant|terminal\s*2/i.test(k) ? rest : rest;
         target.hasData = true;
-        target.meals.push({ label: k, meal: t.meal, net: t.net || 0, gross: t.gross || 0, adj: t.adj || 0, qty: t.qty || 0, from: t.from, to: t.to });
-        target.totalNet += t.net || 0;
-        target.totalGross += t.gross || 0;
-        target.totalAdj += t.adj || 0;
-        target.totalQty += t.qty || 0;
+        target.meals.push({ label: k, meal: t.meal, net: (t.net || 0) / days, gross: (t.gross || 0) / days, adj: (t.adj || 0) / days, qty: (t.qty || 0) / days, from: t.from, to: t.to, spanDays: days });
+        target.totalNet += (t.net || 0) / days;
+        target.totalGross += (t.gross || 0) / days;
+        target.totalAdj += (t.adj || 0) / days;
+        target.totalQty += (t.qty || 0) / days;
         (t.items || []).forEach(function (it) {
-          var name = it[0], qty = it[1] || 0, gross = it[2] || 0, adj = it[3] || 0, net = it[4] || 0;
+          var name = it[0], qty = (it[1] || 0) / days, gross = (it[2] || 0) / days, adj = (it[3] || 0) / days, net = (it[4] || 0) / days;
           if (!net && !adj) return;
           var g = classifyGroup(name);
           var sg = target.salesGroups[g] = target.salesGroups[g] || { qty: 0, net: 0 };
@@ -2022,6 +2039,8 @@
         });
       });
     }
+    bar.multiDaySource = multiDay;
+    rest.multiDaySource = multiDay;
 
     /* Covers for yesterday from the postings report. */
     if (P && P.byDay && P.byDay[dateIso]) {
@@ -2043,18 +2062,24 @@
       /* Rebuild top items from TP.terms. */
     });
 
-    /* Re-pull top items from TP.terms per terminal. */
+    /* Re-pull top items from TP.terms per terminal, scoped to the selected
+       date and divided by span days so the figures reflect ONE day. */
     if (TP && TP.terms) {
       [[bar, /bar/i], [rest, /restaurant|terminal\s*2/i]].forEach(function (pair) {
         var term = pair[0], re = pair[1];
         var agg = {};
         Object.keys(TP.terms).forEach(function (k) {
+          var t = TP.terms[k];
+          if (!covers(dateIso, t.from, t.to)) return;
           var isMatch = re.test(k) || (term === rest && !/bar/i.test(k));
           if (!isMatch) return;
-          (TP.terms[k].items || []).forEach(function (it) {
+          var days = spanDays(t.from, t.to);
+          (t.items || []).forEach(function (it) {
             if (!it[4] && !it[3]) return;
             var a = agg[it[0]] = agg[it[0]] || { name: it[0], qty: 0, net: 0, adj: 0 };
-            a.qty += it[1] || 0; a.net += it[4] || 0; a.adj += it[3] || 0;
+            a.qty += (it[1] || 0) / days;
+            a.net += (it[4] || 0) / days;
+            a.adj += (it[3] || 0) / days;
           });
         });
         term.topItems = Object.keys(agg).map(function (k) { return agg[k]; }).sort(function (a, b) { return b.net - a.net; }).slice(0, 20);
@@ -2078,17 +2103,21 @@
       '<span style="background:#1a6442;color:#fff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">✓ Verified</span>' :
       '<span style="background:#f5a623;color:#1a2238;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Pending</span>';
 
-    /* Small reusable section wrapper with its own checkbox. */
+    /* Small reusable section wrapper with its own checkbox and inline notes field. */
+    var sectNotes = (st[k] && st[k].sectionNotes) || {};
     function sectionBlock(sectId, title, bodyHtml) {
       var checked = sect[sectId] ? 'checked' : '';
       var mark = sect[sectId] ? '✓' : '';
       var cls = sect[sectId] ? 'background:#f3f8f5' : 'background:#fff';
+      var noteVal = sectNotes[sectId] || '';
       return '<div style="border:1px solid #e3e8ee;border-radius:6px;padding:10px 12px;margin-top:10px;' + cls + '">' +
         '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
           '<input type="checkbox" data-tillv-sect="' + sectId + '" data-tillv-k="' + k + '" ' + checked + ' style="width:18px;height:18px;cursor:pointer;flex:0 0 auto">' +
           '<h3 style="margin:0;font-size:13px;color:#1a2238;flex:1">' + esc(title) + ' <span style="color:#1a6442;font-weight:400">' + mark + '</span></h3>' +
         '</div>' +
-        '<div style="padding-left:28px;font-size:12px;color:#2a3144">' + bodyHtml + '</div>' +
+        '<div style="padding-left:28px;font-size:12px;color:#2a3144">' + bodyHtml +
+          '<div style="margin-top:8px"><input type="text" data-tillv-sectnote="' + sectId + '" data-tillv-k="' + k + '" value="' + esc(noteVal) + '" placeholder="Note for this section (optional)" style="width:100%;padding:5px 8px;border:1px solid #d0d7de;border-radius:4px;font-family:inherit;font-size:11.5px;background:#fff"></div>' +
+        '</div>' +
       '</div>';
     }
 
@@ -2102,6 +2131,10 @@
     if (!terminal.hasData) {
       h += '<div style="padding:10px;background:#fff8e6;border:1px solid #e3cc87;border-radius:6px;color:#8a6d1e;font-size:12.5px;margin:8px 0">' +
         'No Rezlynx POS data loaded for ' + dlabel(dateIso) + ' on this terminal yet. Sign off manually from the printed Z-report, or wait for the overnight POS sync.' +
+      '</div>';
+    } else if (terminal.multiDaySource) {
+      h += '<div style="padding:8px 10px;background:#fff8e6;border:1px solid #e3cc87;border-radius:6px;color:#8a6d1e;font-size:11.5px;margin:8px 0">' +
+        '<b>Note:</b> the loaded Rezlynx POS export spans multiple days. Figures shown are the <b>per-day average</b> for ' + dlabel(dateIso) + '. For an exact single-day match, ask Glenn for a day-specific export.' +
       '</div>';
     }
 
@@ -2277,6 +2310,23 @@
         if (!state[k]) state[k] = { sections: {} };
         if (!state[k].sections) state[k].sections = {};
         state[k].sections[s] = cb.checked;
+        tillvSave(state);
+        /* Flip the row's green highlight without full re-render so notes typing isn't interrupted */
+        var box = cb.closest('div[style*="border-radius:6px"]');
+        if (box) box.style.background = cb.checked ? '#f3f8f5' : '#fff';
+        var mark = box && box.querySelector('h3 span'); if (mark) mark.textContent = cb.checked ? '✓' : '';
+      };
+    });
+
+    /* Per-section notes — save on blur */
+    el.querySelectorAll('[data-tillv-sectnote]').forEach(function (inp) {
+      inp.onblur = function () {
+        var k = inp.getAttribute('data-tillv-k');
+        var s = inp.getAttribute('data-tillv-sectnote');
+        var state = tillvState();
+        if (!state[k]) state[k] = { sections: {} };
+        if (!state[k].sectionNotes) state[k].sectionNotes = {};
+        state[k].sectionNotes[s] = inp.value;
         tillvSave(state);
       };
     });
