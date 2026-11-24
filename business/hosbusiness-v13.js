@@ -578,7 +578,17 @@
     var tonightAcc = to ? T.net(to.acc) : 0;
     var tonightAdr = to && to.rooms ? tonightAcc / to.rooms : 0;
     var n7 = T.agg(S.af.rows.filter(function (x) { return x.d >= cut; }).slice(0, 7));
-    var m = cut.slice(0, 7), act = T.agg(T.rowsFor(m, 'actual')), bks = T.agg(T.rowsFor(m, 'books'));
+    /* v39.29 — the three coloured revenue boxes anchor the split on TODAY'S
+       date explicitly, not on asOfDay (which lags behind when Glenn hasn't
+       run the overnight export yet). Everything before today = closed,
+       today onwards = on books. This ensures today's ~£6k booked revenue
+       is captured in the on-books bucket instead of falling through a gap. */
+    var _today = new Date(); _today.setHours(0, 0, 0, 0);
+    var _todayIso = _today.toISOString().slice(0, 10);
+    var m = cut.slice(0, 7);
+    var _mRows = (S.af.rows || []).filter(function (r) { return r.d.slice(0, 7) === m; });
+    var act = T.agg(_mRows.filter(function (r) { return r.d < _todayIso; }));
+    var bks = T.agg(_mRows.filter(function (r) { return r.d >= _todayIso; }));
     var LET2 = (T && T.LETTABLE) ? T.LETTABLE : 114; var allMonth = act.total + bks.total, allMonthOcc = (act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights));
 
     function t(label, value, sub) {
@@ -622,9 +632,9 @@
       // Real data from Trading engine: act.total = MTD closed, bks.total = forward
       // on-books, sum = full-month forecast. Refreshes with overnight glTick + 2h hosbookTick.
       // Red/white · Amber/black · Dark-green/white.
-      tc('Revenue closed', gbp(act.total), num(act.rooms) + ' rooms sold · MTD actual from Guestline',
+      tc('Revenue closed', gbp(act.total), num(act.rooms) + ' rooms sold · 1st → yesterday · actual from Guestline',
          '#b3261e', '#ffffff'),
-      tc('Revenue on books', gbp(bks.total), num(bks.rooms || 0) + ' rooms forward · confirmed bookings',
+      tc('Revenue on books', gbp(bks.total), num(bks.rooms || 0) + ' rooms · today → month-end · on the books',
          '#f5a623', '#1a2238'),
       tc('Total for month · ' + MN[+m.slice(5) - 1], gbp(allMonth), pc(allMonthOcc) + ' occupancy · closed + on books',
          '#1a6442', '#ffffff')
