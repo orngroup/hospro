@@ -30,7 +30,7 @@
     data: '<ellipse cx="25" cy="15" rx="12" ry="5"/><path d="M13 15v10c0 3 5 5 12 5s12-2 12-5V15M13 25v10c0 3 5 5 12 5s12-2 12-5V25" fill="none" stroke="#fff" stroke-width="3"/>',
     update: '<path d="M25 33V14M17 21l8-8 8 8" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 31v6h26v-6" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'
   };
-  var COL = { trading: '#b3261e', demand: '#7a4fc4', profit: '#1a8f63', labour: '#2a78c8', kpi: '#eb6834', stock: '#0f8f95', explore: '#52606d', bar: '#b9791a', rooms: '#3f5bbf', save: '#c2417a', accounts: '#1f3d36', brief: '#6b7a2a', update: '#86847d', fb: '#c2417a', actions: '#d0362b', data: '#1a2b3a', rev: '#1F7A8C' };
+  var COL = { trading: '#b3261e', demand: '#7a4fc4', profit: '#1a8f63', labour: '#2a78c8', kpi: '#eb6834', stock: '#0f8f95', explore: '#52606d', bar: '#b9791a', rooms: '#3f5bbf', save: '#c2417a', accounts: '#1f3d36', brief: '#6b7a2a', update: '#86847d', fb: '#c2417a', actions: '#d0362b', data: '#1a2b3a', rev: '#1F7A8C', events: '#8a4a9c', comp: '#1a6442' };
   function icon(k, size) { return '<svg viewBox="0 0 50 50" width="' + (size || 46) + '" height="' + (size || 46) + '" aria-hidden="true" style="color:' + COL[k] + ';flex:none"><circle cx="25" cy="25" r="25" fill="' + COL[k] + '"/><g fill="#fff">' + G[k] + '</g></svg>'; }
   function go(tab) { var b = document.querySelector('#nav button[data-t="' + tab + '"]'); if (b) b.click(); window.scrollTo(0, 0); }
 
@@ -131,7 +131,7 @@
   function closeDrawer() { document.body.classList.remove('drawer-open'); }
 
   /* ---------- Hub ---------- */
-  var CARDS = [['pf-trading', 'trading', 'Trading', 'Occupancy, rate, RevPAR and revenue by night'], ['pf-demand', 'demand', 'Channels & rates', 'Booking sources, rate plans, cancellations, no-shows'], ['pf-fb', 'fb', 'Food & beverage', 'Sales by outlet and meal against what was bought'], ['pf-cnb', 'events', 'Conference & Events', 'Weddings, meetings, dinners · live from Guestline C&B'], ['pf-profit', 'profit', 'Profitability', 'Revenue, costs and profit by month and department'], ['pf-labour', 'labour', 'Labour', 'Payroll by department, agency and employer costs'], ['pf-trends', 'kpi', 'Trends', 'ADR, RevPAR, TRevPAR, revenue and costs over time'], ['pf-stock', 'stock', 'Purchased vs consumed', 'Purchases against cost of sales in the accounts'], ['explore', 'explore', 'Supplier costs', 'Every cost line by supplier, type, section and month'], ['bar', 'bar', 'Bar & keg prices', 'Keg price history and market comparison'], ['rooms', 'rooms', 'Rooms, linen & housekeeping', 'Linen, cleaning, guest supplies and waste'], ['pf-actions', 'actions', 'Action Centre', 'Actions, watch list, savings and checks'], ['pf-data', 'data', 'Data & reports', 'What has been imported, when, and the Gmail feed']];
+  var CARDS = [['pf-trading', 'trading', 'Trading', 'Occupancy, rate, RevPAR and revenue by night'], ['pf-demand', 'demand', 'Channels & rates', 'Booking sources, rate plans, cancellations, no-shows'], ['pf-fb', 'fb', 'Food & beverage', 'Sales by outlet and meal against what was bought'], ['pf-cnb', 'events', 'Conference & Events', 'Weddings, meetings, dinners · live from Guestline C&B'], ['pf-comp', 'comp', 'Comp Set', 'Competitor rates and estimated occupancy'], ['pf-profit', 'profit', 'Profitability', 'Revenue, costs and profit by month and department'], ['pf-labour', 'labour', 'Labour', 'Payroll by department, agency and employer costs'], ['pf-trends', 'kpi', 'Trends', 'ADR, RevPAR, TRevPAR, revenue and costs over time'], ['pf-stock', 'stock', 'Purchased vs consumed', 'Purchases against cost of sales in the accounts'], ['explore', 'explore', 'Supplier costs', 'Every cost line by supplier, type, section and month'], ['bar', 'bar', 'Bar & keg prices', 'Keg price history and market comparison'], ['rooms', 'rooms', 'Rooms, linen & housekeeping', 'Linen, cleaning, guest supplies and waste'], ['pf-actions', 'actions', 'Action Centre', 'Actions, watch list, savings and checks'], ['pf-data', 'data', 'Data & reports', 'What has been imported, when, and the Gmail feed']];
   /* card photographs: add a file to costs/img and name it here, e.g. trading: 'card-trading.jpg' */
   var CARD_IMG = {}, CARD_DEFAULT = 'card-default.jpg';
   var TITLES = { 'pf-kpi': 'Trends · Monthly KPI tables', 'pf-home': 'Hub', 'pf-brief': 'Project brief', 'pf-help': 'How figures are worked out', save: 'Action Centre · Savings & checks', update: 'Data & reports · Load Xero exports' };
@@ -2064,6 +2064,121 @@
     var t = document.getElementById('cnb-type'); if (t) t.onchange = function () { cnbType = t.value; renderCnb(); };
   }
 
+  /* ---------- Comp Set — competitor rates + estimated occupancy ---------- */
+  var COMP_CACHE = null;
+  var compNights = 14;
+  function fetchComp(cb) {
+    var tok = null;
+    try { tok = localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) {}
+    if (!tok) { cb({ error: 'Sign in required' }); return; }
+    fetch('https://europe-west2-brandonhall-7bdef.cloudfunctions.net/hoscompGet?nights=' + compNights, { headers: { 'Authorization': 'Bearer ' + tok } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { COMP_CACHE = j; cb(j); })
+      .catch(function (e) { cb({ error: String(e) }); });
+  }
+  function occBar(pct) {
+    var color = pct >= 85 ? '#1a6442' : pct >= 70 ? '#4a8f6b' : pct >= 50 ? '#b26a00' : '#c0362b';
+    return '<div style="display:inline-flex;align-items:center;gap:6px"><div style="width:48px;height:8px;background:#e8ecf0;border-radius:4px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:' + color + '"></div></div><b style="color:' + color + '">' + pct + '%</b></div>';
+  }
+  function gapChip(gap) {
+    if (gap === 0) return '<span style="color:#7b8494">=</span>';
+    var sign = gap > 0 ? '+' : '−';
+    var color = gap > 0 ? '#1a6442' : '#c0362b';
+    var label = gap > 0 ? 'above us' : 'below us';
+    return '<span style="color:' + color + ';font-weight:600">' + sign + '£' + Math.abs(gap) + '</span> <small style="color:#7b8494">' + label + '</small>';
+  }
+  function trajectoryArrow(pct) {
+    if (Math.abs(pct) < 2) return '<span style="color:#7b8494">→ flat</span>';
+    if (pct > 0) return '<span style="color:#1a6442">↑ +' + pct + '%</span>';
+    return '<span style="color:#c0362b">↓ ' + pct + '%</span>';
+  }
+  function renderComp() {
+    var el = $('pf-comp'); if (!el) return;
+    var cache = COMP_CACHE;
+    var h = '<div class="card"><h2>Comp Set · Competitor rates &amp; estimated occupancy <span style="font-size:11px;color:#b26a00;margin-left:8px;font-weight:600;letter-spacing:.2px;text-transform:uppercase;background:#fff5e6;padding:2px 8px;border-radius:10px">ARIA Estimate</span></h2>' +
+      '<p class="sub">Competitor rates and estimated occupancy for the next ' + compNights + ' nights. Occupancy is derived from inventory signals (depletion, rate trajectory, weekday pattern) — not actual booked occupancy. Accuracy ±15%.</p>';
+
+    if (!cache) {
+      h += '<div style="padding:16px;text-align:center;color:#7b8494">Loading comp set…</div></div>';
+      el.innerHTML = h;
+      fetchComp(function () { renderComp(); });
+      return;
+    }
+
+    if (cache.error || !cache.ok) {
+      h += '<div style="padding:16px;background:#fdf6f5;border:1px solid #e3b9b9;border-radius:8px;color:#8a1e15;font-size:13px">' +
+        '<b>Comp set feed not yet available.</b> ' + esc(cache.error || 'Unknown error') +
+      '</div></div>';
+      el.innerHTML = h;
+      return;
+    }
+
+    /* Summary tiles */
+    var mg = cache.ourGapToMarket;
+    var mgLabel = mg > 0 ? gbp(mg) + ' above market' : mg < 0 ? gbp(-mg) + ' below market' : 'at market';
+    var mgColor = mg > 0 ? '#1a6442' : mg < 0 ? '#c0362b' : '#7b8494';
+    h += '<div class="tiles" style="margin-top:14px">' +
+      '<div class="tile"><div class="l">Our BAR</div><div class="v">' + gbp(cache.ownBar) + '</div><div class="d">Executive double</div></div>' +
+      '<div class="tile"><div class="l">Market avg rate</div><div class="v">' + gbp(cache.marketAvgRate) + '</div><div class="d">across ' + cache.hotels.length + ' comp hotels, ' + cache.nightsAnalysed + ' nights</div></div>' +
+      '<div class="tile"><div class="l">Market avg occupancy</div><div class="v" style="color:' + (cache.marketAvgOcc >= 70 ? '#1a6442' : '#b26a00') + '">' + cache.marketAvgOcc + '%</div><div class="d">estimated across comp set</div></div>' +
+      '<div class="tile"><div class="l">Our rate vs market</div><div class="v" style="color:' + mgColor + '">' + (mg >= 0 ? '+' : '−') + '£' + Math.abs(mg) + '</div><div class="d">' + mgLabel + '</div></div>' +
+      '</div></div>';
+
+    /* Horizon selector + hotels table */
+    h += '<div class="card"><h2>Competitors</h2>' +
+      '<div style="margin:8px 0 14px"><label style="font-size:12px;color:#52647a">Horizon <select id="comp-nights" style="padding:7px 10px;border:1px solid #c8d9dd;border-radius:5px;margin-left:4px">' +
+        '<option value="7"' + (compNights === 7 ? ' selected' : '') + '>Next 7 nights</option>' +
+        '<option value="14"' + (compNights === 14 ? ' selected' : '') + '>Next 14 nights</option>' +
+        '<option value="28"' + (compNights === 28 ? ' selected' : '') + '>Next 28 nights</option>' +
+        '<option value="60"' + (compNights === 60 ? ' selected' : '') + '>Next 60 nights</option>' +
+        '<option value="90"' + (compNights === 90 ? ' selected' : '') + '>Next 90 nights</option>' +
+      '</select></label></div>' +
+      '<table><thead><tr><th>Hotel</th><th>Brand</th><th class="n">Rooms</th><th class="n">Published BAR</th><th class="n">Avg rate (horizon)</th><th class="n">Rate gap vs us</th><th>Est. occupancy</th><th>7-day trajectory</th></tr></thead><tbody>' +
+      cache.hotels.map(function (ho) {
+        return '<tr>' +
+          '<td><b>' + esc(ho.name) + '</b></td>' +
+          '<td>' + esc(ho.brand) + '</td>' +
+          '<td class="n">' + num(ho.rooms) + '</td>' +
+          '<td class="n">' + gbp(ho.bar) + '</td>' +
+          '<td class="n"><b>' + gbp(ho.avgRate) + '</b></td>' +
+          '<td class="n">' + gapChip(ho.avgGap) + '</td>' +
+          '<td>' + occBar(ho.avgOcc) + '</td>' +
+          '<td>' + trajectoryArrow((ho.perNight[0] || {}).trajectory7d || 0) + '</td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+
+    /* Per-night grid for the first 14 days — heatmap-ish */
+    var firstHotel = cache.hotels[0];
+    if (firstHotel && firstHotel.perNight.length > 0) {
+      h += '<div class="card"><h2>Rate &amp; occupancy heatmap · next ' + Math.min(14, cache.nightsAnalysed) + ' nights</h2>' +
+        '<p class="sub">Each cell: estimated occupancy and published rate per hotel per night. Red = sold out signal, green = wide open. Hover for details.</p>' +
+        '<div style="overflow-x:auto"><table style="font-size:11.5px"><thead><tr><th style="text-align:left;position:sticky;left:0;background:#eef3f8;z-index:2">Hotel</th>' +
+        firstHotel.perNight.slice(0, 14).map(function (n) {
+          var d = new Date(n.date + 'T00:00:00Z');
+          var dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getUTCDay()];
+          var wk = (d.getUTCDay() === 5 || d.getUTCDay() === 6);
+          return '<th class="n" style="background:' + (wk ? '#fff5e6' : '') + '">' + dow + '<br><small>' + ('0' + d.getUTCDate()).slice(-2) + '/' + ('0' + (d.getUTCMonth()+1)).slice(-2) + '</small></th>';
+        }).join('') + '</tr></thead><tbody>' +
+        cache.hotels.map(function (ho) {
+          return '<tr><td style="text-align:left;position:sticky;left:0;background:#fff;z-index:1;font-weight:600">' + esc(ho.name) + '</td>' +
+          ho.perNight.slice(0, 14).map(function (n) {
+            var bg = n.estOcc >= 92 ? '#f4ddd9' : n.estOcc >= 80 ? '#faebd6' : n.estOcc >= 60 ? '#f3f6e8' : n.estOcc >= 40 ? '#e9f1ea' : '#dbede3';
+            return '<td class="n" style="background:' + bg + ';padding:6px 4px" title="' + n.inventorySignal.label + ' · £' + n.rate + ' · ' + n.estOcc + '% occ">' +
+              '<b>£' + n.rate + '</b><br><small style="color:#52647a">' + n.estOcc + '%</small>' +
+            '</td>';
+          }).join('') + '</tr>';
+        }).join('') +
+        '</tbody></table></div></div>';
+    }
+
+    h += '<div class="card" style="background:#fafbfc"><p class="sub" style="margin:0"><b>How this is worked out.</b> ' + esc(cache.methodology) + ' Pending wire-up: live Booking.com inventory scraping and STR / Lighthouse / OTA Insight API for actual booked occupancy.</p></div>';
+
+    el.innerHTML = h;
+    var ns = document.getElementById('comp-nights');
+    if (ns) ns.onchange = function () { compNights = parseInt(ns.value, 10); COMP_CACHE = null; renderComp(); };
+  }
+
   function renderTrends() {
     var el = $('pf-trends'), T = window.Trading, S = T ? T.S() : {}, PD = window.Profit.data(), h = ''; trCharts.forEach(function (c) { c.destroy(); }); trCharts = [];
     var rows = [], cut = '';
@@ -2318,7 +2433,7 @@
   document.addEventListener('hub-signin', function () { unlock(); liveFeed().then(glFeed); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
   window.HubAccounts = renderAccounts;
-  if (window.Profit && window.Profit.register) { ['home', renderHome, 'actions', renderActions, 'fb', renderFb, 'cnb', renderCnb, 'data', renderData, 'help', renderHelp, 'trends', renderTrends].forEach(function (v, i, arr) { if (i % 2 === 0) window.Profit.register(v, arr[i + 1]); }); }
+  if (window.Profit && window.Profit.register) { ['home', renderHome, 'actions', renderActions, 'fb', renderFb, 'cnb', renderCnb, 'comp', renderComp, 'data', renderData, 'help', renderHelp, 'trends', renderTrends].forEach(function (v, i, arr) { if (i % 2 === 0) window.Profit.register(v, arr[i + 1]); }); }
   document.addEventListener('DOMContentLoaded', function () {
     unlock(); crumb('pf-home'); if (window.Profit.signedIn()) liveFeed().then(glFeed); else chip();
     var sv = $('t-save'); if (sv && !sv.querySelector('.segs')) sv.insertAdjacentHTML('afterbegin', '<div id="save-pills"></div>');

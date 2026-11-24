@@ -1306,6 +1306,7 @@
       ]},
       { group: 'Commercial', rows: [
         ['pf-demand', 'demand', 'Channels & rates', 'Booking sources, rate plans'],
+        ['pf-comp', 'comp', 'Comp Set', 'Competitor rates and estimated occupancy'],
         ['pf-trends', 'kpi', 'Trends', 'ADR, RevPAR, revenue over time']
       ]},
       { group: 'Operations', rows: [
@@ -1620,7 +1621,7 @@
   /* ---------- Universal strip for hub pages so the top chips drive them ---------- */
   function augmentHubPage(tabId) {
     // Only for hub pages we don't own directly
-    var MINE = { 'pf-home':1, 'pf-fb':1, 'pf-trading':1, 'pf-forecast':1, 'pf-rev':1 };   /* v31: pf-rev is owned by HosREV */
+    var MINE = { 'pf-home':1, 'pf-fb':1, 'pf-trading':1, 'pf-forecast':1, 'pf-rev':1, 'pf-comp':1, 'pf-cnb':1 };   /* v31: pf-rev is owned by HosREV; v39.24: pf-comp + pf-cnb own their own strip */
     if (MINE[tabId]) return;
     // pf-xxx has an inner <div id=pf-xxx>; non-pf tabs (explore, bar, rooms, save, update) only have the section
     var el = document.getElementById(tabId);
