@@ -1720,25 +1720,48 @@ function openJobDetail(jobId){
 }
 
 // ── PERMANENT DELETE (Raj & Ajay only) ───────────────────────────────────────
+// Robust: tries a true cloud delete first; if that's blocked (e.g. the Firestore
+// delete rule hasn't been published yet) it falls back to hiding the job so it
+// still clears from the board everywhere and never comes back on reload.
 function hfDeleteJob(jobId){
   if(!IS_DELETER){ try{ toast('Only Raj or Ajay can delete a job'); }catch(e){} return; }
-  const j=JOBS.find(x=>x.id===jobId);
+  const j=JOBS.find(x=>String(x.id)===String(jobId));
   const ans=prompt('⚠ PERMANENTLY DELETE this job?\n\n'+((j&&j.title)||jobId)+'\n\nThis removes it for everyone and cannot be undone.\nType  DELETE  (capitals) to confirm:');
   if(!ans || ans.trim().toUpperCase()!=='DELETE'){ try{ toast('Cancelled — nothing deleted'); }catch(e){} return; }
-  // remove from this device
-  JOBS = JOBS.filter(x=>String(x.id)!==String(jobId));
-  try{ delete JOB_SYNC.sent[jobId]; }catch(e){}
-  try{ localStorage.setItem('hosfix_jobs',JSON.stringify(JOBS)); }catch(e){}
-  // remove from the cloud so every device drops it too
-  try{
-    if(typeof fbDb!=='undefined' && fbDb){
-      fbDb.collection('hosfix_jobs').doc(String(jobId)).delete()
-        .catch(e=>{ try{ showToastNotification('⚠ Could not delete from the cloud: '+((e&&e.message)||'connection problem')); }catch(_e){} });
-    }
-  }catch(e){}
+
+  // Fallback used when the hard delete is blocked — hide it so the board still clears.
+  function hideInstead(reason){
+    if(!j) return;
+    j.demoHidden=true; if(j.status!=='complete') j.status='cancelled'; j.updatedAt=new Date().toISOString();
+    try{ delete JOB_SYNC.sent[j.id]; }catch(e){}
+    try{ localStorage.setItem('hosfix_jobs',JSON.stringify(JOBS)); }catch(e){}
+    try{ jobSyncPush(); }catch(e){}            // syncs the hidden state to every device (update is allowed)
+    try{ VIEW='jobs'; render(); }catch(e){}
+    if(reason){ try{ showToastNotification(reason); }catch(e){} }
+  }
+
   try{ closeModal(); }catch(e){}
-  try{ VIEW='jobs'; render(); }catch(e){}
-  try{ toast('✓ Job deleted'); }catch(e){}
+
+  if(typeof fbDb!=='undefined' && fbDb){
+    fbDb.collection('hosfix_jobs').doc(String(jobId)).delete()
+      .then(()=>{
+        // Gone from the cloud — drop it locally too.
+        JOBS = JOBS.filter(x=>String(x.id)!==String(jobId));
+        try{ delete JOB_SYNC.sent[jobId]; }catch(e){}
+        try{ localStorage.setItem('hosfix_jobs',JSON.stringify(JOBS)); }catch(e){}
+        try{ VIEW='jobs'; render(); }catch(e){}
+        try{ toast('✓ Job deleted'); }catch(e){}
+      })
+      .catch(()=>{
+        // Delete not permitted yet (rules not published) — hide it instead so it still clears.
+        hideInstead('Job removed from the board. To delete it permanently, publish the updated Firestore rules.');
+        try{ toast('✓ Job removed'); }catch(e){}
+      });
+  } else {
+    // Offline / no cloud — hide locally.
+    hideInstead('');
+    try{ toast('✓ Job removed'); }catch(e){}
+  }
 }
 
 
