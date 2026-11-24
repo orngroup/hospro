@@ -280,6 +280,25 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
 .hf-hero-stat b{color:#fff;font-size:14px}
 .hf-hero-stat.urg{background:rgba(196,92,0,.3);color:#ffd9b3}
 .hf-hero-stat.urg b{color:#fff}
+/* ── In-job chat ── */
+.jchat{background:#f3f6f8;border-radius:12px;padding:10px;margin-bottom:12px;max-height:300px;overflow-y:auto}
+.jm{max-width:82%;margin-bottom:9px;clear:both}
+.jm .nm{font-size:10px;color:#7a8494;margin:0 0 2px 7px;font-weight:600}
+.jm .bub{padding:8px 11px;border-radius:13px;font-size:13.5px;line-height:1.4;box-shadow:0 1px 2px rgba(0,0,0,.05);word-wrap:break-word}
+.jm .tm{font-size:9.5px;color:#9aa6b4;margin-top:2px}
+.jm.them{float:left}.jm.them .bub{background:#fff;color:#1f2937;border-bottom-left-radius:4px}
+.jm.them .tm{margin-left:7px}
+.jm.me{float:right}.jm.me .nm{text-align:right;margin-right:7px}
+.jm.me .bub{background:#2f7a72;color:#fff;border-bottom-right-radius:4px}
+.jm.me .tm{text-align:right;margin-right:7px}
+.jm .ph{display:block;width:170px;max-width:100%;border-radius:10px;margin-top:2px}
+.jm-evt{clear:both;text-align:center;margin:7px 0}
+.jm-evt span{background:#eaf1ef;color:#2f7a72;font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:9px;display:inline-block}
+.jchat-empty{color:#9aa6b4;font-size:12.5px;text-align:center;padding:14px 0}
+.jcomp{display:flex;gap:7px;align-items:center;margin-bottom:12px}
+.jcomp .att{width:38px;height:38px;border-radius:50%;background:#eef1f5;border:0;font-size:17px;cursor:pointer;flex:none}
+.jcomp input{flex:1;border:1px solid var(--line);background:#f5f7f9;border-radius:20px;padding:9px 13px;font:14px inherit;outline:none}
+.jcomp .snd{width:40px;height:40px;border-radius:50%;background:#2f7a72;border:0;color:#fff;font-size:16px;cursor:pointer;flex:none}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -780,7 +799,7 @@ function renderActiveToday(){
       <button type="button" onclick="addDuty(document.getElementById('duty-add').value)" style="padding:10px 15px;border:none;border-radius:10px;background:var(--navy);color:#fff;font:700 13px 'Lato';cursor:pointer">Add</button>
     </div>`;
   }
-  box.innerHTML=`<div style="font-size:11px;font-weight:700;letter-spacing:.6px;color:#7a8494;margin-bottom:8px;text-transform:uppercase;text-align:left">👷 On duty today</div>
+  box.innerHTML=`<div style="font-size:11px;font-weight:700;letter-spacing:.6px;color:#7a8494;margin-bottom:8px;text-transform:uppercase;text-align:left">👷 Who's on duty</div>
     ${rows||'<div style="color:#9ca3af;font-size:13px;padding:10px 0;text-align:left">No one set for today</div>'}${add}`;
 }
 
@@ -820,7 +839,7 @@ function signOut(){
 // ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
 let swReg=null;
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/hosmain-sw.js?v=20261003b')
+  navigator.serviceWorker.register('/hosmain-sw.js?v=20261124')
     .then(r=>{swReg=r;}).catch(()=>{});
 }
 
@@ -896,6 +915,7 @@ function buildMaintenanceNav(){
     btns=`
     <button class="bnav on" data-v="dashboard"><span class="ico">📊</span>Dashboard</button>
     <button class="bnav" data-v="jobs"><span class="ico">🔧</span>Jobs<span class="bb" id="bn-u" style="display:none"></span></button>
+    <button class="bnav" data-v="projects"><span class="ico">📁</span>Projects</button>
     <button class="bnav" data-v="new"><span class="ico">➕</span>New Job</button>
     <button class="bnav" data-v="stock"><span class="ico">📦</span>Stock</button>
     <button class="bnav" data-v="report"><span class="ico">📈</span>Report</button>`;
@@ -923,6 +943,7 @@ function render(){
     let html='';
     if(VIEW==='dashboard') html=renderDashboard();
     else if(VIEW==='jobs') html=renderJobs();
+    else if(VIEW==='projects') html=renderProjects();
     else if(VIEW==='stock') html=renderStock();
     else if(VIEW==='report') html=renderReport();
     el.innerHTML=html;
@@ -957,18 +978,47 @@ function renderDashboard(){
   const notstart=open.filter(j=>j.status==='not-started');
   const complete=_J.filter(j=>j.status==='complete');
   const hr=new Date().getHours();
-  const greet=hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
+  const greet=hr<12?'Good Morning':hr<18?'Good Afternoon':'Good Evening';
   const first=MY_USER?.name.split(' ')[0]||'';
   const dateStr=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
 
-  let html=`<div class="hf-hero">
-    <div class="hf-hero-greet">${greet}, ${first}</div>
-    <div class="hf-hero-date">${dateStr}</div>
-    <div class="hf-hero-line">
-      <span class="hf-hero-stat"><b>${open.length}</b> open</span>
-      ${urgent.length?`<span class="hf-hero-stat urg"><b>${urgent.length}</b> urgent</span>`:''}
-      <span class="hf-hero-stat"><b>${complete.length}</b> done</span>
+  // ── Maintenance health score ──
+  let score = 100 - Math.min(40, urgent.length*8) - Math.min(30, notstart.length*1.2) - Math.min(12, inprog.length*0.5);
+  score = Math.max(20, Math.round(score));
+  const band = score>=85?['Excellent','#2f7a72'] : score>=70?['Good','#3A8A81'] : score>=50?['Fair','#997300'] : ['Needs work','#c45c00'];
+  const CIRC=289, off=Math.round(CIRC*(1-score/100));
+  const hrow=(bg,fg,ic,n,lbl)=>`<div style="display:flex;align-items:center;gap:10px;font-size:13.5px">
+    <div style="width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:13px;background:${bg};color:${fg}">${ic}</div>
+    <span style="font-weight:800;color:var(--navy);min-width:18px">${n}</span><span style="color:#49566a">${lbl}</span></div>`;
+  const attn = open.slice().sort((a,b)=>{ const r=s=>s.priority==='urgent'?0:(s.status==='not-started'?1:2); return r(a)-r(b); }).slice(0,3);
+
+  let html=`<div style="padding:34px 18px 2px">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--navy)">${greet}, ${first}</div>
+    <div style="color:#7a8494;font-size:13px;margin-top:2px">${dateStr}</div>
+  </div>
+
+  <div style="margin:12px 14px 0;background:#fff;border-radius:18px;box-shadow:0 2px 10px rgba(24,43,62,.06);padding:16px">
+    <div style="display:flex;align-items:center;gap:16px">
+      <div style="position:relative;width:104px;height:104px;flex:none">
+        <svg width="104" height="104" viewBox="0 0 104 104" style="transform:rotate(-90deg)">
+          <circle cx="52" cy="52" r="46" fill="none" stroke="#eef1f4" stroke-width="10"></circle>
+          <circle cx="52" cy="52" r="46" fill="none" stroke="${band[1]}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${CIRC}" stroke-dashoffset="${off}"></circle>
+        </svg>
+        <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center">
+          <div><div style="font-size:30px;font-weight:800;color:var(--navy);line-height:1">${score}</div>
+          <div style="font-size:9.5px;font-weight:700;letter-spacing:.3px;color:${band[1]};text-transform:uppercase">${band[0]}</div></div>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:9px">
+        ${hrow('#e4f1ea','#2a6a4a','✓',complete.length,'Resolved')}
+        ${hrow('#fbf3dd','#997300','⏱',inprog.length,'In progress')}
+        ${hrow('#fdece0','#c45c00','▲',urgent.length,'Urgent open')}
+      </div>
     </div>
+    ${attn.length?`<div style="margin-top:14px;border-top:1px solid #eef1f4;padding-top:12px">
+      <div style="display:flex;align-items:center;gap:7px;font-weight:700;color:var(--navy);font-size:13.5px;margin-bottom:8px">⚠️ Needs attention</div>
+      ${attn.map(j=>`<div onclick="openJobDetail('${j.id}')" style="font-size:12.5px;color:#49566a;padding:4px 0;display:flex;gap:7px;cursor:pointer">${j.priority==='urgent'?'🟠':'🔴'}<span><b style="color:var(--navy)">${j.title}</b>${j.location?' — '+j.location:''}</span></div>`).join('')}
+    </div>`:''}
   </div>`;
 
   if(ACTIVE_TIMER){
@@ -1077,6 +1127,7 @@ function jobCard(j){
       ${occ}
       ${j.voiceNote?`<span title="Voice note">🎙️</span>`:''}
       ${(j.photos&&j.photos.length)?`<span title="Photos">📷${j.photos.length}</span>`:''}
+      ${(j.messages&&j.messages.length)?`<span class="j-badge" style="background:#eaf1ef;color:#2f7a72" title="Chat messages">💬 ${j.messages.length}</span>`:''}
       ${j.status==='in-progress'?`<span class="j-badge in-prog">⏱ In progress</span>`:''}
       ${j.status==='complete'?`<span class="j-badge complete">✓ Complete</span>`:''}
       <span style="margin-left:auto;font-size:11px;color:#9ca3af">${fmtShort(j.createdAt?.slice(0,10)||j.createdAt)}</span>
@@ -1677,6 +1728,17 @@ function openJobDetail(jobId){
     ${j.notes.map(n=>`<div class="note-item"><div class="note-by">${n.by} · ${n.at}</div><div class="note-text">${n.text}</div></div>`).join('')}
   </div>`:''}
 
+  <!-- Chat & updates (per job) -->
+  <div style="margin-bottom:6px">
+    <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">💬 Chat &amp; updates</div>
+    <div class="jchat" id="jchat-log">${jChatHtml(j)}</div>
+  </div>
+  <div class="jcomp">
+    <button type="button" class="att" onclick="attachJobPhoto('${j.id}')" title="Send a photo">📷</button>
+    <input id="jchat-in" placeholder="Message the team on this job…" onkeydown="if(event.key==='Enter'){event.preventDefault();sendJobMsg('${j.id}')}">
+    <button type="button" class="snd" onclick="sendJobMsg('${j.id}')">➤</button>
+  </div>
+
   <!-- Receipt / purchase -->
   ${!isDone?`<div style="margin-bottom:14px">
     <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Purchase / receipt</div>
@@ -1857,6 +1919,58 @@ function saveNote(jobId){
   j.notes=j.notes||[];
   j.notes.push({text:note,by:MY_USER?.name||ME,at:todayStr()});
   saveJobs(); toast('Note saved ✓'); openJobDetail(jobId);
+}
+
+// ── PER-JOB CHAT ─────────────────────────────────────────────────────────────
+function jMsgTime(iso){ try{ const d=new Date(iso); return (''+d.getHours()).padStart(2,'0')+':'+(''+d.getMinutes()).padStart(2,'0'); }catch(e){ return ''; } }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function jChatHtml(j){
+  const msgs=(j&&j.messages)||[];
+  if(!msgs.length) return '<div class="jchat-empty">No messages yet — start the conversation about this job.</div>';
+  return msgs.map(m=>{
+    if(m.evt) return `<div class="jm-evt"><span>${esc(m.evt)}</span></div>`;
+    const mine=(m.byId&&m.byId===ME);
+    const body = m.photo ? `<img src="${m.photo}" class="ph">` + (m.text?`<div style="margin-top:4px">${esc(m.text)}</div>`:'') : esc(m.text);
+    return `<div class="jm ${mine?'me':'them'}">`+
+      (mine?'':`<div class="nm">${esc(m.by||'')}</div>`)+
+      `<div class="bub">${body}</div>`+
+      `<div class="tm">${jMsgTime(m.at)}</div></div>`;
+  }).join('')+'<div style="clear:both"></div>';
+}
+function jScrollChat(){ try{ const el=$('jchat-log'); if(el) el.scrollTop=el.scrollHeight; }catch(e){} }
+// Push a message onto the job, sync it, and alert the people on the job.
+function jPostMessage(jobId, payload){
+  const j=JOBS.find(x=>x.id===jobId); if(!j) return;
+  j.messages=j.messages||[];
+  j.messages.push(Object.assign({ by:(MY_USER&&MY_USER.name)||ME, byId:ME||'', at:new Date().toISOString() }, payload));
+  j.updatedAt=new Date().toISOString(); j.updatedBy=ME||j.updatedBy||'';
+  saveJobs();                                   // writes to Firestore → everyone on the job sees it live
+  // alert the allocated operative(s) + managers (push when the app is closed; in-app otherwise)
+  try{
+    const targets=(j.assignees||[]).filter(id=>id!==ME);
+    if(typeof fcmNotify==='function') fcmNotify('job_message', j, targets);
+  }catch(e){}
+  // refresh the open detail and scroll to the newest message
+  openJobDetail(jobId); setTimeout(jScrollChat,30);
+}
+function sendJobMsg(jobId){
+  const el=$('jchat-in'); const t=(el&&el.value||'').trim(); if(!t){ return; }
+  jPostMessage(jobId, { text:t });
+}
+function attachJobPhoto(jobId){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='image/*'; inp.capture='environment';
+  inp.style.cssText='position:fixed;top:-200px;opacity:0;width:1px;height:1px';
+  document.body.appendChild(inp);
+  inp.addEventListener('change',function(){
+    const f=this.files&&this.files[0]; if(!f){ inp.remove(); return; }
+    const r=new FileReader();
+    r.onload=function(e){
+      compressPhoto(e.target.result,900,0.6,function(c){ jPostMessage(jobId,{ photo:c }); inp.remove(); });
+    };
+    r.readAsDataURL(f);
+  });
+  inp.click();
 }
 
 function finishStockPicker(){
@@ -2061,7 +2175,8 @@ function openReassign(jobId){
       ${WORK_TYPES.map(w=>`<option value="${w.id}" ${j.workType===w.id?'selected':''}>${w.icon} ${w.label}</option>`).join('')}
     </select>
   </div>
-  <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Assign to operative</div>
+  <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Assign to one or more operatives</div>
+  <div style="font-size:11.5px;color:#7a8494;margin:-4px 0 8px">Tap each person you want on this job — you can pick more than one.</div>
   ${ops.map(u=>`
     <div class="arow ${(j.assignees||[]).includes(u.id)?'selected':''}" data-uid="${u.id}">
       <div class="av" style="background:${u.color};width:30px;height:30px;font-size:10px">${initials(u.name)}</div>
@@ -2628,6 +2743,181 @@ function jobSyncStart(){
 jobSyncStart();
 setTimeout(()=>fcmEnsureRegistered(false), 4000);
 
+// ══════════════════════════════════════════════════════════════════════════
+// PROJECTS — larger jobs (e.g. Woodlands) broken into tasks you can allocate
+// Stored in Firestore collection hosfix_projects, synced like jobs.
+// ══════════════════════════════════════════════════════════════════════════
+let PROJECTS = [];
+try{ PROJECTS = JSON.parse(localStorage.getItem('hosfix_projects')||'[]'); }catch(e){ PROJECTS=[]; }
+const PROJ_SYNC = { on:false, sent:{} };
+function projStamp(p){ return (p&&(p.updatedAt||p.createdAt))||''; }
+function projSig(p){ const c=Object.assign({},p); delete c.updatedAt; return JSON.stringify(c); }
+function saveProjects(){ try{ localStorage.setItem('hosfix_projects',JSON.stringify(PROJECTS)); }catch(e){} projSyncPush(); }
+function projSyncPush(){
+  if(!fbDb) return;
+  PROJECTS.forEach(p=>{
+    const sig=projSig(p); if(PROJ_SYNC.sent[p.id]===sig) return;
+    p.updatedAt=new Date().toISOString();
+    PROJ_SYNC.sent[p.id]=projSig(p);
+    fbDb.collection('hosfix_projects').doc(String(p.id)).set(JSON.parse(JSON.stringify(p))).catch(e=>{ delete PROJ_SYNC.sent[p.id]; console.warn('project sync write failed',p.id,e&&e.message); });
+  });
+}
+function projSyncStart(){
+  fbInit(); if(!fbDb || PROJ_SYNC.on) return; PROJ_SYNC.on=true;
+  fbDb.collection('hosfix_projects').onSnapshot(qs=>{
+    let changed=false;
+    qs.docChanges().forEach(ch=>{
+      if(ch.type==='removed'){ const i=PROJECTS.findIndex(p=>String(p.id)===String(ch.doc.id)); if(i>=0){ PROJECTS.splice(i,1); changed=true; } return; }
+      const r=ch.doc.data(); if(!r||!r.id) return;
+      const i=PROJECTS.findIndex(p=>p.id===r.id);
+      if(i<0){ PROJECTS.push(r); changed=true; }
+      else if(projStamp(r)>projStamp(PROJECTS[i])){ PROJECTS[i]=r; changed=true; }
+      const p=PROJECTS.find(x=>x.id===r.id); if(p) PROJ_SYNC.sent[p.id]=projSig(p);
+    });
+    if(changed){ try{ localStorage.setItem('hosfix_projects',JSON.stringify(PROJECTS)); }catch(e){} if(VIEW==='projects'){ try{ render(); }catch(e){} } }
+    projSeedWoodlands();
+  }, err=>{ console.warn('Project sync unavailable (check Firestore rules):', err&&err.message); PROJ_SYNC.on=false; });
+}
+// One-time example project so the section isn't empty
+function projSeedWoodlands(){
+  try{
+    if(localStorage.getItem('hf_proj_seed_v1')==='1') return;
+    localStorage.setItem('hf_proj_seed_v1','1');
+    if(PROJECTS.some(p=>p.id==='proj-woodlands')) return;
+    const now=new Date().toISOString();
+    PROJECTS.push({ id:'proj-woodlands', name:'Woodlands', description:'Woodlands block works', status:'active', createdAt:now, createdBy:ME||'', tasks:[
+      { id:'wd-decorate-bar', title:'Decorating — bar', assignees:[], status:'not-started', createdAt:now },
+      { id:'wd-carpet-clean', title:'Carpet clean', assignees:[], status:'not-started', createdAt:now },
+      { id:'wd-flood-drying', title:'Flood drying', assignees:[], status:'not-started', createdAt:now }
+    ]});
+    saveProjects();
+    if(VIEW==='projects'){ try{ render(); }catch(e){} }
+  }catch(e){}
+}
+projSyncStart();
+
+// ── Projects: operative picker (shared) ──
+let _projPick={ sel:[], cb:null };
+function projOperativePicker(title, current, cb){
+  _projPick={ sel:[...(current||[])], cb:cb };
+  const ops=[...FIXER_TIER,...ADMIN_TIER].map(id=>USERS.find(u=>u.id===id)).filter(Boolean);
+  let html=`<div class="modal-title">${title}</div>
+    <div style="font-size:11.5px;color:#7a8494;margin-bottom:10px">Tap each person to allocate — you can pick more than one.</div>
+    ${ops.map(u=>`<div class="arow ${(_projPick.sel.includes(u.id))?'selected':''}" data-uid="${u.id}" onclick="projPickToggle('${u.id}',this)">
+      <div class="av" style="background:${u.color};width:30px;height:30px;font-size:10px">${initials(u.name)}</div>
+      <div style="flex:1"><div class="ar-name">${u.name}</div><div class="ar-role">${u.role||''}</div></div>
+      <div class="ar-ck">✓</div>
+    </div>`).join('')}
+    <div class="btn-row" style="margin-top:14px">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn btn-navy" onclick="projPickDone()">Save allocation</button>
+    </div>`;
+  openModal(html);
+}
+function projPickToggle(uid,row){ const i=_projPick.sel.indexOf(uid); if(i>=0){ _projPick.sel.splice(i,1); row.classList.remove('selected'); } else { _projPick.sel.push(uid); row.classList.add('selected'); } }
+function projPickDone(){ const cb=_projPick.cb; closeModal(); if(cb) cb(_projPick.sel.slice()); }
+
+// ── Projects: CRUD ──
+function addProjectPrompt(){
+  let html=`<div class="modal-title">New project</div>
+    <div class="f-field"><label>Project name</label><input type="text" id="pj-name" placeholder="e.g. Woodlands, Pool refurb"></div>
+    <div class="f-field"><label>Description (optional)</label><textarea id="pj-desc" placeholder="What the project covers…" style="min-height:54px"></textarea></div>
+    <button type="button" class="btn btn-navy" onclick="createProject()">Create project</button>
+    <button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-top:8px">Cancel</button>`;
+  openModal(html);
+}
+function createProject(){
+  const name=($('pj-name')&&$('pj-name').value||'').trim(); if(!name){ toast('Give the project a name'); return; }
+  const desc=($('pj-desc')&&$('pj-desc').value||'').trim();
+  PROJECTS.unshift({ id:'proj-'+Date.now(), name, description:desc, status:'active', createdAt:new Date().toISOString(), createdBy:ME||'', tasks:[] });
+  saveProjects(); closeModal(); VIEW='projects'; render(); toast('Project created ✓');
+}
+function addTaskPrompt(projId){
+  const p=PROJECTS.find(x=>x.id===projId); if(!p) return;
+  let html=`<div class="modal-title">Add task</div>
+    <div style="font-size:13px;color:#7a8494;margin-bottom:12px">${p.name}</div>
+    <div class="f-field"><label>Task</label><input type="text" id="tk-title" placeholder="e.g. Carpet clean, Decorating — bar"></div>
+    <button type="button" class="btn btn-navy" onclick="createTask('${projId}')">Add task</button>
+    <button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-top:8px">Cancel</button>`;
+  openModal(html);
+}
+function createTask(projId){
+  const p=PROJECTS.find(x=>x.id===projId); if(!p) return;
+  const title=($('tk-title')&&$('tk-title').value||'').trim(); if(!title){ toast('Type the task'); return; }
+  p.tasks=p.tasks||[];
+  p.tasks.push({ id:'task-'+Date.now(), title, assignees:[], status:'not-started', createdAt:new Date().toISOString(), createdBy:ME||'' });
+  saveProjects(); closeModal(); render(); toast('Task added ✓');
+}
+function allocateTask(projId, taskId){
+  const p=PROJECTS.find(x=>x.id===projId); if(!p) return; const t=(p.tasks||[]).find(x=>x.id===taskId); if(!t) return;
+  projOperativePicker('Allocate: '+t.title, t.assignees||[], function(sel){
+    t.assignees=sel; saveProjects(); render();
+    // alert the newly allocated operatives
+    try{ if(typeof fcmNotify==='function' && sel.length) fcmNotify('job_assigned', { id:p.id+'__'+t.id, title:t.title+' · '+p.name, area:'', areaLabel:p.name, location:p.name, priority:'medium' }, sel.filter(id=>id!==ME)); }catch(e){}
+    toast(sel.length?'Allocated ✓':'Unassigned');
+  });
+}
+function cycleTaskStatus(projId, taskId){
+  const p=PROJECTS.find(x=>x.id===projId); if(!p) return; const t=(p.tasks||[]).find(x=>x.id===taskId); if(!t) return;
+  const order=['not-started','in-progress','complete']; const i=order.indexOf(t.status||'not-started');
+  t.status=order[(i+1)%order.length]; saveProjects(); render();
+}
+function deleteTask(projId, taskId){
+  const p=PROJECTS.find(x=>x.id===projId); if(!p) return;
+  if(!confirm('Remove this task?')) return;
+  p.tasks=(p.tasks||[]).filter(x=>x.id!==taskId); saveProjects(); render();
+}
+function archiveProject(projId){
+  if(!IS_DELETER){ toast('Only Raj or Ajay can remove a project'); return; }
+  const p=PROJECTS.find(x=>x.id===projId); if(!p) return;
+  if(!confirm('Remove project "'+p.name+'"? Its tasks go with it.')) return;
+  PROJECTS=PROJECTS.filter(x=>x.id!==projId);
+  try{ localStorage.setItem('hosfix_projects',JSON.stringify(PROJECTS)); }catch(e){}
+  try{ if(fbDb) fbDb.collection('hosfix_projects').doc(String(projId)).delete().catch(()=>{}); }catch(e){}
+  render(); toast('Project removed');
+}
+function renderProjects(){
+  const T_LABEL={ 'not-started':'🔴 Not started','in-progress':'🟡 In progress','complete':'🟢 Complete' };
+  const active=PROJECTS.filter(p=>p && p.status!=='archived');
+  let html=`<div class="hf-hero"><div class="hf-hero-greet">Projects</div>
+    <div class="hf-hero-date">Larger jobs broken into tasks you can allocate</div></div>
+    <div style="padding:12px 14px 0"><button type="button" class="btn btn-orange" onclick="addProjectPrompt()">➕ New project</button></div>
+    <div style="padding:10px 14px 90px">`;
+  if(!active.length){ html+=`<div style="text-align:center;padding:26px 16px;color:#7a8494"><div style="font-size:40px;margin-bottom:8px">📁</div><div style="font-weight:700;color:var(--navy)">No projects yet</div><div style="font-size:13px;margin-top:4px">Tap “New project” to add one (e.g. Woodlands).</div></div>`; }
+  active.forEach(p=>{
+    const tasks=p.tasks||[]; const done=tasks.filter(t=>t.status==='complete').length;
+    html+=`<div style="background:#fff;border-radius:15px;box-shadow:0 2px 6px rgba(26,43,58,.06);padding:15px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:21px;color:var(--navy);flex:1">${esc(p.name)}</div>
+        ${IS_DELETER?`<button type="button" onclick="archiveProject('${p.id}')" title="Remove project" style="background:none;border:none;color:#c4ccd4;font-size:18px;cursor:pointer">🗑</button>`:''}
+      </div>
+      ${p.description?`<div style="font-size:12.5px;color:#7a8494;margin-bottom:8px">${esc(p.description)}</div>`:''}
+      <div style="font-size:12px;color:#7a8494;margin-bottom:10px">${tasks.length} task${tasks.length===1?'':'s'} · ${done} complete</div>
+      ${tasks.map(t=>{
+        const who=(t.assignees||[]).map(id=>USERS.find(u=>u.id===id)).filter(Boolean);
+        return `<div style="border-top:1px solid var(--line);padding:10px 0">
+          <div style="display:flex;align-items:flex-start;gap:8px">
+            <div style="flex:1">
+              <div style="font-weight:700;color:var(--navy);font-size:14px">${esc(t.title)}</div>
+              <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                <button type="button" onclick="cycleTaskStatus('${p.id}','${t.id}')" style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer">${T_LABEL[t.status||'not-started']}</button>
+                ${who.length?who.map(u=>`<span style="display:inline-flex;align-items:center;gap:5px;background:#f5f7f9;border-radius:14px;padding:3px 9px 3px 3px;font-size:11.5px;font-weight:600"><span class="av" style="background:${u.color};width:20px;height:20px;border-radius:50%;color:#fff;display:inline-grid;place-items:center;font-size:8px">${initials(u.name)}</span>${u.name.split(' ')[0]}</span>`).join(''):'<span style="font-size:11.5px;color:#9ca3af">Unassigned</span>'}
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button type="button" style="width:auto;padding:7px 14px;font-size:12px;font-weight:700;background:#fff;border:1px solid var(--line);border-radius:20px;color:var(--navy);cursor:pointer" onclick="allocateTask('${p.id}','${t.id}')">👤 Allocate</button>
+            ${IS_SUPER?`<button type="button" style="width:auto;padding:7px 14px;font-size:12px;background:none;border:1px solid var(--line);border-radius:20px;color:#9ca3af;cursor:pointer" onclick="deleteTask('${p.id}','${t.id}')">Remove</button>`:''}
+          </div>
+        </div>`;
+      }).join('')}
+      <button type="button" class="btn btn-navy" style="margin-top:12px" onclick="addTaskPrompt('${p.id}')">➕ Add task</button>
+    </div>`;
+  });
+  html+=`</div>`;
+  return html;
+}
+
 // ── RECEIVER-SIDE ALERTS ─────────────────────────────────────────────────────
 // Every alert is created on the phone of the person it is FOR: a bell entry,
 // a pop-up card with sound + long vibration, and a system banner if the app
@@ -2701,13 +2991,16 @@ function hfOpenJob(jobId){
 function hfNotify(kind, job, opts){
   opts=opts||{};
   if(!job || !job.id) return false;
-  const key=kind+"-"+job.id;
+  const lastMsg = (kind==="message" && job.messages && job.messages.length) ? job.messages[job.messages.length-1] : null;
+  const key = kind+"-"+job.id + (lastMsg ? ("-"+lastMsg.at) : "");
   if(hfAlerted().has(key)) return false;
   hfMarkAlerted(key);
   const where=(job.location||job.areaLabel||job.area||"");
-  const T={ assigned:"📋 Job assigned to you", urgent:"🚨 URGENT job", new:"🔧 New job logged", complete:"✅ Job completed", test:"🔔 HosFIX test alert" };
+  const T={ assigned:"📋 Job assigned to you", urgent:"🚨 URGENT job", new:"🔧 New job logged", complete:"✅ Job completed", message:"💬 New message", test:"🔔 HosFIX test alert" };
   const title=T[kind]||"HosFIX";
-  const body=`${job.title||""}${where?" — "+where:""}${kind==="complete"&&job.completedBy?" · by "+((USERS.find(u=>u.id===job.completedBy)||{}).name||job.completedBy):""}`;
+  const body = kind==="message"
+    ? `${(lastMsg&&lastMsg.by)||"Team"}: ${lastMsg&&lastMsg.text?lastMsg.text:"📷 Photo"} · ${job.title||""}`
+    : `${job.title||""}${where?" — "+where:""}${kind==="complete"&&job.completedBy?" · by "+((USERS.find(u=>u.id===job.completedBy)||{}).name||job.completedBy):""}`;
   const loud = kind==="assigned" || kind==="urgent" || kind==="test" || job.priority==="urgent";
   if(kind==="test"){ hfPopup(title,"Alerts are working on this phone.","",true); hfChime(true); try{ navigator.vibrate&&navigator.vibrate([600,200,600,200,900]); }catch(e){} return true; }
   // bell entry on THIS phone, for THIS person
@@ -2741,6 +3034,13 @@ function hfAlertForChange(prev, r, first){
   const nowAs=r.assignees||[], wasAs=(prev&&prev.assignees)||[];
   const myName=(MY_USER&&MY_USER.name)||"";
   if(r.updatedBy===ME) return null;                      // my own change, made on another device
+  // New chat message on a job I'm on (or manage)
+  const nowMsgs=(r.messages||[]).length, wasMsgs=(prev&&prev.messages&&prev.messages.length)||0;
+  if(nowMsgs>wasMsgs){
+    const last=r.messages[nowMsgs-1];
+    const forMe=(r.assignees||[]).includes(ME)||isAdmin||r.createdBy===ME;
+    if(last && last.byId!==ME && forMe && (!first || recent(last.at))) return "message";
+  }
   if(nowAs.includes(ME) && !wasAs.includes(ME) && r.createdBy!==ME && r.status!=="complete" && (!first || recent(r.updatedAt||r.createdAt)))
     return r.priority==="urgent" ? "urgent" : "assigned";
   if(isAdmin && !prev && r.createdBy!==ME && r.status!=="complete" && recent(r.createdAt))
@@ -2758,7 +3058,7 @@ if("serviceWorker" in navigator){
 }
 
 // ── "TEST MY ALERTS" — checks every link in the alert chain on THIS phone ────
-const HF_SW_VERSION = "20261003b";
+const HF_SW_VERSION = "20261124";
 function hfWithTimeout(p, ms, label){
   return Promise.race([p, new Promise((_,rej)=>setTimeout(()=>rej(new Error(label||"timed out")), ms))]);
 }
