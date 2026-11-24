@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Brandon Spa">
 <link rel="manifest" href="/hosspa-app.webmanifest">
 <link rel="apple-touch-icon" href="/assets/hosfix-mgr-192.png">
-<title>Brandon Hall Spa — Member App</title>
+<title>Brandon Hall Spa &amp; Health Club — Member App</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 :root{--spa:#0f5b53;--spa2:#15867a;--teal:#20b2a2;--navy:#14232f;--sand:#c9a978;--ink:#1a2b2a;--mut:#6b7d7a;--line:#e6eeec;--bg:#f4f8f7;--red:#c0433f;--green:#2e8b6b;--shadow:0 2px 14px rgba(16,40,38,.08)}
@@ -19,7 +19,6 @@ html,body{height:100%}
 body{font-family:'Lato',system-ui,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.45;overscroll-behavior:none}
 h1,h2,h3,.disp{font-family:'Cormorant Garamond',serif}
 .app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;position:relative}
-/* screens */
 .screen{display:none;flex:1;padding-bottom:84px}
 .screen.on{display:block;animation:fade .22s ease}
 @keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
@@ -28,7 +27,6 @@ h1,h2,h3,.disp{font-family:'Cormorant Garamond',serif}
 .hd .nm{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;margin-top:1px}
 .hd .sb{font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.8;font-weight:700;margin-bottom:3px}
 .wrap{padding:16px}
-/* membership card */
 .mcard{margin:-18px 16px 0;background:#fff;border-radius:18px;padding:16px 17px;box-shadow:var(--shadow);position:relative;z-index:2}
 .mcard .r{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .mcard .plan{font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:var(--spa2);font-weight:700}
@@ -36,21 +34,18 @@ h1,h2,h3,.disp{font-family:'Cormorant Garamond',serif}
 .mcard .meta{font-size:12px;color:var(--mut);margin-top:2px}
 .qr{width:58px;height:58px;border-radius:10px;flex:0 0 58px;background:repeating-linear-gradient(0deg,#14232f 0 3px,#fff 3px 6px),repeating-linear-gradient(90deg,#14232f 0 3px,transparent 3px 6px);background-blend-mode:multiply}
 .sect{padding:16px 17px 8px;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--mut);font-weight:700;display:flex;align-items:center;justify-content:space-between}
-.sect a{color:var(--spa2);font-weight:700;font-size:11px;text-decoration:none}
-/* quick actions */
+.sect a{color:var(--spa2);font-weight:700;font-size:11px;text-decoration:none;cursor:pointer}
 .qa{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:4px 16px}
 .qa button{border:none;background:#fff;border-radius:15px;padding:18px 14px;box-shadow:var(--shadow);cursor:pointer;text-align:left;font:inherit}
 .qa .ic{font-size:26px;display:block;margin-bottom:8px}
 .qa .t{font-weight:800;font-size:15px;color:var(--navy)}
 .qa .s{font-size:11.5px;color:var(--mut)}
-/* booking rows */
 .bk{margin:0 16px 10px;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center}
 .bk .dot{width:10px;height:10px;border-radius:50%;flex:0 0 10px;margin-top:3px}
 .bk .t{font-weight:700;font-size:14px;color:var(--navy)}
 .bk .s{font-size:12px;color:var(--mut);margin-top:1px}
 .bk .go{margin-left:auto;font-size:11px;font-weight:700;color:var(--spa2);white-space:nowrap}
 .empty{margin:0 16px;background:#fff;border-radius:14px;padding:26px 18px;text-align:center;color:var(--mut);box-shadow:var(--shadow);font-size:13.5px}
-/* book screen */
 .segs{display:flex;gap:6px;padding:14px 16px 6px}
 .seg{flex:1;padding:11px;border:none;border-radius:11px;background:#e8efed;color:var(--mut);font-weight:800;font-size:14px;cursor:pointer}
 .seg.on{background:var(--spa);color:#fff}
@@ -61,7 +56,6 @@ h1,h2,h3,.disp{font-family:'Cormorant Garamond',serif}
 .item .s{font-size:12px;color:var(--mut);margin-top:1px}
 .item .p{margin-left:auto;font-weight:800;color:var(--spa);white-space:nowrap}
 .item .cap{margin-left:auto;font-size:11.5px;color:var(--mut);white-space:nowrap}
-/* sheet */
 .sheet-bg{position:fixed;inset:0;background:rgba(16,30,28,.5);display:none;z-index:60;align-items:flex-end;justify-content:center}
 .sheet-bg.on{display:flex}
 .sheet{background:#fff;width:100%;max-width:480px;border-radius:22px 22px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px));max-height:88vh;overflow:auto;animation:up .25s ease}
@@ -74,20 +68,37 @@ h1,h2,h3,.disp{font-family:'Cormorant Garamond',serif}
 .chip.on{background:var(--spa);color:#fff;border-color:var(--spa)}
 .chip.day{display:flex;flex-direction:column;align-items:center;min-width:52px;gap:1px}
 .chip.day small{font-size:10px;font-weight:700;opacity:.8}
+.fieldi{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:12px 13px;font:inherit;font-size:15px;margin-top:8px}
+.fieldi:focus{outline:none;border-color:var(--teal)}
 .cta{width:100%;margin-top:20px;padding:16px;border:none;border-radius:14px;background:var(--spa);color:#fff;font:900 16px Lato;cursor:pointer}
 .cta:disabled{background:#c3d3cf;cursor:not-allowed}
 .cta.ghost{background:#eef3f2;color:var(--mut);margin-top:10px}
 .done{text-align:center;padding:12px 6px}
 .done .tick{width:66px;height:66px;border-radius:50%;background:#e4f3ec;color:var(--green);display:grid;place-items:center;font-size:34px;margin:6px auto 12px}
-/* my bookings */
 .tagx{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:#e4f3ec;color:#1f7a57;margin-left:6px}
 .tagx.past{background:#eef1f0;color:#6b7d7a}
 .cancel{margin-left:auto;background:none;border:none;color:var(--red);font-weight:700;font-size:12px;cursor:pointer}
-/* nav */
+/* join */
+.join-seg{display:flex;gap:6px;padding:4px 16px 2px}
+.join-seg button{flex:1;padding:10px;border:1.5px solid var(--line);border-radius:11px;background:#fff;color:var(--mut);font-weight:800;font-size:13.5px;cursor:pointer}
+.join-seg button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.plan{margin:0 16px 14px;background:#fff;border-radius:16px;padding:16px 17px;box-shadow:var(--shadow);border:2px solid transparent}
+.plan.pop{border-color:var(--sand)}
+.plan .pop-tag{display:inline-block;background:var(--sand);color:#3a2d10;font-size:10px;letter-spacing:.6px;text-transform:uppercase;font-weight:800;padding:3px 9px;border-radius:999px;margin-bottom:8px}
+.plan .pn{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;color:var(--navy)}
+.plan .pp{font-size:30px;font-weight:900;color:var(--navy);margin-top:2px}
+.plan .pp small{font-size:14px;color:var(--mut);font-weight:400}
+.plan .yr{font-size:12px;color:var(--spa2);font-weight:700;margin-top:1px}
+.plan ul{list-style:none;margin:12px 0 0;display:flex;flex-direction:column;gap:6px}
+.plan li{font-size:12.5px;padding-left:20px;position:relative;color:var(--ink)}
+.plan li::before{content:'✓';position:absolute;left:0;color:var(--teal);font-weight:900}
+.plan .join-btn{width:100%;margin-top:14px;padding:13px;border:none;border-radius:12px;background:var(--spa);color:#fff;font:800 15px Lato;cursor:pointer}
+.plan.pop .join-btn{background:var(--navy)}
+.agenote{margin:2px 16px 10px;font-size:11.5px;color:var(--mut);text-align:center}
 .nav{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;display:flex;background:#fff;border-top:1px solid var(--line);padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px))}
-.nav button{flex:1;border:none;background:none;cursor:pointer;font:inherit;color:var(--mut);font-size:10.5px;font-weight:700}
+.nav button{flex:1;border:none;background:none;cursor:pointer;font:inherit;color:var(--mut);font-size:10px;font-weight:700}
 .nav button.on{color:var(--spa)}
-.nav .ic{font-size:20px;display:block;margin-bottom:2px}
+.nav .ic{font-size:19px;display:block;margin-bottom:2px}
 .demo{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:14px;font-size:9px;letter-spacing:1px;text-transform:uppercase;font-weight:700;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);padding:3px 8px;border-radius:999px;color:#fff;z-index:3}
 .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 18px;border-radius:12px;font-weight:700;font-size:13px;z-index:80;opacity:0;transition:.2s;pointer-events:none;max-width:90%}
 .toast.on{opacity:1}
@@ -99,9 +110,9 @@ h1,h2,h3,.disp{font-family:'Cormorant Garamond',serif}
 
   <!-- HOME -->
   <section class="screen on" id="s-home">
-    <div class="hd"><div class="sb">Brandon Hall Hotel &amp; Spa</div><div class="hi">Good morning,</div><div class="nm" id="memName">Eleanor Whitfield</div></div>
+    <div class="hd"><div class="sb">Brandon Hall Hotel &amp; Spa</div><div class="hi" id="homeHi">Good morning,</div><div class="nm" id="memName">Ajay Kawa</div></div>
     <div class="mcard">
-      <div class="r"><div><div class="plan" id="memPlan">Spa &amp; Health Premium</div><div class="who">Member #BH-2048</div><div class="meta" id="memRenew">Renews 14 Dec 2026 · £85/mo</div></div><div class="qr"></div></div>
+      <div class="r"><div><div class="plan" id="memPlan">Advance · Individual</div><div class="who">Member #BH-2048</div><div class="meta" id="memRenew">Renews 14 Dec 2026 · £69/mo</div></div><div class="qr"></div></div>
     </div>
     <div class="sect">Book something</div>
     <div class="qa">
@@ -122,7 +133,7 @@ h1,h2,h3,.disp{font-family:'Cormorant Garamond',serif}
     <div id="bookList"></div>
   </section>
 
-  <!-- MY BOOKINGS -->
+  <!-- MY SPA -->
   <section class="screen" id="s-mine">
     <div class="hd"><div class="sb">My Spa</div><div class="nm">Your bookings</div></div>
     <div class="sect">Upcoming</div>
@@ -131,38 +142,39 @@ h1,h2,h3,.disp{font-family:'Cormorant Garamond',serif}
     <div id="minePast"></div>
   </section>
 
+  <!-- JOIN -->
+  <section class="screen" id="s-join">
+    <div class="hd"><div class="sb">Membership</div><div class="nm">Join Brandon Hall</div><div class="hi">Choose the membership that fits you</div></div>
+    <div class="join-seg" id="joinSeg"></div>
+    <div class="agenote">Gym, sauna &amp; steam room access is for members aged 16 or older.</div>
+    <div id="joinPlans"></div>
+  </section>
+
   <!-- CARD -->
   <section class="screen" id="s-card">
     <div class="hd"><div class="sb">Membership</div><div class="nm">Your card</div></div>
     <div class="mcard" style="margin-top:-18px">
-      <div class="r"><div><div class="plan">Spa &amp; Health Premium</div><div class="who">Eleanor Whitfield</div><div class="meta">Member #BH-2048 · since May 2023</div></div><div class="qr"></div></div>
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mut)">Show this at reception or scan at the gym door. Renews 14 Dec 2026 · £85/mo.</div>
+      <div class="r"><div><div class="plan" id="cardPlan">Advance · Individual</div><div class="who" id="cardWho">Ajay Kawa</div><div class="meta" id="cardMeta">Member #BH-2048 · since May 2023</div></div><div class="qr"></div></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mut)" id="cardFoot">Show this at reception or scan at the gym door. Renews 14 Dec 2026 · £69/mo.</div>
     </div>
-    <div class="sect">Membership</div>
-    <div class="wrap" style="padding-top:4px">
-      <div class="bk"><span class="dot" style="background:var(--teal)"></span><div><div class="t">Pool, sauna, steam &amp; gym</div><div class="s">Unlimited, any time</div></div></div>
-      <div class="bk"><span class="dot" style="background:var(--spa)"></span><div><div class="t">All classes included</div><div class="s">Aqua, yoga, pilates, spin &amp; more</div></div></div>
-      <div class="bk"><span class="dot" style="background:var(--sand)"></span><div><div class="t">20% off treatments</div><div class="s">Applied automatically at checkout</div></div></div>
-      <div class="bk"><span class="dot" style="background:#5b8f86"></span><div><div class="t">1 treatment credit / month</div><div class="s">1 credit available now</div></div></div>
-    </div>
+    <div class="sect">Your membership <a onclick="go('join')">Change plan</a></div>
+    <div class="wrap" style="padding-top:4px" id="cardIncludes"></div>
   </section>
 
   <div class="nav">
     <button class="on" data-s="home" onclick="go('home')"><span class="ic">🏠</span>Home</button>
     <button data-s="book" onclick="go('book')"><span class="ic">📅</span>Book</button>
     <button data-s="mine" onclick="go('mine')"><span class="ic">💆</span>My Spa</button>
+    <button data-s="join" onclick="go('join')"><span class="ic">⭐</span>Join</button>
     <button data-s="card" onclick="go('card')"><span class="ic">🎫</span>Card</button>
   </div>
 </div>
 
-<!-- booking sheet -->
-<div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()">
-  <div class="sheet" id="sheet"></div>
-</div>
+<div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
-/* ---------- shared menu (reads amendments made in HosSPA management, else defaults) ---------- */
+/* ---------- treatments & classes (reads amendments from HosSPA management) ---------- */
 var DEFAULT_SERVICES=[
  {cat:'Massage & Body', items:[
    {n:'Scalp Massage',min:30,p:60},{n:'Salt & Oil Scrub',min:30,p:65},{n:'Back, Neck & Shoulder',min:30,p:65},
@@ -189,25 +201,58 @@ var THERAPISTS=['Anya','Mia','Rosa','Leo'];
 function loadServices(){ try{ var m=JSON.parse(localStorage.getItem('hosspa_menu')||'null'); if(m&&m.services&&m.services.length) return m.services; }catch(e){} return DEFAULT_SERVICES; }
 var SERVICES=loadServices();
 
-/* ---------- bookings store (shared with management on the same domain) ---------- */
+/* ---------- membership plans (Brandon Hall Health Club — Granite structure) ---------- */
+var PLAN_TIERS=[
+ {id:'core',name:'Core',pop:false,feat:['Gym, pool & spa access','Full opening times','£20 joining fee (per person)','7-day advance booking','Guest passes (£10)','Towel hire (£2)','Free parking','1-month contract']},
+ {id:'advance',name:'Advance',pop:true,feat:['Gym, pool & spa access','Full opening times','£20 joining fee (per person)','14-day advance booking','2 × guest passes','Towels included','Free parking','1-month contract']},
+ {id:'elevate',name:'Elevate',pop:false,feat:['Gym, pool & spa access','Full opening times','£0 joining fee','14-day advance booking','2 × guest passes','Towels included','Free parking','Multi-club access (Fitness Essentials)','No contract','Ability to freeze membership']}
+];
+var PLAN_TYPES=[
+ {id:'individual',name:'Individual',who:'1 adult',price:{core:59,advance:69,elevate:79},est:true},
+ {id:'joint',name:'Joint',who:'2 adults',price:{core:99,advance:117,elevate:135}},
+ {id:'family',name:'Family',who:'2 adults & 2 kids',price:{core:115.50,advance:134.50,elevate:151.50}}
+];
+function money(n){return n?('£'+(Number.isInteger(n)?n:n.toFixed(2))):'Free'}
+function tier(id){return PLAN_TIERS.find(function(t){return t.id===id})}
+function ptype(id){return PLAN_TYPES.find(function(t){return t.id===id})}
+
+/* ---------- the member (me) ---------- */
+var ME_DEFAULT={name:'Ajay Kawa',num:'BH-2048',since:'May 2023',renew:'14 Dec 2026',type:'individual',tier:'advance'};
+function loadMe(){ try{var m=JSON.parse(localStorage.getItem('hosspa_me')||'null'); if(m&&m.name) return m;}catch(e){} return ME_DEFAULT; }
+var MEMBER=loadMe();
+function saveMe(){ try{localStorage.setItem('hosspa_me',JSON.stringify(MEMBER));}catch(e){} }
+function planLabel(){ var t=tier(MEMBER.tier),ty=ptype(MEMBER.type); return (t?t.name:'')+' · '+(ty?ty.name:''); }
+function planPrice(){ var ty=ptype(MEMBER.type); return ty?ty.price[MEMBER.tier]:0; }
+function renderMe(){
+  var lbl=planLabel(), pr=money(planPrice());
+  document.getElementById('memName').textContent=MEMBER.name;
+  document.getElementById('memPlan').textContent=lbl;
+  document.getElementById('memRenew').textContent='Renews '+MEMBER.renew+' · '+pr+'/mo';
+  document.getElementById('cardPlan').textContent=lbl;
+  document.getElementById('cardWho').textContent=MEMBER.name;
+  document.getElementById('cardMeta').textContent='Member #'+MEMBER.num+' · since '+MEMBER.since;
+  document.getElementById('cardFoot').textContent='Show this at reception or scan at the gym door. Renews '+MEMBER.renew+' · '+pr+'/mo.';
+  var t=tier(MEMBER.tier);
+  document.getElementById('cardIncludes').innerHTML=(t?t.feat:[]).map(function(f){return '<div class="bk"><span class="dot" style="background:var(--teal)"></span><div><div class="t">'+f+'</div></div></div>'}).join('');
+  var hr=new Date().getHours(); document.getElementById('homeHi').textContent=(hr<12?'Good morning,':hr<18?'Good afternoon,':'Good evening,');
+}
+
+/* ---------- bookings (shared with management on the same domain) ---------- */
 function loadBk(){ try{ return JSON.parse(localStorage.getItem('hosspa_bookings')||'[]'); }catch(e){ return []; } }
 function saveBk(a){ try{ localStorage.setItem('hosspa_bookings',JSON.stringify(a)); }catch(e){} }
-var BOOKINGS=loadBk();
-if(!BOOKINGS.length){ // seed a couple so the demo isn't empty first run
-  var d1=fdate(addDays(0)),d2=fdate(addDays(2));
-  BOOKINGS=[
-   {id:uid(),kind:'class',name:'Aqua Aerobics',loc:'Pool',date:d1,time:'10:00',price:0,who:'Eleanor Whitfield',at:Date.now()},
-   {id:uid(),kind:'treatment',name:'Hot Stone Massage',loc:'Room 3',date:d2,time:'15:30',price:95,therapist:'Mia',who:'Eleanor Whitfield',at:Date.now()}
-  ];
-  saveBk(BOOKINGS);
-}
 function uid(){return 'b'+Math.random().toString(36).slice(2,9)}
 function addDays(n){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);return d}
 function fdate(d){return d.toISOString().slice(0,10)}
-function money(n){return n?('£'+n):'Free'}
-function prettyDate(iso){var d=new Date(iso+'T00:00:00');var t=addDays(0),tm=addDays(1);
-  if(fdate(t)===iso)return 'Today';if(fdate(tm)===iso)return 'Tomorrow';
-  return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
+function ri(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+var BOOKINGS=loadBk();
+if(!BOOKINGS.length){
+  BOOKINGS=[
+   {id:uid(),kind:'class',name:'Aqua Aerobics',loc:'Pool',date:fdate(addDays(0)),time:'10:00',price:0,who:MEMBER.name,at:Date.now()},
+   {id:uid(),kind:'treatment',name:'Hot Stone Massage',loc:'Room 3',date:fdate(addDays(2)),time:'15:30',price:95,therapist:'Mia',who:MEMBER.name,at:Date.now()}
+  ];
+  saveBk(BOOKINGS);
+}
+function prettyDate(iso){var d=new Date(iso+'T00:00:00');if(fdate(addDays(0))===iso)return 'Today';if(fdate(addDays(1))===iso)return 'Tomorrow';return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(function(){t.classList.remove('on')},1900)}
 
 /* ---------- nav ---------- */
@@ -215,7 +260,7 @@ function go(s){
   document.querySelectorAll('.screen').forEach(function(x){x.classList.toggle('on',x.id==='s-'+s)});
   document.querySelectorAll('.nav button').forEach(function(b){b.classList.toggle('on',b.dataset.s===s)});
   window.scrollTo(0,0);
-  if(s==='mine')renderMine(); if(s==='home')renderHome();
+  if(s==='mine')renderMine(); if(s==='home')renderHome(); if(s==='join')renderJoin();
 }
 var SEG='treatments';
 function setSeg(seg){SEG=seg;
@@ -223,8 +268,6 @@ function setSeg(seg){SEG=seg;
   document.getElementById('seg-classes').classList.toggle('on',seg==='classes');
   renderBookList();
 }
-
-/* ---------- book list ---------- */
 function renderBookList(){
   var host=document.getElementById('bookList');
   if(SEG==='treatments'){
@@ -233,8 +276,6 @@ function renderBookList(){
         return '<div class="item" onclick="openTreat(\''+esc(c.cat)+'\','+i+')"><div><div class="t">'+it.n+'</div><div class="s">'+(it.min?it.min+' min':'')+'</div></div><div class="p">'+money(it.p)+'</div></div>';
       }).join('');
     }).join('');
-    // store ref map
-    window._SVC=SERVICES;
   } else {
     host.innerHTML='<div class="catt">Classes this week</div>'+CLASSES.map(function(c,i){
       return '<div class="item" onclick="openClass('+i+')"><div><div class="t">'+c.n+'</div><div class="s">'+c.loc+' · '+c.times.join(', ')+'</div></div><div class="cap">from '+Math.max(1,c.cap-ri(2,9))+' spaces</div></div>';
@@ -242,69 +283,56 @@ function renderBookList(){
   }
 }
 function esc(s){return String(s).replace(/'/g,"\\'")}
-function ri(a,b){return Math.floor(Math.random()*(b-a+1))+a}
 
 /* ---------- booking sheet ---------- */
 var SEL={};
 function openSheet(html){document.getElementById('sheet').innerHTML=html;document.getElementById('sheetBg').classList.add('on')}
 function closeSheet(){document.getElementById('sheetBg').classList.remove('on')}
-function dayChips(){var h='';for(var i=0;i<7;i++){var d=addDays(i);var iso=fdate(d);
-  h+='<button class="chip day'+(SEL.date===iso?' on':'')+'" onclick="pickDate(\''+iso+'\')"><small>'+(i===0?'Today':d.toLocaleDateString('en-GB',{weekday:'short'}))+'</small>'+d.getDate()+'</button>';}
-  return h;}
+function dayChips(){var h='';for(var i=0;i<7;i++){var d=addDays(i);var iso=fdate(d);h+='<button class="chip day'+(SEL.date===iso?' on':'')+'" onclick="pickDate(\''+iso+'\')"><small>'+(i===0?'Today':d.toLocaleDateString('en-GB',{weekday:'short'}))+'</small>'+d.getDate()+'</button>';}return h;}
 function timeChips(times){return times.map(function(t){return '<button class="chip'+(SEL.time===t?' on':'')+'" onclick="pickTime(\''+t+'\')">'+t+'</button>'}).join('')}
-
 function openTreat(cat,i){
   var c=SERVICES.find(function(x){return x.cat===cat});var it=c.items[i];
-  SEL={kind:'treatment',name:it.n,price:it.p,min:it.min,loc:'Treatment room',date:null,time:null,therapist:null};
+  SEL={kind:'treatment',name:it.n,price:it.p,min:it.min,date:null,time:null,therapist:null};
   var slots=['09:00','10:30','12:00','13:30','15:00','15:30','16:30'];
-  openSheet(
-    '<h2>'+it.n+'</h2><div class="sub">'+(it.min?it.min+' minutes · ':'')+money(it.p)+(memPremium()?' · 20% member discount at checkout':'')+'</div>'+
+  openSheet('<h2>'+it.n+'</h2><div class="sub">'+(it.min?it.min+' minutes · ':'')+money(it.p)+' · 20% member discount at checkout</div>'+
     '<div class="lbl">Choose a day</div><div class="chips" id="dayChips">'+dayChips()+'</div>'+
     '<div class="lbl">Therapist</div><div class="chips" id="therChips">'+THERAPISTS.map(function(t){return '<button class="chip" onclick="pickTher(\''+t+'\')">'+t+'</button>'}).join('')+'</div>'+
     '<div class="lbl">Time</div><div class="chips" id="timeChips">'+timeChips(slots)+'</div>'+
     '<button class="cta" id="confirmBtn" disabled onclick="confirmBooking()">Select a day &amp; time</button>'+
-    '<button class="cta ghost" onclick="closeSheet()">Cancel</button>'
-  );
+    '<button class="cta ghost" onclick="closeSheet()">Cancel</button>');
 }
 function openClass(i){
-  var c=CLASSES[i];
-  SEL={kind:'class',name:c.n,price:0,loc:c.loc,date:null,time:null};
-  openSheet(
-    '<h2>'+c.n+'</h2><div class="sub">'+c.loc+' · included with membership</div>'+
+  var c=CLASSES[i];SEL={kind:'class',name:c.n,price:0,loc:c.loc,date:null,time:null};
+  openSheet('<h2>'+c.n+'</h2><div class="sub">'+c.loc+' · included with membership</div>'+
     '<div class="lbl">Choose a day</div><div class="chips" id="dayChips">'+dayChips()+'</div>'+
     '<div class="lbl">Time</div><div class="chips" id="timeChips">'+timeChips(c.times)+'</div>'+
     '<button class="cta" id="confirmBtn" disabled onclick="confirmBooking()">Select a day &amp; time</button>'+
-    '<button class="cta ghost" onclick="closeSheet()">Cancel</button>'
-  );
+    '<button class="cta ghost" onclick="closeSheet()">Cancel</button>');
 }
-function memPremium(){return true}
 function pickDate(iso){SEL.date=iso;document.getElementById('dayChips').innerHTML=dayChips();syncConfirm()}
 function pickTime(t){SEL.time=t;document.querySelectorAll('#timeChips .chip').forEach(function(c){c.classList.toggle('on',c.textContent===t)});syncConfirm()}
 function pickTher(t){SEL.therapist=t;document.querySelectorAll('#therChips .chip').forEach(function(c){c.classList.toggle('on',c.textContent===t)});syncConfirm()}
-function syncConfirm(){var b=document.getElementById('confirmBtn');if(!b)return;
-  var ok=SEL.date&&SEL.time;b.disabled=!ok;
-  b.textContent=ok?('Confirm · '+prettyDate(SEL.date)+' '+SEL.time):'Select a day & time';}
+function syncConfirm(){var b=document.getElementById('confirmBtn');if(!b)return;var ok=SEL.date&&SEL.time;b.disabled=!ok;b.textContent=ok?('Confirm · '+prettyDate(SEL.date)+' '+SEL.time):'Select a day & time';}
 function confirmBooking(){
-  var rec={id:uid(),kind:SEL.kind,name:SEL.name,loc:SEL.kind==='treatment'?('Room '+ri(1,4)):SEL.loc,
-    date:SEL.date,time:SEL.time,price:SEL.price||0,therapist:SEL.therapist||null,who:'Eleanor Whitfield',at:Date.now()};
-  BOOKINGS.push(rec);saveBk(BOOKINGS);
+  var rec={id:uid(),kind:SEL.kind,name:SEL.name,loc:SEL.kind==='treatment'?('Room '+ri(1,4)):SEL.loc,date:SEL.date,time:SEL.time,price:SEL.price||0,therapist:SEL.therapist||null,who:MEMBER.name,at:Date.now()};
+  BOOKINGS=loadBk(); BOOKINGS.push(rec); saveBk(BOOKINGS);
+  renderHome(); renderMine();
   openSheet('<div class="done"><div class="tick">✓</div><h2>Booked!</h2><div class="sub">'+rec.name+'<br>'+prettyDate(rec.date)+' at '+rec.time+(rec.therapist?(' with '+rec.therapist):'')+'</div>'+
     '<button class="cta" onclick="closeSheet();go(\'mine\')">See my bookings</button>'+
     '<button class="cta ghost" onclick="closeSheet();go(\'home\')">Done</button></div>');
   toast('✓ Booking confirmed');
 }
 
-/* ---------- home ---------- */
-function upcoming(){var t=fdate(addDays(0));return BOOKINGS.filter(function(b){return b.date>=t}).sort(function(a,b){return (a.date+a.time)<(b.date+b.time)?-1:1})}
-function pastB(){var t=fdate(addDays(0));return BOOKINGS.filter(function(b){return b.date<t}).sort(function(a,b){return (a.date+a.time)>(b.date+b.time)?-1:1})}
+/* ---------- home + my spa ---------- */
 function dot(b){return b.kind==='class'?'var(--teal)':'var(--sand)'}
+function upcoming(){var t=fdate(addDays(0));return loadBk().filter(function(b){return b.date>=t}).sort(function(a,b){return (a.date+a.time)<(b.date+b.time)?-1:1})}
+function pastB(){var t=fdate(addDays(0));return loadBk().filter(function(b){return b.date<t}).sort(function(a,b){return (a.date+a.time)>(b.date+b.time)?-1:1})}
 function renderHome(){
   var up=upcoming().slice(0,3);
   document.getElementById('homeNext').innerHTML = up.length? up.map(function(b){
     return '<div class="bk"><span class="dot" style="background:'+dot(b)+'"></span><div><div class="t">'+b.name+'</div><div class="s">'+prettyDate(b.date)+' · '+b.time+' · '+b.loc+(b.therapist?(' · '+b.therapist):'')+(b.price?(' · £'+b.price):'')+'</div></div><div class="go">'+(b.kind==='class'?'Class':'Spa')+'</div></div>';
   }).join('') : '<div class="empty">No bookings yet — tap <b>Book</b> to reserve a treatment or class.</div>';
 }
-/* ---------- my bookings ---------- */
 function renderMine(){
   var up=upcoming(),pa=pastB();
   document.getElementById('mineUp').innerHTML = up.length? up.map(function(b){
@@ -314,10 +342,53 @@ function renderMine(){
     return '<div class="bk"><span class="dot" style="background:#cfdad7"></span><div><div class="t">'+b.name+'<span class="tagx past">'+prettyDate(b.date)+'</span></div><div class="s">'+b.time+' · '+b.loc+'</div></div></div>';
   }).join('') : '<div class="empty">No past visits yet.</div>';
 }
-function cancelB(id){ if(!confirm('Cancel this booking?'))return; BOOKINGS=BOOKINGS.filter(function(b){return b.id!==id}); saveBk(BOOKINGS); renderMine(); renderHome(); toast('Booking cancelled'); }
+function cancelB(id){ if(!confirm('Cancel this booking?'))return; var a=loadBk().filter(function(b){return b.id!==id}); saveBk(a); BOOKINGS=a; renderMine(); renderHome(); toast('Booking cancelled'); }
+
+/* ---------- join / sign up ---------- */
+var JOIN_TYPE='individual';
+function renderJoin(){
+  document.getElementById('joinSeg').innerHTML=PLAN_TYPES.map(function(t){return '<button class="'+(JOIN_TYPE===t.id?'on':'')+'" onclick="joinType(\''+t.id+'\')">'+t.name+'</button>'}).join('');
+  var ty=ptype(JOIN_TYPE);
+  document.getElementById('joinPlans').innerHTML=PLAN_TIERS.map(function(t){
+    var pr=ty.price[t.id];
+    return '<div class="plan'+(t.pop?' pop':'')+'">'+(t.pop?'<div class="pop-tag">🔥 Most popular</div>':'')+
+      '<div class="pn">'+t.name+' '+ty.name+'</div>'+
+      '<div class="pp">'+money(pr)+'<small>/mo</small></div><div class="yr">or '+money(pr*10)+' yearly (save 16%)</div>'+
+      '<ul>'+[('<li>'+ty.who+'</li>')].concat(t.feat.map(function(f){return '<li>'+f+'</li>'})).join('')+'</ul>'+
+      '<button class="join-btn" onclick="joinStart(\''+JOIN_TYPE+'\',\''+t.id+'\')">Get started → '+money(pr)+'/mo</button></div>';
+  }).join('')+'<div class="agenote" style="margin-bottom:20px">'+(ty.est?'Individual prices shown are indicative — confirm with the club.':'')+'</div>';
+}
+function joinType(id){JOIN_TYPE=id;renderJoin();}
+function joinStart(typeId,tierId){
+  var ty=ptype(typeId),t=tier(tierId),pr=ty.price[tierId];
+  openSheet('<h2>Join — '+t.name+' '+ty.name+'</h2><div class="sub">'+money(pr)+'/mo · '+ty.who+' · '+(t.feat.indexOf('£0 joining fee')>=0?'no joining fee':'£20 joining fee pp')+'</div>'+
+    '<div class="lbl">First name</div><input class="fieldi" id="j-fn" placeholder="First name">'+
+    '<div class="lbl">Surname</div><input class="fieldi" id="j-sn" placeholder="Surname">'+
+    '<div class="lbl">Email</div><input class="fieldi" id="j-em" type="email" placeholder="you@email.com">'+
+    '<div class="lbl">Mobile</div><input class="fieldi" id="j-ph" type="tel" placeholder="07…">'+
+    '<button class="cta" onclick="joinSubmit(\''+typeId+'\',\''+tierId+'\')">Join now · '+money(pr)+'/mo</button>'+
+    '<button class="cta ghost" onclick="closeSheet()">Back</button>');
+}
+function joinSubmit(typeId,tierId){
+  var fn=(document.getElementById('j-fn').value||'').trim(), sn=(document.getElementById('j-sn').value||'').trim();
+  if(!fn||!sn){ toast('Please add your name'); return; }
+  var ty=ptype(typeId),t=tier(tierId),pr=ty.price[tierId];
+  // record the sign-up so management can see it (same domain)
+  try{ var ups=JSON.parse(localStorage.getItem('hosspa_signups')||'[]'); ups.push({id:uid(),name:fn+' '+sn,email:(document.getElementById('j-em').value||'').trim(),phone:(document.getElementById('j-ph').value||'').trim(),type:typeId,tier:tierId,price:pr,at:Date.now()}); localStorage.setItem('hosspa_signups',JSON.stringify(ups)); }catch(e){}
+  // set this phone up as that member
+  MEMBER={name:fn+' '+sn,num:'BH-'+ri(3000,3999),since:new Date().toLocaleDateString('en-GB',{month:'short',year:'numeric'}),renew:new Date(new Date().setFullYear(new Date().getFullYear()+1)).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),type:typeId,tier:tierId};
+  saveMe(); renderMe();
+  openSheet('<div class="done"><div class="tick">✓</div><h2>Welcome to Brandon Hall!</h2><div class="sub">'+t.name+' '+ty.name+' · '+money(pr)+'/mo<br>Your membership is set up on this phone.</div>'+
+    '<button class="cta" onclick="closeSheet();go(\'home\')">Go to my home</button>'+
+    '<button class="cta ghost" onclick="closeSheet();go(\'card\')">See my card</button></div>');
+  toast('🎉 Membership created');
+}
+
+/* ---------- PWA ---------- */
+if('serviceWorker' in navigator){ window.addEventListener('load',function(){ navigator.serviceWorker.register('/hosspa-app-sw.js').catch(function(){}); }); }
 
 /* ---------- init ---------- */
-setSeg('treatments');renderHome();renderMine();
+renderMe(); setSeg('treatments'); renderHome(); renderMine();
 </script>
 </body>
 </html>

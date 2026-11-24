@@ -82,7 +82,7 @@ tbody tr:hover{background:#f7faf9}
 .sub{color:var(--mut);font-size:11.5px}
 .muted{color:var(--mut)}
 /* plans */
-.plans{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .plan{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .plan.feat{border:2px solid var(--spa);position:relative}
 .plan.feat::before{content:'Most popular';position:absolute;top:-11px;left:20px;background:var(--spa);color:#fff;font-size:10px;letter-spacing:1px;text-transform:uppercase;font-weight:700;padding:3px 10px;border-radius:999px}
@@ -221,7 +221,7 @@ tbody tr:hover{background:#f7faf9}
     <div class="tools">
       <input class="inp" id="msearch" placeholder="Search name, plan or town…" style="min-width:240px">
       <select class="inp" id="mstatus"><option value="">All statuses</option><option>Active</option><option>At risk</option><option>Frozen</option><option>Expired</option></select>
-      <select class="inp" id="mplan"><option value="">All plans</option></select>
+      <select class="inp" id="mplan"><option value="">All memberships</option></select>
     </div>
     <div class="card" style="overflow:hidden">
       <div style="max-height:620px;overflow:auto"><table id="mtable">
@@ -238,8 +238,9 @@ tbody tr:hover{background:#f7faf9}
   <!-- PLANS -->
   <section class="view" id="v-plans">
     <div class="ph"><div><h1>Memberships</h1><p>The spa membership range — what each tier includes and how many members are on it.</p></div></div>
+    <div id="planToggle" style="display:flex;gap:8px;justify-content:center;margin-bottom:16px"></div>
     <div class="plans" id="plansWrap"></div>
-    <div class="card pad mt"><div class="ct">Members &amp; recurring revenue by plan</div><div id="planBars"></div></div>
+    <div class="card pad mt"><div class="ct">Members &amp; recurring revenue by tier</div><div id="planBars"></div></div>
   </section>
 
   <!-- CLASSES -->
@@ -321,19 +322,27 @@ var rnd=mulberry32(20261124);
 function ri(a,b){return Math.floor(rnd()*(b-a+1))+a}
 function pick(a){return a[Math.floor(rnd()*a.length)]}
 function chance(p){return rnd()<p}
-function money(n){return '£'+Math.round(n).toLocaleString('en-GB')}
+function money(n){return '£'+(Number.isInteger(n)?n.toLocaleString('en-GB'):n.toFixed(2))}
 function k(n){return '£'+(n/1000).toFixed(n>=10000?0:1)+'k'}
 
 /* ---------- plans ---------- */
-var PLANS=[
-  {id:'offpeak', name:'Off-Peak Spa', price:42, feat:false, inc:['Pool, sauna &amp; steam','Weekdays before 4pm','Relaxation lounge','10% off treatments']},
-  {id:'classic', name:'Spa Classic',  price:58, feat:false, inc:['Pool, sauna &amp; steam, any time','Relaxation lounge','2 guest passes a year','15% off treatments']},
-  {id:'premium', name:'Spa &amp; Health Premium', price:85, feat:true, inc:['Everything in Classic','Full gym &amp; all classes','Robe &amp; towel service','20% off treatments','1 treatment credit / month']},
-  {id:'couples', name:'Couples Premium', price:150, feat:false, inc:['Two Premium memberships','Shared treatment credits','4 guest passes a year','Priority class booking']},
-  {id:'corporate', name:'Corporate (per head)', price:65, feat:false, inc:['Premium access','Billed to the company','Flexible start dates','Wellbeing reporting']},
-  {id:'annual', name:'Annual Premium', price:50, feat:false, inc:['Premium, paid yearly','Two months free','Fixed price for 12 months','Priority renewal'], note:'£600 / year'}
+var PLAN_TIERS=[
+  {id:'core',name:'Core',pop:false,inc:['Gym, pool &amp; spa access','Full opening times','£20 joining fee (per person)','7-day advance booking','Guest passes (£10)','Towel hire (£2)','Free parking','1-month contract']},
+  {id:'advance',name:'Advance',pop:true,inc:['Gym, pool &amp; spa access','Full opening times','£20 joining fee (per person)','14-day advance booking','2 × guest passes','Towels included','Free parking','1-month contract']},
+  {id:'elevate',name:'Elevate',pop:false,inc:['Gym, pool &amp; spa access','Full opening times','£0 joining fee','14-day advance booking','2 × guest passes','Towels included','Free parking','Multi-club access (Fitness Essentials)','No contract','Ability to freeze membership']}
 ];
-var PLAN_WEIGHT={offpeak:.17,classic:.26,premium:.33,couples:.08,corporate:.11,annual:.05};
+var PLAN_TYPES=[
+  {id:'individual',name:'Individual',who:'1 adult',price:{core:59,advance:69,elevate:79},est:true},
+  {id:'joint',name:'Joint',who:'2 adults',price:{core:99,advance:117,elevate:135}},
+  {id:'family',name:'Family',who:'2 adults &amp; 2 kids',price:{core:115.50,advance:134.50,elevate:151.50}}
+];
+function ptier(id){return PLAN_TIERS.find(function(t){return t.id===id})}
+function ptype(id){return PLAN_TYPES.find(function(t){return t.id===id})}
+function planPrice(typeId,tierId){var ty=ptype(typeId);return ty?ty.price[tierId]:0}
+function planName(typeId,tierId){return ptier(tierId).name+' · '+ptype(typeId).name}
+var TYPE_W={individual:.60,joint:.28,family:.12};
+var TIER_W={core:.37,advance:.46,elevate:.17};
+function wkey(W){var r=rnd(),a=0;for(var k in W){a+=W[k];if(r<a)return k}return Object.keys(W)[0]}
 
 /* ---------- names ---------- */
 var FN_F=['Eleanor','Sophie','Priya','Amelia','Grace','Chloe','Hannah','Olivia','Freya','Jasmine','Maria','Aisha','Charlotte','Emily','Lucy','Nadia','Rebecca','Isla','Megan','Sara','Daniela','Ruth','Anita','Joy','Fiona','Katie','Laura','Yasmin'];
@@ -341,7 +350,6 @@ var FN_M=['James','Daniel','Mohammed','Thomas','Oliver','Harry','George','Jack',
 var LN=['Whitfield','Hargreaves','Patel','Clarke','O’Connor','Bennett','Fairbanks','Reyes','Sharma','Caldwell','Adeyemi','Nowak','Marsh','Fletcher','Lindqvist','Dunbar','Haywood','Okafor','Pryce','Sandhu','Rossi','Thornton','Ellison','Vance','Mercer','Boyd','Ashworth','Kumar','Lindsay','Webb'];
 var TOWNS=[['Coventry',.26],['Kenilworth',.14],['Leamington Spa',.13],['Rugby',.08],['Warwick',.08],['Solihull',.07],['Balsall Common',.06],['Nuneaton',.05],['Hotel guest / other',.13]];
 function wtown(){var r=rnd(),a=0;for(var i=0;i<TOWNS.length;i++){a+=TOWNS[i][1];if(r<a)return TOWNS[i][0]}return TOWNS[0][0]}
-function wplan(){var r=rnd(),a=0;for(var id in PLAN_WEIGHT){a+=PLAN_WEIGHT[id];if(r<a)return id}return 'premium'}
 var AVCOL=['#0f5b53','#15867a','#20b2a2','#c9a978','#5b8f86','#8a6d3b','#2e8b6b','#4a5b7a'];
 
 /* ---------- generate members ---------- */
@@ -354,16 +362,15 @@ for(var i=0;i<TOTAL;i++){
   var gender=chance(.61)?'F':(chance(.97)?'M':'X');
   var fn=gender==='F'?pick(FN_F):gender==='M'?pick(FN_M):pick(FN_F.concat(FN_M));
   var age=ri(19,74); if(chance(.5))age=ri(30,58);
-  var planId=wplan();
-  var plan=PLANS.find(function(p){return p.id===planId});
+  var mtype=wkey(TYPE_W), mtier=wkey(TIER_W), mprice=planPrice(mtype,mtier);
   var tenure=ri(0,46); // months as member (0 = joined this month)
   var joined=daysAgo(tenure*30+ri(0,25));
   var r=rnd(); var status = r<.80?'Active': r<.88?'At risk': r<.95?'Frozen':'Expired';
   var lastN = status==='Expired'?ri(40,180): status==='Frozen'?ri(25,80): status==='At risk'?ri(16,34):ri(0,14);
   var perWeek = status==='Active'?(rnd()*2.6+.6):(status==='At risk'?rnd()*.6+.15:rnd()*.4);
   var visits=Math.max(1,Math.round(perWeek*tenure*4.3));
-  var ltv=Math.round(plan.price*tenure + visits*rnd()*2.4 + (chance(.5)?ri(0,900):0));
-  MEMBERS.push({id:i,name:fn+' '+pick(LN),gender:gender,age:age,plan:plan.name,planId:planId,price:plan.price,
+  var ltv=Math.round(mprice*tenure + visits*rnd()*2.4 + (chance(.5)?ri(0,900):0));
+  MEMBERS.push({id:i,name:fn+' '+pick(LN),gender:gender,age:age,plan:planName(mtype,mtier),planId:mtype+'_'+mtier,ptype:mtype,ptier:mtier,price:mprice,
     status:status,joined:joined,last:daysAgo(lastN),lastN:lastN,visits:visits,ltv:ltv,town:wtown(),
     col:AVCOL[i%AVCOL.length]});
 }
@@ -462,7 +469,7 @@ document.getElementById('asof').textContent='Sample data · as at '+NOW.toLocale
   document.getElementById('kpis').innerHTML=kp.map(function(x){return '<div class="kpi"><div class="l">'+x.l+'</div><div class="v">'+x.v+'</div><div class="d '+x.c+'">'+x.d+'</div></div>'}).join('');
   document.getElementById('revChart').innerHTML=stackedBars([revM,revT,revD,revR],MLAB,['#0f5b53','#20b2a2','#c9a978','#9bb7b2'],230);
   // mix donut
-  var mix=PLANS.map(function(p,i){return {n:p.name.replace('&amp;','&').replace(' (per head)',''),v:MEMBERS.filter(function(m){return m.planId===p.id&&m.status!=='Expired'}).length,c:AVCOL[i]}}).filter(function(s){return s.v});
+  var mix=PLAN_TIERS.map(function(t,i){return {n:t.name,v:MEMBERS.filter(function(m){return m.ptier===t.id&&m.status!=='Expired'}).length,c:AVCOL[i]}}).filter(function(s){return s.v});
   document.getElementById('mixChart').innerHTML=donut(mix,210);
   // age
   var bands=[['18–24',0],['25–34',0],['35–44',0],['45–54',0],['55–64',0],['65+',0]];
@@ -495,14 +502,15 @@ document.getElementById('asof').textContent='Sample data · as at '+NOW.toLocale
 var msort={k:'ltv',dir:-1};
 (function(){
   var sel=document.getElementById('mplan');
-  PLANS.forEach(function(p){var o=document.createElement('option');o.textContent=p.name.replace('&amp;','&');o.value=p.name;sel.appendChild(o)});
+  PLAN_TYPES.forEach(function(t){var o=document.createElement('option');o.textContent=t.name.replace('&amp;','&');o.value=t.id;sel.appendChild(o)});
+  PLAN_TIERS.forEach(function(t){var o=document.createElement('option');o.textContent=t.name+' tier';o.value='tier:'+t.id;sel.appendChild(o)});
 })();
 function fmtMembers(){
   var q=(document.getElementById('msearch').value||'').toLowerCase();
   var st=document.getElementById('mstatus').value, pl=document.getElementById('mplan').value;
   var rows=MEMBERS.filter(function(m){
     if(st&&m.status!==st)return false;
-    if(pl&&m.plan.replace('&amp;','&')!==pl)return false;
+    if(pl){ if(pl.indexOf('tier:')===0){ if(m.ptier!==pl.slice(5))return false; } else if(m.ptype!==pl)return false; }
     if(q&&!(m.name.toLowerCase().indexOf(q)>=0||m.plan.toLowerCase().indexOf(q)>=0||m.town.toLowerCase().indexOf(q)>=0))return false;
     return true;
   });
@@ -528,17 +536,23 @@ function fmtMembers(){
 ['msearch','mstatus','mplan'].forEach(function(id){document.getElementById(id).addEventListener('input',fmtMembers)});
 document.querySelectorAll('#mtable thead th').forEach(function(th){th.addEventListener('click',function(){var k=th.dataset.k;if(msort.k===k)msort.dir*=-1;else{msort.k=k;msort.dir=(k==='name')?1:-1}fmtMembers()})});
 
-/* ---------- PLANS ---------- */
-(function(){
-  document.getElementById('plansWrap').innerHTML=PLANS.map(function(p){
-    return '<div class="plan'+(p.feat?' feat':'')+'" style="cursor:pointer" onclick="planDetail(\''+p.id+'\')"><div class="pn">'+p.name+'</div>'+
-      '<div class="pp">'+money(p.price)+'<small>/mo</small></div>'+(p.note?'<div class="sub">'+p.note+'</div>':'')+
-      '<ul>'+p.inc.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>'+
-      '<div class="cnt">'+MEMBERS.filter(function(m){return m.planId===p.id&&m.status!=='Expired'}).length+' members · <span style="color:var(--spa2)">View →</span></div></div>';
+/* ---------- PLANS (Individual / Joint / Family × Core / Advance / Elevate) ---------- */
+var PLAN_VIEW='individual';
+function setPlanView(id){PLAN_VIEW=id;renderPlans();}
+function renderPlans(){
+  document.getElementById('planToggle').innerHTML=PLAN_TYPES.map(function(t){return '<button class="btnx '+(PLAN_VIEW===t.id?'pri':'sec')+'" onclick="setPlanView(\''+t.id+'\')">'+t.name.replace('&amp;','&')+'</button>'}).join('');
+  var ty=ptype(PLAN_VIEW);
+  document.getElementById('plansWrap').innerHTML=PLAN_TIERS.map(function(t){
+    var pr=ty.price[t.id], cnt=MEMBERS.filter(function(m){return m.ptype===PLAN_VIEW&&m.ptier===t.id&&m.status!=='Expired'}).length;
+    return '<div class="plan'+(t.pop?' feat':'')+'" style="cursor:pointer" onclick="planDetail(\''+PLAN_VIEW+'\',\''+t.id+'\')"><div class="pn">'+t.name+' '+ty.name+'</div>'+
+      '<div class="pp">'+money(pr)+'<small>/mo</small></div><div class="sub">or '+money(pr*10)+' yearly (save 16%)</div>'+
+      '<ul>'+['<li>'+ty.who+'</li>'].concat(t.inc.map(function(x){return '<li>'+x+'</li>'})).join('')+'</ul>'+
+      '<div class="cnt">'+cnt+' members · <span style="color:var(--spa2)">View →</span></div></div>';
   }).join('');
-  var rows=PLANS.map(function(p,i){var c=MEMBERS.filter(function(m){return m.planId===p.id&&m.status!=='Expired'});var rev=c.reduce(function(s,m){return s+p.price},0);return {n:p.name.replace('&amp;','&').replace(' (per head)',''),v:rev,vl:money(rev)+'/mo',c:AVCOL[i]}});
+  var rows=PLAN_TIERS.map(function(t,i){var ms=MEMBERS.filter(function(m){return m.ptier===t.id&&m.status!=='Expired'});var rev=ms.reduce(function(s,m){return s+m.price},0);return {n:t.name,v:rev,vl:money(Math.round(rev))+'/mo',c:AVCOL[i]}});
   document.getElementById('planBars').innerHTML=hbars(rows);
-})();
+}
+renderPlans();
 
 /* ---------- CLASSES ---------- */
 (function(){
@@ -672,17 +686,19 @@ function ovClose(){document.getElementById('ov').classList.remove('on')}
 document.getElementById('ov').addEventListener('click',function(e){if(e.target===this)ovClose()});
 function attr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
 
-function planDetail(id){
-  var p=PLANS.find(function(x){return x.id===id}); if(!p)return;
-  var ms=MEMBERS.filter(function(m){return m.planId===id&&m.status!=='Expired'});
-  var mrr=ms.reduce(function(s){return s+p.price},0);
+function planDetail(typeId,tierId){
+  var ty=ptype(typeId),t=ptier(tierId); if(!ty||!t)return;
+  var pr=planPrice(typeId,tierId);
+  var ms=MEMBERS.filter(function(m){return m.ptype===typeId&&m.ptier===tierId&&m.status!=='Expired'});
+  var mrr=ms.reduce(function(s){return s+pr},0);
   var avgAge=ms.length?Math.round(ms.reduce(function(s,m){return s+m.age},0)/ms.length):0;
   var f=ms.filter(function(m){return m.gender==='F'}).length;
-  ovOpen('<div class="mh"><h2>'+p.name.replace('&amp;','&')+'</h2><button class="x" onclick="ovClose()">✕</button></div>'+
-   '<div class="mb"><div class="disp" style="font-size:34px;color:var(--spa);font-weight:700">'+money(p.price)+'<span style="font-size:15px;color:var(--mut);font-family:Lato"> /mo</span></div>'+(p.note?'<div class="sub" style="color:var(--mut)">'+p.note+'</div>':'')+
+  var inc=[ty.who].concat(t.inc);
+  ovOpen('<div class="mh"><h2>'+t.name+' '+ty.name.replace('&amp;','&')+'</h2><button class="x" onclick="ovClose()">✕</button></div>'+
+   '<div class="mb"><div class="disp" style="font-size:34px;color:var(--spa);font-weight:700">'+money(pr)+'<span style="font-size:15px;color:var(--mut);font-family:Lato"> /mo</span></div><div class="sub" style="color:var(--mut)">or '+money(pr*10)+' yearly (save 16%)'+(ty.est?' · indicative price':'')+'</div>'+
      '<div class="pdstat"><div class="b"><div class="l">Members</div><div class="v">'+ms.length+'</div></div><div class="b"><div class="l">Recurring/mo</div><div class="v">'+k(mrr)+'</div></div><div class="b"><div class="l">Avg age</div><div class="v">'+avgAge+'</div></div><div class="b"><div class="l">Female</div><div class="v">'+(ms.length?Math.round(f/ms.length*100):0)+'%</div></div></div>'+
-     '<div class="ct">What\u2019s included</div><ul style="margin:0 0 4px;padding-left:18px;color:var(--ink);font-size:13.5px;line-height:1.85">'+p.inc.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>'+
-     '<div class="ct" style="margin-top:16px">Sample members on this plan</div>'+
+     '<div class="ct">What\u2019s included</div><ul style="margin:0 0 4px;padding-left:18px;color:var(--ink);font-size:13.5px;line-height:1.85">'+inc.map(function(x){return '<li>'+x.replace('&amp;','&')+'</li>'}).join('')+'</ul>'+
+     '<div class="ct" style="margin-top:16px">Sample members on this membership</div>'+
      ms.slice(0,6).map(function(m){var init=m.name.split(' ').map(function(x){return x[0]}).slice(0,2).join('');return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)"><span class="av" style="background:'+m.col+'">'+init+'</span><div style="font-weight:700;font-size:13.5px">'+m.name+'</div><div class="sub" style="margin-left:auto">'+m.town+' · '+statusTag(m.status)+'</div></div>'}).join('')+
    '</div><div class="mf"><button class="btnx pri" onclick="ovClose()">Close</button></div>');
 }
