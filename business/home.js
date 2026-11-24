@@ -272,6 +272,10 @@
         var cached = mfGetCache() || {};
         cached.ts = Date.now(); cached.flash = j.flash;
         mfSetCache(cached);
+        /* v39.30 — expose flash globally so the coloured revenue boxes in
+           hosbusiness-v13.js can read from the authoritative monthForecast
+           figures (same source Alia uses) instead of rebuilding them. */
+        window.LATEST_FLASH = j.flash;
         if (slot) slot.innerHTML = renderFlash(j.flash, cached.commentary);
         // Then fetch the commentary (slower — triggers Gemini). Only if we don't have a fresh one.
         if (!cached.commentary || !cached.commentaryTs || (Date.now() - cached.commentaryTs) > 60 * 60 * 1000) {

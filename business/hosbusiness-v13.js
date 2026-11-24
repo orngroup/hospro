@@ -578,18 +578,41 @@
     var tonightAcc = to ? T.net(to.acc) : 0;
     var tonightAdr = to && to.rooms ? tonightAcc / to.rooms : 0;
     var n7 = T.agg(S.af.rows.filter(function (x) { return x.d >= cut; }).slice(0, 7));
-    /* v39.29 — the three coloured revenue boxes anchor the split on TODAY'S
-       date explicitly, not on asOfDay (which lags behind when Glenn hasn't
-       run the overnight export yet). Everything before today = closed,
-       today onwards = on books. This ensures today's ~£6k booked revenue
-       is captured in the on-books bucket instead of falling through a gap. */
+    /* v39.31 — the three coloured revenue boxes prefer S.af.rows (which is
+       populated by the Rezlynx "Actual & Forecast" CSV, with the authoritative
+       accom + F&B + Other totals per day). Split anchors on TODAY'S date so
+       today sits in the on-books bucket. Only falls back to the flash
+       monthForecast (accom-only forward) if S.af doesn't have month rows.
+       This ensures the green Total box matches Rezlynx's CumulativeGrandTotal
+       at month-end (e.g. £217,876.04 for November 2026) rather than the
+       accom-only subset. */
+    var m = cut.slice(0, 7);
+    var act, bks, allMonth, allMonthOcc;
     var _today = new Date(); _today.setHours(0, 0, 0, 0);
     var _todayIso = _today.toISOString().slice(0, 10);
-    var m = cut.slice(0, 7);
     var _mRows = (S.af.rows || []).filter(function (r) { return r.d.slice(0, 7) === m; });
-    var act = T.agg(_mRows.filter(function (r) { return r.d < _todayIso; }));
-    var bks = T.agg(_mRows.filter(function (r) { return r.d >= _todayIso; }));
-    var LET2 = (T && T.LETTABLE) ? T.LETTABLE : 114; var allMonth = act.total + bks.total, allMonthOcc = (act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights));
+    var _hasForward = _mRows.some(function (r) { return r.d >= _todayIso && (r.acc > 0 || r.fb > 0 || r.oth > 0); });
+    var LET2 = (T && T.LETTABLE) ? T.LETTABLE : 114;
+    if (_mRows.length && _hasForward) {
+      act = T.agg(_mRows.filter(function (r) { return r.d < _todayIso; }));
+      bks = T.agg(_mRows.filter(function (r) { return r.d >= _todayIso; }));
+      allMonth = act.total + bks.total;
+      allMonthOcc = (act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights));
+    } else {
+      /* Fallback: no forward rows in S.af — use flash.monthForecast (accom-only forward). */
+      var mf = (window.LATEST_FLASH && window.LATEST_FLASH.monthForecast) ? window.LATEST_FLASH.monthForecast : null;
+      if (mf && mf.actual && mf.onBooks && mf.monthEnd) {
+        act = { total: mf.actual.total || 0, rooms: mf.actual.rooms || 0, nights: mf.actual.nights || 0 };
+        bks = { total: mf.onBooks.total || 0, rooms: mf.onBooks.rooms || 0, nights: mf.onBooks.nights || 0 };
+        allMonth = mf.monthEnd.total || (act.total + bks.total);
+        allMonthOcc = mf.monthEnd.occPct != null ? mf.monthEnd.occPct : ((act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights)));
+      } else {
+        act = T.agg(_mRows.filter(function (r) { return r.d < _todayIso; }));
+        bks = T.agg(_mRows.filter(function (r) { return r.d >= _todayIso; }));
+        allMonth = act.total + bks.total;
+        allMonthOcc = (act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights));
+      }
+    }
 
     function t(label, value, sub) {
       return '<div class="tile"><div class="l">' + label + '</div><div class="v">' + value + '</div>' + (sub ? '<div class="d">' + sub + '</div>' : '') + '</div>';
