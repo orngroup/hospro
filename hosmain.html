@@ -571,7 +571,7 @@ let ACTIVE_MODULE = 'maintenance';
 // ── JOBS ─────────────────────────────────────────────────────────────────────
 
 // ── Clean start: jobs logged before 2026-10-10 10:00 UTC (11:00 UK, 10 Oct 2026) are cleared on every device ──
-const HF_CLEAN_FROM='2026-11-01T00:00:00.000Z';   // clean start — only jobs from 1 Nov 2026 onwards
+const HF_CLEAN_FROM='2026-11-24T00:00:00.000Z';   // clean start — board cleared for testing; only jobs from 24 Nov 2026 onwards show
 function hfOldJob(j){ return !j || !(String(j.createdAt||'')>=HF_CLEAN_FROM); }
 let JOBS = JSON.parse(localStorage.getItem('hosfix_jobs')||'null');
 if(!Array.isArray(JOBS)) JOBS=[];
