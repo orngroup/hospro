@@ -1719,49 +1719,39 @@ function openJobDetail(jobId){
   // buttons use inline onclick
 }
 
-// ── PERMANENT DELETE (Raj & Ajay only) ───────────────────────────────────────
-// Robust: tries a true cloud delete first; if that's blocked (e.g. the Firestore
-// delete rule hasn't been published yet) it falls back to hiding the job so it
-// still clears from the board everywhere and never comes back on reload.
+// ── DELETE A JOB (Raj & Ajay only) ───────────────────────────────────────────
+// Deletes by writing a hidden/cancelled flag to the job and syncing it. This is
+// bullet-proof: it works whether or not the Firestore delete rule is published,
+// and — unlike a hard doc-delete — no other open device can re-create the job,
+// because every version of the app respects the hidden flag. The job leaves the
+// board for everyone and never comes back.
 function hfDeleteJob(jobId){
   if(!IS_DELETER){ try{ toast('Only Raj or Ajay can delete a job'); }catch(e){} return; }
   const j=JOBS.find(x=>String(x.id)===String(jobId));
-  const ans=prompt('⚠ PERMANENTLY DELETE this job?\n\n'+((j&&j.title)||jobId)+'\n\nThis removes it for everyone and cannot be undone.\nType  DELETE  (capitals) to confirm:');
+  if(!j){ try{ closeModal(); }catch(e){} return; }
+  const ans=prompt('⚠ DELETE this job?\n\n'+(j.title||jobId)+'\n\nIt will be removed from the board for everyone.\nType  DELETE  (capitals) to confirm:');
   if(!ans || ans.trim().toUpperCase()!=='DELETE'){ try{ toast('Cancelled — nothing deleted'); }catch(e){} return; }
 
-  // Fallback used when the hard delete is blocked — hide it so the board still clears.
-  function hideInstead(reason){
-    if(!j) return;
-    j.demoHidden=true; if(j.status!=='complete') j.status='cancelled'; j.updatedAt=new Date().toISOString();
-    try{ delete JOB_SYNC.sent[j.id]; }catch(e){}
-    try{ localStorage.setItem('hosfix_jobs',JSON.stringify(JOBS)); }catch(e){}
-    try{ jobSyncPush(); }catch(e){}            // syncs the hidden state to every device (update is allowed)
-    try{ VIEW='jobs'; render(); }catch(e){}
-    if(reason){ try{ showToastNotification(reason); }catch(e){} }
-  }
+  // Mark it deleted (hidden) and sync — this is the authoritative "delete".
+  j.demoHidden=true;
+  if(j.status!=='complete') j.status='cancelled';
+  j.deleted=true; j.deletedBy=ME||''; j.deletedAt=new Date().toISOString();
+  j.updatedAt=j.deletedAt;
+  try{ delete JOB_SYNC.sent[j.id]; }catch(e){}       // force the change to push
+  try{ localStorage.setItem('hosfix_jobs',JSON.stringify(JOBS)); }catch(e){}
+  try{ jobSyncPush(); }catch(e){}                    // write the hidden flag to the cloud (update is always allowed)
+
+  // Also hard-delete the doc from Firestore if allowed (keeps the database tidy).
+  // Safe to fail — the hidden flag above already removed it from every board.
+  try{
+    if(typeof fbDb!=='undefined' && fbDb){
+      fbDb.collection('hosfix_jobs').doc(String(jobId)).delete().catch(()=>{});
+    }
+  }catch(e){}
 
   try{ closeModal(); }catch(e){}
-
-  if(typeof fbDb!=='undefined' && fbDb){
-    fbDb.collection('hosfix_jobs').doc(String(jobId)).delete()
-      .then(()=>{
-        // Gone from the cloud — drop it locally too.
-        JOBS = JOBS.filter(x=>String(x.id)!==String(jobId));
-        try{ delete JOB_SYNC.sent[jobId]; }catch(e){}
-        try{ localStorage.setItem('hosfix_jobs',JSON.stringify(JOBS)); }catch(e){}
-        try{ VIEW='jobs'; render(); }catch(e){}
-        try{ toast('✓ Job deleted'); }catch(e){}
-      })
-      .catch(()=>{
-        // Delete not permitted yet (rules not published) — hide it instead so it still clears.
-        hideInstead('Job removed from the board. To delete it permanently, publish the updated Firestore rules.');
-        try{ toast('✓ Job removed'); }catch(e){}
-      });
-  } else {
-    // Offline / no cloud — hide locally.
-    hideInstead('');
-    try{ toast('✓ Job removed'); }catch(e){}
-  }
+  try{ VIEW='jobs'; render(); }catch(e){}
+  try{ toast('✓ Job deleted'); }catch(e){}
 }
 
 
