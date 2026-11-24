@@ -7465,8 +7465,49 @@ function renderFixInventory(v){
 }
 
 /* ============================================================ HOSFIX — Full Jobs View (portal) */
+// Select-all + live count for the portal jobs table
+function portalToggleAllJobs(src){
+  const on=!!(src&&src.checked);
+  document.querySelectorAll('#portal-jobs-table .pj-check').forEach(c=>{ const row=c.closest('tr'); if(row&&row.style.display==='none')return; c.checked=on; });
+  const hdr=document.querySelector('#portal-jobs-table thead input[type=checkbox]'); if(hdr)hdr.checked=on;
+  const sa=document.getElementById('pj-selectall'); if(sa)sa.checked=on;
+  portalJobCount();
+}
+function portalJobCount(){
+  const n=document.querySelectorAll('#portal-jobs-table .pj-check:checked').length;
+  const el=document.getElementById('pj-count'); if(el) el.textContent = n? (n+' selected') : 'None selected';
+}
+// Archive (hide) or Delete (hide + remove) the ticked jobs — syncs to every device.
+async function portalBulkJobs(action){
+  const ids=[...document.querySelectorAll('#portal-jobs-table .pj-check:checked')].map(c=>c.value);
+  if(!ids.length){ try{ toast('Tick some jobs first'); }catch(e){ alert('Tick some jobs first'); } return; }
+  const verb = action==='delete' ? 'Delete' : 'Archive';
+  if(!confirm(verb+' '+ids.length+' selected job'+(ids.length>1?'s':'')+'?\n\nThey will be removed from the board for everyone.')) return;
+  const now=new Date().toISOString();
+  // 1) clear them from this screen immediately
+  let local=[]; try{ local=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]'); }catch(e){}
+  const idset=new Set(ids.map(String));
+  local=local.filter(j=>!idset.has(String(j.id)));
+  try{ localStorage.setItem('hosfix_jobs',JSON.stringify(local)); }catch(e){}
+  try{ if(typeof switchTab==='function') switchTab('fixAllJobs'); }catch(e){}
+  // 2) write the change to the cloud so it clears everywhere and never returns
+  if(typeof FB!=='undefined' && FB.db){
+    let done=0;
+    for(const id of ids){
+      try{
+        await FB.db.collection('hosfix_jobs').doc(String(id)).set({demoHidden:true, deleted:(action==='delete'), status:'cancelled', updatedAt:now},{merge:true});
+        if(action==='delete'){ try{ await FB.db.collection('hosfix_jobs').doc(String(id)).delete(); }catch(e){} }
+        done++;
+      }catch(e){ console.warn('bulk job '+action+' failed', id, e&&e.message); }
+    }
+    try{ toast('✓ '+done+' job'+(done===1?'':'s')+' '+(action==='delete'?'deleted':'archived')); }catch(e){}
+  } else {
+    try{ toast('✓ Removed on this device (offline — not synced)'); }catch(e){}
+  }
+}
+
 function renderFixAllJobs(v){
-  const JOBS=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');
+  const JOBS=(JSON.parse(localStorage.getItem('hosfix_jobs')||'[]')).filter(j=>j&&!j.demoHidden&&!j.deleted);
   const HFUSERS=[
     {id:"raj",name:"Raj Kumar",color:"#1a2b3a"},{id:"ajay",name:"Ajay Kawa",color:"#c78a3b"},
     {id:"alia",name:"Alia Taub",color:"#5a8fc7"},{id:"glenn",name:"Glenn Randell",color:"#b8860b"},
@@ -7512,10 +7553,20 @@ function renderFixAllJobs(v){
       ).join('')}
     </div>
 
+    <!-- Bulk actions -->
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <label style="font-size:13px;color:#374151;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="pj-selectall" onclick="portalToggleAllJobs(this)"> Select all</label>
+      <span id="pj-count" style="font-size:12px;color:#7a8494">None selected</span>
+      <span style="flex:1"></span>
+      <button type="button" onclick="portalBulkJobs('archive')" style="padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;color:#1a2b3a;font:600 12px Lato;cursor:pointer">🗄 Archive selected</button>
+      <button type="button" onclick="portalBulkJobs('delete')" style="padding:8px 14px;border-radius:8px;border:0;background:#b3261e;color:#fff;font:600 12px Lato;cursor:pointer">🗑 Delete selected</button>
+    </div>
+
     <!-- Jobs table -->
     <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(26,43,58,.05)">
       <table style="width:100%;border-collapse:collapse;font-size:13px" id="portal-jobs-table">
         <thead><tr style="background:#f5f7f9">
+          <th style="padding:10px 13px;text-align:center;width:36px"><input type="checkbox" onclick="portalToggleAllJobs(this)" title="Select all"></th>
           ${['Job','Location','Type','Priority / Status','Assigned','Cost','Logged'].map(h=>
             `<th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;white-space:nowrap">${h}</th>`
           ).join('')}
@@ -7529,7 +7580,8 @@ function renderFixAllJobs(v){
           }).map(j=>{
             const u=HFUSERS.filter(x=>(j.assignees||[]).includes(x.id));
             const status=j.priority==='urgent'?'urgent':j.status;
-            return `<tr class="portal-job-row" data-status="${status}" style="border-bottom:1px solid #f5f7f9;cursor:pointer" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+            return `<tr class="portal-job-row" data-status="${status}" style="border-bottom:1px solid #f5f7f9" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+              <td style="padding:10px 13px;text-align:center"><input type="checkbox" class="pj-check" value="${j.id}" onclick="portalJobCount()"></td>
               <td style="padding:10px 13px;font-weight:600;color:var(--navy);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${j.title}</td>
               <td style="padding:10px 13px;color:#374151;white-space:nowrap">${j.areaLabel||''}${j.location?' · '+j.location:''}</td>
               <td style="padding:10px 13px;color:#374151;white-space:nowrap">${j.workType||'—'}</td>
@@ -12905,12 +12957,18 @@ try{ const l=JSON.parse(localStorage.getItem("hosfix_jobs")||"[]"); const k=l.fi
     firebase.firestore(app).collection("hosfix_jobs").onSnapshot(qs=>{
       let local=[]; try{ local=JSON.parse(localStorage.getItem("hosfix_jobs")||"[]"); }catch(e){}
       const n0=local.length; local=local.filter(j=>!hpOldJob(j)); let changed=local.length!==n0;
+      const cloudIds=new Set();
       qs.docs.forEach(d=>{
-        const r=d.data(); if(!r||!r.id||hpOldJob(r)) return;
+        const r=d.data(); if(!r||!r.id) return;
+        cloudIds.add(String(r.id));
+        if(hpOldJob(r)) return;
+        if(r.demoHidden||r.deleted){ const k=local.findIndex(j=>String(j.id)===String(r.id)); if(k>=0){ local.splice(k,1); changed=true; } return; }
         const i=local.findIndex(j=>j.id===r.id);
         if(i<0){ local.push(r); changed=true; }
         else if(stamp(r)>stamp(local[i])){ local[i]=Object.assign({},local[i],r); changed=true; }
       });
+      // drop jobs that have been hard-deleted from the cloud
+      const nb=local.length; local=local.filter(j=>cloudIds.has(String(j.id))); if(local.length!==nb) changed=true;
       if(!changed) return;
       local.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
       try{ localStorage.setItem("hosfix_jobs",JSON.stringify(local)); }catch(e){}
