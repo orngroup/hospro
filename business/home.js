@@ -1951,38 +1951,119 @@
     return d.toISOString().slice(0, 10);
   }
   function tillvForDate(S, dateIso) {
-    /* Derive the terminal breakdown from Rezlynx PLU data for the chosen date.
-       TP.terms carries per-terminal totals from the Postings report. We split
-       into Bar (Terminal 1) and Restaurant (Terminal 2). Falls back to totals
-       if the Postings report hasn't been loaded. */
+    /* Build a per-terminal Z-report-style breakdown from Rezlynx PLU data.
+       TP.terms is keyed by terminal+meal (e.g. "Terminal 1 Dinner"). We
+       aggregate by terminal across meal periods and build Sales Groups from
+       the item list. The displayed structure mirrors the printed Z-report so
+       Veronica can tick each section against the paper in her hand. */
     var TP = S.x && S.x.plu ? S.x.plu : null;
     var P = S.x && S.x.postings;
-    /* Simple split: look for terminals by name pattern. */
-    var bar = { sales: 0, covers: 0, adj: 0, items: 0, groups: {} };
-    var rest = { sales: 0, covers: 0, adj: 0, items: 0, groups: {} };
+
+    function blank(id, name) {
+      return {
+        id: id, name: name,
+        meals: [],                    // [{meal, items, net, gross, adj, qty, from, to}]
+        salesGroups: {},              // { 'Draught': { qty, net }, ... }
+        majorGroups: {},              // broader buckets
+        topItems: [],                 // [[name, qty, net, adj]]
+        discounts: [],                // [{label, count, value}]
+        covers: 0,
+        totalNet: 0, totalGross: 0, totalAdj: 0, totalQty: 0,
+        hasData: false
+      };
+    }
+    var bar = blank('T1', 'Terminal 1 — Bar');
+    var rest = blank('T2', 'Terminal 2 — Restaurant');
+
+    /* Heuristic item→group classifier using the dish name. Rough but close
+       to how Access EPoS groups them on the Z-report. */
+    function classifyGroup(name) {
+      var n = String(name || '').toLowerCase();
+      if (/draught|pint|half pint/.test(n)) return 'Draught';
+      if (/bottle.*beer|bottled|corona|peroni|bud|heineken/.test(n)) return 'Bottled Beer';
+      if (/cider|strongbow|rekorderlig/.test(n)) return 'Cider';
+      if (/vodka|smirnoff|absolut|grey goose/.test(n)) return 'Vodka';
+      if (/whisky|whiskey|jack daniel|jameson|bourbon/.test(n)) return 'Whisky';
+      if (/gin|hendrick|bombay|tanqueray/.test(n)) return 'Gin';
+      if (/liqueur|baileys|amaretto|cointreau|jagermeister/.test(n)) return 'Liqueurs';
+      if (/champagne|prosecco|cava/.test(n)) return 'Wine + Champagne';
+      if (/white wine|sauvignon|chardonnay|pinot grigio/.test(n)) return 'White Wine';
+      if (/red wine|cabernet|merlot|shiraz|malbec|pinot noir/.test(n)) return 'Red Wine';
+      if (/wine|rose/.test(n)) return 'Wine + Champagne';
+      if (/spirit|brandy|cognac|rum|tequila/.test(n)) return 'Spirits';
+      if (/soft drink|coke|pepsi|lemonade|j2o|fruit juice/.test(n)) return 'Soft Drinks';
+      if (/post mix|fanta|sprite/.test(n)) return 'Post Mix';
+      if (/coffee|cappuccino|latte|espresso|americano|tea/.test(n)) return 'Coffees';
+      if (/water|still|sparkling/.test(n)) return 'Soft Drinks';
+      if (/starter|soup|appetiser/.test(n)) return 'Restaurant Starters';
+      if (/dessert|cheesecake|brownie|ice cream|sorbet|pudding|tart/.test(n)) return 'Restaurant Desserts';
+      if (/side|chips|fries|vegetables|salad(?! bowl)/.test(n)) return 'Restaurant Sides';
+      if (/breakfast|bacon|sausage|eggs|toast|cereal/.test(n)) return 'Breakfast';
+      if (/burger|steak|chicken|fish|pasta|risotto|pie|curry|lasagne|salmon|lamb|pork/.test(n)) return 'Restaurant Mains';
+      return 'Other';
+    }
+
     if (TP && TP.terms) {
       Object.keys(TP.terms).forEach(function (k) {
         var t = TP.terms[k];
-        var target = /bar/i.test(k) ? bar : rest;
-        target.sales += t.net || 0;
-        target.adj += t.adj || 0;
-        target.items += t.qty || 0;
+        var target = /bar/i.test(k) ? bar : /restaurant|terminal\s*2/i.test(k) ? rest : rest;
+        target.hasData = true;
+        target.meals.push({ label: k, meal: t.meal, net: t.net || 0, gross: t.gross || 0, adj: t.adj || 0, qty: t.qty || 0, from: t.from, to: t.to });
+        target.totalNet += t.net || 0;
+        target.totalGross += t.gross || 0;
+        target.totalAdj += t.adj || 0;
+        target.totalQty += t.qty || 0;
+        (t.items || []).forEach(function (it) {
+          var name = it[0], qty = it[1] || 0, gross = it[2] || 0, adj = it[3] || 0, net = it[4] || 0;
+          if (!net && !adj) return;
+          var g = classifyGroup(name);
+          var sg = target.salesGroups[g] = target.salesGroups[g] || { qty: 0, net: 0 };
+          sg.qty += qty; sg.net += net;
+        });
       });
     }
+
+    /* Covers for yesterday from the postings report. */
+    if (P && P.byDay && P.byDay[dateIso]) {
+      var d = P.byDay[dateIso];
+      rest.covers = d.cov || 0;
+    }
+
+    /* Discounts: we have total adj per terminal from the PLU data. Breaking
+       it into Food 15% / Drink 20% / Open would need the Discounts report
+       (not currently in our feed). For now show one aggregate line and label
+       the paper breakdown as Verify from receipt. */
+    [bar, rest].forEach(function (term) {
+      if (term.totalAdj) {
+        term.discounts.push({ label: 'Total adjustments (from Rezlynx)', value: term.totalAdj, note: 'Breakdown by discount code (Food 15% / Drink 20% / Open) on paper Z-report' });
+      }
+      /* Top items table (top 15 by net). */
+      var all = {};
+      term.meals.forEach(function () {});
+      /* Rebuild top items from TP.terms. */
+    });
+
+    /* Re-pull top items from TP.terms per terminal. */
+    if (TP && TP.terms) {
+      [[bar, /bar/i], [rest, /restaurant|terminal\s*2/i]].forEach(function (pair) {
+        var term = pair[0], re = pair[1];
+        var agg = {};
+        Object.keys(TP.terms).forEach(function (k) {
+          var isMatch = re.test(k) || (term === rest && !/bar/i.test(k));
+          if (!isMatch) return;
+          (TP.terms[k].items || []).forEach(function (it) {
+            if (!it[4] && !it[3]) return;
+            var a = agg[it[0]] = agg[it[0]] || { name: it[0], qty: 0, net: 0, adj: 0 };
+            a.qty += it[1] || 0; a.net += it[4] || 0; a.adj += it[3] || 0;
+          });
+        });
+        term.topItems = Object.keys(agg).map(function (k) { return agg[k]; }).sort(function (a, b) { return b.net - a.net; }).slice(0, 20);
+      });
+    }
+
     return {
       dateIso: dateIso,
-      terminals: {
-        'T1': {
-          id: 'T1', name: 'Terminal 1 — Bar', closedBy: '—',
-          sales: bar.sales, covers: 0, adj: bar.adj, items: bar.items,
-          hasData: bar.sales > 0
-        },
-        'T2': {
-          id: 'T2', name: 'Terminal 2 — Restaurant', closedBy: '—',
-          sales: rest.sales, covers: 0, adj: rest.adj, items: rest.items,
-          hasData: rest.sales > 0
-        }
-      },
+      terminals: { 'T1': bar, 'T2': rest },
       sourceLoaded: !!TP
     };
   }
@@ -1992,68 +2073,125 @@
     var sect = (st[k] && st[k].sections) || {};
     var signed = st[k] && st[k].signedOff;
     var notes = (st[k] && st[k].notes) || '';
-    var zUploaded = st[k] && st[k].zFileName;
-
-    var sections = [
-      { id: 'sales', label: 'Sales groups match Z-report Total', value: terminal.hasData ? gbp(terminal.sales) + ' (' + terminal.items + ' items)' : 'No POS data loaded for this date' },
-      { id: 'disc', label: 'Discounts & adjustments reconcile', value: terminal.hasData ? gbp(terminal.adj) + ' total adjustments' : '—' },
-      { id: 'voids', label: 'Voids reviewed — reasons are legitimate', value: 'Compare with Z-report "Functions → Void Transaction"' },
-      { id: 'corrections', label: 'Corrections & corrections after store reviewed', value: 'Compare with Z-report "Functions → Corrections"' },
-      { id: 'takings', label: 'Takings breakdown matches (cash, card, post-to-room)', value: 'Compare with Z-report "Takings" section' },
-      { id: 'covers', label: 'Covers count matches Z-report', value: 'Compare with Z-report "Functions → Covers"' },
-      { id: 'clerks', label: 'Per-clerk breakdown reviewed', value: 'Compare with Z-report "Clerk Function"' }
-    ];
 
     var badge = signed ?
       '<span style="background:#1a6442;color:#fff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">✓ Verified</span>' :
-      '<span style="background:#f5a623;color:#1a2238;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Pending verification</span>';
+      '<span style="background:#f5a623;color:#1a2238;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Pending</span>';
+
+    /* Small reusable section wrapper with its own checkbox. */
+    function sectionBlock(sectId, title, bodyHtml) {
+      var checked = sect[sectId] ? 'checked' : '';
+      var mark = sect[sectId] ? '✓' : '';
+      var cls = sect[sectId] ? 'background:#f3f8f5' : 'background:#fff';
+      return '<div style="border:1px solid #e3e8ee;border-radius:6px;padding:10px 12px;margin-top:10px;' + cls + '">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
+          '<input type="checkbox" data-tillv-sect="' + sectId + '" data-tillv-k="' + k + '" ' + checked + ' style="width:18px;height:18px;cursor:pointer;flex:0 0 auto">' +
+          '<h3 style="margin:0;font-size:13px;color:#1a2238;flex:1">' + esc(title) + ' <span style="color:#1a6442;font-weight:400">' + mark + '</span></h3>' +
+        '</div>' +
+        '<div style="padding-left:28px;font-size:12px;color:#2a3144">' + bodyHtml + '</div>' +
+      '</div>';
+    }
 
     var h = '<div class="card" style="margin-bottom:14px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">' +
         '<div><h2 style="margin:0">' + esc(terminal.name) + '</h2>' +
-          '<p class="sub" style="margin:4px 0 0">End-of-Day Z report for ' + dlabel(dateIso) + '</p></div>' +
+          '<p class="sub" style="margin:4px 0 0">End-of-Day Z report · ' + dlabel(dateIso) + '</p></div>' +
         '<div>' + badge + '</div>' +
       '</div>';
 
     if (!terminal.hasData) {
       h += '<div style="padding:10px;background:#fff8e6;border:1px solid #e3cc87;border-radius:6px;color:#8a6d1e;font-size:12.5px;margin:8px 0">' +
-        'No Rezlynx POS data loaded for ' + dlabel(dateIso) + ' on this terminal yet. You can still sign off manually against the printed Z-report, or wait for the overnight sync.' +
+        'No Rezlynx POS data loaded for ' + dlabel(dateIso) + ' on this terminal yet. Sign off manually from the printed Z-report, or wait for the overnight POS sync.' +
       '</div>';
     }
 
-    h += '<table style="width:100%;margin-top:10px"><tbody>' +
-      sections.map(function (s) {
-        var checked = sect[s.id] ? 'checked' : '';
-        return '<tr style="border-bottom:1px solid #eef2f6">' +
-          '<td style="padding:10px 6px;width:40px"><input type="checkbox" data-tillv-sect="' + s.id + '" data-tillv-k="' + k + '" ' + checked + ' style="width:18px;height:18px;cursor:pointer"></td>' +
-          '<td style="padding:10px 6px"><b style="font-size:13px">' + esc(s.label) + '</b>' +
-            '<div style="font-size:11.5px;color:#7b8494;margin-top:2px">' + s.value + '</div></td>' +
-        '</tr>';
-      }).join('') +
-    '</tbody></table>' +
+    /* Header totals — Z-report "Totals" summary */
+    h += sectionBlock('header',
+      'Totals (Z-report header)',
+      '<table style="width:100%;font-size:12px"><tbody>' +
+        '<tr><td>Total net sales</td><td style="text-align:right"><b>' + gbp(terminal.totalNet, 2) + '</b></td></tr>' +
+        '<tr><td>Total gross (menu price incl. VAT)</td><td style="text-align:right">' + gbp(terminal.totalGross, 2) + '</td></tr>' +
+        '<tr><td>Total adjustments / discounts</td><td style="text-align:right;color:#c0362b">' + gbp(terminal.totalAdj, 2) + '</td></tr>' +
+        '<tr><td>Total items rung</td><td style="text-align:right">' + num(terminal.totalQty) + '</td></tr>' +
+        (terminal.covers ? '<tr><td>Covers</td><td style="text-align:right">' + num(terminal.covers) + '</td></tr>' : '') +
+      '</tbody></table>'
+    );
 
-    /* Upload Z-report PDF */
-    '<div style="display:flex;gap:10px;align-items:center;margin-top:14px;padding:10px;background:#f6f8fb;border-radius:6px">' +
-      '<label style="font-size:12px;color:#52647a">Z-report scan: </label>' +
-      (zUploaded ?
-        '<span style="color:#1a6442;font-size:12px;font-weight:600">📎 ' + esc(zUploaded) + '</span>' +
-        '<button class="btn ghost" data-tillv-zremove="' + k + '" style="margin-left:auto;font-size:11px;padding:4px 10px">Remove</button>' :
-        '<input type="file" accept="application/pdf,image/*" data-tillv-zupload="' + k + '" style="font-size:12px">'
-      ) +
-    '</div>' +
+    /* Sales Groups breakdown — matches Z-report "Sales Groups" / "Major Groups" */
+    var sgKeys = Object.keys(terminal.salesGroups).sort(function (a, b) { return terminal.salesGroups[b].net - terminal.salesGroups[a].net; });
+    var sgBody = sgKeys.length ?
+      '<table style="width:100%;font-size:12px"><thead><tr style="color:#7b8494"><th style="text-align:left;font-weight:600">Group</th><th style="text-align:right;font-weight:600">Qty</th><th style="text-align:right;font-weight:600">Net</th></tr></thead><tbody>' +
+        sgKeys.map(function (g) {
+          var sg = terminal.salesGroups[g];
+          return '<tr><td>' + esc(g) + '</td><td style="text-align:right">' + num(sg.qty) + '</td><td style="text-align:right"><b>' + gbp(sg.net, 2) + '</b></td></tr>';
+        }).join('') +
+        '<tr style="border-top:1px solid #e3e8ee"><td><b>Total</b></td><td style="text-align:right"><b>' + num(terminal.totalQty) + '</b></td><td style="text-align:right"><b>' + gbp(terminal.totalNet, 2) + '</b></td></tr>' +
+      '</tbody></table>' :
+      '<p style="color:#7b8494;margin:4px 0">No item data loaded. Verify total against paper Z-report.</p>';
+    h += sectionBlock('sales', 'Sales Groups (match "Sales Groups" / "Major Groups" on Z-report)', sgBody);
+
+    /* Top items — drill-down for anomaly spotting */
+    var topBody = terminal.topItems.length ?
+      '<div style="max-height:200px;overflow-y:auto"><table style="width:100%;font-size:11.5px"><thead style="position:sticky;top:0;background:#f6f8fb"><tr style="color:#7b8494"><th style="text-align:left;font-weight:600">Item</th><th style="text-align:right;font-weight:600">Qty</th><th style="text-align:right;font-weight:600">Net</th><th style="text-align:right;font-weight:600">Disc.</th></tr></thead><tbody>' +
+        terminal.topItems.map(function (it) {
+          return '<tr><td>' + esc(it.name) + '</td><td style="text-align:right">' + num(it.qty) + '</td><td style="text-align:right">' + gbp(it.net, 2) + '</td><td style="text-align:right' + (it.adj ? ';color:#c0362b' : '') + '">' + (it.adj ? gbp(it.adj, 2) : '–') + '</td></tr>';
+        }).join('') +
+      '</tbody></table></div>' :
+      '<p style="color:#7b8494;margin:4px 0">No item-level data yet.</p>';
+    h += sectionBlock('items', 'Top items sold (' + terminal.topItems.length + ')', topBody);
+
+    /* Adjustments & Discounts — matches Z-report "Adjustments + Discounts" */
+    var discBody = terminal.discounts.length ?
+      '<table style="width:100%;font-size:12px"><tbody>' +
+        terminal.discounts.map(function (d) {
+          return '<tr><td>' + esc(d.label) + '</td><td style="text-align:right;color:#c0362b"><b>' + gbp(d.value, 2) + '</b></td></tr>' +
+                 (d.note ? '<tr><td colspan="2" style="color:#7b8494;font-size:11px;padding-bottom:4px">' + esc(d.note) + '</td></tr>' : '');
+        }).join('') +
+      '</tbody></table>' :
+      '<p style="color:#7b8494;margin:4px 0">No discounts recorded for this terminal.</p>';
+    h += sectionBlock('disc', 'Adjustments & Discounts (match "Adjustments + Discount" block)', discBody);
+
+    /* Covers — if we have them */
+    h += sectionBlock('covers', 'Covers (match "Functions → Covers" line)',
+      terminal.covers ?
+        '<p style="margin:4px 0"><b>' + num(terminal.covers) + '</b> covers inferred from POS postings.<br>Paper Z-report line "Covers" should match within ±1.</p>' :
+        '<p style="color:#7b8494;margin:4px 0">Covers count not available for this terminal from POS — verify directly from paper Z-report "Functions → Covers" line.</p>'
+    );
+
+    /* Voids & Corrections — paper-only for now */
+    h += sectionBlock('voids_corr',
+      'Voids &amp; Corrections (paper only — not in Rezlynx feed)',
+      '<p style="margin:4px 0;color:#52647a">Read these directly from the paper Z-report:<br>' +
+        '• <b>Functions → Void Transaction</b> — flag any void without a stated reason<br>' +
+        '• <b>Functions → Corrections</b> — minor order edits<br>' +
+        '• <b>Functions → Corrections After Store</b> — potential shrinkage flag if high' +
+      '</p>'
+    );
+
+    /* Takings — paper-only for now (payment method split) */
+    h += sectionBlock('takings',
+      'Takings by payment method (paper only — not in Rezlynx feed)',
+      '<p style="margin:4px 0;color:#52647a">Read directly from paper Z-report "Takings" block. Typically: Cash / Visa / Mastercard / Post to Room / Zero Screen close. Cross-reference with the day\'s bank deposit.</p>'
+    );
+
+    /* Clerk function — paper-only for now */
+    h += sectionBlock('clerks',
+      'Per-clerk breakdown (paper only — not in Rezlynx feed)',
+      '<p style="margin:4px 0;color:#52647a">Read directly from paper Z-report "Clerk Function" block. Watch for staff with unusually high voids, corrections after store, or discounts compared with the rest of the team.</p>'
+    );
 
     /* Notes + sign-off */
-    '<div style="margin-top:12px">' +
+    h += '<div style="margin-top:14px">' +
       '<label style="font-size:12px;color:#52647a;display:block;margin-bottom:4px">Notes / discrepancies flagged</label>' +
       '<textarea data-tillv-notes="' + k + '" placeholder="e.g. \'Glenn had to void to change master till at 22:39 — reviewed, legitimate\'" rows="2" style="width:100%;padding:8px;border:1px solid #c8d3dd;border-radius:6px;font-family:inherit;font-size:12.5px;resize:vertical">' + esc(notes) + '</textarea>' +
     '</div>' +
 
-    '<div style="display:flex;gap:10px;margin-top:12px;align-items:center">' +
+    '<div style="display:flex;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap">' +
       (signed ?
         '<button class="btn ghost" data-tillv-unsign="' + k + '">Unlock &amp; re-verify</button>' +
         '<span style="font-size:11.5px;color:#7b8494">Signed off ' + fmtAgo(st[k].signedOff) + ' by ' + esc((st[k].signedBy) || 'current user') + '</span>' :
-        '<button class="btn" data-tillv-sign="' + k + '" style="background:#1a6442">✓ Sign off ' + terminal.name + '</button>' +
-        '<span style="font-size:11.5px;color:#7b8494">' + Object.keys(sect).filter(function (x) { return sect[x]; }).length + ' of ' + sections.length + ' sections checked</span>'
+        '<button class="btn" data-tillv-sign="' + k + '" style="background:#1a6442">✓ Sign off ' + esc(terminal.name) + '</button>' +
+        '<span style="font-size:11.5px;color:#7b8494">' + Object.keys(sect).filter(function (x) { return sect[x]; }).length + ' of 8 sections ticked</span>'
       ) +
     '</div>' +
 
@@ -2162,8 +2300,8 @@
         if (!state[k]) state[k] = { sections: {} };
         var sect = state[k].sections || {};
         var checkedCount = Object.keys(sect).filter(function (x) { return sect[x]; }).length;
-        if (checkedCount < 7) {
-          if (!confirm('Only ' + checkedCount + ' of 7 sections are ticked. Sign off anyway?')) return;
+        if (checkedCount < 8) {
+          if (!confirm('Only ' + checkedCount + ' of 8 sections are ticked. Sign off anyway?')) return;
         }
         state[k].signedOff = Date.now();
         var who = (window.Profit && window.Profit.user) ? window.Profit.user() : 'Veronica';
@@ -2187,34 +2325,8 @@
       };
     });
 
-    /* Z-report PDF upload — store filename for reference */
-    el.querySelectorAll('[data-tillv-zupload]').forEach(function (inp) {
-      inp.onchange = function () {
-        if (!inp.files || !inp.files[0]) return;
-        var f = inp.files[0];
-        var k = inp.getAttribute('data-tillv-zupload');
-        var state = tillvState();
-        if (!state[k]) state[k] = { sections: {} };
-        state[k].zFileName = f.name;
-        state[k].zFileSize = f.size;
-        state[k].zUploadedAt = Date.now();
-        tillvSave(state);
-        /* TODO: actually upload the PDF to Firestore Storage for archive.
-           For now the filename is stored locally as a reference marker. */
-        renderFb();
-      };
-    });
-
-    /* Z-report remove */
-    el.querySelectorAll('[data-tillv-zremove]').forEach(function (btn) {
-      btn.onclick = function () {
-        var k = btn.getAttribute('data-tillv-zremove');
-        var state = tillvState();
-        if (state[k]) { delete state[k].zFileName; delete state[k].zFileSize; delete state[k].zUploadedAt; }
-        tillvSave(state);
-        renderFb();
-      };
-    });
+    /* (Z-report scan upload intentionally removed — Veronica works from the
+       printed paper receipt and ticks off against the on-screen POS breakdown.) */
   }
 
   function renderFb() {

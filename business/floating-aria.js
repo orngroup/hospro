@@ -133,8 +133,11 @@
     var chip = panel.querySelector('.fa-head-c');
     if (chip) chip.textContent = 'Context · ' + ctx;
 
+    /* Single-Q&A mode: show only the CURRENT turn (last entry). Each new
+       question wipes the previous one. No history scrolling. */
     var hist = getHistory();
-    if (!hist.length && !INFLIGHT) {
+    var current = hist[hist.length - 1];
+    if (!current && !INFLIGHT) {
       body.innerHTML = '<div class="fa-welcome"><b>Ask ARIA anything about Brandon Hall.</b>' +
         '<p style="margin:6px 0 4px">ARIA knows your current context (<i>' + esc(ctx) + '</i>) and has access to live Google Search. Try:</p>' +
         '<ul>' +
@@ -145,19 +148,16 @@
         '</ul></div>';
       return;
     }
-    /* Newest turn first — so you see the latest answer immediately, not at the bottom. */
-    var reversed = hist.slice().reverse();
-    body.innerHTML = reversed.map(function (t) {
-      var cls = t.pending ? 'fa-turn fa-pending' : 'fa-turn';
-      var sources = (t.sources || []).map(function (s) {
-        return '<a href="' + esc(s.uri || s.url) + '" target="_blank" rel="noopener">' + esc(s.title || s.uri || s.url) + '</a>';
-      }).join('');
-      return '<div class="' + cls + '">' +
-        '<p class="fa-q">' + esc(t.question) + '</p>' +
-        '<div class="fa-a">' + (t.answer ? mdLite(t.answer) : '<p>…</p>') + '</div>' +
-        (sources ? '<div class="fa-sources">' + sources + '</div>' : '') +
-      '</div>';
+    var t = current;
+    var cls = t.pending ? 'fa-turn fa-pending' : 'fa-turn';
+    var sources = (t.sources || []).map(function (s) {
+      return '<a href="' + esc(s.uri || s.url) + '" target="_blank" rel="noopener">' + esc(s.title || s.uri || s.url) + '</a>';
     }).join('');
+    body.innerHTML = '<div class="' + cls + '">' +
+      '<p class="fa-q">' + esc(t.question) + '</p>' +
+      '<div class="fa-a">' + (t.answer ? mdLite(t.answer) : '<p>…</p>') + '</div>' +
+      (sources ? '<div class="fa-sources">' + sources + '</div>' : '') +
+    '</div>';
     body.scrollTop = 0;
   }
 
@@ -169,8 +169,8 @@
       return;
     }
     INFLIGHT = true;
-    var hist = getHistory();
-    hist.push({ ts: Date.now(), question: question, answer: '', sources: [], pending: true, context: contextFor(activeTab()) });
+    /* Single-Q&A mode: wipe prior history, keep only the new turn. */
+    var hist = [{ ts: Date.now(), question: question, answer: '', sources: [], pending: true, context: contextFor(activeTab()) }];
     saveHistory(hist);
     renderPanel();
     var btn = document.querySelector('.fa-ask'); if (btn) btn.disabled = true;
@@ -269,7 +269,7 @@
           '<textarea placeholder="Ask ARIA anything…" rows="2"></textarea>' +
           '<button class="fa-ask">Ask →</button>' +
         '</div>' +
-        '<p class="fa-hint">Enter to send · Shift+Enter for newline · newest answer shows at top</p>' +
+        '<p class="fa-hint">Enter to send · Shift+Enter for newline · each new question clears the previous answer</p>' +
       '</div>';
     document.body.appendChild(panel);
 
