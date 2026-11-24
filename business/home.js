@@ -873,7 +873,7 @@
   var fbCharts = [];
   var fbView = 'over', DOWN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   // v39.16: added Food Costs sub-tab (invoice upload + mapping + margin)
-  function fbSeg(P) { var TP = window.Trading && window.Trading.S().x ? window.Trading.S().x.plu : null; return '<div class="segs">' + [['over', 'Overview'], ['cov', 'Covers'], ['costs', 'Food Costs'], ['margins', 'Food Margins'], ['fbdisc', 'F&B Discrepancies'], ['disc', 'Discount impact'], ['term', 'By terminal'], ['brk', 'Breakfast'], ['menu', 'What we sell']].map(function (v) { var off = v[0] === 'term' ? !TP : ((v[0] === 'brk' || v[0] === 'menu') && !P); return '<button class="' + (fbView === v[0] ? 'on' : '') + '" data-fb="' + v[0] + '"' + (off ? ' disabled title="' + (v[0] === 'term' ? 'Needs the till item sales reports' : 'Needs the Rezlynx Postings report') + '"' : '') + '>' + v[1] + '</button>'; }).join('') + '</div>'; }
+  function fbSeg(P) { var TP = window.Trading && window.Trading.S().x ? window.Trading.S().x.plu : null; return '<div class="segs">' + [['over', 'Overview'], ['cov', 'Covers'], ['costs', 'Food Costs'], ['margins', 'Food Margins'], ['tillv', 'Till Verification'], ['fbdisc', 'F&B Discrepancies'], ['disc', 'Discount impact'], ['term', 'By terminal'], ['brk', 'Breakfast'], ['menu', 'What we sell']].map(function (v) { var off = v[0] === 'term' ? !TP : ((v[0] === 'brk' || v[0] === 'menu') && !P); return '<button class="' + (fbView === v[0] ? 'on' : '') + '" data-fb="' + v[0] + '"' + (off ? ' disabled title="' + (v[0] === 'term' ? 'Needs the till item sales reports' : 'Needs the Rezlynx Postings report') + '"' : '') + '>' + v[1] + '</button>'; }).join('') + '</div>'; }
   function dshort(k) { return +k.slice(8) + ' ' + MN[+k.slice(5, 7) - 1]; }
   function postingsNote(P) { return '<p class="note">Source: Rezlynx Postings report, ' + dlabel(P.from) + ' to ' + dlabel(P.to) + ' ' + P.to.slice(0, 4) + ', run ' + when(P.asOf) + '. Net of VAT. It covers the restaurant, room service and breakfast codes; bar till sales (analysis code BAR1BEV) are not in this export. Deleted postings (' + P.deleted.c + ', ' + gbp(P.deleted.v) + ') are left out; refunds and adjustments (' + P.refunds.c + ', ' + gbp(P.refunds.v) + ') are netted off. Guest names are not kept. Guestline cannot email this report, so it is exported by hand.</p>'; }
   function renderBrk(el, S, P) {
@@ -1930,6 +1930,293 @@
     if (!cache) fetchFbMargin(fromVal, toVal, function () { renderFoodMargins(el, S, P); });
   }
 
+  /* ---------- v39.24: Till Verification ----------
+     Veronica's daily workflow: she gets End-of-Day Z-reports printed from
+     Terminal 1 (Bar) and Terminal 2 (Restaurant), cross-checks the figures,
+     signs off each section, and flags discrepancies. This panel mirrors the
+     Z-report structure so she can tick each section as verified.
+     Sign-off state persists in localStorage per date+terminal; Z-report PDF
+     scans upload for reference. */
+  var TILLV_KEY = 'hosbusiness_tillv_v1';
+  function tillvState() {
+    try { return JSON.parse(localStorage.getItem(TILLV_KEY) || '{}'); } catch (e) { return {}; }
+  }
+  function tillvSave(state) {
+    try { localStorage.setItem(TILLV_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+  function tillvKey(date, terminal) { return date + '::' + terminal; }
+  var tillvDate = null;
+  function yesterdayISO() {
+    var d = new Date(); d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }
+  function tillvForDate(S, dateIso) {
+    /* Derive the terminal breakdown from Rezlynx PLU data for the chosen date.
+       TP.terms carries per-terminal totals from the Postings report. We split
+       into Bar (Terminal 1) and Restaurant (Terminal 2). Falls back to totals
+       if the Postings report hasn't been loaded. */
+    var TP = S.x && S.x.plu ? S.x.plu : null;
+    var P = S.x && S.x.postings;
+    /* Simple split: look for terminals by name pattern. */
+    var bar = { sales: 0, covers: 0, adj: 0, items: 0, groups: {} };
+    var rest = { sales: 0, covers: 0, adj: 0, items: 0, groups: {} };
+    if (TP && TP.terms) {
+      Object.keys(TP.terms).forEach(function (k) {
+        var t = TP.terms[k];
+        var target = /bar/i.test(k) ? bar : rest;
+        target.sales += t.net || 0;
+        target.adj += t.adj || 0;
+        target.items += t.qty || 0;
+      });
+    }
+    return {
+      dateIso: dateIso,
+      terminals: {
+        'T1': {
+          id: 'T1', name: 'Terminal 1 — Bar', closedBy: '—',
+          sales: bar.sales, covers: 0, adj: bar.adj, items: bar.items,
+          hasData: bar.sales > 0
+        },
+        'T2': {
+          id: 'T2', name: 'Terminal 2 — Restaurant', closedBy: '—',
+          sales: rest.sales, covers: 0, adj: rest.adj, items: rest.items,
+          hasData: rest.sales > 0
+        }
+      },
+      sourceLoaded: !!TP
+    };
+  }
+
+  function renderTillVerifySection(terminal, dateIso, state, st) {
+    var k = tillvKey(dateIso, terminal.id);
+    var sect = (st[k] && st[k].sections) || {};
+    var signed = st[k] && st[k].signedOff;
+    var notes = (st[k] && st[k].notes) || '';
+    var zUploaded = st[k] && st[k].zFileName;
+
+    var sections = [
+      { id: 'sales', label: 'Sales groups match Z-report Total', value: terminal.hasData ? gbp(terminal.sales) + ' (' + terminal.items + ' items)' : 'No POS data loaded for this date' },
+      { id: 'disc', label: 'Discounts & adjustments reconcile', value: terminal.hasData ? gbp(terminal.adj) + ' total adjustments' : '—' },
+      { id: 'voids', label: 'Voids reviewed — reasons are legitimate', value: 'Compare with Z-report "Functions → Void Transaction"' },
+      { id: 'corrections', label: 'Corrections & corrections after store reviewed', value: 'Compare with Z-report "Functions → Corrections"' },
+      { id: 'takings', label: 'Takings breakdown matches (cash, card, post-to-room)', value: 'Compare with Z-report "Takings" section' },
+      { id: 'covers', label: 'Covers count matches Z-report', value: 'Compare with Z-report "Functions → Covers"' },
+      { id: 'clerks', label: 'Per-clerk breakdown reviewed', value: 'Compare with Z-report "Clerk Function"' }
+    ];
+
+    var badge = signed ?
+      '<span style="background:#1a6442;color:#fff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">✓ Verified</span>' :
+      '<span style="background:#f5a623;color:#1a2238;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Pending verification</span>';
+
+    var h = '<div class="card" style="margin-bottom:14px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">' +
+        '<div><h2 style="margin:0">' + esc(terminal.name) + '</h2>' +
+          '<p class="sub" style="margin:4px 0 0">End-of-Day Z report for ' + dlabel(dateIso) + '</p></div>' +
+        '<div>' + badge + '</div>' +
+      '</div>';
+
+    if (!terminal.hasData) {
+      h += '<div style="padding:10px;background:#fff8e6;border:1px solid #e3cc87;border-radius:6px;color:#8a6d1e;font-size:12.5px;margin:8px 0">' +
+        'No Rezlynx POS data loaded for ' + dlabel(dateIso) + ' on this terminal yet. You can still sign off manually against the printed Z-report, or wait for the overnight sync.' +
+      '</div>';
+    }
+
+    h += '<table style="width:100%;margin-top:10px"><tbody>' +
+      sections.map(function (s) {
+        var checked = sect[s.id] ? 'checked' : '';
+        return '<tr style="border-bottom:1px solid #eef2f6">' +
+          '<td style="padding:10px 6px;width:40px"><input type="checkbox" data-tillv-sect="' + s.id + '" data-tillv-k="' + k + '" ' + checked + ' style="width:18px;height:18px;cursor:pointer"></td>' +
+          '<td style="padding:10px 6px"><b style="font-size:13px">' + esc(s.label) + '</b>' +
+            '<div style="font-size:11.5px;color:#7b8494;margin-top:2px">' + s.value + '</div></td>' +
+        '</tr>';
+      }).join('') +
+    '</tbody></table>' +
+
+    /* Upload Z-report PDF */
+    '<div style="display:flex;gap:10px;align-items:center;margin-top:14px;padding:10px;background:#f6f8fb;border-radius:6px">' +
+      '<label style="font-size:12px;color:#52647a">Z-report scan: </label>' +
+      (zUploaded ?
+        '<span style="color:#1a6442;font-size:12px;font-weight:600">📎 ' + esc(zUploaded) + '</span>' +
+        '<button class="btn ghost" data-tillv-zremove="' + k + '" style="margin-left:auto;font-size:11px;padding:4px 10px">Remove</button>' :
+        '<input type="file" accept="application/pdf,image/*" data-tillv-zupload="' + k + '" style="font-size:12px">'
+      ) +
+    '</div>' +
+
+    /* Notes + sign-off */
+    '<div style="margin-top:12px">' +
+      '<label style="font-size:12px;color:#52647a;display:block;margin-bottom:4px">Notes / discrepancies flagged</label>' +
+      '<textarea data-tillv-notes="' + k + '" placeholder="e.g. \'Glenn had to void to change master till at 22:39 — reviewed, legitimate\'" rows="2" style="width:100%;padding:8px;border:1px solid #c8d3dd;border-radius:6px;font-family:inherit;font-size:12.5px;resize:vertical">' + esc(notes) + '</textarea>' +
+    '</div>' +
+
+    '<div style="display:flex;gap:10px;margin-top:12px;align-items:center">' +
+      (signed ?
+        '<button class="btn ghost" data-tillv-unsign="' + k + '">Unlock &amp; re-verify</button>' +
+        '<span style="font-size:11.5px;color:#7b8494">Signed off ' + fmtAgo(st[k].signedOff) + ' by ' + esc((st[k].signedBy) || 'current user') + '</span>' :
+        '<button class="btn" data-tillv-sign="' + k + '" style="background:#1a6442">✓ Sign off ' + terminal.name + '</button>' +
+        '<span style="font-size:11.5px;color:#7b8494">' + Object.keys(sect).filter(function (x) { return sect[x]; }).length + ' of ' + sections.length + ' sections checked</span>'
+      ) +
+    '</div>' +
+
+    '</div>';
+    return h;
+  }
+
+  function fmtAgo(ts) {
+    if (!ts) return '';
+    var s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s / 60) + ' min ago';
+    if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+    return Math.floor(s / 86400) + ' d ago';
+  }
+
+  function renderTillVerify(el, S, P) {
+    if (!tillvDate) tillvDate = yesterdayISO();
+    var data = tillvForDate(S, tillvDate);
+    var st = tillvState();
+
+    /* Verification history — last 14 days signed off */
+    var histRows = [];
+    Object.keys(st).forEach(function (k) {
+      if (st[k].signedOff) {
+        var p = k.split('::');
+        histRows.push({ date: p[0], terminal: p[1], ts: st[k].signedOff, notes: st[k].notes || '', by: st[k].signedBy || '' });
+      }
+    });
+    histRows.sort(function (a, b) { return b.ts - a.ts; });
+
+    var h = fbSeg(P);
+    h += '<div class="card"><h2>Till Verification <span style="font-size:11px;color:#7b8494;margin-left:8px;font-weight:600;letter-spacing:.2px;text-transform:uppercase">Veronica\'s daily check</span></h2>' +
+      '<p class="sub">Cross-check the printed End-of-Day Z-reports from Terminal 1 (Bar) and Terminal 2 (Restaurant). Tick each section as you verify it against the paper print-out, flag any discrepancies, and sign off when complete.</p>' +
+      '<div style="display:flex;gap:14px;align-items:center;margin-top:8px">' +
+        '<label style="font-size:12px;color:#52647a">Date <input type="date" id="tillv-date" value="' + tillvDate + '" max="' + new Date().toISOString().slice(0, 10) + '" style="padding:6px 8px;border:1px solid #c8d3dd;border-radius:5px;margin-left:4px;font-family:inherit"></label>' +
+        '<button class="btn ghost" id="tillv-yesterday" style="font-size:11.5px">Yesterday</button>' +
+        '<span style="font-size:11.5px;color:#7b8494;margin-left:auto">' + (data.sourceLoaded ? 'POS data loaded from Rezlynx Postings' : 'No Rezlynx Postings loaded — verify from paper Z-report') + '</span>' +
+      '</div></div>';
+
+    /* Two terminal cards */
+    h += '<div class="grid g2">' +
+      renderTillVerifySection(data.terminals.T1, tillvDate, data, st) +
+      renderTillVerifySection(data.terminals.T2, tillvDate, data, st) +
+    '</div>';
+
+    /* Help panel — what to check */
+    h += '<div class="card" style="background:#f6f8fb"><h2 style="font-size:14px;margin:0 0 6px">What each Z-report section means</h2>' +
+      '<ul style="margin:4px 0;padding-left:20px;font-size:12.5px;color:#52647a;line-height:1.7">' +
+        '<li><b>Sales Groups / Major Groups</b> — the breakdown of what was rung in. Total should match the Rezlynx Postings figure for that terminal that night.</li>' +
+        '<li><b>Adjustments &amp; Discounts</b> — Food Discount 15%, Drink Discount 20%, Open Discount. Compare the count AND total to what Rezlynx picked up.</li>' +
+        '<li><b>Functions → Void Transaction</b> — voided tabs/orders. Each should have a legitimate reason (wrong table, complaint, test). Flag any voids you cannot account for.</li>' +
+        '<li><b>Functions → Corrections / Corrections After Store</b> — items removed. "After Store" means post-save — potential shrinkage flag if high.</li>' +
+        '<li><b>Takings</b> — split by payment method (cash, card, post-to-room, zero screen). Cross-reference with the day\'s banking.</li>' +
+        '<li><b>Clerk Function</b> — per-clerk breakdown. Spot staff with unusually high voids or discounts.</li>' +
+      '</ul></div>';
+
+    /* Recent verification history */
+    if (histRows.length) {
+      h += '<div class="card"><h2>Recent verifications</h2>' +
+        '<table><thead><tr><th>Date</th><th>Terminal</th><th>Signed off</th><th>By</th><th>Notes</th></tr></thead><tbody>' +
+        histRows.slice(0, 20).map(function (r) {
+          var trm = r.terminal === 'T1' ? 'Bar (T1)' : r.terminal === 'T2' ? 'Restaurant (T2)' : r.terminal;
+          return '<tr><td>' + esc(dlabel(r.date)) + '</td><td>' + esc(trm) + '</td><td style="color:#1a6442;font-weight:600">✓ ' + fmtAgo(r.ts) + '</td><td>' + esc(r.by) + '</td><td style="font-size:11.5px;color:#52647a">' + esc(r.notes || '—') + '</td></tr>';
+        }).join('') +
+        '</tbody></table></div>';
+    }
+
+    el.innerHTML = h;
+
+    /* Wire up event handlers */
+    var di = document.getElementById('tillv-date');
+    if (di) di.onchange = function () { tillvDate = di.value; renderFb(); };
+    var yb = document.getElementById('tillv-yesterday');
+    if (yb) yb.onclick = function () { tillvDate = yesterdayISO(); renderFb(); };
+
+    /* Checkbox section toggles */
+    el.querySelectorAll('[data-tillv-sect]').forEach(function (cb) {
+      cb.onchange = function () {
+        var k = cb.getAttribute('data-tillv-k');
+        var s = cb.getAttribute('data-tillv-sect');
+        var state = tillvState();
+        if (!state[k]) state[k] = { sections: {} };
+        if (!state[k].sections) state[k].sections = {};
+        state[k].sections[s] = cb.checked;
+        tillvSave(state);
+      };
+    });
+
+    /* Notes textarea — save on blur */
+    el.querySelectorAll('[data-tillv-notes]').forEach(function (ta) {
+      ta.onblur = function () {
+        var k = ta.getAttribute('data-tillv-notes');
+        var state = tillvState();
+        if (!state[k]) state[k] = { sections: {} };
+        state[k].notes = ta.value;
+        tillvSave(state);
+      };
+    });
+
+    /* Sign off button */
+    el.querySelectorAll('[data-tillv-sign]').forEach(function (btn) {
+      btn.onclick = function () {
+        var k = btn.getAttribute('data-tillv-sign');
+        var state = tillvState();
+        if (!state[k]) state[k] = { sections: {} };
+        var sect = state[k].sections || {};
+        var checkedCount = Object.keys(sect).filter(function (x) { return sect[x]; }).length;
+        if (checkedCount < 7) {
+          if (!confirm('Only ' + checkedCount + ' of 7 sections are ticked. Sign off anyway?')) return;
+        }
+        state[k].signedOff = Date.now();
+        var who = (window.Profit && window.Profit.user) ? window.Profit.user() : 'Veronica';
+        state[k].signedBy = who || 'Veronica';
+        var notesEl = el.querySelector('[data-tillv-notes="' + k + '"]');
+        if (notesEl) state[k].notes = notesEl.value;
+        tillvSave(state);
+        renderFb();
+      };
+    });
+
+    /* Unlock button */
+    el.querySelectorAll('[data-tillv-unsign]').forEach(function (btn) {
+      btn.onclick = function () {
+        if (!confirm('Unlock this sign-off and re-verify?')) return;
+        var k = btn.getAttribute('data-tillv-unsign');
+        var state = tillvState();
+        if (state[k]) { delete state[k].signedOff; delete state[k].signedBy; }
+        tillvSave(state);
+        renderFb();
+      };
+    });
+
+    /* Z-report PDF upload — store filename for reference */
+    el.querySelectorAll('[data-tillv-zupload]').forEach(function (inp) {
+      inp.onchange = function () {
+        if (!inp.files || !inp.files[0]) return;
+        var f = inp.files[0];
+        var k = inp.getAttribute('data-tillv-zupload');
+        var state = tillvState();
+        if (!state[k]) state[k] = { sections: {} };
+        state[k].zFileName = f.name;
+        state[k].zFileSize = f.size;
+        state[k].zUploadedAt = Date.now();
+        tillvSave(state);
+        /* TODO: actually upload the PDF to Firestore Storage for archive.
+           For now the filename is stored locally as a reference marker. */
+        renderFb();
+      };
+    });
+
+    /* Z-report remove */
+    el.querySelectorAll('[data-tillv-zremove]').forEach(function (btn) {
+      btn.onclick = function () {
+        var k = btn.getAttribute('data-tillv-zremove');
+        var state = tillvState();
+        if (state[k]) { delete state[k].zFileName; delete state[k].zFileSize; delete state[k].zUploadedAt; }
+        tillvSave(state);
+        renderFb();
+      };
+    });
+  }
+
   function renderFb() {
     var el = $('pf-fb'), T = window.Trading, S = T ? T.S() : {}; fbCharts.forEach(function (c) { c.destroy(); }); fbCharts = [];
     if (!S.af) { el.innerHTML = '<div class="card"><h2>No Guestline data loaded</h2></div>'; return; }
@@ -1938,6 +2225,7 @@
     if (fbView === 'cov') return renderCov(el, S, P);
     if (fbView === 'costs') return renderFoodCosts(el, S, P);
     if (fbView === 'margins') return renderFoodMargins(el, S, P);
+    if (fbView === 'tillv') return renderTillVerify(el, S, P);
     if (fbView === 'fbdisc') return renderFbDisc(el, S, P);
     if (fbView === 'disc') return renderDisc(el, S, P);
     if (fbView === 'term') return renderTerm(el, S, P); if (fbView === 'brk') return renderBrk(el, S, P); if (fbView === 'menu') return renderMenu(el, S, P);
