@@ -2006,7 +2006,9 @@
     /* Scope to the selected date. A PLU term can span multiple days (e.g. a
        week's export). We include it only if the date falls inside its range,
        and divide its figures by the number of days it covers so we show a
-       per-day estimate rather than the aggregate across the loaded period. */
+       per-day estimate rather than the aggregate across the loaded period.
+       If NO term covers the selected date, fall back to the latest date that
+       IS covered in the loaded data and flag the discrepancy. */
     function spanDays(from, to) {
       if (!from || !to) return 1;
       var d = Math.round((Date.parse(to) - Date.parse(from)) / 864e5) + 1;
@@ -2016,11 +2018,22 @@
       if (!from || !to) return false;
       return dateIso >= from && dateIso <= to;
     }
+    var effectiveDate = dateIso;
+    var fellBack = false;
+    if (TP && TP.terms) {
+      var anyCovers = Object.keys(TP.terms).some(function (k) { return covers(dateIso, TP.terms[k].from, TP.terms[k].to); });
+      if (!anyCovers) {
+        /* Find the latest 'to' date across all terms. */
+        var latest = null;
+        Object.keys(TP.terms).forEach(function (k) { var t = TP.terms[k]; if (t.to && (!latest || t.to > latest)) latest = t.to; });
+        if (latest) { effectiveDate = latest; fellBack = true; }
+      }
+    }
     var multiDay = false;
     if (TP && TP.terms) {
       Object.keys(TP.terms).forEach(function (k) {
         var t = TP.terms[k];
-        if (!covers(dateIso, t.from, t.to)) return;
+        if (!covers(effectiveDate, t.from, t.to)) return;
         var days = spanDays(t.from, t.to);
         if (days > 1) multiDay = true;
         var target = /bar/i.test(k) ? bar : /restaurant|terminal\s*2/i.test(k) ? rest : rest;
@@ -2042,9 +2055,9 @@
     bar.multiDaySource = multiDay;
     rest.multiDaySource = multiDay;
 
-    /* Covers for yesterday from the postings report. */
-    if (P && P.byDay && P.byDay[dateIso]) {
-      var d = P.byDay[dateIso];
+    /* Covers for the effective date from the postings report. */
+    if (P && P.byDay && P.byDay[effectiveDate]) {
+      var d = P.byDay[effectiveDate];
       rest.covers = d.cov || 0;
     }
 
@@ -2062,7 +2075,7 @@
       /* Rebuild top items from TP.terms. */
     });
 
-    /* Re-pull top items from TP.terms per terminal, scoped to the selected
+    /* Re-pull top items from TP.terms per terminal, scoped to the effective
        date and divided by span days so the figures reflect ONE day. */
     if (TP && TP.terms) {
       [[bar, /bar/i], [rest, /restaurant|terminal\s*2/i]].forEach(function (pair) {
@@ -2070,7 +2083,7 @@
         var agg = {};
         Object.keys(TP.terms).forEach(function (k) {
           var t = TP.terms[k];
-          if (!covers(dateIso, t.from, t.to)) return;
+          if (!covers(effectiveDate, t.from, t.to)) return;
           var isMatch = re.test(k) || (term === rest && !/bar/i.test(k));
           if (!isMatch) return;
           var days = spanDays(t.from, t.to);
@@ -2088,6 +2101,8 @@
 
     return {
       dateIso: dateIso,
+      effectiveDate: effectiveDate,
+      fellBack: fellBack,
       terminals: { 'T1': bar, 'T2': rest },
       sourceLoaded: !!TP
     };
@@ -2263,7 +2278,13 @@
         '<label style="font-size:12px;color:#52647a">Date <input type="date" id="tillv-date" value="' + tillvDate + '" max="' + new Date().toISOString().slice(0, 10) + '" style="padding:6px 8px;border:1px solid #c8d3dd;border-radius:5px;margin-left:4px;font-family:inherit"></label>' +
         '<button class="btn ghost" id="tillv-yesterday" style="font-size:11.5px">Yesterday</button>' +
         '<span style="font-size:11.5px;color:#7b8494;margin-left:auto">' + (data.sourceLoaded ? 'POS data loaded from Rezlynx Postings' : 'No Rezlynx Postings loaded — verify from paper Z-report') + '</span>' +
-      '</div></div>';
+      '</div>' +
+      (data.fellBack ?
+        '<div style="padding:10px 12px;background:#fff8e6;border:1px solid #e3cc87;border-radius:6px;color:#8a6d1e;font-size:12.5px;margin-top:10px">' +
+          '<b>No Rezlynx POS data for ' + dlabel(tillvDate) + '.</b> Showing the most recent date covered by the loaded Postings export: <b>' + dlabel(data.effectiveDate) + '</b>. ' +
+          'Ask Glenn to upload a fresh Postings file to get the correct day\'s figures.' +
+        '</div>' : '') +
+    '</div>';
 
     /* Two terminal cards */
     h += '<div class="grid g2">' +
@@ -2545,8 +2566,10 @@
   function renderComp() {
     var el = $('pf-comp'); if (!el) return;
     var cache = COMP_CACHE;
-    var h = '<div class="card"><h2>Comp Set · Competitor rates &amp; estimated occupancy <span style="font-size:11px;color:#b26a00;margin-left:8px;font-weight:600;letter-spacing:.2px;text-transform:uppercase;background:#fff5e6;padding:2px 8px;border-radius:10px">ARIA Estimate</span></h2>' +
-      '<p class="sub">Competitor rates and estimated occupancy for the next ' + compNights + ' nights. Occupancy is derived from inventory signals (depletion, rate trajectory, weekday pattern) — not actual booked occupancy. Accuracy ±15%.</p>';
+    var h = '<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap"><div><h2>Comp Set · Competitor rates &amp; estimated occupancy <span style="font-size:11px;color:#b26a00;margin-left:8px;font-weight:600;letter-spacing:.2px;text-transform:uppercase;background:#fff5e6;padding:2px 8px;border-radius:10px">ARIA Estimate</span></h2>' +
+      '<p class="sub" style="margin:4px 0 0">Competitor rates and estimated occupancy for the next ' + compNights + ' nights. Occupancy is derived from inventory signals (depletion, rate trajectory, weekday pattern) — not actual booked occupancy. Accuracy ±15%.</p></div>' +
+      '<button id="comp-ai-check" style="flex:0 0 auto;background:linear-gradient(135deg,#1a2238 0%,#2d3b5c 100%);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">🎩 AI Check Comp Set</button>' +
+    '</div>';
 
     if (!cache) {
       h += '<div style="padding:16px;text-align:center;color:#7b8494">Loading comp set…</div></div>';
@@ -2627,6 +2650,20 @@
     el.innerHTML = h;
     var ns = document.getElementById('comp-nights');
     if (ns) ns.onchange = function () { compNights = parseInt(ns.value, 10); COMP_CACHE = null; renderComp(); };
+
+    /* AI Check button — ask ARIA (grounded in live Google Search) to check
+       current competitor rates, offers and anything unusual across the comp set. */
+    var aiBtn = document.getElementById('comp-ai-check');
+    if (aiBtn) aiBtn.onclick = function () {
+      var hotels = cache.hotels.map(function (h) { return h.name; }).join(', ');
+      var q = 'Please check our comp set across Coventry and Warwickshire RIGHT NOW using live Google Search. ' +
+        'Our comp set is: ' + hotels + '. ' +
+        'For each hotel, report any: (1) current weekend rates visible on their website or Booking.com; ' +
+        '(2) promotional offers or packages they are actively running; ' +
+        '(3) anything unusual — sold out dates, new refurbishments, new openings nearby, significant price moves. ' +
+        'Compare against our Brandon Hall BAR of £' + cache.ownBar + ' and flag the three most important findings for a revenue decision today.';
+      if (window.FloatingARIA) window.FloatingARIA.prefill(q, { autoAsk: true });
+    };
   }
 
   function renderTrends() {

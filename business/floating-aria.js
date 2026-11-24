@@ -138,14 +138,36 @@
     var hist = getHistory();
     var current = hist[hist.length - 1];
     if (!current && !INFLIGHT) {
-      body.innerHTML = '<div class="fa-welcome"><b>Ask ARIA anything about Brandon Hall.</b>' +
-        '<p style="margin:6px 0 4px">ARIA knows your current context (<i>' + esc(ctx) + '</i>) and has access to live Google Search. Try:</p>' +
-        '<ul>' +
-          '<li>"What rate should I push next Friday night?"</li>' +
-          '<li>"Is our comp set tightening up for December?"</li>' +
-          '<li>"What events are happening in Coventry next weekend?"</li>' +
-          '<li>"Should I drop the exec supplement next Tue-Thu?"</li>' +
-        '</ul></div>';
+      /* Welcome state — show pre-built question categories from hosrev's library
+         if available, else fall back to a short tip list. */
+      var qs = window.ARIA_QUESTIONS;
+      if (qs && qs.length) {
+        var cats = {};
+        qs.forEach(function (q) { (cats[q.cat] = cats[q.cat] || []).push(q); });
+        var catsHtml = Object.keys(cats).map(function (c) {
+          return '<div style="margin-top:10px"><div style="font-size:11px;font-weight:700;color:#1a2238;letter-spacing:.3px;text-transform:uppercase;margin-bottom:4px">' + esc(c) + '</div>' +
+            cats[c].map(function (q, i) {
+              var short = q.q.length > 90 ? q.q.slice(0, 88) + '…' : q.q;
+              return '<button class="fa-prebuilt" data-fa-q="' + esc(q.q) + '" title="' + esc(q.q) + '" style="display:block;width:100%;text-align:left;background:#fff;border:1px solid #e3e8ee;border-radius:6px;padding:7px 10px;margin:4px 0;font-family:inherit;font-size:12px;color:#2a3144;cursor:pointer;line-height:1.35"><span style="margin-right:4px">' + (q.icon || '•') + '</span>' + esc(short) + '</button>';
+            }).join('') + '</div>';
+        }).join('');
+        body.innerHTML = '<div style="font-size:12.5px;color:#52647a;margin-bottom:6px"><b style="color:#1a2238">Ask ARIA anything about Brandon Hall.</b> Context: <i>' + esc(ctx) + '</i>. Click a question below, or type your own.</div>' + catsHtml;
+        /* Wire pre-built click handlers */
+        body.querySelectorAll('.fa-prebuilt').forEach(function (btn) {
+          btn.onclick = function () { ask(btn.getAttribute('data-fa-q')); };
+          btn.onmouseover = function () { btn.style.background = '#f6f8fb'; };
+          btn.onmouseout = function () { btn.style.background = '#fff'; };
+        });
+      } else {
+        body.innerHTML = '<div class="fa-welcome"><b>Ask ARIA anything about Brandon Hall.</b>' +
+          '<p style="margin:6px 0 4px">ARIA knows your current context (<i>' + esc(ctx) + '</i>) and has access to live Google Search. Try:</p>' +
+          '<ul>' +
+            '<li>"What rate should I push next Friday night?"</li>' +
+            '<li>"Is our comp set tightening up for December?"</li>' +
+            '<li>"What events are happening in Coventry next weekend?"</li>' +
+            '<li>"Should I drop the exec supplement next Tue-Thu?"</li>' +
+          '</ul></div>';
+      }
       return;
     }
     var t = current;
@@ -307,6 +329,25 @@
     if (!document.getElementById('fa-btn') && !document.body.classList.contains('locked')) build();
   }, 1500);
 
-  /* Expose for debugging */
-  window.FloatingARIA = { open: openPanel, close: closePanel, ask: ask, clear: clearHistory };
+  /* Exposed API — other modules call these to drive the panel. */
+  window.FloatingARIA = {
+    open: openPanel,
+    close: closePanel,
+    ask: ask,
+    clear: clearHistory,
+    /* prefill(question, {autoAsk}): put the question in the input and
+       optionally send it immediately. Used by Comp Set's "AI check" button. */
+    prefill: function (q, opts) {
+      opts = opts || {};
+      openPanel();
+      setTimeout(function () {
+        if (opts.autoAsk) {
+          ask(q);
+        } else {
+          var ta = document.querySelector('#fa-overlay textarea');
+          if (ta) { ta.value = q; ta.focus(); }
+        }
+      }, 280);
+    }
+  };
 })();

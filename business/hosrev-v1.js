@@ -584,7 +584,6 @@
       ['morning',  '☀ Morning View'],
       ['alfred',   '<img src="img/aria.png" style="width:16px;height:16px;vertical-align:-3px;margin-right:4px;border-radius:3px"> ARIA' + alertBadge],
       ['dash',     'Dashboard'],
-      ['agent',    '✨ Ask ARIA'],
       ['calendar', 'Calendar'],
       ['twelve',   '12-Month Forecast'],
       ['bulk',     'Bulk Rates'],
@@ -3504,7 +3503,7 @@
           '<button class="rv-btn primary" data-rv-alf-refresh>Refresh ARIA</button>' +
           '<button class="rv-btn" data-rv-alf-pdf>📄 Download Brief as PDF</button>' +
           '<button class="rv-btn" data-rv-view="calendar">Open Calendar</button>' +
-          '<button class="rv-btn" data-rv-view="agent">Ask ARIA a question</button>' +
+          '<button class="rv-btn" data-rv-open-aria="1">Ask ARIA a question</button>' +
           '<span data-rv-alf-status style="margin-left:12px;font-size:12px;opacity:.7"></span>' +
         '</div>' +
       '</div>'
@@ -4067,16 +4066,23 @@
       render();
       return;
     }
-    // v39.15 — Discrepancies "Ask ARIA for more" prefill — switches to agent tab with text ready
+    // v39.28 — "Ask ARIA a question" button opens the floating panel directly.
+    var openAria = t.closest('[data-rv-open-aria]');
+    if (openAria) {
+      if (window.FloatingARIA) window.FloatingARIA.open();
+      return;
+    }
+    // v39.28 — Ask ARIA prefill now opens the floating ARIA panel (no more inline Agent tab).
     var askP = t.closest('[data-rv-ask-prefill]');
     if (askP) {
       var pre = decodeURIComponent(askP.getAttribute('data-rv-ask-prefill') || '');
-      UI.view = 'agent';
-      render();
-      setTimeout(function () {
-        var ta = document.getElementById('rv-ag-text');
-        if (ta) { ta.value = pre; ta.focus(); ta.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-      }, 100);
+      if (window.FloatingARIA) {
+        window.FloatingARIA.open();
+        setTimeout(function () {
+          var ta = document.querySelector('#fa-overlay textarea');
+          if (ta) { ta.value = pre; ta.focus(); }
+        }, 300);
+      }
       return;
     }
     // v39.14 — Morning View one-click approve suggestion
@@ -4431,4 +4437,6 @@
   wireIn();
 
   window.HosREV = { render: render, nightsFor: nightsFor, ROOM_TYPES: ROOM_TYPES, SETTINGS: SETTINGS };
+  /* Expose the pre-built question library so the floating ARIA panel can use it. */
+  window.ARIA_QUESTIONS = AGENT_QUESTIONS;
 })();
