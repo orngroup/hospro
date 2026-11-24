@@ -1963,10 +1963,15 @@ function jPostMessage(jobId, payload){
   j.messages.push(Object.assign({ by:(MY_USER&&MY_USER.name)||ME, byId:ME||'', at:new Date().toISOString() }, payload));
   j.updatedAt=new Date().toISOString(); j.updatedBy=ME||j.updatedBy||'';
   saveJobs();                                   // writes to Firestore → everyone on the job sees it live
-  // alert the allocated operative(s) + managers (push when the app is closed; in-app otherwise)
+  // alert the allocated operative(s) + managers — same push the team gets for jobs (works when the app is closed);
+  // the in-app "💬 New message" alert (see hfAlertForChange/hfNotify) covers phones that already have the app open.
   try{
     const targets=(j.assignees||[]).filter(id=>id!==ME);
-    if(typeof fcmNotify==='function') fcmNotify('job_message', j, targets);
+    if(typeof fcmNotify==='function' && targets.length){
+      fcmNotify('job_assigned', j, targets).then(r=>{ try{ fcmReportDelivery(r, targets); }catch(e){} });
+    } else if(typeof fcmNotify==='function'){
+      fcmNotify('job_new', j, []);              // no operative allocated yet → ping managers like a new job
+    }
   }catch(e){}
   // refresh the open detail and scroll to the newest message
   openJobDetail(jobId); setTimeout(jScrollChat,30);
