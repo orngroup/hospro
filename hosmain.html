@@ -1347,7 +1347,7 @@ function submitReporterJob(){
     const job={ id:makeId(), title, area, areaLabel:(PROPERTY[area]&&PROPERTY[area].label)||area||'—',
       location, workType:'', description,
       status:'not-started', priority:FS.priority==='urgent'?'urgent':'medium',
-      assignees:['glenn'], occupancy:FS.occupancy||'', cost:0, module:'maintenance',
+      assignees:['raj'], occupancy:FS.occupancy||'', cost:0, module:'maintenance',
       photos:(FS.photos||[]).slice(), voiceNote:FS.voiceNote||null, materials:[],
       notes:[{text:'Reported via HosFix'+(FS.occupancy?(' — room '+FS.occupancy):''),by:MY_USER?.name||ME,at:todayStr()}],
       createdAt:new Date().toISOString(), createdBy:ME, reportedBy:MY_USER?.name||'', source:'reporter',
@@ -1454,7 +1454,7 @@ function submitGuestReport(){
     const job={ id:makeId(), title, area, areaLabel:(PROPERTY[area]&&PROPERTY[area].label)||area||'—',
       location, workType:'', description,
       status:'not-started', priority:FS.priority==='urgent'?'urgent':'medium',
-      assignees:['glenn'], occupancy:FS.occupancy||'', cost:0, module:'maintenance',
+      assignees:['raj'], occupancy:FS.occupancy||'', cost:0, module:'maintenance',
       photos:(FS.photos||[]).slice(), voiceNote:FS.voiceNote||null, materials:[],
       notes:[{text:'Reported via HosFix'+(FS.occupancy?(' — room '+FS.occupancy):''),by:(who&&who.name)||uid,at:todayStr()}],
       createdAt:new Date().toISOString(), createdBy:uid, reportedBy:(who&&who.name)||'', source:'reporter',
@@ -1501,8 +1501,8 @@ function submitJob(){
   const cost=parseFloat($('nj-cost')?.value)||0;
   const needsApproval=IS_APPROVER===false&&cost>APPROVAL_THRESHOLD;
 
-  // Jobs default to Glenn (manager-operative) — he allocates to an operative.
-  let assignees = (IS_SUPER && FS.assignees && FS.assignees.length) ? FS.assignees : ['glenn'];
+  // Jobs default to Raj (manager) — he allocates to an operative.
+  let assignees = (IS_SUPER && FS.assignees && FS.assignees.length) ? FS.assignees : ['raj'];
 
   const job={
     id:makeId(),
