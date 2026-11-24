@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f5b53">
+<title>HosSPA — Brandon Hall Hotel &amp; Spa</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --spa:#0f5b53; --spa2:#15867a; --teal:#20b2a2; --navy:#14232f;
+  --sand:#c9a978; --ink:#1a2b2a; --mut:#6b7d7a; --line:#e3ecea;
+  --bg:#f4f8f7; --card:#ffffff; --red:#c0433f; --amber:#c98a2a; --green:#2e8b6b;
+  --shadow:0 1px 2px rgba(16,40,38,.05),0 8px 24px rgba(16,40,38,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:'Lato',system-ui,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.45}
+h1,h2,h3,.disp{font-family:'Cormorant Garamond',serif}
+a{color:inherit}
+/* top bar */
+.top{position:sticky;top:0;z-index:40;background:linear-gradient(120deg,var(--spa) 0%,var(--spa2) 100%);color:#fff;box-shadow:0 2px 14px rgba(15,91,83,.25)}
+.top .row{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:12px 20px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand .b{font-family:'Cormorant Garamond',serif;font-size:27px;font-weight:700;letter-spacing:.5px}
+.brand .b span{color:var(--sand)}
+.brand .h{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.72);font-weight:700}
+.demo{margin-left:auto;font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);padding:5px 11px;border-radius:999px}
+/* tabs */
+.tabs{background:var(--navy)}
+.tabs .row{max-width:1240px;margin:0 auto;display:flex;gap:2px;padding:0 12px;overflow-x:auto}
+.tab{flex:0 0 auto;color:rgba(255,255,255,.65);font-weight:700;font-size:13.5px;padding:13px 16px;border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+.tab:hover{color:#fff}
+.tab.on{color:#fff;border-bottom-color:var(--sand)}
+/* layout */
+.wrap{max-width:1240px;margin:0 auto;padding:22px 20px 60px}
+.view{display:none}
+.view.on{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.ph h1{font-size:30px;font-weight:700;color:var(--navy);line-height:1.05}
+.ph p{color:var(--mut);font-size:13.5px;margin-top:3px;max-width:640px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+.pad{padding:18px 20px}
+.ct{font-size:12px;letter-spacing:1.3px;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:12px}
+/* kpi */
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 15px;box-shadow:var(--shadow)}
+.kpi .l{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--mut);font-weight:700}
+.kpi .v{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:700;color:var(--navy);line-height:1.1;margin-top:4px}
+.kpi .d{font-size:11.5px;font-weight:700;margin-top:2px}
+.up{color:var(--green)} .down{color:var(--red)} .flat{color:var(--mut)}
+/* grid helpers */
+.g2{display:grid;grid-template-columns:1.6fr 1fr;gap:16px}
+.g2b{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.mt{margin-top:16px}
+/* chart */
+.lg{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px}
+.lg .i{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mut);font-weight:700}
+.lg .sw{width:11px;height:11px;border-radius:3px}
+svg{display:block;width:100%;overflow:visible}
+.bar-row{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:13px}
+.bar-row .nm{width:92px;flex:0 0 92px;color:var(--ink);font-weight:700}
+.bar-row .tk{flex:1;height:14px;background:#eef3f2;border-radius:7px;overflow:hidden}
+.bar-row .fl{height:100%;border-radius:7px;background:linear-gradient(90deg,var(--teal),var(--spa))}
+.bar-row .vv{width:64px;text-align:right;color:var(--mut);font-weight:700;font-size:12px}
+/* table */
+.tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.inp{border:1px solid var(--line);border-radius:10px;padding:9px 13px;font:inherit;font-size:14px;background:#fff;color:var(--ink)}
+.inp:focus{outline:none;border-color:var(--teal)}
+select.inp{cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+thead th{text-align:left;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);font-weight:700;padding:10px 12px;border-bottom:2px solid var(--line);position:sticky;top:0;background:#fff;cursor:pointer;white-space:nowrap}
+tbody td{padding:11px 12px;border-bottom:1px solid var(--line)}
+tbody tr:hover{background:#f7faf9}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.3px}
+.t-active{background:#e4f3ec;color:#1f7a57} .t-frozen{background:#eef1f7;color:#4a5b7a}
+.t-expired{background:#f6e7e6;color:#b23f3b} .t-risk{background:#fbf0dd;color:#a7761c}
+.av{width:30px;height:30px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:0 0 30px}
+.nmcell{display:flex;align-items:center;gap:10px}
+.sub{color:var(--mut);font-size:11.5px}
+.muted{color:var(--mut)}
+/* plans */
+.plans{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.plan{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.plan.feat{border:2px solid var(--spa);position:relative}
+.plan.feat::before{content:'Most popular';position:absolute;top:-11px;left:20px;background:var(--spa);color:#fff;font-size:10px;letter-spacing:1px;text-transform:uppercase;font-weight:700;padding:3px 10px;border-radius:999px}
+.plan .pn{font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--spa2);font-weight:700}
+.plan .pp{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:700;color:var(--navy);margin:6px 0 0}
+.plan .pp small{font-size:15px;color:var(--mut);font-weight:400;font-family:'Lato'}
+.plan ul{list-style:none;margin:14px 0 0;display:flex;flex-direction:column;gap:7px}
+.plan li{font-size:13px;padding-left:22px;position:relative;color:var(--ink)}
+.plan li::before{content:'✓';position:absolute;left:0;color:var(--teal);font-weight:900}
+.plan .cnt{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:12px;color:var(--mut);font-weight:700}
+/* timetable */
+.tt{overflow-x:auto}
+.ttg{display:grid;grid-template-columns:70px repeat(7,1fr);gap:6px;min-width:820px}
+.ttg .hd{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);font-weight:700;text-align:center;padding:6px 0}
+.ttg .tm{font-size:12px;color:var(--mut);font-weight:700;display:flex;align-items:center;justify-content:flex-end;padding-right:8px}
+.cl{border-radius:9px;padding:7px 8px;font-size:11.5px;line-height:1.25;color:#fff;min-height:40px}
+.cl b{display:block;font-size:12px}
+.cl .cap{opacity:.85;font-size:10.5px}
+.cl.e{background:transparent}
+/* facility bars */
+.fac{display:flex;align-items:center;gap:12px;margin:10px 0}
+.fac .nm{width:150px;flex:0 0 150px;font-weight:700;font-size:13px}
+.fac .tk{flex:1;height:22px;background:#eef3f2;border-radius:6px;overflow:hidden;position:relative}
+.fac .fl{height:100%;background:linear-gradient(90deg,var(--teal),var(--spa))}
+.fac .pc{width:48px;text-align:right;font-weight:700;font-size:12.5px;color:var(--mut)}
+/* phone */
+.phone{width:300px;max-width:100%;margin:0 auto;background:var(--navy);border-radius:34px;padding:12px;box-shadow:0 20px 50px rgba(16,40,38,.3)}
+.scr{background:var(--bg);border-radius:24px;overflow:hidden}
+.scr .hd{background:linear-gradient(120deg,var(--spa),var(--spa2));color:#fff;padding:20px 18px 26px}
+.scr .hd .hi{font-size:12px;opacity:.85}
+.scr .hd .nm{font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:700;margin-top:2px}
+.mcard{margin:-16px 14px 0;background:#fff;border-radius:16px;padding:14px;box-shadow:var(--shadow)}
+.mcard .r{display:flex;justify-content:space-between;align-items:center}
+.mcard .plan{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--spa2);font-weight:700;border:none;padding:0;box-shadow:none;background:none}
+.mcard .qr{width:46px;height:46px;border-radius:8px;background:
+ repeating-linear-gradient(0deg,#14232f 0 3px,#fff 3px 6px),repeating-linear-gradient(90deg,#14232f 0 3px,transparent 3px 6px);background-blend-mode:multiply}
+.scr .sect{padding:14px 16px 4px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700}
+.bk{margin:0 14px 10px;background:#fff;border-radius:13px;padding:11px 13px;box-shadow:var(--shadow);display:flex;gap:11px;align-items:center}
+.bk .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
+.bk .t{font-weight:700;font-size:13px}
+.bk .s{font-size:11.5px;color:var(--mut)}
+.bk .go{margin-left:auto;font-size:11px;font-weight:700;color:var(--spa2)}
+.scr .nav{display:flex;background:#fff;border-top:1px solid var(--line);padding:9px 0}
+.scr .nav div{flex:1;text-align:center;font-size:10px;color:var(--mut);font-weight:700}
+.scr .nav div.on{color:var(--spa)}
+.scr .nav .ic{font-size:17px;display:block}
+/* misc */
+.att{display:flex;flex-direction:column;gap:9px}
+.att .it{display:flex;gap:11px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:11px}
+.att .ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:0 0 30px;font-size:15px}
+.att .t{font-weight:700;font-size:13px}
+.att .s{font-size:12px;color:var(--mut)}
+.pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:#eef3f2;color:var(--spa2)}
+.foot{color:var(--mut);font-size:12px;text-align:center;margin-top:30px;line-height:1.6}
+.hint{font-size:12px;color:var(--mut)}
+@media(max-width:980px){.kpis{grid-template-columns:repeat(3,1fr)}.g2,.g2b,.g3{grid-template-columns:1fr}.plans{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.kpis{grid-template-columns:repeat(2,1fr)}.plans{grid-template-columns:1fr}.ph h1{font-size:25px}}
+</style>
+</head>
+<body>
+
+<div class="top"><div class="row">
+  <div class="brand">
+    <div class="b">Hos<span>SPA</span></div>
+    <div class="h">Brandon Hall Hotel &amp; Spa</div>
+  </div>
+  <div class="demo">Demo data</div>
+</div></div>
+
+<div class="tabs"><div class="row" id="tabs">
+  <button class="tab on" data-v="dash">Dashboard</button>
+  <button class="tab" data-v="members">Members</button>
+  <button class="tab" data-v="plans">Memberships</button>
+  <button class="tab" data-v="treatments">Treatments &amp; Packages</button>
+  <button class="tab" data-v="classes">Classes &amp; Facilities</button>
+  <button class="tab" data-v="revenue">Revenue &amp; Costs</button>
+  <button class="tab" data-v="app">Member App</button>
+</div></div>
+
+<div class="wrap">
+
+  <!-- DASHBOARD -->
+  <section class="view on" id="v-dash">
+    <div class="ph"><div><h1>Spa at a glance</h1><p>Live membership, revenue and demographic picture for the spa, health club and treatment rooms.</p></div><div class="hint" id="asof"></div></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="g2">
+      <div class="card pad"><div class="ct">Revenue — last 12 months</div><div id="revChart"></div>
+        <div class="lg">
+          <div class="i"><span class="sw" style="background:#0f5b53"></span>Memberships</div>
+          <div class="i"><span class="sw" style="background:#20b2a2"></span>Treatments</div>
+          <div class="i"><span class="sw" style="background:#c9a978"></span>Day passes</div>
+          <div class="i"><span class="sw" style="background:#9bb7b2"></span>Retail</div>
+        </div>
+      </div>
+      <div class="card pad"><div class="ct">Membership mix</div><div id="mixChart"></div></div>
+    </div>
+    <div class="g3 mt">
+      <div class="card pad"><div class="ct">Age profile</div><div id="ageChart"></div></div>
+      <div class="card pad"><div class="ct">Members by gender</div><div id="genChart"></div></div>
+      <div class="card pad"><div class="ct">Where members come from</div><div id="geoChart"></div></div>
+    </div>
+    <div class="g2 mt">
+      <div class="card pad"><div class="ct">Needs attention</div><div class="att" id="attention"></div></div>
+      <div class="card pad"><div class="ct">Busiest times (visits / week)</div><div id="peakChart"></div></div>
+    </div>
+  </section>
+
+  <!-- MEMBERS -->
+  <section class="view" id="v-members">
+    <div class="ph"><div><h1>Members</h1><p>Every spa and health-club member — plan, status, visits and lifetime value.</p></div><div class="hint" id="memcount"></div></div>
+    <div class="tools">
+      <input class="inp" id="msearch" placeholder="Search name, plan or town…" style="min-width:240px">
+      <select class="inp" id="mstatus"><option value="">All statuses</option><option>Active</option><option>At risk</option><option>Frozen</option><option>Expired</option></select>
+      <select class="inp" id="mplan"><option value="">All plans</option></select>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <div style="max-height:620px;overflow:auto"><table id="mtable">
+        <thead><tr>
+          <th data-k="name">Member</th><th data-k="plan">Plan</th><th data-k="status">Status</th>
+          <th data-k="age">Age</th><th data-k="joined">Joined</th><th data-k="last">Last visit</th>
+          <th data-k="visits">Visits</th><th data-k="ltv">Lifetime £</th>
+        </tr></thead>
+        <tbody id="mbody"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- PLANS -->
+  <section class="view" id="v-plans">
+    <div class="ph"><div><h1>Memberships</h1><p>The spa membership range — what each tier includes and how many members are on it.</p></div></div>
+    <div class="plans" id="plansWrap"></div>
+    <div class="card pad mt"><div class="ct">Members &amp; recurring revenue by plan</div><div id="planBars"></div></div>
+  </section>
+
+  <!-- CLASSES -->
+  <section class="view" id="v-classes">
+    <div class="ph"><div><h1>Classes &amp; Facilities</h1><p>The weekly class timetable and how hard each facility is working. Members book from the app; reception books walk-ins.</p></div></div>
+    <div class="card pad"><div class="ct">This week's class timetable</div><div class="tt"><div class="ttg" id="ttgrid"></div></div>
+      <div class="lg" id="ttlegend" style="margin-top:14px"></div>
+    </div>
+    <div class="g2b mt">
+      <div class="card pad"><div class="ct">Facility utilisation (this week)</div><div id="facBars"></div></div>
+      <div class="card pad"><div class="ct">Treatment room bookings — today</div><div class="att" id="treat"></div></div>
+    </div>
+  </section>
+
+  <!-- TREATMENTS -->
+  <section class="view" id="v-treatments">
+    <div class="ph"><div><h1>Treatments &amp; Packages</h1><p>The full spa treatment menu and spa-day packages — the services Granite Leisure run and that Brandon Hall can offer. Members book from the app; reception and the spa desk book walk-ins and gift bookings.</p></div><div class="hint">Demo pricing · from the current Granite menu</div></div>
+    <div class="ct" style="margin:4px 0 10px">Spa packages</div>
+    <div class="g3" id="pkgWrap"></div>
+    <div class="ct" style="margin:22px 0 10px">Treatment menu</div>
+    <div id="svcWrap"></div>
+  </section>
+
+  <!-- REVENUE -->
+  <section class="view" id="v-revenue">
+    <div class="ph"><div><h1>Revenue &amp; Costs</h1><p>Where the spa makes its money and where it goes — this month, with the running 12-month trend.</p></div><div class="hint" id="revmonth"></div></div>
+    <div class="kpis" id="revkpis" style="grid-template-columns:repeat(4,1fr)"></div>
+    <div class="g2">
+      <div class="card pad"><div class="ct">Income this month</div><div id="incBars"></div></div>
+      <div class="card pad"><div class="ct">Costs this month</div><div id="costBars"></div></div>
+    </div>
+    <div class="card pad mt"><div class="ct">Net contribution — last 12 months</div><div id="netChart"></div>
+      <div class="lg"><div class="i"><span class="sw" style="background:#0f5b53"></span>Revenue</div><div class="i"><span class="sw" style="background:#c0433f"></span>Costs</div><div class="i"><span class="sw" style="background:#c9a978"></span>Net</div></div>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <section class="view" id="v-app">
+    <div class="ph"><div><h1>Member app</h1><p>What a member sees on their phone — membership card, bookings and classes. The same login works on the web.</p></div></div>
+    <div class="g2b">
+      <div class="phone"><div class="scr">
+        <div class="hd"><div class="hi">Good morning,</div><div class="nm">Eleanor Whitfield</div></div>
+        <div class="mcard">
+          <div class="r"><div><div class="plan">Spa &amp; Health Premium</div><div style="font-weight:900;font-size:17px;margin-top:3px">Member #BH-2048</div><div class="sub">Renews 14 Dec 2026</div></div><div class="qr"></div></div>
+        </div>
+        <div class="sect">Your next bookings</div>
+        <div class="bk"><span class="dot" style="background:#20b2a2"></span><div><div class="t">Aqua Aerobics</div><div class="s">Today · 10:00 · Pool</div></div><div class="go">View</div></div>
+        <div class="bk"><span class="dot" style="background:#c9a978"></span><div><div class="t">Hot Stone Massage · 50 min</div><div class="s">Thu · 15:30 · Room 3 · £95</div></div><div class="go">View</div></div>
+        <div class="bk"><span class="dot" style="background:#0f5b53"></span><div><div class="t">Vinyasa Yoga</div><div class="s">Sat · 09:00 · Studio</div></div><div class="go">View</div></div>
+        <div class="nav"><div class="on"><span class="ic">🏠</span>Home</div><div><span class="ic">📅</span>Book</div><div><span class="ic">💆</span>Spa</div><div><span class="ic">🎫</span>Card</div></div>
+      </div></div>
+      <div>
+        <div class="card pad"><div class="ct">What members can do</div>
+          <div class="att">
+            <div class="it"><div class="ic" style="background:#e4f3ec">💳</div><div><div class="t">Digital membership card</div><div class="s">Scan in at reception or the gym door — no plastic card.</div></div></div>
+            <div class="it"><div class="ic" style="background:#e4f3ec">📅</div><div><div class="t">Book classes &amp; facilities</div><div class="s">Aqua, yoga, spin, pool lanes and the gym — live availability and waiting lists.</div></div></div>
+            <div class="it"><div class="ic" style="background:#e4f3ec">💆</div><div><div class="t">Book spa treatments</div><div class="s">Massages, facials and wraps — pick a therapist and pay in app.</div></div></div>
+            <div class="it"><div class="ic" style="background:#e4f3ec">❄️</div><div><div class="t">Freeze, renew or upgrade</div><div class="s">Manage the membership and payments without calling reception.</div></div></div>
+            <div class="it"><div class="ic" style="background:#e4f3ec">🎁</div><div><div class="t">Offers &amp; refer a friend</div><div class="s">Member-only treatment offers and a referral reward.</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <b>HosSPA</b> · a module of HosPRO for Brandon Hall Hotel &amp; Spa. Showing <b>sample data</b> for design — not live member records.<br>
+    Spa memberships, class &amp; facility booking, treatments, a member app and a management back end for revenue, costs and demographics.
+  </div>
+</div>
+
+<script>
+/* ---------- seeded RNG (deterministic demo data) ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+var rnd=mulberry32(20261124);
+function ri(a,b){return Math.floor(rnd()*(b-a+1))+a}
+function pick(a){return a[Math.floor(rnd()*a.length)]}
+function chance(p){return rnd()<p}
+function money(n){return '£'+Math.round(n).toLocaleString('en-GB')}
+function k(n){return '£'+(n/1000).toFixed(n>=10000?0:1)+'k'}
+
+/* ---------- plans ---------- */
+var PLANS=[
+  {id:'offpeak', name:'Off-Peak Spa', price:42, feat:false, inc:['Pool, sauna &amp; steam','Weekdays before 4pm','Relaxation lounge','10% off treatments']},
+  {id:'classic', name:'Spa Classic',  price:58, feat:false, inc:['Pool, sauna &amp; steam, any time','Relaxation lounge','2 guest passes a year','15% off treatments']},
+  {id:'premium', name:'Spa &amp; Health Premium', price:85, feat:true, inc:['Everything in Classic','Full gym &amp; all classes','Robe &amp; towel service','20% off treatments','1 treatment credit / month']},
+  {id:'couples', name:'Couples Premium', price:150, feat:false, inc:['Two Premium memberships','Shared treatment credits','4 guest passes a year','Priority class booking']},
+  {id:'corporate', name:'Corporate (per head)', price:65, feat:false, inc:['Premium access','Billed to the company','Flexible start dates','Wellbeing reporting']},
+  {id:'annual', name:'Annual Premium', price:50, feat:false, inc:['Premium, paid yearly','Two months free','Fixed price for 12 months','Priority renewal'], note:'£600 / year'}
+];
+var PLAN_WEIGHT={offpeak:.17,classic:.26,premium:.33,couples:.08,corporate:.11,annual:.05};
+
+/* ---------- names ---------- */
+var FN_F=['Eleanor','Sophie','Priya','Amelia','Grace','Chloe','Hannah','Olivia','Freya','Jasmine','Maria','Aisha','Charlotte','Emily','Lucy','Nadia','Rebecca','Isla','Megan','Sara','Daniela','Ruth','Anita','Joy','Fiona','Katie','Laura','Yasmin'];
+var FN_M=['James','Daniel','Mohammed','Thomas','Oliver','Harry','George','Jack','Arjun','Samuel','David','Luke','Ryan','Michael','Ben','Adam','Nathan','Reuben','Patrick','Sanjay','Liam','Ethan','Marcus','Paul','Simon','Raj','Alan','Glenn'];
+var LN=['Whitfield','Hargreaves','Patel','Clarke','O’Connor','Bennett','Fairbanks','Reyes','Sharma','Caldwell','Adeyemi','Nowak','Marsh','Fletcher','Lindqvist','Dunbar','Haywood','Okafor','Pryce','Sandhu','Rossi','Thornton','Ellison','Vance','Mercer','Boyd','Ashworth','Kumar','Lindsay','Webb'];
+var TOWNS=[['Coventry',.26],['Kenilworth',.14],['Leamington Spa',.13],['Rugby',.08],['Warwick',.08],['Solihull',.07],['Balsall Common',.06],['Nuneaton',.05],['Hotel guest / other',.13]];
+function wtown(){var r=rnd(),a=0;for(var i=0;i<TOWNS.length;i++){a+=TOWNS[i][1];if(r<a)return TOWNS[i][0]}return TOWNS[0][0]}
+function wplan(){var r=rnd(),a=0;for(var id in PLAN_WEIGHT){a+=PLAN_WEIGHT[id];if(r<a)return id}return 'premium'}
+var AVCOL=['#0f5b53','#15867a','#20b2a2','#c9a978','#5b8f86','#8a6d3b','#2e8b6b','#4a5b7a'];
+
+/* ---------- generate members ---------- */
+var NOW=new Date(2026,10,24);
+function dstr(d){return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})}
+function daysAgo(n){var d=new Date(NOW);d.setDate(d.getDate()-n);return d}
+var MEMBERS=[];
+var TOTAL=418;
+for(var i=0;i<TOTAL;i++){
+  var gender=chance(.61)?'F':(chance(.97)?'M':'X');
+  var fn=gender==='F'?pick(FN_F):gender==='M'?pick(FN_M):pick(FN_F.concat(FN_M));
+  var age=ri(19,74); if(chance(.5))age=ri(30,58);
+  var planId=wplan();
+  var plan=PLANS.find(function(p){return p.id===planId});
+  var tenure=ri(0,46); // months as member (0 = joined this month)
+  var joined=daysAgo(tenure*30+ri(0,25));
+  var r=rnd(); var status = r<.80?'Active': r<.88?'At risk': r<.95?'Frozen':'Expired';
+  var lastN = status==='Expired'?ri(40,180): status==='Frozen'?ri(25,80): status==='At risk'?ri(16,34):ri(0,14);
+  var perWeek = status==='Active'?(rnd()*2.6+.6):(status==='At risk'?rnd()*.6+.15:rnd()*.4);
+  var visits=Math.max(1,Math.round(perWeek*tenure*4.3));
+  var ltv=Math.round(plan.price*tenure + visits*rnd()*2.4 + (chance(.5)?ri(0,900):0));
+  MEMBERS.push({id:i,name:fn+' '+pick(LN),gender:gender,age:age,plan:plan.name,planId:planId,price:plan.price,
+    status:status,joined:joined,last:daysAgo(lastN),lastN:lastN,visits:visits,ltv:ltv,town:wtown(),
+    col:AVCOL[i%AVCOL.length]});
+}
+var STATUS_ORDER={'Active':0,'At risk':1,'Frozen':2,'Expired':3};
+function statusTag(s){var c=s==='Active'?'t-active':s==='At risk'?'t-risk':s==='Frozen'?'t-frozen':'t-expired';return '<span class="tag '+c+'">'+s+'</span>'}
+
+/* ---------- aggregates ---------- */
+var active=MEMBERS.filter(function(m){return m.status==='Active'||m.status==='At risk'||m.status==='Frozen'});
+var mrr=active.reduce(function(s,m){return s+(m.status==='Frozen'?0:m.price)},0);
+var newThisMonth=MEMBERS.filter(function(m){return (NOW-m.joined)/864e5<31}).length;
+var atRisk=MEMBERS.filter(function(m){return m.status==='At risk'}).length;
+var expSoon=MEMBERS.filter(function(m){return m.status==='Active'&&chance(0)}).length;
+
+/* monthly revenue series (12 mo) */
+var MLAB=[]; var revM=[],revT=[],revD=[],revR=[],costM=[];
+(function(){
+  var seas=[1.18,1.10,1.02,1.00,1.03,1.06,1.08,0.92,0.98,1.05,1.04,1.12]; // Jan..Dec-ish
+  for(var j=11;j>=0;j--){
+    var d=new Date(NOW.getFullYear(),NOW.getMonth()-j,1);
+    MLAB.push(d.toLocaleDateString('en-GB',{month:'short'}));
+    var growth=1-(j*0.012);
+    var s=seas[d.getMonth()];
+    var mem=mrr*growth*0.985*(0.97+rnd()*0.05);
+    var tr=mem*(1.15)*s*(0.92+rnd()*0.16);
+    var dp=mem*0.26*s*(0.9+rnd()*0.2);
+    var rt=mem*0.13*s*(0.9+rnd()*0.2);
+    revM.push(mem);revT.push(tr);revD.push(dp);revR.push(rt);
+    costM.push((mem+tr+dp+rt)*(0.72+rnd()*0.04));
+  }
+})();
+var totM=revM.map(function(v,i){return v+revT[i]+revD[i]+revR[i]});
+var thisRev=totM[11], thisCost=costM[11], thisNet=thisRev-thisCost;
+
+/* ---------- SVG chart helpers ---------- */
+function svgEl(w,h){return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" style="height:'+h+'px">'}
+function stackedBars(series,labels,colors,h){
+  h=h||220;var w=680,pad=24,bw=(w-pad*2)/labels.length;
+  var tot=labels.map(function(_,i){return series.reduce(function(s,ser){return s+ser[i]},0)});
+  var mx=Math.max.apply(null,tot)*1.12;
+  var o=svgEl(w,h+24);
+  for(var g=1;g<=4;g++){var y=(h)*(1-g/4);o+='<line x1="'+pad+'" x2="'+(w-pad)+'" y1="'+y+'" y2="'+y+'" stroke="#eef3f2" stroke-width="1"/>';o+='<text x="'+(pad-4)+'" y="'+(y+4)+'" text-anchor="end" font-size="9" fill="#9fb0ac">'+k(mx*g/4)+'</text>'}
+  labels.forEach(function(lb,i){
+    var x=pad+bw*i+bw*0.18,bwi=bw*0.64,yb=h,acc=0;
+    series.forEach(function(ser,si){var val=ser[i];var bh=(val/mx)*h;yb-=bh;o+='<rect x="'+x+'" y="'+yb+'" width="'+bwi+'" height="'+Math.max(0,bh)+'" fill="'+colors[si]+'" rx="2"/>'});
+    o+='<text x="'+(x+bwi/2)+'" y="'+(h+14)+'" text-anchor="middle" font-size="10" fill="#8aa29d" font-weight="700">'+lb+'</text>';
+  });
+  return o+'</svg>';
+}
+function lineChart(seriesArr,labels,colors,h,fillFirst){
+  h=h||210;var w=680,pad=26,top=10;
+  var all=[].concat.apply([],seriesArr);var mx=Math.max.apply(null,all)*1.12;var mn=Math.min.apply(null,all)*0.6;
+  function X(i){return pad+(w-pad*2)*(i/(labels.length-1))}
+  function Y(v){return top+(h-top)*(1-(v-mn)/(mx-mn))}
+  var o=svgEl(w,h+22);
+  for(var g=0;g<=3;g++){var y=top+(h-top)*(g/3);o+='<line x1="'+pad+'" x2="'+(w-pad)+'" y1="'+y+'" y2="'+y+'" stroke="#eef3f2"/>'}
+  seriesArr.forEach(function(ser,si){
+    var d=ser.map(function(v,i){return (i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)}).join(' ');
+    if(fillFirst&&si===0){o+='<path d="'+d+' L'+X(labels.length-1)+' '+h+' L'+pad+' '+h+' Z" fill="'+colors[si]+'" opacity=".10"/>'}
+    o+='<path d="'+d+'" fill="none" stroke="'+colors[si]+'" stroke-width="'+(si===0?2.6:2)+'" stroke-linejoin="round" stroke-linecap="round"/>';
+    if(si===0)ser.forEach(function(v,i){o+='<circle cx="'+X(i)+'" cy="'+Y(v)+'" r="2.6" fill="'+colors[si]+'"/>'});
+  });
+  labels.forEach(function(lb,i){o+='<text x="'+X(i)+'" y="'+(h+16)+'" text-anchor="middle" font-size="10" fill="#8aa29d" font-weight="700">'+lb+'</text>'});
+  return o+'</svg>';
+}
+function donut(segs,h){
+  h=h||190;var cx=95,cy=95,r=72,rr=46,tot=segs.reduce(function(s,x){return s+x.v},0),a=-Math.PI/2;
+  var o='<svg viewBox="0 0 368 190" style="height:'+h+'px">';
+  segs.forEach(function(s){
+    var ang=s.v/tot*Math.PI*2,a2=a+ang;
+    var x1=cx+r*Math.cos(a),y1=cy+r*Math.sin(a),x2=cx+r*Math.cos(a2),y2=cy+r*Math.sin(a2);
+    var xi2=cx+rr*Math.cos(a2),yi2=cy+rr*Math.sin(a2),xi1=cx+rr*Math.cos(a),yi1=cy+rr*Math.sin(a);
+    var lg=ang>Math.PI?1:0;
+    o+='<path d="M'+x1+' '+y1+' A'+r+' '+r+' 0 '+lg+' 1 '+x2+' '+y2+' L'+xi2+' '+yi2+' A'+rr+' '+rr+' 0 '+lg+' 0 '+xi1+' '+yi1+' Z" fill="'+s.c+'"/>';
+    a=a2;
+  });
+  o+='<text x="95" y="90" text-anchor="middle" font-size="26" font-family="Cormorant Garamond,serif" font-weight="700" fill="#14232f">'+tot+'</text><text x="95" y="108" text-anchor="middle" font-size="10" fill="#8aa29d" font-weight="700">MEMBERS</text>';
+  var ly=28;segs.forEach(function(s){o+='<rect x="190" y="'+(ly-9)+'" width="11" height="11" rx="3" fill="'+s.c+'"/><text x="208" y="'+ly+'" font-size="11.5" fill="#1a2b2a" font-weight="700">'+s.n+'</text><text x="362" y="'+ly+'" text-anchor="end" font-size="11.5" fill="#8aa29d">'+s.v+'</text>';ly+=22});
+  return o+'</svg>';
+}
+function hbars(rows,max){
+  max=max||Math.max.apply(null,rows.map(function(r){return r.v}));
+  return rows.map(function(r){return '<div class="bar-row"><div class="nm">'+r.n+'</div><div class="tk"><div class="fl" style="width:'+(r.v/max*100).toFixed(0)+'%'+(r.c?';background:'+r.c:'')+'"></div></div><div class="vv">'+(r.vl||r.v)+'</div></div>'}).join('');
+}
+
+/* ---------- DASHBOARD render ---------- */
+document.getElementById('asof').textContent='Sample data · as at '+NOW.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+(function(){
+  var kp=[
+    {l:'Active members',v:active.length,d:'+'+newThisMonth+' this month',c:'up'},
+    {l:'Recurring revenue',v:money(mrr)+'/mo',d:'MRR',c:'flat'},
+    {l:'Revenue this month',v:k(thisRev),d:'+6.2% vs last yr',c:'up'},
+    {l:'Net contribution',v:k(thisNet),d:(thisNet/thisRev*100).toFixed(0)+'% margin',c:'up'},
+    {l:'Retention (12mo)',v:'91%',d:'churn 9%',c:'up'},
+    {l:'At-risk members',v:atRisk,d:'need a nudge',c:'down'}
+  ];
+  document.getElementById('kpis').innerHTML=kp.map(function(x){return '<div class="kpi"><div class="l">'+x.l+'</div><div class="v">'+x.v+'</div><div class="d '+x.c+'">'+x.d+'</div></div>'}).join('');
+  document.getElementById('revChart').innerHTML=stackedBars([revM,revT,revD,revR],MLAB,['#0f5b53','#20b2a2','#c9a978','#9bb7b2'],230);
+  // mix donut
+  var mix=PLANS.map(function(p,i){return {n:p.name.replace('&amp;','&').replace(' (per head)',''),v:MEMBERS.filter(function(m){return m.planId===p.id&&m.status!=='Expired'}).length,c:AVCOL[i]}}).filter(function(s){return s.v});
+  document.getElementById('mixChart').innerHTML=donut(mix,210);
+  // age
+  var bands=[['18–24',0],['25–34',0],['35–44',0],['45–54',0],['55–64',0],['65+',0]];
+  MEMBERS.forEach(function(m){var a=m.age;var i=a<25?0:a<35?1:a<45?2:a<55?3:a<65?4:5;bands[i][1]++});
+  document.getElementById('ageChart').innerHTML=hbars(bands.map(function(b){return {n:b[0],v:b[1]}}));
+  // gender
+  var gc={F:0,M:0,X:0};MEMBERS.forEach(function(m){gc[m.gender]++});
+  document.getElementById('genChart').innerHTML=donut([{n:'Female',v:gc.F,c:'#15867a'},{n:'Male',v:gc.M,c:'#c9a978'},{n:'Other',v:gc.X,c:'#9bb7b2'}],210);
+  // geo
+  var gt={};MEMBERS.forEach(function(m){gt[m.town]=(gt[m.town]||0)+1});
+  var geo=Object.keys(gt).map(function(t){return {n:t,v:gt[t]}}).sort(function(a,b){return b.v-a.v}).slice(0,7);
+  document.getElementById('geoChart').innerHTML=hbars(geo);
+  // attention
+  var expCt=42,failCt=7,riskCt=atRisk,renewCt=19;
+  var att=[
+    {ic:'⚠️',bg:'#fbf0dd',t:riskCt+' members at risk',s:'No visit in 3+ weeks — send a win-back offer.'},
+    {ic:'💳',bg:'#f6e7e6',t:failCt+' failed payments',s:'Card declined this month — auto-retry scheduled.'},
+    {ic:'⏳',bg:'#eef1f7',t:expCt+' memberships expiring',s:'End within 30 days — '+renewCt+' not yet set to renew.'},
+    {ic:'🎉',bg:'#e4f3ec',t:newThisMonth+' new joiners',s:'Welcome journey running; 1st-class booking prompt sent.'}
+  ];
+  document.getElementById('attention').innerHTML=att.map(function(a){return '<div class="it"><div class="ic" style="background:'+a.bg+'">'+a.ic+'</div><div><div class="t">'+a.t+'</div><div class="s">'+a.s+'</div></div></div>'}).join('');
+  // peak
+  var peak=[['Mon',0],['Tue',0],['Wed',0],['Thu',0],['Fri',0],['Sat',0],['Sun',0]];
+  var shape=[0.9,0.85,0.95,1.0,1.15,1.6,1.25];
+  peak.forEach(function(p,i){p[1]=Math.round(active.length*shape[i]*0.42)});
+  document.getElementById('peakChart').innerHTML=hbars(peak.map(function(p){return {n:p[0],v:p[1]}}));
+})();
+
+/* ---------- MEMBERS table ---------- */
+var msort={k:'ltv',dir:-1};
+(function(){
+  var sel=document.getElementById('mplan');
+  PLANS.forEach(function(p){var o=document.createElement('option');o.textContent=p.name.replace('&amp;','&');o.value=p.name;sel.appendChild(o)});
+})();
+function fmtMembers(){
+  var q=(document.getElementById('msearch').value||'').toLowerCase();
+  var st=document.getElementById('mstatus').value, pl=document.getElementById('mplan').value;
+  var rows=MEMBERS.filter(function(m){
+    if(st&&m.status!==st)return false;
+    if(pl&&m.plan.replace('&amp;','&')!==pl)return false;
+    if(q&&!(m.name.toLowerCase().indexOf(q)>=0||m.plan.toLowerCase().indexOf(q)>=0||m.town.toLowerCase().indexOf(q)>=0))return false;
+    return true;
+  });
+  rows.sort(function(a,b){var k=msort.k,va,vb;
+    if(k==='name'){va=a.name;vb=b.name;return va<vb?-msort.dir:va>vb?msort.dir:0}
+    if(k==='status'){va=STATUS_ORDER[a.status];vb=STATUS_ORDER[b.status]}
+    else if(k==='joined'){va=a.joined;vb=b.joined}
+    else if(k==='last'){va=-a.lastN;vb=-b.lastN}
+    else{va=a[k];vb=b[k]}
+    return (va-vb)*msort.dir;
+  });
+  document.getElementById('memcount').textContent=rows.length+' of '+MEMBERS.length+' members';
+  var html=rows.slice(0,400).map(function(m){
+    var init=m.name.split(' ').map(function(x){return x[0]}).slice(0,2).join('');
+    return '<tr><td><div class="nmcell"><span class="av" style="background:'+m.col+'">'+init+'</span><div><div style="font-weight:700">'+m.name+'</div><div class="sub">'+m.town+'</div></div></div></td>'+
+      '<td>'+m.plan.replace('&amp;','&')+'<div class="sub">'+money(m.price)+'/mo</div></td>'+
+      '<td>'+statusTag(m.status)+'</td><td>'+m.age+'</td><td>'+dstr(m.joined)+'</td>'+
+      '<td>'+(m.lastN<=1?'Today':m.lastN+'d ago')+'</td><td>'+m.visits+'</td>'+
+      '<td style="font-weight:700">'+money(m.ltv)+'</td></tr>';
+  }).join('');
+  document.getElementById('mbody').innerHTML=html;
+}
+['msearch','mstatus','mplan'].forEach(function(id){document.getElementById(id).addEventListener('input',fmtMembers)});
+document.querySelectorAll('#mtable thead th').forEach(function(th){th.addEventListener('click',function(){var k=th.dataset.k;if(msort.k===k)msort.dir*=-1;else{msort.k=k;msort.dir=(k==='name')?1:-1}fmtMembers()})});
+
+/* ---------- PLANS ---------- */
+(function(){
+  document.getElementById('plansWrap').innerHTML=PLANS.map(function(p){
+    return '<div class="plan'+(p.feat?' feat':'')+'"><div class="pn">'+p.name+'</div>'+
+      '<div class="pp">'+money(p.price)+'<small>/mo</small></div>'+(p.note?'<div class="sub">'+p.note+'</div>':'')+
+      '<ul>'+p.inc.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>'+
+      '<div class="cnt">'+MEMBERS.filter(function(m){return m.planId===p.id&&m.status!=='Expired'}).length+' members on this plan</div></div>';
+  }).join('');
+  var rows=PLANS.map(function(p,i){var c=MEMBERS.filter(function(m){return m.planId===p.id&&m.status!=='Expired'});var rev=c.reduce(function(s,m){return s+p.price},0);return {n:p.name.replace('&amp;','&').replace(' (per head)',''),v:rev,vl:money(rev)+'/mo',c:AVCOL[i]}});
+  document.getElementById('planBars').innerHTML=hbars(rows);
+})();
+
+/* ---------- CLASSES ---------- */
+(function(){
+  var DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var TIMES=['07:00','09:00','10:30','12:00','17:30','19:00'];
+  var CLASSES=[
+    {n:'Aqua Aerobics',c:'#20b2a2',cap:16},{n:'Vinyasa Yoga',c:'#0f5b53',cap:18},
+    {n:'Pilates',c:'#15867a',cap:14},{n:'Spin',c:'#c9a978',cap:12},
+    {n:'Body Conditioning',c:'#5b8f86',cap:16},{n:'Meditation',c:'#8a6d3b',cap:20},
+    {n:'Aqua Natal',c:'#2e8b6b',cap:10},{n:'Legs Bums &amp; Tums',c:'#4a5b7a',cap:16}
+  ];
+  var grid='<div class="hd"></div>'+DAYS.map(function(d){return '<div class="hd">'+d+'</div>'}).join('');
+  TIMES.forEach(function(t){
+    grid+='<div class="tm">'+t+'</div>';
+    DAYS.forEach(function(d,di){
+      var show = rnd()<(di>=5?0.8:0.62);
+      if(!show){grid+='<div class="cl e"></div>';return}
+      var c=pick(CLASSES);var booked=ri(Math.floor(c.cap*0.4),c.cap);
+      grid+='<div class="cl" style="background:'+c.c+'"><b>'+c.n+'</b><span class="cap">'+booked+'/'+c.cap+' booked</span></div>';
+    });
+  });
+  document.getElementById('ttgrid').innerHTML=grid;
+  document.getElementById('ttlegend').innerHTML=CLASSES.map(function(c){return '<div class="i"><span class="sw" style="background:'+c.c+'"></span>'+c.n+'</div>'}).join('');
+  // facilities
+  var fac=[['Swimming pool',78],['Gym floor',71],['Sauna &amp; steam',64],['Yoga / class studio',69],['Treatment rooms',83],['Relaxation lounge',52],['Spin studio',58]];
+  document.getElementById('facBars').innerHTML=fac.map(function(f){return '<div class="fac"><div class="nm">'+f[0]+'</div><div class="tk"><div class="fl" style="width:'+f[1]+'%"></div></div><div class="pc">'+f[1]+'%</div></div>'}).join('');
+  // treatments today
+  var TR=[['09:30','Hot Stone Massage · 50m','Room 1 · Anya','#20b2a2'],['10:30','Marine Back Treatment · 50m','Room 3 · Mia','#0f5b53'],['11:15','Anti-Ageing Facial · 60m','Room 2 · Rosa','#c9a978'],['13:00','Couples Indulging Spa Day','Suite · Anya & Leo','#15867a'],['14:30','Full Body Massage · 50m','Room 1 · Leo','#5b8f86'],['16:00','Express Facial · 30m','Room 2 · Rosa','#2e8b6b']];
+  document.getElementById('treat').innerHTML=TR.map(function(t){return '<div class="it"><div class="ic" style="background:'+t[3]+'22;color:'+t[3]+'">💆</div><div><div class="t">'+t[1]+'</div><div class="s">'+t[0]+' · '+t[2]+'</div></div><div style="margin-left:auto" class="pill">Booked</div></div>'}).join('');
+})();
+
+/* ---------- REVENUE ---------- */
+(function(){
+  var kp=[{l:'Revenue this month',v:k(thisRev)},{l:'Costs this month',v:k(thisCost)},{l:'Net contribution',v:k(thisNet)},{l:'Net margin',v:(thisNet/thisRev*100).toFixed(0)+'%'}];
+  document.getElementById('revkpis').innerHTML=kp.map(function(x){return '<div class="kpi"><div class="l">'+x.l+'</div><div class="v">'+x.v+'</div></div>'}).join('');
+  document.getElementById('revmonth').textContent='Sample data · '+new Date(NOW.getFullYear(),NOW.getMonth(),1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  var inc=[['Memberships',revM[11],'#0f5b53'],['Treatments',revT[11],'#20b2a2'],['Day passes',revD[11],'#c9a978'],['Retail',revR[11],'#9bb7b2']];
+  document.getElementById('incBars').innerHTML=hbars(inc.map(function(r){return {n:r[0],v:r[1],vl:money(r[1]),c:r[2]}}));
+  var base=thisCost;
+  var costs=[['Therapists &amp; staff',base*0.52,'#c0433f'],['Products &amp; consumables',base*0.11,'#cf6f52'],['Pool &amp; utilities',base*0.17,'#c98a2a'],['Laundry &amp; linen',base*0.06,'#8a6d3b'],['Maintenance',base*0.08,'#5b8f86'],['Marketing',base*0.06,'#4a5b7a']];
+  document.getElementById('costBars').innerHTML=hbars(costs.map(function(r){return {n:r[0],v:r[1],vl:money(r[1]),c:r[2]}}));
+  var net=totM.map(function(v,i){return v-costM[i]});
+  document.getElementById('netChart').innerHTML=lineChart([totM,costM,net],MLAB,['#0f5b53','#c0433f','#c9a978'],230,false);
+})();
+
+/* ---------- TREATMENTS & PACKAGES (real Granite Leisure menu) ---------- */
+var SPA_SERVICES=[
+ {cat:'Massage & Body', items:[
+   {n:'Scalp Massage',min:30,p:60},
+   {n:'Salt & Oil Scrub',min:30,p:65},
+   {n:'Back, Neck & Shoulder',min:30,p:65},
+   {n:'Hot Poultice Massage',min:30,p:65},
+   {n:'Hot Stone Massage',min:30,p:70},
+   {n:'Marine Back Treatment',min:50,p:85},
+   {n:'Body Scrub',min:50,p:85,from:true},
+   {n:'Full Body Massage',min:50,p:90},
+   {n:'Face & Body Experience',min:50,p:90},
+   {n:'Hot Stone Massage',min:50,p:95},
+   {n:'Hot Poultice Massage',min:50,p:95},
+   {n:'Stress Reliever Massage',min:50,p:95}
+ ]},
+ {cat:'Facials', items:[
+   {n:'Express Facial',min:30,p:60},
+   {n:"Men's Facial",min:50,p:85},
+   {n:'Facial',min:50,p:90},
+   {n:'Anti-Ageing Facial',min:60,p:95}
+ ]},
+ {cat:'Hands & Feet', items:[
+   {n:'Express Pedicure',min:25,p:40},
+   {n:'Hand Recovery',min:30,p:42},
+   {n:'Foot Recovery',min:30,p:42},
+   {n:'Manicure Grooming',min:40,p:45},
+   {n:'Toe Tidy',min:40,p:45},
+   {n:'Express Gel Manicure',min:35,p:55},
+   {n:'Express Gel Pedicure',min:35,p:55},
+   {n:'Luxurious Hand Experience',min:50,p:70},
+   {n:'Luxurious Foot Experience',min:50,p:70}
+ ]},
+ {cat:'Pregnancy', items:[
+   {n:'Pregnancy Massage',min:60,p:95}
+ ]},
+ {cat:'Waxing & Tinting', items:[
+   {n:'Upper Lip Wax',p:12},
+   {n:'Chin Wax',p:12},
+   {n:'Eyebrow Tint',p:12,note:'patch test'},
+   {n:'Eyebrow Wax',p:15},
+   {n:'Underarm Wax',p:15},
+   {n:'Eyelash Tint',p:20,note:'patch test'},
+   {n:'Half Leg Wax',p:27},
+   {n:'Full Arm Wax',p:30},
+   {n:'Bikini Line Wax',p:30},
+   {n:'Three-quarter Leg Wax',p:32},
+   {n:'Full Leg Wax',p:42}
+ ]}
+];
+var SPA_PACKAGES=[
+ {n:'Refreshing Spa Day for 2',p:170,meta:'For 2 · full day',inc:'Full spa access with robes & slippers, afternoon tea, and one 25-minute treatment per person.'},
+ {n:'Couples Indulging Spa Day',p:220,meta:'For 2 · full day',inc:'Full spa access with robes & slippers, light spa lunch, and one 50-minute treatment per person.'},
+ {n:'Afternoon Tea & Treat Yourself',p:199,meta:'For 1 · overnight',inc:'Full spa access, one night stay, afternoon tea, and one 50-minute treatment.'},
+ {n:'Dinner, Bed & Breakfast & Pamper',p:295,meta:'For 1 · overnight',inc:'Full spa access, one night stay, dinner & breakfast, and one 50-minute treatment.'},
+ {n:'Black Friday: 12 Express Facials',p:199,meta:'One a month · gift option',inc:'Twelve 30-minute express facials, one per month. Start any time up to January; a missed month can’t be rolled over.'}
+];
+(function(){
+  document.getElementById('pkgWrap').innerHTML=SPA_PACKAGES.map(function(p){
+    return '<div class="card pad" style="display:flex;flex-direction:column"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">'+
+      '<div style="font-weight:800;font-size:15px;color:var(--navy)">'+p.n+'</div>'+
+      '<div class="disp" style="font-size:24px;font-weight:700;color:var(--spa)">'+money(p.p)+'</div></div>'+
+      '<div class="pill" style="align-self:flex-start;margin:8px 0 10px">'+p.meta+'</div>'+
+      '<div style="font-size:13px;color:var(--mut);line-height:1.5">'+p.inc+'</div></div>';
+  }).join('');
+  document.getElementById('svcWrap').innerHTML='<div class="g2b">'+SPA_SERVICES.map(function(c){
+    var rows=c.items.map(function(it){
+      var dur=it.min?('<span class="sub">'+it.min+' min</span>'):'';
+      return '<div style="display:flex;align-items:baseline;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">'+
+        '<div style="font-weight:700;font-size:13.5px">'+it.n+(it.note?' <span class="sub">('+it.note+')</span>':'')+'</div>'+
+        '<div style="margin-left:auto;text-align:right;white-space:nowrap">'+dur+' <b style="color:var(--navy);margin-left:8px">'+(it.from?'from ':'')+money(it.p)+'</b></div></div>';
+    }).join('');
+    return '<div class="card pad"><div class="ct">'+c.cat+'</div>'+rows+'</div>';
+  }).join('')+'</div>';
+})();
+
+/* ---------- tabs ---------- */
+document.getElementById('tabs').addEventListener('click',function(e){
+  var b=e.target.closest('.tab');if(!b)return;
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('on',t===b)});
+  document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('on',v.id==='v-'+b.dataset.v)});
+  window.scrollTo(0,0);
+});
+fmtMembers();
+</script>
+</body>
+</html>

@@ -5209,7 +5209,7 @@ function renderHome(v){
       card.onmouseover = () => { card.style.borderColor=m.colour; card.style.boxShadow='0 4px 14px rgba(0,0,0,.10)'; card.style.transform='translateY(-2px)'; };
       card.onmouseout  = () => { card.style.borderColor='transparent'; card.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'; card.style.transform=''; };
       // HosREV opens straight on its dashboard (the sub-nav still shows its other screens)
-      card.onclick = () => (m.id==='hosrev' && RENDER_MAP.revDash) ? switchTab('revDash') : (m.id==='hoshouse' ? switchTab('hhHub') : m.id==='hosfire' ? (location.href='hosfire.html') : (m.id==='hosstudio' && HP_MKT_LOCK && !hpMktUnlocked()) ? hpMktPrompt() : renderModuleLanding(m.id));
+      card.onclick = () => (m.id==='hosrev' && RENDER_MAP.revDash) ? switchTab('revDash') : (m.id==='hoshouse' ? switchTab('hhHub') : m.id==='hosfire' ? (location.href='hosfire.html') : m.id==='hosspa' ? (location.href='hosspa.html') : (m.id==='hosstudio' && HP_MKT_LOCK && !hpMktUnlocked()) ? hpMktPrompt() : renderModuleLanding(m.id));
       if(!hpCanAccess(m.id)){
         card.style.cssText += ';opacity:.45;filter:grayscale(1);cursor:not-allowed;box-shadow:none';
         card.title = m.name+' is restricted';
@@ -5506,6 +5506,7 @@ function renderModuleLanding(moduleId){
   if(moduleId==='hoshouse'){ CURRENT_TAB='hhHub'; render(); return; }
   // HosFIRE is its own page (hosfire.html); this opens its launch screen
   if(moduleId==='hosfire'){ location.href='hosfire.html'; return; }
+  if(moduleId==='hosspa'){ location.href='hosspa.html'; return; }
   if(!hpCanAccess(moduleId)){ toast('🔒 That area is restricted. Ask Raj or Ajay if you need access.'); if(CURRENT_TAB!=="home"){ CURRENT_TAB="home"; render(); } return; }
   if(window.scrollY) window.scrollTo(0,0);
   { const ap=document.getElementById("app"); if(ap && ap.scrollTop) ap.scrollTop=0; }

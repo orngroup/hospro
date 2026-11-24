@@ -947,6 +947,7 @@ MODULE_GROUPS = [
   { id:'rev',     label:'Revenue',              icon:'💹', colour:'#1F7A8C', modules:['hosrev'] },
   { id:'house',   label:'Housekeeping',         icon:'🧹', colour:'#2E6B5E', modules:['hoshouse'] },
   { id:'fire',    label:'Fire Safety',          icon:'🔥', colour:'#B3261E', modules:['hosfire'] },
+  { id:'spa',     label:'Spa & Health Club',    icon:'💆', colour:'#0F5B53', modules:['hosspa'] },
 ];
 
 /* colour = deep module shade (sub-nav bar, white text) · tint = pastel (home card, active tab) */
@@ -973,6 +974,8 @@ FLOW_MODULES = [
     tabs:["hhHub"] },
   { id:"hosfire",   name:"HosFIRE",    caption:"Fire safety. Checks. Actions. Records.", icon:"🔥", colour:"#B3261E", tint:"#FBE7E4",
     tabs:["fireHub"] },
+  { id:"hosspa",    name:"HosSPA",     caption:"Spa. Memberships. Classes. Treatments.", icon:"💆", colour:"#0F5B53", tint:"#E2F0ED",
+    tabs:["spaHub"] },
 ];
 
 /* Tab metadata (label + icon) for sidebar links and cards */
@@ -1028,6 +1031,7 @@ const TAB_META = {
   revSettings:{label:"HosREV Settings",icon:"⚙️"},
   hhHub:{label:"Housekeeping",icon:"🧹"},
   fireHub:{label:"Fire Safety (HosFIRE)",icon:"🔥"},
+  spaHub:{label:"Spa & Health Club (HosSPA)",icon:"💆"},
   help:{label:"Help & Guides",icon:"❔"}
 };
 
@@ -1057,7 +1061,7 @@ const DEFAULT_ACCESS = {
     director:     { name:"Director",       allow:"all" },
     sales:        { name:"Sales & Events", tabs: _tabsOf(["hossales","hosvenue","hosstudio","hosbrand"]).concat(["hubDocs","hubContracts","hubSuppliers"]) },
     finance:      { name:"Finance",        tabs: ["payments","hubFinance","hubHR","rotaPayroll","staffDash","staffProfiles","staffLeave","staffLeaveAdmin","staffDocs","financial"] },
-    operations:   { name:"Operations",     tabs: _tabsOf(["hosrev","hosfix","hoscom"]).concat(["rooms","groupconfig","packages","hhHub","fireHub","rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings"]) },
+    operations:   { name:"Operations",     tabs: _tabsOf(["hosrev","hosfix","hoscom"]).concat(["rooms","groupconfig","packages","hhHub","fireHub","spaHub","rotaDash","rotaWeek","rotaForecast","rotaMonthly","rotaSettings"]) },
     housekeeping: { name:"Housekeeping",   tabs: ["hhHub"] }
   },
   users: {
