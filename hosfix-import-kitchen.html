@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HosFIX — load kitchen / F&B jobs</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:660px;margin:0 auto;padding:24px;background:#f6f7f9;color:#1f2937}
+  h1{font-size:20px;margin:0 0 4px}.sub{color:#6b7280;font-size:13px;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px;margin-bottom:16px}
+  button{background:#965638;color:#fff;border:0;border-radius:10px;padding:12px 18px;font-size:15px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .log{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#0f172a;color:#cbd5e1;border-radius:8px;padding:12px;margin-top:14px;max-height:360px;overflow:auto;white-space:pre-wrap}
+  .ok{color:#34d399}.err{color:#f87171}.muted{color:#94a3b8}.urg{color:#fbbf24}
+  .warn{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px}
+</style></head><body>
+<h1>HosFIX — load the kitchen / F&B jobs</h1>
+<p class="sub">Writes 8 new maintenance jobs (all assigned to <b>Raj</b> to allocate) and sends a new-job alert to <b>Raj</b> and <b>Ajay</b>. Safe to run twice — it overwrites the same records, no duplicates.</p>
+<div class="warn">Open once, click the button, wait for "DONE", then close it. No need to upload this file to the site.</div>
+<div class="card">
+  <button id="go" onclick="run()">Load 8 kitchen jobs + alert Raj & Ajay</button>
+  <div class="log muted" id="log">Ready.</div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+var JOBS = [{"id": "kfb-01", "title": "Rational oven — awaiting part", "area": "food_beverage", "areaLabel": "Food & Beverage", "location": "Kitchen", "workType": "general", "description": "Rational combi oven still down awaiting a part. Last update from Glenn was that we're still waiting on the part — chase supplier for ETA.", "status": "not-started", "priority": "medium", "assignees": ["raj"], "occupancy": "", "cost": 0, "module": "maintenance", "photos": [], "voiceNote": null, "materials": [], "notes": [{"text": "Logged 24 Nov from the kitchen maintenance list", "by": "Raj", "at": "24 Nov"}, {"text": "In progress with Glenn — waiting on the part.", "by": "Raj", "at": "24 Nov"}], "createdAt": "2026-11-24T19:11:00.000Z", "updatedAt": "2026-11-24T19:11:00.000Z", "createdBy": "raj", "reportedBy": "Kitchen — Chef David", "source": "reporter"}, {"id": "kfb-02", "title": "Pastry fridge — needs re-gassing", "area": "food_beverage", "areaLabel": "Food & Beverage", "location": "Kitchen", "workType": "hvac", "description": "Pastry fridge (brought up from Woodlands) needs re-gassing to hold temperature. Refrigeration engineer required.", "status": "not-started", "priority": "medium", "assignees": ["raj"], "occupancy": "", "cost": 0, "module": "maintenance", "photos": [], "voiceNote": null, "materials": [], "notes": [{"text": "Logged 24 Nov from the kitchen maintenance list", "by": "Raj", "at": "24 Nov"}], "createdAt": "2026-11-24T19:12:00.000Z", "updatedAt": "2026-11-24T19:12:00.000Z", "createdBy": "raj", "reportedBy": "Kitchen — Chef David", "source": "reporter"}, {"id": "kfb-03", "title": "Brat pan — remove and relocate to Woodlands", "area": "food_beverage", "areaLabel": "Food & Beverage", "location": "Kitchen", "workType": "general", "description": "Brat pan needs removing from the kitchen and relocating to Woodlands storage. Needs disconnect and manual handling.", "status": "not-started", "priority": "medium", "assignees": ["raj"], "occupancy": "", "cost": 0, "module": "maintenance", "photos": [], "voiceNote": null, "materials": [], "notes": [{"text": "Logged 24 Nov from the kitchen maintenance list", "by": "Raj", "at": "24 Nov"}], "createdAt": "2026-11-24T19:13:00.000Z", "updatedAt": "2026-11-24T19:13:00.000Z", "createdBy": "raj", "reportedBy": "Kitchen — Chef David", "source": "reporter"}, {"id": "kfb-04", "title": "Fridge alarm — constant beeping", "area": "food_beverage", "areaLabel": "Food & Beverage", "location": "Kitchen", "workType": "electrical", "description": "The fridge alarm Glenn previously removed has ended up back on the fridge and is beeping constantly. Remove/disable or fit a working unit.", "status": "not-started", "priority": "medium", "assignees": ["raj"], "occupancy": "", "cost": 0, "module": "maintenance", "photos": [], "voiceNote": null, "materials": [], "notes": [{"text": "Logged 24 Nov from the kitchen maintenance list", "by": "Raj", "at": "24 Nov"}], "createdAt": "2026-11-24T19:14:00.000Z", "updatedAt": "2026-11-24T19:14:00.000Z", "createdBy": "raj", "reportedBy": "Kitchen — Chef David", "source": "reporter"}, {"id": "kfb-05", "title": "Food wash sink — rusty taps (EHO)", "area": "food_beverage", "areaLabel": "Food & Beverage", "location": "Kitchen", "workType": "plumbing", "description": "One of the food-wash sinks has rusty taps. This is a serious EHO / food-safety issue and needs replacing urgently.", "status": "not-started", "priority": "urgent", "assignees": ["raj"], "occupancy": "", "cost": 0, "module": "maintenance", "photos": [], "voiceNote": null, "materials": [], "notes": [{"text": "Logged 24 Nov from the kitchen maintenance list", "by": "Raj", "at": "24 Nov"}, {"text": "Flagged as a food-safety / EHO priority.", "by": "Raj", "at": "24 Nov"}], "createdAt": "2026-11-24T19:15:00.000Z", "updatedAt": "2026-11-24T19:15:00.000Z", "createdBy": "raj", "reportedBy": "Kitchen — Chef David", "source": "reporter"}, {"id": "kfb-06", "title": "KP area — refurbishment required", "area": "food_beverage", "areaLabel": "Food & Beverage", "location": "Kitchen", "workType": "general", "description": "The KP (kitchen porter / wash-up) area is in a poor state. There have been talks about ripping it out and fitting a new one. Needs assessment and a plan.", "status": "not-started", "priority": "medium", "assignees": ["raj"], "occupancy": "", "cost": 0, "module": "maintenance", "photos": [], "voiceNote": null, "materials": [], "notes": [{"text": "Logged 24 Nov from the kitchen maintenance list", "by": "Raj", "at": "24 Nov"}], "createdAt": "2026-11-24T19:16:00.000Z", "updatedAt": "2026-11-24T19:16:00.000Z", "createdBy": "raj", "reportedBy": "Kitchen — Chef David", "source": "reporter"}, {"id": "kfb-07", "title": "Sewer smell outside — grease traps", "area": "external", "areaLabel": "External / Grounds", "location": "Woodlands", "workType": "general", "description": "Sewer smell has returned outside — likely the grease traps need emptying/servicing again. Arrange grease-trap service and check drains.", "status": "not-started", "priority": "medium", "assignees": ["raj"], "occupancy": "", "cost": 0, "module": "maintenance", "photos": [], "voiceNote": null, "materials": [], "notes": [{"text": "Logged 24 Nov from the kitchen maintenance list", "by": "Raj", "at": "24 Nov"}], "createdAt": "2026-11-24T19:17:00.000Z", "updatedAt": "2026-11-24T19:17:00.000Z", "createdBy": "raj", "reportedBy": "Kitchen — Chef David", "source": "reporter"}, {"id": "kfb-08", "title": "Freshwater dispenser — persistent leak", "area": "food_beverage", "areaLabel": "Food & Beverage", "location": "Kitchen", "workType": "plumbing", "description": "There is a long-standing leak under the freshwater dispenser. Trace and repair the leak and make good.", "status": "not-started", "priority": "medium", "assignees": ["raj"], "occupancy": "", "cost": 0, "module": "maintenance", "photos": [], "voiceNote": null, "materials": [], "notes": [{"text": "Logged 24 Nov from the kitchen maintenance list", "by": "Raj", "at": "24 Nov"}], "createdAt": "2026-11-24T19:18:00.000Z", "updatedAt": "2026-11-24T19:18:00.000Z", "createdBy": "raj", "reportedBy": "Kitchen — Chef David", "source": "reporter"}];
+var NOTIFY='https://europe-west1-brandonhall-7bdef.cloudfunctions.net/notify';
+var ADMINS=['raj','ajay'];
+var logEl=document.getElementById('log');
+function log(m,c){var l=document.createElement('div');if(c)l.className=c;l.textContent=m;if(logEl.classList.contains('muted')){logEl.classList.remove('muted');logEl.textContent='';}logEl.appendChild(l);logEl.scrollTop=logEl.scrollHeight;}
+async function run(){
+  var btn=document.getElementById('go'); btn.disabled=true;
+  try{
+    if(typeof firebaseConfig==='undefined'){ log('✗ firebase-config.js not found — put this file in the site root and reload.','err'); btn.disabled=false; return; }
+    if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    var db=firebase.firestore();
+    log('Connected to '+firebaseConfig.projectId+'. Writing '+JOBS.length+' jobs…');
+    var ok=0,fail=0;
+    for(var i=0;i<JOBS.length;i++){
+      var j=JOBS[i];
+      try{ await db.collection('hosfix_jobs').doc(j.id).set(j); ok++; log('  ✓ '+j.id+'  '+j.title+(j.priority==='urgent'?'  🟠 URGENT':''), j.priority==='urgent'?'urg':'ok'); }
+      catch(e){ fail++; log('  ✗ '+j.id+'  '+((e&&e.message)||e),'err'); }
+    }
+    log(''); log('Sending alerts to Raj & Ajay…');
+    var sent=0;
+    for(var k=0;k<JOBS.length;k++){
+      var jb=JOBS[k]; var ev=(jb.priority==='urgent')?'job_urgent':'job_new';
+      try{
+        await fetch(NOTIFY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:ev, job:{id:jb.id,title:jb.title,area:jb.area,areaLabel:jb.areaLabel,location:jb.location,priority:jb.priority}, assignees:[], adminIds:ADMINS, senderId:''})});
+        sent++; log('  🔔 alert sent — '+jb.title,'muted');
+      }catch(e){ log('  (alert not sent for '+jb.title+' — '+((e&&e.message)||e)+')','err'); }
+    }
+    log(''); log('DONE — '+ok+' jobs written'+(fail?(', '+fail+' failed'):'')+', '+sent+' alerts sent to Raj & Ajay. Open HosFIX to see them.', fail?'err':'ok');
+  }catch(e){ log('✗ '+((e&&e.message)||e),'err'); }
+  btn.disabled=false;
+}
+</script></body></html>
