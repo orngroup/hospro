@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HosFIX — clear all jobs except today</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:680px;margin:0 auto;padding:24px;background:#f6f7f9;color:#1f2937}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:#6b7280;font-size:13px;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px;margin-bottom:16px}
+  button{background:#b3261e;color:#fff;border:0;border-radius:10px;padding:12px 18px;font-size:15px;font-weight:600;cursor:pointer;margin-right:8px}
+  button.scan{background:#1a2b3a}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .log{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#0f172a;color:#cbd5e1;border-radius:8px;padding:12px;margin-top:14px;max-height:380px;overflow:auto;white-space:pre-wrap}
+  .ok{color:#34d399}.err{color:#f87171}.keep{color:#fbbf24}.muted{color:#94a3b8}
+  .warn{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px}
+  code{background:#eef2f6;padding:1px 6px;border-radius:5px}
+</style></head><body>
+<h1>HosFIX — clear all jobs except today</h1>
+<p class="sub">Keeps every job logged <b id="kd">today</b> and removes all the rest from the board (hidden + deleted so they can't return). One-off tool — safe to run again.</p>
+<div class="warn">Click <b>Preview</b> first to see what will be kept vs removed, then <b>Remove older jobs</b>. You don't need to upload this file to the site.</div>
+<div class="card">
+  <button class="scan" id="scan" onclick="run(false)">1 · Preview</button>
+  <button id="go" onclick="run(true)" disabled>2 · Remove older jobs</button>
+  <div class="log muted" id="log">Ready. Click Preview to list the jobs.</div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+// "Today" in the UK (GMT in November). Change if you run this on a different day.
+var KEEP_DATE = (function(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
+document.getElementById('kd').textContent = KEEP_DATE;
+var logEl=document.getElementById('log');
+function log(msg,cls){ var l=document.createElement('div'); if(cls)l.className=cls; l.textContent=msg; if(logEl.classList.contains('muted')){logEl.classList.remove('muted');logEl.textContent='';} logEl.appendChild(l); logEl.scrollTop=logEl.scrollHeight; }
+function jobDate(j){ return String((j&&j.createdAt)||'').slice(0,10); }
+var db=null;
+function connect(){
+  if(typeof firebaseConfig==='undefined'){ log('✗ firebase-config.js not found. Put this file in the site root (next to firebase-config.js) and reload.','err'); return false; }
+  if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  db=firebase.firestore(); return true;
+}
+async function run(doDelete){
+  document.getElementById('scan').disabled=true; document.getElementById('go').disabled=true;
+  try{
+    if(!db && !connect()){ document.getElementById('scan').disabled=false; return; }
+    log((doDelete?'Removing':'Scanning')+'… keeping only jobs logged '+KEEP_DATE);
+    var snap=await db.collection('hosfix_jobs').get();
+    var keep=[], remove=[];
+    snap.forEach(function(doc){ var j=doc.data()||{}; (jobDate(j)===KEEP_DATE ? keep : remove).push({id:doc.id, title:(j.title||'(untitled)'), date:jobDate(j)||'no date', hidden:!!j.demoHidden}); });
+    log('Found '+snap.size+' jobs total — '+keep.length+' from today (keep), '+remove.length+' older (remove).');
+    log('');
+    keep.forEach(function(j){ log('  KEEP   '+j.date+'  '+j.title, 'keep'); });
+    if(keep.length) log('');
+    if(!doDelete){
+      remove.forEach(function(j){ log('  remove '+j.date+'  '+j.title+(j.hidden?'  (already hidden)':''), 'muted'); });
+      log('');
+      log('Preview only — nothing changed. Click "Remove older jobs" to clear the '+remove.length+' older jobs.', 'ok');
+      document.getElementById('scan').disabled=false; document.getElementById('go').disabled=(remove.length===0);
+      return;
+    }
+    var now=new Date().toISOString(), ok=0, fail=0;
+    for(var i=0;i<remove.length;i++){
+      var r=remove[i];
+      try{
+        // 1) tombstone so every open device hides it and can't re-create it
+        await db.collection('hosfix_jobs').doc(r.id).set({demoHidden:true, deleted:true, status:'cancelled', updatedAt:now}, {merge:true});
+        // 2) hard-delete to keep the database tidy
+        try{ await db.collection('hosfix_jobs').doc(r.id).delete(); }catch(e){}
+        ok++; log('  ✓ removed  '+r.date+'  '+r.title, 'ok');
+      }catch(e){ fail++; log('  ✗ '+r.title+'  '+((e&&e.message)||e), 'err'); }
+    }
+    log('');
+    log('DONE — removed '+ok+(fail?(', '+fail+' failed'):'')+'. Kept '+keep.length+' job(s) from today. Refresh HosFIX to see the clean board.', fail?'err':'ok');
+  }catch(e){ log('✗ '+((e&&e.message)||e),'err'); document.getElementById('scan').disabled=false; }
+}
+</script></body></html>
