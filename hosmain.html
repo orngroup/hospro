@@ -172,7 +172,7 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
 .f-field label{display:block;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .f-field input,.f-field select,.f-field textarea{
   width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px;
-  font:14px 'Lato';color:var(--ink);background:#fff;-webkit-appearance:none;appearance:none}
+  font:16px 'Lato';color:var(--ink);background:#fff;-webkit-appearance:none;appearance:none}
 .f-field textarea{min-height:70px;resize:vertical}
 .f-field select:focus,.f-field input:focus,.f-field textarea:focus{outline:none;border-color:var(--amber)}
 /* reporter form — real-app card layout */
@@ -297,7 +297,15 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
 .jchat-empty{color:#9aa6b4;font-size:12.5px;text-align:center;padding:14px 0}
 .jcomp{display:flex;gap:7px;align-items:center;margin-bottom:12px}
 .jcomp .att{width:38px;height:38px;border-radius:50%;background:#eef1f5;border:0;font-size:17px;cursor:pointer;flex:none}
-.jcomp input{flex:1;border:1px solid var(--line);background:#f5f7f9;border-radius:20px;padding:9px 13px;font:14px inherit;outline:none}
+.jcomp input{flex:1;border:1px solid var(--line);background:#f5f7f9;border-radius:20px;padding:9px 13px;font:16px inherit;outline:none}
+/* Stop iOS Safari from auto-zooming (and staying zoomed) when a field is tapped — any control under 16px triggers it */
+input:not([type=checkbox]):not([type=radio]), textarea, select{ font-size:16px; }
+/* Fit nicely on tablet / desktop: centre the app in a phone-width column instead of stretching edge to edge */
+@media (min-width:760px){
+  #app{ max-width:620px; margin:0 auto; box-shadow:0 0 50px rgba(16,29,51,.10); }
+  #modal-sheet{ max-width:620px; margin-left:auto; margin-right:auto; border-radius:20px; }
+  #modal-bg.open{ align-items:center; }
+}
 .jcomp .snd{width:40px;height:40px;border-radius:50%;background:#2f7a72;border:0;color:#fff;font-size:16px;cursor:pointer;flex:none}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -447,7 +455,7 @@ button{font-family:'Lato',sans-serif;touch-action:manipulation}
       <div id="lg-names" style="display:flex;flex-wrap:wrap;gap:9px;justify-content:center;max-width:340px"></div>
       <div id="lg-addname" style="display:none;margin-top:14px;width:100%;max-width:320px">
         <input id="lg-newname" placeholder="Or type your name" autocomplete="off"
-          style="width:100%;padding:13px 15px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font:600 15px 'Lato';text-align:center;box-sizing:border-box">
+          style="width:100%;padding:13px 15px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font:600 16px 'Lato';text-align:center;box-sizing:border-box">
         <button class="lg-btn" onclick="lgAddName()" style="margin-top:9px">＋ Add &amp; sign in</button>
       </div>
       <button type="button" onclick="lgBackToCode()" style="margin-top:14px;background:none;border:none;color:rgba(255,255,255,.6);font-size:13px;cursor:pointer;text-decoration:underline">← Back</button>
@@ -794,7 +802,7 @@ function renderActiveToday(){
   if(admin){
     const opts=USERS.filter(u=>!d.roster.includes(u.id)).map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
     add=`<div style="margin-top:12px;display:flex;gap:8px">
-      <select id="duty-add" style="flex:1;background:#fff;color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:13px">
+      <select id="duty-add" style="flex:1;background:#fff;color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:16px">
         <option value="">+ Add a name…</option>${opts}</select>
       <button type="button" onclick="addDuty(document.getElementById('duty-add').value)" style="padding:10px 15px;border:none;border-radius:10px;background:var(--navy);color:#fff;font:700 13px 'Lato';cursor:pointer">Add</button>
     </div>`;
@@ -982,15 +990,21 @@ function renderDashboard(){
   const first=MY_USER?.name.split(' ')[0]||'';
   const dateStr=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
 
-  // ── Maintenance health score ──
-  let score = 100 - Math.min(40, urgent.length*8) - Math.min(30, notstart.length*1.2) - Math.min(12, inprog.length*0.5);
-  score = Math.max(20, Math.round(score));
-  const band = score>=85?['Excellent','#2f7a72'] : score>=70?['Good','#3A8A81'] : score>=50?['Fair','#997300'] : ['Needs work','#c45c00'];
-  const CIRC=289, off=Math.round(CIRC*(1-score/100));
-  const hrow=(bg,fg,ic,n,lbl)=>`<div style="display:flex;align-items:center;gap:10px;font-size:13.5px">
-    <div style="width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:13px;background:${bg};color:${fg}">${ic}</div>
-    <span style="font-weight:800;color:var(--navy);min-width:18px">${n}</span><span style="color:#49566a">${lbl}</span></div>`;
+  // ── Progress ring: total jobs = 100%, split green/yellow/red ──
+  const nComplete = complete.length;
+  const nInprog   = inprog.length;
+  const nOutstand = open.length - inprog.length;          // everything open that isn't in-progress
+  const total     = nComplete + open.length;              // all jobs
+  const pct = n => total ? Math.round(n/total*100) : 0;
+  const pctComplete = pct(nComplete);
+  const CIRC=289;
+  const seg = n => total ? CIRC*(n/total) : 0;
+  const gLen=seg(nComplete), yLen=seg(nInprog), rLen=seg(nOutstand);
+  const GREEN='#2a9d6b', YELLOW='#e0a92a', RED='#d64d44';
   const attn = open.slice().sort((a,b)=>{ const r=s=>s.priority==='urgent'?0:(s.status==='not-started'?1:2); return r(a)-r(b); }).slice(0,3);
+  const legend=(c,lbl,n)=>`<div style="display:flex;align-items:center;gap:9px;font-size:13.5px">
+    <span style="width:12px;height:12px;border-radius:50%;background:${c};flex:none"></span>
+    <span style="font-weight:800;color:var(--navy);min-width:18px">${n}</span><span style="color:#49566a;flex:1">${lbl}</span><span style="color:#7a8494;font-weight:700">${pct(n)}%</span></div>`;
 
   let html=`<div style="padding:34px 18px 2px">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--navy)">${greet}, ${first}</div>
@@ -999,20 +1013,24 @@ function renderDashboard(){
 
   <div style="margin:12px 14px 0;background:#fff;border-radius:18px;box-shadow:0 2px 10px rgba(24,43,62,.06);padding:16px">
     <div style="display:flex;align-items:center;gap:16px">
-      <div style="position:relative;width:104px;height:104px;flex:none">
-        <svg width="104" height="104" viewBox="0 0 104 104" style="transform:rotate(-90deg)">
-          <circle cx="52" cy="52" r="46" fill="none" stroke="#eef1f4" stroke-width="10"></circle>
-          <circle cx="52" cy="52" r="46" fill="none" stroke="${band[1]}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${CIRC}" stroke-dashoffset="${off}"></circle>
+      <div style="position:relative;width:110px;height:110px;flex:none">
+        <svg width="110" height="110" viewBox="0 0 104 104" style="transform:rotate(-90deg)">
+          <circle cx="52" cy="52" r="46" fill="none" stroke="#eef1f4" stroke-width="11"></circle>
+          ${total?`
+          <circle cx="52" cy="52" r="46" fill="none" stroke="${GREEN}"  stroke-width="11" stroke-dasharray="${gLen} ${CIRC-gLen}" stroke-dashoffset="0"></circle>
+          <circle cx="52" cy="52" r="46" fill="none" stroke="${YELLOW}" stroke-width="11" stroke-dasharray="${yLen} ${CIRC-yLen}" stroke-dashoffset="${-gLen}"></circle>
+          <circle cx="52" cy="52" r="46" fill="none" stroke="${RED}"    stroke-width="11" stroke-dasharray="${rLen} ${CIRC-rLen}" stroke-dashoffset="${-(gLen+yLen)}"></circle>`:''}
         </svg>
         <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center">
-          <div><div style="font-size:30px;font-weight:800;color:var(--navy);line-height:1">${score}</div>
-          <div style="font-size:9.5px;font-weight:700;letter-spacing:.3px;color:${band[1]};text-transform:uppercase">${band[0]}</div></div>
+          <div><div style="font-size:28px;font-weight:800;color:var(--navy);line-height:1">${total?pctComplete+'%':'—'}</div>
+          <div style="font-size:9.5px;font-weight:700;letter-spacing:.3px;color:#7a8494;text-transform:uppercase">Complete</div></div>
         </div>
       </div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:9px">
-        ${hrow('#e4f1ea','#2a6a4a','✓',complete.length,'Resolved')}
-        ${hrow('#fbf3dd','#997300','⏱',inprog.length,'In progress')}
-        ${hrow('#fdece0','#c45c00','▲',urgent.length,'Urgent open')}
+      <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+        ${legend(GREEN,'Complete',nComplete)}
+        ${legend(YELLOW,'In progress',nInprog)}
+        ${legend(RED,'Outstanding',nOutstand)}
+        <div style="font-size:11.5px;color:#9aa6b4;border-top:1px solid #eef1f4;padding-top:7px">${total} job${total===1?'':'s'} total</div>
       </div>
     </div>
     ${attn.length?`<div style="margin-top:14px;border-top:1px solid #eef1f4;padding-top:12px">
