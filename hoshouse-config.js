@@ -438,15 +438,17 @@
       const by=opts.by||'';
       const src=opts.source||'HosHOUSE';
       const fullDesc=desc+(by?('\n\nReported by '+by):'')+'\nSource: '+src+(loc?(' · '+loc):'')+(opts.roomType?(' · '+opts.roomType):'');
-      // cap photos so the Firestore doc stays well under 1 MB
-      let photos=Array.isArray(opts.photos)?opts.photos.filter(Boolean).slice(0,3):[];
-      while(photos.length && JSON.stringify(photos).length>820000) photos.pop();
+      // cap photos (and voice note) so the Firestore doc stays well under 1 MB
+      let photos=Array.isArray(opts.photos)?opts.photos.filter(Boolean).slice(0,6):[];
+      let voiceNote=opts.voiceNote||null;
+      while(photos.length && (JSON.stringify(photos).length + (voiceNote?voiceNote.length:0))>820000) photos.pop();
+      if(voiceNote && voiceNote.length>820000) voiceNote=null;
       const job={
         id, title: opts.title || (loc?(loc+' — '+(desc||'Maintenance').slice(0,48)):(desc||'Maintenance').slice(0,56)),
         area, areaLabel:AREALAB[area]||area, location:loc, workType:opts.workType||'',
         description:fullDesc, status:'not-started', priority:opts.priority||'medium',
         assignees:(opts.assignees&&opts.assignees.length)?opts.assignees:['raj'],
-        cost:0, module:'maintenance', photos:photos, materials:[], notes:[],
+        cost:0, module:'maintenance', photos:photos, voiceNote:voiceNote, materials:[], notes:[],
         createdAt:now, updatedAt:now, createdBy:src, reportedBy:by,
         source:src, room:room, roomType:opts.roomType||'', reportedDate:opts.date||now.slice(0,10),
         approvedBy:null, approvedAt:null, completedAt:null

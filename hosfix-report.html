@@ -55,9 +55,12 @@
     <label class="l">Your name</label>
     <input id="by" placeholder="e.g. Front Desk — Sarah">
 
-    <label class="l">Photo (optional)</label>
-    <input type="file" id="photo" accept="image/*" capture="environment" onchange="loadPhoto(this)">
+    <label class="l">📷 Photos (optional — add as many as you like)</label>
+    <input type="file" id="photo" accept="image/*" capture="environment" multiple onchange="loadPhoto(this)">
     <div class="photo-prev" id="prev"></div>
+
+    <label class="l">🎙️ Voice note (optional — up to 20 seconds)</label>
+    <div id="voicebox"></div>
 
     <button class="sub" id="submit" onclick="submitFault()">🔧 Send to the maintenance team</button>
     <div class="hint">This goes straight to HosFIX. Raj and the maintenance team are alerted on their phones and will allocate it to Glenn, Pete or Herman.</div>
@@ -91,7 +94,8 @@
   };
   var WORK=[["","— not sure —"],["plumbing","Plumbing"],["electrical","Electrical"],["decorating","Decorating / Painting"],["carpentry","Carpentry / Joinery"],["hvac","HVAC / Air Con"],["glazing","Glazing / Windows"],["flooring","Flooring / Carpets"],["roofing","Roofing"],["pest","Pest Control"],["fire","Fire Safety"],["general","General Maintenance"]];
   var PRIOS=[["low","Low","#2a6a4a"],["medium","Medium","#997300"],["high","High","#b3261e"],["urgent","Urgent","#c45c00"]];
-  var prio="medium", photo=null, busy=false;
+  var prio="medium", photos=[], voiceNote=null, busy=false;
+  var _rec=null,_chunks=[],_rtimer=null,_rstart=0;
   function $(id){ return document.getElementById(id); }
 
   // build area + work-type + priority
@@ -100,20 +104,48 @@
   $('prio').innerHTML=PRIOS.map(function(p){return '<button data-p="'+p[0]+'" data-c="'+p[2]+'" onclick="pickPrio(\''+p[0]+'\')">'+p[1]+'</button>';}).join('');
   window.pickPrio=function(p){ prio=p; Array.prototype.forEach.call(document.querySelectorAll('#prio button'),function(b){ var on=b.dataset.p===p; b.classList.toggle('on',on); b.style.background=on?b.dataset.c:'#fff'; }); };
   window.fillRooms=function(){ var a=$('area').value; var rooms=(AREAS[a]?AREAS[a].rooms:[]); $('room').innerHTML='<option value="">— select a room / location —</option>'+rooms.map(function(r){return '<option value="'+r+'">'+r+'</option>';}).join(''); };
-  window.loadPhoto=function(inp){
-    var f=inp.files&&inp.files[0]; if(!f) return;
+  function compressOne(f, cb){
     var img=new Image(), url=URL.createObjectURL(f);
     img.onload=function(){
-      var max=1200, w=img.width, h=img.height; if(w>max||h>max){ if(w>h){ h=Math.round(h*max/w); w=max; } else { w=Math.round(w*max/h); h=max; } }
+      var max=1100, w=img.width, h=img.height; if(w>max||h>max){ if(w>h){ h=Math.round(h*max/w); w=max; } else { w=Math.round(w*max/h); h=max; } }
       var c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h);
-      try{ photo=c.toDataURL('image/jpeg',0.7); }catch(e){ photo=null; }
-      URL.revokeObjectURL(url);
-      $('prev').innerHTML=photo?'<img src="'+photo+'" alt="">':'';
+      var d=null; try{ d=c.toDataURL('image/jpeg',0.6); }catch(e){ d=null; }
+      URL.revokeObjectURL(url); cb(d);
     };
-    img.onerror=function(){ URL.revokeObjectURL(url); };
+    img.onerror=function(){ URL.revokeObjectURL(url); cb(null); };
     img.src=url;
+  }
+  function renderPhotos(){
+    $('prev').innerHTML=photos.map(function(p,i){ return '<div style="position:relative;display:inline-block"><img src="'+p+'" alt=""><button type="button" onclick="removePhoto('+i+')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#b3261e;color:#fff;font-size:12px;line-height:1;cursor:pointer">×</button></div>'; }).join('');
+  }
+  window.removePhoto=function(i){ photos.splice(i,1); renderPhotos(); };
+  window.loadPhoto=function(inp){
+    var files=Array.prototype.slice.call(inp.files||[]); if(!files.length) return;
+    files.forEach(function(f){ compressOne(f,function(d){ if(d){ photos.push(d); renderPhotos(); } }); });
+    inp.value='';
   };
-  window.resetForm=function(){ $('desc').value=''; $('room').value=''; $('by').value=''; photo=null; $('prev').innerHTML=''; $('photo').value=''; prio='medium'; window.pickPrio('medium'); $('done').style.display='none'; $('form').style.display='block'; $('err').textContent=''; };
+  // ── 20-second voice note ──
+  window.renderVoice=function(recording){
+    var box=$('voicebox'); if(!box) return;
+    if(recording){ box.innerHTML='<button type="button" class="vbtn stop" onclick="stopVoice()" style="width:100%;padding:12px;border:0;border-radius:10px;background:#b3261e;color:#fff;font-weight:700;cursor:pointer">⏹ Stop recording — <span id="vtime">20s</span></button>'; return; }
+    if(voiceNote){ box.innerHTML='<audio controls src="'+voiceNote+'" style="width:100%;margin-bottom:6px"></audio><button type="button" onclick="voiceNote=null;renderVoice()" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;background:#fff;cursor:pointer">✕ Remove voice note</button>'; return; }
+    box.innerHTML='<button type="button" onclick="startVoice()" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:10px;background:#fff;font-weight:700;cursor:pointer">🎙️ Record voice note</button>';
+  };
+  window.startVoice=function(){
+    if(_rec && _rec.state==='recording'){ window.stopVoice(); return; }
+    if(!navigator.mediaDevices || !window.MediaRecorder){ alert('Voice notes are not supported on this device'); return; }
+    navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+      _chunks=[]; try{ _rec=new MediaRecorder(stream); }catch(e){ _rec=new MediaRecorder(stream,{}); }
+      _rec.ondataavailable=function(e){ if(e.data && e.data.size) _chunks.push(e.data); };
+      _rec.onstop=function(){ stream.getTracks().forEach(function(t){t.stop();}); clearInterval(_rtimer); _rtimer=null;
+        var blob=new Blob(_chunks,{type:(_rec&&_rec.mimeType)||'audio/webm'});
+        var r=new FileReader(); r.onload=function(){ voiceNote=r.result; window.renderVoice(); }; r.readAsDataURL(blob); };
+      _rec.start(); _rstart=Date.now(); window.renderVoice(true);
+      _rtimer=setInterval(function(){ var left=20-Math.floor((Date.now()-_rstart)/1000); var el=$('vtime'); if(el) el.textContent=Math.max(0,left)+'s'; if(left<=0) window.stopVoice(); },250);
+    }).catch(function(){ alert('Microphone blocked — allow mic access to record a voice note'); });
+  };
+  window.stopVoice=function(){ try{ if(_rec && _rec.state==='recording') _rec.stop(); }catch(e){} };
+  window.resetForm=function(){ $('desc').value=''; $('room').value=''; $('by').value=''; photos=[]; voiceNote=null; $('prev').innerHTML=''; $('photo').value=''; window.renderVoice(); prio='medium'; window.pickPrio('medium'); $('done').style.display='none'; $('form').style.display='block'; $('err').textContent=''; };
 
   window.submitFault=async function(){
     if(busy) return;
@@ -125,7 +157,7 @@
     busy=true; var btn=$('submit'); btn.disabled=true; btn.textContent='Sending…';
     var m=loc.match(/^Room\s+(\d+)/i); var roomNo=m?m[1]:'';
     try{
-      var job=await HH.raiseFixJob({ area:area, location:loc, room:roomNo, description:desc, workType:wtype, priority:prio, by:by||'Reception', source:'Reception', photos:photo?[photo]:[] });
+      var job=await HH.raiseFixJob({ area:area, location:loc, room:roomNo, description:desc, workType:wtype, priority:prio, by:by||'Reception', source:'Reception', photos:photos.slice(), voiceNote:voiceNote });
       // Push the new fault straight to the manager phones (Raj + management) so it
       // never waits for anyone to have the app open. Matches the in-app reporter flow.
       try{
@@ -141,7 +173,7 @@
     busy=false; btn.disabled=false; btn.textContent='🔧 Send to the maintenance team';
   };
 
-  window.fillRooms(); window.pickPrio('medium');
+  window.fillRooms(); window.pickPrio('medium'); window.renderVoice();
 })();
 </script>
 </body>

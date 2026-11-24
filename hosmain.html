@@ -918,15 +918,15 @@ function buildMaintenanceNav(){
     // Maintenance team — action jobs only, no reporting
     btns=`
     <button class="bnav on" data-v="dashboard"><span class="ico">📊</span>Dashboard</button>
-    <button class="bnav" data-v="jobs"><span class="ico">🔧</span>My Jobs<span class="bb" id="bn-u" style="display:none"></span></button>`;
+    <button class="bnav" data-v="jobs"><span class="ico">🔧</span>My Jobs<span class="bb" id="bn-u" style="display:none"></span></button>
+    <button class="bnav" data-v="chat"><span class="ico">💬</span>Chat</button>`;
   } else {
     btns=`
-    <button class="bnav on" data-v="dashboard"><span class="ico">📊</span>Dashboard</button>
+    <button class="bnav on" data-v="dashboard"><span class="ico">📊</span>Home</button>
     <button class="bnav" data-v="jobs"><span class="ico">🔧</span>Jobs<span class="bb" id="bn-u" style="display:none"></span></button>
+    <button class="bnav" data-v="chat"><span class="ico">💬</span>Chat</button>
     <button class="bnav" data-v="projects"><span class="ico">📁</span>Projects</button>
-    <button class="bnav" data-v="new"><span class="ico">➕</span>New Job</button>
-    <button class="bnav" data-v="stock"><span class="ico">📦</span>Stock</button>
-    <button class="bnav" data-v="report"><span class="ico">📈</span>Report</button>`;
+    <button class="bnav" data-v="new"><span class="ico">➕</span>New Job</button>`;
   }
   $('bnav').innerHTML=btns;
   $('bnav').querySelectorAll('.bnav').forEach(b=>b.addEventListener('click',()=>{
@@ -951,6 +951,7 @@ function render(){
     let html='';
     if(VIEW==='dashboard') html=renderDashboard();
     else if(VIEW==='jobs') html=renderJobs();
+    else if(VIEW==='chat') html=renderChat();
     else if(VIEW==='projects') html=renderProjects();
     else if(VIEW==='stock') html=renderStock();
     else if(VIEW==='report') html=renderReport();
@@ -1229,10 +1230,12 @@ function renderNewJobForm(){
     <input type="number" id="nj-cost" value="${f.cost||0}" min="0" step="0.01">
   </div>
 
-  <div class="f-field">
-    <label>Photo (optional)</label>
-    <div class="photo-zone" id="nj-photo-zone">📷 Tap to add a photo</div>
-    <div id="nj-photo-preview" style="margin-top:8px"></div>
+  <div class="f-field" style="background:#f7f9fb;border:1px solid var(--line);border-radius:12px;padding:13px 13px 6px">
+    <label style="margin-bottom:4px">📎 Photos &amp; voice note</label>
+    <div style="font-size:11.5px;color:#7a8494;margin-bottom:9px">Add as many photos as you like (tap again to take another), plus a short voice note if it helps.</div>
+    <div class="photo-zone" id="nj-photo-zone">📷 Tap to add photo(s)</div>
+    <div id="nj-photo-preview" class="photo-thumbs" style="margin-top:8px"></div>
+    <div id="nj-voice-box" style="margin-top:10px"></div>
   </div>
 
   <div class="btn-row" style="margin-top:18px">
@@ -1247,25 +1250,22 @@ function renderNewJobForm(){
   if($('_nj_photo_inp')) document.body.removeChild($('_nj_photo_inp'));
   const njPhotoInp=document.createElement('input');
   njPhotoInp.id='_nj_photo_inp';
-  njPhotoInp.type='file'; njPhotoInp.accept='image/*'; njPhotoInp.capture='environment';
+  njPhotoInp.type='file'; njPhotoInp.accept='image/*'; njPhotoInp.capture='environment'; njPhotoInp.multiple=true;
   njPhotoInp.style.cssText='position:fixed;top:-200px;left:-200px;opacity:0;width:1px;height:1px';
   document.body.appendChild(njPhotoInp);
   $('nj-photo-zone').addEventListener('click',()=>njPhotoInp.click());
   njPhotoInp.addEventListener('change',function(){
-    const file=this.files[0]; if(!file) return;
-    const reader=new FileReader();
-    reader.onload=e=>{
-      compressPhoto(e.target.result,800,0.6,function(compressed){
-        FS.newJobPhoto=compressed;
-        const pz=$('nj-photo-zone');
-        const pv=$('nj-photo-preview');
-        if(pz){pz.className='photo-zone captured';pz.textContent='✓ Photo added';}
-        if(pv) pv.innerHTML='<img src="'+compressed+'" style="width:100%;border-radius:10px;max-height:150px;object-fit:cover">';
-        toast('Photo added ✓');
-      });
-    };
-    reader.readAsDataURL(file);
+    const files=Array.prototype.slice.call(this.files||[]); if(!files.length) return;
+    FS.photos=FS.photos||[];
+    files.forEach(function(file){
+      const reader=new FileReader();
+      reader.onload=e=>compressPhoto(e.target.result,900,0.6,function(c){ FS.photos.push(c); njRenderPhotos(); });
+      reader.readAsDataURL(file);
+    });
+    this.value='';
   });
+  njRenderPhotos();
+  njRenderVoice();
 
   // Area change → show rooms
   $('nj-area').addEventListener('change',function(){
@@ -1381,7 +1381,14 @@ function rpRenderPhotos(){
   const z=$('rp-photo-zone'); if(z){ if(ph.length){ z.className='photo-zone captured'; z.textContent='✓ '+ph.length+' photo'+(ph.length>1?'s':'')+' — tap to add more'; } else { z.className='photo-zone'; z.textContent='📷 Tap to add photo(s)'; } }
 }
 
-// ── 25-second voice note (MediaRecorder) ──
+// New-job multi-photo thumbnails (tap a photo's × to remove)
+function njRenderPhotos(){
+  const pv=$('nj-photo-preview'); const ph=FS.photos||[];
+  if(pv) pv.innerHTML=ph.map((p,i)=>`<div style="position:relative;display:inline-block;margin:0 6px 6px 0"><img src="${p}" class="photo-thumb"><button type="button" onclick="FS.photos.splice(${i},1);njRenderPhotos()" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#b3261e;color:#fff;font-size:12px;line-height:1;cursor:pointer">×</button></div>`).join('');
+  const z=$('nj-photo-zone'); if(z){ if(ph.length){ z.className='photo-zone captured'; z.textContent='✓ '+ph.length+' photo'+(ph.length>1?'s':'')+' — tap to add more'; } else { z.className='photo-zone'; z.textContent='📷 Tap to add photo(s)'; } }
+}
+
+// ── 20-second voice note (MediaRecorder) ──
 let _rec=null,_recChunks=[],_recTimer=null,_recStart=0;
 function njStartVoice(){
   if(_rec && _rec.state==='recording'){ njStopVoice(); return; }
@@ -1588,7 +1595,8 @@ function submitJob(){
     assignees,
     cost,
     module:FS.module||'maintenance',
-    photos:FS.newJobPhoto?[FS.newJobPhoto]:[],
+    photos:(FS.photos||[]).slice(),
+    voiceNote:FS.voiceNote||null,
     materials:[],
     notes:[],
     createdAt:new Date().toISOString(),
@@ -2899,6 +2907,39 @@ function archiveProject(projId){
   try{ if(fbDb) fbDb.collection('hosfix_projects').doc(String(projId)).delete().catch(()=>{}); }catch(e){}
   render(); toast('Project removed');
 }
+// ── CHAT VIEW: pick a job to message, with message counts ────────────────────
+function openJobChat(jobId){
+  openJobDetail(jobId);
+  setTimeout(function(){ try{ var el=document.getElementById('jchat-log'); if(el) el.scrollIntoView({block:'start'}); }catch(e){} }, 80);
+}
+function renderChat(){
+  const all=myJobs();
+  const lastAt=j=>{ const m=j&&j.messages; return (m&&m.length)?(m[m.length-1].at||''):''; };
+  const list=all.filter(j=>j.status!=='complete' || (j.messages&&j.messages.length))
+    .sort((a,b)=>{ const am=lastAt(a), bm=lastAt(b); if(am&&bm) return bm.localeCompare(am); if(am) return -1; if(bm) return 1; return String(b.createdAt||'').localeCompare(String(a.createdAt||'')); });
+  const dot=j=>{ const c=j.status==='complete'?'#2a6a4a':(j.priority==='urgent'?'#c45c00':(j.status==='in-progress'?'#997300':'#b3261e')); return `<span style="width:9px;height:9px;border-radius:50%;background:${c};flex:none"></span>`; };
+  let html=`<div style="padding:34px 18px 2px">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--navy)">💬 Job chats</div>
+    <div style="color:#7a8494;font-size:13px;margin-top:2px">Pick a job to message the team</div>
+  </div>
+  <div style="padding:10px 14px 90px">`;
+  if(!list.length){ html+=`<div style="text-align:center;padding:28px 16px;color:#7a8494"><div style="font-size:40px;margin-bottom:8px">💬</div><div style="font-weight:700;color:var(--navy)">No jobs to chat on yet</div></div>`; }
+  list.forEach(j=>{
+    const n=(j.messages||[]).length;
+    const last=n?j.messages[n-1]:null;
+    const preview=last ? (esc((last.by||'').split(' ')[0])+': '+(last.text?esc(last.text):'📷 Photo')) : 'No messages yet — tap to start';
+    html+=`<div onclick="openJobChat('${j.id}')" style="background:#fff;border-radius:14px;box-shadow:0 2px 6px rgba(26,43,58,.06);padding:13px 14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:7px">${dot(j)}<span style="font-weight:700;color:var(--navy);font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(j.title)}</span></div>
+        <div style="font-size:12px;color:#9aa6b4;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${j.location?esc(j.location)+' · ':''}<span style="color:${n?'#2f7a72':'#9aa6b4'}">${esc(preview)}</span></div>
+      </div>
+      <div style="flex:none;min-width:34px;height:30px;padding:0 9px;border-radius:15px;background:${n?'#2f7a72':'#eef1f5'};color:${n?'#fff':'#9aa6b4'};display:flex;align-items:center;justify-content:center;font:800 13px inherit">${n?'💬 '+n:'💬'}</div>
+    </div>`;
+  });
+  html+=`</div>`;
+  return html;
+}
+
 function renderProjects(){
   const T_LABEL={ 'not-started':'🔴 Not started','in-progress':'🟡 In progress','complete':'🟢 Complete' };
   const active=PROJECTS.filter(p=>p && p.status!=='archived');
