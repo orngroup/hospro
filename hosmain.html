@@ -543,6 +543,7 @@ const STD_OPS       = ["herman","pete"];           // operatives (own jobs only)
 const ADMIN_TIER    = MGR_OPS;                      // ?me=glenn / ajay / raj  (also ?tier=management)
 const FIXER_TIER    = STD_OPS;                      // ?me=herman / pete        (also ?tier=operative)
 const REPORTER_TIER = ["raj"];                      // name list for the legacy ?tier=reporter login only
+const DELETE_IDS    = ["raj","ajay"];               // only Raj & Ajay can permanently delete a job
 // The CURRENT session's role comes from the link/code used to sign in, so one person
 // (Raj) can be Manager on one link and Reporter on another. Falls back to id-based.
 let SESSION_TIER = null;
@@ -561,6 +562,7 @@ const WORK_TYPES = [{"id": "plumbing", "label": "Plumbing", "icon": "\ud83d\udd2
 let ME = null;
 let MY_USER = null;
 let IS_SUPER = false;
+let IS_DELETER = false;
 let IS_APPROVER = false;
 let IS_FIXER = false;
 let IS_REPORTER = false;
@@ -571,7 +573,7 @@ let ACTIVE_MODULE = 'maintenance';
 // ── JOBS ─────────────────────────────────────────────────────────────────────
 
 // ── Clean start: jobs logged before 2026-10-10 10:00 UTC (11:00 UK, 10 Oct 2026) are cleared on every device ──
-const HF_CLEAN_FROM='2026-11-24T00:00:00.000Z';   // clean start — board cleared for testing; only jobs from 24 Nov 2026 onwards show
+const HF_CLEAN_FROM='2026-11-17T00:00:00.000Z';   // show the last 7 days of jobs (imported WhatsApp maintenance log) from 17 Nov 2026 onwards
 function hfOldJob(j){ return !j || !(String(j.createdAt||'')>=HF_CLEAN_FROM); }
 let JOBS = JSON.parse(localStorage.getItem('hosfix_jobs')||'null');
 if(!Array.isArray(JOBS)) JOBS=[];
@@ -1709,11 +1711,34 @@ function openJobDetail(jobId){
     <div style="font:700 14px 'Lato';color:var(--green)">✓ Completed by ${j.completedBy||'team'}</div>
     <div style="font-size:12px;color:#7a8494;margin-top:2px">${fmtDate(j.completedAt?.slice(0,10))}</div>
   </div>`:''}
-  <button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-top:4px">← Back to jobs</button>`;
+  <button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-top:4px">← Back to jobs</button>
+  ${IS_DELETER?`<button type="button" onclick="hfDeleteJob('${j.id}')" style="width:100%;margin-top:14px;padding:11px;border:1px solid #f0c9c4;border-radius:11px;background:#fff;color:#b3261e;font:700 13px Lato;cursor:pointer;touch-action:manipulation">🗑 Delete this job permanently</button>`:''}`;
 
   openModal(html);
 
   // buttons use inline onclick
+}
+
+// ── PERMANENT DELETE (Raj & Ajay only) ───────────────────────────────────────
+function hfDeleteJob(jobId){
+  if(!IS_DELETER){ try{ toast('Only Raj or Ajay can delete a job'); }catch(e){} return; }
+  const j=JOBS.find(x=>x.id===jobId);
+  const ans=prompt('⚠ PERMANENTLY DELETE this job?\n\n'+((j&&j.title)||jobId)+'\n\nThis removes it for everyone and cannot be undone.\nType  DELETE  (capitals) to confirm:');
+  if(!ans || ans.trim().toUpperCase()!=='DELETE'){ try{ toast('Cancelled — nothing deleted'); }catch(e){} return; }
+  // remove from this device
+  JOBS = JOBS.filter(x=>String(x.id)!==String(jobId));
+  try{ delete JOB_SYNC.sent[jobId]; }catch(e){}
+  try{ localStorage.setItem('hosfix_jobs',JSON.stringify(JOBS)); }catch(e){}
+  // remove from the cloud so every device drops it too
+  try{
+    if(typeof fbDb!=='undefined' && fbDb){
+      fbDb.collection('hosfix_jobs').doc(String(jobId)).delete()
+        .catch(e=>{ try{ showToastNotification('⚠ Could not delete from the cloud: '+((e&&e.message)||'connection problem')); }catch(_e){} });
+    }
+  }catch(e){}
+  try{ closeModal(); }catch(e){}
+  try{ VIEW='jobs'; render(); }catch(e){}
+  try{ toast('✓ Job deleted'); }catch(e){}
 }
 
 
@@ -2178,6 +2203,7 @@ function loginAs(uid, tier){
   // Role for this session (admin / fixer / reporter), honouring the chosen tier
   if(MY_USER){ MY_USER.tier=tierOf(uid); MY_USER.admin=isAdmin(uid); MY_USER.seeCosts=isAdmin(uid); }
   IS_SUPER=isAdmin(uid);
+  IS_DELETER=DELETE_IDS.includes(uid);
   IS_APPROVER=isAdmin(uid);
   IS_FIXER=isFixer(uid);
   IS_REPORTER=isReporter(uid);
@@ -2554,7 +2580,7 @@ function jobSyncStart(){
     const wasFirst = JOB_SYNC.first;
     JOB_SYNC.first = false;
     qs.docChanges().forEach(ch=>{
-      if(ch.type==="removed") return;
+      if(ch.type==="removed"){ const ri=JOBS.findIndex(j=>String(j.id)===String(ch.doc.id)); if(ri>=0){ JOBS.splice(ri,1); changed=true; } try{ delete JOB_SYNC.sent[ch.doc.id]; }catch(e){} return; }
       const r = ch.doc.data(); if(!r || !r.id || hfOldJob(r)) return;
       const i = JOBS.findIndex(j=>j.id===r.id);
       if(i<0){ JOBS.push(r); changed=true; }

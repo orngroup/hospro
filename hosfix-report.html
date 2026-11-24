@@ -41,8 +41,7 @@
     <select id="area" onchange="fillRooms()"></select>
 
     <label class="l">Room / location</label>
-    <input list="roomlist" id="room" placeholder="Start typing a room number or name…" autocomplete="off">
-    <datalist id="roomlist"></datalist>
+    <select id="room"></select>
 
     <label class="l">What's the fault?</label>
     <textarea id="desc" placeholder="e.g. Shower mixer dripping constantly; radiator not heating"></textarea>
@@ -100,7 +99,7 @@
   $('wtype').innerHTML=WORK.map(function(w){return '<option value="'+w[0]+'">'+w[1]+'</option>';}).join('');
   $('prio').innerHTML=PRIOS.map(function(p){return '<button data-p="'+p[0]+'" data-c="'+p[2]+'" onclick="pickPrio(\''+p[0]+'\')">'+p[1]+'</button>';}).join('');
   window.pickPrio=function(p){ prio=p; Array.prototype.forEach.call(document.querySelectorAll('#prio button'),function(b){ var on=b.dataset.p===p; b.classList.toggle('on',on); b.style.background=on?b.dataset.c:'#fff'; }); };
-  window.fillRooms=function(){ var a=$('area').value; $('roomlist').innerHTML=(AREAS[a]?AREAS[a].rooms:[]).map(function(r){return '<option value="'+r+'">';}).join(''); };
+  window.fillRooms=function(){ var a=$('area').value; var rooms=(AREAS[a]?AREAS[a].rooms:[]); $('room').innerHTML='<option value="">— select a room / location —</option>'+rooms.map(function(r){return '<option value="'+r+'">'+r+'</option>';}).join(''); };
   window.loadPhoto=function(inp){
     var f=inp.files&&inp.files[0]; if(!f) return;
     var img=new Image(), url=URL.createObjectURL(f);
