@@ -1,0 +1,15 @@
+{
+  "name": "Brandon Hall Spa",
+  "short_name": "Brandon Spa",
+  "description": "Brandon Hall Hotel & Spa — member app: membership card, book treatments and classes.",
+  "start_url": "/hosspa-app.html",
+  "scope": "/hosspa-app.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f5b53",
+  "theme_color": "#0f5b53",
+  "icons": [
+    { "src": "/assets/hosfix-mgr-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/assets/hosfix-mgr-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -140,6 +140,31 @@ tbody tr:hover{background:#f7faf9}
 .hint{font-size:12px;color:var(--mut)}
 @media(max-width:980px){.kpis{grid-template-columns:repeat(3,1fr)}.g2,.g2b,.g3{grid-template-columns:1fr}.plans{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.kpis{grid-template-columns:repeat(2,1fr)}.plans{grid-template-columns:1fr}.ph h1{font-size:25px}}
+/* modal + editor */
+.ov{position:fixed;inset:0;background:rgba(16,30,28,.55);display:none;z-index:100;padding:20px;overflow:auto}
+.ov.on{display:block}
+.modal{max-width:760px;margin:20px auto;background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.35);overflow:hidden}
+.modal .mh{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.modal .mh h2{font-size:24px;color:var(--navy);font-weight:700}
+.modal .x{border:none;background:#eef3f2;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:15px;flex:0 0 34px}
+.modal .mb{padding:18px 20px;max-height:72vh;overflow:auto}
+.modal .mf{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.btnx{border:none;border-radius:10px;padding:10px 15px;font:700 13.5px Lato;cursor:pointer}
+.btnx.pri{background:var(--spa);color:#fff}.btnx.sec{background:#eef3f2;color:var(--ink)}.btnx.del{background:#f6e7e6;color:var(--red)}
+.edgrp{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--spa2);font-weight:700;margin:16px 0 8px}
+.edrow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:9px}
+.edrow .fr{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.edrow input,.edrow textarea{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:13.5px;color:var(--ink)}
+.edrow input:focus,.edrow textarea:focus{outline:none;border-color:var(--teal)}
+.edrow .nmi{flex:1;min-width:150px}.edrow .pri-i{width:84px}.edrow .min-i{width:74px}.edrow textarea{width:100%;margin-top:7px;min-height:44px;resize:vertical}
+.pdstat{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:4px 0 14px}
+.pdstat .b{background:var(--bg);border-radius:12px;padding:12px}
+.pdstat .l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);font-weight:700}
+.pdstat .v{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:var(--navy)}
+.appcta{display:flex;align-items:center;gap:16px;background:linear-gradient(120deg,var(--spa),var(--spa2));color:#fff;border-radius:16px;padding:18px 20px;margin-bottom:16px;flex-wrap:wrap}
+.appcta .t{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:700}
+.appcta .s{font-size:13px;opacity:.9;max-width:520px}
+.appcta a{margin-left:auto;background:#fff;color:var(--spa);text-decoration:none;font-weight:800;padding:12px 20px;border-radius:12px;font-size:14px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -231,7 +256,7 @@ tbody tr:hover{background:#f7faf9}
 
   <!-- TREATMENTS -->
   <section class="view" id="v-treatments">
-    <div class="ph"><div><h1>Treatments &amp; Packages</h1><p>The full spa treatment menu and spa-day packages — the services Granite Leisure run and that Brandon Hall can offer. Members book from the app; reception and the spa desk book walk-ins and gift bookings.</p></div><div class="hint">Demo pricing · from the current Granite menu</div></div>
+    <div class="ph"><div><h1>Treatments &amp; Packages</h1><p>The full spa treatment menu and spa-day packages — the services Granite Leisure run and that Brandon Hall can offer. Members book from the app; reception and the spa desk book walk-ins and gift bookings.</p></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btnx sec" onclick="manageMenu()">✎ Manage menu</button><span class="hint">Edits save &amp; show in the member app</span></div></div>
     <div class="ct" style="margin:4px 0 10px">Spa packages</div>
     <div class="g3" id="pkgWrap"></div>
     <div class="ct" style="margin:22px 0 10px">Treatment menu</div>
@@ -254,6 +279,7 @@ tbody tr:hover{background:#f7faf9}
   <!-- APP -->
   <section class="view" id="v-app">
     <div class="ph"><div><h1>Member app</h1><p>What a member sees on their phone — membership card, bookings and classes. The same login works on the web.</p></div></div>
+    <div class="appcta"><div>💆</div><div><div class="t">Brandon Hall Spa — live member app</div><div class="s">A working demo: book treatments and classes, see your membership card and manage bookings. Bookings made here show up in the spa's management view.</div></div><a href="hosspa-app.html" target="_blank" rel="noopener">Open the app →</a></div>
     <div class="g2b">
       <div class="phone"><div class="scr">
         <div class="hd"><div class="hi">Good morning,</div><div class="nm">Eleanor Whitfield</div></div>
@@ -279,6 +305,8 @@ tbody tr:hover{background:#f7faf9}
       </div>
     </div>
   </section>
+
+  <div class="ov" id="ov"><div class="modal" id="modal"></div></div>
 
   <div class="foot">
     <b>HosSPA</b> · a module of HosPRO for Brandon Hall Hotel &amp; Spa. Showing <b>sample data</b> for design — not live member records.<br>
@@ -503,10 +531,10 @@ document.querySelectorAll('#mtable thead th').forEach(function(th){th.addEventLi
 /* ---------- PLANS ---------- */
 (function(){
   document.getElementById('plansWrap').innerHTML=PLANS.map(function(p){
-    return '<div class="plan'+(p.feat?' feat':'')+'"><div class="pn">'+p.name+'</div>'+
+    return '<div class="plan'+(p.feat?' feat':'')+'" style="cursor:pointer" onclick="planDetail(\''+p.id+'\')"><div class="pn">'+p.name+'</div>'+
       '<div class="pp">'+money(p.price)+'<small>/mo</small></div>'+(p.note?'<div class="sub">'+p.note+'</div>':'')+
       '<ul>'+p.inc.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>'+
-      '<div class="cnt">'+MEMBERS.filter(function(m){return m.planId===p.id&&m.status!=='Expired'}).length+' members on this plan</div></div>';
+      '<div class="cnt">'+MEMBERS.filter(function(m){return m.planId===p.id&&m.status!=='Expired'}).length+' members · <span style="color:var(--spa2)">View →</span></div></div>';
   }).join('');
   var rows=PLANS.map(function(p,i){var c=MEMBERS.filter(function(m){return m.planId===p.id&&m.status!=='Expired'});var rev=c.reduce(function(s,m){return s+p.price},0);return {n:p.name.replace('&amp;','&').replace(' (per head)',''),v:rev,vl:money(rev)+'/mo',c:AVCOL[i]}});
   document.getElementById('planBars').innerHTML=hbars(rows);
@@ -539,7 +567,10 @@ document.querySelectorAll('#mtable thead th').forEach(function(th){th.addEventLi
   document.getElementById('facBars').innerHTML=fac.map(function(f){return '<div class="fac"><div class="nm">'+f[0]+'</div><div class="tk"><div class="fl" style="width:'+f[1]+'%"></div></div><div class="pc">'+f[1]+'%</div></div>'}).join('');
   // treatments today
   var TR=[['09:30','Hot Stone Massage · 50m','Room 1 · Anya','#20b2a2'],['10:30','Marine Back Treatment · 50m','Room 3 · Mia','#0f5b53'],['11:15','Anti-Ageing Facial · 60m','Room 2 · Rosa','#c9a978'],['13:00','Couples Indulging Spa Day','Suite · Anya & Leo','#15867a'],['14:30','Full Body Massage · 50m','Room 1 · Leo','#5b8f86'],['16:00','Express Facial · 30m','Room 2 · Rosa','#2e8b6b']];
-  document.getElementById('treat').innerHTML=TR.map(function(t){return '<div class="it"><div class="ic" style="background:'+t[3]+'22;color:'+t[3]+'">💆</div><div><div class="t">'+t[1]+'</div><div class="s">'+t[0]+' · '+t[2]+'</div></div><div style="margin-left:auto" class="pill">Booked</div></div>'}).join('');
+  var todayISO=new Date().toISOString().slice(0,10), appBk=[];
+  try{ appBk=JSON.parse(localStorage.getItem('hosspa_bookings')||'[]').filter(function(b){return b.kind==='treatment'&&b.date===todayISO}); }catch(e){}
+  var appHtml=appBk.sort(function(a,b){return a.time<b.time?-1:1}).map(function(b){return '<div class="it"><div class="ic" style="background:#20b2a222;color:#20b2a2">💆</div><div><div class="t">'+b.name+(b.price?(' · £'+b.price):'')+'</div><div class="s">'+b.time+' · '+(b.loc||'')+(b.therapist?(' · '+b.therapist):'')+' · '+(b.who||'Member')+'</div></div><span style="margin-left:auto;background:#e4f3ec;color:#1f7a57" class="pill">From app</span></div>'}).join('');
+  document.getElementById('treat').innerHTML=appHtml+TR.map(function(t){return '<div class="it"><div class="ic" style="background:'+t[3]+'22;color:'+t[3]+'">💆</div><div><div class="t">'+t[1]+'</div><div class="s">'+t[0]+' · '+t[2]+'</div></div><span style="margin-left:auto" class="pill">Booked</span></div>'}).join('');
 })();
 
 /* ---------- REVENUE ---------- */
@@ -613,15 +644,17 @@ var SPA_PACKAGES=[
  {n:'Dinner, Bed & Breakfast & Pamper',p:295,meta:'For 1 · overnight',inc:'Full spa access, one night stay, dinner & breakfast, and one 50-minute treatment.'},
  {n:'Black Friday: 12 Express Facials',p:199,meta:'One a month · gift option',inc:'Twelve 30-minute express facials, one per month. Start any time up to January; a missed month can’t be rolled over.'}
 ];
-(function(){
-  document.getElementById('pkgWrap').innerHTML=SPA_PACKAGES.map(function(p){
+/* working menu — loads any amendments saved from "Manage menu" (shared with the member app) */
+var SPA_MENU=(function(){ try{var m=JSON.parse(localStorage.getItem('hosspa_menu')||'null'); if(m&&m.services&&m.packages) return m;}catch(e){} return {services:JSON.parse(JSON.stringify(SPA_SERVICES)),packages:JSON.parse(JSON.stringify(SPA_PACKAGES))}; })();
+function renderTreatments(){
+  document.getElementById('pkgWrap').innerHTML=SPA_MENU.packages.map(function(p){
     return '<div class="card pad" style="display:flex;flex-direction:column"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">'+
       '<div style="font-weight:800;font-size:15px;color:var(--navy)">'+p.n+'</div>'+
       '<div class="disp" style="font-size:24px;font-weight:700;color:var(--spa)">'+money(p.p)+'</div></div>'+
-      '<div class="pill" style="align-self:flex-start;margin:8px 0 10px">'+p.meta+'</div>'+
-      '<div style="font-size:13px;color:var(--mut);line-height:1.5">'+p.inc+'</div></div>';
+      '<div class="pill" style="align-self:flex-start;margin:8px 0 10px">'+(p.meta||'')+'</div>'+
+      '<div style="font-size:13px;color:var(--mut);line-height:1.5">'+(p.inc||'')+'</div></div>';
   }).join('');
-  document.getElementById('svcWrap').innerHTML='<div class="g2b">'+SPA_SERVICES.map(function(c){
+  document.getElementById('svcWrap').innerHTML='<div class="g2b">'+SPA_MENU.services.map(function(c){
     var rows=c.items.map(function(it){
       var dur=it.min?('<span class="sub">'+it.min+' min</span>'):'';
       return '<div style="display:flex;align-items:baseline;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">'+
@@ -630,7 +663,50 @@ var SPA_PACKAGES=[
     }).join('');
     return '<div class="card pad"><div class="ct">'+c.cat+'</div>'+rows+'</div>';
   }).join('')+'</div>';
-})();
+}
+renderTreatments();
+
+/* ---------- modal + membership detail + menu editor ---------- */
+function ovOpen(h){document.getElementById('modal').innerHTML=h;document.getElementById('ov').classList.add('on')}
+function ovClose(){document.getElementById('ov').classList.remove('on')}
+document.getElementById('ov').addEventListener('click',function(e){if(e.target===this)ovClose()});
+function attr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
+
+function planDetail(id){
+  var p=PLANS.find(function(x){return x.id===id}); if(!p)return;
+  var ms=MEMBERS.filter(function(m){return m.planId===id&&m.status!=='Expired'});
+  var mrr=ms.reduce(function(s){return s+p.price},0);
+  var avgAge=ms.length?Math.round(ms.reduce(function(s,m){return s+m.age},0)/ms.length):0;
+  var f=ms.filter(function(m){return m.gender==='F'}).length;
+  ovOpen('<div class="mh"><h2>'+p.name.replace('&amp;','&')+'</h2><button class="x" onclick="ovClose()">✕</button></div>'+
+   '<div class="mb"><div class="disp" style="font-size:34px;color:var(--spa);font-weight:700">'+money(p.price)+'<span style="font-size:15px;color:var(--mut);font-family:Lato"> /mo</span></div>'+(p.note?'<div class="sub" style="color:var(--mut)">'+p.note+'</div>':'')+
+     '<div class="pdstat"><div class="b"><div class="l">Members</div><div class="v">'+ms.length+'</div></div><div class="b"><div class="l">Recurring/mo</div><div class="v">'+k(mrr)+'</div></div><div class="b"><div class="l">Avg age</div><div class="v">'+avgAge+'</div></div><div class="b"><div class="l">Female</div><div class="v">'+(ms.length?Math.round(f/ms.length*100):0)+'%</div></div></div>'+
+     '<div class="ct">What\u2019s included</div><ul style="margin:0 0 4px;padding-left:18px;color:var(--ink);font-size:13.5px;line-height:1.85">'+p.inc.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>'+
+     '<div class="ct" style="margin-top:16px">Sample members on this plan</div>'+
+     ms.slice(0,6).map(function(m){var init=m.name.split(' ').map(function(x){return x[0]}).slice(0,2).join('');return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)"><span class="av" style="background:'+m.col+'">'+init+'</span><div style="font-weight:700;font-size:13.5px">'+m.name+'</div><div class="sub" style="margin-left:auto">'+m.town+' · '+statusTag(m.status)+'</div></div>'}).join('')+
+   '</div><div class="mf"><button class="btnx pri" onclick="ovClose()">Close</button></div>');
+}
+
+function pkgRow(p){ return '<div class="edrow" data-k="pkg"><div class="fr"><input class="e-n nmi" placeholder="Package name" value="'+attr(p.n)+'"><input class="e-p pri-i" type="number" placeholder="£" value="'+attr(p.p)+'"><input class="e-m" style="flex:1;min-width:130px" placeholder="e.g. For 2 · full day" value="'+attr(p.meta)+'"><button class="btnx del" onclick="this.closest(\'.edrow\').remove()">Remove</button></div><textarea class="e-i" placeholder="What is included">'+String(p.inc||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</textarea></div>'; }
+function itemRow(it){ return '<div class="edrow"><div class="fr"><input class="e-n nmi" placeholder="Treatment" value="'+attr(it.n)+'"><input class="e-min min-i" type="number" placeholder="min" value="'+attr(it.min||'')+'"><input class="e-p pri-i" type="number" placeholder="£" value="'+attr(it.p)+'"><button class="btnx del" onclick="this.closest(\'.edrow\').remove()">Remove</button></div></div>'; }
+function catBlock(c){ return '<div class="ed-cat" style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px"><div class="fr" style="gap:8px;margin-bottom:8px"><input class="e-cat nmi" style="font-weight:700" value="'+attr(c.cat)+'"><button class="btnx del" onclick="this.closest(\'.ed-cat\').remove()">Remove category</button></div><div class="cat-items">'+c.items.map(itemRow).join('')+'</div><button class="btnx sec" onclick="this.previousElementSibling.insertAdjacentHTML(\'beforeend\', itemRow({n:\'\',p:0}))">+ Add treatment</button></div>'; }
+function manageMenu(){ var c=prompt('Enter the management code to edit the menu:'); if(c===null)return; if((c||'').trim()!=='2222'){ if(typeof alert==='function')alert('Incorrect code'); return; } openMenuEditor(); }
+function openMenuEditor(){
+  ovOpen('<div class="mh"><h2>Manage menu</h2><button class="x" onclick="ovClose()">✕</button></div>'+
+   '<div class="mb"><div class="edgrp">Packages</div><div id="ed-pkgs">'+SPA_MENU.packages.map(pkgRow).join('')+'</div><button class="btnx sec" onclick="document.getElementById(\'ed-pkgs\').insertAdjacentHTML(\'beforeend\',pkgRow({n:\'\',p:0,meta:\'\',inc:\'\'}))">+ Add package</button>'+
+     '<div class="edgrp" style="margin-top:20px">Treatments</div><div id="ed-svcs">'+SPA_MENU.services.map(catBlock).join('')+'</div><button class="btnx sec" onclick="document.getElementById(\'ed-svcs\').insertAdjacentHTML(\'beforeend\',catBlock({cat:\'New category\',items:[{n:\'\',p:0}]}))">+ Add category</button></div>'+
+   '<div class="mf"><button class="btnx del" onclick="menuReset()">Reset to defaults</button><button class="btnx sec" onclick="ovClose()">Cancel</button><button class="btnx pri" onclick="menuSave()">Save changes</button></div>');
+}
+function menuSave(){
+  var pkgs=[];
+  document.querySelectorAll('#ed-pkgs .edrow').forEach(function(r){ var n=r.querySelector('.e-n').value.trim(); if(!n)return; pkgs.push({n:n,p:+r.querySelector('.e-p').value||0,meta:r.querySelector('.e-m').value.trim(),inc:r.querySelector('.e-i').value.trim()}); });
+  var svcs=[];
+  document.querySelectorAll('#ed-svcs .ed-cat').forEach(function(cd){ var cat=(cd.querySelector('.e-cat').value||'').trim()||'Treatments'; var items=[]; cd.querySelectorAll('.edrow').forEach(function(r){ var n=r.querySelector('.e-n').value.trim(); if(!n)return; var mn=+r.querySelector('.e-min').value||0; var o={n:n,p:+r.querySelector('.e-p').value||0}; if(mn)o.min=mn; items.push(o); }); if(items.length)svcs.push({cat:cat,items:items}); });
+  SPA_MENU={services:svcs,packages:pkgs};
+  try{localStorage.setItem('hosspa_menu',JSON.stringify(SPA_MENU));}catch(e){}
+  renderTreatments(); ovClose();
+}
+function menuReset(){ if(!confirm('Reset the menu back to the Granite defaults? Any changes will be lost.'))return; try{localStorage.removeItem('hosspa_menu');}catch(e){} SPA_MENU={services:JSON.parse(JSON.stringify(SPA_SERVICES)),packages:JSON.parse(JSON.stringify(SPA_PACKAGES))}; renderTreatments(); ovClose(); }
 
 /* ---------- tabs ---------- */
 document.getElementById('tabs').addEventListener('click',function(e){
