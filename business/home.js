@@ -2728,6 +2728,36 @@
   }
   function stampOf(name, received) { var m = /(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)\d\d\.pdf$/i.exec(name || ''); if (m) return m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5]; var d = new Date(received); return isNaN(d) ? String(received).replace(' ', 'T').slice(0, 16) : new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16); }
   function rerender() { var on = document.querySelector('section.tab.on'); if (on && on.id.indexOf('t-pf-') === 0 && window.Profit.signedIn()) window.Profit.show(on.id.slice(5)); }
+  /* v39.33 — pull any CSV uploaded via glAFUpload and merge it into S.af.
+     This lets Veronica/Ajay refresh forward forecast data mid-day (without
+     waiting for tomorrow's 07:00 email) by exporting the Rezlynx A&F CSV
+     and curling it to glAFUpload. */
+  function fetchUploadedAF() {
+    var tok = null;
+    try { tok = localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) {}
+    if (!tok) return Promise.resolve();
+    return fetch('https://europe-west2-brandonhall-7bdef.cloudfunctions.net/glAFGet', {
+      headers: { 'Authorization': 'Bearer ' + tok }
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.ok || !j.hasData || !j.csv) return;
+      var T = window.Trading, TE = window.TradingEngine;
+      if (!T || !TE || !TE.isAF || !TE.parseAF) return;
+      if (!TE.isAF(j.csv)) return;
+      var S = T.S();
+      if (S.af && S.af.asOf && S.af.asOf >= j.asOf) return;  // our S.af is newer, skip
+      var p = TE.parseAF(j.csv);
+      if (!p || !p.length) return;
+      TE.merge(S, 'af', p, { asOf: j.asOf, file: 'glAFUpload', basis: 'net' });
+      if (T.resetMonth) T.resetMonth();
+      /* Re-render the current tab so the three coloured revenue boxes pick
+         up the fresh data straight away. */
+      var on = document.querySelector('section.tab.on');
+      if (on && on.id.indexOf('t-pf-') === 0 && window.Profit && window.Profit.signedIn()) {
+        window.Profit.show(on.id.slice(5));
+      }
+    }).catch(function () {});
+  }
+
   function liveFeed() {
     var u = feedUrl(), T = window.Trading, TE = window.TradingEngine;
     if (!u || !T || !TE) { feed = { status: 'off', note: 'Gmail feed not connected' }; chip(); return Promise.resolve(); }
@@ -2921,12 +2951,12 @@
     if (t.id === 'tr-range') { trRange = t.value; renderTrends(); }
     if (t.dataset && t.dataset.done) { var D = doneMap(); if (t.checked) D[t.dataset.done] = new Date().toISOString().slice(0, 10); else delete D[t.dataset.done]; try { localStorage.setItem(DKEY, JSON.stringify(D)); } catch (e2) {} if (document.querySelector('#t-pf-actions.on')) renderActions(); else { var a = t.closest('.act'); if (a) a.classList.toggle('done', t.checked); } }
   });
-  document.addEventListener('hub-signin', function () { unlock(); liveFeed().then(glFeed); });
+  document.addEventListener('hub-signin', function () { unlock(); liveFeed().then(glFeed).then(fetchUploadedAF); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
   window.HubAccounts = renderAccounts;
   if (window.Profit && window.Profit.register) { ['home', renderHome, 'actions', renderActions, 'fb', renderFb, 'cnb', renderCnb, 'comp', renderComp, 'data', renderData, 'help', renderHelp, 'trends', renderTrends].forEach(function (v, i, arr) { if (i % 2 === 0) window.Profit.register(v, arr[i + 1]); }); }
   document.addEventListener('DOMContentLoaded', function () {
-    unlock(); crumb('pf-home'); if (window.Profit.signedIn()) liveFeed().then(glFeed); else chip();
+    unlock(); crumb('pf-home'); if (window.Profit.signedIn()) liveFeed().then(glFeed).then(fetchUploadedAF); else chip();
     var sv = $('t-save'); if (sv && !sv.querySelector('.segs')) sv.insertAdjacentHTML('afterbegin', '<div id="save-pills"></div>');
     new MutationObserver(function () { annotate(document.querySelector('main')); var sp = $('save-pills'); if (sp && !sp.firstChild && window.Profit.signedIn()) sp.innerHTML = '<p style="margin:0 0 14px"><button class="btn ghost" data-go="pf-actions">← Back to the Action Centre</button></p>'; }).observe(document.querySelector('main'), { childList: true, subtree: true });
   });
