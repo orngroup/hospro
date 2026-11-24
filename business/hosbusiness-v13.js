@@ -578,41 +578,40 @@
     var tonightAcc = to ? T.net(to.acc) : 0;
     var tonightAdr = to && to.rooms ? tonightAcc / to.rooms : 0;
     var n7 = T.agg(S.af.rows.filter(function (x) { return x.d >= cut; }).slice(0, 7));
-    /* v39.31 — the three coloured revenue boxes prefer S.af.rows (which is
-       populated by the Rezlynx "Actual & Forecast" CSV, with the authoritative
-       accom + F&B + Other totals per day). Split anchors on TODAY'S date so
-       today sits in the on-books bucket. Only falls back to the flash
-       monthForecast (accom-only forward) if S.af doesn't have month rows.
-       This ensures the green Total box matches Rezlynx's CumulativeGrandTotal
-       at month-end (e.g. £217,876.04 for November 2026) rather than the
-       accom-only subset. */
+    /* v39.32 — the three coloured revenue boxes read S.af.rows and split on
+       TODAY. For forward days, the morning email feed populates accom but
+       leaves F&B and Other at £0 (because Rezlynx's email report only
+       includes those for closed days). To match Rezlynx's own month-end
+       forecast we estimate forward F&B and Other per room from the last 14
+       closed days' per-room ratio and add them to any forward row that has
+       accom > 0 but FB/Other = 0. */
     var m = cut.slice(0, 7);
-    var act, bks, allMonth, allMonthOcc;
     var _today = new Date(); _today.setHours(0, 0, 0, 0);
     var _todayIso = _today.toISOString().slice(0, 10);
     var _mRows = (S.af.rows || []).filter(function (r) { return r.d.slice(0, 7) === m; });
-    var _hasForward = _mRows.some(function (r) { return r.d >= _todayIso && (r.acc > 0 || r.fb > 0 || r.oth > 0); });
     var LET2 = (T && T.LETTABLE) ? T.LETTABLE : 114;
-    if (_mRows.length && _hasForward) {
-      act = T.agg(_mRows.filter(function (r) { return r.d < _todayIso; }));
-      bks = T.agg(_mRows.filter(function (r) { return r.d >= _todayIso; }));
-      allMonth = act.total + bks.total;
-      allMonthOcc = (act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights));
-    } else {
-      /* Fallback: no forward rows in S.af — use flash.monthForecast (accom-only forward). */
-      var mf = (window.LATEST_FLASH && window.LATEST_FLASH.monthForecast) ? window.LATEST_FLASH.monthForecast : null;
-      if (mf && mf.actual && mf.onBooks && mf.monthEnd) {
-        act = { total: mf.actual.total || 0, rooms: mf.actual.rooms || 0, nights: mf.actual.nights || 0 };
-        bks = { total: mf.onBooks.total || 0, rooms: mf.onBooks.rooms || 0, nights: mf.onBooks.nights || 0 };
-        allMonth = mf.monthEnd.total || (act.total + bks.total);
-        allMonthOcc = mf.monthEnd.occPct != null ? mf.monthEnd.occPct : ((act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights)));
-      } else {
-        act = T.agg(_mRows.filter(function (r) { return r.d < _todayIso; }));
-        bks = T.agg(_mRows.filter(function (r) { return r.d >= _todayIso; }));
-        allMonth = act.total + bks.total;
-        allMonthOcc = (act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights));
-      }
-    }
+
+    /* Compute per-room F&B and Other from the last 14 closed days. */
+    var _closed = (S.af.rows || []).filter(function (r) { return r.d < _todayIso && (r.rooms || 0) > 0; }).slice(-14);
+    var _cRooms = 0, _cFB = 0, _cOth = 0;
+    _closed.forEach(function (r) { _cRooms += (r.rooms || 0); _cFB += (r.fb || 0); _cOth += (r.oth || 0); });
+    var _fbPerRoom = _cRooms > 0 ? _cFB / _cRooms : 0;
+    var _othPerRoom = _cRooms > 0 ? _cOth / _cRooms : 0;
+
+    /* Build an estimate-augmented copy of the month rows for forward days. */
+    var _mRowsFcst = _mRows.map(function (r) {
+      if (r.d < _todayIso) return r;    // closed days left as-is
+      var rooms = r.rooms || 0;
+      if (rooms <= 0) return r;
+      var fb = (r.fb || 0) > 0 ? r.fb : Math.round(rooms * _fbPerRoom * 100) / 100;
+      var oth = (r.oth || 0) > 0 ? r.oth : Math.round(rooms * _othPerRoom * 100) / 100;
+      return Object.assign({}, r, { fb: fb, oth: oth });
+    });
+
+    var act = T.agg(_mRowsFcst.filter(function (r) { return r.d < _todayIso; }));
+    var bks = T.agg(_mRowsFcst.filter(function (r) { return r.d >= _todayIso; }));
+    var allMonth = act.total + bks.total;
+    var allMonthOcc = (act.nights + bks.nights) > 0 ? (act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights)) : 0;
 
     function t(label, value, sub) {
       return '<div class="tile"><div class="l">' + label + '</div><div class="v">' + value + '</div>' + (sub ? '<div class="d">' + sub + '</div>' : '') + '</div>';
