@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f5b53">
+<title>Welcome — Brandon Hall Spa &amp; Health Club check-in</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--spa:#0f5b53;--spa2:#15867a;--teal:#20b2a2;--navy:#14232f;--sand:#c9a978;--ink:#1a2b2a;--mut:#62736f;--line:#e3ecea;--bg:#f4f8f7;--red:#c0433f;--green:#2e8b6b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Lato',system-ui,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5;font-size:15.5px}
+.hero{background:linear-gradient(130deg,var(--spa),var(--spa2));color:#fff;text-align:center;padding:calc(22px + env(safe-area-inset-top,0px)) 20px 26px}
+.hero img{height:70px}
+.hero h1{font-family:'Cormorant Garamond',serif;font-size:30px;margin-top:6px}
+.hero p{opacity:.9;font-size:14px}
+.wrap{max-width:560px;margin:0 auto;padding:16px 16px 60px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 8px 24px rgba(16,40,38,.06)}
+h2{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--navy);margin-bottom:6px}
+h3{font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--spa2);margin:14px 0 6px}
+ul{margin-left:18px}li{margin-bottom:6px;font-size:14.5px}
+label{display:block;font-size:11.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);font-weight:700;margin:14px 0 6px}
+input,select{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:12px 13px;font:inherit;font-size:16px;background:#fff}
+input:focus,select:focus{outline:none;border-color:var(--teal)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:10px 13px;border:1.5px solid var(--line);border-radius:11px;background:#fff;font-weight:700;cursor:pointer;font-size:14px}
+.chip.on{background:var(--spa);color:#fff;border-color:var(--spa)}
+canvas{width:100%;height:130px;border:1.5px dashed #b9cbc7;border-radius:12px;background:#fff;touch-action:none}
+.chk{display:flex;gap:10px;align-items:flex-start;text-transform:none;letter-spacing:0;font-size:15px;color:var(--ink);font-weight:400}
+.chk input{width:22px;height:22px;margin-top:2px;flex:0 0 22px}
+.btn{display:block;width:100%;margin-top:16px;padding:16px;border:none;border-radius:13px;background:var(--spa);color:#fff;font:900 17px Lato,sans-serif;cursor:pointer}
+.btn:disabled{background:#b9cbc7}
+.btn.ghost{background:#e9f0ee;color:var(--navy);font-size:14px;padding:9px;display:inline-block;width:auto;margin:6px 0 0}
+.err{color:var(--red);font-weight:700;font-size:14px;margin-top:10px;min-height:18px}
+.done{text-align:center}
+.tick{width:84px;height:84px;border-radius:50%;background:#e1f3ea;color:var(--green);display:grid;place-items:center;font-size:44px;margin:8px auto 12px}
+.pass{font-family:'Cormorant Garamond',serif;font-size:34px;color:var(--navy)}
+.small{font-size:12.5px;color:var(--mut)}
+.demo{background:#b7791f;color:#fff;text-align:center;font-size:12px;font-weight:900;padding:5px}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="demo hide" id="demo">DEMO — check-ins saved on this device only</div>
+<div class="hero"><img src="../assets/logos/logo---white-transparent.png" alt="Brandon Hall Hotel and Spa" onerror="this.style.display='none'"><h1>Welcome to the Spa &amp; Health Club</h1><p>Please check in before you use the facilities — it takes a minute.</p></div>
+<div class="wrap" id="app"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="../firebase-config.js"></script>
+<script src="spa-defs.js?v=20261125b"></script>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s)};
+var h=function(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
+var pad=function(n){return String(n).padStart(2,"0")}, now=new Date(), today=now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
+var DEMO=/[?&]demo=1/.test(location.search)||typeof firebase==="undefined"||typeof firebaseConfig==="undefined";
+if(DEMO)$("#demo").classList.remove("hide");
+var H=HS_HEALTH, type="";
+var app=$("#app");
+function render(){
+  app.innerHTML='<div class="card"><h2>'+h(H.title)+'</h2><p>'+h(H.intro)+'</p><h3>What we will do</h3><ul>'+H.ours.map(function(x){return '<li>'+h(x)+'</li>'}).join("")+'</ul><h3>What we ask of you</h3><ul>'+H.yours.map(function(x){return '<li>'+h(x)+'</li>'}).join("")+'</ul><h3>Pool and spa rules</h3><ul>'+H.rules.map(function(x){return '<li>'+h(x)+'</li>'}).join("")+'</ul></div>'+
+  '<div class="card"><h2>Your details</h2><div class="g2"><div><label>First name</label><input id="fn" autocomplete="given-name"></div><div><label>Surname</label><input id="sn" autocomplete="family-name"></div></div>'+
+  '<label>I am a…</label><div class="chips" id="types">'+HS_CHECKIN_TYPES.map(function(t){return '<button type="button" class="chip" data-t="'+h(t)+'">'+h(t)+'</button>'}).join("")+'</div>'+
+  '<div id="roomw" class="hide"><label>Room number</label><input id="room" inputmode="numeric"></div>'+
+  '<div class="g2"><div><label>Adults with you (incl. you)</label><input id="adults" type="number" inputmode="numeric" min="1" value="1"></div><div><label>Children under 16</label><input id="kids" type="number" inputmode="numeric" min="0" value="0"></div></div>'+
+  '<label>Signature</label><canvas id="sig"></canvas><button type="button" class="btn ghost" id="clr">Clear</button>'+
+  '<label class="chk" style="margin-top:14px"><input type="checkbox" id="ack"> I have read the personal health statement and the pool and spa rules, and I will follow them. I am responsible for any children with me.</label>'+
+  '<button class="btn" id="go">Check in</button><div class="err" id="e"></div>'+
+  '<p class="small" style="margin-top:12px">We keep your name, visit type, room number and signature as a record of your visit and your agreement to the rules. We do not ask for any health information. Brandon Hall Hotel &amp; Spa will keep this record securely and only for as long as we need it.</p></div>';
+  document.querySelectorAll("#types .chip").forEach(function(b){b.onclick=function(){type=b.dataset.t;document.querySelectorAll("#types .chip").forEach(function(x){x.classList.toggle("on",x===b)});$("#roomw").classList.toggle("hide",type!=="Hotel guest")}});
+  var c=$("#sig"),ctx=c.getContext("2d"),down=false;c._d=false;var r=c.getBoundingClientRect();c.width=r.width*2;c.height=r.height*2;ctx.scale(2,2);ctx.lineWidth=2.4;ctx.lineCap="round";ctx.strokeStyle="#14232f";
+  var pt=function(e){var b=c.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return[t.clientX-b.left,t.clientY-b.top]};
+  c.addEventListener("pointerdown",function(e){down=true;var q=pt(e);ctx.beginPath();ctx.moveTo(q[0],q[1]);e.preventDefault()});
+  c.addEventListener("pointermove",function(e){if(!down)return;var q=pt(e);ctx.lineTo(q[0],q[1]);ctx.stroke();c._d=true});
+  window.addEventListener("pointerup",function(){down=false});
+  $("#clr").onclick=function(){ctx.clearRect(0,0,c.width,c.height);c._d=false};
+  $("#go").onclick=submit;
+}
+function sigData(){var c=$("#sig"),o=document.createElement("canvas");o.width=300;o.height=100;var x=o.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,300,100);x.drawImage(c,0,0,300,100);return o.toDataURL("image/jpeg",.55)}
+function submit(){
+  var e=$("#e");e.textContent="";
+  var fn=$("#fn").value.trim(),sn=$("#sn").value.trim(),room=$("#room").value.trim(),ad=+$("#adults").value||0,kd=+$("#kids").value||0;
+  if(!fn||!sn){e.textContent="Please add your first name and surname.";return}
+  if(!type){e.textContent="Please choose what kind of visit this is.";return}
+  if(type==="Hotel guest"&&!room){e.textContent="Please add your room number.";return}
+  if(ad<1){e.textContent="At least one adult must check in.";return}
+  if(kd>ad*2){e.textContent="There must be at least one adult for every two children under 16.";return}
+  if(!$("#sig")._d){e.textContent="Please sign in the box.";return}
+  if(!$("#ack").checked){e.textContent="Please tick to confirm you have read the statement and rules.";return}
+  var d=new Date(),doc={name:(fn+" "+sn).slice(0,120),type:type,room:room.slice(0,10),adults:ad,children:kd,ack:true,date:today,time:pad(d.getHours())+":"+pad(d.getMinutes()),sig:sigData(),statement:"v1.1 draft",source:"QR check-in"};
+  $("#go").disabled=true;$("#go").textContent="Checking in…";
+  var p;
+  if(DEMO){var a=[];try{a=JSON.parse(localStorage.getItem("hosspa_checkins_demo")||"[]")}catch(x){}doc.id="c"+Date.now();doc.at=Date.now();a.push(doc);localStorage.setItem("hosspa_checkins_demo",JSON.stringify(a));p=Promise.resolve()}
+  else{firebase.apps.length||firebase.initializeApp(firebaseConfig);doc.at=firebase.firestore.FieldValue.serverTimestamp();p=firebase.firestore().collection("hosspa_checkins").add(doc)}
+  p.then(function(){window.scrollTo(0,0);app.innerHTML='<div class="card done"><div class="tick">✓</div><div class="pass">You are checked in</div><p style="margin-top:6px"><b>'+h(fn)+'</b> · '+h(type)+(room?' · Room '+h(room):'')+'</p><p class="small" style="margin-top:4px">'+new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})+' at '+doc.time+'</p><p style="margin-top:14px">Please show this screen at reception if asked. Enjoy your visit.</p></div>'})
+   .catch(function(err){$("#go").disabled=false;$("#go").textContent="Check in";e.textContent="Sorry, that didn't save ("+err.message+"). Please check in at reception."});
+}
+render();
+})();
+</script>
+</body>
+</html>
