@@ -570,6 +570,7 @@ const STD_OPS       = ["herman","pete"];           // operatives (own jobs only)
 const ADMIN_TIER    = MGR_OPS;                      // ?me=glenn / ajay / raj  (also ?tier=management)
 const FIXER_TIER    = STD_OPS;                      // ?me=herman / pete        (also ?tier=operative)
 const WORKERS       = ["glenn","herman","pete"];   // the people a job gets allocated TO (Raj & Ajay allocate, they don't do the job)
+const DAY_RATES     = { glenn:200, herman:150, pete:150 };   // £ per day — for the productivity / cost view
 const REPORTER_TIER = ["raj"];                      // name list for the legacy ?tier=reporter login only
 const DELETE_IDS    = ["raj","ajay"];               // only Raj & Ajay can permanently delete a job
 // The CURRENT session's role comes from the link/code used to sign in, so one person
@@ -927,7 +928,8 @@ function buildMaintenanceNav(){
     <button class="bnav" data-v="jobs"><span class="ico">🔧</span>Jobs<span class="bb" id="bn-u" style="display:none"></span></button>
     <button class="bnav" data-v="chat"><span class="ico">💬</span>Chat</button>
     <button class="bnav" data-v="projects"><span class="ico">📁</span>Projects</button>
-    <button class="bnav" data-v="new"><span class="ico">➕</span>New Job</button>`;
+    <button class="bnav" data-v="team"><span class="ico">📈</span>Team</button>
+    <button class="bnav" data-v="new"><span class="ico">➕</span>New</button>`;
   }
   $('bnav').innerHTML=btns;
   $('bnav').querySelectorAll('.bnav').forEach(b=>b.addEventListener('click',()=>{
@@ -953,6 +955,8 @@ function render(){
     if(VIEW==='dashboard') html=renderDashboard();
     else if(VIEW==='jobs') html=renderJobs();
     else if(VIEW==='chat') html=renderChat();
+    else if(VIEW==='team') html=renderProductivity();
+    else if(VIEW && VIEW.slice(0,3)==='op:') html=renderOperative(VIEW.slice(3));
     else if(VIEW==='projects') html=renderProjects();
     else if(VIEW==='stock') html=renderStock();
     else if(VIEW==='report') html=renderReport();
@@ -979,39 +983,49 @@ function render(){
 }
 
 
+// ── Job lifecycle buckets — ONE source of truth so every number reconciles ──
+// Each open job is in exactly one of: unassigned (to allocate) · assigned · in progress.
+// Plus complete. unassigned + assigned + inprog + complete === total received.
+function hfWorkerOn(j){ return (j.assignees||[]).some(a=>WORKERS.includes(a)); }
+function hfBucket(j){
+  if(j.status==='complete') return 'complete';
+  if(j.status==='in-progress') return 'inprog';
+  return hfWorkerOn(j) ? 'assigned' : 'unassigned';
+}
+function hfCounts(list){
+  const c={total:0,unassigned:0,assigned:0,inprog:0,complete:0,urgent:0};
+  (list||[]).forEach(j=>{ c.total++; c[hfBucket(j)]++; if(j.priority==='urgent'&&j.status!=='complete') c.urgent++; });
+  return c;
+}
+
 // ── DASHBOARD ────────────────────────────────────────────────────────────────
 function renderDashboard(){
   const _J=myJobs();
   const open=_J.filter(j=>j.status!=='complete');
-  const urgent=open.filter(j=>j.priority==='urgent');
-  const inprog=open.filter(j=>j.status==='in-progress');
-  const notstart=open.filter(j=>j.status==='not-started');
-  const complete=_J.filter(j=>j.status==='complete');
   const hr=new Date().getHours();
   const greet=hr<12?'Good Morning':hr<18?'Good Afternoon':'Good Evening';
   const first=MY_USER?.name.split(' ')[0]||'';
   const dateStr=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
 
-  // ── Progress ring: total jobs = 100%, split green/yellow/red ──
-  const nComplete = complete.length;
-  const nInprog   = inprog.length;
-  const nOutstand = open.length - inprog.length;          // everything open that isn't in-progress
-  const total     = nComplete + open.length;              // all jobs
+  // ── Progress ring split by lifecycle bucket (received = 100%) ──
+  const C=hfCounts(_J);
+  const total=C.total;
   const pct = n => total ? Math.round(n/total*100) : 0;
-  const pctComplete = pct(nComplete);
   const CIRC=289;
   const seg = n => total ? CIRC*(n/total) : 0;
-  const gLen=seg(nComplete), yLen=seg(nInprog), rLen=seg(nOutstand);
-  const GREEN='#2a9d6b', YELLOW='#e0a92a', RED='#d64d44';
-  const attn = open.slice().sort((a,b)=>{ const r=s=>s.priority==='urgent'?0:(s.status==='not-started'?1:2); return r(a)-r(b); }).slice(0,3);
-  const legend=(c,lbl,n)=>`<div style="display:flex;align-items:center;gap:9px;font-size:13.5px">
-    <span style="width:12px;height:12px;border-radius:50%;background:${c};flex:none"></span>
-    <span style="font-weight:800;color:var(--navy);min-width:18px">${n}</span><span style="color:#49566a;flex:1">${lbl}</span><span style="color:#7a8494;font-weight:700">${pct(n)}%</span></div>`;
+  const GREEN='#2a9d6b', BLUE='#3b7dd8', AMBER='#e0a92a', RED='#d64d44';
+  // ring order: complete → in progress → assigned → unassigned
+  const sg=seg(C.complete), si=seg(C.inprog), sa=seg(C.assigned), su=seg(C.unassigned);
+  const attn = open.slice().sort((a,b)=>{ const r=s=>s.priority==='urgent'?0:(hfBucket(s)==='unassigned'?1:2); return r(a)-r(b); }).slice(0,3);
+  const legend=(c,lbl,n,filter)=>`<div onclick="FILTER='${filter}';VIEW='jobs';render()" style="display:flex;align-items:center;gap:9px;font-size:13px;cursor:pointer">
+    <span style="width:11px;height:11px;border-radius:50%;background:${c};flex:none"></span>
+    <span style="font-weight:800;color:var(--navy);min-width:16px">${n}</span><span style="color:#49566a;flex:1">${lbl}</span><span style="color:#7a8494;font-weight:700">${pct(n)}%</span></div>`;
 
   let html=`<div style="padding:34px 18px 2px">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--navy)">${greet}, ${first}</div>
     <div style="color:#7a8494;font-size:13px;margin-top:2px">${dateStr}</div>
   </div>
+  ${WORKERS.includes(ME)?clockCardHtml():''}
 
   <div style="margin:12px 14px 0;background:#fff;border-radius:18px;box-shadow:0 2px 10px rgba(24,43,62,.06);padding:16px">
     <div style="display:flex;align-items:center;gap:16px">
@@ -1019,20 +1033,22 @@ function renderDashboard(){
         <svg width="110" height="110" viewBox="0 0 104 104" style="transform:rotate(-90deg)">
           <circle cx="52" cy="52" r="46" fill="none" stroke="#eef1f4" stroke-width="11"></circle>
           ${total?`
-          <circle cx="52" cy="52" r="46" fill="none" stroke="${GREEN}"  stroke-width="11" stroke-dasharray="${gLen} ${CIRC-gLen}" stroke-dashoffset="0"></circle>
-          <circle cx="52" cy="52" r="46" fill="none" stroke="${YELLOW}" stroke-width="11" stroke-dasharray="${yLen} ${CIRC-yLen}" stroke-dashoffset="${-gLen}"></circle>
-          <circle cx="52" cy="52" r="46" fill="none" stroke="${RED}"    stroke-width="11" stroke-dasharray="${rLen} ${CIRC-rLen}" stroke-dashoffset="${-(gLen+yLen)}"></circle>`:''}
+          <circle cx="52" cy="52" r="46" fill="none" stroke="${GREEN}" stroke-width="11" stroke-dasharray="${sg} ${CIRC-sg}" stroke-dashoffset="0"></circle>
+          <circle cx="52" cy="52" r="46" fill="none" stroke="${BLUE}"  stroke-width="11" stroke-dasharray="${si} ${CIRC-si}" stroke-dashoffset="${-sg}"></circle>
+          <circle cx="52" cy="52" r="46" fill="none" stroke="${AMBER}" stroke-width="11" stroke-dasharray="${sa} ${CIRC-sa}" stroke-dashoffset="${-(sg+si)}"></circle>
+          <circle cx="52" cy="52" r="46" fill="none" stroke="${RED}"   stroke-width="11" stroke-dasharray="${su} ${CIRC-su}" stroke-dashoffset="${-(sg+si+sa)}"></circle>`:''}
         </svg>
         <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center">
-          <div><div style="font-size:28px;font-weight:800;color:var(--navy);line-height:1">${total?pctComplete+'%':'—'}</div>
-          <div style="font-size:9.5px;font-weight:700;letter-spacing:.3px;color:#7a8494;text-transform:uppercase">Complete</div></div>
+          <div><div style="font-size:26px;font-weight:800;color:var(--navy);line-height:1">${total?pct(C.complete)+'%':'—'}</div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:.3px;color:#7a8494;text-transform:uppercase">Complete</div></div>
         </div>
       </div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:10px">
-        ${legend(GREEN,'Complete',nComplete)}
-        ${legend(YELLOW,'In progress',nInprog)}
-        ${legend(RED,'Outstanding',nOutstand)}
-        <div style="font-size:11.5px;color:#9aa6b4;border-top:1px solid #eef1f4;padding-top:7px">${total} job${total===1?'':'s'} total${(function(){var n=open.filter(function(j){return !(j.assignees||[]).some(function(a){return WORKERS.includes(a);});}).length;return n?' · <span onclick="FILTER=\'new\';VIEW=\'jobs\';render()" style="color:#c45c00;font-weight:700;cursor:pointer">⏳ '+n+' to allocate</span>':'';})()}</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:9px">
+        ${legend(GREEN,'Completed',C.complete,'complete')}
+        ${legend(BLUE,'In progress',C.inprog,'in-progress')}
+        ${legend(AMBER,'Assigned',C.assigned,'assigned')}
+        ${legend(RED,'To allocate',C.unassigned,'new')}
+        <div style="font-size:11.5px;color:#9aa6b4;border-top:1px solid #eef1f4;padding-top:7px">${total} job${total===1?'':'s'} received</div>
       </div>
     </div>
     ${attn.length?`<div style="margin-top:14px;border-top:1px solid #eef1f4;padding-top:12px">
@@ -1053,11 +1069,32 @@ function renderDashboard(){
   }
 
   html+=`<div class="stat-grid">
-    <div class="stat-card orange" data-filter="urgent"><div class="stat-v">${urgent.length}</div><div class="stat-k">🟠 Urgent</div></div>
-    <div class="stat-card red" data-filter="not-started"><div class="stat-v">${notstart.length}</div><div class="stat-k">🔴 Not started</div></div>
-    <div class="stat-card amber" data-filter="in-progress"><div class="stat-v">${inprog.length}</div><div class="stat-k">🟡 In progress</div></div>
-    <div class="stat-card green" data-filter="complete"><div class="stat-v">${complete.length}</div><div class="stat-k">🟢 Complete</div></div>
+    <div class="stat-card red" data-filter="new"><div class="stat-v">${C.unassigned}</div><div class="stat-k">⏳ To allocate</div></div>
+    <div class="stat-card amber" data-filter="assigned"><div class="stat-v">${C.assigned}</div><div class="stat-k">👤 Assigned</div></div>
+    <div class="stat-card orange" data-filter="in-progress"><div class="stat-v">${C.inprog}</div><div class="stat-k">🟡 In progress</div></div>
+    <div class="stat-card green" data-filter="complete"><div class="stat-v">${C.complete}</div><div class="stat-k">🟢 Completed</div></div>
   </div>`;
+
+  // ── Jobs per person (open jobs each worker is on) — tap to see theirs ──
+  if(isAdmin()){
+    const wl=WORKERS.map(id=>({u:USERS.find(x=>x.id===id), n:_J.filter(j=>j.status!=='complete'&&(j.assignees||[]).includes(id)).length})).filter(x=>x.u);
+    const unassignedN=C.unassigned;
+    html+=`<div style="margin:14px 14px 0;background:#fff;border-radius:16px;box-shadow:0 2px 6px rgba(26,43,58,.06);padding:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.6px;color:#7a8494;margin-bottom:10px;text-transform:uppercase">👷 Jobs per person</div>
+      ${wl.map(w=>`<div onclick="FILTER='p:${w.u.id}';VIEW='jobs';render()" style="display:flex;align-items:center;gap:11px;padding:8px 0;border-top:1px solid #f3f5f7;cursor:pointer">
+        <div class="av" style="background:${w.u.color};width:30px;height:30px;border-radius:50%;color:#fff;display:grid;place-items:center;font:700 11px Lato">${initials(w.u.name)}</div>
+        <div style="flex:1;font-weight:600;color:var(--navy);font-size:14px">${w.u.name}</div>
+        <div style="min-width:30px;height:28px;padding:0 10px;border-radius:14px;background:${w.n?'#eef4f3':'#f3f5f7'};color:${w.n?'#2f7a72':'#9aa6b4'};display:flex;align-items:center;justify-content:center;font:800 14px Lato">${w.n}</div>
+        <span style="color:#c4ccd4;font-size:16px">›</span>
+      </div>`).join('')}
+      <div onclick="FILTER='new';VIEW='jobs';render()" style="display:flex;align-items:center;gap:11px;padding:8px 0;border-top:1px solid #f3f5f7;cursor:pointer">
+        <div style="width:30px;height:30px;border-radius:50%;background:#fff3e8;color:#c45c00;display:grid;place-items:center;font-size:14px">⏳</div>
+        <div style="flex:1;font-weight:600;color:#c45c00;font-size:14px">Not yet allocated</div>
+        <div style="min-width:30px;height:28px;padding:0 10px;border-radius:14px;background:#fdecef;color:#b3261e;display:flex;align-items:center;justify-content:center;font:800 14px Lato">${unassignedN}</div>
+        <span style="color:#c4ccd4;font-size:16px">›</span>
+      </div>
+    </div>`;
+  }
 
   if(IS_SUPER){
     html+=`<div style="padding:0 14px 2px"><button type="button" class="btn btn-orange" onclick="openNewJob()">➕ Log a new job</button></div>`;
@@ -1087,20 +1124,25 @@ function renderJobs(){
   // Sort: newest first (by date desc) so the latest jobs are always at the top
   jobs.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
 
-  // Filter
-  if(FILTER==='new') jobs=jobs.filter(j=>j.status!=='complete' && !(j.assignees||[]).some(a=>WORKERS.includes(a)));
+  // Filter — buckets match the dashboard exactly
+  const personFilter = (FILTER && FILTER.slice(0,2)==='p:') ? FILTER.slice(2) : null;
+  if(personFilter) jobs=jobs.filter(j=>(j.assignees||[]).includes(personFilter) && j.status!=='complete');
+  else if(FILTER==='new') jobs=jobs.filter(j=>hfBucket(j)==='unassigned');
+  else if(FILTER==='assigned') jobs=jobs.filter(j=>hfBucket(j)==='assigned');
   else if(FILTER==='urgent') jobs=jobs.filter(j=>j.priority==='urgent'&&j.status!=='complete');
-  else if(FILTER==='not-started') jobs=jobs.filter(j=>j.status==='not-started');
   else if(FILTER==='in-progress') jobs=jobs.filter(j=>j.status==='in-progress');
   else if(FILTER==='complete') jobs=jobs.filter(j=>j.status==='complete');
 
-  let html=`${isReporter()?`<div class="hf-hero"><div class="hf-hero-greet">Hi ${MY_USER?.name.split(' ')[0]||''}</div><div class="hf-hero-date">Spotted something that needs fixing?</div></div><div style="padding:14px 14px 0"><button type="button" class="btn btn-orange" onclick="openNewJob()">➕ Report a fault</button></div>`:''}<div class="chips">
-    ${(isReporter()?['all','urgent','not-started','in-progress','complete']:['all','new','urgent','not-started','in-progress','complete']).map(f=>`
+  const CC=hfCounts(myJobs());
+  const pname = personFilter ? (USERS.find(u=>u.id===personFilter)?.name||personFilter) : null;
+  let html=`${isReporter()?`<div class="hf-hero"><div class="hf-hero-greet">Hi ${MY_USER?.name.split(' ')[0]||''}</div><div class="hf-hero-date">Spotted something that needs fixing?</div></div><div style="padding:14px 14px 0"><button type="button" class="btn btn-orange" onclick="openNewJob()">➕ Report a fault</button></div>`:''}${pname?`<div style="padding:16px 14px 2px;display:flex;align-items:center;gap:10px"><div style="font-family:'Cormorant Garamond',serif;font-size:21px;color:var(--navy);flex:1">${pname}'s jobs (${jobs.length})</div><button type="button" onclick="FILTER='all';render()" style="background:#fff;border:1px solid var(--line);border-radius:18px;padding:6px 13px;font:700 12px Lato;color:var(--navy);cursor:pointer">✕ All jobs</button></div>`:''}<div class="chips">
+    ${(isReporter()?['all','urgent','in-progress','complete']:['all','new','assigned','in-progress','complete','urgent']).map(f=>`
       <span class="chip ${FILTER===f?'on':''}" data-filter="${f}">${
-        f==='all'?'All ('+myJobs().filter(j=>j.status!=='complete').length+')':
-        f==='new'?'🆕 To allocate ('+myJobs().filter(j=>j.status!=='complete'&&!(j.assignees||[]).some(a=>WORKERS.includes(a))).length+')':
-        f==='urgent'?'🟠 Urgent':f==='not-started'?'🔴 Not started':
-        f==='in-progress'?'🟡 In progress':'🟢 Complete'
+        f==='all'?'All ('+(CC.total-CC.complete)+')':
+        f==='new'?'⏳ To allocate ('+CC.unassigned+')':
+        f==='assigned'?'👤 Assigned ('+CC.assigned+')':
+        f==='urgent'?'🟠 Urgent ('+CC.urgent+')':
+        f==='in-progress'?'🟡 In progress ('+CC.inprog+')':'🟢 Completed ('+CC.complete+')'
       }</span>`).join('')}
   </div><div style="padding:0 0 80px">`;
   if(jobs.length===0){
@@ -2830,6 +2872,196 @@ function projSeedWoodlands(){
   }catch(e){}
 }
 projSyncStart();
+
+// ══════════════════════════════════════════════════════════════════════════
+// CLOCK IN / OUT  +  PRODUCTIVITY
+// Clock-ins mirror to hosfix_clock (readable — powers the productivity view) and,
+// when a HosTime staff code is set below, also post a real punch to clock_punches
+// so HosTime / payroll sees the same hours. No staff code = HosFIX-only (safe).
+// ══════════════════════════════════════════════════════════════════════════
+const STAFF_CODES = { glenn:"BH010", pete:"BH011", herman:"BH012" };   // HosTime staff codes → clock-ins also post to clock_punches (payroll)
+let CLOCK = {};
+try{ CLOCK = JSON.parse(localStorage.getItem('hosfix_clock')||'{}'); }catch(e){ CLOCK={}; }
+const CLK_SYNC = { on:false, sent:{} };
+function clkToday(){ return new Date().toISOString().slice(0,10); }
+function clkKey(who,date){ return who+'_'+(date||clkToday()); }
+function clkRec(who,date){ return CLOCK[clkKey(who,date)]||null; }
+function clkIsIn(who){ const r=clkRec(who); if(!r||!r.sessions||!r.sessions.length) return false; return !r.sessions[r.sessions.length-1].out; }
+function clkMs(r,upto){ if(!r||!r.sessions) return 0; const end=upto||Date.now(); return r.sessions.reduce((t,s)=>{ const a=new Date(s.in).getTime(); const b=s.out?new Date(s.out).getTime():end; return t+Math.max(0,b-a); },0); }
+function clkFmt(ms){ const m=Math.max(0,Math.round(ms/60000)); return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m'; }
+function saveClock(){ try{ localStorage.setItem('hosfix_clock',JSON.stringify(CLOCK)); }catch(e){} clkSyncPush(); }
+function clkSyncPush(){
+  if(!fbDb) return;
+  Object.keys(CLOCK).forEach(k=>{ const r=CLOCK[k]; const sig=JSON.stringify(r); if(CLK_SYNC.sent[k]===sig) return; CLK_SYNC.sent[k]=sig; fbDb.collection('hosfix_clock').doc(k).set(JSON.parse(JSON.stringify(r))).catch(e=>{ delete CLK_SYNC.sent[k]; console.warn('clock push failed',k,e&&e.message); }); });
+}
+function clkSyncStart(){
+  fbInit(); if(!fbDb||CLK_SYNC.on) return; CLK_SYNC.on=true;
+  fbDb.collection('hosfix_clock').onSnapshot(qs=>{ let changed=false;
+    qs.docChanges().forEach(ch=>{ if(ch.type==='removed'){ if(CLOCK[ch.doc.id]){ delete CLOCK[ch.doc.id]; changed=true; } return; } const r=ch.doc.data(); if(!r||!r.key) return; if(JSON.stringify(CLOCK[r.key])!==JSON.stringify(r)){ CLOCK[r.key]=r; CLK_SYNC.sent[r.key]=JSON.stringify(r); changed=true; } });
+    if(changed){ try{ localStorage.setItem('hosfix_clock',JSON.stringify(CLOCK)); }catch(e){} if(VIEW==='dashboard'||VIEW==='team'){ try{ render(); }catch(e){} } }
+  }, err=>{ console.warn('clock sync unavailable:', err&&err.message); CLK_SYNC.on=false; });
+}
+clkSyncStart();
+function clockIn(){ _clockPunch('in'); }
+function clockOut(){ _clockPunch('out'); }
+// Post a real punch into HosTime's clock_punches (same shape as the clock.html page)
+function htPunch(code,name,type,at){
+  try{ if(code && fbDb){ fbDb.collection('clock_punches').add({ staffCode:code, name, type, date: at.toISOString().slice(0,10), time: at.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}), ts: at.toISOString(), mins: at.getHours()*60+at.getMinutes(), source:'hosfix' }).catch(e=>console.warn('HosTime punch failed',e&&e.message)); } }catch(e){}
+}
+function _clockPunch(type){
+  const who=ME; if(!who) return;
+  const name=(MY_USER&&MY_USER.name)||who;
+  const now=new Date(), date=now.toISOString().slice(0,10), k=clkKey(who,date);
+  let r=CLOCK[k]; if(!r){ r={ key:k, who, name, date, sessions:[] }; CLOCK[k]=r; }
+  const last=r.sessions[r.sessions.length-1];
+  let postHT=false;
+  if(type==='in'){ if(last && !last.out){ toast('Already clocked in'); return; } r.sessions.push({ in: now.toISOString(), ht:true }); postHT=true; }
+  else { if(!last || last.out){ toast("You're not clocked in"); return; } last.out = now.toISOString(); postHT=!!last.ht; }  // only post the OUT if the IN went to HosTime
+  saveClock();
+  if(postHT) htPunch(STAFF_CODES[who], name, type, now);
+  render();
+  toast(type==='in'?'✅ Clocked in':'👋 Clocked off · '+clkFmt(clkMs(r)));
+}
+// Clock card for the dashboard (everyone sees their own)
+function clockCardHtml(){
+  const inNow=clkIsIn(ME), r=clkRec(ME), worked=clkMs(r);
+  const since=(inNow && r && r.sessions.length)?new Date(r.sessions[r.sessions.length-1].in).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';
+  return `<div style="margin:12px 14px 0;background:${inNow?'#e8f3ee':'#fff'};border:1px solid ${inNow?'#bfe0d0':'var(--line)'};border-radius:16px;padding:13px 14px;box-shadow:0 2px 6px rgba(26,43,58,.05)">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#7a8494;text-transform:uppercase">${inNow?'🟢 On the clock':'⏱ Time clock'}</div>
+        <div style="font-size:15px;font-weight:700;color:var(--navy);margin-top:3px">${inNow?('In since '+since+' · '+clkFmt(worked)+' today'):(worked>0?('Today: '+clkFmt(worked)):'Not clocked in')}</div>
+      </div>
+      <button type="button" onclick="${inNow?'clockOut()':'clockIn()'}" style="flex:none;padding:12px 18px;border:0;border-radius:12px;font:800 14px Lato;color:#fff;background:${inNow?'#b3261e':'#2a9d6b'};cursor:pointer">${inNow?'Clock OFF':'Clock IN'}</button>
+    </div>
+  </div>`;
+}
+// ── PRODUCTIVITY / TEAM view ──
+function renderProductivity(){
+  const _J=myJobs();
+  const wd=new Date(); const dow=(wd.getDay()+6)%7; const ws=new Date(wd); ws.setHours(0,0,0,0); ws.setDate(wd.getDate()-dow); const wkStart=ws.getTime();
+  const inWeek = iso => iso && new Date(iso).getTime()>=wkStart;
+  let tCost=0, tDone=0, tHours=0;
+  const rows=WORKERS.map(id=>{
+    const u=USERS.find(x=>x.id===id); if(!u) return '';
+    const mine=_J.filter(j=>(j.assignees||[]).includes(id));
+    const done=mine.filter(j=>j.status==='complete');
+    const doneWk=done.filter(j=>inWeek(j.completedAt)).length;
+    const openN=mine.filter(j=>j.status!=='complete').length;
+    const timed=done.filter(j=>j.totalTimeMins>0);
+    const avgMins=timed.length?Math.round(timed.reduce((t,j)=>t+(j.totalTimeMins||0),0)/timed.length):0;
+    let wkMs=0; const days=new Set();
+    Object.keys(CLOCK).forEach(k=>{ const r=CLOCK[k]; if(!r||r.who!==id) return; if(!inWeek(r.date+'T00:00:00Z')) return; const ms=clkMs(r); if(ms>0){ wkMs+=ms; days.add(r.date); } });
+    const rate=DAY_RATES[id]||0, daysN=days.size, cost=daysN*rate;
+    const costPerJob = doneWk? Math.round(cost/doneWk) : 0;
+    tCost+=cost; tDone+=doneWk; tHours+=wkMs;
+    const inNow=clkIsIn(id);
+    return `<div onclick="VIEW='op:${id}';render()" style="background:#fff;border-radius:15px;box-shadow:0 2px 6px rgba(26,43,58,.06);padding:14px;margin-bottom:12px;cursor:pointer">
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px">
+        <div class="av" style="background:${u.color};width:34px;height:34px;border-radius:50%;color:#fff;display:grid;place-items:center;font:700 12px Lato">${initials(u.name)}</div>
+        <div style="flex:1"><div style="font-weight:700;color:var(--navy);font-size:15px">${u.name}${inNow?' <span style="font-size:10px;color:#2a9d6b;font-weight:700">● on clock</span>':''}</div>
+        <div style="font-size:11.5px;color:#9aa6b4">£${rate}/day · tap for detail</div></div>
+        <span style="color:#c4ccd4;font-size:16px">›</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+        ${pvCell(openN,'Open')}${pvCell(done.length,'Completed')}${pvCell(avgMins?clkFmt(avgMins*60000):'—','Avg / job')}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-top:8px">
+        ${pvCell(clkFmt(wkMs),'Hours (wk)')}${pvCell('£'+cost,daysN+' day'+(daysN===1?'':'s')+' this wk')}${pvCell(costPerJob?'£'+costPerJob:'—','Cost / job')}
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="padding:34px 18px 2px">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--navy)">Team productivity</div>
+    <div style="color:#7a8494;font-size:13px;margin-top:2px">This week · jobs, hours and cost per operative</div>
+  </div>
+  <div style="margin:12px 14px 0;background:var(--navy);border-radius:16px;padding:14px;color:#fff;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+    <div><div style="font-size:22px;font-weight:800">${tDone}</div><div style="font-size:11px;opacity:.8">Jobs done</div></div>
+    <div><div style="font-size:22px;font-weight:800">${clkFmt(tHours)}</div><div style="font-size:11px;opacity:.8">Hours</div></div>
+    <div><div style="font-size:22px;font-weight:800">£${tCost}</div><div style="font-size:11px;opacity:.8">Labour cost</div></div>
+  </div>
+  <div style="padding:14px 14px 90px">${rows}</div>`;
+}
+function pvCell(v,k){ return `<div style="background:#f6f8fa;border-radius:10px;padding:8px 4px"><div style="font-size:16px;font-weight:800;color:var(--navy)">${v}</div><div style="font-size:10px;color:#7a8494;margin-top:1px">${k}</div></div>`; }
+
+// ── Single operative detail (manager insight) ──
+function renderOperative(id){
+  const u=USERS.find(x=>x.id===id);
+  if(!u) return `<div style="padding:40px;text-align:center;color:#7a8494">Not found</div>`;
+  const _J=myJobs();
+  const mine=_J.filter(j=>(j.assignees||[]).includes(id));
+  const done=mine.filter(j=>j.status==='complete');
+  const openJobs=mine.filter(j=>j.status!=='complete');
+  const timed=done.filter(j=>j.totalTimeMins>0);
+  const avgMins=timed.length?Math.round(timed.reduce((t,j)=>t+(j.totalTimeMins||0),0)/timed.length):0;
+  const totalMins=done.reduce((t,j)=>t+(j.totalTimeMins||0),0);
+  const spend=mine.reduce((t,j)=>t+(Number(j.cost)||0),0);
+  const rate=DAY_RATES[id]||0;
+  // clock records for this person, newest day first
+  const recs=Object.keys(CLOCK).map(k=>CLOCK[k]).filter(r=>r&&r.who===id).sort((a,b)=>b.date.localeCompare(a.date));
+  const daysWorked=recs.filter(r=>clkMs(r)>0).length;
+  const costToDate=daysWorked*rate;
+  const hoursTotal=recs.reduce((t,r)=>t+clkMs(r),0);
+  const inNow=clkIsIn(id);
+  // job-type breakdown
+  const typeCount={};
+  mine.forEach(j=>{ const t=j.workType||'general'; typeCount[t]=(typeCount[t]||0)+1; });
+  const types=Object.keys(typeCount).sort((a,b)=>typeCount[b]-typeCount[a]);
+  const typeLabel=t=>{ const w=WORK_TYPES.find(x=>x.id===t); return w?(w.icon+' '+w.label):t; };
+
+  let html=`<div style="background:var(--navy);color:#fff;padding:34px 16px 16px">
+    <button type="button" onclick="VIEW='team';render()" style="background:none;border:0;color:#cfe0dc;font:600 13px Lato;cursor:pointer;padding:0;margin-bottom:10px">‹ Team</button>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="av" style="background:${u.color};width:44px;height:44px;border-radius:50%;color:#fff;display:grid;place-items:center;font:700 15px Lato;border:2px solid rgba(255,255,255,.3)">${initials(u.name)}</div>
+      <div style="flex:1"><div style="font-size:19px;font-weight:800">${u.name}</div>
+      <div style="font-size:12px;color:#aecfc9">${u.role||'Operative'} · £${rate}/day${inNow?' · 🟢 on the clock':''}</div></div>
+    </div>
+  </div>
+  <div style="padding:14px 14px 90px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:10px">
+      ${pvCell(openJobs.length,'Open')}${pvCell(done.length,'Completed')}${pvCell(avgMins?clkFmt(avgMins*60000):'—','Avg / job')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:16px">
+      ${pvCell(clkFmt(hoursTotal),'Hours total')}${pvCell('£'+costToDate,daysWorked+' day'+(daysWorked===1?'':'s')+' · cost to date')}${pvCell('£'+spend,'Job spend')}
+    </div>
+
+    <div style="background:#fff;border-radius:14px;box-shadow:0 2px 6px rgba(26,43,58,.06);padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#7a8494;text-transform:uppercase;margin-bottom:10px">⏱ Clock log</div>
+      ${recs.length?recs.slice(0,7).map(r=>`<div style="border-top:1px solid #f3f5f7;padding:8px 0">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="font-weight:700;color:var(--navy)">${fmtDate?fmtDate(r.date):r.date}</span><span style="font-weight:700;color:#2f7a72">${clkFmt(clkMs(r))}</span></div>
+        <div style="font-size:11.5px;color:#7a8494;margin-top:3px">${(r.sessions||[]).map(s=>{const i=new Date(s.in).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});const o=s.out?new Date(s.out).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'now';return i+'–'+o;}).join('  ·  ')}</div>
+      </div>`).join(''):'<div style="font-size:12.5px;color:#9aa6b4">No clock records yet</div>'}
+    </div>
+
+    <div style="background:#fff;border-radius:14px;box-shadow:0 2px 6px rgba(26,43,58,.06);padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#7a8494;text-transform:uppercase;margin-bottom:10px">🧰 Types of job</div>
+      ${types.length?types.map(t=>`<div style="display:flex;justify-content:space-between;border-top:1px solid #f3f5f7;padding:7px 0;font-size:13px"><span style="color:var(--navy)">${typeLabel(t)}</span><span style="font-weight:800;color:var(--navy)">${typeCount[t]}</span></div>`).join(''):'<div style="font-size:12.5px;color:#9aa6b4">No jobs yet</div>'}
+    </div>
+
+    <div style="font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--navy);margin:4px 2px 8px">Open jobs (${openJobs.length})</div>
+    ${openJobs.length?openJobs.map(j=>jobCard(j)).join(''):'<div style="font-size:12.5px;color:#9aa6b4;padding:0 2px 8px">None open</div>'}
+    <div style="font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--navy);margin:14px 2px 8px">Completed (${done.length})</div>
+    ${done.length?done.slice(0,10).map(j=>jobCard(j)).join(''):'<div style="font-size:12.5px;color:#9aa6b4;padding:0 2px">None yet</div>'}
+  </div>`;
+  return html;
+}
+
+// Launch-day convenience: clock Glenn/Herman/Pete IN at 08:00 today (one date only, skips anyone already clocked)
+function clkSeedLaunch(){
+  try{
+    if(clkToday()!=='2026-11-25') return;
+    let changed=false;
+    WORKERS.forEach(id=>{
+      const k=clkKey(id,'2026-11-25');
+      if(CLOCK[k]) return;                     // already has a record today — leave it
+      const u=USERS.find(x=>x.id===id);
+      CLOCK[k]={ key:k, who:id, name:(u&&u.name)||id, date:'2026-11-25', sessions:[{ in:'2026-11-25T08:00:00.000Z' }] };
+      changed=true;
+    });
+    if(changed) saveClock();
+  }catch(e){}
+}
+clkSeedLaunch();
 
 // ── Projects: operative picker (shared) ──
 let _projPick={ sel:[], cb:null };
