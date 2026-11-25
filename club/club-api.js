@@ -56,7 +56,7 @@
           day = Math.max(0, day - (i === 0 ? 0 : 3 + Math.floor(Math.random() * 3)));
           T = now - day * D - 2 * 3600000;
           const m = await store.get('club_members', r.memberNo); const b = S.balances(m, T);
-          await svc.staff({ deviceId: dk.deviceId, deviceKey: dk.key, empNo: '1001', pin: '1234', action: 'settle', memberNo: r.memberNo, bill: bills[i], use: i % 2 === 0 ? Math.min(b.available, bills[i]) : 0 });
+          await svc.staff({ deviceId: dk.deviceId, deviceKey: dk.key, empNo: '1001', pin: '2222', action: 'settle', memberNo: r.memberNo, bill: bills[i], use: i % 2 === 0 ? Math.min(b.available, bills[i]) : 0 });
         }
       }
       T = null;
@@ -81,7 +81,7 @@
       },
       pushSupported: () => false,
       enablePush: async () => { throw err({ code: 'demo', message: 'Offer alerts work on the live site once the card is on your home screen.' }); },
-      demoHint: { device: 'DEMO', staff: '1001 / PIN 1234', admin: '1234' }
+      demoHint: { device: 'DEMO', staff: '1001 / PIN 2222', admin: '1234' }
     };
   } else {
     /* ---------- live: Firebase ---------- */

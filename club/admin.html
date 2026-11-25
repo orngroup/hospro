@@ -138,6 +138,7 @@ tr.void td{color:#999;text-decoration:line-through}
         <label class="f">Highest single bill (£)<input class="in" id="s_maxBill" inputmode="numeric"></label>
         <label class="f">Waiter can void within (minutes)<input class="in" id="s_voidMinutes" inputmode="numeric"></label>
         <label class="f">Tablet signs waiter out after (seconds)<input class="in" id="s_autoLockSeconds" inputmode="numeric"></label>
+        <label class="f">Staff PIN for the waiter app (4–8 digits; blank = each person's HosTIME PIN)<input class="in" id="s_staffPin" inputmode="numeric" autocomplete="off"></label>
       </div>
       <label class="tick"><input type="checkbox" id="s_creditNextVisit"> <span>Credit earned can be spent from the next day (recommended)</span></label>
       <button class="btn btn-navy" type="submit">Save settings</button>
@@ -307,7 +308,7 @@ $('oNew').onclick = () => { $('oForm').reset(); $('oId').value = ''; $('oActive'
 const SKEYS = ['earnPct', 'welcomeAmount', 'welcomeDays', 'creditDays', 'maxBill', 'voidMinutes', 'autoLockSeconds'];
 async function loadSetup(extra) {
   const r = await A('settings', extra || {});
-  SKEYS.forEach(k => $('s_' + k).value = r.settings[k]); $('s_creditNextVisit').checked = !!r.settings.creditNextVisit;
+  SKEYS.forEach(k => $('s_' + k).value = r.settings[k]); $('s_creditNextVisit').checked = !!r.settings.creditNextVisit; $('s_staffPin').value = r.settings.staffPin || '';
   const d = await A('devices', extra && extra.revoke ? { revoke: extra.revoke } : {});
   $('dTable').innerHTML = '<thead><tr><th>Tablet</th><th>Activated</th><th>Last used</th><th>Status</th><th></th></tr></thead><tbody>' +
     (d.devices.length ? d.devices.map((x, i) => '<tr><td>' + esc(x.name) + '</td><td>' + esc(date(x.activatedAt)) + '</td><td>' + esc(date(x.lastUsed)) + ' ' + esc(time(x.lastUsed)) + '</td><td>' + (x.revoked ? '<span class="pill bad">Removed</span>' : '<span class="pill ok">Active</span>') + '</td><td>' + (x.revoked ? '' : '<button class="btn btn-ghost" data-rev="' + i + '" style="min-height:34px;padding:4px 12px">Remove</button>') + '</td></tr>').join('') : '<tr><td colspan="5" class="muted">No tablets yet. Open staff.html on a tablet and activate it with the set-up code.</td></tr>') + '</tbody>';
@@ -315,7 +316,7 @@ async function loadSetup(extra) {
   $('dTable').querySelectorAll('[data-rev]').forEach(b => b.onclick = async () => { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Confirm'; return; } await loadSetup({ revoke: ids[+b.dataset.rev] }); CC.toast('Tablet removed', 'ok'); });
 }
 $('sForm').addEventListener('submit', async e => {
-  e.preventDefault(); const save = { creditNextVisit: $('s_creditNextVisit').checked }; SKEYS.forEach(k => save[k] = parseFloat($('s_' + k).value));
+  e.preventDefault(); const save = { creditNextVisit: $('s_creditNextVisit').checked, staffPin: $('s_staffPin').value.trim() }; SKEYS.forEach(k => save[k] = parseFloat($('s_' + k).value));
   try { await A('settings', { save }); CC.toast('Settings saved', 'ok'); loadSetup(); } catch (er) { CC.toast(er.message, 'bad'); }
 });
 if (CC.demo) { $('pin').value = ''; $('pin').placeholder = '1234'; }

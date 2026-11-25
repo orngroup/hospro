@@ -23,7 +23,8 @@
     creditNextVisit: true,   // earned credit can be spent from the next day, not on the same bill
     maxBill: 5000,           // sanity limit on a single bill
     voidMinutes: 30,         // staff may void their own transaction within this window
-    autoLockSeconds: 90      // waiter tablet signs the waiter out after this idle time
+    autoLockSeconds: 90,     // waiter tablet signs the waiter out after this idle time
+    staffPin: '2222'         // one PIN for all waiters (blank = use each person's HosTIME clock-in PIN)
   };
 
   /* ---------- helpers ---------- */
@@ -234,18 +235,34 @@
       await store.set('club_devices', deviceId, { id: deviceId, name: clean(name, 40) || 'Tablet', keyHash: await ctx.hash(key), activatedAt: now(), revoked: false, lastUsed: now() });
       return { deviceId, deviceKey: key, name: clean(name, 40) || 'Tablet' };
     }
-    async function staffAuth(p) {
+    async function deviceCheck(p) {
       const d = await store.get('club_devices', clean(p.deviceId, 20));
       if (!d || d.revoked || d.keyHash !== await ctx.hash(String(p.deviceKey || ''))) fail('device', 'This device is not set up for The Clarendon Club. Ask a manager to activate it.');
+      return d;
+    }
+    async function rosterFind(empNo) {
+      const emp = clean(empNo, 12).toLowerCase();
+      return (await ctx.roster()).find(r => String(r.code || '').trim().toLowerCase() === emp);
+    }
+    async function whois(p) {
+      await deviceCheck(p);
+      const g = await guard('whois_' + clean(p.deviceId, 20), 40, 10);
+      const st = await rosterFind(p.empNo);
+      if (!st) { await g.bad(); fail('staff', 'Employee number not recognised.'); }
+      return { name: st.name };
+    }
+    async function staffAuth(p) {
+      const d = await deviceCheck(p);
+      const s = await settings();
       const emp = clean(p.empNo, 12).toLowerCase();
       const g = await guard('staff_' + emp.replace(/\W/g, ''), 6, 15);
-      const roster = await ctx.roster();
-      const st = roster.find(r => String(r.code || '').trim().toLowerCase() === emp);
+      const st = await rosterFind(p.empNo);
       if (!st) { await g.bad(); fail('staff', 'Employee number not recognised.'); }
-      if (st.pinHash && clockHash(String(p.pin || ''), st.code) !== st.pinHash) { await g.bad(); fail('staff', 'PIN not recognised. Use your HosTIME clock-in PIN.'); }
+      if (s.staffPin) { if (String(p.pin || '') !== String(s.staffPin)) { await g.bad(); fail('staff', 'PIN not recognised.'); } }
+      else if (st.pinHash && clockHash(String(p.pin || ''), st.code) !== st.pinHash) { await g.bad(); fail('staff', 'PIN not recognised. Use your HosTIME clock-in PIN.'); }
       await g.ok();
       d.lastUsed = now(); await store.set('club_devices', p.deviceId, d);
-      return { code: String(st.code), name: st.name, pinChecked: !!st.pinHash, deviceId: p.deviceId, deviceName: d.name };
+      return { code: String(st.code), name: st.name, pinChecked: !!(s.staffPin || st.pinHash), deviceId: p.deviceId, deviceName: d.name };
     }
     async function lookup(q) {
       q = clean(q, 160);
@@ -257,6 +274,7 @@
       const m = no && await memberByNo(no); if (!m) fail('not-found', 'No member found.'); return m;
     }
     async function staff(p) {
+      if (p.action === 'whois') return whois(p);
       const who = await staffAuth(p); const s = await settings(); const t = now();
       const a = p.action;
       if (a === 'signin') return { staff: who, settings: { earnPct: s.earnPct, autoLockSeconds: s.autoLockSeconds, voidMinutes: s.voidMinutes } };
@@ -399,6 +417,7 @@
           const num = (k, lo, hi) => { const v = Number(n[k]); if (!(v >= lo && v <= hi)) fail('invalid', k + ' out of range'); out[k] = v; };
           num('earnPct', 0, 50); num('welcomeAmount', 0, 100); num('welcomeDays', 1, 365); num('creditDays', 7, 730); num('maxBill', 50, 50000); num('voidMinutes', 0, 240); num('autoLockSeconds', 30, 900);
           out.creditNextVisit = !!n.creditNextVisit;
+          const sp = String(n.staffPin == null ? '' : n.staffPin).trim(); if (sp && !/^\d{4,8}$/.test(sp)) fail('invalid', 'Staff PIN must be 4 to 8 digits, or blank'); out.staffPin = sp;
           await store.set('club_settings', 'main', Object.assign({}, (await store.get('club_settings', 'main')) || {}, out));
         }
         return { settings: await settings() };

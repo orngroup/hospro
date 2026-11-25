@@ -40,6 +40,9 @@ h1.h{font-size:32px;color:var(--navy);margin:6px 0 4px}
 .pad button{min-height:64px;font-size:26px;border:1px solid var(--line);border-radius:14px;background:#fff;cursor:pointer;color:var(--navy);font-weight:700}
 .pad button:active{background:#efe7dd}
 .pad .fn{font-size:16px;color:var(--ink2)}
+.empname{min-height:30px;font-size:18px;font-weight:700;color:var(--navy);text-align:center}
+.empname.ok::before{content:"✓ ";color:var(--ok)}
+.empname.bad{color:var(--bad);font-size:15px;font-weight:400}
 /* scan */
 .grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
 @media(max-width:820px){.grid2{grid-template-columns:minmax(0,1fr)}}
@@ -125,9 +128,10 @@ h1.h{font-size:32px;color:var(--navy);margin:6px 0 4px}
   <section class="scr" id="s-signin">
     <div class="signin">
       <h1 class="h">Sign in</h1>
-      <p class="sub">Your employee number and HosTIME clock-in PIN.</p>
+      <p class="sub">Enter your employee number, then the staff PIN.</p>
       <div class="disp">
         <label>Employee number<input id="inEmp" inputmode="numeric" autocomplete="off" readonly></label>
+        <div id="empName" class="empname" aria-live="polite"></div>
         <label>PIN<input id="inPin" type="password" inputmode="numeric" autocomplete="off" readonly></label>
       </div>
       <div class="pad" id="pad"></div>
@@ -231,19 +235,37 @@ function setField(id) { field = id; $('inEmp').classList.toggle('act', id === 'i
 $('pad').addEventListener('click', e => {
   const k = e.target.dataset.k; if (!k) return; const el = $(field);
   if (k === 'Clear') el.value = ''; else if (k === '⌫') el.value = el.value.slice(0, -1); else if (el.value.length < 10) el.value += k;
-  if (field === 'inEmp' && k !== '⌫' && k !== 'Clear' && el.value.length >= 5 && !CC.demo) setField('inPin');
-  if (field === 'inEmp' && CC.demo && el.value.length >= 4) setField('inPin');
+  if (field === 'inEmp') lookupName();
   if (field === 'inPin' && el.value.length >= 4 && k !== '⌫') signIn();
 });
 document.addEventListener('keydown', e => {
   if (!$('s-signin').classList.contains('on')) return;
-  if (/^\d$/.test(e.key)) { $(field).value += e.key; e.preventDefault(); }
-  else if (e.key === 'Backspace') { $(field).value = $(field).value.slice(0, -1); e.preventDefault(); }
+  if (/^\d$/.test(e.key)) { $(field).value += e.key; e.preventDefault(); if (field === 'inEmp') lookupName(); }
+  else if (e.key === 'Backspace') { $(field).value = $(field).value.slice(0, -1); e.preventDefault(); if (field === 'inEmp') lookupName(); }
   else if (e.key === 'Tab') { setField(field === 'inEmp' ? 'inPin' : 'inEmp'); e.preventDefault(); }
   else if (e.key === 'Enter') { field === 'inEmp' ? setField('inPin') : signIn(); }
 });
 $('signBtn').onclick = signIn;
-function toSignIn() { who = null; creds = null; member = null; $('inEmp').value = ''; $('inPin').value = ''; setField('inEmp'); errBox('signErr', ''); head(); scr('signin'); }
+function toSignIn() { who = null; creds = null; member = null; $('inEmp').value = ''; $('inPin').value = ''; showName('', ''); setField('inEmp'); errBox('signErr', ''); head(); scr('signin'); }
+/* show the waiter's name as soon as their employee number is recognised */
+let nameT = null, nameSeq = 0;
+function showName(text, cls) { $('empName').textContent = text; $('empName').className = 'empname' + (cls ? ' ' + cls : ''); }
+function lookupName() {
+  clearTimeout(nameT); showName('', '');
+  const emp = $('inEmp').value.trim(); if (emp.length < 3) return;
+  const seq = ++nameSeq;
+  nameT = setTimeout(async () => {
+    try {
+      const r = await ClubAPI.staff(Object.assign({ action: 'whois', empNo: emp }, dev()));
+      if (seq !== nameSeq) return;
+      showName(r.name, 'ok'); setField('inPin');
+    } catch (er) {
+      if (seq !== nameSeq) return;
+      if (er.code === 'device') resetDevice(er.message);
+      else if (emp.length >= 4) showName('Employee number not recognised', 'bad');
+    }
+  }, 450);
+}
 async function signIn() {
   const empNo = $('inEmp').value.trim(), pin = $('inPin').value.trim();
   if (!empNo) { setField('inEmp'); return; }
