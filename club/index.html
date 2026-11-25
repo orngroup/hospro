@@ -531,7 +531,16 @@ function loadBooking() {
   const inp = document.createElement('input'); inp.type = 'hidden'; inp.id = 'rdwidgeturl'; inp.name = 'rdwidgeturl'; inp.value = url;
   $('rd-widget-frame').after(inp);
   const sc = document.createElement('script'); sc.src = 'https://booking.resdiary.com/bundles/WidgetV2Loader.js';
-  sc.onload = () => setTimeout(() => $('rdLoading').classList.add('hidden'), 1200);
+  // ResDiary's loader starts on window.onload, which has already fired by the time Book is opened, so start it here
+  sc.onload = () => {
+    try { if (typeof window.onload === 'function') window.onload(new Event('load')); } catch (e) {}
+    let waited = 0;
+    const chk = setInterval(() => {
+      waited += 500;
+      if ($('rd-widget-frame').children.length) { clearInterval(chk); $('rdLoading').classList.add('hidden'); }
+      else if (waited >= 15000) { clearInterval(chk); $('rdLoading').innerHTML = 'The booking calendar is taking a while. <a href="' + esc(url.replace('?includeJquery=false', '')) + '" target="_blank" rel="noopener">Open booking in a new tab</a>.'; }
+    }, 500);
+  };
   sc.onerror = () => { $('rdLoading').innerHTML = 'The booking calendar could not load. <a href="' + esc(url.replace('?includeJquery=false', '')) + '" target="_blank" rel="noopener">Open booking in a new tab</a>.'; };
   document.body.appendChild(sc);
 }
