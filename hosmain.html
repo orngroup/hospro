@@ -569,6 +569,7 @@ const MGR_OPS       = ["glenn","ajay","raj"];      // manager-operatives (admin 
 const STD_OPS       = ["herman","pete"];           // operatives (own jobs only)
 const ADMIN_TIER    = MGR_OPS;                      // ?me=glenn / ajay / raj  (also ?tier=management)
 const FIXER_TIER    = STD_OPS;                      // ?me=herman / pete        (also ?tier=operative)
+const WORKERS       = ["glenn","herman","pete"];   // the people a job gets allocated TO (Raj & Ajay allocate, they don't do the job)
 const REPORTER_TIER = ["raj"];                      // name list for the legacy ?tier=reporter login only
 const DELETE_IDS    = ["raj","ajay"];               // only Raj & Ajay can permanently delete a job
 // The CURRENT session's role comes from the link/code used to sign in, so one person
@@ -1031,7 +1032,7 @@ function renderDashboard(){
         ${legend(GREEN,'Complete',nComplete)}
         ${legend(YELLOW,'In progress',nInprog)}
         ${legend(RED,'Outstanding',nOutstand)}
-        <div style="font-size:11.5px;color:#9aa6b4;border-top:1px solid #eef1f4;padding-top:7px">${total} job${total===1?'':'s'} total</div>
+        <div style="font-size:11.5px;color:#9aa6b4;border-top:1px solid #eef1f4;padding-top:7px">${total} job${total===1?'':'s'} total${(function(){var n=open.filter(function(j){return !(j.assignees||[]).some(function(a){return WORKERS.includes(a);});}).length;return n?' · <span onclick="FILTER=\'new\';VIEW=\'jobs\';render()" style="color:#c45c00;font-weight:700;cursor:pointer">⏳ '+n+' to allocate</span>':'';})()}</div>
       </div>
     </div>
     ${attn.length?`<div style="margin-top:14px;border-top:1px solid #eef1f4;padding-top:12px">
@@ -1087,7 +1088,7 @@ function renderJobs(){
   jobs.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
 
   // Filter
-  if(FILTER==='new') jobs=jobs.filter(j=>j.status!=='complete' && !(j.assignees||[]).some(a=>FIXER_TIER.includes(a)));
+  if(FILTER==='new') jobs=jobs.filter(j=>j.status!=='complete' && !(j.assignees||[]).some(a=>WORKERS.includes(a)));
   else if(FILTER==='urgent') jobs=jobs.filter(j=>j.priority==='urgent'&&j.status!=='complete');
   else if(FILTER==='not-started') jobs=jobs.filter(j=>j.status==='not-started');
   else if(FILTER==='in-progress') jobs=jobs.filter(j=>j.status==='in-progress');
@@ -1097,7 +1098,7 @@ function renderJobs(){
     ${(isReporter()?['all','urgent','not-started','in-progress','complete']:['all','new','urgent','not-started','in-progress','complete']).map(f=>`
       <span class="chip ${FILTER===f?'on':''}" data-filter="${f}">${
         f==='all'?'All ('+myJobs().filter(j=>j.status!=='complete').length+')':
-        f==='new'?'🆕 To allocate ('+myJobs().filter(j=>j.status!=='complete'&&!(j.assignees||[]).some(a=>FIXER_TIER.includes(a))).length+')':
+        f==='new'?'🆕 To allocate ('+myJobs().filter(j=>j.status!=='complete'&&!(j.assignees||[]).some(a=>WORKERS.includes(a))).length+')':
         f==='urgent'?'🟠 Urgent':f==='not-started'?'🔴 Not started':
         f==='in-progress'?'🟡 In progress':'🟢 Complete'
       }</span>`).join('')}
@@ -1132,7 +1133,9 @@ function jobCard(j){
     j.status==='complete'?'s-complete':j.status==='in-progress'?'s-in-progress':
     j.status==='pending_approval'?'s-pending':'s-not-started';
   const assignees=(j.assignees||[]).map(id=>USERS.find(u=>u.id===id)).filter(Boolean);
-  const unassigned=!(j.assignees||[]).length && j.status!=='complete';
+  const hasFixer=(j.assignees||[]).some(a=>WORKERS.includes(a));
+  const needsAllocation=!hasFixer && j.status!=='complete';   // still sitting with a manager = not allocated yet
+  const fixerNames=assignees.filter(u=>WORKERS.includes(u.id)).map(u=>u.name.split(' ')[0]).join(', ');
   const occ=j.occupancy==='occupied'?`<span class="j-badge" style="background:#fde8e6;color:#b3261e">🚪 Occupied</span>`
     :j.occupancy==='vacant'?`<span class="j-badge" style="background:#e8f3ee;color:#2a6a4a">✅ Vacant</span>`:'';
   return `<div class="jcard ${cls}" onclick="openJobDetail('${j.id}')">
@@ -1141,7 +1144,8 @@ function jobCard(j){
       ${j.areaLabel?`<span>📍 ${j.areaLabel}${j.location?' · '+j.location:''}</span>`:''}
       ${j.workType?`<span>· ${WORK_TYPES.find(w=>w.id===j.workType)?.label||j.workType}</span>`:''}
       ${j.priority==='urgent'&&j.status!=='complete'?`<span class="j-badge urgent">🔴 Urgent</span>`:''}
-      ${unassigned?`<span class="j-badge" style="background:#fff3e8;color:#c45c00">⏳ Unassigned</span>`:''}
+      ${needsAllocation?`<span class="j-badge" style="background:#fff3e8;color:#c45c00">⏳ To allocate</span>`:''}
+      ${(hasFixer&&j.status!=='complete')?`<span class="j-badge" style="background:#e8f3ee;color:#2a6a4a">👤 Allocated${fixerNames?' · '+fixerNames:''}</span>`:''}
       ${(j.status!=='complete'&&hfRoomCount(j)>1)?`<span class="j-badge" style="background:#eef2ff;color:#3730a3" title="Other open issues in this room">🔁 ${hfRoomCount(j)} in this room</span>`:''}
       ${occ}
       ${j.voiceNote?`<span title="Voice note">🎙️</span>`:''}
@@ -1722,7 +1726,7 @@ function openJobDetail(jobId){
     </div>
   </div>`:''}
 
-  ${(IS_SUPER && j.status!=='complete' && !(j.assignees||[]).some(a=>FIXER_TIER.includes(a)))?`<div style="margin-bottom:14px"><button type="button" class="btn btn-orange" onclick="openReassign('${j.id}')">👤 Allocate to an operative</button></div>`:''}
+  ${(IS_SUPER && j.status!=='complete')?`<div style="margin-bottom:14px"><button type="button" class="btn ${(j.assignees||[]).some(a=>WORKERS.includes(a))?'btn-ghost':'btn-orange'}" onclick="openReassign('${j.id}')">${(j.assignees||[]).some(a=>WORKERS.includes(a))?'🔁 Re-allocate':'👤 Allocate to an operative'}</button></div>`:''}
 
   <!-- Materials -->
   ${!isDone?`<div style="margin-bottom:14px">
