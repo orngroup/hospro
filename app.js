@@ -14172,6 +14172,17 @@ function htWatch(){
 function htNavDay(n){ HT.off+=n; htWatch(); }
 function htToday(){ HT.off=0; htWatch(); }
 function htTile(n,l,c){ return '<div class="ht-tile"><div class="n" style="color:'+c+'">'+n+'</div><div class="l">'+l+'</div></div>'; }
+function htLocBadge(inP,outP){
+  const ps=[inP,outP].filter(p=>p&&p.source==='qr-hostime');
+  if(!ps.length) return '';
+  const fmt=m=>m>=1000?(m/1000).toFixed(1)+' km':Math.round(m)+' m';
+  const one=(p,lab)=>{ const L=p.loc||null;
+    if(!L) return '<span title="Clocked in before the location check was added" style="color:#64707f">'+lab+' –</span>';
+    if(L.status==='onsite') return '<span title="'+lab+': on site (±'+(L.acc||0)+' m)" style="color:#1d7a4d">'+lab+' 📍 on site</span>';
+    if(L.status==='offsite') return '<span title="'+lab+': '+fmt(L.dist||0)+' from Brandon Hall (±'+(L.acc||0)+' m)" style="color:#b3261e;font-weight:700">'+lab+' ⚠ '+fmt(L.dist||0)+'</span>';
+    return '<span title="'+lab+': location '+(L.status==='denied'?'blocked by the phone':'not available')+'" style="color:#8a6100;font-weight:700">'+lab+' ⚠ no location</span>'; };
+  return '<div style="font-size:10.5px;line-height:1.35;margin-top:3px;white-space:nowrap">'+[inP&&inP.source==='qr-hostime'?one(inP,'in'):'', outP&&outP.source==='qr-hostime'?one(outP,'out'):''].filter(Boolean).join('<br>')+'</div>';
+}
 function htLb(src){ const ov=document.getElementById('ht-ov'), im=document.getElementById('ht-ovimg'); if(ov&&im){ im.src=src; ov.style.display='flex'; } }
 function htRender(){
   const tiles=document.getElementById('ht-tiles'), body=document.getElementById('ht-body'); if(!body) return;
@@ -14258,6 +14269,8 @@ function htRender(){
       if(r.dayPhoto){ photo='<img class="ht-ph" src="'+r.dayPhoto+'" title="'+spEsc(r.name)+(r.inP?(' — clocked in '+spEsc(r.inP.time)):'')+'" onclick="htLb(this.src)">'; }
       else if(clockedToday && ref){ photo='<img class="ht-ph" style="opacity:.45" src="'+ref+'" title="'+spEsc(r.name)+' — reference photo (no live photo on this clock-in)" onclick="htLb(this.src)">'; }
       else { photo='<span style="color:#64707f">—</span>'; }
+      // Location check from HosTIME (on site / distance away / not available)
+      photo += htLocBadge(r.inP, r.outP);
       html+='<tr><td style="font-weight:700">'+spEsc(r.name)+'</td><td>'+chip+'</td><td>'+rotaCell+'</td><td>'+clockedCell+'</td><td>'+diffCell+'</td><td>'+(r.worked!=null?('<b style="font-size:14px">'+htHrs(r.worked)+'</b>'):'<span style="color:#64707f">—</span>')+'</td><td>'+photo+'</td></tr>';
     });
     html+='</table></div>';

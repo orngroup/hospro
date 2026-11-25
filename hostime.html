@@ -110,6 +110,7 @@ async function load(){
     const d=await db.collection('clock_roster').doc('current').get();
     if(!d.exists){ lm.className='msg err'; lm.textContent='Clock-in not set up yet. Ask a manager to publish the roster from HosPEOPLE.'; return; }
     ROSTER=d.data()||{};
+    if(ROSTER.site && ROSTER.site.lat && ROSTER.site.lng){ SITE={ lat:+ROSTER.site.lat, lng:+ROSTER.site.lng, radius:+ROSTER.site.radius||300 }; }
     lm.classList.add('hidden'); $('form').classList.remove('hidden');
     $('emp').focus();
   }catch(e){ lm.className='msg err'; lm.textContent='Could not load. Reload and try again.'; }
@@ -125,18 +126,53 @@ function lookup(){
   const v=$('emp').value;
   PERSON=findByCode(v);
   const who=$('who');
-  if(PERSON){ who.style.display='block'; who.innerHTML='👋 Hi <b>'+esc(PERSON.name)+'</b> — tap Start or End Shift.'; $('btnIn').disabled=false; $('btnOut').disabled=false; }
-  else { who.style.display='none'; $('btnIn').disabled=true; $('btnOut').disabled=true; }
+  if(PERSON){ who.style.display='block'; who.innerHTML='👋 Hi <b>'+esc(PERSON.name)+'</b> — tap Start or End Shift.'; getLoc(false); }
+  else { who.style.display='none'; }
+  setButtons();
   const m=$('msg'); m.className='msg'; m.textContent='';
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
 function show(cls,txt){ const m=$('msg'); m.className='msg '+cls; m.innerHTML=txt; }
+
+
+/* ── Location check (on-site clock-in) ──────────────────────────────
+   Brandon Hall: 52.378806, -1.397431 (17 acres). A manager can override with
+   clock_roster/current.site = {lat, lng, radius, block}. Phone GPS is only accurate
+   to ~10-50 m. Phase 1 (from 25 Nov 2026): record only, never block. Phase 2: a fence
+   per clock-in point, sized from the recorded positions. */
+let SITE={ lat:52.378806, lng:-1.397431, radius:300 };
+let LOC=null, LOCP=null;
+function distM(a,b,c,d){ const R=6371000, r=Math.PI/180, x=(c-a)*r, y=(d-b)*r; const h=Math.sin(x/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(y/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
+function fmtDist(m){ return m>=1000 ? (m/1000).toFixed(1)+' km' : Math.round(m)+' m'; }
+function locText(L){
+  if(!L) return 'Location not available';
+  if(L.status==='denied') return 'Location blocked on this phone';
+  if(L.status==='none') return 'Location not available';
+  if(L.status==='onsite') return '📍 On site at Brandon Hall (±'+Math.round(L.acc||0)+' m)';
+  return '⚠ '+fmtDist(L.dist)+' from Brandon Hall (±'+Math.round(L.acc||0)+' m)';
+}
+function getLoc(fresh){
+  if(LOCP && !fresh) return LOCP;
+  LOCP=new Promise(function(res){
+    if(!navigator.geolocation){ LOC={status:'none'}; return res(LOC); }
+    navigator.geolocation.getCurrentPosition(function(p){
+      const c=p.coords, d=distM(SITE.lat,SITE.lng,c.latitude,c.longitude);
+      LOC={ lat:c.latitude, lng:c.longitude, acc:c.accuracy, dist:d, status:(d - Math.min(c.accuracy||0,150)) <= SITE.radius ? 'onsite' : 'offsite' };
+      res(LOC);
+    }, function(e){ LOC={ status: e && e.code===1 ? 'denied' : 'none' }; res(LOC); },
+    { enableHighAccuracy:true, timeout:9000, maximumAge:0 });
+  });
+  return LOCP;
+}
+function waitLoc(ms){ return Promise.race([ getLoc(false), new Promise(function(r){ setTimeout(r, ms); }) ]); }
+function setButtons(){ const ok=!!PERSON; $('btnIn').disabled=!ok; $('btnOut').disabled=!ok; }
 
 let PENDING=null, busy=false;
 function go(type){
   if(busy) return;
   if(!PERSON){ show('err','Enter a valid employee number first.'); return; }
   PENDING=type;
+  getLoc(true);
   const cam=$('cam'); cam.value='';
   cam.onchange=function(){ const f=cam.files&&cam.files[0]; cam.onchange=null; if(!f){ return; } submit(f); };
   cam.click();
@@ -160,8 +196,11 @@ function submit(file){
   if(busy) return; busy=true;
   show('info','<span class="spin"></span>Saving…');
   var saved=false;
-  compress(file, function(photo){ if(!saved){ saved=true; doSave(photo); } });
-  setTimeout(function(){ if(!saved){ saved=true; doSave(null); } }, 4000); // if the photo is slow, save anyway
+  // wait (up to 6s) for the location so it is saved with the punch; never blocks the clock-in
+  waitLoc(6000).then(function(){
+    compress(file, function(photo){ if(!saved){ saved=true; doSave(photo); } });
+    setTimeout(function(){ if(!saved){ saved=true; doSave(null); } }, 4000); // if the photo is slow, save anyway
+  });
 }
 async function doSave(photo){
   const now=new Date();
@@ -169,7 +208,8 @@ async function doSave(photo){
     date: now.toISOString().slice(0,10),
     time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
     ts: now.toISOString(), mins: now.getHours()*60+now.getMinutes(),
-    source:'qr-hostime', hasPhoto: !!photo, photo: photo||'' };
+    source:'qr-hostime', hasPhoto: !!photo, photo: photo||'',
+    loc: LOC ? { status:LOC.status, dist:LOC.dist==null?null:Math.round(LOC.dist), acc:LOC.acc==null?null:Math.round(LOC.acc), lat:LOC.lat==null?null:+LOC.lat.toFixed(5), lng:LOC.lng==null?null:+LOC.lng.toFixed(5) } : { status:'none' } };
   var done=false;
   const wd=setTimeout(function(){ if(!done){ show('err','Still saving — check the Wi-Fi and try again.'); busy=false; } }, 12000);
   try{
@@ -198,7 +238,7 @@ function reset(){
   clearTimeout(window._rt);
   $('confirm').style.display='none';
   $('form').classList.remove('hidden'); $('foot').classList.remove('hidden');
-  $('emp').value=''; PERSON=null; PENDING=null; lookup(); $('emp').focus();
+  $('emp').value=''; PERSON=null; PENDING=null; LOC=null; LOCP=null; lookup(); $('emp').focus();
 }
 </script>
 </body>
