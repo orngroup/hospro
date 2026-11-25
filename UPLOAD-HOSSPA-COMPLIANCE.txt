@@ -1,0 +1,32 @@
+HosSPA Compliance & QR checks — upload notes (25 Nov 2026)
+==========================================================
+
+UPLOAD TO GITHUB (repo orngroup/hospro) — 4 files, nothing else touched
+  hosspa.html                 (changed: + "Compliance & Records" tab, + 2 script tags — nothing removed)
+  spa/index.html              (NEW — staff QR check page)
+  spa/spa-defs.js             (NEW — check points, forms, competencies, starting lists)
+  spa/spa-compliance.js       (NEW — manager tab inside HosSPA)
+
+FIRESTORE RULE — add ONE line in Firebase console (brandonhall-7bdef > Firestore > Rules),
+next to the other hosfire_ lines, then Publish:
+
+    match /hosfire_spa/{doc}       { allow read, create, update: if isFire(); allow delete: if isFireAdmin(); }
+
+Until this is published the Compliance tab shows "Cannot read the live records".
+
+LINKS
+  Staff checks (all points):  https://brandon.hospro.co.uk/spa/
+  One point (as on posters):   https://brandon.hospro.co.uk/spa/?p=pool
+  Manager view:                https://brandon.hospro.co.uk/hosspa.html?tab=compliance
+  Try without touching live data: add ?demo=1 to either link
+
+CODES (change in spa/spa-defs.js)
+  Staff code for QR pages:  777
+  Manager code (sign-off, training, COSHH, actions, water limits):  2222
+
+FIRST STEPS AFTER UPLOAD
+  1. Compliance tab > COSHH register > "Load starting lists" (loads the 4 products + 13 actions)
+  2. Training matrix > add each spa staff member with evidence and expiry
+     (water-test / plant / chemical forms then open only for people holding that competency)
+  3. Water limits > only when the competent pool-plant person has signed Appendix D
+  4. Print the A5 posters (PDF supplied, or "QR check points" > Print) and fix them up

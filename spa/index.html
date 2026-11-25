@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f5b53">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Spa Checks">
+<title>HosSPA Checks — Brandon Hall Hotel &amp; Spa</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--spa:#0f5b53;--spa2:#15867a;--teal:#20b2a2;--navy:#14232f;--sand:#c9a978;--ink:#1a2b2a;--mut:#62736f;--line:#e3ecea;--bg:#f4f8f7;--red:#c0433f;--amber:#b7791f;--green:#2e8b6b;--shadow:0 1px 2px rgba(16,40,38,.05),0 8px 24px rgba(16,40,38,.07)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Lato',system-ui,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.45;font-size:15px}
+h1,h2,.disp{font-family:'Cormorant Garamond',serif}
+.top{background:linear-gradient(130deg,var(--spa),var(--spa2));color:#fff;padding:calc(14px + env(safe-area-inset-top,0px)) 18px 16px;position:sticky;top:0;z-index:20}
+.top .r{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.top img{height:42px}
+.top .t{font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;opacity:.85}
+.top .n{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;line-height:1.1}
+.top .who{margin-left:auto;font-size:12px;font-weight:700;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);padding:5px 10px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.wrap{max-width:560px;margin:0 auto;padding:16px 16px 90px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;margin-bottom:12px}
+.gate{text-align:center;padding-top:12px}
+.gate img{width:150px;margin:6px auto 4px;display:block}
+.gate h1{font-size:30px;color:var(--navy)}
+.gate p{color:var(--mut);font-size:14px;margin:6px 0 16px}
+label{display:block;font-size:11.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);font-weight:700;margin:14px 0 6px}
+input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:12px 13px;font:inherit;font-size:16px;background:#fff;color:var(--ink)}
+textarea{min-height:84px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal)}
+.btn{display:block;width:100%;margin-top:16px;padding:15px;border:none;border-radius:13px;background:var(--spa);color:#fff;font:900 16px Lato,sans-serif;cursor:pointer}
+.btn:disabled{background:#b9cbc7}
+.btn.ghost{background:#e9f0ee;color:var(--navy)}
+.btn.red{background:var(--red)}
+.err{color:var(--red);font-weight:700;font-size:13.5px;margin-top:10px;min-height:18px}
+.ph{margin:4px 2px 12px}
+.ph .k{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--spa2);font-weight:900}
+.ph h2{font-size:28px;color:var(--navy);line-height:1.1}
+.ph p{color:var(--mut);font-size:13.5px;margin-top:3px}
+.f{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid var(--line);border-radius:15px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);cursor:pointer}
+.f .ic{font-size:26px;width:40px;text-align:center}
+.f .nm{font-weight:900;color:var(--navy)}
+.f .s{font-size:12.5px;color:var(--mut)}
+.f .st{margin-left:auto;font-size:11.5px;font-weight:900;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.st.ok{background:#e1f3ea;color:#1f7a57}.st.due{background:#fdf1dc;color:#8a5a10}.st.bad{background:#fbe5e4;color:#a3302c}.st.n{background:#eef2f1;color:var(--mut)}
+.mini{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.mini .f{margin:0;padding:12px}
+.mini .f .ic{font-size:20px;width:28px}
+.q{border-top:1px solid var(--line);padding:12px 0}
+.q:first-child{border-top:none;padding-top:2px}
+.q .qt{font-weight:700;font-size:14.5px}
+.seg{display:flex;gap:6px;margin-top:8px}
+.seg button{flex:1;padding:10px 4px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font:800 14px Lato,sans-serif;color:var(--mut);cursor:pointer}
+.seg button.p.on{background:var(--green);border-color:var(--green);color:#fff}
+.seg button.x.on{background:var(--red);border-color:var(--red);color:#fff}
+.seg button.na.on{background:#7c8b88;border-color:#7c8b88;color:#fff}
+.q .nt{display:none;margin-top:8px}
+.q.fail .nt{display:block}
+.note{background:#f0f6f5;border-left:4px solid var(--teal);border-radius:10px;padding:11px 13px;font-size:13.5px;color:var(--ink);margin-bottom:12px}
+.warn{background:#fdf3e3;border-left:4px solid var(--amber);border-radius:10px;padding:11px 13px;font-size:13.5px;margin-bottom:12px}
+.stop{background:#fbe9e8;border-left:4px solid var(--red);border-radius:10px;padding:12px 14px;font-size:13.5px;margin:12px 0}
+.stop b{color:#8f2622}
+.stop ol{margin:8px 0 0 18px}
+.lim{font-size:12px;color:var(--spa2);font-weight:700;margin-top:4px}
+.lim.out{color:var(--red)}
+canvas.sig{width:100%;height:130px;border:1.5px dashed #b9cbc7;border-radius:12px;background:#fff;touch-action:none}
+.chk{display:flex;gap:10px;align-items:flex-start;text-transform:none;font-size:14.5px;color:var(--ink);letter-spacing:0;font-weight:400}
+.chk input{width:auto;margin-top:3px}
+.done{text-align:center;padding:20px 8px}
+.done .tick{width:72px;height:72px;border-radius:50%;background:#e1f3ea;color:var(--green);display:grid;place-items:center;font-size:38px;margin:10px auto 12px}
+.done.bad .tick{background:#fbe5e4;color:var(--red)}
+.demo{background:var(--amber);color:#fff;text-align:center;font-size:12px;font-weight:900;padding:5px;letter-spacing:.5px}
+.hide{display:none!important}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 18px;border-radius:12px;font-weight:700;font-size:13.5px;z-index:90}
+.foot{text-align:center;font-size:11.5px;color:var(--mut);margin-top:18px}
+</style>
+</head>
+<body>
+<div class="demo hide" id="demo">DEMO MODE — records are saved on this device only</div>
+<div class="top"><div class="r"><img src="../assets/logos/logo---white-transparent.png" alt="Brandon Hall Hotel and Spa" onerror="this.style.display='none'"><div><div class="t">Spa &amp; Health Club</div><div class="n">HosSPA Checks</div></div><div class="who hide" id="who" title="Change name"></div></div></div>
+<div class="wrap" id="app"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="../firebase-config.js"></script>
+<script src="../hosfire-defs.js"></script>
+<script src="spa-defs.js?v=20261125"></script>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+var h=function(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
+var pad=function(n){return String(n).padStart(2,"0")}, ymd=function(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}, today=function(){return ymd(new Date())};
+var hm=function(){var d=new Date();return pad(d.getHours())+":"+pad(d.getMinutes())};
+var QS=new URLSearchParams(location.search), QP=QS.get("p")||"", QF=QS.get("f")||"";
+var DEMO=QS.get("demo")==="1"||typeof firebase==="undefined"||typeof firebaseConfig==="undefined";
+var DK="hosspa_comp_demo";
+var F=function(id){return HS_FORMS.find(function(f){return f.id===id})}, P=function(id){return HS_POINTS.find(function(p){return p.id===id})};
+var st={name:"",recs:[],regs:[]}, fb=null, app=$("#app");
+function toast(t){var e=document.createElement("div");e.className="toast";e.textContent=t;document.body.appendChild(e);setTimeout(function(){e.remove()},2600)}
+if(DEMO)$("#demo").classList.remove("hide");
+
+/* ── data ── */
+function demoAll(){try{return JSON.parse(localStorage.getItem(DK)||"[]")}catch(e){return[]}}
+function connect(){
+  if(DEMO){var a=demoAll();st.recs=a.filter(function(r){return r.kind==="record"&&r.date===today()});st.regs=a.filter(function(r){return r.kind==="register"});return Promise.resolve();}
+  firebase.apps.length||firebase.initializeApp(firebaseConfig);
+  fb={auth:firebase.auth(),db:firebase.firestore()};
+  var signIn=(fb.auth.currentUser&&fb.auth.currentUser.email===HF_KIOSK.email)?Promise.resolve():fb.auth.signInWithEmailAndPassword(HF_KIOSK.email,HF_KIOSK.pw);
+  return signIn.then(function(){return Promise.all([fb.db.collection(HS_COL).where("date","==",today()).get(),fb.db.collection(HS_COL).where("kind","==","register").get()])})
+   .then(function(r){st.recs=r[0].docs.map(function(d){return Object.assign({id:d.id},d.data())}).filter(function(x){return x.kind==="record"});st.regs=r[1].docs.map(function(d){return Object.assign({id:d.id},d.data())})});
+}
+function save(rec){
+  var doc=Object.assign({kind:"record",date:today(),time:hm(),byName:st.name,byEmail:DEMO?"demo":HF_KIOSK.email,source:"HosSPA Checks (QR)",device:navigator.userAgent.slice(0,120)},rec);
+  if(DEMO){var a=demoAll();doc.id="r"+Date.now()+Math.random().toString(36).slice(2,5);doc.createdAt=Date.now();a.push(doc);localStorage.setItem(DK,JSON.stringify(a));st.recs.push(doc);return Promise.resolve(doc)}
+  return fb.db.collection(HS_COL).add(Object.assign({},doc,{createdAt:firebase.firestore.FieldValue.serverTimestamp()})).then(function(ref){doc.id=ref.id;doc.createdAt=Date.now();st.recs.push(doc);return doc});
+}
+function limits(pool){var l=st.regs.filter(function(r){return r.type==="limits"&&r.pool===pool&&r.approved}).sort(function(a,b){return (b.approvedDate||"")<(a.approvedDate||"")?-1:1});return l[0]||null}
+function authList(comp){var now=today();return st.regs.filter(function(r){return r.type==="training"&&r.comps&&r.comps[comp]&&(!r.comps[comp].expiry||r.comps[comp].expiry>=now)}).map(function(r){return (r.name||"").toLowerCase()})}
+function anyTrained(comp){return st.regs.some(function(r){return r.type==="training"&&r.comps&&r.comps[comp]})}
+
+/* ── signature ── */
+function sigPad(c){var ctx=c.getContext("2d"),down=false;c._drawn=false;var r=c.getBoundingClientRect();c.width=r.width*2;c.height=r.height*2;ctx.scale(2,2);ctx.lineWidth=2.4;ctx.lineCap="round";ctx.strokeStyle="#14232f";
+  var p=function(e){var b=c.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return[t.clientX-b.left,t.clientY-b.top]};
+  var s=function(e){down=true;var q=p(e);ctx.beginPath();ctx.moveTo(q[0],q[1]);e.preventDefault()}, m=function(e){if(!down)return;var q=p(e);ctx.lineTo(q[0],q[1]);ctx.stroke();c._drawn=true;e.preventDefault()}, u=function(){down=false};
+  c.addEventListener("mousedown",s);c.addEventListener("mousemove",m);window.addEventListener("mouseup",u);c.addEventListener("touchstart",s,{passive:false});c.addEventListener("touchmove",m,{passive:false});c.addEventListener("touchend",u);
+  c._clear=function(){ctx.clearRect(0,0,c.width,c.height);c._drawn=false}}
+function sigData(c){var o=document.createElement("canvas");o.width=360;o.height=120;var x=o.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,360,120);x.drawImage(c,0,0,360,120);return o.toDataURL("image/jpeg",.6)}
+
+/* ── screens ── */
+function gate(){
+  var pt=P(QP);
+  app.innerHTML='<div class="gate"><img src="../assets/logos/logo---blue-transparent.png" alt="" onerror="this.style.display=\'none\'"><h1>Spa safety checks</h1><p>'+(pt?'You scanned <b>'+pt.icon+' '+h(pt.name)+'</b>. ':'')+'Every check is saved with your name, the time and your signature.</p>'+
+   '<div class="card" style="text-align:left"><label>Staff code</label><input id="code" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter the spa staff code"><button class="btn" id="go">Start</button><div class="err" id="e"></div></div></div>';
+  var ok=false;try{ok=sessionStorage.getItem("hs_ok")==="1"}catch(e){}
+  if(ok||DEMO){$("#code").value=HS_CODE}
+  $("#code").onkeydown=function(e){if(e.key==="Enter")$("#go").click()};
+  $("#go").onclick=function(){if($("#code").value.trim()!==HS_CODE){$("#e").textContent="That code is not right.";return}
+    try{sessionStorage.setItem("hs_ok","1")}catch(e){}
+    $("#go").disabled=true;$("#go").textContent="Connecting…";
+    connect().then(nameScreen).catch(function(err){$("#go").disabled=false;$("#go").textContent="Start";$("#e").textContent="Could not connect: "+err.message+" — try again, or tell the Duty Manager and use the paper form."})};
+}
+function nameScreen(){
+  var saved="";try{saved=localStorage.getItem("hs_name")||""}catch(e){}
+  var names=st.regs.filter(function(r){return r.type==="training"}).map(function(r){return r.name});
+  app.innerHTML='<div class="card"><div class="ph"><div class="k">Who is doing the check?</div><h2>Your name</h2></div><input id="nm" list="nl" value="'+h(st.name||saved)+'" placeholder="First and last name"><datalist id="nl">'+names.map(function(n){return '<option value="'+h(n)+'">'}).join("")+'</datalist><button class="btn" id="go">Continue</button><div class="err" id="e"></div></div>';
+  $("#nm").onkeydown=function(e){if(e.key==="Enter")$("#go").click()};
+  $("#go").onclick=function(){var n=$("#nm").value.trim().replace(/\s+/g," ").replace(/\b\w/g,function(c){return c.toUpperCase()});if(n.split(" ").length<2){$("#e").textContent="Please enter your first and last name.";return}
+    st.name=n;try{localStorage.setItem("hs_name",n)}catch(e){}var w=$("#who");w.textContent="👤 "+n.split(" ")[0];w.classList.remove("hide");w.onclick=nameScreen;
+    if(QF&&F(QF))openForm(QF,QP);else if(P(QP))pointScreen(QP);else homeScreen()};
+}
+function statusFor(fid,pid){var area=(P(pid)||{}).area;var rs=st.recs.filter(function(r){return r.form===fid&&(!area||r.area===area)});if(!rs.length)return F(fid).daily?'<span class="st due">Due today</span>':'<span class="st n">'+(F(fid).status?'Report':'Log')+'</span>';var last=rs[rs.length-1];return last.fails?'<span class="st bad">'+last.time+' · issue</span>':'<span class="st ok">✓ '+last.time+(rs.length>1?' ×'+rs.length:'')+'</span>'}
+function formRow(fid,pid){var f=F(fid);return '<div class="f" data-f="'+fid+'" data-p="'+pid+'"><div class="ic">'+f.icon+'</div><div><div class="nm">'+h(f.name)+'</div><div class="s">'+h(f.ref)+' · '+h(f.freq)+'</div></div>'+statusFor(fid,pid)+'</div>'}
+function bindRows(){$$(".f[data-f]").forEach(function(el){el.onclick=function(){openForm(el.dataset.f,el.dataset.p)}})}
+function pointScreen(pid){
+  var p=P(pid);window.scrollTo(0,0);
+  app.innerHTML='<div class="ph"><div class="k">Check point</div><h2>'+p.icon+' '+h(p.name)+'</h2><p>'+new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})+'</p></div>'+
+   (p.restricted?'<div class="warn"><b>Restricted area.</b> Only trained and authorised staff may enter or carry out these checks.</div>':'')+
+   p.forms.map(function(f){return formRow(f,pid)}).join("")+
+   '<div class="mini">'+formRow("defect",pid)+formRow("incident",pid)+'</div>'+
+   '<button class="btn ghost" id="all">See all check points</button><div class="foot">Brandon Hall Hotel &amp; Spa · H&amp;S Manual v'+HS_VERSION+'</div>';
+  bindRows();$("#all").onclick=homeScreen;
+}
+function homeScreen(){
+  window.scrollTo(0,0);
+  app.innerHTML='<div class="ph"><div class="k">All check points</div><h2>Spa &amp; Health Club</h2><p>Pick where you are, or scan the QR code on the wall.</p></div>'+
+   HS_POINTS.map(function(p){var due=p.forms.filter(function(fid){return F(fid).daily&&!st.recs.some(function(r){return r.form===fid&&(!p.area||r.area===p.area)})}).length;
+     return '<div class="f" data-pt="'+p.id+'"><div class="ic">'+p.icon+'</div><div><div class="nm">'+h(p.name)+'</div><div class="s">'+p.forms.map(function(x){return F(x).name}).join(" · ")+'</div></div>'+(due?'<span class="st due">'+due+' due</span>':'<span class="st ok">✓</span>')+'</div>'}).join("")+
+   '<div class="mini">'+formRow("defect","")+formRow("incident","")+'</div>';
+  $$(".f[data-pt]").forEach(function(el){el.onclick=function(){pointScreen(el.dataset.pt)}});bindRows();
+}
+function fieldHtml(x){var id="fld-"+x.k;
+  if(x.t==="select")return '<label>'+h(x.l)+(x.req?' *':'')+'</label><select id="'+id+'"><option value="">Select…</option>'+x.o.map(function(o){return '<option>'+h(o)+'</option>'}).join("")+'</select>';
+  if(x.t==="area")return '<label>'+h(x.l)+(x.req?' *':'')+'</label><textarea id="'+id+'"></textarea>';
+  return '<label>'+h(x.l)+(x.req?' *':'')+'</label><input id="'+id+'" '+(x.t==="number"?'type="number" inputmode="decimal" step="any"':'')+'>';}
+function openForm(fid,pid){
+  var f=F(fid),p=P(pid)||{};window.scrollTo(0,0);
+  var authBlock="";
+  if(f.auth){var list=authList(f.auth),me=st.name.toLowerCase();
+    if(anyTrained(f.auth)&&list.indexOf(me)<0){app.innerHTML='<div class="ph"><div class="k">'+h(f.ref)+'</div><h2>'+f.icon+' '+h(f.name)+'</h2></div><div class="stop"><b>You are not on the authorised list for this task.</b><br>Do not test water, handle chemicals or operate plant. Tell the Duty Manager — they will arrange an authorised person.</div><button class="btn ghost" id="bk">Back</button>';$("#bk").onclick=function(){p.id?pointScreen(p.id):homeScreen()};return}
+    authBlock=anyTrained(f.auth)?'<div class="note">✓ You are on the authorised list for this task.</div>':'<div class="warn"><b>Authorised list not set up yet.</b> Only carry out this task if you are trained and the Duty Manager has authorised you.<label class="chk" style="margin-top:10px"><input type="checkbox" id="authc"> I am trained and authorised by the Duty Manager to do this.</label></div>';}
+  var html='<div class="ph"><div class="k">'+h(f.ref)+(p.name?' · '+h(p.name):'')+'</div><h2>'+f.icon+' '+h(f.name)+'</h2><p>'+h(f.freq)+'</p></div>'+authBlock+(f.note?'<div class="note">'+h(f.note)+'</div>':'');
+  if(f.water){var L=limits(f.pool);
+    html+='<div class="card">'+(L?'<div class="note">Approved site limits — approved by '+h(L.approvedBy)+' on '+h(L.approvedDate)+'.</div>':'<div class="warn"><b>Approved site limits have not been entered yet.</b> Record the readings. The Duty Manager must judge them against the current water-treatment plan. Do not use an unapproved chart as the limit.</div>')+
+      '<label>Test kit expiry date *</label><input id="fld-kit" type="date">'+
+      HS_WATER.map(function(w){var lo=L&&w.lim[0]?L[w.lim[0]]:null,hi=L&&w.lim[1]?L[w.lim[1]]:null;var rng=(lo!=null&&lo!==""||hi!=null&&hi!=="")?((lo!=null&&lo!==""?lo:"")+" – "+(hi!=null&&hi!==""?hi:"")):"";
+        return '<label>'+h(w.l)+(w.k==="temp"?'':' *')+'</label><input id="w-'+w.k+'" type="number" step="any" inputmode="decimal" data-lo="'+(lo==null?"":lo)+'" data-hi="'+(hi==null?"":hi)+'">'+(rng?'<div class="lim" id="lim-'+w.k+'">Approved range: '+h(rng)+'</div>':'')}).join("")+
+      '<label>Visual clarity *</label><select id="fld-clarity"><option value="">Select…</option><option>Clear</option><option>Slightly hazy</option><option>Cloudy / cannot see drain</option></select>'+
+      '<label>Bathers in the water at time of test</label><input id="fld-bathers" type="number" inputmode="numeric">'+
+      '<label>Within the approved site limits? *</label><select id="fld-within"><option value="">Select…</option><option>Yes</option><option>No</option><option>Not sure</option></select>'+
+      '<div id="wstop"></div></div>';}
+  if(f.items&&f.items.length){html+='<div class="card"><div class="ph" style="margin:0 0 6px"><div class="k">Checks</div></div>'+f.items.map(function(q,i){return '<div class="q" data-i="'+i+'"><div class="qt">'+h(q)+'</div><div class="seg"><button class="p" type="button">Pass</button><button class="x" type="button">Fail</button><button class="na" type="button">N/A</button></div><div class="nt"><input placeholder="What is wrong and what have you done? *"></div></div>'}).join("")+'</div>';}
+  if(f.fields&&f.fields.length)html+='<div class="card">'+f.fields.map(fieldHtml).join("")+'</div>';
+  html+='<div class="card"><label>Notes / corrective action</label><textarea id="fld-notes" placeholder="Optional"></textarea>'+
+   '<label>Your signature</label><canvas class="sig" id="sig"></canvas><div style="text-align:right;margin-top:4px"><button class="btn ghost" style="display:inline-block;width:auto;padding:7px 14px;margin:0;font-size:13px" id="sigc" type="button">Clear</button></div>'+
+   '<label class="chk" style="margin-top:12px"><input type="checkbox" id="conf"> I, '+h(st.name)+', did this check myself and this record is true.</label>'+
+   '<button class="btn" id="save">Save record</button><button class="btn ghost" id="bk">Cancel</button><div class="err" id="e"></div></div>';
+  app.innerHTML=html;
+  sigPad($("#sig"));$("#sigc").onclick=function(){$("#sig")._clear()};
+  $$(".q .seg button").forEach(function(b){b.onclick=function(){var q=b.closest(".q");q.querySelectorAll("button").forEach(function(x){x.classList.toggle("on",x===b)});q.classList.toggle("fail",b.classList.contains("x"))}});
+  if(f.water){var chk=function(){var out=false;HS_WATER.forEach(function(w){var el=$("#w-"+w.k);if(!el||el.value==="")return;var v=+el.value,lo=el.dataset.lo,hi=el.dataset.hi,bad=(lo!==""&&v<+lo)||(hi!==""&&v>+hi);var li=$("#lim-"+w.k);if(li)li.classList.toggle("out",bad);if(bad)out=true});
+      var wi=$("#fld-within").value,cl=$("#fld-clarity").value;if(out&&wi==="Yes")$("#fld-within").value="No";
+      var stop=out||wi==="No"||wi==="Not sure"||/Cloudy/.test(cl);
+      $("#wstop").innerHTML=stop?'<div class="stop"><b>Outside limits or unsafe — follow this now:</b><ol><li>Restrict or close the '+h(HS_POOLS[f.pool])+' if safety cannot be confirmed.</li><li>Tell the Duty Manager and the pool plant operator.</li><li>Retest using the approved method.</li><li>Check dosing, circulation, filtration, chemical stock, plant alarms and bather load.</li><li>Do not add chemicals unless you are competent and authorised.</li><li>Record the retest and who authorised reopening.</li></ol><label>Duty Manager told (name) *</label><input id="fld-dmtold"><label>Pool status now *</label><select id="fld-poolstatus"><option value="">Select…</option><option>Closed</option><option>Restricted</option><option>Open — retest within limits, reopening authorised</option></select><label>Reopening authorised by</label><input id="fld-reopenby"></div>':"";};
+    HS_WATER.forEach(function(w){$("#w-"+w.k).addEventListener("input",chk)});$("#fld-within").addEventListener("change",chk);$("#fld-clarity").addEventListener("change",chk);}
+  $("#bk").onclick=function(){p.id?pointScreen(p.id):homeScreen()};
+  $("#save").onclick=function(){var e=$("#e");e.textContent="";
+    if($("#authc")&&!$("#authc").checked){e.textContent="Confirm you are trained and authorised, or stop and tell the Duty Manager.";return}
+    var items=[],miss=0,fails=0;
+    $$(".q").forEach(function(q){var i=+q.dataset.i,on=q.querySelector("button.on"),r=on?(on.classList.contains("p")?"pass":on.classList.contains("x")?"fail":"na"):"",nt=q.querySelector(".nt input").value.trim();if(!r)miss++;if(r==="fail"){fails++;if(!nt)miss++}items.push({q:f.items[i],r:r,note:r==="fail"?nt:""})});
+    if(miss){e.textContent="Answer every check. Every Fail needs a note.";return}
+    var fields={},bad=false;(f.fields||[]).forEach(function(x){var v=($("#fld-"+x.k).value||"").trim();if(x.req&&v===""){bad=true}fields[x.k]=v});
+    if(bad){e.textContent="Fill in the fields marked *.";return}
+    var water=null;
+    if(f.water){water={};var wb=false;HS_WATER.forEach(function(w){var v=$("#w-"+w.k).value;if(w.k!=="temp"&&v===""){wb=true}water[w.k]=v===""?null:+v});
+      ["kit","clarity","bathers","within"].forEach(function(k){water[k]=$("#fld-"+k).value});
+      if(wb||!water.kit||!water.clarity||!water.within){e.textContent="Enter the test kit expiry, each reading, the clarity and whether it is within limits.";return}
+      if(water.kit<today()){e.textContent="The test kit is out of date. Do not use it — tell the Duty Manager.";return}
+      if($("#fld-dmtold")){water.dmTold=$("#fld-dmtold").value.trim();water.poolStatus=$("#fld-poolstatus").value;water.reopenBy=$("#fld-reopenby").value.trim();if(!water.dmTold||!water.poolStatus){e.textContent="Record who you told and the pool status.";return}fails++}}
+    if(!$("#sig")._drawn){e.textContent="Please sign in the box.";return}
+    if(!$("#conf").checked){e.textContent="Tick the confirmation box.";return}
+    if(f.id==="open"&&fields.decision==="Open"&&fails){e.textContent="There is a failed check — choose Restricted opening or Remain closed, or correct the fault first.";return}
+    var rec={form:f.id,ref:f.ref,formName:f.name,point:p.id||"",pointName:p.name||"",area:p.area||"",items:items,fields:fields,fails:fails,notes:$("#fld-notes").value.trim(),sig:sigData($("#sig"))};
+    if(water){rec.water=water;rec.pool=f.pool}
+    if(f.status)rec.status="open";
+    if(f.id==="incident"&&/Serious|Contamination|Chemical|Safeguarding|Missing/.test(fields.type))rec.fails=rec.fails||1;
+    $("#save").disabled=true;$("#save").textContent="Saving…";
+    save(rec).then(function(){doneScreen(f,p,rec)}).catch(function(err){$("#save").disabled=false;$("#save").textContent="Save record";e.textContent="Not saved: "+err.message+". Use the paper form and tell the Duty Manager."})};
+}
+function doneScreen(f,p,rec){window.scrollTo(0,0);var bad=rec.fails>0||f.status;
+  app.innerHTML='<div class="card done'+(rec.fails?' bad':'')+'"><div class="tick">'+(rec.fails?'!':'✓')+'</div><h2 class="disp" style="font-size:28px">'+(rec.fails?'Saved — action needed':'Saved')+'</h2><p style="color:var(--mut);margin-top:6px">'+h(f.name)+' · '+hm()+' · '+h(st.name)+'</p>'+
+   (rec.fails?'<div class="stop" style="text-align:left"><b>Tell the Duty Manager now.</b> '+(f.id==="defect"?'Keep the item out of use until it is repaired and released.':'A failed check is not closed until the fault is put right and a manager signs it off.')+'</div>':'')+
+   (f.status&&!rec.fails?'<div class="note" style="text-align:left">The Health Club Manager has been flagged on the HosSPA dashboard.</div>':'')+
+   '<button class="btn" id="bk">'+(p.id?'Back to '+h(p.name):'Back to check points')+'</button></div>';
+  $("#bk").onclick=function(){p.id?pointScreen(p.id):homeScreen()};}
+
+gate();
+})();
+</script>
+</body>
+</html>
