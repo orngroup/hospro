@@ -12470,6 +12470,7 @@ function renderHubDocs(v){
   const saved = hubDocsCache().filter(d=>hpCanTab(d.tab));
   const search = window._hubSearch||'';
   const filtered = search ? saved.filter(d=>(d.name||'').toLowerCase().includes(search.toLowerCase())||((cats[d.tab]&&cats[d.tab].label)||d.category||d.tab||'').toLowerCase().includes(search.toLowerCase())) : saved;
+  const recent = filtered.filter(d=>hubUnlocked(d.tab)); /* don't leak passcode-protected docs on the hub home */
 
   const html=`<div style="padding:28px;min-height:100%">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
@@ -12500,10 +12501,10 @@ function renderHubDocs(v){
         </button>`;
       }).join('')}
     </div>
-    ${filtered.length>0?`
+    ${recent.length>0?`
     <div style="font-size:11px;font-weight:700;color:#8fa3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Recent documents</div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      ${filtered.slice(0,20).map(d=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px">
+      ${recent.slice(0,20).map(d=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px">
         <span style="font-size:22px">${(cats[d.tab]&&cats[d.tab].icon)||'📄'}</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
@@ -12516,7 +12517,46 @@ function renderHubDocs(v){
   v.innerHTML=html;
 }
 
+/* ---- HosHUB section passcodes (gate certain sections behind a code) ---- */
+const HUB_LOCKED = { hubHR:'222' };
+function hubUnlocked(tabId){
+  if(!HUB_LOCKED[tabId]) return true;
+  try{ if(sessionStorage.getItem('hub_unlock_'+tabId)==='1') return true; }catch(e){}
+  return !!(window._hubUnlock && window._hubUnlock[tabId]);
+}
+function hubUnlock(tabId){
+  const el=document.getElementById('hubPin');
+  const val=((el&&el.value)||'').trim();
+  if(val===HUB_LOCKED[tabId]){
+    try{ sessionStorage.setItem('hub_unlock_'+tabId,'1'); }catch(e){}
+    window._hubUnlock=window._hubUnlock||{}; window._hubUnlock[tabId]=1;
+    renderHubSection(document.getElementById('view'), tabId);
+  } else {
+    const err=document.getElementById('hubPinErr'); if(err) err.style.display='block';
+    if(el){ el.value=''; el.focus(); }
+  }
+}
+function renderHubLock(v, tabId){
+  const cats=getHubCats(); const cat=cats[tabId]||{label:'Section',icon:'🔒'};
+  v.style.padding='0'; window._hubCat=tabId;
+  v.innerHTML=`<div style="padding:28px;min-height:100%;display:flex;align-items:flex-start;justify-content:center">
+    <div style="max-width:360px;width:100%;margin-top:50px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);border-radius:16px;padding:32px;text-align:center">
+      <div style="font-size:44px;margin-bottom:10px">🔒</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#fff">${cat.icon} ${cat.label}</div>
+      <div style="font-size:13px;color:#8fa3b8;margin:8px 0 20px">This section is protected. Enter the passcode to continue.</div>
+      <input id="hubPin" type="password" inputmode="numeric" placeholder="Passcode" autocomplete="off"
+        onkeydown="if(event.key==='Enter')hubUnlock('${tabId}')"
+        style="width:100%;padding:13px 14px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);border-radius:10px;font:16px Lato;color:#fff;text-align:center;letter-spacing:4px;outline:none;box-sizing:border-box">
+      <div id="hubPinErr" style="display:none;color:#f87171;font-size:12px;margin-top:10px">Incorrect passcode</div>
+      <button onclick="hubUnlock('${tabId}')" style="width:100%;margin-top:16px;padding:12px;background:#4a9d7f;color:#fff;border:none;border-radius:10px;font:700 14px Lato;cursor:pointer">Unlock</button>
+      <button onclick="switchTab('hubDocs')" style="width:100%;margin-top:8px;padding:10px;background:transparent;color:#8fa3b8;border:none;font:600 12px Lato;cursor:pointer">← Back to all documents</button>
+    </div>
+  </div>`;
+  const el=document.getElementById('hubPin'); if(el) setTimeout(function(){ el.focus(); },50);
+}
+
 function renderHubSection(v, tabId){
+  if(!hubUnlocked(tabId)){ renderHubLock(v, tabId); return; }
   v.innerHTML=''; v.style.padding='0'; window._hubCat=tabId;
   hubMaybeSync(function(x){ renderHubSection(x,tabId); });
   const cats=getHubCats();
