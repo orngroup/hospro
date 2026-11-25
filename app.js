@@ -7116,20 +7116,85 @@ function hfCopyReportLink(){
   if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(()=>toast('✓ Reception fault-report link copied')).catch(()=>prompt('Copy this link:',url)); }
   else prompt('Copy this link:',url);
 }
+/* ---------- Shared portal HosFIX insight helpers (compute from the live jobs store) ---------- */
+const HF_WORKERS=['glenn','herman','pete'];
+const HF_DAY_RATES={glenn:200,herman:150,pete:150};
+const HF_PEOPLE={
+  raj:{name:'Raj Kumar',role:'Property Director',color:'#1a2b3a'},
+  ajay:{name:'Ajay Kawa',role:'Director',color:'#c78a3b'},
+  alia:{name:'Alia Taub',role:'Management',color:'#5a8fc7'},
+  glenn:{name:'Glenn Randell',role:'Maintenance Manager',color:'#b8860b'},
+  herman:{name:'Herman Charles',role:'Multi-trader (non-electrical)',color:'#2a6a4a'},
+  pete:{name:'Pete',role:'Multi-trader (electrical)',color:'#4DA69C'},
+  ruth:{name:'Ruth Addison',role:'Housekeeping Manager',color:'#be185d'},
+  daniel:{name:'Daniel',role:'General Labour',color:'#7c3aed'},
+  patrik:{name:'Patrik Vlach',role:'Front Office',color:'#6366f1'},
+};
+function hfPerson(id){ return HF_PEOPLE[id]||{name:id,role:'',color:'#64748b'}; }
+function hfInits(n){ return (n||'').split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2); }
+function hfMoney(n){ return '£'+Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function hfLiveJobs(){ let a=[]; try{a=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');}catch(e){} return a.filter(j=>j&&!j.demoHidden&&!j.deleted&&j.status!=='cancelled'); }
+function hfHasWorker(j){ return (j.assignees||[]).some(a=>HF_WORKERS.includes(a)); }
+function hfBucket(j){ if(j.status==='complete')return'complete'; if(j.status==='in-progress')return'inprog'; if(hfHasWorker(j))return'assigned'; return'unassigned'; }
+function hfRespMins(j){ const a=Date.parse(j.allocatedAt||''); const t=Date.parse(j.startedAt||j.completedAt||''); return (a&&t&&t>=a)?Math.round((t-a)/60000):null; }
+function hfFmtMins(m){ if(m==null||m<=0)return'—'; if(m<60)return Math.round(m)+'m'; const h=Math.floor(m/60),mm=Math.round(m%60); return mm?h+'h '+mm+'m':h+'h'; }
+function hfAreaLabel(j){ return j.areaLabel||j.area||'Other'; }
+function hfAvg(arr){ const v=arr.filter(x=>x!=null); return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):null; }
+function hfBarRow(label,count,max,color,sub,avatar){
+  const pct=max?Math.round(count/max*100):0;
+  return `<div style="margin-bottom:11px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+      <span style="font-size:13px;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:8px">${avatar||''}${label}</span>
+      <span style="font-size:12px;color:#64748b">${count}${sub?` · ${sub}`:''}</span>
+    </div>
+    <div style="background:#eef1f4;border-radius:5px;height:9px;overflow:hidden"><div style="height:9px;border-radius:5px;width:${pct}%;background:${color};transition:.3s"></div></div>
+  </div>`;
+}
+function hfAv(id,sz){ const p=hfPerson(id); sz=sz||22; return `<span style="width:${sz}px;height:${sz}px;border-radius:50%;background:${p.color};display:inline-grid;place-items:center;font-size:${Math.round(sz*0.42)}px;font-weight:700;color:#fff;flex-shrink:0">${hfInits(p.name)}</span>`; }
+function hfKpi(label,val,color,sub){
+  return `<div style="background:#fff;border-radius:14px;padding:16px 16px 15px;box-shadow:0 2px 10px rgba(26,43,58,.06);border-top:3px solid ${color}">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:32px;line-height:1;color:${color};font-weight:600">${val}</div>
+    <div style="font-size:12px;color:#475569;margin-top:6px;font-weight:600">${label}</div>
+    ${sub?`<div style="font-size:11px;color:#94a3b8;margin-top:2px">${sub}</div>`:''}
+  </div>`;
+}
+
 function renderFixDash(v){
-  const jobs=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');
-  const open=jobs.filter(j=>j.status!=='complete'&&j.status!=='cancelled');
-  const urgent=jobs.filter(j=>(j.priority==='urgent'||j.status==='urgent')&&j.status!=='complete');
+  const jobs=hfLiveJobs();
+  const open=jobs.filter(j=>j.status!=='complete');
+  const urgent=jobs.filter(j=>j.priority==='urgent'&&j.status!=='complete');
+  const inprog=jobs.filter(j=>j.status==='in-progress');
   const pending=jobs.filter(j=>j.status==='pending_approval');
   const done=jobs.filter(j=>j.status==='complete');
-  const totalCost=jobs.reduce((s,j)=>s+(j.cost||0),0);
-  const money=v=>'£'+Number(v||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const totalCost=jobs.reduce((s,j)=>s+(Number(j.cost)||0),0);
+  const compRate=jobs.length?Math.round(done.length/jobs.length*100):0;
+  // pipeline buckets
+  const buck={unassigned:0,assigned:0,inprog:0,complete:0};
+  jobs.forEach(j=>buck[hfBucket(j)]++);
+  const unassigned=jobs.filter(j=>hfBucket(j)==='unassigned');
+  const segs=[['Unassigned',buck.unassigned,'#d1544f'],['Allocated',buck.assigned,'#d79a2b'],['In progress',buck.inprog,'#3f7cc0'],['Complete',buck.complete,'#2f8f5b']];
+  const segTotal=Math.max(1,jobs.length);
+  // insight times
+  const avgResp=hfAvg(jobs.map(hfRespMins));
+  const avgRepair=hfAvg(done.map(j=>j.totalTimeMins>0?j.totalTimeMins:null));
+  const respN=jobs.map(hfRespMins).filter(x=>x!=null).length;
+  const repairN=done.filter(j=>j.totalTimeMins>0).length;
+  // by operative
+  const byOp=HF_WORKERS.map(id=>{const mine=jobs.filter(j=>(j.assignees||[]).includes(id));return {id,total:mine.length,open:mine.filter(j=>j.status!=='complete').length,done:mine.filter(j=>j.status==='complete').length};}).sort((a,b)=>b.total-a.total);
+  const maxOp=Math.max(1,...byOp.map(o=>o.total));
+  // by area
+  const areaMap={}; jobs.forEach(j=>{const a=hfAreaLabel(j);areaMap[a]=(areaMap[a]||0)+1;});
+  const byArea=Object.entries(areaMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxArea=Math.max(1,...byArea.map(a=>a[1]));
 
-  v.innerHTML=`<div style="padding:20px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+  const panel='background:#fff;border-radius:16px;padding:20px;box-shadow:0 2px 10px rgba(26,43,58,.05)';
+  const h3="font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--navy);margin-bottom:14px";
+
+  v.innerHTML=`<div style="padding:22px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
       <div>
-        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Maintenance</h2>
-        <p style="font-size:13px;color:#374151">Brandon Hall Hotel and Spa · Property & Maintenance Management</p>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:29px;color:var(--navy)">HosFIX — Maintenance</h2>
+        <p style="font-size:13px;color:#64748b;margin-top:2px">Brandon Hall Hotel and Spa · live overview from the maintenance team</p>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <a href="hosfix-report.html" target="_blank" rel="noopener" class="btn" style="background:#1F3864;text-decoration:none;font-size:13px;padding:10px 18px">➕ Report a fault</a>
@@ -7140,49 +7205,89 @@ function renderFixDash(v){
 
     ${pending.length?`<div style="background:#fff3e0;border:1px solid #c45c00;border-radius:12px;padding:14px;margin-bottom:18px">
       <div style="font-weight:700;color:#c45c00;margin-bottom:8px">⏳ ${pending.length} job${pending.length>1?'s':''} awaiting cost approval (above £100)</div>
-      ${pending.map(j=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid rgba(196,92,0,.15)">
-        <span style="font-weight:600">${j.title}</span><span style="color:#c45c00;font-weight:700">${money(j.cost)}</span>
-      </div>`).join('')}
+      ${pending.map(j=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid rgba(196,92,0,.15)"><span style="font-weight:600">${j.title}</span><span style="color:#c45c00;font-weight:700">${hfMoney(j.cost)}</span></div>`).join('')}
     </div>`:''}
 
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
-      ${[['🟠 Urgent',urgent.length,'var(--orange)'],['Open jobs',open.length,'var(--red)'],['Completed',done.length,'var(--green)'],[`Total costs`,money(totalCost),'var(--amber)']].map(([l,v2,c])=>
-        `<div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:3px solid ${c}">
-          <div style="font-family:'Cormorant Garamond',serif;font-size:30px;color:${c};font-weight:600">${v2}</div>
-          <div style="font-size:12px;color:#374151;margin-top:4px">${l}</div></div>`
-      ).join('')}
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px">
+      ${hfKpi('Total jobs',jobs.length,'var(--navy)')}
+      ${hfKpi('Open',open.length,'#d1544f')}
+      ${hfKpi('Urgent',urgent.length,'var(--orange)')}
+      ${hfKpi('In progress',inprog.length,'#3f7cc0')}
+      ${hfKpi('Completed',done.length,'#2f8f5b')}
+      ${hfKpi('Completion',compRate+'%','var(--amber)',done.length+' of '+jobs.length)}
     </div>
 
-    ${jobs.length?`
-    <h3 style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--navy);margin-bottom:12px">Recent jobs</h3>
-    <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(26,43,58,.05)">
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="background:#f5f7f9">
-          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase">Job</th>
-          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase">Location</th>
-          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase">Priority</th>
-          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase">Cost</th>
-          <th style="padding:10px 13px;text-align:left;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase">Status</th>
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:16px">
+      <div style="${panel}">
+        <div style="${h3}">Job pipeline</div>
+        <div style="display:flex;height:16px;border-radius:8px;overflow:hidden;margin-bottom:14px;background:#eef1f4">
+          ${segs.map(([l,n,c])=>n?`<div title="${l}: ${n}" style="width:${n/segTotal*100}%;background:${c}"></div>`:'').join('')}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          ${segs.map(([l,n,c])=>`<div style="text-align:center;background:#f8fafc;border-radius:10px;padding:11px 4px">
+            <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:${c}">${n}</div>
+            <div style="font-size:10.5px;color:#64748b;margin-top:2px;display:flex;align-items:center;justify-content:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:${c}"></span>${l}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div style="${panel}">
+        <div style="${h3}">Response &amp; repair</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#f8fafc;border-radius:10px;padding:13px 15px">
+            <div><div style="font-size:12px;color:#64748b">⚡ Avg response</div><div style="font-size:10.5px;color:#94a3b8">allocated → started · ${respN} job${respN===1?'':'s'}</div></div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--navy)">${hfFmtMins(avgResp)}</div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#f8fafc;border-radius:10px;padding:13px 15px">
+            <div><div style="font-size:12px;color:#64748b">⏱ Avg time per repair</div><div style="font-size:10.5px;color:#94a3b8">${repairN} completed &amp; timed</div></div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--navy)">${hfFmtMins(avgRepair)}</div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#f8fafc;border-radius:10px;padding:13px 15px">
+            <div><div style="font-size:12px;color:#64748b">💷 Logged cost</div><div style="font-size:10.5px;color:#94a3b8">materials &amp; estimates</div></div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--amber)">${hfMoney(totalCost)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div style="${panel}">
+        <div style="${h3}">Jobs by operative</div>
+        ${byOp.some(o=>o.total)?byOp.map(o=>hfBarRow(hfPerson(o.id).name,o.total,maxOp,hfPerson(o.id).color,o.done+' done · '+o.open+' open',hfAv(o.id,22))).join(''):'<div style="font-size:13px;color:#94a3b8">No jobs allocated to operatives yet.</div>'}
+      </div>
+      <div style="${panel}">
+        <div style="${h3}">Jobs by area</div>
+        ${byArea.length?byArea.map(([a,n])=>hfBarRow(a,n,maxArea,'#5a7a99')).join(''):'<div style="font-size:13px;color:#94a3b8">No jobs yet.</div>'}
+      </div>
+    </div>
+
+    ${jobs.length?`<div style="${panel}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--navy)">Recent jobs</div>
+        <button onclick="switchTab('fixAllJobs')" style="background:none;border:none;color:#965638;font:700 13px Lato;cursor:pointer">View all jobs →</button>
+      </div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="border-bottom:2px solid #eef1f4">
+          ${['Job','Location','Assigned','Priority','Status'].map(h=>`<th style="padding:9px 12px;text-align:left;font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px">${h}</th>`).join('')}
         </tr></thead>
-        <tbody>${jobs.slice(0,10).map(j=>`<tr style="border-bottom:1px solid #f5f7f9">
-          <td style="padding:10px 13px;font-weight:600;color:var(--navy)">${j.title}</td>
-          <td style="padding:10px 13px;color:#374151">${j.location||j.areaLabel||j.area||''}${j.source?` <span style="font-size:10px;color:#8a97a6">· from ${hhEsc(j.source)}</span>`:''}</td>
-          <td style="padding:10px 13px">
-            <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:${j.priority==='urgent'?'#fff0e0':j.priority==='high'?'#fde8e6':j.priority==='medium'?'#fffbe6':'#e8f3ee'};color:${j.priority==='urgent'?'#c45c00':j.priority==='high'?'#b3261e':j.priority==='medium'?'#997300':'#2a6a4a'}">${j.priority}</span>
-          </td>
-          <td style="padding:10px 13px;color:${j.cost>100?'var(--orange)':'#7a8494'};font-weight:${j.cost>100?700:400}">${money(j.cost)}</td>
-          <td style="padding:10px 13px">
-            <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:${j.status==='complete'?'#e8f3ee':j.status==='pending_approval'?'#fff0e0':'#e8edf3'};color:${j.status==='complete'?'#2a6a4a':j.status==='pending_approval'?'#c45c00':'#1a2b47'}">${j.status==='complete'?'✓ Done':j.status==='pending_approval'?'⏳ Approval':j.status}</span>
-          </td>
-        </tr>`).join('')}</tbody>
-      </table>
-    </div>`:`<div style="background:#fff;border-radius:12px;padding:40px;text-align:center;box-shadow:0 2px 8px rgba(26,43,58,.05)">
-      <div style="font-size:14px;color:#374151">No maintenance jobs logged yet.</div>
+        <tbody>${jobs.slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,8).map(j=>{
+          const as=(j.assignees||[]).filter(id=>HF_PEOPLE[id]);
+          const pc=j.priority==='urgent'?['#fff0e0','#c45c00']:j.priority==='high'?['#fde8e6','#b3261e']:j.priority==='medium'?['#fffbe6','#997300']:['#e8f3ee','#2a6a4a'];
+          const sc=j.status==='complete'?['#e8f3ee','#2a6a4a','✓ Done']:j.status==='in-progress'?['#eaf1fb','#2c5f9e','⏱ In progress']:j.status==='pending_approval'?['#fff0e0','#c45c00','⏳ Approval']:['#f1f3f6','#475569','Not started'];
+          return `<tr style="border-bottom:1px solid #f3f5f7;cursor:pointer" onclick="openPortalJobDetail('${j.id}')">
+            <td style="padding:10px 12px;font-weight:600;color:var(--navy)">${(j.title||'').replace(/</g,'&lt;')}</td>
+            <td style="padding:10px 12px;color:#475569">${(j.location||j.areaLabel||j.area||'').replace(/</g,'&lt;')}</td>
+            <td style="padding:10px 12px">${as.length?`<span style="display:inline-flex;gap:3px">${as.map(id=>hfAv(id,22)).join('')}</span>`:'<span style="font-size:11px;color:#b3261e;font-weight:700">⏳ To allocate</span>'}</td>
+            <td style="padding:10px 12px"><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:${pc[0]};color:${pc[1]}">${j.priority||'medium'}</span></td>
+            <td style="padding:10px 12px"><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:${sc[0]};color:${sc[1]}">${sc[2]}</span></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+    </div>`:`<div style="${panel};text-align:center;padding:40px">
+      <div style="font-size:14px;color:#64748b">No maintenance jobs logged yet.</div>
       <a href="hosmain.html" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;padding:11px 20px;background:#965638;color:#fff;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none">Open HosFIX app →</a>
     </div>`}
   </div>`;
 }
-
 function renderFixJobs(v){
   v.innerHTML=`<div style="padding:20px;text-align:center">
     <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">All Maintenance Jobs</div>
@@ -7192,13 +7297,35 @@ function renderFixJobs(v){
 }
 
 function renderFixProjects(v){
-  v.innerHTML=`<div style="padding:20px;text-align:center">
-    <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--navy);margin-bottom:12px">Maintenance Projects</div>
-    <p style="font-size:14px;color:#374151;margin-bottom:20px">Spa Refurbishment, Woodland Maintenance, Bedroom Refurb and more — manage projects on the mobile app.</p>
-    <a href="hosmain.html" target="_blank" rel="noopener" class="btn" style="background:#965638;text-decoration:none;display:inline-block">📱 Open HosFIX app ↗</a>
+  const jobs=hfLiveJobs();
+  const panel='background:#fff;border-radius:16px;padding:22px;box-shadow:0 2px 10px rgba(26,43,58,.05)';
+  // known project areas (live task tracking lives in the app); show a count of related open jobs by area as context
+  const areas=[
+    {name:'Spa Refurbishment',icon:'💆',match:['spa']},
+    {name:'Woodland Maintenance',icon:'🌳',match:['woodland','external','grounds','garden']},
+    {name:'Bedroom Refurb',icon:'🛏️',match:['bedroom']},
+    {name:'Public Areas',icon:'🏛️',match:['public','reception','lobby','corridor']},
+  ];
+  const cards=areas.map(a=>{
+    const rel=jobs.filter(j=>{const t=(hfAreaLabel(j)+' '+(j.location||'')+' '+(j.title||'')).toLowerCase();return a.match.some(m=>t.includes(m));});
+    const open=rel.filter(j=>j.status!=='complete').length;
+    return `<div style="${panel};border-left:4px solid #965638">
+      <div style="font-size:30px;margin-bottom:8px">${a.icon}</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--navy);margin-bottom:4px">${a.name}</div>
+      <div style="font-size:13px;color:#64748b">${rel.length} related job${rel.length===1?'':'s'} · <span style="color:#d1544f;font-weight:700">${open} open</span></div>
+    </div>`;
+  }).join('');
+  v.innerHTML=`<div style="padding:22px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:29px;color:var(--navy)">Maintenance Projects</h2>
+        <p style="font-size:13px;color:#64748b;margin-top:2px">Larger pieces of work broken into tasks — detailed tracking &amp; allocation in the app.</p>
+      </div>
+      <a href="hosmain.html#projects" target="_blank" rel="noopener" class="btn" style="background:#965638;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open projects in app ↗</a>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px">${cards}</div>
   </div>`;
 }
-
 /* ============================================================ HOSFIX — TEAM & PROFILES (portal only) */
 function openPortalJobDetail(jobId){
   const JOBS=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');
@@ -7241,102 +7368,64 @@ function openPortalJobDetail(jobId){
 }
 
 function renderFixTeam(v){
-  const HFUSERS=[
-    {id:"raj",    name:"Raj Kumar",     role:"Property Director",            color:"#1a2b3a"},
-    {id:"glenn",  name:"Glenn Randell", role:"Maintenance Manager",          color:"#b8860b"},
-    {id:"ruth",   name:"Ruth Addison",  role:"Housekeeping Manager",         color:"#be185d"},
-    {id:"herman", name:"Herman",        role:"Multi-trader (non-electrical)", color:"#2a6a4a"},
-    {id:"pete",   name:"Pete",          role:"Multi-trader (electrical)",     color:"#4DA69C"},
-    {id:"daniel", name:"Daniel",        role:"General Labour",               color:"#7c3aed"},
-  ];
-  const JOBS=JSON.parse(localStorage.getItem('hosfix_jobs')||'[]');
-  const LOGS=JSON.parse(localStorage.getItem('hosfix_timelogs')||'[]');
-  const PROFILES=JSON.parse(localStorage.getItem('hosfix_profiles')||'{}');
-  const money=n=>'£'+Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const inits=n=>n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  const totalMins=logs=>logs.reduce((s,l)=>s+(l.durationMins||0),0);
+  const jobs=hfLiveJobs();
+  const team=['glenn','herman','pete','raj','ruth','daniel'];
+  const panel='background:#fff;border-radius:16px;padding:18px;box-shadow:0 2px 10px rgba(26,43,58,.05)';
+  // team-wide insight figures
+  const done=jobs.filter(j=>j.status==='complete');
+  const avgRepair=hfAvg(done.map(j=>j.totalTimeMins>0?j.totalTimeMins:null));
+  const avgResp=hfAvg(jobs.map(hfRespMins));
+  const wtLabel=t=>t?String(t).charAt(0).toUpperCase()+String(t).slice(1):'';
 
-  v.innerHTML=`<div style="padding:24px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:12px">
+  const cards=team.map(id=>{
+    const p=hfPerson(id); const worker=HF_WORKERS.includes(id);
+    const mine=jobs.filter(j=>(j.assignees||[]).includes(id));
+    const op=mine.filter(j=>j.status!=='complete').length;
+    const dn=mine.filter(j=>j.status==='complete').length;
+    const myRepair=hfAvg(mine.filter(j=>j.status==='complete').map(j=>j.totalTimeMins>0?j.totalTimeMins:null));
+    const myResp=hfAvg(mine.map(hfRespMins));
+    const spend=mine.reduce((t,j)=>t+(Number(j.cost)||0),0);
+    const tc={}; mine.forEach(j=>{const t=wtLabel(j.workType); if(t)tc[t]=(tc[t]||0)+1;});
+    const types=Object.entries(tc).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    return `<div style="${panel}">
+      <div style="display:flex;align-items:center;gap:13px;margin-bottom:14px">
+        ${hfAv(id,46)}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:16px;color:var(--navy)">${p.name}</div>
+          <div style="font-size:12px;color:#64748b">${p.role}${worker?' · £'+HF_DAY_RATES[id]+'/day':''}</div>
+        </div>
+        ${worker?`<span style="font-size:10px;font-weight:700;color:#2f8f5b;background:#e8f3ee;padding:3px 9px;border-radius:20px">Operative</span>`:`<span style="font-size:10px;font-weight:700;color:#64748b;background:#f1f3f6;padding:3px 9px;border-radius:20px">Manager</span>`}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:9px">
+        ${[[mine.length,'Jobs'],[op,'Open'],[dn,'Done']].map(([val,lab])=>`<div style="background:#f6f8fa;border-radius:10px;padding:10px 4px;text-align:center"><div style="font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:600;color:var(--navy)">${val}</div><div style="font-size:10px;color:#64748b;margin-top:1px">${lab}</div></div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:${types.length?'12':'2'}px">
+        <div style="background:#f6f8fa;border-radius:10px;padding:10px 4px;text-align:center"><div style="font-size:15px;font-weight:800;color:var(--navy)">${hfFmtMins(myResp)}</div><div style="font-size:9.5px;color:#64748b;margin-top:2px">⚡ Response</div></div>
+        <div style="background:#f6f8fa;border-radius:10px;padding:10px 4px;text-align:center"><div style="font-size:15px;font-weight:800;color:var(--navy)">${hfFmtMins(myRepair)}</div><div style="font-size:9.5px;color:#64748b;margin-top:2px">⏱ Per repair</div></div>
+        <div style="background:#f6f8fa;border-radius:10px;padding:10px 4px;text-align:center"><div style="font-size:15px;font-weight:800;color:var(--amber)">${hfMoney(spend)}</div><div style="font-size:9.5px;color:#64748b;margin-top:2px">Job spend</div></div>
+      </div>
+      ${types.length?`<div style="display:flex;flex-wrap:wrap;gap:6px">${types.map(([t,n])=>`<span style="font-size:11px;background:#eef2f6;color:#475569;padding:3px 9px;border-radius:20px">${t} · ${n}</span>`).join('')}</div>`:''}
+    </div>`;
+  }).join('');
+
+  v.innerHTML=`<div style="padding:22px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
       <div>
-        <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--navy)">HosFIX — Team &amp; Profiles</h2>
-        <p style="font-size:13px;color:#374151">Staff profiles, contracted hours, rates and productivity. Edit profiles to update rates.</p>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:29px;color:var(--navy)">HosFIX — Team &amp; Productivity</h2>
+        <p style="font-size:13px;color:#64748b;margin-top:2px">Jobs, response and repair times per person — live from the maintenance board.</p>
       </div>
       <a href="hosmain.html" target="_blank" rel="noopener" class="btn" style="background:#965638;text-decoration:none;font-size:13px;padding:10px 18px">📱 Open HosFIX app ↗</a>
     </div>
-
-    <!-- Summary strip -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
-      ${[
-        ['Total jobs logged',JOBS.length,'var(--navy)'],
-        ['Open jobs',JOBS.filter(j=>j.status!=='complete').length,'var(--red)'],
-        ['Complete',JOBS.filter(j=>j.status==='complete').length,'var(--green)'],
-        ['Total labour cost',money(HFUSERS.reduce((s,u)=>{const p=PROFILES[u.id]||{};const mins=totalMins(LOGS.filter(l=>l.userId===u.id));return s+((mins/60)*(p.costPerHour||0));},0)),'var(--amber)']
-      ].map(([l,v2,c])=>`<div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(26,43,58,.06);border-top:3px solid ${c}">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:${c};font-weight:600">${v2}</div>
-        <div style="font-size:12px;color:#374151;margin-top:4px">${l}</div></div>`).join('')}
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px">
+      ${hfKpi('Total jobs',jobs.length,'var(--navy)')}
+      ${hfKpi('Open',jobs.filter(j=>j.status!=='complete').length,'#d1544f')}
+      ${hfKpi('Completed',done.length,'#2f8f5b')}
+      ${hfKpi('Avg response',hfFmtMins(avgResp),'#3f7cc0')}
+      ${hfKpi('Avg per repair',hfFmtMins(avgRepair),'var(--amber)')}
     </div>
-
-    <!-- Staff cards -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
-      ${HFUSERS.map(u=>{
-        const p=PROFILES[u.id]||{};
-        const myJobs=JOBS.filter(j=>(j.assignees||[]).includes(u.id));
-        const myLogs=LOGS.filter(l=>l.userId===u.id);
-        const myMins=totalMins(myLogs);
-        const myHours=(myMins/60).toFixed(1);
-        const myCost=((myMins/60)*(p.costPerHour||0));
-        const weekMins=(p.weeklyHours||0)*60;
-        const pct=weekMins?Math.min(100,Math.round(myMins/weekMins*100)):0;
-        const pctColor=pct>90?'var(--red)':pct>70?'var(--amber)':'var(--green)';
-        return `<div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 8px rgba(26,43,58,.05)">
-          <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px">
-            <div style="width:48px;height:48px;border-radius:50%;background:${u.color};display:grid;place-items:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0">${inits(u.name)}</div>
-            <div style="flex:1">
-              <div style="font-weight:700;font-size:16px;color:var(--navy)">${u.name}</div>
-              <div style="font-size:12px;color:#374151;margin-top:1px">${u.role}</div>
-              ${p.email?`<div style="font-size:12px;color:#374151;margin-top:3px">✉️ <a href="mailto:${p.email}" style="color:#374151">${p.email}</a></div>`:''}
-              ${p.mobile?`<div style="font-size:12px;color:#374151;margin-top:1px">📱 ${p.mobile}</div>`:''}
-            </div>
-            <button onclick="editFixProfile('${u.id}')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;font:600 12px 'Lato';cursor:pointer;color:var(--navy)">Edit</button>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-            ${[
-              [myJobs.length,'Total jobs','var(--navy)'],
-              [myJobs.filter(j=>j.status!=='complete').length,'Open','var(--amber)'],
-              [myJobs.filter(j=>j.status==='complete').length,'Done','var(--green)'],
-              [myHours+'h','Time logged','var(--navy)']
-            ].map(([val,label,color])=>`<div style="background:#f5f7f9;border-radius:9px;padding:10px;text-align:center">
-              <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:${color}">${val}</div>
-              <div style="font-size:10px;color:#374151;margin-top:2px">${label}</div>
-            </div>`).join('')}
-          </div>
-          ${p.costPerHour?`
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-            <div style="background:#f5f7f9;border-radius:9px;padding:10px;text-align:center">
-              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--amber)">${money(myCost)}</div>
-              <div style="font-size:10px;color:#374151;margin-top:2px">Labour cost logged</div>
-            </div>
-            <div style="background:#f5f7f9;border-radius:9px;padding:10px;text-align:center">
-              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--navy)">£${p.costPerHour}/hr</div>
-              <div style="font-size:10px;color:#374151;margin-top:2px">${p.weeklyHours||'?'}h/wk contracted</div>
-            </div>
-          </div>
-          <div style="font-size:11px;color:#374151;margin-bottom:4px">Weekly hours utilisation — ${myHours}h of ${p.weeklyHours||'?'}h (${pct}%)</div>
-          <div style="background:#f0f2f5;border-radius:4px;height:8px"><div style="height:8px;border-radius:4px;width:${pct}%;background:${pctColor};transition:.3s"></div></div>`:'<div style="font-size:12px;color:#374151;font-style:italic">Set hourly rate to track costs</div>'}
-          ${p.notes?`<div style="font-size:12px;color:#374151;margin-top:8px;font-style:italic;padding-top:8px;border-top:1px solid var(--line)">${p.notes}</div>`:''}
-        </div>`;
-      }).join('')}
-    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">${cards}</div>
   </div>`;
-
-  // Wire edit buttons
-  HFUSERS.forEach(u=>{
-    const btn=v.querySelector(`[onclick="editFixProfile('${u.id}')"]`);
-    if(btn) btn.onclick=()=>editFixProfile(u.id, v);
-  });
 }
-
 function editFixProfile(uid, container){
   const PROFILES=JSON.parse(localStorage.getItem('hosfix_profiles')||'{}');
   const HFUSERS=[

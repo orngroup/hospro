@@ -84,7 +84,7 @@
   "use strict";
   // Property areas + rooms — mirrors HosFIX so jobs file against the right area.
   var AREAS={
-    bedrooms:{label:"Bedrooms",rooms:(function(){var a=[];for(var i=1;i<=120;i++)a.push("Room "+i);return a.concat(["Beech Suite","Brandon Suite 1","Brandon Suite 2","Hunt Room","Warwick Room","Wolston Suite","Junior Suite","Accessible Room"]);})()},
+    bedrooms:{label:"Bedrooms",rooms:(function(){var a=[];for(var i=1;i<=54;i++)a.push("Room "+i);a.push("Room 61","Room 62");for(var j=101;j<=164;j++)a.push("Room "+j);return a.concat(["Beech Suite","Brandon Suite 1","Brandon Suite 2","Hunt Room","Warwick Room","Wolston Suite","Junior Suite","Accessible Room"]);})()},
     meeting_events:{label:"Meeting & Events",rooms:["Wolston Suite","Brandon Suite","Brandon Suite 1","Brandon Suite 2","Beech Room","Hunt Room","Warwick Room","Boardroom","Event Lawn","Marquee Area"]},
     food_beverage:{label:"Food & Beverage",rooms:["Restaurant","Bar","Private Dining","Terrace","Kitchen"]},
     spa:{label:"Spa & Leisure",rooms:["Spa","Pool","Gym","Treatment Room 1","Treatment Room 2","Sauna","Steam Room"]},
