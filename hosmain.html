@@ -571,6 +571,8 @@ const ADMIN_TIER    = MGR_OPS;                      // ?me=glenn / ajay / raj  (
 const FIXER_TIER    = STD_OPS;                      // ?me=herman / pete        (also ?tier=operative)
 const WORKERS       = ["glenn","herman","pete"];   // the people a job gets allocated TO (Raj & Ajay allocate, they don't do the job)
 const DAY_RATES     = { glenn:200, herman:150, pete:150 };   // £ per day — for the productivity / cost view
+const MGMT          = ["raj","ajay","alia"];       // ONLY these see the management section: rates, Team, productivity & costs (Glenn does not)
+function isMgmt(id){ return MGMT.includes(id||ME); }
 const REPORTER_TIER = ["raj"];                      // name list for the legacy ?tier=reporter login only
 const DELETE_IDS    = ["raj","ajay"];               // only Raj & Ajay can permanently delete a job
 // The CURRENT session's role comes from the link/code used to sign in, so one person
@@ -928,7 +930,7 @@ function buildMaintenanceNav(){
     <button class="bnav" data-v="jobs"><span class="ico">🔧</span>Jobs<span class="bb" id="bn-u" style="display:none"></span></button>
     <button class="bnav" data-v="chat"><span class="ico">💬</span>Chat</button>
     <button class="bnav" data-v="projects"><span class="ico">📁</span>Projects</button>
-    <button class="bnav" data-v="team"><span class="ico">📈</span>Team</button>
+    ${isMgmt()?`<button class="bnav" data-v="team"><span class="ico">📈</span>Team</button>`:''}
     <button class="bnav" data-v="new"><span class="ico">➕</span>New</button>`;
   }
   $('bnav').innerHTML=btns;
@@ -1075,8 +1077,8 @@ function renderDashboard(){
     <div class="stat-card green" data-filter="complete"><div class="stat-v">${C.complete}</div><div class="stat-k">🟢 Completed</div></div>
   </div>`;
 
-  // ── Jobs per person (open jobs each worker is on) — tap to see theirs ──
-  if(isAdmin()){
+  // ── Jobs per person (open jobs each worker is on) — tap to see theirs (management only) ──
+  if(isMgmt()){
     const wl=WORKERS.map(id=>({u:USERS.find(x=>x.id===id), n:_J.filter(j=>j.status!=='complete'&&(j.assignees||[]).includes(id)).length})).filter(x=>x.u);
     const unassignedN=C.unassigned;
     html+=`<div style="margin:14px 14px 0;background:#fff;border-radius:16px;box-shadow:0 2px 6px rgba(26,43,58,.06);padding:14px">
@@ -2936,8 +2938,9 @@ function clockCardHtml(){
     </div>
   </div>`;
 }
-// ── PRODUCTIVITY / TEAM view ──
+// ── PRODUCTIVITY / TEAM view ── (managers only — operatives never see rates/costs)
 function renderProductivity(){
+  if(!isMgmt()){ VIEW='dashboard'; return renderDashboard(); }
   const _J=myJobs();
   const wd=new Date(); const dow=(wd.getDay()+6)%7; const ws=new Date(wd); ws.setHours(0,0,0,0); ws.setDate(wd.getDate()-dow); const wkStart=ws.getTime();
   const inWeek = iso => iso && new Date(iso).getTime()>=wkStart;
@@ -2986,6 +2989,7 @@ function pvCell(v,k){ return `<div style="background:#f6f8fa;border-radius:10px;
 
 // ── Single operative detail (manager insight) ──
 function renderOperative(id){
+  if(!isMgmt()){ VIEW='dashboard'; return renderDashboard(); }   // Raj/Ajay/Alia only — hides rates/costs from everyone else
   const u=USERS.find(x=>x.id===id);
   if(!u) return `<div style="padding:40px;text-align:center;color:#7a8494">Not found</div>`;
   const _J=myJobs();
