@@ -2728,10 +2728,13 @@
   }
   function stampOf(name, received) { var m = /(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)\d\d\.pdf$/i.exec(name || ''); if (m) return m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5]; var d = new Date(received); return isNaN(d) ? String(received).replace(' ', 'T').slice(0, 16) : new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16); }
   function rerender() { var on = document.querySelector('section.tab.on'); if (on && on.id.indexOf('t-pf-') === 0 && window.Profit.signedIn()) window.Profit.show(on.id.slice(5)); }
-  /* v39.33 — pull any CSV uploaded via glAFUpload and merge it into S.af.
-     This lets Veronica/Ajay refresh forward forecast data mid-day (without
-     waiting for tomorrow's 07:00 email) by exporting the Rezlynx A&F CSV
-     and curling it to glAFUpload. */
+  /* v39.34 — fetch gl_af/latest. Two payload shapes supported:
+       - SOAP snapshot (source='soap-snapshot'): includes monthForecast +
+         rows + asOfDate/asOfTimeShort. Exposed globally as window.AF_SNAPSHOT
+         and window.AF_SNAPSHOT_META so the three coloured revenue boxes in
+         hosbusiness-v13.js lock onto it and show "As of HH:MM DD MMM" badge.
+       - Legacy manual CSV upload (glAFUpload): csv only. Parsed and merged
+         into S.af the same way as before. */
   function fetchUploadedAF() {
     var tok = null;
     try { tok = localStorage.getItem('hosbusiness_gl_token') || sessionStorage.getItem('hosbusiness_gl_token'); } catch (e) {}
@@ -2739,18 +2742,45 @@
     return fetch('https://europe-west2-brandonhall-7bdef.cloudfunctions.net/glAFGet', {
       headers: { 'Authorization': 'Bearer ' + tok }
     }).then(function (r) { return r.json(); }).then(function (j) {
-      if (!j || !j.ok || !j.hasData || !j.csv) return;
-      var T = window.Trading, TE = window.TradingEngine;
-      if (!T || !TE || !TE.isAF || !TE.parseAF) return;
-      if (!TE.isAF(j.csv)) return;
-      var S = T.S();
-      if (S.af && S.af.asOf && S.af.asOf >= j.asOf) return;  // our S.af is newer, skip
-      var p = TE.parseAF(j.csv);
-      if (!p || !p.length) return;
-      TE.merge(S, 'af', p, { asOf: j.asOf, file: 'glAFUpload', basis: 'net' });
-      if (T.resetMonth) T.resetMonth();
-      /* Re-render the current tab so the three coloured revenue boxes pick
-         up the fresh data straight away. */
+      if (!j || !j.ok || !j.hasData) return;
+
+      /* v39.34 — expose snapshot meta + full doc globally so the three
+         coloured revenue boxes can lock to it. */
+      if (j.source === 'soap-snapshot' && j.monthForecast) {
+        window.AF_SNAPSHOT = {
+          monthForecast: j.monthForecast,
+          rows: j.rows || [],
+          ratios: j.ratios || null,
+          builderVersion: j.builderVersion || null
+        };
+        window.AF_SNAPSHOT_META = {
+          asOf: j.asOf,
+          asOfDate: j.asOfDate,
+          asOfTimeShort: j.asOfTimeShort,
+          source: j.source,
+          closedDayCount: j.closedDayCount,
+          forwardDayCount: j.forwardDayCount
+        };
+      }
+
+      /* Legacy path — if a CSV is present (either a SOAP-built CSV or a
+         manual-upload CSV), parse into S.af so detail tabs still work. */
+      if (j.csv) {
+        var T = window.Trading, TE = window.TradingEngine;
+        if (T && TE && TE.isAF && TE.parseAF && TE.isAF(j.csv)) {
+          var S = T.S();
+          if (!S.af || !S.af.asOf || j.asOf > S.af.asOf) {
+            var p = TE.parseAF(j.csv);
+            if (p && p.length) {
+              TE.merge(S, 'af', p, { asOf: j.asOf, file: 'gl_af/latest (' + (j.source || 'upload') + ')', basis: 'net' });
+              if (T.resetMonth) T.resetMonth();
+            }
+          }
+        }
+      }
+
+      /* Re-render the current tab so the coloured revenue boxes pick up
+         the fresh snapshot straight away. */
       var on = document.querySelector('section.tab.on');
       if (on && on.id.indexOf('t-pf-') === 0 && window.Profit && window.Profit.signedIn()) {
         window.Profit.show(on.id.slice(5));

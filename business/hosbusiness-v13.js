@@ -578,40 +578,80 @@
     var tonightAcc = to ? T.net(to.acc) : 0;
     var tonightAdr = to && to.rooms ? tonightAcc / to.rooms : 0;
     var n7 = T.agg(S.af.rows.filter(function (x) { return x.d >= cut; }).slice(0, 7));
-    /* v39.32 — the three coloured revenue boxes read S.af.rows and split on
-       TODAY. For forward days, the morning email feed populates accom but
-       leaves F&B and Other at £0 (because Rezlynx's email report only
-       includes those for closed days). To match Rezlynx's own month-end
-       forecast we estimate forward F&B and Other per room from the last 14
-       closed days' per-room ratio and add them to any forward row that has
-       accom > 0 but FB/Other = 0. */
+    /* v39.34 — the three coloured revenue boxes prefer window.AF_SNAPSHOT
+       (locked at 06:10 by glAFSnapshotMorning) over live re-derivation.
+       This guarantees that a 9am click shows the same figures as Raj's
+       06:00 Rezlynx A&F email. Fallback to the v39.32 estimate logic
+       only if the snapshot has not landed (first-ever load, or scheduler
+       failure — in which case glAFSnapshotVerify at 07:00 fires an alert). */
     var m = cut.slice(0, 7);
     var _today = new Date(); _today.setHours(0, 0, 0, 0);
     var _todayIso = _today.toISOString().slice(0, 10);
-    var _mRows = (S.af.rows || []).filter(function (r) { return r.d.slice(0, 7) === m; });
     var LET2 = (T && T.LETTABLE) ? T.LETTABLE : 114;
 
-    /* Compute per-room F&B and Other from the last 14 closed days. */
-    var _closed = (S.af.rows || []).filter(function (r) { return r.d < _todayIso && (r.rooms || 0) > 0; }).slice(-14);
-    var _cRooms = 0, _cFB = 0, _cOth = 0;
-    _closed.forEach(function (r) { _cRooms += (r.rooms || 0); _cFB += (r.fb || 0); _cOth += (r.oth || 0); });
-    var _fbPerRoom = _cRooms > 0 ? _cFB / _cRooms : 0;
-    var _othPerRoom = _cRooms > 0 ? _cOth / _cRooms : 0;
+    var act, bks, allMonth, allMonthOcc;
+    var snapMeta = window.AF_SNAPSHOT_META || null;
+    var snapMF = (window.AF_SNAPSHOT && window.AF_SNAPSHOT.monthForecast) ? window.AF_SNAPSHOT.monthForecast : null;
+    var snapFresh = snapMF && snapMeta && snapMeta.asOfDate === _todayIso && snapMeta.source === 'soap-snapshot';
 
-    /* Build an estimate-augmented copy of the month rows for forward days. */
-    var _mRowsFcst = _mRows.map(function (r) {
-      if (r.d < _todayIso) return r;    // closed days left as-is
-      var rooms = r.rooms || 0;
-      if (rooms <= 0) return r;
-      var fb = (r.fb || 0) > 0 ? r.fb : Math.round(rooms * _fbPerRoom * 100) / 100;
-      var oth = (r.oth || 0) > 0 ? r.oth : Math.round(rooms * _othPerRoom * 100) / 100;
-      return Object.assign({}, r, { fb: fb, oth: oth });
-    });
+    if (snapFresh) {
+      /* LOCKED PATH — read month totals straight from the 06:10 snapshot */
+      act = {
+        total:   snapMF.actual.total,
+        rooms:   snapMF.actual.rooms,
+        nights:  snapMF.actual.nights,
+        acc:     snapMF.actual.accomNet,
+        fb:      snapMF.actual.fbNet,
+        oth:     snapMF.actual.otherNet
+      };
+      bks = {
+        total:   snapMF.onBooks.total,
+        rooms:   snapMF.onBooks.rooms,
+        nights:  snapMF.onBooks.nights,
+        acc:     snapMF.onBooks.accomNet,
+        fb:      snapMF.onBooks.fbNet,
+        oth:     snapMF.onBooks.otherNet
+      };
+      allMonth = snapMF.monthEnd.total;
+      allMonthOcc = (act.nights + bks.nights) > 0 ? (act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights)) : 0;
+    } else {
+      /* FALLBACK — pre-snapshot behaviour (v39.32 estimate logic).
+         Flagged to the operator via the badge so they know it's live-derived
+         rather than locked to the 06:00 snapshot. */
+      var _mRows = (S.af.rows || []).filter(function (r) { return r.d.slice(0, 7) === m; });
+      var _closed = (S.af.rows || []).filter(function (r) { return r.d < _todayIso && (r.rooms || 0) > 0; }).slice(-14);
+      var _cRooms = 0, _cFB = 0, _cOth = 0;
+      _closed.forEach(function (r) { _cRooms += (r.rooms || 0); _cFB += (r.fb || 0); _cOth += (r.oth || 0); });
+      var _fbPerRoom = _cRooms > 0 ? _cFB / _cRooms : 0;
+      var _othPerRoom = _cRooms > 0 ? _cOth / _cRooms : 0;
+      var _mRowsFcst = _mRows.map(function (r) {
+        if (r.d < _todayIso) return r;
+        var rooms = r.rooms || 0;
+        if (rooms <= 0) return r;
+        var fb = (r.fb || 0) > 0 ? r.fb : Math.round(rooms * _fbPerRoom * 100) / 100;
+        var oth = (r.oth || 0) > 0 ? r.oth : Math.round(rooms * _othPerRoom * 100) / 100;
+        return Object.assign({}, r, { fb: fb, oth: oth });
+      });
+      act = T.agg(_mRowsFcst.filter(function (r) { return r.d < _todayIso; }));
+      bks = T.agg(_mRowsFcst.filter(function (r) { return r.d >= _todayIso; }));
+      allMonth = act.total + bks.total;
+      allMonthOcc = (act.nights + bks.nights) > 0 ? (act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights)) : 0;
+    }
 
-    var act = T.agg(_mRowsFcst.filter(function (r) { return r.d < _todayIso; }));
-    var bks = T.agg(_mRowsFcst.filter(function (r) { return r.d >= _todayIso; }));
-    var allMonth = act.total + bks.total;
-    var allMonthOcc = (act.nights + bks.nights) > 0 ? (act.rooms + bks.rooms) / (LET2 * (act.nights + bks.nights)) : 0;
+    /* "As of" badge for the three coloured boxes — tells the user whether the
+       figures are locked to the 06:10 snapshot or live-derived. */
+    function asOfBadge() {
+      if (snapFresh) {
+        var pretty = (function () {
+          var d = new Date(snapMeta.asOf);
+          if (isNaN(d)) return snapMeta.asOfDate;
+          var mm = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          return (snapMeta.asOfTimeShort || '06:10') + ' · ' + d.getDate() + ' ' + mm[d.getMonth()] + ' ' + d.getFullYear();
+        })();
+        return '<div class="d" style="font-size:10.5px;opacity:.85;margin-top:3px">As of ' + pretty + ' · locked to Rezlynx 06:00 A&amp;F</div>';
+      }
+      return '<div class="d" style="font-size:10.5px;opacity:.85;margin-top:3px;background:rgba(0,0,0,.18);display:inline-block;padding:2px 6px;border-radius:4px">Live (06:00 snapshot not loaded)</div>';
+    }
 
     function t(label, value, sub) {
       return '<div class="tile"><div class="l">' + label + '</div><div class="v">' + value + '</div>' + (sub ? '<div class="d">' + sub + '</div>' : '') + '</div>';
@@ -650,15 +690,19 @@
       t('Revenue lost to OOS', gbp(tally.oosLoss), (tally.oos || 0) + ' room nights × that night\'s ADR'),
       // Forward-looking anchor — "Tonight, on the books". Next 7 nights lives in the Forecast tab.
       t('Tonight, on the books', to ? num(to.rooms) + ' <small>rooms</small>' : '–', to ? gbp(tonightAdr, 2) + ' ADR · ' + gbp(tonightAcc) + ' rooms revenue' : ''),
-      // v13 — Three coloured revenue boxes as the final trio on row 2.
-      // Real data from Trading engine: act.total = MTD closed, bks.total = forward
-      // on-books, sum = full-month forecast. Refreshes with overnight glTick + 2h hosbookTick.
+      // v39.34 — Three coloured revenue boxes, now locked to the 06:10
+      // snapshot (window.AF_SNAPSHOT.monthForecast) when present, so the
+      // figures match Raj's 06:00 Rezlynx A&F email all day.
+      // Fallback: v39.32 estimate from S.af.rows with per-room ratios.
       // Red/white · Amber/black · Dark-green/white.
-      tc('Revenue closed', gbp(act.total), num(act.rooms) + ' rooms sold · 1st → yesterday · actual from Guestline',
+      tc('Revenue closed', gbp(act.total),
+         num(act.rooms) + ' rooms sold · 1st → yesterday · actual from Guestline' + asOfBadge(),
          '#b3261e', '#ffffff'),
-      tc('Revenue on books', gbp(bks.total), num(bks.rooms || 0) + ' rooms · today → month-end · on the books',
+      tc('Revenue on books', gbp(bks.total),
+         num(bks.rooms || 0) + ' rooms · today → month-end · on the books' + asOfBadge(),
          '#f5a623', '#1a2238'),
-      tc('Total for month · ' + MN[+m.slice(5) - 1], gbp(allMonth), pc(allMonthOcc) + ' occupancy · closed + on books',
+      tc('Total for month · ' + MN[+m.slice(5) - 1], gbp(allMonth),
+         pc(allMonthOcc) + ' occupancy · closed + on books' + asOfBadge(),
          '#1a6442', '#ffffff')
     ].join('');
     return '<div class="tiles">' + tiles + '</div>';
