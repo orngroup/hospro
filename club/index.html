@@ -85,6 +85,7 @@ legend{font-size:14px;color:var(--ink2);margin-bottom:2px;padding:0}
 .offer .band h3{font-size:25px;color:var(--gold-lt)}
 .offer p{margin:0;padding:14px 18px 6px;font-size:15px}
 .offer .meta{padding:0 18px 14px;font-size:13px;color:var(--ink2)}
+.rdwrap{min-height:200px}
 .empty{text-align:center;color:var(--ink2);padding:36px 12px;background:#fff;border:1px dashed var(--line);border-radius:14px}
 .act{list-style:none;margin:0;padding:0;background:#fff;border:1px solid var(--line);border-radius:14px}
 .act li{display:flex;gap:12px;align-items:center;padding:13px 16px}.act li+li{border-top:1px solid var(--line)}
@@ -242,6 +243,15 @@ nav.tabs a .dot{position:absolute;top:2px;left:calc(50% + 7px);min-width:17px;he
     <div id="actList"></div>
   </section>
 
+  <!-- ============ BOOK (ResDiary widget) ============ -->
+  <section class="view" id="v-book" aria-labelledby="bookH">
+    <h2 class="sec-h" id="bookH">Book a table</h2>
+    <p class="lead">Reserve your table at The Clarendon. Show your Clarendon Club code when you pay to use and earn credit.</p>
+    <div class="note" id="bookMember" style="margin-bottom:14px"><i class="v">✦</i><div><b>Member no. <span id="bookNo"></span></b><br><span class="small muted">Add it in the Comments box so we can welcome you as a member.</span></div></div>
+    <div class="rdwrap"><div id="rd-widget-frame" style="max-width:600px;margin:auto"></div><p class="small muted" id="rdLoading" style="text-align:center;padding:30px 0">Loading the booking calendar…</p></div>
+    <p class="small muted" style="text-align:center;margin-top:12px">Bookings are taken by ResDiary for The Clarendon Restaurant at Brandon Hall.</p>
+  </section>
+
   <!-- ============ ACCOUNT ============ -->
   <section class="view" id="v-account" aria-labelledby="accH">
     <h2 class="sec-h" id="accH">My account</h2>
@@ -256,7 +266,7 @@ nav.tabs a .dot{position:absolute;top:2px;left:calc(50% + 7px);min-width:17px;he
     <details class="faq"><summary>What does it cover?</summary><p>Food and drink in The Clarendon restaurant and bar at Brandon Hall. Not service charge, gift vouchers, accommodation or spa treatments. Credit has no cash value.</p></details>
     <div class="acc">
       <div><a href="terms.html">Membership terms and privacy</a></div>
-      <div><a id="bookLink" href="#" rel="noopener">Book a table at The Clarendon</a></div>
+      <div><a href="#book">Book a table at The Clarendon</a></div>
       <div><button class="btn btn-ghost" id="forget" type="button">Remove card from this phone</button></div>
       <div><button class="btn btn-ghost" id="closeAcc" type="button" style="color:var(--bad)">Close my membership</button></div>
     </div>
@@ -267,7 +277,7 @@ nav.tabs a .dot{position:absolute;top:2px;left:calc(50% + 7px);min-width:17px;he
   <a href="#card" data-v="card"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19M6 15h5"/></svg>My card</a>
   <a href="#offers" data-v="offers"><svg viewBox="0 0 24 24"><path d="M20 12v8H4v-8M2.5 7.5h19V12h-19zM12 20V7.5M12 7.5S10.5 3 8 3.5 7 7.5 12 7.5zM12 7.5S13.5 3 16 3.5s1 4-4 4z"/></svg>Offers<span class="dot hidden" id="offDot"></span></a>
   <a href="#activity" data-v="activity"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Activity</a>
-  <a href="#" id="navBook" data-ext="1"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Book</a>
+  <a href="#book" data-v="book"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Book</a>
   <a href="#account" data-v="account"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c1.5-4 4.5-5.5 8-5.5s6.5 1.5 8 5.5"/></svg>Account</a>
 </nav>
 
@@ -306,9 +316,6 @@ const CFG = window.CLUB_CONFIG || {};
 const KEY = 'clarendon_card_id';
 let cardId = null, card = null, offers = [], unwatch = null, current = 'join';
 if (CC.demo) $('demoFlag').classList.remove('hidden');
-const bookUrl = CFG.bookUrl || '#';
-$('navBook').href = bookUrl; $('bookLink').href = bookUrl;
-$('navBook').target = '_blank'; $('bookLink').target = '_blank';
 
 /* ---------- form set-up ---------- */
 const bd = document.querySelector('[name=birthDay]'), bm = document.querySelector('[name=birthMonth]');
@@ -317,8 +324,8 @@ for (let d = 1; d <= 31; d++) bd.insertAdjacentHTML('beforeend', '<option>' + d 
 $('occ').innerHTML = ['Family meals','Date night','Sunday lunch','Business dining','Celebrations','Drinks in the bar','Afternoon tea'].map(o => '<label class="chip"><input type="checkbox" name="occasions" value="' + o + '">' + o + '</label>').join('');
 
 /* ---------- routing (plain #name) ---------- */
-const VIEWS = ['join','welcome','find','card','offers','activity','account'];
-const MEMBER_VIEWS = ['card','offers','activity','account'];
+const VIEWS = ['join','welcome','find','card','offers','activity','book','account'];
+const MEMBER_VIEWS = ['card','offers','activity','book','account'];
 function show(v) {
   if (!VIEWS.includes(v)) v = cardId ? 'card' : 'join';
   if (MEMBER_VIEWS.includes(v) && !cardId) v = 'join';
@@ -328,6 +335,7 @@ function show(v) {
   const member = MEMBER_VIEWS.includes(v);
   $('tabs').classList.toggle('hidden', !member); document.body.classList.toggle('nonav', !member);
   document.querySelectorAll('nav.tabs a[data-v]').forEach(a => a.classList.toggle('on', a.dataset.v === v));
+  if (v === 'book') loadBooking();
   if (v === 'offers') { try { localStorage.setItem('cc_offers_seen', String(offers.length)); } catch (e) {} $('offDot').classList.add('hidden'); }
   window.scrollTo(0, 0);
 }
@@ -512,6 +520,21 @@ $('forget').onclick = () => confirmBox('Remove card from this phone?', 'Your mem
 $('closeAcc').onclick = () => confirmBox('Close your membership?', 'Any credit and vouchers on your card will be lost, and we\'ll delete your details. This can\'t be undone.', 'Close my membership', async () => {
   try { await ClubAPI.account(cardId, 'delete'); CC.toast('We\'ve received your request', 'ok'); } catch (er) { CC.toast(er.message, 'bad'); }
 });
+
+/* ---------- ResDiary booking widget (loaded the first time Book is opened) ---------- */
+let rdLoaded = false;
+function loadBooking() {
+  if (card) $('bookNo').textContent = memberNo(card.memberNo);
+  $('bookMember').classList.toggle('hidden', !card);
+  if (rdLoaded) return; rdLoaded = true;
+  const url = CFG.resdiaryUrl || 'https://booking.resdiary.com/widget/Standard/TheClarendonRestaurantatBrandonHall/73749?includeJquery=false';
+  const inp = document.createElement('input'); inp.type = 'hidden'; inp.id = 'rdwidgeturl'; inp.name = 'rdwidgeturl'; inp.value = url;
+  $('rd-widget-frame').after(inp);
+  const sc = document.createElement('script'); sc.src = 'https://booking.resdiary.com/bundles/WidgetV2Loader.js';
+  sc.onload = () => setTimeout(() => $('rdLoading').classList.add('hidden'), 1200);
+  sc.onerror = () => { $('rdLoading').innerHTML = 'The booking calendar could not load. <a href="' + esc(url.replace('?includeJquery=false', '')) + '" target="_blank" rel="noopener">Open booking in a new tab</a>.'; };
+  document.body.appendChild(sc);
+}
 
 /* ---------- live-site extras ---------- */
 if (!CC.demo && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
