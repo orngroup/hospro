@@ -1,0 +1,41 @@
+/* THE CLARENDON CLUB — brand styles (Brandon Hall: navy, gold, cream · Italiana + Lato) */
+@font-face{font-family:"Italiana";src:url("fonts/italiana-latin-400-normal.woff2") format("woff2");font-display:swap}
+@font-face{font-family:"Lato";src:url("fonts/lato-latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Lato";src:url("fonts/lato-latin-700-normal.woff2") format("woff2");font-weight:700;font-display:swap}
+:root{color-scheme:light;--navy:#2C3E50;--navy-deep:#1d2a36;--navy-ink:#22313F;--gold:#BB9979;--gold-lt:#dcc4a6;--gold-dk:#8f6f4d;--cream:#F7F4EF;--paper:#fff;--line:#e5dfd6;--ink:#22313F;--ink2:#5d6975;--ok:#2f7a52;--bad:#a8332a;--warn:#9a6a12;
+  --display:"Italiana",Georgia,"Times New Roman",serif;--sans:"Lato",system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+*{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--cream);color:var(--ink);font:16px/1.5 var(--sans);overflow-x:clip}
+h1,h2,h3{font-family:var(--display);font-weight:400;letter-spacing:.02em;line-height:1.1;margin:0}
+a{color:var(--gold-dk)}
+button,input,select,textarea{font:inherit;color:inherit}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:12px 22px;border-radius:999px;border:1px solid transparent;font-weight:700;letter-spacing:.03em;cursor:pointer;text-decoration:none;transition:transform .12s,background .2s}
+.btn:active{transform:scale(.98)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.chip:focus-within{outline:3px solid var(--gold);outline-offset:2px}
+.btn-gold{background:var(--gold);color:#fff}.btn-gold:hover{background:#a9865f}
+.btn-navy{background:var(--navy);color:#fff}.btn-navy:hover{background:var(--navy-deep)}
+.btn-line{background:transparent;border-color:var(--gold);color:var(--gold-dk)}
+.btn-ghost{background:transparent;color:var(--ink2);border-color:var(--line)}
+.btn-block{display:flex;width:100%}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+label.f{display:block;font-size:14px;color:var(--ink2);margin:0 0 14px}
+label.f>span.req{color:var(--bad)}
+input.in,select.in,textarea.in{display:block;width:100%;margin-top:5px;padding:12px 13px;font-size:16px;border:1px solid #cfc7bb;border-radius:8px;background:#fff;color:var(--ink)}
+input.in[aria-invalid=true],select.in[aria-invalid=true]{border-color:var(--bad)}
+.ferr{display:block;color:var(--bad);font-size:13px;margin-top:4px}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chip{position:relative;display:inline-flex;align-items:center;min-height:40px;padding:8px 14px;border:1px solid #cfc7bb;border-radius:999px;background:#fff;font-size:14px;color:var(--ink);cursor:pointer}
+.chip input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.chip:has(input:checked){background:var(--navy);border-color:var(--navy);color:#fff}
+.tick{display:flex;gap:12px;align-items:flex-start;font-size:14.5px;color:var(--ink);margin:0 0 12px;cursor:pointer}
+.tick input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--navy);flex:none}
+.muted{color:var(--ink2)}.small{font-size:13.5px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px}
+#cc-toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--navy-deep);color:#fff;padding:12px 18px;border-radius:10px;font-size:15px;opacity:0;pointer-events:none;transition:.25s;z-index:99;max-width:92vw;text-align:center}
+#cc-toast.show{opacity:1;transform:translate(-50%,0)}#cc-toast.bad{background:var(--bad)}#cc-toast.ok{background:var(--ok)}
+.demo-flag{background:#fff4d6;color:#6b4c00;font-size:12.5px;text-align:center;padding:6px 10px;border-bottom:1px solid #ecd9a6}
+.money{font-variant-numeric:tabular-nums;white-space:nowrap}
+.hidden{display:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clarendon Club – Waiter</title>
+<meta name="theme-color" content="#1d2a36">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Club Waiter">
+<meta name="robots" content="noindex">
+<link rel="apple-touch-icon" href="club-icon-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Italiana&family=Lato:wght@400;700&display=swap">
+<link rel="stylesheet" href="club.css">
+<style>
+/* VOICE: a till-side tool — fast, large, unambiguous, nothing decorative that slows a busy server.
+   IDEA: the bill folder: guest's card on the left, the bill on the right, the code for the till at the end.
+   PICTURE: the member's balance and the live "guest pays" sum, in big figures.
+   COLOUR and TYPE: Brandon Hall navy, gold, cream; Lato for work, Italiana only for names and big sums.
+   LAYOUT: one task per screen; two columns on a tablet, stacked on a phone. */
+body{background:var(--cream);min-height:100vh;display:flex;flex-direction:column}
+.bar{background:var(--navy-deep);color:#fff;display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;border-bottom:2px solid var(--gold)}
+.bar img{height:34px}
+.bar .t{font-family:var(--display);font-size:21px;color:var(--gold-lt);line-height:1}
+.bar .t small{display:block;font-family:var(--sans);font-size:12px;color:#aab6c2;margin-top:2px}
+.bar .who{margin-left:auto;text-align:right;font-size:14px;line-height:1.25}
+.bar .who b{display:block;font-size:15px}
+.bar .out{background:transparent;border:1px solid #5a6e82;color:#fff;border-radius:999px;padding:8px 14px;min-height:40px;cursor:pointer}
+.wrap{flex:1;width:100%;max-width:1080px;margin:0 auto;padding:18px 16px 30px}
+.scr{display:none}.scr.on{display:block}
+h1.h{font-size:32px;color:var(--navy);margin:6px 0 4px}
+.sub{color:var(--ink2);margin:0 0 18px}
+/* sign-in */
+.signin{max-width:440px;margin:4vh auto 0;text-align:center}
+.disp{display:grid;gap:10px;margin:14px 0}
+.disp label{display:block;text-align:left;font-size:14px;color:var(--ink2)}
+.disp input{width:100%;text-align:center;font-size:28px;letter-spacing:.18em;padding:12px;border:2px solid #cfc7bb;border-radius:12px;background:#fff;font-variant-numeric:tabular-nums}
+.disp input.act{border-color:var(--navy)}
+.pad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 14px}
+.pad button{min-height:64px;font-size:26px;border:1px solid var(--line);border-radius:14px;background:#fff;cursor:pointer;color:var(--navy);font-weight:700}
+.pad button:active{background:#efe7dd}
+.pad .fn{font-size:16px;color:var(--ink2)}
+/* scan */
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
+@media(max-width:820px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.cam{position:relative;background:#0e151c;border-radius:18px;overflow:hidden;aspect-ratio:4/3;display:grid;place-items:center;color:#c9d3dc;text-align:center}
+.cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam .frame{position:absolute;width:56%;aspect-ratio:1;border:3px solid var(--gold);border-radius:22px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
+.cam .msg{position:relative;padding:20px;max-width:34ch}
+.cam .lbl{position:absolute;bottom:12px;left:0;right:0;text-align:center;color:#fff;font-size:15px;text-shadow:0 1px 3px #000}
+.manual{display:flex;gap:10px;margin-top:12px}
+.manual input{flex:1;font-size:18px;padding:12px 14px;border:1px solid #cfc7bb;border-radius:10px;background:#fff}
+.list{list-style:none;margin:0;padding:0;background:#fff;border:1px solid var(--line);border-radius:14px;max-height:62vh;overflow:auto}
+.list li{display:flex;gap:10px;align-items:center;padding:12px 14px}.list li+li{border-top:1px solid var(--line)}
+.list .tm{width:48px;color:var(--ink2);font-size:13px;flex:none}
+.list .nm{flex:1}.list .nm b{display:block}.list .nm span{font-size:13px;color:var(--ink2)}
+.list .cd{font-weight:700;color:var(--gold-dk);white-space:nowrap}
+.list .vd{font-size:13px;color:var(--bad)}
+.list button{background:none;border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer;color:var(--bad);min-height:36px}
+.secH{font-size:22px;color:var(--navy);margin:0 0 10px}
+.demo-pick{margin-top:12px;font-size:14px}
+.demo-pick button{margin:4px 6px 0 0;min-height:40px;border:1px dashed var(--gold);background:#fff;border-radius:999px;padding:6px 12px;cursor:pointer}
+/* member */
+.mcard{background:radial-gradient(120% 150% at 0% 0%,#40576f 0%,#26374a 40%,#17222c 100%);color:#fff;border-radius:18px;padding:20px 22px}
+.mcard .nm{font-family:var(--display);font-size:30px;color:var(--gold-lt);line-height:1.1}
+.mcard .meta{font-size:14px;color:#c9d3dc;margin-top:4px}
+.mcard .av{margin-top:16px;font-size:13px;color:#c9d3dc}
+.mcard .av b{display:block;font-weight:700;font-size:48px;line-height:1;color:#f1dfc6}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tag{background:rgba(255,255,255,.12);border:1px solid rgba(220,196,166,.4);color:#fff;border-radius:999px;padding:4px 12px;font-size:13px}
+.tag.hot{background:var(--gold);border-color:var(--gold)}
+.mlines{background:#fff;border:1px solid var(--line);border-radius:14px;margin-top:12px}
+.mlines div{display:flex;justify-content:space-between;padding:11px 16px;font-size:15px}.mlines div+div{border-top:1px solid var(--line)}
+.bill{background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px}
+.bill label.big{display:block;font-size:15px;color:var(--ink2);margin-bottom:6px}
+.bill .amt{display:flex;align-items:center;border:2px solid var(--navy);border-radius:12px;background:#fff;padding:0 14px}
+.bill .amt span{font-size:28px;color:var(--ink2)}
+.bill .amt input{flex:1;border:0;font-size:34px;padding:10px 8px;width:100%;background:transparent;font-variant-numeric:tabular-nums;outline:none}
+.use{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+.use .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.use .quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.use .quick button{min-height:44px;padding:8px 16px;border:1px solid var(--navy);border-radius:999px;background:#fff;color:var(--navy);font-weight:700;cursor:pointer}
+.use .quick button.on{background:var(--navy);color:#fff}
+.use .amt{border-width:1px;margin-top:10px}.use .amt input{font-size:24px}.use .amt span{font-size:22px}
+.sum{margin:18px 0 12px;background:var(--cream);border-radius:12px;padding:12px 16px}
+.sum div{display:flex;justify-content:space-between;padding:5px 0;font-size:16px}
+.sum .tot{border-top:1px solid var(--line);margin-top:4px;padding-top:9px;font-size:22px;font-weight:700;color:var(--navy)}
+.warn15{background:#fff1dc;border:1px solid #f0d59f;color:#6b4c00;border-radius:10px;padding:10px 14px;font-size:14.5px;margin-bottom:12px}
+.err{background:#fbecea;color:#7c241d;border:1px solid #f0c9c4;border-radius:10px;padding:10px 14px;margin:10px 0;font-size:15px}
+/* result */
+.res{max-width:640px;margin:2vh auto 0;text-align:center}
+.res .ok{width:76px;height:76px;border-radius:50%;background:#eaf5ee;color:var(--ok);display:grid;place-items:center;margin:0 auto 10px;font-size:40px}
+.res .code{font-weight:700;font-size:clamp(54px,11vw,88px);color:var(--navy);letter-spacing:.08em;font-variant-numeric:tabular-nums;line-height:1;margin:10px 0}
+.till{background:#fff;border:2px solid var(--gold);border-radius:16px;padding:18px;text-align:left;margin:14px 0}
+.till ol{margin:8px 0 0;padding-left:22px;font-size:17px;line-height:1.6}
+.till b.money{font-size:19px}
+.res .earned{font-size:18px;margin:8px 0 18px}
+</style>
+</head>
+<body>
+<div id="demoFlag" class="demo-flag hidden"></div>
+<header class="bar">
+  <img src="bh-logo.svg" alt="">
+  <div class="t">The Clarendon Club<small id="devName">Waiter</small></div>
+  <div class="who hidden" id="whoBox"><b id="whoName"></b><span id="lockIn" class="small"></span></div>
+  <button class="out hidden" id="signOut" type="button">Sign out</button>
+</header>
+
+<div class="wrap">
+  <!-- set up this device -->
+  <section class="scr" id="s-setup">
+    <div class="signin">
+      <h1 class="h">Set up this tablet</h1>
+      <p class="sub">A manager does this once per tablet or phone. After that, staff sign in with their employee number and HosTIME PIN.</p>
+      <form id="setupForm" class="panel" style="text-align:left">
+        <label class="f">Device name<input class="in" name="name" placeholder="Restaurant tablet 1" required></label>
+        <label class="f">Set-up code<input class="in" name="code" autocomplete="off" required></label>
+        <div id="setupErr"></div>
+        <button class="btn btn-navy btn-block" type="submit">Activate</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- staff sign-in -->
+  <section class="scr" id="s-signin">
+    <div class="signin">
+      <h1 class="h">Sign in</h1>
+      <p class="sub">Your employee number and HosTIME clock-in PIN.</p>
+      <div class="disp">
+        <label>Employee number<input id="inEmp" inputmode="numeric" autocomplete="off" readonly></label>
+        <label>PIN<input id="inPin" type="password" inputmode="numeric" autocomplete="off" readonly></label>
+      </div>
+      <div class="pad" id="pad"></div>
+      <div id="signErr"></div>
+      <button class="btn btn-gold btn-block" id="signBtn" type="button">Sign in</button>
+    </div>
+  </section>
+
+  <!-- scan -->
+  <section class="scr" id="s-scan">
+    <div class="grid2">
+      <div>
+        <h1 class="h" style="margin-top:0">Scan the guest's card</h1>
+        <p class="sub">Hold their code inside the gold square.</p>
+        <div class="cam" id="cam"><div class="msg" id="camMsg">Starting camera…</div></div>
+        <form class="manual" id="manual"><input id="q" placeholder="Or type member number, email or mobile" autocomplete="off"><button class="btn btn-navy" type="submit">Find</button></form>
+        <div id="scanErr"></div>
+        <div class="demo-pick hidden" id="demoPick"></div>
+      </div>
+      <div>
+        <h2 class="secH">Today on this tablet</h2>
+        <ul class="list" id="today"><li class="muted">Nothing yet today.</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- member + bill -->
+  <section class="scr" id="s-member">
+    <div class="grid2">
+      <div>
+        <div class="mcard" id="mcard"></div>
+        <div class="mlines" id="mlines"></div>
+        <button class="btn btn-ghost btn-block" style="margin-top:12px" id="backScan" type="button">Wrong guest – scan again</button>
+      </div>
+      <form class="bill" id="billForm" novalidate>
+        <label class="big" for="bill">Bill total, before service charge</label>
+        <div class="amt"><span>£</span><input id="bill" inputmode="decimal" autocomplete="off" placeholder="0.00"></div>
+        <div class="use" id="useBox">
+          <div class="row"><b>Use Clarendon credit?</b><span class="muted small" id="availTxt"></span></div>
+          <div class="quick" id="quick"></div>
+          <div class="amt hidden" id="useAmtBox"><span>£</span><input id="useAmt" inputmode="decimal" autocomplete="off" placeholder="0.00"></div>
+        </div>
+        <div class="sum" id="sum"></div>
+        <div class="warn15 hidden" id="warn15">Credit is being used: <b>do not add the 15% food discount</b> to this bill.</div>
+        <div id="billErr"></div>
+        <button class="btn btn-gold btn-block" id="confirm" type="submit" style="min-height:56px;font-size:18px">Confirm</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- result -->
+  <section class="scr" id="s-done">
+    <div class="res" id="res"></div>
+  </section>
+</div>
+
+<div id="pinSheet" class="hidden"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+<script src="club-config.js"></script>
+<script src="club-service.js"></script>
+<script src="vendor/jsQR.js"></script>
+<script src="club-api.js"></script>
+<script>
+{
+const $ = id => document.getElementById(id);
+const { esc, gbp, time, memberNo } = CC;
+const r2 = x => Math.round((Number(x) + Number.EPSILON) * 100) / 100;
+const DKEY = 'clarendon_device';
+let device = null, who = null, creds = null, member = null, cfg = { earnPct: 5, autoLockSeconds: 90, voidMinutes: 30 };
+let useMode = 'none', idleT = null, lastAct = Date.now();
+try { device = JSON.parse(localStorage.getItem(DKEY)); } catch (e) {}
+if (CC.demo) { $('demoFlag').classList.remove('hidden'); $('demoFlag').textContent = 'Preview mode. Set-up code ' + ClubAPI.demoHint.device + ' · Sign in ' + ClubAPI.demoHint.staff + ' · Camera not available in preview: type a number or pick a sample member.'; }
+
+function scr(id) { document.querySelectorAll('.scr').forEach(s => s.classList.toggle('on', s.id === 's-' + id)); if (id === 'scan') startCam(); else stopCam(); window.scrollTo(0, 0); }
+const errBox = (el, m) => { $(el).innerHTML = m ? '<div class="err">' + esc(m) + '</div>' : ''; };
+function head() {
+  $('devName').textContent = device ? device.name : 'Not set up';
+  const on = !!who; $('whoBox').classList.toggle('hidden', !on); $('signOut').classList.toggle('hidden', !on);
+  if (on) $('whoName').textContent = who.name;
+}
+
+/* ---------- device set-up ---------- */
+$('setupForm').addEventListener('submit', async e => {
+  e.preventDefault(); errBox('setupErr', '');
+  try {
+    const r = await ClubAPI.activate(e.target.code.value.trim(), e.target.name.value.trim());
+    device = { deviceId: r.deviceId, deviceKey: r.deviceKey, name: r.name };
+    try { localStorage.setItem(DKEY, JSON.stringify(device)); } catch (er) {}
+    head(); toSignIn(); CC.toast('Tablet activated', 'ok');
+  } catch (er) { errBox('setupErr', er.message); }
+});
+
+/* ---------- sign in with keypad ---------- */
+let field = 'inEmp';
+$('pad').innerHTML = ['1','2','3','4','5','6','7','8','9','Clear','0','⌫'].map(k => '<button type="button" class="' + (k.length > 1 ? 'fn' : '') + '" data-k="' + k + '">' + k + '</button>').join('');
+['inEmp', 'inPin'].forEach(id => $(id).addEventListener('focus', () => setField(id)));
+function setField(id) { field = id; $('inEmp').classList.toggle('act', id === 'inEmp'); $('inPin').classList.toggle('act', id === 'inPin'); }
+$('pad').addEventListener('click', e => {
+  const k = e.target.dataset.k; if (!k) return; const el = $(field);
+  if (k === 'Clear') el.value = ''; else if (k === '⌫') el.value = el.value.slice(0, -1); else if (el.value.length < 10) el.value += k;
+  if (field === 'inEmp' && k !== '⌫' && k !== 'Clear' && el.value.length >= 5 && !CC.demo) setField('inPin');
+  if (field === 'inEmp' && CC.demo && el.value.length >= 4) setField('inPin');
+  if (field === 'inPin' && el.value.length >= 4 && k !== '⌫') signIn();
+});
+document.addEventListener('keydown', e => {
+  if (!$('s-signin').classList.contains('on')) return;
+  if (/^\d$/.test(e.key)) { $(field).value += e.key; e.preventDefault(); }
+  else if (e.key === 'Backspace') { $(field).value = $(field).value.slice(0, -1); e.preventDefault(); }
+  else if (e.key === 'Tab') { setField(field === 'inEmp' ? 'inPin' : 'inEmp'); e.preventDefault(); }
+  else if (e.key === 'Enter') { field === 'inEmp' ? setField('inPin') : signIn(); }
+});
+$('signBtn').onclick = signIn;
+function toSignIn() { who = null; creds = null; member = null; $('inEmp').value = ''; $('inPin').value = ''; setField('inEmp'); errBox('signErr', ''); head(); scr('signin'); }
+async function signIn() {
+  const empNo = $('inEmp').value.trim(), pin = $('inPin').value.trim();
+  if (!empNo) { setField('inEmp'); return; }
+  errBox('signErr', ''); $('signBtn').disabled = true;
+  try {
+    const r = await ClubAPI.staff(Object.assign({ action: 'signin', empNo, pin }, dev()));
+    who = r.staff; creds = { empNo, pin }; cfg = Object.assign(cfg, r.settings || {});
+    head(); touch(); scr('scan'); loadToday();
+  } catch (er) { if (er.code === 'device') resetDevice(er.message); else { errBox('signErr', er.message); $('inPin').value = ''; setField('inPin'); } }
+  finally { $('signBtn').disabled = false; }
+}
+const dev = () => ({ deviceId: device && device.deviceId, deviceKey: device && device.deviceKey });
+const call = (action, extra) => ClubAPI.staff(Object.assign({ action }, dev(), creds, extra || {}));
+function resetDevice(msg) { try { localStorage.removeItem(DKEY); } catch (e) {} device = null; who = null; head(); scr('setup'); errBox('setupErr', msg); }
+$('signOut').onclick = toSignIn;
+
+/* ---------- idle lock (shared tablet) ---------- */
+function touch() { lastAct = Date.now(); }
+['pointerdown', 'keydown', 'input'].forEach(ev => document.addEventListener(ev, touch, { passive: true }));
+setInterval(() => {
+  if (!who) return;
+  const left = Math.max(0, Math.round(cfg.autoLockSeconds - (Date.now() - lastAct) / 1000));
+  $('lockIn').textContent = 'Signs out in ' + left + 's';
+  if (left <= 0 && !$('s-member').classList.contains('on')) { toSignIn(); CC.toast('Signed out after inactivity'); }
+}, 1000);
+
+/* ---------- camera ---------- */
+let stream = null, raf = null, canvas = document.createElement('canvas'), ctx2 = canvas.getContext('2d', { willReadFrequently: true }), busy = false;
+async function startCam() {
+  if (stream) return;
+  const cam = $('cam');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('camMsg').textContent = 'Camera not available here. Type the member number below.'; return; }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } }, audio: false });
+    const v = document.createElement('video'); v.setAttribute('playsinline', ''); v.muted = true; v.srcObject = stream;
+    cam.innerHTML = ''; cam.appendChild(v); cam.insertAdjacentHTML('beforeend', '<div class="frame"></div><div class="lbl">Looking for a Clarendon Club code…</div>');
+    await v.play(); loop(v);
+  } catch (e) { stream = null; $('cam').innerHTML = '<div class="msg" id="camMsg">Camera blocked. Allow camera access for this site in the browser settings, or type the member number below.</div>'; }
+}
+function stopCam() { if (raf) cancelAnimationFrame(raf); raf = null; if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; } }
+let lastScan = 0;
+function loop(v) {
+  raf = requestAnimationFrame(() => loop(v));
+  if (busy || v.readyState < 2 || Date.now() - lastScan < 180) return; lastScan = Date.now();
+  const w = 480, h = Math.round(v.videoHeight * w / v.videoWidth) || 360; canvas.width = w; canvas.height = h;
+  ctx2.drawImage(v, 0, 0, w, h);
+  const code = jsQR(ctx2.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'dontInvert' });
+  if (code && code.data && code.data.startsWith('CC1|')) { if (navigator.vibrate) navigator.vibrate(60); find(code.data); }
+}
+$('manual').addEventListener('submit', e => { e.preventDefault(); const q = $('q').value.trim(); if (q) find(q); });
+async function find(q) {
+  if (busy) return; busy = true; errBox('scanErr', '');
+  try { const r = await call('lookup', { q }); member = r.member; $('q').value = ''; openMember(); }
+  catch (er) { if (er.code === 'device') resetDevice(er.message); else if (er.code === 'staff') { toSignIn(); errBox('signErr', er.message); } else errBox('scanErr', er.message); }
+  finally { setTimeout(() => busy = false, 800); }
+}
+async function demoPick() {
+  if (!CC.demo) return;
+  const r = await ClubAPI.admin({ pin: '1234', action: 'members' });
+  $('demoPick').classList.remove('hidden');
+  $('demoPick').innerHTML = 'Sample members: ' + r.members.slice(0, 8).map(m => '<button type="button" data-no="' + esc(m.memberNo) + '">' + esc(m.name) + '</button>').join('');
+}
+$('demoPick').addEventListener('click', e => { const b = e.target.closest('[data-no]'); if (b) find(b.dataset.no); });
+
+/* ---------- today's list ---------- */
+async function loadToday() {
+  demoPick();
+  try {
+    const r = await call('today');
+    $('today').innerHTML = r.tx.length ? r.tx.map(t => {
+      const canVoid = !t.voided && t.staffCode === who.code && Date.now() - t.at < cfg.voidMinutes * 60000;
+      return '<li><span class="tm">' + esc(time(t.at)) + '</span><span class="nm"><b>' + esc(t.memberName) + '</b><span>Bill ' + esc(gbp(t.bill)) + (t.discount ? ' · credit ' + esc(gbp(t.discount)) : '') + ' · earned ' + esc(gbp(t.earned)) + ' · ' + esc(t.staffName) + '</span></span>' +
+        (t.voided ? '<span class="vd">Voided</span>' : (t.code ? '<span class="cd">' + esc(t.code) + '</span>' : '')) + (canVoid ? '<button type="button" data-void="' + esc(t.txId) + '">Void</button>' : '') + '</li>';
+    }).join('') : '<li class="muted">Nothing yet today.</li>';
+  } catch (e) {}
+}
+$('today').addEventListener('click', async e => {
+  const b = e.target.closest('[data-void]'); if (!b) return;
+  if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Tap again to void'; setTimeout(() => { b.dataset.sure = ''; b.textContent = 'Void'; }, 4000); return; }
+  try { await call('void', { txId: b.dataset.void, reason: 'Voided at table' }); CC.toast('Voided. Remove the discount on the till if it was applied.', 'ok'); loadToday(); }
+  catch (er) { CC.toast(er.message, 'bad'); }
+});
+
+/* ---------- member + bill ---------- */
+function openMember() {
+  const m = member;
+  $('mcard').innerHTML = '<div class="nm">' + esc(m.name) + '</div><div class="meta">No. ' + esc(memberNo(m.memberNo)) + ' · ' + esc(m.visits) + ' visit' + (m.visits === 1 ? '' : 's') + (m.lastVisit ? ' · last ' + esc(CC.date(m.lastVisit, { year: undefined })) : ' · first visit') + '</div>' +
+    '<div class="av">Available to spend<b class="money">' + esc(gbp(m.available)) + '</b></div>' +
+    '<div class="tags">' + (m.occasion ? '<span class="tag hot">' + esc(m.occasion) + '</span>' : '') + (m.dietary ? '<span class="tag">' + esc(m.dietary) + '</span>' : '') + (m.voucher > 0 ? '<span class="tag">Welcome voucher ' + esc(gbp(m.voucher)) + '</span>' : '') + '</div>';
+  const lines = [];
+  if (m.credit > 0) lines.push(['Credit', gbp(m.credit)]);
+  if (m.voucher > 0) lines.push(['Welcome voucher', gbp(m.voucher)]);
+  if (m.pending > 0) lines.push(['Earned, ready tomorrow', gbp(m.pending)]);
+  if (m.expiringNext) lines.push(['Next to expire', gbp(m.expiringNext.amount) + ' on ' + CC.date(m.expiringNext.date - 1, { year: undefined })]);
+  $('mlines').innerHTML = lines.map(l => '<div><span>' + esc(l[0]) + '</span><b class="money">' + esc(l[1]) + '</b></div>').join('') || '<div><span class="muted">No credit yet – they\'ll earn ' + esc(cfg.earnPct) + '% tonight.</span></div>';
+  $('bill').value = ''; $('useAmt').value = ''; useMode = 'none'; errBox('billErr', '');
+  $('useBox').classList.toggle('hidden', !(m.available > 0));
+  $('availTxt').textContent = gbp(m.available) + ' available';
+  calc(); scr('member'); setTimeout(() => $('bill').focus(), 50);
+}
+$('backScan').onclick = () => { member = null; scr('scan'); };
+function quickButtons(bill) {
+  const opts = [['none', 'Not tonight']];
+  if (member.available > 0) opts.push(['all', 'Use all ' + gbp(Math.min(member.available, bill || member.available))]);
+  opts.push(['custom', 'Other amount']);
+  $('quick').innerHTML = opts.map(o => '<button type="button" data-u="' + o[0] + '" class="' + (useMode === o[0] ? 'on' : '') + '">' + esc(o[1]) + '</button>').join('');
+}
+$('quick').addEventListener('click', e => { const b = e.target.closest('[data-u]'); if (!b) return; useMode = b.dataset.u; if (useMode === 'custom') setTimeout(() => $('useAmt').focus(), 30); calc(); });
+['bill', 'useAmt'].forEach(id => $(id).addEventListener('input', calc));
+function amounts() {
+  const bill = r2(parseFloat(($('bill').value || '').replace(/[^\d.]/g, '')) || 0);
+  let use = 0;
+  if (useMode === 'all') use = Math.min(member.available, bill);
+  if (useMode === 'custom') use = r2(parseFloat(($('useAmt').value || '').replace(/[^\d.]/g, '')) || 0);
+  use = r2(Math.max(0, use)); const pays = r2(Math.max(0, bill - use)); const earn = r2(pays * cfg.earnPct / 100);
+  return { bill, use, pays, earn };
+}
+function calc() {
+  if (!member) return;
+  const a = amounts(); quickButtons(a.bill);
+  $('useAmtBox').classList.toggle('hidden', useMode !== 'custom');
+  $('warn15').classList.toggle('hidden', !(a.use > 0));
+  let bad = '';
+  if (a.use > member.available + 0.0049) bad = 'Only ' + gbp(member.available) + ' available.';
+  else if (a.bill && a.use > a.bill) bad = 'Credit can\'t be more than the bill.';
+  $('sum').innerHTML = '<div><span>Bill</span><b class="money">' + esc(gbp(a.bill)) + '</b></div>' +
+    (a.use > 0 ? '<div><span>Clarendon Club credit</span><b class="money">−' + esc(gbp(a.use)) + '</b></div>' : '') +
+    '<div class="tot"><span>Guest pays</span><span class="money">' + esc(gbp(a.pays)) + '</span></div>' +
+    '<div class="muted"><span>Credit they earn (' + esc(cfg.earnPct) + '%)</span><span class="money">+' + esc(gbp(a.earn)) + '</span></div>';
+  $('confirm').disabled = !a.bill || !!bad;
+  $('confirm').textContent = a.use > 0 ? 'Confirm – use ' + gbp(a.use) + ' credit' : 'Confirm visit';
+  errBox('billErr', bad);
+}
+$('billForm').addEventListener('submit', async e => {
+  e.preventDefault(); const a = amounts(); if (!a.bill) return;
+  $('confirm').disabled = true;
+  try {
+    const r = await call('settle', { memberNo: member.memberNo, bill: a.bill, use: a.use });
+    done(r.tx);
+  } catch (er) { if (er.code === 'staff' || er.code === 'device') { toSignIn(); errBox('signErr', er.message); } else errBox('billErr', er.message); $('confirm').disabled = false; }
+});
+function done(t) {
+  const first = member.first;
+  $('res').innerHTML = '<div class="ok" aria-hidden="true">✓</div>' +
+    (t.discount > 0
+      ? '<h1 class="h">Credit approved</h1><div class="code">' + esc(t.code) + '</div>' +
+        '<div class="till"><b>On the till</b><ol><li>Apply the <b>Clarendon Club</b> discount of <b class="money">' + esc(gbp(t.discount)) + '</b>.</li><li>Enter reference <b>' + esc(t.code) + '</b>.</li><li>No 15% food discount on this bill. Guest pays <b class="money">' + esc(gbp(t.paid)) + '</b>.</li></ol></div>'
+      : '<h1 class="h">Visit recorded</h1><p class="sub">Nothing to change on the till.</p>') +
+    '<p class="earned">' + esc(first) + ' earns <b class="money">' + esc(gbp(t.earned)) + '</b> credit, ready from tomorrow.</p>' +
+    '<button class="btn btn-navy btn-block" id="next" type="button" style="min-height:56px">Next guest</button>';
+  $('next').onclick = () => { member = null; scr('scan'); loadToday(); };
+  scr('done');
+}
+
+/* ---------- start ---------- */
+head();
+if (!device) scr('setup'); else toSignIn();
+window.addEventListener('pagehide', stopCam);
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopCam(); else if ($('s-scan').classList.contains('on')) startCam(); });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarendon Club – Back office</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Italiana&family=Lato:wght@400;700&display=swap">
+<link rel="stylesheet" href="club.css">
+<style>
+/* VOICE: the F&B office ledger — exact, calm, numbers first.
+   IDEA: a members' ledger book: who joined, what was earned, what was spent, does the till agree.
+   PICTURE: the headline money figures and a 14-day strip of visits and credit.
+   COLOUR and TYPE: Brandon Hall navy, gold, cream; Lato tables, Italiana headings.
+   LAYOUT: tab row, then one working page per tab; tables stack on a phone. */
+.bar{background:var(--navy-deep);color:#fff;display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:2px solid var(--gold)}
+.bar img{height:34px}.bar .t{font-family:var(--display);font-size:21px;color:var(--gold-lt)}.bar .t small{display:block;font-family:var(--sans);font-size:12px;color:#aab6c2}
+.bar button{margin-left:auto;background:none;border:1px solid #5a6e82;color:#fff;border-radius:999px;padding:8px 14px;cursor:pointer}
+.tabsrow{display:flex;gap:4px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);padding:0 12px;position:sticky;top:0;z-index:5}
+.tabsrow a{flex:none;padding:14px 14px;color:var(--ink2);text-decoration:none;border-bottom:3px solid transparent;font-weight:700;font-size:15px}
+.tabsrow a.on{color:var(--navy);border-color:var(--gold)}
+.wrap{max-width:1240px;margin:0 auto;padding:22px max(4vw,16px) 50px}
+.pg{display:none}.pg.on{display:block}
+h1.h{font-size:34px;color:var(--navy);margin:0 0 4px}.sub{color:var(--ink2);margin:0 0 18px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.kpi span{font-size:13.5px;color:var(--ink2)}.kpi b{display:block;font-weight:700;font-size:28px;color:var(--navy);line-height:1.2;margin:2px 0}
+.kpi small{color:var(--ink2);font-size:12.5px}
+.kpi.gold{background:var(--navy);border-color:var(--navy)}.kpi.gold span,.kpi.gold small{color:#c9d3dc}.kpi.gold b{color:var(--gold-lt)}
+.strip{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+.strip .row{display:grid;grid-template-columns:70px minmax(0,1fr) 90px;gap:10px;align-items:center;padding:4px 0;font-size:13.5px}
+.strip .bars{display:flex;flex-direction:column;gap:3px}
+.strip .b{height:9px;border-radius:5px;background:var(--navy);min-width:2px}.strip .b.e{background:var(--gold)}.strip .b.u{background:#7aa08a}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--ink2);margin:0 0 8px;flex-wrap:wrap}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14.5px}
+th{background:#f3eee6;text-align:left;font-size:13px;color:var(--ink2);font-weight:700;padding:10px 12px}
+td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.click{cursor:pointer}tr.click:hover td{background:#faf7f2}
+tr.void td{color:#999;text-decoration:line-through}
+.pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:700}
+.pill.ok{background:#eaf5ee;color:var(--ok)}.pill.bad{background:#fbecea;color:var(--bad)}.pill.wait{background:#fff1dc;color:var(--warn)}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:14px}
+.tools label{font-size:13.5px;color:var(--ink2)}.tools .in{margin-top:4px;min-width:150px}
+.recon{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:18px;align-items:start}
+@media(max-width:860px){.recon{grid-template-columns:minmax(0,1fr)}}
+.var{font-weight:700;font-size:34px;line-height:1.2}
+.var.ok{color:var(--ok)}.var.bad{color:var(--bad)}
+.drawer{position:fixed;inset:0 0 0 auto;width:min(560px,100%);background:var(--cream);box-shadow:-10px 0 40px rgba(0,0,0,.2);transform:translateX(105%);transition:.25s;z-index:30;overflow:auto;padding:20px}
+.drawer.on{transform:none}
+.drawer .x{float:right;background:none;border:0;font-size:30px;color:var(--gold-dk);cursor:pointer;width:44px;height:44px}
+.dl{display:grid;grid-template-columns:130px minmax(0,1fr);gap:6px 12px;font-size:14.5px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+.dl dt{color:var(--ink2)}.dl dd{margin:0}
+.offer-row{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.offer-row .bd{flex:1;min-width:220px}.offer-row h3{font-size:22px;color:var(--navy)}
+.err{background:#fbecea;color:#7c241d;border:1px solid #f0c9c4;border-radius:10px;padding:10px 14px;margin:10px 0}
+.signin{max-width:380px;margin:10vh auto;text-align:center}
+.scroll{overflow-x:auto}
+@media(max-width:600px){table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-top:1px solid var(--line)}.stack td{display:flow-root;border:0;padding:3px 12px;padding-inline-start:8.5em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;color:var(--ink2)}.stack td:empty{display:none}}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body>
+<div id="demoFlag" class="demo-flag hidden">Preview mode with sample members. Back-office PIN 1234.</div>
+<header class="bar"><img src="bh-logo.svg" alt=""><div class="t">The Clarendon Club<small>Back office · Brandon Hall F&amp;B</small></div><button id="lock" class="hidden" type="button">Lock</button></header>
+
+<section id="gate" class="signin">
+  <h1 class="h">Back office</h1><p class="sub">Enter the Clarendon Club back-office PIN.</p>
+  <form id="gateForm" class="panel"><label class="f">PIN<input class="in" id="pin" type="password" inputmode="numeric" autocomplete="off" style="text-align:center;font-size:24px;letter-spacing:.2em"></label><div id="gateErr"></div><button class="btn btn-navy btn-block">Open</button></form>
+</section>
+
+<div id="app" class="hidden">
+<nav class="tabsrow" id="tabs">
+  <a href="#overview">Overview</a><a href="#reconcile">Till check</a><a href="#members">Members</a><a href="#ledger">Transactions</a><a href="#offers">Offers</a><a href="#setup">Settings</a>
+</nav>
+<div class="wrap">
+  <section class="pg" id="p-overview">
+    <h1 class="h" id="ovH">The club at a glance</h1><p class="sub" id="ovSub"></p>
+    <div class="kpis" id="kpis"></div>
+    <div id="delReq"></div>
+    <h2 class="h" style="font-size:24px;margin:8px 0 10px">Last 14 days</h2>
+    <div class="legend"><span><i style="background:var(--navy)"></i>Member visits</span><span><i style="background:var(--gold)"></i>Credit earned</span><span><i style="background:#7aa08a"></i>Credit used</span></div>
+    <div class="strip" id="strip"></div>
+  </section>
+
+  <section class="pg" id="p-reconcile">
+    <h1 class="h">Till check</h1><p class="sub">Every credit used has a CC- code. The Clarendon Club discount total on the till's Z-report should match the total below.</p>
+    <div class="tools"><label>Day<input class="in" type="date" id="rDay"></label><button class="btn btn-ghost" id="rCopy" type="button">Copy as CSV</button></div>
+    <div class="recon">
+      <div class="scroll"><table class="stack" id="rTable"></table></div>
+      <form class="panel" id="rForm">
+        <div class="muted small">Club credit used in HosPRO</div><div class="var" id="rSys">£0.00</div>
+        <label class="f" style="margin-top:14px">Clarendon Club discount on the Z-report (£)<input class="in" id="rTill" inputmode="decimal"></label>
+        <label class="f">Note<input class="in" id="rNote" placeholder="e.g. CC-4821 keyed as 15%"></label>
+        <button class="btn btn-navy btn-block" type="submit">Save till figure</button>
+        <div id="rRes" style="margin-top:14px"></div>
+      </form>
+    </div>
+  </section>
+
+  <section class="pg" id="p-members">
+    <h1 class="h">Members</h1><p class="sub" id="mSub"></p>
+    <div class="tools"><label>Search<input class="in" id="mq" placeholder="Name, number, email, postcode"></label><button class="btn btn-ghost" id="mCopy" type="button">Copy as CSV</button><button class="btn btn-ghost" id="mDl" type="button">Download CSV</button></div>
+    <div class="scroll"><table class="stack" id="mTable"></table></div>
+  </section>
+
+  <section class="pg" id="p-ledger">
+    <h1 class="h">Transactions</h1><p class="sub">Visits, credit used, adjustments, expiries and sign-ups.</p>
+    <div class="tools"><label>From<input class="in" type="date" id="tFrom"></label><label>To<input class="in" type="date" id="tTo"></label><button class="btn btn-ghost" id="tCopy" type="button">Copy as CSV</button><button class="btn btn-ghost" id="tDl" type="button">Download CSV</button></div>
+    <div class="kpis" id="tK"></div>
+    <div class="scroll"><table class="stack" id="tTable"></table></div>
+  </section>
+
+  <section class="pg" id="p-offers">
+    <h1 class="h">Members' offers</h1><p class="sub">Active offers show in every member's card. “Send alert” notifies members who switched on offer alerts.</p>
+    <div id="oList"></div>
+    <form class="panel" id="oForm" style="max-width:640px">
+      <h2 class="h" style="font-size:24px" id="oFormH">New offer</h2>
+      <input type="hidden" id="oId">
+      <label class="f">Title<input class="in" id="oTitle" maxlength="60" required></label>
+      <label class="f">Description<textarea class="in" id="oBody" rows="3" maxlength="400" required></textarea></label>
+      <div class="g2"><label class="f">Label (optional)<input class="in" id="oTag" maxlength="24" placeholder="Double credit"></label><label class="f">When (optional)<input class="in" id="oDays" placeholder="Sunday to Thursday"></label>
+      <label class="f">Starts<input class="in" type="date" id="oFrom"></label><label class="f">Ends<input class="in" type="date" id="oTo"></label></div>
+      <label class="tick"><input type="checkbox" id="oActive" checked> <span>Show in members' cards</span></label>
+      <p class="small muted">Offers are messages to members. To give extra credit, use Members → Adjust credit, or ask staff to apply a separate till promotion.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-navy" type="submit">Save offer</button><button class="btn btn-ghost" type="button" id="oNew">Clear</button></div>
+    </form>
+  </section>
+
+  <section class="pg" id="p-setup">
+    <h1 class="h">Settings</h1><p class="sub">Changes apply to the next transaction. Update the membership terms page if you change the rules.</p>
+    <form class="panel" id="sForm" style="max-width:640px">
+      <div class="g2">
+        <label class="f">Credit back (% of amount paid)<input class="in" id="s_earnPct" inputmode="decimal"></label>
+        <label class="f">Welcome voucher (£)<input class="in" id="s_welcomeAmount" inputmode="decimal"></label>
+        <label class="f">Welcome voucher valid (days)<input class="in" id="s_welcomeDays" inputmode="numeric"></label>
+        <label class="f">Credit valid (days)<input class="in" id="s_creditDays" inputmode="numeric"></label>
+        <label class="f">Highest single bill (£)<input class="in" id="s_maxBill" inputmode="numeric"></label>
+        <label class="f">Waiter can void within (minutes)<input class="in" id="s_voidMinutes" inputmode="numeric"></label>
+        <label class="f">Tablet signs waiter out after (seconds)<input class="in" id="s_autoLockSeconds" inputmode="numeric"></label>
+      </div>
+      <label class="tick"><input type="checkbox" id="s_creditNextVisit"> <span>Credit earned can be spent from the next day (recommended)</span></label>
+      <button class="btn btn-navy" type="submit">Save settings</button>
+    </form>
+    <h2 class="h" style="font-size:24px;margin:26px 0 10px">Waiter tablets</h2>
+    <div class="scroll"><table class="stack" id="dTable"></table></div>
+    <h2 class="h" style="font-size:24px;margin:26px 0 10px">Print</h2>
+    <p><a class="btn btn-line" href="poster.html" target="_blank" rel="noopener">Table talker and counter card with join QR code</a></p>
+  </section>
+</div>
+</div>
+
+<aside class="drawer" id="drawer" aria-label="Member"><button class="x" type="button" id="dClose" aria-label="Close">×</button><div id="dBody"></div></aside>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+<script src="club-config.js"></script>
+<script src="club-service.js"></script>
+<script src="club-api.js"></script>
+<script>
+{
+const $ = id => document.getElementById(id);
+const { esc, gbp, date, time, memberNo } = CC;
+const dayKey = ClubService.dayKey;
+let PIN = null, members = [], txs = [], recon = null;
+if (CC.demo) $('demoFlag').classList.remove('hidden');
+const A = (action, extra) => ClubAPI.admin(Object.assign({ pin: PIN, action }, extra || {}));
+const errMsg = (el, m) => { $(el).innerHTML = m ? '<div class="err">' + esc(m) + '</div>' : ''; };
+
+$('gateForm').addEventListener('submit', async e => {
+  e.preventDefault(); errMsg('gateErr', '');
+  try { PIN = $('pin').value.trim(); await A('signin'); $('gate').classList.add('hidden'); $('app').classList.remove('hidden'); $('lock').classList.remove('hidden'); route(); }
+  catch (er) { PIN = null; errMsg('gateErr', er.message); }
+});
+$('lock').onclick = () => location.reload();
+
+/* routing */
+const PAGES = ['overview', 'reconcile', 'members', 'ledger', 'offers', 'setup'];
+function route() {
+  if (!PIN) return;
+  let p = location.hash.slice(1); if (!PAGES.includes(p)) p = 'overview';
+  PAGES.forEach(x => $('p-' + x).classList.toggle('on', x === p));
+  document.querySelectorAll('#tabs a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + p));
+  ({ overview: loadOverview, reconcile: loadRecon, members: loadMembers, ledger: loadTx, offers: loadOffers, setup: loadSetup })[p]();
+}
+window.addEventListener('hashchange', route);
+
+/* CSV helpers */
+const csvCell = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+const toCsv = rows => rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+async function copyCsv(rows) { try { await navigator.clipboard.writeText(toCsv(rows)); CC.toast('Copied – paste into Excel', 'ok'); } catch (e) { CC.toast('Copy blocked by the browser', 'bad'); } }
+function dlCsv(name, rows) { const b = new Blob(['﻿' + toCsv(rows)], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+
+/* overview */
+async function loadOverview() {
+  const s = await A('summary');
+  $('ovSub').textContent = s.members + ' members · ' + s.newWeek + ' joined in the last 7 days · ' + s.repeat + ' have visited twice or more';
+  const k = [
+    ['gold', 'Credit members can spend now', gbp(s.liability), 'Owed to members (liability). ' + gbp(s.pending) + ' more ready tomorrow'],
+    ['', 'Members', s.members, s.marketing + ' agreed to email offers · ' + s.withPush + ' with alerts on'],
+    ['', 'Member visits, 30 days', s.visits30, 'Average bill ' + gbp(s.avgBill30)],
+    ['', 'Member spend, 30 days', gbp(s.spend30), 'After club credit'],
+    ['', 'Credit earned, 30 days', gbp(s.earned30), ''],
+    ['', 'Credit used, 30 days', gbp(s.used30), 'Welcome vouchers used to date ' + gbp(s.welcomeUsed)],
+    ['', 'Expiring in 14 days', gbp(s.expiring14), 'Welcome vouchers unused ' + gbp(s.vouchersOut)]
+  ];
+  $('kpis').innerHTML = k.map(x => '<div class="kpi ' + x[0] + '"><span>' + esc(x[1]) + '</span><b class="money">' + esc(x[2]) + '</b><small>' + esc(x[3]) + '</small></div>').join('');
+  $('delReq').innerHTML = s.deleteRequests.length ? '<div class="err"><b>' + s.deleteRequests.length + ' member(s) asked to close their membership.</b> Open them in Members and choose “Delete member”. ' + s.deleteRequests.map(d => esc(d.name) + ' (' + esc(memberNo(d.memberNo)) + ')').join(', ') + '</div>' : '';
+  const maxV = Math.max(1, ...s.days.map(d => d.visits)), maxM = Math.max(1, ...s.days.map(d => Math.max(d.earned, d.used)));
+  $('strip').innerHTML = s.days.map(d => '<div class="row"><span>' + esc(date(Date.parse(d.day + 'T12:00:00Z'), { year: undefined, weekday: 'short' })) + '</span><div class="bars"><div class="b" style="width:' + (d.visits / maxV * 100) + '%"></div><div class="b e" style="width:' + (d.earned / maxM * 100) + '%"></div><div class="b u" style="width:' + (d.used / maxM * 100) + '%"></div></div><span class="small money">' + d.visits + ' visit' + (d.visits === 1 ? '' : 's') + (d.joins ? ' · +' + d.joins + ' joined' : '') + '</span></div>').join('');
+}
+
+/* reconciliation */
+$('rDay').value = dayKey(Date.now());
+$('rDay').addEventListener('change', loadRecon);
+async function loadRecon(extra) {
+  const r = await A('recon', Object.assign({ day: $('rDay').value }, extra && extra.save ? extra : {}));
+  recon = r;
+  $('rSys').textContent = gbp(r.system);
+  const used = r.tx.filter(t => t.discount > 0);
+  $('rTable').innerHTML = '<thead><tr><th>Time</th><th>Code</th><th>Member</th><th class="n">Bill</th><th class="n">Credit used</th><th class="n">Guest paid</th><th>Waiter</th><th>Status</th></tr></thead><tbody>' +
+    (used.length ? used.map(t => '<tr class="' + (t.voided ? 'void' : '') + '"><td>' + esc(time(t.at)) + '</td><td><b>' + esc(t.code) + '</b></td><td>' + esc(t.memberName) + '</td><td class="n">' + esc(gbp(t.bill)) + '</td><td class="n">' + esc(gbp(t.discount)) + '</td><td class="n">' + esc(gbp(t.paid)) + '</td><td>' + esc(t.staffName) + '</td><td>' + (t.voided ? '<span class="pill bad">Voided</span>' : '<span class="pill ok">Used</span>') + '</td></tr>').join('') : '<tr><td colspan="8" class="muted">No club credit used on this day.</td></tr>') + '</tbody>';
+  $('rTill').value = r.recon ? r.recon.tillDiscount : ''; $('rNote').value = r.recon ? r.recon.note || '' : '';
+  $('rRes').innerHTML = r.recon ? (Math.abs(r.variance) < 0.005 ? '<div class="var ok">Matches</div><div class="small muted">Saved ' + esc(date(r.recon.savedAt)) + ' ' + esc(time(r.recon.savedAt)) + '</div>' : '<div class="small muted">Difference (till minus HosPRO)</div><div class="var bad money">' + (r.variance > 0 ? '+' : '−') + esc(gbp(Math.abs(r.variance))) + '</div><div class="small">' + (r.variance > 0 ? 'More discount on the till than approved in HosPRO. Check for a discount keyed without a CC- code.' : 'Approved credit not keyed on the till, or keyed as another discount.') + '</div>') : '';
+}
+$('rForm').addEventListener('submit', async e => { e.preventDefault(); const v = parseFloat($('rTill').value); if (!(v >= 0)) { CC.toast('Enter the Z-report figure', 'bad'); return; } await loadRecon({ save: true, tillDiscount: v, note: $('rNote').value }); CC.toast('Saved', 'ok'); });
+$('rCopy').onclick = () => recon && copyCsv([['Date', 'Time', 'Code', 'Member', 'Bill', 'Credit used', 'Guest paid', 'Waiter', 'Voided']].concat(recon.tx.filter(t => t.discount > 0).map(t => [t.day, time(t.at), t.code, t.memberName, t.bill, t.discount, t.paid, t.staffName, t.voided ? 'Yes' : ''])));
+
+/* members */
+let mTimer = null;
+$('mq').addEventListener('input', () => { clearTimeout(mTimer); mTimer = setTimeout(loadMembers, 250); });
+async function loadMembers() {
+  const r = await A('members', { q: $('mq').value }); members = r.members;
+  $('mSub').textContent = members.length + ' shown' + ($('mq').value ? ' for “' + $('mq').value + '”' : '');
+  $('mTable').innerHTML = '<thead><tr><th>Member</th><th>No.</th><th>Joined</th><th class="n">Visits</th><th class="n">Spend</th><th class="n">Available</th><th>Last visit</th><th>Status</th></tr></thead><tbody>' +
+    (members.length ? members.map(m => '<tr class="click" data-no="' + esc(m.memberNo) + '"><td><b>' + esc(m.name) + '</b><br><span class="small muted">' + esc(m.email) + '</span></td><td>' + esc(memberNo(m.memberNo)) + '</td><td>' + esc(date(m.joined)) + '</td><td class="n">' + esc(m.visits) + '</td><td class="n">' + esc(gbp(m.spend)) + '</td><td class="n">' + esc(gbp(m.available)) + '</td><td>' + (m.lastVisit ? esc(date(m.lastVisit)) : '<span class="muted">Not yet</span>') + '</td><td>' + statusPill(m.status) + '</td></tr>').join('') : '<tr><td colspan="8" class="muted">No members found.</td></tr>') + '</tbody>';
+}
+const statusPill = s => s === 'active' ? '<span class="pill ok">Active</span>' : s === 'blocked' ? '<span class="pill bad">On hold</span>' : '<span class="pill wait">Close requested</span>';
+const memberRows = () => [['Member no', 'Title', 'Name', 'Email', 'Mobile', 'Postcode', 'Joined', 'Relationship', 'Eats out', 'Occasions', 'Dietary', 'Heard from', 'Birthday', 'Email offers', 'Alerts', 'Visits', 'Spend', 'Earned', 'Used', 'Available', 'Last visit', 'Status']]
+  .concat(members.map(m => [m.memberNo, m.title, m.name, m.email, m.mobile, m.postcode, dayKey(m.joined), m.relationship, m.visitFreq, (m.occasions || []).join('; '), m.dietary, m.heardFrom, m.birthMonth ? m.birthDay + '/' + m.birthMonth : '', m.marketing ? 'Yes' : 'No', m.push ? 'Yes' : 'No', m.visits, m.spend, m.earned, m.used, m.available, m.lastVisit ? dayKey(m.lastVisit) : '', m.status]));
+$('mCopy').onclick = () => copyCsv(memberRows());
+$('mDl').onclick = () => dlCsv('clarendon-club-members-' + dayKey(Date.now()) + '.csv', memberRows());
+$('mTable').addEventListener('click', e => { const r = e.target.closest('[data-no]'); if (r) openMember(r.dataset.no); });
+
+async function openMember(no) {
+  const r = await A('member', { memberNo: no }); const m = r.member, b = m.balances;
+  $('dBody').innerHTML = '<h2 class="h" style="font-size:30px">' + esc(m.first + ' ' + m.last) + '</h2><p class="sub">No. ' + esc(memberNo(m.memberNo)) + ' · ' + statusPill(m.status) + '</p>' +
+    '<div class="kpis"><div class="kpi gold"><span>Available</span><b class="money">' + esc(gbp(b.available)) + '</b><small>' + (b.pending ? gbp(b.pending) + ' ready tomorrow' : '') + '</small></div><div class="kpi"><span>Visits</span><b>' + esc(m.visits || 0) + '</b><small>Spend ' + esc(gbp(m.totalSpend || 0)) + '</small></div></div>' +
+    '<dl class="dl"><dt>Email</dt><dd>' + esc(m.email) + '</dd><dt>Mobile</dt><dd>' + esc(m.mobile) + '</dd><dt>Postcode</dt><dd>' + esc(m.postcode || '–') + '</dd><dt>Joined</dt><dd>' + esc(date(m.joined)) + '</dd><dt>Birthday</dt><dd>' + (m.birthMonth ? esc(m.birthDay + ' ' + new Date(2000, m.birthMonth - 1, 1).toLocaleString('en-GB', { month: 'long' })) : '–') + '</dd><dt>About</dt><dd>' + esc([m.relationship, m.visitFreq, (m.occasions || []).join(', '), m.dietary].filter(Boolean).join(' · ') || '–') + '</dd><dt>Email offers</dt><dd>' + (m.marketing ? 'Yes' : 'No') + '</dd></dl>' +
+    '<form class="panel" id="adjForm"><b>Adjust credit</b><div class="g2" style="margin-top:8px"><label class="f">Amount (£, minus to remove)<input class="in" id="adjAmt" inputmode="decimal"></label><label class="f">Reason<input class="in" id="adjWhy" placeholder="Goodwill, correction…"></label></div><button class="btn btn-navy" type="submit">Apply</button></form>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn btn-ghost" data-st="' + (m.status === 'blocked' ? 'active' : 'blocked') + '">' + (m.status === 'blocked' ? 'Take off hold' : 'Put on hold') + '</button><button class="btn btn-ghost" id="cpLink" type="button">Copy card link</button><button class="btn btn-ghost" data-st="deleted" style="color:var(--bad)">Delete member</button></div>' +
+    '<h3 class="h" style="font-size:22px;margin:14px 0 8px">History</h3><table class="stack"><thead><tr><th>Date</th><th>What</th><th class="n">Bill</th><th class="n">Used</th><th class="n">Earned</th><th></th></tr></thead><tbody>' +
+    r.tx.map(t => '<tr class="' + (t.voided ? 'void' : '') + '"><td>' + esc(date(t.at)) + ' ' + esc(time(t.at)) + '</td><td>' + esc(txLabel(t)) + '</td><td class="n">' + (t.bill ? esc(gbp(t.bill)) : '') + '</td><td class="n">' + (t.discount ? esc(gbp(t.discount)) : '') + '</td><td class="n">' + (t.earned ? esc(gbp(t.earned)) : (t.amount ? esc(gbp(t.amount)) : '')) + '</td><td>' + (t.type === 'settle' && !t.voided ? '<button class="btn btn-ghost" style="min-height:34px;padding:4px 10px" data-void="' + esc(t.txId) + '">Void</button>' : '') + '</td></tr>').join('') + '</tbody></table>';
+  $('drawer').classList.add('on');
+  $('adjForm').onsubmit = async e => { e.preventDefault(); try { await A('adjust', { memberNo: no, amount: parseFloat($('adjAmt').value), reason: $('adjWhy').value }); CC.toast('Credit adjusted', 'ok'); openMember(no); loadMembers(); } catch (er) { CC.toast(er.message, 'bad'); } };
+  $('cpLink').onclick = async () => { try { await navigator.clipboard.writeText(r.cardLink); CC.toast('Card link copied. Only send it to the member\'s own email.', 'ok'); } catch (e) { CC.toast(r.cardLink); } };
+  $('dBody').querySelectorAll('[data-st]').forEach(bt => bt.onclick = async () => {
+    const st = bt.dataset.st;
+    if (st === 'deleted' && bt.dataset.sure !== '1') { bt.dataset.sure = '1'; bt.textContent = 'Tap again: delete personal data for good'; return; }
+    try { await A('status', { memberNo: no, status: st }); CC.toast(st === 'deleted' ? 'Member deleted' : 'Updated', 'ok'); if (st === 'deleted') $('drawer').classList.remove('on'); else openMember(no); loadMembers(); } catch (er) { CC.toast(er.message, 'bad'); }
+  });
+  $('dBody').querySelectorAll('[data-void]').forEach(bt => bt.onclick = async () => {
+    if (bt.dataset.sure !== '1') { bt.dataset.sure = '1'; bt.textContent = 'Confirm void'; return; }
+    try { await A('void', { txId: bt.dataset.void, reason: 'Back office' }); CC.toast('Voided', 'ok'); openMember(no); } catch (er) { CC.toast(er.message, 'bad'); }
+  });
+}
+$('dClose').onclick = () => $('drawer').classList.remove('on');
+function txLabel(t) { return t.type === 'settle' ? 'Visit' + (t.code ? ' · ' + t.code : '') + ' · ' + (t.staffName || '') : t.type === 'join' ? 'Joined, welcome voucher ' + gbp(t.welcome || 0) : t.type === 'adjust' ? 'Adjustment: ' + (t.reason || '') : t.type === 'expire' ? 'Credit expired' : t.type; }
+
+/* ledger */
+$('tFrom').value = ClubService.addDaysKey(dayKey(Date.now()), -30); $('tTo').value = dayKey(Date.now());
+['tFrom', 'tTo'].forEach(id => $(id).addEventListener('change', loadTx));
+async function loadTx() {
+  const r = await A('tx', { from: $('tFrom').value, to: $('tTo').value }); txs = r.tx;
+  const live = txs.filter(t => t.type === 'settle' && !t.voided), sum = f => live.reduce((a, t) => a + (t[f] || 0), 0);
+  $('tK').innerHTML = [['Visits', live.length], ['Bills', gbp(sum('bill'))], ['Credit used', gbp(sum('discount'))], ['Credit earned', gbp(sum('earned'))], ['Joined', txs.filter(t => t.type === 'join').length], ['Expired', gbp(txs.filter(t => t.type === 'expire').reduce((a, t) => a + t.amount, 0))]]
+    .map(k => '<div class="kpi"><span>' + esc(k[0]) + '</span><b class="money">' + esc(k[1]) + '</b></div>').join('');
+  $('tTable').innerHTML = '<thead><tr><th>Date</th><th>Type</th><th>Member</th><th>Code</th><th class="n">Bill</th><th class="n">Credit used</th><th class="n">Earned / amount</th><th>By</th></tr></thead><tbody>' +
+    (txs.length ? txs.slice(0, 1000).map(t => '<tr class="' + (t.voided ? 'void' : '') + '"><td>' + esc(date(t.at)) + ' ' + esc(time(t.at)) + '</td><td>' + esc({ settle: 'Visit', join: 'Joined', adjust: 'Adjustment', expire: 'Expired' }[t.type] || t.type) + (t.voided ? ' (voided)' : '') + '</td><td>' + esc(t.memberName || memberNo(t.memberNo)) + '</td><td>' + esc(t.code || '') + '</td><td class="n">' + (t.bill ? esc(gbp(t.bill)) : '') + '</td><td class="n">' + (t.discount ? esc(gbp(t.discount)) : '') + '</td><td class="n">' + esc(t.earned != null ? gbp(t.earned) : t.amount != null ? gbp(t.amount) : t.welcome != null ? gbp(t.welcome) : '') + '</td><td>' + esc(t.staffName || '') + '</td></tr>').join('') : '<tr><td colspan="8" class="muted">Nothing in this period.</td></tr>') + '</tbody>';
+}
+const txRows = () => [['Date', 'Time', 'Type', 'Member no', 'Member', 'Code', 'Bill', 'Credit used', 'Paid', 'Earned', 'Amount', 'Waiter', 'Employee no', 'Tablet', 'Voided', 'Reason']]
+  .concat(txs.map(t => [t.day, time(t.at), t.type, t.memberNo, t.memberName || '', t.code || '', t.bill || '', t.discount || '', t.paid || '', t.earned || '', t.amount != null ? t.amount : (t.welcome || ''), t.staffName || '', t.staffCode || '', t.deviceName || '', t.voided ? 'Yes' : '', t.reason || t.voidReason || '']));
+$('tCopy').onclick = () => copyCsv(txRows());
+$('tDl').onclick = () => dlCsv('clarendon-club-transactions-' + $('tFrom').value + '-to-' + $('tTo').value + '.csv', txRows());
+
+/* offers */
+async function loadOffers(extra) {
+  const r = await A('offers', extra || {});
+  $('oList').innerHTML = r.offers.length ? r.offers.map(o => '<div class="offer-row"><div class="bd">' + (o.tag ? '<span class="pill wait">' + esc(o.tag) + '</span> ' : '') + (o.active ? '<span class="pill ok">Showing</span>' : '<span class="pill bad">Hidden</span>') + '<h3>' + esc(o.title) + '</h3><p style="margin:4px 0">' + esc(o.body) + '</p><span class="small muted">' + esc([o.days, o.validFrom && 'from ' + o.validFrom, o.validTo && 'until ' + o.validTo, o.sentAt && 'alert sent ' + date(o.sentAt) + ' to ' + o.sentCount + ' phone(s)'].filter(Boolean).join(' · ')) + '</span></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" data-edit="' + esc(o.id) + '">Edit</button><button class="btn btn-gold" data-send="' + esc(o.id) + '">Send alert</button><button class="btn btn-ghost" data-del="' + esc(o.id) + '" style="color:var(--bad)">Delete</button></div></div>').join('') : '<p class="muted">No offers yet. Create the first one below.</p>';
+  $('oList').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => { const o = r.offers.find(x => x.id === b.dataset.edit); $('oId').value = o.id; $('oTitle').value = o.title; $('oBody').value = o.body; $('oTag').value = o.tag || ''; $('oDays').value = o.days || ''; $('oFrom').value = o.validFrom || ''; $('oTo').value = o.validTo || ''; $('oActive').checked = !!o.active; $('oFormH').textContent = 'Edit offer'; $('oForm').scrollIntoView({ behavior: 'smooth' }); });
+  $('oList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Confirm delete'; return; } await loadOffers({ remove: b.dataset.del }); CC.toast('Deleted', 'ok'); });
+  $('oList').querySelectorAll('[data-send]').forEach(b => b.onclick = async () => {
+    if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Tap again to send to all'; return; }
+    try { const s = await A('offers', { send: b.dataset.send }); CC.toast(CC.demo ? 'Preview: no alerts are sent' : 'Alert sent to ' + s.sent + ' phone(s) of ' + s.members + ' member(s)', 'ok'); loadOffers(); } catch (er) { CC.toast(er.message, 'bad'); }
+  });
+}
+$('oForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  try { await loadOffers({ save: { id: $('oId').value || undefined, title: $('oTitle').value, body: $('oBody').value, tag: $('oTag').value, days: $('oDays').value, validFrom: $('oFrom').value, validTo: $('oTo').value, active: $('oActive').checked } }); $('oNew').click(); CC.toast('Offer saved', 'ok'); }
+  catch (er) { CC.toast(er.message, 'bad'); }
+});
+$('oNew').onclick = () => { $('oForm').reset(); $('oId').value = ''; $('oActive').checked = true; $('oFormH').textContent = 'New offer'; };
+
+/* settings + devices */
+const SKEYS = ['earnPct', 'welcomeAmount', 'welcomeDays', 'creditDays', 'maxBill', 'voidMinutes', 'autoLockSeconds'];
+async function loadSetup(extra) {
+  const r = await A('settings', extra || {});
+  SKEYS.forEach(k => $('s_' + k).value = r.settings[k]); $('s_creditNextVisit').checked = !!r.settings.creditNextVisit;
+  const d = await A('devices', extra && extra.revoke ? { revoke: extra.revoke } : {});
+  $('dTable').innerHTML = '<thead><tr><th>Tablet</th><th>Activated</th><th>Last used</th><th>Status</th><th></th></tr></thead><tbody>' +
+    (d.devices.length ? d.devices.map((x, i) => '<tr><td>' + esc(x.name) + '</td><td>' + esc(date(x.activatedAt)) + '</td><td>' + esc(date(x.lastUsed)) + ' ' + esc(time(x.lastUsed)) + '</td><td>' + (x.revoked ? '<span class="pill bad">Removed</span>' : '<span class="pill ok">Active</span>') + '</td><td>' + (x.revoked ? '' : '<button class="btn btn-ghost" data-rev="' + i + '" style="min-height:34px;padding:4px 12px">Remove</button>') + '</td></tr>').join('') : '<tr><td colspan="5" class="muted">No tablets yet. Open staff.html on a tablet and activate it with the set-up code.</td></tr>') + '</tbody>';
+  const ids = d.devices.map(x => x.id || x.deviceId);
+  $('dTable').querySelectorAll('[data-rev]').forEach(b => b.onclick = async () => { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Confirm'; return; } await loadSetup({ revoke: ids[+b.dataset.rev] }); CC.toast('Tablet removed', 'ok'); });
+}
+$('sForm').addEventListener('submit', async e => {
+  e.preventDefault(); const save = { creditNextVisit: $('s_creditNextVisit').checked }; SKEYS.forEach(k => save[k] = parseFloat($('s_' + k).value));
+  try { await A('settings', { save }); CC.toast('Settings saved', 'ok'); loadSetup(); } catch (er) { CC.toast(er.message, 'bad'); }
+});
+if (CC.demo) { $('pin').value = ''; $('pin').placeholder = '1234'; }
+}
+</script>
+</body>
+</html>

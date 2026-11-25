@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarendon Club – table talker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Italiana&family=Lato:wght@400;700&display=swap">
+<link rel="stylesheet" href="club.css">
+<style>
+@page{size:A4;margin:0}
+body{background:#d9d4cc}
+.tools{max-width:820px;margin:18px auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:0 16px}
+.tools label{font-size:14px;color:var(--ink2)}
+.sheet{width:210mm;min-height:297mm;margin:0 auto 24px;background:#fff;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:0;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+.tt{grid-column:1/3;height:148.5mm;display:grid;grid-template-columns:1fr 1fr;border-bottom:1px dashed #bbb}
+.tt .l{background:radial-gradient(130% 120% at 0% 0%,#40576f 0%,#22313F 50%,#16212b 100%);color:#fff;padding:14mm 12mm;display:flex;flex-direction:column;position:relative;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.tt .l::after{content:"";position:absolute;inset:0;background:repeating-radial-gradient(circle at 50% 120%,transparent 0 12px,rgba(187,153,121,.08) 12px 13px)}
+.tt .l img{height:22mm;align-self:flex-start;position:relative}
+.tt .l h1{font-size:34pt;color:var(--gold-lt);margin:8mm 0 3mm;position:relative}
+.tt .l p{margin:0;color:#d5dde5;font-size:12pt;position:relative}
+.tt .l ul{list-style:none;padding:0;margin:auto 0 0;position:relative}
+.tt .l li{font-size:13pt;margin:2.5mm 0;display:flex;gap:4mm;align-items:baseline}
+.tt .l li b{font-family:var(--display);font-weight:400;color:var(--gold-lt);font-size:22pt;min-width:16mm}
+.tt .r{padding:12mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:var(--cream);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.tt .r h2{font-size:24pt;color:var(--navy)}
+.tt .r .qr{background:#fff;padding:4mm;border:1px solid var(--line);border-radius:4mm;margin:6mm 0 4mm}
+.tt .r .qr svg{width:62mm;height:62mm;display:block}
+.tt .r p{margin:0;color:var(--ink2);font-size:11pt}
+.tt .r .url{font-weight:700;color:var(--navy);margin-top:2mm;font-size:10pt;word-break:break-all}
+.cards{grid-column:1/3;display:grid;grid-template-columns:repeat(2,85mm);justify-content:center;gap:6mm;padding:10mm 0}
+.bc{width:85mm;height:55mm;border:1px dashed #bbb;border-radius:3mm;display:grid;grid-template-columns:1fr 30mm;gap:3mm;padding:5mm;align-items:center;background:var(--navy-deep);color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.bc h3{font-size:15pt;color:var(--gold-lt)}.bc p{margin:2mm 0 0;font-size:8.5pt;color:#d5dde5}
+.bc .qr{background:#fff;padding:1.5mm;border-radius:2mm}.bc .qr svg{width:100%;height:auto;display:block}
+@media print{body{background:#fff}.tools{display:none}.sheet{box-shadow:none;margin:0}}
+</style>
+</head>
+<body>
+<div class="tools">
+  <button class="btn btn-navy" type="button" id="print">Print</button>
+  <label>QR link <input class="in" id="url" style="min-width:320px"></label>
+  <span class="small muted">Print on A4, fold or cut along the dashed lines. Top half is an A5 table talker; below are counter cards.</span>
+</div>
+<div class="sheet">
+  <section class="tt">
+    <div class="l"><img src="bh-logo.svg" alt="Brandon Hall"><h1>The Clarendon Club</h1><p>Free membership for guests who love to dine with us.</p>
+      <ul><li><b>£5</b>welcome voucher, use it tonight</li><li><b>5%</b>back as credit every visit</li><li><b>✦</b>members' offers and birthday treats</li></ul></div>
+    <div class="r"><h2>Scan to join</h2><div class="qr" id="qr1"></div><p>Join in a minute. No app to download.<br>Show your card when you pay.</p><div class="url" id="u1"></div></div>
+  </section>
+  <section class="cards" id="cards"></section>
+</div>
+<script src="club-config.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script>
+{
+const C = window.CLUB_CONFIG || {};
+const $ = id => document.getElementById(id);
+function svg(text) { const q = qrcode(0, 'M'); q.addData(text); q.make(); const n = q.getModuleCount(), m = 2, s = n + 4; let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += 'M' + (c + m) + ' ' + (r + m) + 'h1v1h-1z';
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + s + ' ' + s + '" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="' + d + '" fill="#1d2a36"/></svg>'; }
+function draw() {
+  const base = $('url').value.trim(); const t = base + (base.includes('?') ? '&' : '?') + 'src=table', c = base + (base.includes('?') ? '&' : '?') + 'src=counter';
+  $('qr1').innerHTML = svg(t); $('u1').textContent = base.replace(/^https?:\/\//, '');
+  $('cards').innerHTML = Array(4).fill(0).map(() => '<div class="bc"><div><h3>The Clarendon Club</h3><p>£5 welcome voucher and 5% back every visit. Scan to join, free.</p></div><div class="qr">' + svg(c) + '</div></div>').join('');
+}
+$('url').value = C.joinUrl || location.href.replace(/poster\.html.*$/, '');
+$('url').addEventListener('input', draw); $('print').onclick = () => window.print(); draw();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Clarendon Club – Brandon Hall Hotel &amp; Spa</title>
+<meta name="description" content="Join The Clarendon Club at Brandon Hall Hotel and Spa: a £5 welcome voucher, 5% back on every visit and members' offers.">
+<meta name="theme-color" content="#1d2a36">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Clarendon Club">
+<link rel="apple-touch-icon" href="club-icon-180.png">
+<link rel="icon" href="club-icon-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Italiana&family=Lato:wght@400;700&display=swap">
+<link rel="stylesheet" href="club.css">
+<style>
+/* VOICE: a private members' card from a country-house restaurant — quiet, generous, exact.
+   IDEA: the page behaves like the engraved card in your wallet; everything else is folded paper behind it.
+   PICTURE: the navy-and-gold Clarendon card itself, with the live balance engraved on it.
+   COLOUR and TYPE: Brandon Hall navy, gold, cream; Italiana for names and figures, Lato for everything you read.
+   LAYOUT: one phone column; card first, then the code button, then the detail. */
+body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+body.nonav{padding-bottom:0}
+.top{background:var(--navy-deep);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;gap:12px;border-bottom:2px solid var(--gold)}
+.top img{height:38px;width:auto}
+.top .wm{font-family:var(--display);font-size:22px;color:var(--gold-lt);letter-spacing:.04em;line-height:1}
+.top .wm small{display:block;font-family:var(--sans);font-size:11.5px;color:#aab6c2;letter-spacing:.02em;margin-top:3px}
+main{max-width:520px;margin:0 auto;padding:18px 16px 28px}
+.view{display:none}.view.on{display:block;animation:rise .35s ease}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* hero on join */
+.hero{background:radial-gradient(130% 120% at 15% 0%,#3a5169 0%,#22313F 50%,#16212b 100%);color:#fff;margin:-18px -16px 18px;padding:30px 22px 26px;text-align:center;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background:repeating-radial-gradient(circle at 50% 115%,transparent 0 13px,rgba(187,153,121,.07) 13px 14px);pointer-events:none}
+.hero img{height:70px;position:relative}
+.hero h1{font-size:40px;color:var(--gold-lt);margin:12px 0 6px;position:relative}
+.hero p{margin:0 auto;max-width:34ch;color:#d5dde5;position:relative}
+.perks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:18px 0 4px;position:relative}
+.perk{border:1px solid rgba(187,153,121,.45);border-radius:12px;padding:12px 6px;background:rgba(0,0,0,.15)}
+.perk b{display:block;font-family:var(--display);font-weight:400;font-size:27px;color:#fff;line-height:1}
+.perk span{display:block;font-size:12.5px;color:#cdd6df;margin-top:4px;line-height:1.3}
+.sec-h{font-size:24px;color:var(--navy);margin:4px 0 4px}
+.lead{color:var(--ink2);margin:0 0 16px;font-size:15px}
+fieldset{border:0;padding:0;margin:0 0 6px}
+legend{font-size:14px;color:var(--ink2);margin-bottom:2px;padding:0}
+.formfoot{position:sticky;bottom:0;background:linear-gradient(transparent,var(--cream) 30%);padding:14px 0 calc(8px + env(safe-area-inset-bottom))}
+.alt{text-align:center;margin:12px 0 0;font-size:15px}
+.alt button{background:none;border:0;color:var(--gold-dk);text-decoration:underline;cursor:pointer;font-weight:700;padding:8px}
+.notice{border-radius:10px;padding:12px 14px;font-size:14.5px;margin:0 0 14px}
+.notice.bad{background:#fbecea;color:#7c241d;border:1px solid #f0c9c4}
+.notice.ok{background:#eaf5ee;color:#1f5a3a;border:1px solid #c4e3cf}
+.notice.info{background:#f3ece4;color:#5b4630;border:1px solid #e6d7c5}
+/* the card */
+.ccard{position:relative;aspect-ratio:1.586;border-radius:20px;padding:20px 22px;color:#fff;overflow:hidden;
+  background:radial-gradient(120% 150% at 0% 0%,#40576f 0%,#26374a 38%,#17222c 100%);box-shadow:0 18px 40px -18px rgba(23,34,44,.7),0 2px 0 rgba(255,255,255,.06) inset;display:flex;flex-direction:column}
+.ccard::before{content:"";position:absolute;inset:0;background:repeating-radial-gradient(ellipse at 110% 120%,transparent 0 9px,rgba(220,196,166,.075) 9px 10px);pointer-events:none}
+.ccard::after{content:"";position:absolute;top:-40%;left:-30%;width:60%;height:180%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.08),transparent);transform:rotate(12deg);pointer-events:none}
+.ccard .row1{display:flex;justify-content:space-between;align-items:flex-start;position:relative}
+.ccard .name{font-family:var(--display);font-size:clamp(19px,5.4vw,24px);color:var(--gold-lt);letter-spacing:.06em;line-height:1.05}
+.ccard .name small{display:block;font-family:var(--sans);font-size:11px;color:#b7c2cd;letter-spacing:.04em;margin-top:4px}
+.ccard .row1 img{height:46px;opacity:.95}
+.ccard .bal{margin-top:auto;position:relative}
+.ccard .bal span{font-size:12.5px;color:#c9d3dc}
+.ccard .bal b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(44px,13vw,58px);line-height:1;letter-spacing:.01em;
+  background:linear-gradient(180deg,#f6e7d2 0%,#dcc4a6 45%,#b8916b 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ccard .row3{display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;position:relative;font-size:13px;color:#dfe6ec;gap:10px}
+.ccard .row3 .who{font-weight:700;letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ccard .row3 .no{font-variant-numeric:tabular-nums;color:var(--gold-lt);white-space:nowrap}
+.codebtn{margin:16px 0 10px}
+.notes{display:grid;gap:8px;margin:0 0 16px}
+.note{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 14px;font-size:14.5px}
+.note i{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:13px}
+.note i.p{background:#eaf5ee;color:var(--ok)}.note i.x{background:#fff1dc;color:var(--warn)}.note i.v{background:#f3ece4;color:var(--gold-dk)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#fff;border:1px solid var(--line);border-radius:14px;margin:0 0 18px}
+.stats div{padding:14px 8px;text-align:center}.stats div+div{border-left:1px solid var(--line)}
+.stats b{display:block;font-weight:700;font-size:22px;color:var(--navy);line-height:1.1}
+.stats span{font-size:12.5px;color:var(--ink2)}
+.how{counter-reset:s;display:grid;gap:10px;margin:8px 0 0;padding:0;list-style:none}
+.how li{counter-increment:s;display:flex;gap:12px;align-items:flex-start;font-size:15px}
+.how li::before{content:counter(s);flex:none;width:28px;height:28px;border-radius:50%;background:var(--navy);color:var(--gold-lt);display:grid;place-items:center;font-weight:700;font-size:14px}
+/* lists */
+.offer{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:14px}
+.offer .band{background:linear-gradient(120deg,#22313F,#3a5169);color:#fff;padding:18px 18px 16px;position:relative}
+.offer .band em{font-style:normal;display:inline-block;background:var(--gold);color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;margin-bottom:8px}
+.offer .band h3{font-size:25px;color:var(--gold-lt)}
+.offer p{margin:0;padding:14px 18px 6px;font-size:15px}
+.offer .meta{padding:0 18px 14px;font-size:13px;color:var(--ink2)}
+.empty{text-align:center;color:var(--ink2);padding:36px 12px;background:#fff;border:1px dashed var(--line);border-radius:14px}
+.act{list-style:none;margin:0;padding:0;background:#fff;border:1px solid var(--line);border-radius:14px}
+.act li{display:flex;gap:12px;align-items:center;padding:13px 16px}.act li+li{border-top:1px solid var(--line)}
+.act .d{width:46px;text-align:center;flex:none;font-size:12px;color:var(--ink2);line-height:1.15}.act .d b{display:block;font-weight:700;font-size:19px;color:var(--navy)}
+.act .t{flex:1}.act .t b{display:block;font-size:15px}.act .t span{font-size:13px;color:var(--ink2)}
+.act .v{text-align:right;font-weight:700;font-size:15px}.act .v.plus{color:var(--ok)}.act .v.minus{color:var(--gold-dk)}.act .v.gone{color:var(--ink2);text-decoration:line-through}
+.acc{background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:14px}
+.acc>div{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;font-size:15px}.acc>div+div{border-top:1px solid var(--line)}
+.acc>div span{color:var(--ink2)}
+.switch{position:relative;width:52px;height:30px;flex:none}
+.switch input{position:absolute;opacity:0;inset:0;cursor:pointer;margin:0;z-index:1}
+.switch i{position:absolute;inset:0;border-radius:999px;background:#cfd6dd;transition:.2s}
+.switch i::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.2s}
+.switch input:checked+i{background:var(--ok)}.switch input:checked+i::after{left:25px}
+.switch input:focus-visible+i{outline:3px solid var(--gold);outline-offset:2px}
+details.faq{background:#fff;border:1px solid var(--line);border-radius:14px;padding:4px 16px;margin-bottom:14px}
+details.faq summary{cursor:pointer;padding:12px 0;font-weight:700;list-style:none}
+details.faq summary::after{content:"+";float:right;color:var(--gold-dk);font-size:20px;line-height:1}
+details.faq[open] summary::after{content:"–"}
+details.faq p{margin:0 0 12px;font-size:14.5px;color:var(--ink2)}
+/* nav */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--navy-deep);border-top:1px solid #314456;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:20}
+nav.tabs a{display:flex;flex-direction:column;align-items:center;gap:3px;color:#b9c4cf;text-decoration:none;font-size:11.5px;padding:6px 0;min-height:48px;position:relative}
+nav.tabs a svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.6}
+nav.tabs a.on{color:var(--gold-lt)}
+nav.tabs a .dot{position:absolute;top:2px;left:calc(50% + 7px);min-width:17px;height:17px;border-radius:9px;background:#c0392b;color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+/* modal */
+.sheet{position:fixed;inset:0;background:rgba(15,22,29,.62);display:none;align-items:flex-end;justify-content:center;z-index:50}
+.sheet.on{display:flex}
+.sheet .box{background:#fff;width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:22px 22px calc(24px + env(safe-area-inset-bottom));text-align:center;animation:up .25s ease;max-height:94vh;overflow:auto}
+@keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+.sheet h2{font-size:28px;color:var(--navy);margin:2px 0 4px}
+.sheet .qr{display:inline-block;padding:12px;border:1px solid var(--line);border-radius:16px;margin:12px 0 8px;background:#fff}
+.sheet .qr svg{display:block;width:min(64vw,270px);height:auto}
+.sheet .mno{font-weight:700;font-size:28px;letter-spacing:.12em;color:var(--navy)}
+.sheet .x{position:absolute;right:14px;top:10px;background:none;border:0;font-size:30px;color:var(--gold-dk);cursor:pointer;width:44px;height:44px}
+.sheet .box{position:relative}
+.installs{text-align:left;background:#f3ece4;border-radius:12px;padding:14px 16px;font-size:14.5px;margin:14px 0}
+.installs ol{margin:6px 0 0;padding-left:20px}
+@media(min-width:700px){.sheet{align-items:center}.sheet .box{border-radius:22px}}
+</style>
+</head>
+<body class="nonav">
+<div id="demoFlag" class="demo-flag hidden">Preview mode — sample data stored in this browser only.</div>
+<header class="top">
+  <img src="bh-logo.svg" alt="Brandon Hall Hotel and Spa">
+  <div class="wm">The Clarendon Club<small>Brandon Hall Hotel &amp; Spa</small></div>
+</header>
+
+<main>
+  <!-- ============ JOIN ============ -->
+  <section class="view" id="v-join" aria-labelledby="joinH">
+    <div class="hero">
+      <img src="bh-logo.svg" alt="">
+      <h1 id="joinH">The Clarendon Club</h1>
+      <p>Membership for guests who love to dine with us. Free to join, and it starts paying back tonight.</p>
+      <div class="perks">
+        <div class="perk"><b>£5</b><span>welcome voucher, use it straight away</span></div>
+        <div class="perk"><b>5%</b><span>back as credit every time you dine</span></div>
+        <div class="perk"><b>Offers</b><span>members' evenings and birthday treats</span></div>
+      </div>
+    </div>
+    <div id="joinMsg"></div>
+    <form id="joinForm" novalidate>
+      <h2 class="sec-h">Join in a minute</h2>
+      <p class="lead">Your card lives on your phone. No app to download.</p>
+      <div class="g2">
+        <label class="f">Title <span class="req">*</span>
+          <select class="in" name="title" required><option value="">Choose</option><option>Mr</option><option>Mrs</option><option>Miss</option><option>Ms</option><option>Mx</option><option>Dr</option><option>Prefer not to say</option></select></label>
+        <span></span>
+        <label class="f">First name <span class="req">*</span><input class="in" name="first" autocomplete="given-name" required></label>
+        <label class="f">Last name <span class="req">*</span><input class="in" name="last" autocomplete="family-name" required></label>
+      </div>
+      <label class="f">Email <span class="req">*</span><input class="in" name="email" type="email" inputmode="email" autocomplete="email" required></label>
+      <label class="f">Mobile <span class="req">*</span><input class="in" name="mobile" type="tel" inputmode="tel" autocomplete="tel" placeholder="07…" required></label>
+      <fieldset>
+        <legend>Birthday, for a treat in your birthday month (optional)</legend>
+        <div class="g2">
+          <label class="f"><select class="in" name="birthDay" aria-label="Birthday day"><option value="">Day</option></select></label>
+          <label class="f"><select class="in" name="birthMonth" aria-label="Birthday month"><option value="">Month</option></select></label>
+        </div>
+      </fieldset>
+      <div class="g2">
+        <label class="f">Postcode (optional)<input class="in" name="postcode" autocomplete="postal-code"></label>
+        <label class="f">You are…
+          <select class="in" name="relationship"><option value="">Choose</option><option>Local resident</option><option>Hotel guest</option><option>Spa member</option><option>Visiting on business</option><option>Wedding or event guest</option><option>Other</option></select></label>
+      </div>
+      <label class="f">How often do you eat out?
+        <select class="in" name="visitFreq"><option value="">Choose</option><option>Once a week or more</option><option>Twice a month</option><option>Once a month</option><option>A few times a year</option><option>Special occasions</option></select></label>
+      <fieldset>
+        <legend>What brings you to The Clarendon? (tick any)</legend>
+        <div class="chips" id="occ"></div>
+      </fieldset>
+      <div class="g2" style="margin-top:14px">
+        <label class="f">Dietary preference
+          <select class="in" name="dietary"><option value="">None</option><option>Vegetarian</option><option>Vegan</option><option>Pescatarian</option><option>Other (we'll ask)</option></select></label>
+        <label class="f">How did you hear about us?
+          <select class="in" name="heardFrom"><option value="">Choose</option><option>Table card</option><option>My server</option><option>Staying at the hotel</option><option>Spa</option><option>Social media</option><option>Friend or family</option><option>Website</option><option>Other</option></select></label>
+      </div>
+      <p class="small muted" style="margin:-4px 0 14px">Allergies: please tell your server each time you dine. We don't store allergy details on your card.</p>
+      <label class="tick"><input type="checkbox" name="over18"> <span>I'm 18 or over <span class="req" style="color:var(--bad)">*</span></span></label>
+      <label class="tick"><input type="checkbox" name="terms"> <span>I agree to the <a href="terms.html" target="_blank" rel="noopener">membership terms and privacy notice</a> <span style="color:var(--bad)">*</span></span></label>
+      <label class="tick"><input type="checkbox" name="marketing"> <span>Send me members' offers and news from Brandon Hall by email. You can stop these at any time.</span></label>
+      <div class="formfoot"><button class="btn btn-gold btn-block" type="submit" id="joinBtn">Join and get my £5 voucher</button></div>
+      <p class="alt">Already a member? <button type="button" data-go="find">Find my card</button></p>
+    </form>
+  </section>
+
+  <!-- ============ WELCOME ============ -->
+  <section class="view" id="v-welcome" aria-labelledby="welH">
+    <h2 class="sec-h" id="welH" style="font-size:32px">Welcome to the club, <span id="welName"></span></h2>
+    <p class="lead">Your £5 welcome voucher is on your card and ready to use, tonight if you like.</p>
+    <div id="welCard"></div>
+    <div class="installs" id="installBox"></div>
+    <button class="btn btn-gold btn-block" data-go="card">Open my card</button>
+  </section>
+
+  <!-- ============ FIND ============ -->
+  <section class="view" id="v-find" aria-labelledby="findH">
+    <h2 class="sec-h" id="findH">Find my card</h2>
+    <p class="lead">Changed phone or cleared your browser? Enter the email you joined with and we'll send your card link.</p>
+    <div id="findMsg"></div>
+    <form id="findForm" novalidate>
+      <label class="f">Email<input class="in" name="email" type="email" autocomplete="email" required></label>
+      <button class="btn btn-navy btn-block" type="submit">Email my card link</button>
+    </form>
+    <p class="alt"><button type="button" data-go="join">Not a member yet? Join</button></p>
+  </section>
+
+  <!-- ============ CARD ============ -->
+  <section class="view" id="v-card" aria-label="My card">
+    <div id="cardArea"></div>
+    <button class="btn btn-gold btn-block codebtn" id="showCode">Show my code to pay</button>
+    <div class="notes" id="notes"></div>
+    <div class="stats" id="stats"></div>
+    <h3 class="sec-h" style="font-size:22px">How it works</h3>
+    <ol class="how">
+      <li>Show your code when you pay. Your server scans it.</li>
+      <li>Spend your credit or voucher on the bill, or save it for next time.</li>
+      <li><span>Get <b id="howPct">5%</b> of what you pay back as credit, ready from your next visit. Credit lasts <b id="howDays">60</b> days.</span></li>
+    </ol>
+  </section>
+
+  <!-- ============ OFFERS ============ -->
+  <section class="view" id="v-offers" aria-labelledby="offH">
+    <h2 class="sec-h" id="offH">Members' offers</h2>
+    <p class="lead">Show your code when you pay to use an offer.</p>
+    <div id="offerList"></div>
+  </section>
+
+  <!-- ============ ACTIVITY ============ -->
+  <section class="view" id="v-activity" aria-labelledby="actH">
+    <h2 class="sec-h" id="actH">My activity</h2>
+    <p class="lead">Every visit, credit earned and credit used.</p>
+    <div id="actList"></div>
+  </section>
+
+  <!-- ============ ACCOUNT ============ -->
+  <section class="view" id="v-account" aria-labelledby="accH">
+    <h2 class="sec-h" id="accH">My account</h2>
+    <p class="lead" id="accSub"></p>
+    <div class="acc" id="accDetails"></div>
+    <div class="acc">
+      <div><label for="swPush">Offer alerts on this phone<br><span class="small" id="pushHint">Be first to hear about members' evenings.</span></label><span class="switch"><input type="checkbox" id="swPush"><i></i></span></div>
+      <div><label for="swMkt">Offers by email</label><span class="switch"><input type="checkbox" id="swMkt"><i></i></span></div>
+    </div>
+    <details class="faq"><summary>When can I use my credit?</summary><p>Credit you earn is ready from the day after your visit and lasts <span class="cdays">60</span> days. Your welcome voucher can be used straight away and lasts 30 days. We always use whatever expires first.</p></details>
+    <details class="faq"><summary>Can I use it with other offers?</summary><p>No. When you use credit or a voucher, other discounts, including our 15% food offer, can't be added to the same bill.</p></details>
+    <details class="faq"><summary>What does it cover?</summary><p>Food and drink in The Clarendon restaurant and bar at Brandon Hall. Not service charge, gift vouchers, accommodation or spa treatments. Credit has no cash value.</p></details>
+    <div class="acc">
+      <div><a href="terms.html">Membership terms and privacy</a></div>
+      <div><a id="bookLink" href="#" rel="noopener">Book a table at The Clarendon</a></div>
+      <div><button class="btn btn-ghost" id="forget" type="button">Remove card from this phone</button></div>
+      <div><button class="btn btn-ghost" id="closeAcc" type="button" style="color:var(--bad)">Close my membership</button></div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs hidden" id="tabs" aria-label="Club">
+  <a href="#card" data-v="card"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19M6 15h5"/></svg>My card</a>
+  <a href="#offers" data-v="offers"><svg viewBox="0 0 24 24"><path d="M20 12v8H4v-8M2.5 7.5h19V12h-19zM12 20V7.5M12 7.5S10.5 3 8 3.5 7 7.5 12 7.5zM12 7.5S13.5 3 16 3.5s1 4-4 4z"/></svg>Offers<span class="dot hidden" id="offDot"></span></a>
+  <a href="#activity" data-v="activity"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Activity</a>
+  <a href="#" id="navBook" data-ext="1"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Book</a>
+  <a href="#account" data-v="account"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c1.5-4 4.5-5.5 8-5.5s6.5 1.5 8 5.5"/></svg>Account</a>
+</nav>
+
+<div class="sheet" id="codeSheet" role="dialog" aria-modal="true" aria-labelledby="codeH">
+  <div class="box">
+    <button class="x" data-close aria-label="Close">×</button>
+    <h2 id="codeH">Scan to collect</h2>
+    <p class="muted small" style="margin:0">Ask your server to scan this when you pay.</p>
+    <div class="qr" id="qrBox"></div>
+    <div class="mno" id="qrNo"></div>
+    <p class="small muted" id="qrBal"></p>
+    <p class="small muted">Turn your screen brightness up if the scanner struggles.</p>
+  </div>
+</div>
+<div class="sheet" id="confirmSheet" role="dialog" aria-modal="true" aria-labelledby="cfH">
+  <div class="box">
+    <h2 id="cfH">Are you sure?</h2>
+    <p id="cfText" class="muted"></p>
+    <div style="display:grid;gap:10px;margin-top:14px"><button class="btn btn-navy btn-block" id="cfYes">Yes</button><button class="btn btn-ghost btn-block" data-close>Cancel</button></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<script src="club-config.js"></script>
+<script src="club-service.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="club-api.js"></script>
+<script>
+{
+const $ = id => document.getElementById(id);
+const { esc, gbp, date, memberNo } = CC;
+const CFG = window.CLUB_CONFIG || {};
+const KEY = 'clarendon_card_id';
+let cardId = null, card = null, offers = [], unwatch = null, current = 'join';
+if (CC.demo) $('demoFlag').classList.remove('hidden');
+const bookUrl = CFG.bookUrl || '#';
+$('navBook').href = bookUrl; $('bookLink').href = bookUrl;
+$('navBook').target = '_blank'; $('bookLink').target = '_blank';
+
+/* ---------- form set-up ---------- */
+const bd = document.querySelector('[name=birthDay]'), bm = document.querySelector('[name=birthMonth]');
+for (let d = 1; d <= 31; d++) bd.insertAdjacentHTML('beforeend', '<option>' + d + '</option>');
+['January','February','March','April','May','June','July','August','September','October','November','December'].forEach((m, i) => bm.insertAdjacentHTML('beforeend', '<option value="' + (i + 1) + '">' + m + '</option>'));
+$('occ').innerHTML = ['Family meals','Date night','Sunday lunch','Business dining','Celebrations','Drinks in the bar','Afternoon tea'].map(o => '<label class="chip"><input type="checkbox" name="occasions" value="' + o + '">' + o + '</label>').join('');
+
+/* ---------- routing (plain #name) ---------- */
+const VIEWS = ['join','welcome','find','card','offers','activity','account'];
+const MEMBER_VIEWS = ['card','offers','activity','account'];
+function show(v) {
+  if (!VIEWS.includes(v)) v = cardId ? 'card' : 'join';
+  if (MEMBER_VIEWS.includes(v) && !cardId) v = 'join';
+  if (v === 'join' && cardId && card) v = 'card';
+  current = v;
+  VIEWS.forEach(x => $('v-' + x).classList.toggle('on', x === v));
+  const member = MEMBER_VIEWS.includes(v);
+  $('tabs').classList.toggle('hidden', !member); document.body.classList.toggle('nonav', !member);
+  document.querySelectorAll('nav.tabs a[data-v]').forEach(a => a.classList.toggle('on', a.dataset.v === v));
+  if (v === 'offers') { try { localStorage.setItem('cc_offers_seen', String(offers.length)); } catch (e) {} $('offDot').classList.add('hidden'); }
+  window.scrollTo(0, 0);
+}
+function go(v) { if (location.hash !== '#' + v) location.hash = v; else show(v); }
+window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+document.addEventListener('click', e => {
+  const g = e.target.closest('[data-go]'); if (g) { e.preventDefault(); go(g.dataset.go); }
+  const c = e.target.closest('[data-close]'); if (c) c.closest('.sheet').classList.remove('on');
+});
+document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s) s.classList.remove('on'); }));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.sheet.on').forEach(s => s.classList.remove('on')); });
+
+/* ---------- card id: ?c= link, then this phone's storage ---------- */
+function readCardId() {
+  const q = new URLSearchParams(location.search).get('c');
+  if (q && /^[A-Za-z0-9]{16,40}$/.test(q)) return q;
+  try { return localStorage.getItem(KEY); } catch (e) { return null; }
+}
+function rememberCard(id) {
+  cardId = id;
+  try { localStorage.setItem(KEY, id); } catch (e) {}
+  // keep the card id in the address so "Add to Home Screen" saves a link to this card
+  try { const u = new URL(location.href); if (u.searchParams.get('c') !== id) { u.searchParams.set('c', id); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch (e) {}
+  setManifest(id);
+}
+function setManifest(id) {
+  if (CC.demo) return;
+  const start = location.origin + location.pathname + '?c=' + encodeURIComponent(id) + '#card';
+  const icon = n => ({ src: new URL('club-icon-' + n + '.png', location.href).href, sizes: n + 'x' + n, type: 'image/png', purpose: 'any maskable' });
+  const m = { name: 'The Clarendon Club', short_name: 'Clarendon Club', start_url: start, scope: location.origin + location.pathname.replace(/[^/]*$/, ''), display: 'standalone', background_color: '#1d2a36', theme_color: '#1d2a36', icons: [icon(180), icon(512)] };
+  let l = document.querySelector('link[rel=manifest]'); if (!l) { l = document.createElement('link'); l.rel = 'manifest'; document.head.appendChild(l); }
+  l.href = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(m));
+}
+function startWatch() {
+  if (unwatch) unwatch();
+  unwatch = ClubAPI.watchCard(cardId, c => { card = c; renderAll(); if (current === 'join') show('card'); }, e => {
+    if (e.code === 'not-found') { forget(true); $('joinMsg').innerHTML = '<div class="notice info">We couldn\'t find that card on this phone. Join below or use “Find my card”.</div>'; }
+  });
+}
+function forget(silent) {
+  if (unwatch) unwatch(); unwatch = null; cardId = null; card = null;
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  try { history.replaceState(null, '', location.pathname + '#join'); } catch (e) {}
+  if (!silent) CC.toast('Card removed from this phone');
+  show('join');
+}
+
+/* ---------- render ---------- */
+function cardHtml(c) {
+  const name = [c.title && c.title !== 'Prefer not to say' ? c.title : '', c.first, c.last].filter(Boolean).join(' ');
+  return '<div class="ccard" role="img" aria-label="Clarendon Club card, ' + esc(gbp(c.available)) + ' to spend">' +
+    '<div class="row1"><div class="name">The Clarendon Club<small>Brandon Hall Hotel &amp; Spa</small></div><img src="bh-logo.svg" alt=""></div>' +
+    '<div class="bal"><span>Available to spend</span><b class="money">' + esc(gbp(c.available)) + '</b></div>' +
+    '<div class="row3"><span class="who">' + esc(name) + '</span><span class="no">No. ' + esc(memberNo(c.memberNo)) + '</span></div></div>';
+}
+function renderAll() {
+  if (!card) return;
+  $('cardArea').innerHTML = cardHtml(card);
+  const n = [];
+  (card.vouchers || []).forEach(v => n.push('<div class="note"><i class="v">£</i><div><b>' + esc(v.label) + ' ' + esc(gbp(v.amount)) + '</b><br><span class="small muted">Use by ' + esc(date(v.expires - 1)) + '</span></div></div>'));
+  if (card.pending > 0) n.push('<div class="note"><i class="p">+</i><div><b>' + esc(gbp(card.pending)) + ' credit on its way</b><br><span class="small muted">Ready to spend from tomorrow</span></div></div>');
+  if (card.expiringNext && card.expiringNext.date - Date.now() < 14 * 86400000) n.push('<div class="note"><i class="x">!</i><div><b>' + esc(gbp(card.expiringNext.amount)) + ' expires ' + esc(date(card.expiringNext.date - 1, { year: undefined })) + '</b><br><span class="small muted">Use it on your next visit</span></div></div>');
+  if (card.status && card.status !== 'active') n.unshift('<div class="notice bad">' + (card.status === 'delete-requested' ? 'You asked us to close this membership. We\'ll remove your details shortly.' : 'This membership is on hold. Please speak to a manager.') + '</div>');
+  $('notes').innerHTML = n.join('');
+  $('stats').innerHTML = '<div><b>' + esc(card.visits) + '</b><span>visits</span></div><div><b class="money">' + esc(gbp(card.totalEarned)) + '</b><span>credit earned</span></div><div><b class="money">' + esc(gbp(card.totalSaved)) + '</b><span>saved so far</span></div>';
+  $('howPct').textContent = card.earnPct + '%'; $('howDays').textContent = card.creditDays;
+  document.querySelectorAll('.cdays').forEach(x => x.textContent = card.creditDays);
+  // activity
+  const h = card.history || [];
+  $('actList').innerHTML = h.length ? '<ul class="act">' + h.map(actRow).join('') + '</ul>' : '<div class="empty">Your visits will appear here.</div>';
+  // account
+  $('accSub').textContent = 'Member since ' + date(card.joined);
+  $('accDetails').innerHTML = '<div>Name <span>' + esc([card.first, card.last].join(' ')) + '</span></div><div>Email <span>' + esc(card.email || '') + '</span></div><div>Member number <span class="money">' + esc(memberNo(card.memberNo)) + '</span></div>';
+  $('swMkt').checked = !!card.marketing; $('swPush').checked = !!card.push;
+  // code sheet (kept current while open)
+  $('qrNo').textContent = memberNo(card.memberNo);
+  $('qrBal').textContent = gbp(card.available) + ' available to spend';
+  if ($('qrBox').dataset.for !== card.qr) { $('qrBox').innerHTML = CC.qrSvg(card.qr, 260); $('qrBox').dataset.for = card.qr; }
+  if (current === 'welcome') $('welCard').innerHTML = cardHtml(card);
+}
+function actRow(x) {
+  const d = new Date(x.at);
+  const day = '<div class="d"><b>' + d.toLocaleDateString('en-GB', { day: 'numeric', timeZone: 'Europe/London' }) + '</b>' + d.toLocaleDateString('en-GB', { month: 'short', timeZone: 'Europe/London' }) + '</div>';
+  let t = '', v = '';
+  if (x.type === 'visit') {
+    t = '<b>Dined at The Clarendon</b><span>Bill ' + esc(gbp(x.bill)) + (x.used ? ' · used ' + esc(gbp(x.used)) : '') + '</span>';
+    v = '<div class="v plus money">+' + esc(gbp(x.earned)) + '</div>';
+  } else if (x.type === 'welcome') { t = '<b>Welcome voucher</b><span>Thank you for joining</span>'; v = '<div class="v plus money">+' + esc(gbp(x.amount)) + '</div>'; }
+  else if (x.type === 'expired') { t = '<b>Credit expired</b><span>Not used within the time limit</span>'; v = '<div class="v gone money">' + esc(gbp(x.amount)) + '</div>'; }
+  else if (x.type === 'adjust') { t = '<b>' + esc(x.label) + '</b><span>From the Brandon Hall team</span>'; v = '<div class="v ' + (x.amount > 0 ? 'plus' : 'minus') + ' money">' + (x.amount > 0 ? '+' : '') + esc(gbp(x.amount)) + '</div>'; }
+  else if (x.type === 'void') { t = '<b>Visit corrected</b><span>A visit was taken off by our team</span>'; v = ''; }
+  return '<li>' + day + '<div class="t">' + t + '</div>' + v + '</li>';
+}
+function renderOffers() {
+  $('offerList').innerHTML = offers.length ? offers.map(o => '<article class="offer"><div class="band">' + (o.tag ? '<em>' + esc(o.tag) + '</em>' : '') + '<h3>' + esc(o.title) + '</h3></div><p>' + esc(o.body) + '</p><div class="meta">' + [o.days, o.validTo ? 'Until ' + date(Date.parse(o.validTo + 'T12:00:00Z')) : ''].filter(Boolean).map(esc).join(' · ') + '</div></article>').join('')
+    : '<div class="empty">No offers right now. Switch on offer alerts in Account and we\'ll let you know.</div>';
+  let seen = 0; try { seen = +localStorage.getItem('cc_offers_seen') || 0; } catch (e) {}
+  const nNew = Math.max(0, offers.length - seen);
+  $('offDot').textContent = nNew; $('offDot').classList.toggle('hidden', !nNew || current === 'offers');
+}
+async function loadOffers() { try { offers = await ClubAPI.offers(); renderOffers(); } catch (e) { offers = []; renderOffers(); } }
+
+/* ---------- join ---------- */
+function fieldErr(form, name, msg) {
+  const el = form.querySelector('[name=' + name + ']'); if (!el) return;
+  el.setAttribute('aria-invalid', 'true');
+  const host = el.closest('label') || el.parentNode;
+  if (!host.querySelector('.ferr')) host.insertAdjacentHTML('beforeend', '<span class="ferr">' + esc(msg) + '</span>');
+}
+$('joinForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target; f.querySelectorAll('.ferr').forEach(x => x.remove()); f.querySelectorAll('[aria-invalid]').forEach(x => x.removeAttribute('aria-invalid'));
+  const fd = new FormData(f);
+  const p = Object.fromEntries(['title','first','last','email','mobile','birthDay','birthMonth','postcode','relationship','visitFreq','dietary','heardFrom'].map(k => [k, fd.get(k) || '']));
+  p.occasions = fd.getAll('occasions'); p.over18 = !!fd.get('over18'); p.terms = !!fd.get('terms'); p.marketing = !!fd.get('marketing');
+  p.source = new URLSearchParams(location.search).get('src') || 'qr';
+  const { errors } = ClubService.validateProfile(p);
+  if (Object.keys(errors).length) {
+    Object.entries(errors).forEach(([k, m]) => fieldErr(f, k, m));
+    const first = f.querySelector('[aria-invalid=true]'); if (first) first.focus();
+    $('joinMsg').innerHTML = '<div class="notice bad">Please check the highlighted details.</div>'; return;
+  }
+  const btn = $('joinBtn'); btn.disabled = true; btn.textContent = 'Creating your card…';
+  try {
+    const r = await ClubAPI.register(p);
+    rememberCard(r.cardId); $('welName').textContent = p.first;
+    $('joinMsg').innerHTML = ''; f.reset();
+    installHelp(); go('welcome'); startWatch(); loadOffers();
+  } catch (er) {
+    if (er.code === 'exists' || /already a member/i.test(er.message)) {
+      $('joinMsg').innerHTML = '<div class="notice info">' + esc(er.message) + ' <button type="button" class="btn btn-line" style="margin-top:8px" data-go="find">Email me my card link</button></div>';
+      document.querySelector('#findForm [name=email]').value = p.email;
+    } else $('joinMsg').innerHTML = '<div class="notice bad">' + esc(er.message || 'Sorry, something went wrong. Please try again.') + '</div>';
+    $('joinMsg').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } finally { btn.disabled = false; btn.textContent = 'Join and get my £5 voucher'; }
+});
+
+/* ---------- add to home screen help ---------- */
+let deferredInstall = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; installHelp(); });
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function installHelp() {
+  const box = $('installBox');
+  if (isStandalone()) { box.innerHTML = '<b>Your card is on your home screen.</b> Open it whenever you dine with us.'; return; }
+  if (deferredInstall) { box.innerHTML = '<b>Keep your card one tap away</b><p class="small" style="margin:6px 0 10px">Add it to your home screen. It opens like an app.</p><button class="btn btn-navy btn-block" id="doInstall">Add to home screen</button>';
+    $('doInstall').onclick = async () => { deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall = null; installHelp(); }; return; }
+  box.innerHTML = '<b>Save your card to your home screen</b>' + (isIOS()
+    ? '<ol><li>Tap the <b>Share</b> button in Safari <span aria-hidden="true">(square with an arrow)</span>.</li><li>Choose <b>Add to Home Screen</b>, then <b>Add</b>.</li><li>Open The Clarendon Club from your home screen whenever you dine.</li></ol>'
+    : '<ol><li>Tap the browser menu <span aria-hidden="true">(⋮)</span>.</li><li>Choose <b>Add to Home screen</b> or <b>Install app</b>.</li><li>Open The Clarendon Club from your home screen whenever you dine.</li></ol>');
+}
+
+/* ---------- find card ---------- */
+$('findForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = e.target.email.value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { $('findMsg').innerHTML = '<div class="notice bad">Enter the email address you joined with.</div>'; return; }
+  try {
+    const r = await ClubAPI.recover(email);
+    $('findMsg').innerHTML = '<div class="notice ok">If that email belongs to a member, we\'ve sent the card link to it. Open the email on this phone.</div>' +
+      (r && r.demoLink ? '<div class="notice info">Preview: <a href="' + esc(r.demoLink) + '">open the card link</a></div>' : '');
+  } catch (er) { $('findMsg').innerHTML = '<div class="notice bad">' + esc(er.message) + '</div>'; }
+});
+
+/* ---------- card actions ---------- */
+$('showCode').onclick = () => { if (card) { $('codeSheet').classList.add('on'); $('codeSheet').querySelector('.x').focus(); } };
+$('swMkt').addEventListener('change', async e => {
+  try { await ClubAPI.account(cardId, 'marketing', { on: e.target.checked }); CC.toast(e.target.checked ? 'You\'ll receive members\' offers by email' : 'Email offers switched off', 'ok'); }
+  catch (er) { e.target.checked = !e.target.checked; CC.toast(er.message, 'bad'); }
+});
+$('swPush').addEventListener('change', async e => {
+  if (!e.target.checked) { CC.toast('To stop alerts, switch off notifications for this app in your phone settings.'); e.target.checked = true; return; }
+  if (isIOS() && !isStandalone()) { e.target.checked = false; CC.toast('Add your card to the home screen first, then switch alerts on from there.'); return; }
+  if (!ClubAPI.pushSupported()) { e.target.checked = false; CC.toast(CC.demo ? 'Offer alerts work on the live site.' : 'This browser can\'t show alerts. Try Chrome or Safari from the home screen.'); return; }
+  try { await ClubAPI.enablePush(cardId); CC.toast('Offer alerts switched on', 'ok'); }
+  catch (er) { e.target.checked = false; CC.toast(er.message, 'bad'); }
+});
+let cfAction = null;
+function confirmBox(title, text, yes, fn) { $('cfH').textContent = title; $('cfText').textContent = text; $('cfYes').textContent = yes; cfAction = fn; $('confirmSheet').classList.add('on'); }
+$('cfYes').onclick = async () => { $('confirmSheet').classList.remove('on'); if (cfAction) await cfAction(); };
+$('forget').onclick = () => confirmBox('Remove card from this phone?', 'Your membership and credit are kept. Use “Find my card” with your email to bring it back.', 'Remove from this phone', () => forget());
+$('closeAcc').onclick = () => confirmBox('Close your membership?', 'Any credit and vouchers on your card will be lost, and we\'ll delete your details. This can\'t be undone.', 'Close my membership', async () => {
+  try { await ClubAPI.account(cardId, 'delete'); CC.toast('We\'ve received your request', 'ok'); } catch (er) { CC.toast(er.message, 'bad'); }
+});
+
+/* ---------- live-site extras ---------- */
+if (!CC.demo && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+/* ---------- start ---------- */
+cardId = readCardId();
+if (cardId) { rememberCard(cardId); startWatch(); }
+loadOffers();
+show(location.hash.slice(1) || (cardId ? 'card' : 'join'));
+}
+</script>
+</body>
+</html>
