@@ -248,7 +248,7 @@ nav.tabs a .dot{position:absolute;top:2px;left:calc(50% + 7px);min-width:17px;he
     <h2 class="sec-h" id="bookH">Book a table</h2>
     <p class="lead">Reserve your table at The Clarendon. Show your Clarendon Club code when you pay to use and earn credit.</p>
     <div class="note" id="bookMember" style="margin-bottom:14px"><i class="v">✦</i><div><b>Member no. <span id="bookNo"></span></b><br><span class="small muted">Add it in the Comments box so we can welcome you as a member.</span></div></div>
-    <div class="rdwrap"><div id="rd-widget-frame" style="max-width:600px;margin:auto"></div><p class="small muted" id="rdLoading" style="text-align:center;padding:30px 0">Loading the booking calendar…</p></div>
+    <div class="rdwrap"><div id="rd-widget-frame" style="max-width:285px;margin:auto"></div><p class="small muted" id="rdLoading" style="text-align:center;padding:30px 0">Loading the booking calendar…</p></div>
     <p class="small muted" style="text-align:center;margin-top:12px">Bookings are taken by ResDiary for The Clarendon Restaurant at Brandon Hall.</p>
   </section>
 
@@ -527,7 +527,7 @@ function loadBooking() {
   if (card) $('bookNo').textContent = memberNo(card.memberNo);
   $('bookMember').classList.toggle('hidden', !card);
   if (rdLoaded) return; rdLoaded = true;
-  const url = CFG.resdiaryUrl || 'https://booking.resdiary.com/widget/Standard/TheClarendonRestaurantatBrandonHall/73749?includeJquery=false';
+  const url = CFG.resdiaryUrl || 'https://booking.resdiary.com/widget/FixedSize/TheClarendonRestaurantatBrandonHall/73749?includeJquery=false';
   const inp = document.createElement('input'); inp.type = 'hidden'; inp.id = 'rdwidgeturl'; inp.name = 'rdwidgeturl'; inp.value = url;
   $('rd-widget-frame').after(inp);
   const sc = document.createElement('script'); sc.src = 'https://booking.resdiary.com/bundles/WidgetV2Loader.js';

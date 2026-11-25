@@ -14,6 +14,6 @@ window.CLUB_CONFIG = {
   region: "europe-west1",
   vapidKey: "BEBKqO0IojcBixBGbEb8hH-aCuy9J6MwQct5dp08xs6J2CjpPEStpSNoJuDpqHcvWuYpRviNVzfDKy4gQUigQPI",
   joinUrl: "https://brandon.hospro.co.uk/club/",           // printed on the table talkers
-  resdiaryUrl: "https://booking.resdiary.com/widget/Standard/TheClarendonRestaurantatBrandonHall/73749?includeJquery=false", // Book tab (ResDiary widget)
+  resdiaryUrl: "https://booking.resdiary.com/widget/FixedSize/TheClarendonRestaurantatBrandonHall/73749?includeJquery=false", // Book tab (ResDiary widget)
   websiteUrl: "https://www.brandonhallhotelandspa.com/"
 };
