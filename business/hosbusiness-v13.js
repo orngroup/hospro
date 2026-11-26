@@ -1063,8 +1063,24 @@
     var mae = accuracyRows.length ? accuracyRows.reduce(function (s, x) { return s + Math.abs(x.err); }, 0) / accuracyRows.length : null;
     var bias = accuracyRows.length ? accuracyRows.reduce(function (s, x) { return s + x.err; }, 0) / accuracyRows.length : null;
 
-    /* ===== Build daily forward rows (from today + 180 days) ===== */
+    /* ===== Build daily forward rows (from today + 180 days by default) =====
+       v39.37 — honor the top-bar date range when it names future dates:
+         • custom range (from/to): use those bounds, clamped so start >= today
+         • next7/14/21/28: use that window
+         • everything else: default 180-day forward view */
     var startD = cut, endD = (function () { var e = new Date(cut + 'T12:00:00Z'); e.setUTCDate(e.getUTCDate() + 180); return e.toISOString().slice(0, 10); })();
+    var _rng = getRange();
+    if (_rng && _rng.kind === 'custom' && _rng.from && _rng.to) {
+      /* only apply if the range includes today or later; otherwise ignore */
+      if (_rng.to >= cut) {
+        startD = _rng.from < cut ? cut : _rng.from;
+        endD   = _rng.to;
+      }
+    } else if (_rng && /^next\d+$/.test(_rng.kind)) {
+      var _n = parseInt(_rng.kind.slice(4), 10);
+      var _e = new Date(cut + 'T12:00:00Z'); _e.setUTCDate(_e.getUTCDate() + _n);
+      endD = _e.toISOString().slice(0, 10);
+    }
     var afIndex = {}; S.af.rows.forEach(function (r) { afIndex[r.d] = r; });
     var daily = [];
     for (var d = new Date(startD + 'T12:00:00Z'), end = new Date(endD + 'T12:00:00Z'); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
@@ -1458,9 +1474,14 @@
   }
   function renderTopFilters() {
     var top = $('v16-top-filters'); if (!top) return;
-    // v24: no date filter on the Forecast tab · v31: ditto Revenue Management (its views are all 365-night forward)
+    /* v39.37 — show the filter bar on EVERY page (previously hidden on
+       Forecast and Revenue Management). Those two tabs are forward-only
+       and ignore the backward date presets by design, but surfacing the
+       filter everywhere keeps the UI consistent and lets the user pick a
+       range or custom date from any page. Forecast/Rev now read the range
+       and narrow their forward view when a custom range is set (see
+       renderForecast + HosREV.render). */
     var activeTab = (document.querySelector('section.tab.on') || {}).id || '';
-    if (activeTab === 't-pf-forecast' || activeTab === 't-pf-rev') { top.innerHTML = ''; return; }
     var r = getRange(), cmp = getCmp();
     // Shortlist of chips; the full range + custom + compare live in each page's v13-dr bar
     var QUICK = [['1', 'Yesterday'], ['7', '7 days'], ['14', '14 days'], ['28', '28 days'], ['mtd', 'MTD'], ['lastmonth', 'Last month'], ['90', '90 days'], ['12m', '12 months']];
