@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex">
+<title>ARIA · Ask anything about your hotel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: quiet, exact, night-time. A search engine for one hotel.
+   IDEA: ask in plain words; the answer is one sentence and a few hard figures; the evidence opens on the right.
+   COLOUR and TYPE: black, soft white, HosPRO jade; validated dark chart palette; Manrope.
+   LAYOUT: home = wordmark + search centred. Results = answers left, evidence right; on a phone the evidence sits under each answer. */
+:root{color-scheme:dark;--jade:#4DA69C;--jadek:#7fd0c5;--bg:#000;--card:#111315;--card2:#181b1e;--ink:#e8eaed;--mute:#9aa0a6;--line:#2a2e33;--warn:#e3b649;
+  --s1:#00a888;--s2:#e76624;--s3:#338ced;--s4:#d28e05;--s5:#e24d8b}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Manrope,system-ui,sans-serif;overflow-x:clip}
+a{color:var(--jadek)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--jade);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.word{font-weight:800;letter-spacing:.08em;line-height:1;color:var(--jade);user-select:none}
+select{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+/* home */
+#home{min-height:calc(100dvh - 44px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px 60px;text-align:center}
+.logo{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}
+#home .word{font-size:clamp(64px,14vw,96px)}
+.cap{color:#c9cdd1;font-weight:500;font-size:clamp(15px,2.4vw,18px);max-width:12em;text-align:left;line-height:1.3;border-left:2px solid var(--jade);padding-left:12px}
+.pick{display:flex;align-items:center;gap:10px;margin:32px 0 14px;font-size:14px;color:var(--mute)}
+.search{display:flex;align-items:center;gap:10px;width:min(680px,100%);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 20px;transition:border-color .15s}
+.search:focus-within{border-color:var(--jade)}
+.search input{flex:1;background:none;border:0;outline:0;padding:10px 0;font-size:17px}
+.search button{border:0;background:var(--jade);color:#001a17;font-weight:700;border-radius:999px;padding:10px 18px;cursor:pointer}
+.search button:disabled{opacity:.5;cursor:default}
+.hint{margin-top:16px;font-size:13.5px;color:var(--mute);max-width:620px}
+.status{margin-top:22px;font-size:13px;color:var(--mute);display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--jade);display:inline-block}
+.dot.off{background:var(--warn)}
+footer{height:44px;display:flex;align-items:center;justify-content:flex-end;padding:0 18px;font-size:12.5px;color:var(--mute)}
+footer b{color:var(--ink);font-weight:700}
+/* sign-in */
+#signin{display:none;margin-top:26px;width:min(380px,100%);text-align:left;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+#signin h2{font-size:16px;margin:0 0 4px}#signin p{margin:0 0 12px;font-size:13.5px;color:var(--mute)}
+#signin label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+#signin input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+#signin button{margin-top:14px;width:100%;border:0;background:var(--jade);color:#001a17;font-weight:700;border-radius:10px;padding:11px;cursor:pointer}
+#signErr{color:var(--warn);font-size:13.5px;margin-top:8px;min-height:1em}
+/* work view */
+#work{display:none;min-height:100dvh}
+.bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:10px 16px;background:rgba(0,0,0,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.bar .word{font-size:24px;cursor:pointer;background:none;border:0;padding:0}
+.bar .search{flex:1;min-width:240px;padding:3px 3px 3px 16px}
+.bar .search input{padding:7px 0;font-size:15.5px}
+.bar .search button{padding:7px 14px}
+.grid{display:grid;grid-template-columns:minmax(320px,440px) 1fr;gap:20px;padding:18px 16px 40px;max-width:1500px;margin:0 auto;align-items:start}
+#thread{display:flex;flex-direction:column;gap:14px}
+#panel{position:sticky;top:76px;max-height:calc(100dvh - 92px);overflow:auto;display:flex;flex-direction:column;gap:14px;padding-bottom:20px}
+.ans{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 16px 14px;cursor:pointer;transition:border-color .15s}
+.ans.on{border-color:var(--jade)}
+.ans .q{font-size:13.5px;color:var(--mute);margin-bottom:6px}
+.ans .a{font-size:17.5px;font-weight:600;line-height:1.4}
+.pts{margin:12px 0 0;padding:0;list-style:none;border-top:1px solid var(--line)}
+.pts li{display:grid;grid-template-columns:minmax(90px,38%) 1fr;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+.pts .l{color:var(--mute)}.pts .v{font-weight:600;font-variant-numeric:tabular-nums}.pts .n{display:block;font-weight:400;color:var(--mute);font-size:13px}
+.basis{margin-top:10px;font-size:12.5px;color:var(--mute)}
+.think{display:flex;gap:6px;align-items:center;color:var(--mute);font-size:14.5px}
+.think i{width:6px;height:6px;border-radius:50%;background:var(--jade);animation:p 1s infinite alternate}
+.think i:nth-child(2){animation-delay:.2s}.think i:nth-child(3){animation-delay:.4s}
+@keyframes p{from{opacity:.2}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.think i{animation:none}}
+.err{color:var(--warn)}
+.inline{display:none;margin-top:14px;flex-direction:column;gap:12px}
+/* views */
+.vw{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.vw h3{margin:0 0 2px;font-size:15px}
+.vw .src{font-size:12px;color:var(--mute);margin-bottom:12px}
+.kp{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.kp>div{background:var(--card2);border-radius:12px;padding:10px 12px}
+.kp .k{font-size:12.5px;color:var(--mute)}.kp .x{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25}.kp .s{font-size:12px;color:var(--mute)}
+.tw{overflow:auto;max-height:440px;border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th{position:sticky;top:0;background:var(--card2);text-align:left;font-weight:600;color:var(--mute);padding:8px 10px;white-space:nowrap}
+td{padding:7px 10px;border-top:1px solid var(--line);white-space:nowrap}
+.r{text-align:right}
+.leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--mute);margin-bottom:8px}
+.leg span{display:inline-flex;align-items:center;gap:6px}.leg i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.ch{position:relative}
+.ch svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:#000;border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px;white-space:nowrap;display:none;z-index:3}
+.tip b{display:block;font-weight:600;margin-bottom:2px}
+.empty{color:var(--mute);font-size:14px;padding:30px 10px;text-align:center}
+.preview{font-size:12px;color:var(--warn);border:1px solid #4a3d16;background:#1a160a;border-radius:8px;padding:6px 10px}
+@media (max-width:900px){
+  .grid{grid-template-columns:1fr}
+  #panel{display:none}
+  .ans.on .inline{display:flex}
+  .bar{flex-wrap:nowrap;gap:8px;padding:8px 10px}
+  .bar .word{font-size:18px}
+  .bar .search{min-width:0}
+  .bar select{max-width:96px;padding:7px 6px;font-size:13px}
+}
+</style>
+</head>
+<body>
+<main id="home">
+  <div class="logo" aria-label="ARIA"><span class="word">ARIA</span><span class="cap">Ask anything about your hotel</span></div>
+  <div class="pick"><label for="prop0">Property</label>
+    <select id="prop0"><option value="brandon-hall">Brandon Hall Hotel &amp; Spa</option><option value="mercure-st-helens">Mercure St Helens</option></select></div>
+  <form class="search" id="f1" role="search"><label class="sr" for="q1">Ask ARIA</label>
+    <input id="q1" autocomplete="off" placeholder="Ask ARIA about your hotel"><button id="b1">Ask</button></form>
+  <p class="hint" id="hint">Ask in your own words: last night's revenue, occupancy for the next 7 days, breakfasts booked, what the bar till sold, what rivals are charging.</p>
+  <form id="signin" autocomplete="on"><h2>Sign in</h2><p>Use your HosBUSINESS login. ARIA shows the same figures you can see there.</p>
+    <label for="u">Username</label><input id="u" autocomplete="username" required>
+    <label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required>
+    <button>Sign in</button><div id="signErr" role="alert"></div></form>
+  <div class="status" id="status"></div>
+</main>
+<div id="work">
+  <div class="bar">
+    <button class="word" id="homeBtn" aria-label="ARIA home">ARIA</button>
+    <form class="search" id="f2" role="search"><label class="sr" for="q2">Ask ARIA</label><input id="q2" autocomplete="off" placeholder="Ask another question"><button id="b2">Ask</button></form>
+    <label class="sr" for="prop">Property</label>
+    <select id="prop"><option value="brandon-hall">Brandon Hall Hotel &amp; Spa</option><option value="mercure-st-helens">Mercure St Helens</option></select>
+  </div>
+  <div class="grid">
+    <section id="thread" aria-label="Answers" aria-live="polite"></section>
+    <section id="panel" aria-label="Results"><div class="empty">Results appear here.</div></section>
+  </div>
+</div>
+<footer>Powered by&nbsp;<b>HosPRO</b></footer>
+
+<script src="aria-core.js"></script>
+<script>
+'use strict';
+/* Where ARIA is running decides how it answers:
+   LIVE    - on brandon.hospro.co.uk: sign in with the HosBUSINESS login; questions go to the ariaAsk function.
+   PREVIEW - anywhere else (the claude.ai preview): the same aria-core tools run here over a real-data snapshot,
+             and the Claude page capability does the wording. */
+const LIVE = /(^|\.)hospro\.co\.uk$/.test(location.hostname) || /[?&]live=1/.test(location.search);
+const ASK_URL = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/ariaAsk';
+const GL_URL = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/glData';
+const TOKEN_KEY = 'hosbusiness_gl_token';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const PAL = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
+const EXAMPLES = ["What was last night's revenue?", 'Occupancy for the next 7 days', 'How many breakfasts are booked this weekend?', 'What did the bar till sell this month?', 'What are rivals charging on 12 December?', 'Month to date ADR and RevPAR', 'Which nights next week are weakest?'];
+let prop = 'brandon-hall', sample = null, db = null, snap = null, busy = false;
+const thread = []; let activeId = null;
+
+/* ---------- token (shared with HosBUSINESS on the same site) ---------- */
+function getToken() { try { const t = sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY); if (!t) return null; const exp = Number(t.split('.')[0]); if (exp && exp < (exp > 1e12 ? Date.now() : Date.now() / 1000)) return null; return t; } catch (e) { return null; } }
+function setToken(t) { try { if (t) sessionStorage.setItem(TOKEN_KEY, t); else { sessionStorage.removeItem(TOKEN_KEY); } } catch (e) {} }
+
+/* ---------- preview data source over the real snapshot ---------- */
+let snapWait = null;
+function loadSnap() { return snapWait || (snapWait = fetch('data/snapshot.json').then(r => r.json()).then(j => (snap = j)).catch(() => null)); }
+function previewDS() {
+  return { days: async () => (await loadSnap()) && { days: snap.days }, forward: async () => (await loadSnap()) && { rows: snap.forward, asOf: snap.forwardAsOf },
+    items: async () => null, tills: async () => (await loadSnap()) && snap.tills, mealplan: async () => (await loadSnap()) && snap.mealplan,
+    comp: async () => (await loadSnap()) && snap.comp && Object.assign({}, snap.comp, { ts: 'sample figures' }), flash: async () => null };
+}
+
+/* ---------- asking ---------- */
+async function ask(q) {
+  q = String(q || '').trim(); if (!q || busy) return;
+  if (LIVE && !getToken()) { showHome(); needSignIn(); return; }
+  const r = { id: 'a' + Date.now().toString(36), q, status: 'thinking', prop };
+  thread.unshift(r); activeId = r.id; showWork(); scrollTo({ top: 0 }); $('q1').value = ''; $('q2').value = ''; render();
+  if (prop !== 'brandon-hall') { done(r, { answer: 'Mercure St Helens is not connected to ARIA yet. Its hotel figures will appear once its Guestline feed is linked; switch to Brandon Hall to try ARIA now.', points: [], views: [] }); return; }
+  busy = true; setBusy();
+  try {
+    const out = LIVE ? await askLive(r) : await askPreview(r);
+    done(r, out);
+  } catch (e) {
+    done(r, { error: e && e.message ? e.message : 'ARIA could not answer just now. Please try again.' });
+  } finally { busy = false; setBusy(); }
+}
+function done(r, out) { Object.assign(r, out, { status: out.error ? 'error' : 'done' }); render(); }
+function history() { return thread.filter(x => x.status === 'done' && x.answer).slice(0, 4).reverse().map(x => ({ q: x.q, a: x.answer })); }
+
+async function askLive(r) {
+  const res = await fetch(ASK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() }, body: JSON.stringify({ question: r.q, history: history() }) });
+  const j = await res.json().catch(() => ({}));
+  if (res.status === 401) { setToken(null); needSignIn(); throw new Error(j.error || 'Please sign in again.'); }
+  if (!j.ok) throw new Error(j.error || 'ARIA could not answer just now.');
+  return { answer: j.answer, points: j.points || [], views: j.views || [], basis: j.basis || '', sources: j.sources || [] };
+}
+
+async function askPreview(r) {
+  if (!sample) throw new Error('The preview needs you signed in to Claude to answer. In HosPRO, ARIA answers through its own engine.');
+  await loadSnap();
+  const now = new Date();
+  const T = AriaCore.makeTools(previewDS(), { now });
+  const views = [];
+  const tools = Object.keys(T).map(name => {
+    const t = T[name], props = {};
+    Object.keys(t.params || {}).forEach(k => { props[k] = { type: 'string', description: t.params[k].description || '' }; if (t.params[k].enum) props[k].enum = t.params[k].enum; });
+    return { name, description: t.description, inputSchema: { type: 'object', properties: props, required: t.required || [] },
+      execute: async (args) => { const res = await t.run(args || {}); const ids = []; (res._views || []).forEach(v => { v.id = 'v' + (views.length + 1); views.push(v); ids.push(v.id + ': ' + v.type + ' "' + v.title + '"'); }); const o = AriaCore.forModel(res); if (ids.length) o.views = ids; return o; } };
+  });
+  const hist = history().map(h => 'Q: ' + h.q + '\nA: ' + h.a).join('\n');
+  const instr = AriaCore.instructions({ now }) + '\nPreview note: closed trading days in this preview are 1–17 Nov and 25 Nov 2026; 25 Nov is "last night". 18–24 Nov are not loaded, so any total covering them must say so; nights on the books start ' + snap.forward[0].d + '. Competitor rates here are sample figures; say so if you use them.' +
+    (hist ? '\nEarlier in this conversation:\n' + hist : '') + '\n\nQuestion: ' + r.q;
+  const out = await sample.json(instr, { tools });
+  const want = Array.isArray(out.show) ? out.show : [];
+  const chosen = want.map(id => views.find(v => v.id === id)).filter(Boolean);
+  return { answer: String(out.answer || ''), points: Array.isArray(out.points) ? out.points.slice(0, 6) : [], basis: String(out.basis || ''), views: chosen.length ? chosen : views.slice(0, 3) };
+}
+
+/* ---------- rendering ---------- */
+function render() {
+  const mobile = matchMedia('(max-width:900px)').matches;
+  $('thread').innerHTML = thread.map(r => {
+    let body;
+    if (r.status === 'thinking') body = '<div class="think"><i></i><i></i><i></i>&nbsp;Looking it up</div>';
+    else if (r.status === 'error') body = '<div class="a err">' + esc(r.error) + '</div>';
+    else body = '<div class="a">' + esc(r.answer) + '</div>' +
+      (r.points && r.points.length ? '<ul class="pts">' + r.points.map(p => '<li><span class="l">' + esc(p.label) + '</span><span class="v">' + esc(p.value) + (p.note ? '<span class="n">' + esc(p.note) + '</span>' : '') + '</span></li>').join('') + '</ul>' : '') +
+      (r.basis ? '<div class="basis">' + esc(r.basis) + '</div>' : '');
+    return '<article class="ans' + (r.id === activeId ? ' on' : '') + '" data-id="' + r.id + '" tabindex="0"><div class="q">' + esc(r.q) + '</div>' + body + '<div class="inline">' + (mobile && r.id === activeId ? viewsHtml(r) : '') + '</div></article>';
+  }).join('');
+  const a = thread.find(r => r.id === activeId);
+  $('panel').innerHTML = mobile ? '' : (a ? (a.status === 'thinking' ? '<div class="empty">Fetching the figures…</div>' : viewsHtml(a) || '<div class="empty">No table or chart for this answer.</div>') : '<div class="empty">Results appear here.</div>');
+  wireCharts();
+}
+function viewsHtml(r) { return (r.views || []).map(viewHtml).join(''); }
+function srcLine(v) { return v.source ? '<div class="src">' + esc(v.source) + '</div>' : ''; }
+function viewHtml(v) {
+  if (!v || !v.type) return '';
+  if (v.type === 'kpis') return '<div class="vw"><h3>' + esc(v.title) + '</h3>' + srcLine(v) + '<div class="kp">' + (v.items || []).map(k => '<div><div class="k">' + esc(k.label) + '</div><div class="x">' + esc(k.value) + '</div>' + (k.sub ? '<div class="s">' + esc(k.sub) + '</div>' : '') + '</div>').join('') + '</div></div>';
+  if (v.type === 'table') return '<div class="vw"><h3>' + esc(v.title) + '</h3>' + srcLine(v) + '<div class="tw"><table><thead><tr>' + v.columns.map(c => '<th class="' + (c.align === 'r' ? 'r' : '') + '">' + esc(c.label) + '</th>').join('') + '</tr></thead><tbody>' + v.rows.map(row => '<tr>' + v.columns.map(c => '<td class="' + (c.align === 'r' ? 'r' : '') + '">' + esc(row[c.key]) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div></div>';
+  if (v.type === 'bar' || v.type === 'line') {
+    const series = (v.series || []).filter(s => s.values && s.values.some(x => x !== null && x !== undefined));
+    const leg = series.length > 1 ? '<div class="leg">' + series.map((s, i) => '<span><i style="background:' + PAL[i % PAL.length] + '"></i>' + esc(s.name) + '</span>').join('') + '</div>' : '';
+    return '<div class="vw"><h3>' + esc(v.title) + '</h3>' + srcLine(v) + leg + '<div class="ch" data-v="' + esc(JSON.stringify(Object.assign({}, v, { series }))) + '"><div class="tip"></div></div></div>';
+  }
+  return '';
+}
+function fmtVal(n, f) { if (n === null || n === undefined || !isFinite(n)) return '—'; if (f === 'gbp') return '£' + Math.round(n).toLocaleString('en-GB'); if (f === 'pct') return (Math.round(n * 10) / 10).toFixed(1) + '%'; return Math.round(n).toLocaleString('en-GB'); }
+function niceMax(m) { if (m <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(m))); const k = m / p; return (k <= 1 ? 1 : k <= 2 ? 2 : k <= 2.5 ? 2.5 : k <= 5 ? 5 : 10) * p; }
+function wireCharts() { document.querySelectorAll('.ch[data-v]').forEach(el => { if (el.dataset.done) return; el.dataset.done = 1; drawChart(el, JSON.parse(el.dataset.v)); }); }
+function drawChart(el, v) {
+  const W = Math.max(300, el.clientWidth || 600), S = v.series, n = v.x.length, f = v.fmt, NS = 'http://www.w3.org/2000/svg';
+  const horiz = v.type === 'bar' && v.horizontal;
+  let max = 0;
+  if (v.type === 'bar' && v.stacked) for (let i = 0; i < n; i++) max = Math.max(max, S.reduce((t, s) => t + (s.values[i] || 0), 0));
+  else S.forEach(s => s.values.forEach(x => { if (x > max) max = x; }));
+  if (f === 'pct') max = Math.max(max, 100);
+  max = niceMax(max);
+  let H, svg = '', hits = [];
+  if (horiz) {
+    const lw = Math.min(170, W * .38), rowH = 30; H = n * rowH + 8; const pw = W - lw - 70;
+    v.x.forEach((lab, i) => {
+      const val = S[0].values[i] || 0, w = Math.max(2, val / max * pw), y = 4 + i * rowH;
+      svg += '<text x="' + (lw - 8) + '" y="' + (y + 19) + '" text-anchor="end" fill="#c9cdd1" font-size="12.5">' + esc(lab.length > 24 ? lab.slice(0, 23) + '…' : lab) + '</text>';
+      svg += '<rect x="' + lw + '" y="' + (y + 6) + '" width="' + w + '" height="18" rx="4" fill="' + PAL[0] + '"/>';
+      svg += '<text x="' + (lw + w + 6) + '" y="' + (y + 19) + '" fill="#e8eaed" font-size="12.5">' + fmtVal(val, f) + '</text>';
+    });
+    el.insertAdjacentHTML('afterbegin', '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(v.title) + '">' + svg + '</svg>');
+    return;
+  }
+  H = 230; const L = 52, R = 10, T = 10, B = 34, pw = W - L - R, ph = H - T - B, step = pw / n;
+  for (let g = 0; g <= 4; g++) { const y = T + ph - g / 4 * ph; svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="#24282c"/><text x="' + (L - 6) + '" y="' + (y + 4) + '" text-anchor="end" fill="#9aa0a6" font-size="11">' + fmtVal(max * g / 4, f) + '</text>'; }
+  const every = Math.ceil(n / Math.max(1, Math.floor(pw / 56)));
+  v.x.forEach((lab, i) => { if (i % every === 0) svg += '<text x="' + (L + step * (i + .5)) + '" y="' + (H - 12) + '" text-anchor="middle" fill="#9aa0a6" font-size="11">' + esc(lab) + '</text>'; });
+  const y = val => T + ph - (val / max) * ph;
+  if (v.type === 'bar') {
+    const groups = v.stacked ? 1 : S.length, bw = Math.max(3, Math.min(34, (step - 6) / groups - 2));
+    for (let i = 0; i < n; i++) {
+      let acc = 0; const x0 = L + step * i + (step - (bw + 2) * groups + 2) / 2;
+      S.forEach((s, k) => {
+        const val = s.values[i]; if (val === null || val === undefined) return;
+        if (v.stacked) { const top = y(acc + val), bot = y(acc); svg += '<rect x="' + x0 + '" y="' + top + '" width="' + bw + '" height="' + Math.max(0, bot - top - (k ? 2 : 0)) + '" fill="' + PAL[k] + '"' + (k === S.length - 1 ? ' rx="3"' : '') + '/>'; acc += val; }
+        else { const xx = x0 + k * (bw + 2); svg += '<rect x="' + xx + '" y="' + y(val) + '" width="' + bw + '" height="' + Math.max(0, T + ph - y(val)) + '" rx="3" fill="' + PAL[k] + '"/>'; }
+      });
+      hits.push(i);
+    }
+  } else {
+    S.forEach((s, k) => {
+      let d = ''; s.values.forEach((val, i) => { if (val === null || val === undefined) return; d += (d ? 'L' : 'M') + (L + step * (i + .5)).toFixed(1) + ' ' + y(val).toFixed(1); });
+      svg += '<path d="' + d + '" fill="none" stroke="' + PAL[k % PAL.length] + '" stroke-width="' + (s.strong ? 3 : 2) + '"' + (s.strong ? '' : ' opacity=".9"') + '/>';
+    });
+    for (let i = 0; i < n; i++) hits.push(i);
+  }
+  svg += '<line class="xh" x1="0" x2="0" y1="' + T + '" y2="' + (T + ph) + '" stroke="#5f6368" stroke-dasharray="3 3" visibility="hidden"/>';
+  hits.forEach(i => { svg += '<rect class="hit" data-i="' + i + '" x="' + (L + step * i) + '" y="' + T + '" width="' + step + '" height="' + ph + '" fill="transparent"/>'; });
+  el.insertAdjacentHTML('afterbegin', '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(v.title) + '">' + svg + '</svg>');
+  const tip = el.querySelector('.tip'), xh = el.querySelector('.xh'), sv = el.querySelector('svg');
+  const show = i => {
+    const x = L + step * (i + .5); xh.setAttribute('x1', x); xh.setAttribute('x2', x); xh.setAttribute('visibility', 'visible');
+    tip.innerHTML = '<b>' + esc(v.x[i]) + '</b>' + S.map((s, k) => '<div><span style="color:' + PAL[k % PAL.length] + '">■</span> ' + esc(s.name) + ': ' + fmtVal(s.values[i], f) + '</div>').join('');
+    tip.style.display = 'block'; const scale = sv.clientWidth / W; let left = x * scale + 12; if (left + tip.offsetWidth > el.clientWidth) left = x * scale - tip.offsetWidth - 12; tip.style.left = Math.max(0, left) + 'px'; tip.style.top = '8px';
+  };
+  el.querySelectorAll('.hit').forEach(h => { h.addEventListener('mouseenter', () => show(+h.dataset.i)); h.addEventListener('click', () => show(+h.dataset.i)); });
+  sv.addEventListener('mouseleave', () => { tip.style.display = 'none'; xh.setAttribute('visibility', 'hidden'); });
+}
+
+/* ---------- screens ---------- */
+function showWork() { $('home').style.display = 'none'; $('work').style.display = 'block'; document.querySelector('footer').style.display = 'none'; setTimeout(() => $('q2').focus(), 0); }
+function showHome() { $('work').style.display = 'none'; $('home').style.display = 'flex'; document.querySelector('footer').style.display = 'flex'; }
+function setBusy() { $('b1').disabled = busy; $('b2').disabled = busy; }
+function needSignIn() { $('signin').style.display = 'block'; $('u').focus(); status(); }
+function status() {
+  const el = $('status');
+  if (LIVE) el.innerHTML = getToken() ? '<span class="dot"></span> Connected to Brandon Hall · Guestline feed' : '<span class="dot off"></span> Sign in to connect';
+  else el.innerHTML = '<a href="brief.html#brief">Open today\'s market brief</a> &nbsp;<span class="preview">Preview: real Brandon Hall figures for 1–17 Nov and 25 Nov (18–24 Nov not loaded here), nights on the books to March 2027. Rival rates are sample figures. Live in HosPRO, ARIA reads the 03:45 Guestline feed.</span>';
+}
+function setProp(p) { prop = p; $('prop0').value = p; $('prop').value = p; }
+
+$('f1').addEventListener('submit', e => { e.preventDefault(); ask($('q1').value); });
+$('f2').addEventListener('submit', e => { e.preventDefault(); ask($('q2').value); });
+$('homeBtn').addEventListener('click', showHome);
+$('prop0').addEventListener('change', e => setProp(e.target.value));
+$('prop').addEventListener('change', e => setProp(e.target.value));
+$('thread').addEventListener('click', e => { const a = e.target.closest('.ans'); if (a && a.dataset.id !== activeId) { activeId = a.dataset.id; render(); const el = document.querySelector('.ans[data-id="' + activeId + '"]'); if (el && matchMedia('(max-width:900px)').matches) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); } });
+$('thread').addEventListener('keydown', e => { if (e.key === 'Enter') { const a = e.target.closest('.ans'); if (a) { activeId = a.dataset.id; render(); } } });
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(render, 200); });
+$('signin').addEventListener('submit', async e => {
+  e.preventDefault(); $('signErr').textContent = '';
+  try {
+    const r = await fetch(GL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ u: $('u').value.trim(), p: $('p').value }) });
+    const j = await r.json();
+    if (j && j.ok && j.token) { setToken(j.token); $('p').value = ''; $('signin').style.display = 'none'; status(); $('q1').focus(); }
+    else $('signErr').textContent = 'That login was not accepted.';
+  } catch (err) { $('signErr').textContent = 'Could not reach HosBUSINESS. Check the connection and try again.'; }
+});
+let ex = 0; setInterval(() => { if (document.activeElement !== $('q1') && !$('q1').value) $('q1').placeholder = EXAMPLES[ex++ % EXAMPLES.length]; }, 4000);
+
+(async () => {
+  if (LIVE) { if (!getToken()) needSignIn(); status(); return; }
+  loadSnap().then(status); status();
+  if (window.claude && claude.use) { try { sample = await claude.use('sample'); } catch (e) { sample = null; } }
+})();
+</script>
+</body>
+</html>
