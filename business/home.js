@@ -2746,7 +2746,9 @@
 
       /* v39.34 — expose snapshot meta + full doc globally so the three
          coloured revenue boxes can lock to it. */
-      if (j.source === 'soap-snapshot' && j.monthForecast) {
+      /* v39.38 — accept 'rezlynx-pdf' (locked to 06:00 Rezlynx A&F) and
+         future 'rezlynx-email' too, not just 'soap-snapshot'. */
+      if (j.monthForecast && (j.source === 'soap-snapshot' || j.source === 'rezlynx-pdf' || j.source === 'rezlynx-email')) {
         window.AF_SNAPSHOT = {
           monthForecast: j.monthForecast,
           rows: j.rows || [],

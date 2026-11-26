@@ -592,7 +592,11 @@
     var act, bks, allMonth, allMonthOcc;
     var snapMeta = window.AF_SNAPSHOT_META || null;
     var snapMF = (window.AF_SNAPSHOT && window.AF_SNAPSHOT.monthForecast) ? window.AF_SNAPSHOT.monthForecast : null;
-    var snapFresh = snapMF && snapMeta && snapMeta.asOfDate === _todayIso && snapMeta.source === 'soap-snapshot';
+    /* v39.38 — accept both 'soap-snapshot' (gl-af-snapshot.js, estimate-based)
+       and 'rezlynx-pdf' (gl-af-rezlynx.js, Rezlynx-locked). The latter gives
+       an exact match to Raj's 06:00 A&F figures; the former is the fallback. */
+    var snapFresh = snapMF && snapMeta && snapMeta.asOfDate === _todayIso
+                    && (snapMeta.source === 'soap-snapshot' || snapMeta.source === 'rezlynx-pdf' || snapMeta.source === 'rezlynx-email');
 
     if (snapFresh) {
       /* LOCKED PATH — read month totals straight from the 06:10 snapshot */
