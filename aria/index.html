@@ -523,8 +523,10 @@ async function toggleMic() {
     const type = rec.mimeType || mime || 'audio/webm'; rec = null; if (recCancel || !recChunks.length) return;
     const blob = new Blob(recChunks, { type }); $('q').placeholder = 'Writing down what you said…';
     try {
-      const b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(blob); });
-      const j = await api({ action: 'transcribe', audio: b64, mime: type });
+      let send = blob, sendType = type;
+      try { send = await toWav(blob); sendType = 'audio/wav'; } catch (e) { /* fall back to the original recording */ }
+      const b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(send); });
+      const j = await api({ action: 'transcribe', audio: b64, mime: sendType });
       $('q').placeholder = 'Ask ARIA anything…';
       if (j.text) { $('q').value = j.text; autosize(); setBusy(); ask(j.text); $('q').value = ''; autosize(); }
       else alert('ARIA did not catch that. Try again a little closer to the microphone.');
@@ -532,6 +534,22 @@ async function toggleMic() {
   };
   rec.start(250); recStart = Date.now(); $('mic').classList.add('rec'); $('recbar').style.display = 'flex';
   recTimer = setInterval(() => { const s = Math.floor((Date.now() - recStart) / 1000); $('rectime').textContent = 'Listening… ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ' · tap the red button to send'; if (s >= 60) stopRec(false); }, 250);
+}
+/* Phones record in different formats (Chrome: WebM, iPhone: MP4). Convert to 16 kHz mono WAV, which the speech engine always accepts. */
+async function toWav(blob) {
+  const AC = window.AudioContext || window.webkitAudioContext; const ctx = new AC();
+  const buf = await new Promise((res, rej) => blob.arrayBuffer().then(ab => { const p = ctx.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); }, rej));
+  ctx.close && ctx.close();
+  const rate = 16000, len = Math.ceil(buf.duration * rate);
+  const off = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, len, rate);
+  const src = off.createBufferSource(); src.buffer = buf; src.connect(off.destination); src.start();
+  const out = await new Promise((res, rej) => { off.oncomplete = e => res(e.renderedBuffer); const p = off.startRendering(); if (p && p.then) p.then(res, rej); });
+  const d = out.getChannelData(0), b = new ArrayBuffer(44 + d.length * 2), v = new DataView(b);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + d.length * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, d.length * 2, true);
+  for (let i = 0; i < d.length; i++) { const x = Math.max(-1, Math.min(1, d[i])); v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7fff, true); }
+  return new Blob([b], { type: 'audio/wav' });
 }
 function stopRec(cancel) { if (!rec) return; recCancel = cancel; try { rec.stop(); } catch (e) {} }
 function browserSpeech() {
