@@ -842,15 +842,49 @@
     var days = daysIn(S, d.from, d.to);
     var food = tally.food || 0, bev = tally.bev || 0, foodRev = tally.fb;
 
-    // Breakfast counts from Postings
+    /* v39.35 — Breakfast counts from Postings (gl_days.bk[]).
+       Previously under-reported because the server-side counter only matched
+       'RES1_BRK'; v8.5.29 broadened that to match any BRK-containing code.
+       Dashboard change here: show a stale-data badge if the count is zero
+       on a day with rooms sold (i.e. the POS extract hasn't landed yet). */
     var inr = 0, paid = 0, biv = 0, bpv = 0;
-    days.forEach(function (x) { if (Array.isArray(x.bk)) { inr += x.bk[0] || 0; biv += x.bk[1] || 0; paid += Math.max(0, x.bk[2] || 0); bpv += Math.max(0, x.bk[3] || 0); } });
+    days.forEach(function (x) {
+      /* Prefer the server's computed bks total when present (v8.5.29+) */
+      if (Array.isArray(x.bk)) {
+        inr  += x.bk[0] || 0; biv += x.bk[1] || 0;
+        paid += Math.max(0, x.bk[2] || 0); bpv += Math.max(0, x.bk[3] || 0);
+      }
+    });
+
+    /* Stale detection — if we're looking at a single closed day with rooms sold
+       AND the breakfast counter is zero AND the current UK time is past 09:00
+       (by which time the overnight POS extract should have landed), the tile
+       is almost certainly looking at missing data rather than a true zero. */
+    var bkTotal = (inr || 0) + (paid || 0);
+    var bkMissing = false, bkStaleNote = '';
+    if (bkTotal === 0 && tally.rooms > 0 && days.length <= 7) {
+      /* current London hour */
+      var now = new Date();
+      var londonHour = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(now), 10);
+      /* the day being viewed */
+      var viewedIso = days[days.length - 1] && days[days.length - 1].d;
+      var todayIso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(now);
+      /* stale if the viewed day has already closed (yesterday or older) and it's past 09:00 */
+      if (viewedIso && viewedIso < todayIso && londonHour >= 9) {
+        bkMissing = true;
+        bkStaleNote = 'awaiting POS data';
+      }
+    }
 
     var html = '<div class="v18-fb-strip"><h3>Food &amp; Beverage summary · ' + esc(d.label) + ' <span class="v13-src">Guestline API ●</span></h3><div class="tiles">';
     html += '<div class="tile"><div class="l">Total F&amp;B revenue</div><div class="v">' + gbp(foodRev) + '</div><div class="d">' + (tally.nights ? gbp(foodRev / tally.nights) + ' a day · ' : '') + (tally.rooms ? gbp(foodRev / tally.rooms, 2) + ' per occupied room' : '') + delta(foodRev, ctally && ctally.fb) + '</div></div>';
     html += '<div class="tile"><div class="l">Food revenue</div><div class="v">' + gbp(food) + '</div><div class="d">' + pc(foodRev ? food / foodRev : null) + ' of F&amp;B</div></div>';
     html += '<div class="tile"><div class="l">Beverage revenue</div><div class="v">' + gbp(bev) + '</div><div class="d">' + pc(foodRev ? bev / foodRev : null) + ' of F&amp;B</div></div>';
-    html += '<div class="tile"><div class="l">Breakfasts served</div><div class="v">' + num(inr + paid) + '</div><div class="d">' + num(inr) + ' in the rate · ' + num(paid) + ' paid on the day</div></div>';
+    if (bkMissing) {
+      html += '<div class="tile" style="background:#fff8e1;border-color:#f3d65f"><div class="l">Breakfasts served</div><div class="v" style="color:#8a6900">—</div><div class="d" style="color:#8a6900"><b>' + bkStaleNote + '</b><br><span style="font-size:11px">extract not processed yet; refresh after 09:30</span></div></div>';
+    } else {
+      html += '<div class="tile"><div class="l">Breakfasts served</div><div class="v">' + num(bkTotal) + '</div><div class="d">' + num(inr) + ' in the rate · ' + num(paid) + ' paid on the day</div></div>';
+    }
     html += '<div class="tile"><div class="l">Nights in view</div><div class="v">' + num(tally.nights) + '</div><div class="d">' + (tally.rooms ? num(tally.rooms) + ' rooms sold · ' + pc(tally.occ) + ' occupancy' : '') + '</div></div>';
     html += '</div></div>';
 
@@ -1431,7 +1465,23 @@
     // Shortlist of chips; the full range + custom + compare live in each page's v13-dr bar
     var QUICK = [['1', 'Yesterday'], ['7', '7 days'], ['14', '14 days'], ['28', '28 days'], ['mtd', 'MTD'], ['lastmonth', 'Last month'], ['90', '90 days'], ['12m', '12 months']];
     var chips = QUICK.map(function (o) { return '<button class="v16-chip' + (r.kind === o[0] ? ' on' : '') + '" data-v13-r="' + o[0] + '">' + o[1] + '</button>'; }).join('');
+    /* v39.36 — custom date range inputs in the top bar. Already wired via
+       the global click/change handlers on data-v13-cf / data-v13-ct, so the
+       same two-input pattern we use inside per-page drBar works here. Picking
+       one date sets both ends to that day (specific-day view); picking two
+       different dates gives a range. */
+    var customOn = r.kind === 'custom';
+    var cf = customOn ? esc(r.from || '') : '';
+    var ct = customOn ? esc(r.to || '') : '';
+    var customBox =
+      '<span class="v16-custom" style="display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:4px 10px;border:1px solid ' + (customOn ? '#1a6442' : '#d4d2cb') + ';border-radius:6px;background:' + (customOn ? '#eaf5ef' : '#fff') + ';font-size:12.5px">' +
+        '<span style="font-weight:600;color:#1a2238">Custom</span>' +
+        '<input type="date" data-v13-cf value="' + cf + '" style="font:inherit;font-size:12.5px;padding:2px 4px;border:1px solid #d4d2cb;border-radius:4px" title="From date">' +
+        '<span style="color:#7b8494">→</span>' +
+        '<input type="date" data-v13-ct value="' + ct + '" style="font:inherit;font-size:12.5px;padding:2px 4px;border:1px solid #d4d2cb;border-radius:4px" title="To date (leave same as From for a single day)">' +
+      '</span>';
     var cmpSel = '<select data-v13-cmp>' + [['none', 'No compare'], ['prev', 'Previous period'], ['ly', 'Same period LY']].map(function (o) { return '<option value="' + o[0] + '"' + (cmp === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+    chips += customBox;
     var G = window.GuestlineFeed && window.GuestlineFeed.info ? window.GuestlineFeed.info() : null;
     // v26: honest chip label — show the actual last-pull timestamp from Guestline, not just "Live"
     var feedChip = '';

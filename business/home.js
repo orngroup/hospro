@@ -2981,12 +2981,41 @@
     if (t.id === 'tr-range') { trRange = t.value; renderTrends(); }
     if (t.dataset && t.dataset.done) { var D = doneMap(); if (t.checked) D[t.dataset.done] = new Date().toISOString().slice(0, 10); else delete D[t.dataset.done]; try { localStorage.setItem(DKEY, JSON.stringify(D)); } catch (e2) {} if (document.querySelector('#t-pf-actions.on')) renderActions(); else { var a = t.closest('.act'); if (a) a.classList.toggle('done', t.checked); } }
   });
-  document.addEventListener('hub-signin', function () { unlock(); liveFeed().then(glFeed).then(fetchUploadedAF); });
+  /* v39.36 — isolate failures between feed steps.
+     Previously: liveFeed().then(glFeed).then(fetchUploadedAF) — if any step
+     rejected, the later ones never ran, and the dashboard loaded empty
+     (which is what Patrik saw). Now each step runs regardless of what the
+     previous one did, and failures are caught so one dead feed never blocks
+     the others. A visible chip warns if any step failed. */
+  function loadAllFeeds() {
+    var errors = [];
+    return Promise.resolve()
+      .then(function () { return liveFeed(); }).catch(function (e) { errors.push('gmail: ' + (e && e.message || e)); })
+      .then(function () { return glFeed();   }).catch(function (e) { errors.push('guestline-api: ' + (e && e.message || e)); })
+      .then(function () { return fetchUploadedAF(); }).catch(function (e) { errors.push('af-snapshot: ' + (e && e.message || e)); })
+      .then(function () {
+        if (errors.length) {
+          console.warn('[feed] partial failure:', errors);
+          var c = $('feed-chip');
+          if (c && !c.querySelector('.retry')) {
+            /* Only show the warning if we actually have NO data — otherwise don't nag */
+            var T = window.Trading, S = T ? T.S() : {};
+            var hasAnyData = (S && (S.af || (S.gl && S.gl.byDay)));
+            if (!hasAnyData) {
+              c.className = 'feed-chip warn';
+              c.innerHTML = '⚠ No data loaded · <button class="retry" style="background:transparent;border:1px solid #fff;color:#fff;border-radius:4px;padding:1px 6px;margin-left:4px;cursor:pointer;font:inherit;font-size:11px">Retry</button>';
+              c.querySelector('.retry').addEventListener('click', function (e) { e.stopPropagation(); loadAllFeeds(); });
+            }
+          }
+        }
+      });
+  }
+  document.addEventListener('hub-signin', function () { unlock(); loadAllFeeds(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
   window.HubAccounts = renderAccounts;
   if (window.Profit && window.Profit.register) { ['home', renderHome, 'actions', renderActions, 'fb', renderFb, 'cnb', renderCnb, 'comp', renderComp, 'data', renderData, 'help', renderHelp, 'trends', renderTrends].forEach(function (v, i, arr) { if (i % 2 === 0) window.Profit.register(v, arr[i + 1]); }); }
   document.addEventListener('DOMContentLoaded', function () {
-    unlock(); crumb('pf-home'); if (window.Profit.signedIn()) liveFeed().then(glFeed).then(fetchUploadedAF); else chip();
+    unlock(); crumb('pf-home'); if (window.Profit.signedIn()) loadAllFeeds(); else chip();
     var sv = $('t-save'); if (sv && !sv.querySelector('.segs')) sv.insertAdjacentHTML('afterbegin', '<div id="save-pills"></div>');
     new MutationObserver(function () { annotate(document.querySelector('main')); var sp = $('save-pills'); if (sp && !sp.firstChild && window.Profit.signedIn()) sp.innerHTML = '<p style="margin:0 0 14px"><button class="btn ghost" data-go="pf-actions">← Back to the Action Centre</button></p>'; }).observe(document.querySelector('main'), { childList: true, subtree: true });
   });
