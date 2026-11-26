@@ -93,11 +93,41 @@ td{padding:7px 10px;border-top:1px solid var(--line);white-space:nowrap}
 .tip b{display:block;font-weight:600;margin-bottom:2px}
 .empty{color:var(--mute);font-size:14px;padding:30px 10px;text-align:center}
 .preview{font-size:12px;color:var(--warn);border:1px solid #4a3d16;background:#1a160a;border-radius:8px;padding:6px 10px}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.acts button{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer;color:var(--ink)}
+.acts button.on{border-color:var(--jade);color:var(--jadek)}
+.opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.opts button{background:var(--jade);color:#001a17;border:0;border-radius:999px;padding:7px 14px;font-weight:700;font-size:14px;cursor:pointer}
+.links{margin:10px 0 0;padding:0;list-style:none;font-size:13px}.links li{padding:3px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+.tools button,.chip{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13.5px;cursor:pointer;color:var(--ink)}
+.tools .who{color:var(--mute);font-size:13px}
+#home .tools{margin-top:18px}
+.bar .tools{flex-wrap:nowrap}
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:20;align-items:flex-start;justify-content:flex-end}
+#sheet>div{background:var(--card);border-left:1px solid var(--line);width:min(440px,100%);height:100%;overflow:auto;padding:18px}
+#sheet h2{font-size:17px;margin:0 0 4px}#sheet p{color:var(--mute);font-size:13.5px;margin:0 0 14px}
+#sheet ul{list-style:none;margin:0 0 18px;padding:0}#sheet li{display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);padding:9px 0}
+#sheet li button.q{flex:1;text-align:left;background:none;border:0;cursor:pointer;font-size:14.5px;padding:0}
+#sheet li button.x{background:none;border:0;color:var(--mute);cursor:pointer;font-size:16px}
+#sheet .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+#sheet .row button{background:var(--jade);color:#001a17;border:0;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer}
+#sheet .close{float:right;background:none;border:0;color:var(--mute);font-size:22px;cursor:pointer}
+@media print{
+  body{background:#fff;color:#000}.bar,#thread .ans:not(.on),footer,.acts,#sheet{display:none!important}
+  .grid{display:block}#panel{position:static;max-height:none;overflow:visible}
+  .vw,.ans{background:#fff;border-color:#ccc;break-inside:avoid}.kp>div{background:#f3f4f5}th{background:#eee;color:#333}td{border-color:#ddd}
+  .tw{max-height:none;overflow:visible}
+}
 @media (max-width:900px){
+  .bar .tools .who{display:none}
+  .bar .tools{order:3;flex:0 0 100%;justify-content:flex-start;gap:6px}
+  .bar .tools button{padding:4px 10px;font-size:12.5px}
   .grid{grid-template-columns:1fr}
   #panel{display:none}
   .ans.on .inline{display:flex}
-  .bar{flex-wrap:nowrap;gap:8px;padding:8px 10px}
+  .bar{flex-wrap:wrap;gap:8px;padding:8px 10px}
+  .bar .search{flex:1 1 0}
   .bar .word{font-size:18px}
   .bar .search{min-width:0}
   .bar select{max-width:96px;padding:7px 6px;font-size:13px}
@@ -111,11 +141,12 @@ td{padding:7px 10px;border-top:1px solid var(--line);white-space:nowrap}
     <select id="prop0"><option value="brandon-hall">Brandon Hall Hotel &amp; Spa</option><option value="mercure-st-helens">Mercure St Helens</option></select></div>
   <form class="search" id="f1" role="search"><label class="sr" for="q1">Ask ARIA</label>
     <input id="q1" autocomplete="off" placeholder="Ask ARIA about your hotel"><button id="b1">Ask</button></form>
-  <p class="hint" id="hint">Ask in your own words: last night's revenue, occupancy for the next 7 days, breakfasts booked, what the bar till sold, what rivals are charging.</p>
-  <form id="signin" autocomplete="on"><h2>Sign in</h2><p>Use your HosBUSINESS login. ARIA shows the same figures you can see there.</p>
-    <label for="u">Username</label><input id="u" autocomplete="username" required>
+  <p class="hint" id="hint">Ask in your own words: last night's revenue, the next 7 nights, housekeeping, who was late, urgent maintenance, handover notes, events next week, what rivals are offering, or a HOD report.</p>
+  <form id="signin" autocomplete="on"><h2>Sign in</h2><p>Use your ARIA or HosBUSINESS name and password.</p>
+    <label for="u">Name</label><input id="u" autocomplete="username" required>
     <label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required>
     <button>Sign in</button><div id="signErr" role="alert"></div></form>
+  <div class="tools" id="tools0"></div>
   <div class="status" id="status"></div>
 </main>
 <div id="work">
@@ -124,6 +155,7 @@ td{padding:7px 10px;border-top:1px solid var(--line);white-space:nowrap}
     <form class="search" id="f2" role="search"><label class="sr" for="q2">Ask ARIA</label><input id="q2" autocomplete="off" placeholder="Ask another question"><button id="b2">Ask</button></form>
     <label class="sr" for="prop">Property</label>
     <select id="prop"><option value="brandon-hall">Brandon Hall Hotel &amp; Spa</option><option value="mercure-st-helens">Mercure St Helens</option></select>
+    <div class="tools" id="tools1"></div>
   </div>
   <div class="grid">
     <section id="thread" aria-label="Answers" aria-live="polite"></section>
@@ -131,6 +163,7 @@ td{padding:7px 10px;border-top:1px solid var(--line);white-space:nowrap}
   </div>
 </div>
 <footer>Powered by&nbsp;<b>HosPRO</b></footer>
+<div id="sheet" role="dialog" aria-modal="true" aria-label="Favourites and My Daily Update"><div id="sheetBody"></div></div>
 
 <script src="aria-core.js"></script>
 <script>
@@ -142,17 +175,31 @@ td{padding:7px 10px;border-top:1px solid var(--line);white-space:nowrap}
 const LIVE = /(^|\.)hospro\.co\.uk$/.test(location.hostname) || /[?&]live=1/.test(location.search);
 const ASK_URL = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/ariaAsk';
 const GL_URL = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/glData';
-const TOKEN_KEY = 'hosbusiness_gl_token';
+const TOKEN_KEY = 'aria_token', USER_KEY = 'aria_user';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const PAL = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
-const EXAMPLES = ["What was last night's revenue?", 'Occupancy for the next 7 days', 'How many breakfasts are booked this weekend?', 'What did the bar till sell this month?', 'What are rivals charging on 12 December?', 'Month to date ADR and RevPAR', 'Which nights next week are weakest?'];
+const EXAMPLES = ['Create a HOD report for yesterday', 'Who was late yesterday?', 'Urgent maintenance jobs', 'Housekeeping progress today', 'Handover notes from last night', 'What is Coombe Abbey offering this Christmas?', "What was last night's revenue?", 'Occupancy for the next 7 days', 'How many breakfasts are booked this weekend?', 'What did the bar till sell this month?', 'What are rivals charging on 12 December?', 'Month to date ADR and RevPAR', 'Which nights next week are weakest?'];
 let prop = 'brandon-hall', sample = null, db = null, snap = null, busy = false;
 const thread = []; let activeId = null;
 
 /* ---------- token (shared with HosBUSINESS on the same site) ---------- */
-function getToken() { try { const t = sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY); if (!t) return null; const exp = Number(t.split('.')[0]); if (exp && exp < (exp > 1e12 ? Date.now() : Date.now() / 1000)) return null; return t; } catch (e) { return null; } }
-function setToken(t) { try { if (t) sessionStorage.setItem(TOKEN_KEY, t); else { sessionStorage.removeItem(TOKEN_KEY); } } catch (e) {} }
+function tokExp(t) { const m = /^a2\.([A-Za-z0-9_-]+)\./.exec(t || ''); if (!m) return 0; try { return JSON.parse(atob(m[1].replace(/-/g, '+').replace(/_/g, '/'))).exp || 0; } catch (e) { return 0; } }
+function getToken() { try { const t = localStorage.getItem(TOKEN_KEY); return t && tokExp(t) > Date.now() ? t : null; } catch (e) { return null; } }
+function setToken(t, user) { try { if (t) { localStorage.setItem(TOKEN_KEY, t); localStorage.setItem(USER_KEY, JSON.stringify(user || {})); } else { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); } } catch (e) {} }
+function me() { try { return JSON.parse(localStorage.getItem(USER_KEY) || '{}'); } catch (e) { return {}; } }
+let prefs = { favs: [], daily: [] };
+async function api(body) {
+  const res = await fetch(ASK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() }, body: JSON.stringify(body) });
+  const j = await res.json().catch(() => ({}));
+  if (res.status === 401) { setToken(null); paintTools(); needSignIn(); throw new Error(j.error || 'Please sign in again.'); }
+  if (!j.ok) throw new Error(j.error || 'ARIA could not answer just now.');
+  return j;
+}
+async function loadPrefs() { if (!LIVE || !getToken()) return; try { const j = await api({ action: 'prefs' }); prefs = { favs: j.favs || [], daily: j.daily || [] }; render(); paintTools(); } catch (e) {} }
+const bq = q => String(q || '').replace(/ · My Daily Update$/, '');
+const isFav = q => prefs.favs.some(f => f.q === bq(q)), isDaily = q => prefs.daily.some(f => f.q === bq(q));
+async function togglePref(kind, q) { const on = kind === 'fav' ? !isFav(q) : !isDaily(q); try { const j = await api({ action: kind, q, on }); prefs = { favs: j.favs || [], daily: j.daily || [] }; render(); paintTools(); if ($('sheet').style.display === 'flex') openSheet(); } catch (e) { alert(e.message); } }
 
 /* ---------- preview data source over the real snapshot ---------- */
 let snapWait = null;
@@ -180,13 +227,11 @@ async function ask(q) {
 }
 function done(r, out) { Object.assign(r, out, { status: out.error ? 'error' : 'done' }); render(); }
 function history() { return thread.filter(x => x.status === 'done' && x.answer).slice(0, 4).reverse().map(x => ({ q: x.q, a: x.answer })); }
+function pickOption(id, opt) { const r = thread.find(x => x.id === id); if (r) ask(r.q + ' (' + opt + ')'); }
 
 async function askLive(r) {
-  const res = await fetch(ASK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() }, body: JSON.stringify({ question: r.q, history: history() }) });
-  const j = await res.json().catch(() => ({}));
-  if (res.status === 401) { setToken(null); needSignIn(); throw new Error(j.error || 'Please sign in again.'); }
-  if (!j.ok) throw new Error(j.error || 'ARIA could not answer just now.');
-  return { answer: j.answer, points: j.points || [], views: j.views || [], basis: j.basis || '', sources: j.sources || [] };
+  const j = await api({ question: r.q, history: history() });
+  return { answer: j.answer, points: j.points || [], views: j.views || [], basis: j.basis || '', sources: j.sources || [], links: j.links || [], clarify: j.clarify || '', options: j.options || [], report: !!j.report };
 }
 
 async function askPreview(r) {
@@ -219,7 +264,10 @@ function render() {
     else if (r.status === 'error') body = '<div class="a err">' + esc(r.error) + '</div>';
     else body = '<div class="a">' + esc(r.answer) + '</div>' +
       (r.points && r.points.length ? '<ul class="pts">' + r.points.map(p => '<li><span class="l">' + esc(p.label) + '</span><span class="v">' + esc(p.value) + (p.note ? '<span class="n">' + esc(p.note) + '</span>' : '') + '</span></li>').join('') + '</ul>' : '') +
-      (r.basis ? '<div class="basis">' + esc(r.basis) + '</div>' : '');
+      (r.basis ? '<div class="basis">' + esc(r.basis) + '</div>' : '') +
+      (r.links && r.links.length ? '<ul class="links">' + r.links.map(l => '<li><a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.title || l.url) + '</a></li>').join('') + '</ul>' : '') +
+      (r.clarify && r.options && r.options.length ? '<div class="opts">' + r.options.map(o => '<button data-opt="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>' : '') +
+      (LIVE && getToken() && !r.clarify ? '<div class="acts"><button data-act="fav" class="' + (isFav(r.q) ? 'on' : '') + '">' + (isFav(r.q) ? '★ Starred' : '☆ Star') + '</button><button data-act="daily" class="' + (isDaily(r.q) ? 'on' : '') + '">' + (isDaily(r.q) ? '✓ In My Daily Update' : '+ My Daily Update') + '</button>' + ((r.views || []).length ? '<button data-act="print">Print / PDF</button>' : '') + '</div>' : '');
     return '<article class="ans' + (r.id === activeId ? ' on' : '') + '" data-id="' + r.id + '" tabindex="0"><div class="q">' + esc(r.q) + '</div>' + body + '<div class="inline">' + (mobile && r.id === activeId ? viewsHtml(r) : '') + '</div></article>';
   }).join('');
   const a = thread.find(r => r.id === activeId);
@@ -305,14 +353,56 @@ function setBusy() { $('b1').disabled = busy; $('b2').disabled = busy; }
 function needSignIn() { $('signin').style.display = 'block'; $('u').focus(); status(); }
 function status() {
   const el = $('status');
-  if (LIVE) el.innerHTML = getToken() ? '<span class="dot"></span> Connected to Brandon Hall · Guestline feed' : '<span class="dot off"></span> Sign in to connect';
+  if (LIVE) el.innerHTML = getToken() ? '<span class="dot"></span> Connected to Brandon Hall · Guestline, HosHOUSE, HosFIX, HosTIME, HosDESK' : '<span class="dot off"></span> Sign in to connect';
   else el.innerHTML = '<a href="brief.html#brief">Open today\'s market brief</a> &nbsp;<span class="preview">Preview: real Brandon Hall figures for 1–17 Nov and 25 Nov (18–24 Nov not loaded here), nights on the books to March 2027. Rival rates are sample figures. Live in HosPRO, ARIA reads the 03:45 Guestline feed.</span>';
+}
+function paintTools() {
+  let h = '';
+  if (LIVE && getToken()) { const u = me(); h = '<button data-tool="favs">★ Favourites' + (prefs.favs.length ? ' (' + prefs.favs.length + ')' : '') + '</button><button data-tool="daily">My Daily Update</button><span class="who">' + esc(u.name || '') + '</span><button data-tool="out">Sign out</button>'; }
+  $('tools0').innerHTML = h; $('tools1').innerHTML = h;
+}
+function openSheet(update) {
+  const li = (arr, kind) => arr.length ? '<ul>' + arr.map(f => '<li><button class="q" data-ask="' + esc(f.q) + '">' + esc(f.q) + '</button><button class="x" data-rm="' + kind + '" data-q="' + esc(f.q) + '" aria-label="Remove">✕</button></li>').join('') + '</ul>' : '<p>Nothing yet.</p>';
+  $('sheetBody').innerHTML = '<button class="close" data-close="1" aria-label="Close">×</button>' +
+    '<h2>My Daily Update</h2><p>ARIA answers these every morning at 07:30 and keeps them here. Add a question with “+ My Daily Update” under any answer.</p>' +
+    '<div class="row"><button data-daily="open">Open today’s update</button><button data-daily="run">Run it now</button></div>' + li(prefs.daily, 'daily') +
+    (update ? '<p>' + esc(update) + '</p>' : '') +
+    '<h2>Favourites</h2><p>Starred questions. Tap one to ask it again with today’s figures.</p>' + li(prefs.favs, 'fav');
+  $('sheet').style.display = 'flex';
+}
+function closeSheet() { $('sheet').style.display = 'none'; }
+function showUpdate(u) {
+  if (!u || !u.items || !u.items.length) return false;
+  u.items.slice().reverse().forEach((it, i) => thread.unshift(Object.assign({}, it, { id: 'd' + Date.now().toString(36) + i, q: it.q + ' · My Daily Update', status: it.error ? 'error' : 'done', error: it.error })));
+  activeId = thread[0].id; showWork(); render(); return true;
+}
+async function dailyAction(kind) {
+  try {
+    if (kind === 'open') { const j = await api({ action: 'dailyGet' }); if (showUpdate(j.update)) closeSheet(); else openSheet('No update built yet today. Use “Run it now”.'); }
+    else { if (!prefs.daily.length) return openSheet('Add a question first.'); openSheet('Building your update… this takes about 20 seconds a question.'); const j = await api({ action: 'dailyRun' }); closeSheet(); showUpdate(j.update); }
+  } catch (e) { openSheet(e.message); }
 }
 function setProp(p) { prop = p; $('prop0').value = p; $('prop').value = p; }
 
 $('f1').addEventListener('submit', e => { e.preventDefault(); ask($('q1').value); });
 $('f2').addEventListener('submit', e => { e.preventDefault(); ask($('q2').value); });
 $('homeBtn').addEventListener('click', showHome);
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-tool],[data-ask],[data-rm],[data-close],[data-daily],[data-act],[data-opt]'); if (!t) return;
+  if (t.dataset.tool === 'favs' || t.dataset.tool === 'daily') { e.preventDefault(); openSheet(); }
+  else if (t.dataset.tool === 'out') { setToken(null); prefs = { favs: [], daily: [] }; paintTools(); showHome(); needSignIn(); }
+  else if (t.dataset.ask) { closeSheet(); ask(t.dataset.ask); }
+  else if (t.dataset.rm) togglePref(t.dataset.rm, t.dataset.q);
+  else if (t.dataset.close) closeSheet();
+  else if (t.dataset.daily) dailyAction(t.dataset.daily);
+  else if (t.dataset.act || t.dataset.opt) {
+    const card = t.closest('.ans'); const r = card && thread.find(x => x.id === card.dataset.id); if (!r) return; e.stopPropagation();
+    if (t.dataset.opt) pickOption(r.id, t.dataset.opt);
+    else if (t.dataset.act === 'print') { activeId = r.id; render(); setTimeout(() => print(), 50); }
+    else togglePref(t.dataset.act, bq(r.q));
+  }
+}, true);
+$('sheet').addEventListener('click', e => { if (e.target === $('sheet')) closeSheet(); });
 $('prop0').addEventListener('change', e => setProp(e.target.value));
 $('prop').addEventListener('change', e => setProp(e.target.value));
 $('thread').addEventListener('click', e => { const a = e.target.closest('.ans'); if (a && a.dataset.id !== activeId) { activeId = a.dataset.id; render(); const el = document.querySelector('.ans[data-id="' + activeId + '"]'); if (el && matchMedia('(max-width:900px)').matches) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); } });
@@ -321,16 +411,16 @@ let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(ren
 $('signin').addEventListener('submit', async e => {
   e.preventDefault(); $('signErr').textContent = '';
   try {
-    const r = await fetch(GL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ u: $('u').value.trim(), p: $('p').value }) });
+    const r = await fetch(ASK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'signin', u: $('u').value.trim(), p: $('p').value }) });
     const j = await r.json();
-    if (j && j.ok && j.token) { setToken(j.token); $('p').value = ''; $('signin').style.display = 'none'; status(); $('q1').focus(); }
-    else $('signErr').textContent = 'That login was not accepted.';
-  } catch (err) { $('signErr').textContent = 'Could not reach HosBUSINESS. Check the connection and try again.'; }
+    if (j && j.ok && j.token) { setToken(j.token, j.user); $('p').value = ''; $('signin').style.display = 'none'; status(); paintTools(); loadPrefs(); $('q1').focus(); }
+    else $('signErr').textContent = (j && j.error) || 'That login was not accepted.';
+  } catch (err) { $('signErr').textContent = 'Could not reach ARIA. Check the connection and try again.'; }
 });
 let ex = 0; setInterval(() => { if (document.activeElement !== $('q1') && !$('q1').value) $('q1').placeholder = EXAMPLES[ex++ % EXAMPLES.length]; }, 4000);
 
 (async () => {
-  if (LIVE) { if (!getToken()) needSignIn(); status(); return; }
+  if (LIVE) { if (!getToken()) needSignIn(); status(); paintTools(); loadPrefs(); return; }
   loadSnap().then(status); status();
   if (window.claude && claude.use) { try { sample = await claude.use('sample'); } catch (e) { sample = null; } }
 })();
