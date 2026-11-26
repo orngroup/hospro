@@ -1,0 +1,5 @@
+{
+  "functions": [
+    { "source": "aria-functions", "codebase": "aria", "runtime": "nodejs20" }
+  ]
+}
