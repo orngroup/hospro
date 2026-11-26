@@ -78,6 +78,7 @@
       adr: sold ? r2(roomsRev / sold) : null, revpar: r2(roomsRev / HOTEL.lettable), trevpar: r2(net / HOTEL.lettable),
       sleepers: x.sl === undefined ? null : num(x.sl), oos: x.oo === undefined ? null : num(x.oo), dfs: x.df === undefined ? null : num(x.df),
       breakfastsIncluded: x.bk ? num(x.bk[0]) : null, breakfastsPaid: x.bk ? num(x.bk[2]) : null,
+      breakfastsServed: x.bks != null ? num(x.bks) : x.bk ? num(x.bk[0]) + num(x.bk[2]) : null,
       lunch: r2(num(c.RES1_LUN) + num(c.BAR1_LUN)), dinner: r2(num(c.RES1_DIN) + num(c.BAR1_DIN)),
       breakfastSales: r2(num(c.RES1_BRK)), roomService: r2(num(c.RS_FOOD) + num(c.RS_BEV))
     };
@@ -193,7 +194,8 @@
           }
           return {
             period: b, totals: t,
-            nights: rows.length <= 31 ? rows.map(function (r) { return { d: r.d, dow: r.dow, revenue: r.revenue, roomsSold: r.roomsSold, occ: r.occ, adr: r.adr, roomsRevenue: r.roomsRevenue, fb: r.fb, food: r.food, beverage: r.beverage, other: r.other }; }) : undefined,
+            nights: rows.length <= 31 ? rows.map(function (r) { return { d: r.d, dow: r.dow, revenue: r.revenue, roomsSold: r.roomsSold, occ: r.occ, adr: r.adr, roomsRevenue: r.roomsRevenue, fb: r.fb, food: r.food, beverage: r.beverage, other: r.other, breakfastsServed: r.breakfastsServed }; }) : undefined,
+            breakfastsServed: rows.every(function (r) { return r.breakfastsServed !== null; }) ? rows.reduce(function (t, r) { return t + r.breakfastsServed; }, 0) : null,
             missingNights: missing.length ? missing : undefined, warning: missing.length ? 'Totals exclude ' + missing.length + ' night(s) with no closed data: ' + missing.slice(0, 10).join(', ') + (missing.length > 10 ? '…' : '') + '. Say so in the answer.' : undefined,
             source: meta.source, lastClosedDay: meta.asOf, _views: views
           };

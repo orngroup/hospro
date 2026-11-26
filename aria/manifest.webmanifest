@@ -1,0 +1,23 @@
+{
+  "name": "ARIA · Brandon Hall",
+  "short_name": "ARIA",
+  "description": "Ask anything about your hotel. Powered by HosPRO.",
+  "id": "/aria/",
+  "start_url": "/aria/?app=1",
+  "scope": "/aria/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0f14",
+  "theme_color": "#0d0f14",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Daily Snapshot", "url": "/aria/?report=daily_snapshot", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Business View", "url": "/aria/?report=business_view", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Ask by voice", "url": "/aria/?voice=1", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
