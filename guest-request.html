@@ -52,7 +52,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);bo
 </head>
 <body>
 <div class="top">
-  <img src="assets/logos/logo---white-transparent.png" alt="Brandon Hall" onerror="this.style.display='none'">
+  <a href="hoshouse-request.html?board" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:10px;padding:8px 12px;color:#fff;text-decoration:none;font-weight:700;font-size:13px">← HosDesk</a>
   <div class="t"><b>Guest Requests Payable</b><span>Brandon Hall Hotel &amp; Spa</span></div>
   <div class="pill" id="modePill">Reception</div>
 </div>
@@ -67,6 +67,7 @@ var firebaseConfig={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:
 var db=null; try{ firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }catch(e){ console.warn('firebase',e); }
 var COL='hosdesk_guest_requests';
 var FIN_EMAIL='finance@brandonhallhotelandspa.com';
+var MAIL_BASE='https://europe-west1-brandonhall-7bdef.cloudfunctions.net';
 var ITEMS=['Champagne','Flowers','Chocolates','Fruit basket','Wine','Cake','Balloons','Gift hamper','Toiletries / essentials','Other'];
 
 /* ---------------- helpers ---------------- */
@@ -133,12 +134,20 @@ function submitReq(){
     supplier:'', actualCost:0, receipt:'', financeNotes:'', fulfilledAt:0, fulfilledBy:''
   };
   $('go').disabled=true; $('go').textContent='Saving…';
-  var after=function(){ showSent(rec); };
+  var after=function(){
+    var em=financeEmail(rec);
+    $('go').textContent='Emailing finance…';
+    fetch(MAIL_BASE+'/sendGuestRequest',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({to:FIN_EMAIL, subject:em.subject, text:em.body})})
+      .then(function(r){ return r.ok?r.json():{ok:false}; })
+      .then(function(j){ showSent(rec, !!(j&&j.ok)); })
+      .catch(function(){ showSent(rec, false); });
+  };
   if(db){ db.collection(COL).doc(rec.id).set(rec).then(after).catch(function(e){ alert('Could not save: '+e.message); $('go').disabled=false; $('go').textContent='Submit & email finance'; }); }
   else { try{var a=JSON.parse(localStorage.getItem('grp_pending')||'[]');a.push(rec);localStorage.setItem('grp_pending',JSON.stringify(a));}catch(e){} after(); }
 }
 
-function showSent(rec){
+function financeEmail(rec){
   var link=baseUrl()+'?id='+rec.id;
   var subject='Guest purchase to arrange & recharge — Room '+rec.room+' ('+rec.itemLabel+')';
   var body=
@@ -154,16 +163,24 @@ function showSent(rec){
     +'Raised by: '+(rec.raisedBy||'Reception')+'\n\n'
     +'Open the request, upload the receipt and raise the room bill here:\n'+link+'\n';
   var mailto='mailto:'+FIN_EMAIL+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  return {link:link, subject:subject, body:body, mailto:mailto};
+}
+
+function showSent(rec, emailed){
+  var em=financeEmail(rec), link=em.link, mailto=em.mailto;
   $('app').innerHTML=''
     +'<div class="card"><div class="ok">✓ Request saved — reference '+esc(rec.ref)+'</div>'
-    +'<p class="lead" style="margin:12px 0">We&apos;re opening an email to <b>'+FIN_EMAIL+'</b> with the secure link. If it doesn&apos;t open, use the buttons below.</p>'
+    +'<p class="lead" style="margin:12px 0">'
+      +(emailed
+        ? '📧 Emailed to <b>'+FIN_EMAIL+'</b> from HosPRO (Reception – Guest Request). Finance will arrange it and raise the room bill.'
+        : 'Saved. The automatic email didn\'t go this time — send it to <b>'+FIN_EMAIL+'</b> with the button below, or copy the link.')
+    +'</p>'
     +'<div class="fld"><label>Finance link</label><div class="link">'+esc(link)+'</div></div>'
-    +'<div class="row2"><button class="btn btn-teal" onclick="location.href=\''+mailto.replace(/'/g,"%27")+'\'">✉ Email finance</button>'
+    +'<div class="row2"><button class="btn '+(emailed?'btn-ghost':'btn-teal')+'" onclick="location.href=\''+mailto.replace(/'/g,"%27")+'\'">✉ '+(emailed?'Email finance again':'Email finance')+'</button>'
     +'<button class="btn btn-ghost" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+link+'\');this.textContent=\'Copied ✓\'">Copy link</button></div>'
     +'<button class="btn btn-navy" style="width:100%;margin-top:12px" onclick="location.search=\'\'">+ New request</button>'
     +'</div>'
-    +'<div class="foot"><a onclick="location.search=\'?list\'">View all requests →</a></div>';
-  setTimeout(function(){ try{ location.href=mailto; }catch(e){} }, 400);
+    +'<div class="foot"><a onclick="location.search=\'?list\'">View all requests →</a> &nbsp;·&nbsp; <a href="hoshouse-request.html?board">← Back to HosDesk</a></div>';
 }
 
 /* ================= FINANCE: open link, receipt, bill ================= */
