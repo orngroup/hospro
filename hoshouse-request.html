@@ -1343,7 +1343,12 @@ function toggleUrgent(id,cur){ const u=cur==='urgent'?'normal':'urgent'; patch(i
 const FCM_BASE="https://europe-west1-brandonhall-7bdef.cloudfunctions.net";
 /* ===================== HosPRIORITY — pick rooms on a grid, alert housekeeping ===================== */
 let PRIO_SEL={}, PRIO_REASON='', PRIO_REASONS=['Arrival','Walk-in','Early check-in','VIP arrival','Room move','Re-clean','Inspection'];
-function prioAllRooms(){ return (typeof HOSTV_SEED!=='undefined'?HOSTV_SEED:[]).map(s=>({room:String(s.r),floor:s.f||'—'})); }
+function prioAllRooms(){
+  /* Full Brandon Hall room list: 1-54, 61, 62, 101-164 (independent of the HosTV audit seed) */
+  const nums=[]; for(let i=1;i<=54;i++) nums.push(i); nums.push(61,62); for(let j=101;j<=164;j++) nums.push(j);
+  const floorFor=n=>{ if(n<=20)return'G'; if(n<=40)return'1st'; if(n<=49)return'G'; if(n<=62)return'1st'; if(n<=115)return'G'; if(n<=130)return'1st'; if(n<=148)return'G'; return'1st'; };
+  return nums.map(n=>({room:String(n),floor:floorFor(n)}));
+}
 function prioInit(){ PRIO_SEL={}; PRIO_REASON=''; const s=$('prio-search'); if(s) s.value=''; const n=$('prio-notes'); if(n) n.value=''; const m=$('prio-msg'); if(m) m.textContent=''; prioRenderReasons(); prioRender(); prioSelInfo(); }
 function prioRenderReasons(){
   const wrap=$('prio-reasons'); if(!wrap) return;

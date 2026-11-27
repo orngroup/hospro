@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a2b3a">
+<title>Guest Requests Payable — Brandon Hall</title>
+<link rel="apple-touch-icon" href="assets/logos/logo---white-transparent.png">
+<style>
+:root{--navy:#1a2b3a;--navy2:#24384b;--gold:#BB9979;--gold-dk:#8a6a44;--teal:#4DA69C;--ink:#243244;--muted:#6b7686;--line:#e4e8ee;--bg:#eef1f5;--card:#fff;--ok:#1f7a53;--amber:#b4760f;--red:#b3261e}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Manrope','Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+.top{background:linear-gradient(135deg,#1a2b3a,#24384b);color:#fff;padding:16px 18px;display:flex;align-items:center;gap:14px}
+.top img{height:42px}
+.top .t b{font-size:17px;font-weight:800;letter-spacing:.2px}
+.top .t span{display:block;font-size:12px;opacity:.75;margin-top:2px}
+.top .pill{margin-left:auto;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:6px 13px;font-size:12px;font-weight:700}
+.wrap{max-width:720px;margin:0 auto;padding:18px 16px 70px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(20,30,45,.04)}
+.lead{font-size:14px;color:var(--muted);line-height:1.55;margin:0}
+h1{font-size:22px;font-weight:800;color:var(--navy);margin:0 0 6px}
+h2{font-size:12.5px;font-weight:800;color:var(--gold-dk);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px}
+label{display:block;font-size:13px;font-weight:700;color:var(--navy);margin:0 0 5px}
+.hint{font-size:12px;color:var(--muted);font-weight:500;margin:0 0 7px}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:inherit;font-size:15px;color:var(--ink);background:#fcfdfe}
+textarea{min-height:64px;resize:vertical;line-height:1.5}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(187,153,121,.16)}
+.fld{margin-bottom:15px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:560px){.row2,.row3{grid-template-columns:1fr}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:11px;padding:13px 20px;font:inherit;font-size:15px;font-weight:800;cursor:pointer}
+.btn-go{background:var(--gold);color:#fff;width:100%}
+.btn-go:disabled{opacity:.5;cursor:not-allowed}
+.btn-teal{background:var(--teal);color:#fff;width:100%}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-ghost{background:#fff;border:1px solid var(--line);color:var(--navy)}
+.ok{background:#eef8f2;border:1px solid #bfe6d2;color:var(--ok);border-radius:12px;padding:16px;text-align:center;font-weight:700}
+.foot{text-align:center;font-size:12px;color:var(--muted);margin-top:16px}
+.foot a{color:var(--gold-dk);font-weight:700;cursor:pointer;text-decoration:none}
+.hide{display:none!important}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #f0f2f4;font-size:14px}
+.kv:last-child{border-bottom:none}
+.kv b{color:var(--navy)}
+.badge{display:inline-block;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px}
+.b-new{background:#eaf1fb;color:#2c5f9e}.b-ordered{background:#fdf3e5;color:var(--amber)}.b-fulfilled{background:#eef8f2;color:var(--ok)}.b-billed{background:#efeaf7;color:#6b4a9e}
+.link{font-family:monospace;font-size:12px;background:#f5f7fa;border:1px solid var(--line);border-radius:8px;padding:10px;word-break:break-all;color:#2c5f9e}
+.receipt-prev{max-width:100%;border-radius:10px;border:1px solid var(--line);margin-top:8px}
+.note{background:#fbfcfd;border:1px dashed var(--line);border-radius:12px;padding:13px 15px;font-size:12.5px;color:var(--muted);line-height:1.55}
+.amount{font-size:26px;font-weight:800;color:var(--navy)}
+</style>
+</head>
+<body>
+<div class="top">
+  <img src="assets/logos/logo---white-transparent.png" alt="Brandon Hall" onerror="this.style.display='none'">
+  <div class="t"><b>Guest Requests Payable</b><span>Brandon Hall Hotel &amp; Spa</span></div>
+  <div class="pill" id="modePill">Reception</div>
+</div>
+<div class="wrap" id="app"><div class="card"><p class="lead">Loading…</p></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+/* ---------------- Firebase ---------------- */
+var firebaseConfig={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:"brandonhall-7bdef.firebaseapp.com",projectId:"brandonhall-7bdef",storageBucket:"brandonhall-7bdef.firebasestorage.app",messagingSenderId:"391317900568",appId:"1:391317900568:web:643c9d6691f7f16d65226d"};
+var db=null; try{ firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }catch(e){ console.warn('firebase',e); }
+var COL='hosdesk_guest_requests';
+var FIN_EMAIL='finance@brandonhallhotelandspa.com';
+var ITEMS=['Champagne','Flowers','Chocolates','Fruit basket','Wine','Cake','Balloons','Gift hamper','Toiletries / essentials','Other'];
+
+/* ---------------- helpers ---------------- */
+function $(id){return document.getElementById(id);}
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function gbp(n){n=Number(n)||0;return '£'+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function qp(k){return new URLSearchParams(location.search).get(k);}
+function baseUrl(){return location.origin+location.pathname;}
+function fmtDate(d){ if(!d)return'—'; try{return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}catch(e){return d;} }
+function statusBadge(s){var m={'new':['b-new','New'],'ordered':['b-ordered','Ordered'],'fulfilled':['b-fulfilled','Fulfilled'],'billed':['b-billed','Billed to room']};var x=m[s]||m['new'];return '<span class="badge '+x[0]+'">'+x[1]+'</span>';}
+function toast(m){ /* simple */ }
+
+/* ---------------- ROUTER ---------------- */
+var id=qp('id'), listMode=qp('list')!=null;
+if(id){ $('modePill').textContent='Finance'; loadFinance(id); }
+else if(listMode){ $('modePill').textContent='Tracker'; loadList(); }
+else { renderForm(); }
+
+/* ================= DESK: raise a request ================= */
+function renderForm(){
+  $('app').innerHTML=''
+  +'<div class="card"><h1>Purchase on a guest\'s behalf</h1><p class="lead">For items we buy for a guest &mdash; champagne, flowers and the like &mdash; to be recharged to their room. Fill this in and finance will be emailed to arrange it, upload the receipt and raise the room bill.</p></div>'
+  +'<div class="card">'
+  +'<h2>Guest &amp; room</h2>'
+  +'<div class="row2"><div class="fld"><label>Room number</label><input id="room" placeholder="e.g. 112" inputmode="numeric"></div>'
+  +'<div class="fld"><label>Guest name</label><input id="guest" placeholder="e.g. Mrs Patel"></div></div>'
+  +'<h2 style="margin-top:4px">What&apos;s needed</h2>'
+  +'<div class="row2"><div class="fld"><label>Item</label><select id="item" onchange="document.getElementById(\'otherWrap\').style.display=this.value===\'Other\'?\'block\':\'none\'">'
+  + '<option value="">Choose…</option>'+ITEMS.map(function(i){return '<option>'+i+'</option>';}).join('') +'</select></div>'
+  +'<div class="fld" id="otherWrap" style="display:none"><label>If other, specify</label><input id="itemOther" placeholder="Describe the item"></div></div>'
+  +'<div class="fld"><label>Details / specifics <span style="font-weight:500;color:var(--muted)">(optional)</span></label><textarea id="details" placeholder="Colour, brand, size, message on a card, where to deliver in the hotel…"></textarea></div>'
+  +'<h2 style="margin-top:4px">Timing</h2>'
+  +'<div class="row3"><div class="fld"><label>Date required</label><input id="dateReq" type="date"></div>'
+  +'<div class="fld"><label>Delivery deadline</label><input id="deadDate" type="date"></div>'
+  +'<div class="fld"><label>Deadline time</label><input id="deadTime" type="time"></div></div>'
+  +'<h2 style="margin-top:4px">Money</h2>'
+  +'<div class="row2"><div class="fld"><label>Budget agreed with guest (to recharge to room)</label><div style="display:flex;align-items:center;gap:8px"><span style="font-weight:800;color:var(--navy);font-size:17px">£</span><input id="budget" type="number" min="0" step="0.01" placeholder="0.00"></div></div>'
+  +'<div class="fld"><label>Raised by</label><input id="by" placeholder="Your name" value="'+esc(localStorage.getItem('grp_me')||'')+'"></div></div>'
+  +'<button class="btn btn-go" id="go" onclick="submitReq()">Submit &amp; email finance</button>'
+  +'<p class="hint" style="margin-top:10px;text-align:center">This saves the request and opens an email to '+FIN_EMAIL+' with the secure link.</p>'
+  +'</div>'
+  +'<div class="foot"><a onclick="location.search=\'?list\'">View all requests &amp; status →</a></div>';
+}
+
+function submitReq(){
+  var room=$('room').value.trim(), guest=$('guest').value.trim(), item=$('item').value;
+  if(!room){ alert('Please add the room number.'); $('room').focus(); return; }
+  if(!guest){ alert('Please add the guest name.'); $('guest').focus(); return; }
+  if(!item){ alert('Please choose an item.'); $('item').focus(); return; }
+  var itemOther=item==='Other'?($('itemOther').value.trim()):'';
+  if(item==='Other'&&!itemOther){ alert('Please describe the item.'); $('itemOther').focus(); return; }
+  var budget=parseFloat($('budget').value)||0;
+  var by=$('by').value.trim(); if(by) localStorage.setItem('grp_me',by);
+  var now=Date.now();
+  var ref='GRP-'+new Date().toISOString().slice(2,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,5).toUpperCase();
+  var rec={
+    id:'grp_'+now+'_'+Math.random().toString(36).slice(2,7), ref:ref,
+    room:room, guestName:guest,
+    item:item, itemOther:itemOther, itemLabel:(item==='Other'?itemOther:item),
+    details:$('details').value.trim(),
+    dateRequired:$('dateReq').value, deadlineDate:$('deadDate').value, deadlineTime:$('deadTime').value,
+    budget:budget, rechargeAmount:budget,
+    raisedBy:by, createdAt:now, status:'new',
+    supplier:'', actualCost:0, receipt:'', financeNotes:'', fulfilledAt:0, fulfilledBy:''
+  };
+  $('go').disabled=true; $('go').textContent='Saving…';
+  var after=function(){ showSent(rec); };
+  if(db){ db.collection(COL).doc(rec.id).set(rec).then(after).catch(function(e){ alert('Could not save: '+e.message); $('go').disabled=false; $('go').textContent='Submit & email finance'; }); }
+  else { try{var a=JSON.parse(localStorage.getItem('grp_pending')||'[]');a.push(rec);localStorage.setItem('grp_pending',JSON.stringify(a));}catch(e){} after(); }
+}
+
+function showSent(rec){
+  var link=baseUrl()+'?id='+rec.id;
+  var subject='Guest purchase to arrange & recharge — Room '+rec.room+' ('+rec.itemLabel+')';
+  var body=
+    'A guest purchase has been logged on HosDesk and needs arranging, paying and recharging to the room.\n\n'
+    +'Reference: '+rec.ref+'\n'
+    +'Room: '+rec.room+'\n'
+    +'Guest: '+rec.guestName+'\n'
+    +'Item: '+rec.itemLabel+'\n'
+    +(rec.details?('Details: '+rec.details+'\n'):'')
+    +(rec.dateRequired?('Date required: '+fmtDate(rec.dateRequired)+'\n'):'')
+    +(rec.deadlineDate?('Delivery deadline: '+fmtDate(rec.deadlineDate)+(rec.deadlineTime?' by '+rec.deadlineTime:'')+'\n'):'')
+    +'Budget agreed with guest (to recharge): '+gbp(rec.budget)+'\n'
+    +'Raised by: '+(rec.raisedBy||'Reception')+'\n\n'
+    +'Open the request, upload the receipt and raise the room bill here:\n'+link+'\n';
+  var mailto='mailto:'+FIN_EMAIL+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  $('app').innerHTML=''
+    +'<div class="card"><div class="ok">✓ Request saved — reference '+esc(rec.ref)+'</div>'
+    +'<p class="lead" style="margin:12px 0">We&apos;re opening an email to <b>'+FIN_EMAIL+'</b> with the secure link. If it doesn&apos;t open, use the buttons below.</p>'
+    +'<div class="fld"><label>Finance link</label><div class="link">'+esc(link)+'</div></div>'
+    +'<div class="row2"><button class="btn btn-teal" onclick="location.href=\''+mailto.replace(/'/g,"%27")+'\'">✉ Email finance</button>'
+    +'<button class="btn btn-ghost" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+link+'\');this.textContent=\'Copied ✓\'">Copy link</button></div>'
+    +'<button class="btn btn-navy" style="width:100%;margin-top:12px" onclick="location.search=\'\'">+ New request</button>'
+    +'</div>'
+    +'<div class="foot"><a onclick="location.search=\'?list\'">View all requests →</a></div>';
+  setTimeout(function(){ try{ location.href=mailto; }catch(e){} }, 400);
+}
+
+/* ================= FINANCE: open link, receipt, bill ================= */
+function loadFinance(rid){
+  if(!db){ $('app').innerHTML='<div class="card"><p class="lead">Offline — cannot load this request.</p></div>'; return; }
+  db.collection(COL).doc(rid).get().then(function(d){
+    if(!d.exists){ $('app').innerHTML='<div class="card"><p class="lead">Request not found. It may have been removed.</p></div>'; return; }
+    renderFinance(d.data());
+  }).catch(function(e){ $('app').innerHTML='<div class="card"><p class="lead">Could not load: '+esc(e.message)+'</p></div>'; });
+}
+function renderFinance(r){
+  window._REC=r;
+  var when=r.createdAt?new Date(r.createdAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+  $('app').innerHTML=''
+    +'<div class="card"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h1 style="margin:0">Room '+esc(r.room)+' · '+esc(r.itemLabel)+'</h1>'+statusBadge(r.status)+'</div>'
+    +'<p class="lead" style="margin-top:6px">Ref '+esc(r.ref)+' · raised by '+esc(r.raisedBy||'Reception')+' · '+esc(when)+'</p></div>'
+    +'<div class="card"><h2>The request</h2>'
+    +'<div class="kv"><span>Guest</span><b>'+esc(r.guestName)+'</b></div>'
+    +'<div class="kv"><span>Room</span><b>'+esc(r.room)+'</b></div>'
+    +'<div class="kv"><span>Item</span><b>'+esc(r.itemLabel)+'</b></div>'
+    +(r.details?'<div class="kv"><span>Details</span><b style="text-align:right;max-width:60%">'+esc(r.details)+'</b></div>':'')
+    +(r.dateRequired?'<div class="kv"><span>Date required</span><b>'+fmtDate(r.dateRequired)+'</b></div>':'')
+    +(r.deadlineDate?'<div class="kv"><span>Delivery deadline</span><b>'+fmtDate(r.deadlineDate)+(r.deadlineTime?' by '+esc(r.deadlineTime):'')+'</b></div>':'')
+    +'<div class="kv"><span>Budget agreed (recharge)</span><b>'+gbp(r.budget)+'</b></div>'
+    +'</div>'
+    +'<div class="card"><h2>Finance — arrange, pay &amp; recharge</h2>'
+    +'<div class="row2"><div class="fld"><label>Supplier / where bought</label><input id="f_supplier" value="'+esc(r.supplier||'')+'" placeholder="e.g. Interflora"></div>'
+    +'<div class="fld"><label>Actual cost to hotel</label><div style="display:flex;align-items:center;gap:8px"><span style="font-weight:800">£</span><input id="f_actual" type="number" min="0" step="0.01" value="'+(r.actualCost||'')+'" placeholder="0.00"></div></div></div>'
+    +'<div class="fld"><label>Amount to charge to guest room</label><div style="display:flex;align-items:center;gap:8px"><span style="font-weight:800">£</span><input id="f_recharge" type="number" min="0" step="0.01" value="'+(r.rechargeAmount||r.budget||'')+'"></div><p class="hint" style="margin-top:5px">Defaults to the agreed budget. Adjust if a handling fee applies.</p></div>'
+    +'<div class="fld"><label>Upload receipt</label><input id="f_receipt" type="file" accept="image/*,application/pdf" onchange="onReceipt(this)"><div id="receiptBox">'+(r.receipt?receiptHtml(r.receipt):'')+'</div></div>'
+    +'<div class="fld"><label>Finance notes <span style="font-weight:500;color:var(--muted)">(optional)</span></label><textarea id="f_notes" placeholder="PO number, card used, anything for the record…">'+esc(r.financeNotes||'')+'</textarea></div>'
+    +'<div class="fld"><label>Completed by</label><input id="f_by" value="'+esc(r.fulfilledBy||localStorage.getItem('grp_fin')||'')+'" placeholder="Your name"></div>'
+    +'<button class="btn btn-ghost" style="width:100%;margin-bottom:10px" onclick="saveFinance(false)">💾 Save progress</button>'
+    +'<button class="btn btn-go" onclick="saveFinance(true)">✅ Mark fulfilled &amp; create room bill (PDF)</button>'
+    +'</div>'
+    +(r.status==='billed'||r.status==='fulfilled'?'<div class="card"><button class="btn btn-navy" style="width:100%" onclick="genBill(window._REC)">⬇ Re-download room bill PDF</button></div>':'')
+    +'<div class="foot"><a onclick="location.search=\'?list\'">All requests →</a></div>';
+}
+function receiptHtml(data){
+  if(String(data).indexOf('application/pdf')>-1) return '<div class="note" style="margin-top:8px">📄 Receipt (PDF) attached.</div>';
+  return '<img class="receipt-prev" src="'+data+'" alt="receipt">';
+}
+function onReceipt(inp){
+  var f=inp.files&&inp.files[0]; if(!f) return;
+  if(f.type.indexOf('image')===0){
+    var img=new Image(); var rd=new FileReader();
+    rd.onload=function(){ img.onload=function(){
+      var max=1100, sc=Math.min(1,max/Math.max(img.width,img.height));
+      var cv=document.createElement('canvas'); cv.width=Math.round(img.width*sc); cv.height=Math.round(img.height*sc);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      window._RECEIPT=cv.toDataURL('image/jpeg',0.72);
+      $('receiptBox').innerHTML=receiptHtml(window._RECEIPT);
+    }; img.src=rd.result; };
+    rd.readAsDataURL(f);
+  } else { // pdf — store small ones only
+    if(f.size>900000){ alert('That PDF is large — please upload a photo of the receipt instead.'); inp.value=''; return; }
+    var rd=new FileReader(); rd.onload=function(){ window._RECEIPT=rd.result; $('receiptBox').innerHTML=receiptHtml(rd.result); }; rd.readAsDataURL(f);
+  }
+}
+function saveFinance(fulfil){
+  var r=window._REC;
+  r.supplier=$('f_supplier').value.trim();
+  r.actualCost=parseFloat($('f_actual').value)||0;
+  r.rechargeAmount=parseFloat($('f_recharge').value)||r.budget||0;
+  r.financeNotes=$('f_notes').value.trim();
+  r.fulfilledBy=$('f_by').value.trim(); if(r.fulfilledBy) localStorage.setItem('grp_fin',r.fulfilledBy);
+  if(window._RECEIPT) r.receipt=window._RECEIPT;
+  if(fulfil){
+    if(!r.rechargeAmount){ alert('Please set the amount to charge to the room.'); $('f_recharge').focus(); return; }
+    r.status='billed'; r.fulfilledAt=Date.now();
+  } else if(r.status==='new'){ r.status='ordered'; }
+  var save= db? db.collection(COL).doc(r.id).set(r) : Promise.resolve();
+  save.then(function(){
+    if(fulfil){ genBill(r); }
+    renderFinance(r);
+  }).catch(function(e){ alert('Could not save: '+e.message); });
+}
+
+/* ================= BILL (PDF) ================= */
+function genBill(r){
+  var A=(window.jspdf&&window.jspdf.jsPDF)?window.jspdf.jsPDF:null;
+  if(!A){ return billPrintFallback(r); }
+  var doc=new A({unit:'pt',format:'a4'}); var W=595, M=48, y=70;
+  doc.setFillColor(26,43,58); doc.rect(0,0,W,52,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text('BRANDON HALL HOTEL & SPA',M,32);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(200,210,220);
+  doc.text('Main Street, Brandon, Coventry CV8 3FW  ·  024 7710 2555',M,45);
+  doc.setTextColor(26,43,58); doc.setFont('helvetica','bold'); doc.setFontSize(20);
+  doc.text('Guest Charge — Room Account',M,y); y+=8;
+  doc.setDrawColor(187,153,121); doc.setLineWidth(2); doc.line(M,y,W-M,y); y+=28;
+  doc.setFontSize(11); doc.setFont('helvetica','normal'); doc.setTextColor(60,70,85);
+  var rows=[
+    ['Reference',r.ref],
+    ['Date',new Date(r.fulfilledAt||Date.now()).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})],
+    ['Guest',r.guestName],
+    ['Room',r.room],
+    ['Item / service',r.itemLabel+(r.details?' — '+r.details:'')],
+    ['Supplier',r.supplier||'—']
+  ];
+  rows.forEach(function(p){
+    doc.setFont('helvetica','bold'); doc.setTextColor(26,43,58); doc.text(p[0],M,y);
+    doc.setFont('helvetica','normal'); doc.setTextColor(40,50,65);
+    doc.text(doc.splitTextToSize(String(p[1]||'—'),W-M-170),M+150,y);
+    y+=22;
+  });
+  y+=10; doc.setDrawColor(228,232,238); doc.setLineWidth(1); doc.line(M,y,W-M,y); y+=26;
+  doc.setFillColor(245,247,250); doc.roundedRect(M,y-18,W-2*M,46,8,8,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(26,43,58);
+  doc.text('Amount charged to room',M+16,y+10);
+  doc.setFontSize(18); doc.text(gbpPlain(r.rechargeAmount),W-M-16,y+10,{align:'right'});
+  y+=70;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(90,100,115);
+  doc.text('This charge has been added to your room account and will appear on your final bill at check-out.',M,y); y+=15;
+  doc.text('Thank you for staying with us.',M,y);
+  // receipt image on page 2 if present
+  if(r.receipt && String(r.receipt).indexOf('image')>-1){
+    try{ doc.addPage(); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(26,43,58); doc.text('Supplier receipt (for hotel records)',M,60);
+      var props=doc.getImageProperties(r.receipt); var iw=W-2*M; var ih=props.height*(iw/props.width); if(ih>720){ih=720;iw=props.width*(ih/props.height);}
+      doc.addImage(r.receipt,'JPEG',M,78,iw,ih);
+    }catch(e){}
+  }
+  doc.save('Room-'+r.room+'-'+r.ref+'.pdf');
+}
+function gbpPlain(n){n=Number(n)||0;return 'GBP '+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function billPrintFallback(r){
+  var w=window.open('','_blank');
+  w.document.write('<html><head><title>Room '+esc(r.room)+' — '+esc(r.ref)+'</title><style>body{font-family:Arial,sans-serif;color:#1a2b3a;padding:40px;max-width:600px;margin:0 auto}h1{font-size:22px}.hd{background:#1a2b3a;color:#fff;padding:14px 18px;margin:-40px -40px 24px}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}.amt{background:#f5f7fa;padding:16px;border-radius:8px;display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-top:16px}</style></head><body>'
+    +'<div class="hd"><b>BRANDON HALL HOTEL &amp; SPA</b><br><small>Main Street, Brandon, Coventry CV8 3FW · 024 7710 2555</small></div>'
+    +'<h1>Guest Charge — Room Account</h1>'
+    +'<div class="row"><span>Reference</span><b>'+esc(r.ref)+'</b></div>'
+    +'<div class="row"><span>Guest</span><b>'+esc(r.guestName)+'</b></div>'
+    +'<div class="row"><span>Room</span><b>'+esc(r.room)+'</b></div>'
+    +'<div class="row"><span>Item / service</span><b>'+esc(r.itemLabel)+'</b></div>'
+    +'<div class="row"><span>Supplier</span><b>'+esc(r.supplier||'—')+'</b></div>'
+    +'<div class="amt"><span>Amount charged to room</span><span>'+gbp(r.rechargeAmount)+'</span></div>'
+    +'<p style="margin-top:20px;color:#5a6472;font-size:13px">This charge has been added to your room account and will appear on your final bill at check-out. Thank you for staying with us.</p>'
+    +'<script>window.onload=function(){window.print();}<\/script></body></html>');
+  w.document.close();
+}
+
+/* ================= TRACKER: all requests ================= */
+function loadList(){
+  if(!db){ $('app').innerHTML='<div class="card"><p class="lead">Offline.</p></div>'; return; }
+  $('app').innerHTML='<div class="card"><p class="lead">Loading…</p></div>';
+  db.collection(COL).get().then(function(snap){
+    var rows=[]; snap.forEach(function(d){rows.push(d.data());});
+    rows.sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
+    var body=rows.length? rows.map(function(r){
+      return '<div class="card" style="padding:14px 16px;cursor:pointer" onclick="location.search=\'?id='+r.id+'\'">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><b style="color:var(--navy)">Room '+esc(r.room)+' · '+esc(r.itemLabel)+'</b><div style="font-size:12px;color:var(--muted)">'+esc(r.guestName)+' · '+esc(r.ref)+' · '+gbp(r.rechargeAmount||r.budget)+'</div></div>'+statusBadge(r.status)+'</div></div>';
+    }).join('') : '<div class="card"><p class="lead">No requests yet.</p></div>';
+    $('app').innerHTML='<div class="card"><div style="display:flex;align-items:center;gap:10px"><h1 style="margin:0">Guest requests</h1><button class="btn btn-navy" style="margin-left:auto;padding:9px 15px;font-size:13px" onclick="location.search=\'\'">+ New</button></div><p class="lead" style="margin-top:6px">'+rows.length+' request'+(rows.length===1?'':'s')+'.</p></div>'+body;
+  }).catch(function(e){ $('app').innerHTML='<div class="card"><p class="lead">Could not load: '+esc(e.message)+'</p></div>'; });
+}
+</script>
+</body>
+</html>
