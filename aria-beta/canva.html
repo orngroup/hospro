@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>ARIA · Connecting Canva</title>
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f1424;color:#e9edf7;font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+.card{max-width:420px;padding:28px;border-radius:18px;background:#161d33;border:1px solid #2f3a5c;text-align:center}h1{font-size:20px;margin:0 0 8px}a{color:#8fb0ff}</style></head>
+<body><div class="card"><h1 id="t">Connecting Canva…</h1><p id="m">One moment.</p><p><a href="./">Back to ARIA</a></p></div>
+<script>
+/* Canva sends the director back here after they allow ARIA. The code is exchanged for a token on ARIA's server; nothing is kept in this browser. */
+(async () => {
+  const ASK_URL = 'https://europe-west2-brandonhall-7bdef.cloudfunctions.net/ariaAsk';
+  const $ = id => document.getElementById(id), done = (t, m) => { $('t').textContent = t; $('m').textContent = m; };
+  const q = new URLSearchParams(location.search);
+  if (q.get('error')) return done('Canva was not connected', q.get('error_description') || q.get('error'));
+  let p = null; try { p = JSON.parse(localStorage.getItem('aria_canva_pkce') || 'null'); } catch (e) {}
+  if (!q.get('code') || !p || p.state !== q.get('state') || Date.now() - p.at > 15 * 60e3) return done('Canva was not connected', 'The sign-in link was old or did not match. Go back to ARIA and press Connect Canva again.');
+  const tok = localStorage.getItem('aria_token');
+  if (!tok) return done('Please sign in to ARIA first', 'Then press Connect Canva again.');
+  try {
+    const r = await fetch(ASK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ action: 'canvaConnect', code: q.get('code'), verifier: p.verifier }) });
+    const j = await r.json().catch(() => ({}));
+    localStorage.removeItem('aria_canva_pkce');
+    if (!j.ok) return done('Canva was not connected', j.error || 'ARIA could not finish the connection.');
+    done('Canva is connected ✓', (j.account ? 'Signed in as ' + j.account + '. ' : '') + 'Ask ARIA things like "fill our Canva menu template with the Sunday lunch menu".');
+    setTimeout(() => { location.href = './'; }, 3500);
+  } catch (e) { done('Canva was not connected', e.message); }
+})();
+</script></body></html>

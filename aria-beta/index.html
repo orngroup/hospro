@@ -218,6 +218,7 @@ body.talking #mic{box-shadow:0 0 0 4px rgba(91,140,255,.45);animation:talkpulse 
         <button class="sbi" data-k="compShop"><span class="ic">💷</span><span class="t">Fetch rival prices now</span></button>
       </div>
       <button class="sbi" data-k="memory"><span class="ic">🧠</span><span class="t">What ARIA remembers</span></button>
+      <button class="sbi" data-k="canva"><span class="ic">🎨</span><span class="t" id="canvaLbl">Connect Canva</span></button>
       <button class="sbi" data-k="speakToggle"><span class="ic">🔊</span><span class="t" id="speakLbl">ARIA speaks: off</span></button>
       <div class="sbh">Recent</div><div id="sbRecent"></div>
     </div>
@@ -690,6 +691,23 @@ async function speakOut(text) {
   }
   phoneVoice(text, afterSpeak);
 }
+/* ---------- Canva (v14): a director connects the hotel's Canva account once (OAuth with PKCE) ---------- */
+async function connectCanva() {
+  if (!getToken()) return needSignIn();
+  try {
+    const st = await api({ action: 'canvaStatus' });
+    if (st.connected && !confirm('Canva is already connected' + (st.connectedBy ? ' (by ' + st.connectedBy + ')' : '') + '. Connect again?')) return;
+    const j = await api({ action: 'canvaStart' });
+    const b64 = buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const verifier = b64(crypto.getRandomValues(new Uint8Array(48)));
+    const challenge = b64(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+    const state = b64(crypto.getRandomValues(new Uint8Array(16)));
+    localStorage.setItem('aria_canva_pkce', JSON.stringify({ verifier, state, at: Date.now() }));
+    location.href = j.authorize + '?code_challenge=' + challenge + '&code_challenge_method=s256&scope=' + encodeURIComponent(j.scope) + '&response_type=code&client_id=' + encodeURIComponent(j.clientId) + '&state=' + state + '&redirect_uri=' + encodeURIComponent(j.redirect);
+  } catch (e) { alert(e.message); }
+}
+(async () => { try { if (LIVE && getToken()) { const st = await api({ action: 'canvaStatus' }); if (st.connected && $('canvaLbl')) $('canvaLbl').textContent = 'Canva connected ✓'; } } catch (e) {} })();
+
 /* ---------- hands-free conversation (v13): ARIA answers out loud, then listens again; stops on "thanks ARIA" or silence ---------- */
 let talkMode = false, talkMisses = 0;
 const END_WORDS = /^(stop|cancel|that'?s (all|it)|thanks?( you)?( aria)?|cheers( aria)?|goodbye|bye( aria)?|no thanks|nothing else|i'?m done)[.!]*$/i;
@@ -773,6 +791,7 @@ document.addEventListener('click', e => {
   const k = t.dataset.k;
   if (k === 'compset') return openComp(); if (k === 'compRun') return runComp();
   if (k === 'speakToggle') return toggleSpeak();
+  if (k === 'canva') return connectCanva();
   if (k === 'talk') return startTalk();
   if (k === 'brief') return briefMe();
   if (k === 'new') newChat(); else if (k === 'openSide') openSide(); else if (k === 'closeSide') closeSide();
