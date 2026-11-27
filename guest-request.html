@@ -67,7 +67,6 @@ var firebaseConfig={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:
 var db=null; try{ firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }catch(e){ console.warn('firebase',e); }
 var COL='hosdesk_guest_requests';
 var FIN_EMAIL='finance@brandonhallhotelandspa.com';
-var MAIL_BASE='https://europe-west1-brandonhall-7bdef.cloudfunctions.net';
 var ITEMS=['Champagne','Flowers','Chocolates','Fruit basket','Wine','Cake','Balloons','Gift hamper','Toiletries / essentials','Other'];
 
 /* ---------------- helpers ---------------- */
@@ -107,7 +106,7 @@ function renderForm(){
   +'<div class="row2"><div class="fld"><label>Budget agreed with guest (to recharge to room)</label><div style="display:flex;align-items:center;gap:8px"><span style="font-weight:800;color:var(--navy);font-size:17px">£</span><input id="budget" type="number" min="0" step="0.01" placeholder="0.00"></div></div>'
   +'<div class="fld"><label>Raised by</label><input id="by" placeholder="Your name" value="'+esc(localStorage.getItem('grp_me')||'')+'"></div></div>'
   +'<button class="btn btn-go" id="go" onclick="submitReq()">Submit &amp; email finance</button>'
-  +'<p class="hint" style="margin-top:10px;text-align:center">This saves the request and opens an email to '+FIN_EMAIL+' with the secure link.</p>'
+  +'<p class="hint" style="margin-top:10px;text-align:center">Saves the request and opens an email to '+FIN_EMAIL+' — just press Send.</p>'
   +'</div>'
   +'<div class="foot"><a onclick="location.search=\'?list\'">View all requests &amp; status →</a></div>';
 }
@@ -134,15 +133,7 @@ function submitReq(){
     supplier:'', actualCost:0, receipt:'', financeNotes:'', fulfilledAt:0, fulfilledBy:''
   };
   $('go').disabled=true; $('go').textContent='Saving…';
-  var after=function(){
-    var em=financeEmail(rec);
-    $('go').textContent='Emailing finance…';
-    fetch(MAIL_BASE+'/sendGuestRequest',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({to:FIN_EMAIL, subject:em.subject, text:em.body})})
-      .then(function(r){ return r.ok?r.json():{ok:false}; })
-      .then(function(j){ showSent(rec, !!(j&&j.ok)); })
-      .catch(function(){ showSent(rec, false); });
-  };
+  var after=function(){ showSent(rec); };
   if(db){ db.collection(COL).doc(rec.id).set(rec).then(after).catch(function(e){ alert('Could not save: '+e.message); $('go').disabled=false; $('go').textContent='Submit & email finance'; }); }
   else { try{var a=JSON.parse(localStorage.getItem('grp_pending')||'[]');a.push(rec);localStorage.setItem('grp_pending',JSON.stringify(a));}catch(e){} after(); }
 }
@@ -166,21 +157,18 @@ function financeEmail(rec){
   return {link:link, subject:subject, body:body, mailto:mailto};
 }
 
-function showSent(rec, emailed){
+function showSent(rec){
   var em=financeEmail(rec), link=em.link, mailto=em.mailto;
   $('app').innerHTML=''
     +'<div class="card"><div class="ok">✓ Request saved — reference '+esc(rec.ref)+'</div>'
-    +'<p class="lead" style="margin:12px 0">'
-      +(emailed
-        ? '📧 Emailed to <b>'+FIN_EMAIL+'</b> from HosPRO (Reception – Guest Request). Finance will arrange it and raise the room bill.'
-        : 'Saved. The automatic email didn\'t go this time — send it to <b>'+FIN_EMAIL+'</b> with the button below, or copy the link.')
-    +'</p>'
+    +'<p class="lead" style="margin:12px 0">✉ Opening an email to <b>'+FIN_EMAIL+'</b> with the details and link — just press <b>Send</b>. If it doesn\'t open, use the button below.</p>'
     +'<div class="fld"><label>Finance link</label><div class="link">'+esc(link)+'</div></div>'
-    +'<div class="row2"><button class="btn '+(emailed?'btn-ghost':'btn-teal')+'" onclick="location.href=\''+mailto.replace(/'/g,"%27")+'\'">✉ '+(emailed?'Email finance again':'Email finance')+'</button>'
+    +'<div class="row2"><button class="btn btn-teal" onclick="location.href=\''+mailto.replace(/'/g,"%27")+'\'">✉ Open email to finance</button>'
     +'<button class="btn btn-ghost" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+link+'\');this.textContent=\'Copied ✓\'">Copy link</button></div>'
     +'<button class="btn btn-navy" style="width:100%;margin-top:12px" onclick="location.search=\'\'">+ New request</button>'
     +'</div>'
-    +'<div class="foot"><a onclick="location.search=\'?list\'">View all requests →</a> &nbsp;·&nbsp; <a href="hoshouse-request.html?board">← Back to HosDesk</a></div>';
+    +'<div class="foot"><a onclick="location.search=\'?list\'">All requests →</a> &nbsp;·&nbsp; <a href="hoshouse-request.html?board">← Back to HosDesk</a></div>';
+  setTimeout(function(){ try{ location.href=mailto; }catch(e){} }, 400);
 }
 
 /* ================= FINANCE: open link, receipt, bill ================= */
@@ -260,65 +248,131 @@ function saveFinance(fulfil){
 }
 
 /* ================= BILL (PDF) ================= */
+var HOTEL={name1:'BRANDON HALL',name2:'HOTEL & SPA',addr:'Wolston, Coventry CV8 3FW',tel:'+44 (0)24 7710 2555',email:'finance@brandonhallhotelandspa.com',vat:'VAT No. 49955806'};
+function gbpPlain(n){n=Number(n)||0;return '£'+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function genBill(r){
   var A=(window.jspdf&&window.jspdf.jsPDF)?window.jspdf.jsPDF:null;
   if(!A){ return billPrintFallback(r); }
-  var doc=new A({unit:'pt',format:'a4'}); var W=595, M=48, y=70;
-  doc.setFillColor(26,43,58); doc.rect(0,0,W,52,'F');
-  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
-  doc.text('BRANDON HALL HOTEL & SPA',M,32);
-  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(200,210,220);
-  doc.text('Main Street, Brandon, Coventry CV8 3FW  ·  024 7710 2555',M,45);
-  doc.setTextColor(26,43,58); doc.setFont('helvetica','bold'); doc.setFontSize(20);
-  doc.text('Guest Charge — Room Account',M,y); y+=8;
-  doc.setDrawColor(187,153,121); doc.setLineWidth(2); doc.line(M,y,W-M,y); y+=28;
-  doc.setFontSize(11); doc.setFont('helvetica','normal'); doc.setTextColor(60,70,85);
-  var rows=[
-    ['Reference',r.ref],
-    ['Date',new Date(r.fulfilledAt||Date.now()).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})],
-    ['Guest',r.guestName],
-    ['Room',r.room],
-    ['Item / service',r.itemLabel+(r.details?' — '+r.details:'')],
-    ['Supplier',r.supplier||'—']
-  ];
-  rows.forEach(function(p){
-    doc.setFont('helvetica','bold'); doc.setTextColor(26,43,58); doc.text(p[0],M,y);
-    doc.setFont('helvetica','normal'); doc.setTextColor(40,50,65);
-    doc.text(doc.splitTextToSize(String(p[1]||'—'),W-M-170),M+150,y);
-    y+=22;
-  });
-  y+=10; doc.setDrawColor(228,232,238); doc.setLineWidth(1); doc.line(M,y,W-M,y); y+=26;
-  doc.setFillColor(245,247,250); doc.roundedRect(M,y-18,W-2*M,46,8,8,'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(26,43,58);
-  doc.text('Amount charged to room',M+16,y+10);
-  doc.setFontSize(18); doc.text(gbpPlain(r.rechargeAmount),W-M-16,y+10,{align:'right'});
-  y+=70;
-  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(90,100,115);
-  doc.text('This charge has been added to your room account and will appear on your final bill at check-out.',M,y); y+=15;
-  doc.text('Thank you for staying with us.',M,y);
-  // receipt image on page 2 if present
+  var doc=new A({unit:'pt',format:'a4'});
+  var W=595.28, M=46;
+  var navy=[20,35,58], gold=[187,153,121], ink=[40,50,65], mut=[108,118,133], line=[224,229,235], soft=[245,247,250];
+  function col(c){return c;} function sf(c){doc.setFillColor(c[0],c[1],c[2]);} function st(c){doc.setTextColor(c[0],c[1],c[2]);} function sd(c){doc.setDrawColor(c[0],c[1],c[2]);}
+  var d=new Date(r.fulfilledAt||Date.now());
+  var issued=d.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})+'  ·  '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+
+  // ── header band ──
+  sf(navy); doc.rect(0,0,W,100,'F');
+  st([255,255,255]); doc.setFont('times','bold'); doc.setFontSize(23); doc.text(HOTEL.name1,M,46);
+  doc.setFont('times','normal'); doc.setFontSize(11); st([208,216,225]); doc.text(HOTEL.name2,M,64);
+  doc.setFontSize(8.5); st([196,205,216]); var rx=W-M;
+  doc.text(HOTEL.addr,rx,34,{align:'right'});
+  doc.text(HOTEL.tel,rx,47,{align:'right'});
+  doc.text(HOTEL.email,rx,60,{align:'right'});
+  doc.text(HOTEL.vat,rx,73,{align:'right'});
+
+  // ── title ──
+  var y=138;
+  st(navy); doc.setFont('helvetica','bold'); doc.setFontSize(18);
+  doc.text('Guest Supplementary Request Charge',M,y);
+  sd(gold); doc.setLineWidth(2); doc.line(M,y+9,W-M,y+9);
+  y+=36;
+
+  // ── charge-to (left) + details (right) ──
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); st(mut);
+  doc.text('CHARGE TO',M,y); doc.text('DETAILS',W/2+14,y);
+  y+=17;
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); st(navy); doc.text(String(r.guestName||'Guest'),M,y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10.5); st(ink); doc.text('Room '+(r.room||'—'),M,y+16);
+  function meta(label,val,yy){ doc.setFont('helvetica','normal'); doc.setFontSize(9.5); st(mut); doc.text(label,W/2+14,yy); doc.setFont('helvetica','bold'); doc.setFontSize(10); st(navy); doc.text(String(val||'—'),W-M,yy,{align:'right'}); }
+  meta('Reference', r.ref, y-2);
+  meta('Date issued', issued, y+15);
+  var svc=r.dateRequired?fmtDate(r.dateRequired):(r.deadlineDate?fmtDate(r.deadlineDate):'—');
+  if(r.deadlineTime) svc+='  ·  '+r.deadlineTime;
+  meta('Service date', svc, y+32);
+  y+=58;
+
+  // ── line items ──
+  sd(line); doc.setLineWidth(1); sf(soft); doc.rect(M,y,W-2*M,24,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); st(mut);
+  doc.text('DESCRIPTION',M+10,y+16); doc.text('AMOUNT',W-M-10,y+16,{align:'right'});
+  y+=24;
+  var gross=Number(r.rechargeAmount||r.budget||0);
+  doc.setFont('helvetica','bold'); doc.setFontSize(11.5); st(navy);
+  doc.text(String(r.itemLabel||'Guest request'),M+10,y+20);
+  doc.text(gbpPlain(gross),W-M-10,y+20,{align:'right'});
+  var sub=[]; if(r.details) sub.push(r.details); if(r.supplier) sub.push('Supplier: '+r.supplier);
+  var dy=y+36; doc.setFont('helvetica','normal'); doc.setFontSize(9.5); st(mut);
+  sub.forEach(function(s){ doc.splitTextToSize(s,W-2*M-130).forEach(function(ln){ doc.text(ln,M+10,dy); dy+=13; }); });
+  var rb=Math.max(dy, y+42)+8; sd(line); doc.line(M,rb,W-M,rb); y=rb+20;
+
+  // ── totals (VAT breakdown) ──
+  var net=gross/1.2, vat=gross-net, lx=W-M-195, rxx=W-M;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10.5); st(mut);
+  doc.text('Subtotal (net)',lx,y); st(ink); doc.text(gbpPlain(net),rxx,y,{align:'right'}); y+=18;
+  st(mut); doc.text('VAT @ 20%',lx,y); st(ink); doc.text(gbpPlain(vat),rxx,y,{align:'right'}); y+=12;
+  sf(soft); doc.roundedRect(lx-14,y,rxx-lx+14,38,7,7,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); st(navy); doc.text('Total charged to room',lx,y+24);
+  doc.setFontSize(15); doc.text(gbpPlain(gross),rxx-8,y+24,{align:'right'});
+  y+=66;
+
+  // ── note ──
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); st(mut);
+  doc.text('This charge has been posted to the guest room account and is payable on departure.',M,y); y+=15;
+  doc.text('Thank you for staying with Brandon Hall Hotel & Spa.',M,y);
+
+  // ── footer ──
+  sd(line); doc.setLineWidth(1); doc.line(M,802,W-M,802);
+  doc.setFontSize(8); st(mut);
+  doc.text('Brandon Hall Hotel & Spa  ·  '+HOTEL.addr+'  ·  '+HOTEL.tel+'  ·  '+HOTEL.vat, W/2, 818, {align:'center'});
+
+  // ── receipt page ──
   if(r.receipt && String(r.receipt).indexOf('image')>-1){
-    try{ doc.addPage(); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(26,43,58); doc.text('Supplier receipt (for hotel records)',M,60);
-      var props=doc.getImageProperties(r.receipt); var iw=W-2*M; var ih=props.height*(iw/props.width); if(ih>720){ih=720;iw=props.width*(ih/props.height);}
-      doc.addImage(r.receipt,'JPEG',M,78,iw,ih);
+    try{ doc.addPage(); doc.setFont('helvetica','bold'); doc.setFontSize(12); st(navy); doc.text('Supplier receipt  ·  '+r.ref+'  (for hotel records)',M,58);
+      var p=doc.getImageProperties(r.receipt); var iw=W-2*M, ih=p.height*(iw/p.width); if(ih>710){ih=710;iw=p.width*(ih/p.height);}
+      doc.addImage(r.receipt,'JPEG',M,76,iw,ih);
     }catch(e){}
   }
-  doc.save('Room-'+r.room+'-'+r.ref+'.pdf');
+  doc.save('Brandon-Hall-Room-'+(r.room||'')+'-'+r.ref+'.pdf');
 }
-function gbpPlain(n){n=Number(n)||0;return 'GBP '+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function billPrintFallback(r){
+  var gross=Number(r.rechargeAmount||r.budget||0), net=gross/1.2, vat=gross-net;
+  var d=new Date(r.fulfilledAt||Date.now());
+  var issued=d.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})+' · '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  var svc=r.dateRequired?fmtDate(r.dateRequired):(r.deadlineDate?fmtDate(r.deadlineDate):'—'); if(r.deadlineTime) svc+=' · '+r.deadlineTime;
   var w=window.open('','_blank');
-  w.document.write('<html><head><title>Room '+esc(r.room)+' — '+esc(r.ref)+'</title><style>body{font-family:Arial,sans-serif;color:#1a2b3a;padding:40px;max-width:600px;margin:0 auto}h1{font-size:22px}.hd{background:#1a2b3a;color:#fff;padding:14px 18px;margin:-40px -40px 24px}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}.amt{background:#f5f7fa;padding:16px;border-radius:8px;display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-top:16px}</style></head><body>'
-    +'<div class="hd"><b>BRANDON HALL HOTEL &amp; SPA</b><br><small>Main Street, Brandon, Coventry CV8 3FW · 024 7710 2555</small></div>'
-    +'<h1>Guest Charge — Room Account</h1>'
-    +'<div class="row"><span>Reference</span><b>'+esc(r.ref)+'</b></div>'
-    +'<div class="row"><span>Guest</span><b>'+esc(r.guestName)+'</b></div>'
-    +'<div class="row"><span>Room</span><b>'+esc(r.room)+'</b></div>'
-    +'<div class="row"><span>Item / service</span><b>'+esc(r.itemLabel)+'</b></div>'
-    +'<div class="row"><span>Supplier</span><b>'+esc(r.supplier||'—')+'</b></div>'
-    +'<div class="amt"><span>Amount charged to room</span><span>'+gbp(r.rechargeAmount)+'</span></div>'
-    +'<p style="margin-top:20px;color:#5a6472;font-size:13px">This charge has been added to your room account and will appear on your final bill at check-out. Thank you for staying with us.</p>'
-    +'<script>window.onload=function(){window.print();}<\/script></body></html>');
+  w.document.write('<html><head><title>'+esc(r.ref)+' — Room '+esc(r.room)+'</title><style>'
+    +'body{font-family:Georgia,"Times New Roman",serif;color:#14233a;margin:0;padding:0}'
+    +'.wrap{max-width:720px;margin:0 auto;padding:0 40px 40px}'
+    +'.hd{background:#14233a;color:#fff;padding:20px 40px;display:flex;justify-content:space-between;align-items:flex-end;margin:0 -40px 26px}'
+    +'.hd .n1{font-size:24px;font-weight:700;letter-spacing:.5px}.hd .n2{font-size:12px;opacity:.8;letter-spacing:2px}'
+    +'.hd .c{font-size:11px;text-align:right;line-height:1.6;opacity:.85}'
+    +'h1{font-family:Arial,sans-serif;font-size:21px;margin:0 0 4px;color:#14233a}.rule{height:2px;background:#BB9979;margin:0 0 22px}'
+    +'.grid{display:flex;justify-content:space-between;gap:30px;margin-bottom:22px;font-family:Arial,sans-serif}'
+    +'.lbl{font-size:10px;font-weight:700;color:#6c7685;letter-spacing:.5px;text-transform:uppercase}'
+    +'.big{font-size:16px;font-weight:700;color:#14233a;margin-top:4px}.sm{font-size:13px;color:#243244}'
+    +'.meta div{display:flex;justify-content:space-between;gap:30px;font-size:13px;padding:3px 0}.meta b{color:#14233a}'
+    +'table{width:100%;border-collapse:collapse;font-family:Arial,sans-serif;margin-bottom:8px}'
+    +'th{background:#f5f7fa;text-align:left;font-size:10px;letter-spacing:.5px;color:#6c7685;padding:9px 12px}th.r,td.r{text-align:right}'
+    +'td{padding:11px 12px;border-bottom:1px solid #eef1f4;font-size:14px;color:#14233a}td .d{font-size:12px;color:#6c7685;margin-top:3px}'
+    +'.tot{margin-left:auto;width:280px;font-family:Arial,sans-serif;font-size:13px}.tot div{display:flex;justify-content:space-between;padding:5px 2px;color:#6c7685}.tot .big{background:#f5f7fa;border-radius:8px;padding:12px;margin-top:6px;font-size:15px;font-weight:800;color:#14233a}'
+    +'.note{font-family:Arial,sans-serif;font-size:12px;color:#5a6472;margin-top:26px;line-height:1.6}'
+    +'.ft{font-family:Arial,sans-serif;border-top:1px solid #eef1f4;margin-top:26px;padding-top:12px;font-size:10px;color:#6c7685;text-align:center}'
+    +'@media print{@page{margin:14mm}}'
+    +'</style></head><body><div class="wrap">'
+    +'<div class="hd"><div><div class="n1">BRANDON HALL</div><div class="n2">HOTEL &amp; SPA</div></div>'
+      +'<div class="c">'+HOTEL.addr+'<br>'+HOTEL.tel+'<br>'+HOTEL.email+'<br>'+HOTEL.vat+'</div></div>'
+    +'<h1>Guest Supplementary Request Charge</h1><div class="rule"></div>'
+    +'<div class="grid"><div><div class="lbl">Charge to</div><div class="big">'+esc(r.guestName||'Guest')+'</div><div class="sm">Room '+esc(r.room||'—')+'</div></div>'
+      +'<div class="meta" style="min-width:260px"><div><span class="lbl">Reference</span><b>'+esc(r.ref)+'</b></div>'
+      +'<div><span class="lbl">Date issued</span><b>'+esc(issued)+'</b></div>'
+      +'<div><span class="lbl">Service date</span><b>'+esc(svc)+'</b></div></div></div>'
+    +'<table><thead><tr><th>Description</th><th class="r">Amount</th></tr></thead><tbody>'
+      +'<tr><td><b>'+esc(r.itemLabel||'Guest request')+'</b>'+((r.details||r.supplier)?'<div class="d">'+esc([r.details, r.supplier?('Supplier: '+r.supplier):''].filter(Boolean).join(' · '))+'</div>':'')+'</td><td class="r">'+gbp(gross)+'</td></tr>'
+    +'</tbody></table>'
+    +'<div class="tot"><div><span>Subtotal (net)</span><span>'+gbp(net)+'</span></div><div><span>VAT @ 20%</span><span>'+gbp(vat)+'</span></div><div class="big"><span>Total charged to room</span><span>'+gbp(gross)+'</span></div></div>'
+    +'<p class="note">This charge has been posted to the guest room account and is payable on departure.<br>Thank you for staying with Brandon Hall Hotel &amp; Spa.</p>'
+    +'<div class="ft">Brandon Hall Hotel &amp; Spa · '+HOTEL.addr+' · '+HOTEL.tel+' · '+HOTEL.vat+'</div>'
+    +'</div><script>window.onload=function(){window.print();}<\/script></body></html>');
   w.document.close();
 }
 
