@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14233a">
+<title>HosFIX — Skills & Profile</title>
+<style>
+:root{--navy:#14233a;--navy2:#24384b;--gold:#BB9979;--teal:#2f8f80;--ink:#243244;--muted:#6b7686;--line:#e4e8ee;--bg:#eef1f5;--card:#fff;--ok:#1f7a53;--amber:#b4760f;--red:#b3261e}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+.top{background:linear-gradient(135deg,#14233a,#24384b);color:#fff;padding:16px 18px;display:flex;align-items:center;gap:13px;position:sticky;top:0;z-index:5}
+.top .av{width:44px;height:44px;border-radius:50%;background:var(--gold);display:grid;place-items:center;font-weight:800;font-size:16px;flex-shrink:0}
+.top .t b{font-size:17px;font-weight:800;display:block}
+.top .t span{font-size:12px;opacity:.78}
+.top .pill{margin-left:auto;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:700;text-decoration:none;color:#fff}
+.wrap{max-width:720px;margin:0 auto;padding:16px 14px 90px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(20,30,45,.04)}
+h1{font-size:20px;font-weight:800;color:var(--navy);margin:0 0 4px}
+h2{font-size:12px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:.7px;margin:0 0 4px}
+.lead{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+.chk{display:flex;align-items:center;gap:11px;padding:11px 12px;border:1.5px solid var(--line);border-radius:11px;cursor:pointer;background:#fcfdfe;transition:.12s;user-select:none}
+.chk:hover{border-color:#cfd6df}
+.chk.on{border-color:var(--teal);background:#eefaf6}
+.chk .bx{width:22px;height:22px;border-radius:6px;border:2px solid #cbd3dd;flex-shrink:0;display:grid;place-items:center;font-size:14px;color:#fff;background:#fff}
+.chk.on .bx{background:var(--teal);border-color:var(--teal)}
+.chk .lb{font-size:14px;font-weight:600;color:var(--navy);line-height:1.25}
+.chk .lb small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.sub{font-size:12px;color:var(--muted);margin:14px 0 2px;font-weight:700}
+textarea{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:11px;font:inherit;font-size:15px;min-height:60px;resize:vertical;background:#fcfdfe}
+textarea:focus{outline:none;border-color:var(--gold)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:12px 14px;display:flex;gap:10px;max-width:720px;margin:0 auto;z-index:8}
+.btn{flex:1;border:none;border-radius:12px;padding:14px;font:inherit;font-size:15px;font-weight:800;cursor:pointer}
+.btn-go{background:var(--teal);color:#fff}
+.btn-go:disabled{opacity:.5}
+.btn-ghost{flex:0 0 auto;background:#fff;border:1px solid var(--line);color:var(--navy);padding:14px 18px}
+.ok{background:#eef8f2;border:1px solid #bfe6d2;color:var(--ok);border-radius:12px;padding:14px;text-align:center;font-weight:700}
+.pick{display:flex;flex-direction:column;gap:12px}
+.pick a{display:flex;align-items:center;gap:14px;padding:16px;border:1.5px solid var(--line);border-radius:14px;text-decoration:none;color:var(--navy);background:#fff;font-weight:700;font-size:16px}
+.pick a:hover{border-color:var(--teal)}
+.pick .av{width:46px;height:46px;border-radius:50%;color:#fff;display:grid;place-items:center;font-weight:800}
+/* management view */
+.mcard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+.mhead{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.chip{font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:20px;background:#eef2f6;color:#3f4b5b}
+.chip.sk{background:#eefaf6;color:#1f7a53}
+.chip.ql{background:#eef4fb;color:#2c5f9e}
+.uni{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.u-ok{font-size:11.5px;font-weight:700;color:#1f7a53;background:#eef8f2;padding:3px 9px;border-radius:7px}
+.u-no{font-size:11.5px;font-weight:700;color:#b4760f;background:#fdf3e5;padding:3px 9px;border-radius:7px}
+.muted{color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="av" id="tAv">HF</div>
+  <div class="t"><b id="tName">HosFIX</b><span id="tRole">Skills &amp; Profile</span></div>
+  <a class="pill" id="tSwitch" href="hosfix-skills.html?manage">Team view</a>
+</div>
+<div class="wrap" id="app"><div class="card"><p class="lead">Loading…</p></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+var firebaseConfig={apiKey:"AIzaSyDnPWrPGInDRTCF1Go710XC_8_77l_72i0",authDomain:"brandonhall-7bdef.firebaseapp.com",projectId:"brandonhall-7bdef",storageBucket:"brandonhall-7bdef.firebasestorage.app",messagingSenderId:"391317900568",appId:"1:391317900568:web:643c9d6691f7f16d65226d"};
+var db=null; try{ firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }catch(e){ console.warn('fb',e); }
+var COL='hosfix_staff';
+
+var OPS={
+  glenn:{name:'Glenn Randell', role:'Maintenance Manager', code:'BH010', colour:'#b8860b'},
+  herman:{name:'Herman Charles', role:'Multi-trader (non-electrical)', code:'BH012', colour:'#2a6a4a'},
+  pete:{name:'Pete', role:'Multi-trader (electrical)', code:'BH011', colour:'#2f8f80'}
+};
+/* Skills — the `id` matches HosFIX work types where possible, so they can drive auto-allocation */
+var SKILLS=[
+  ['plumbing','Plumbing','Taps, leaks, toilets, pipework'],
+  ['electrical','Electrical','Sockets, lighting, fuseboards'],
+  ['carpentry','Carpentry / Joinery','Doors, furniture, fittings'],
+  ['painting','Painting & Decorating',''],
+  ['tiling','Tiling & Grouting',''],
+  ['plastering','Plastering & Filling',''],
+  ['flooring','Flooring & Carpets',''],
+  ['locks','Locks & Doors','Door closers, locks, hinges'],
+  ['heating','Boilers & Heating',''],
+  ['hvac','Air-con / HVAC',''],
+  ['poolspa','Pool & Spa plant',''],
+  ['appliance','Appliance repair','White goods, kit'],
+  ['grounds','Grounds & Gardening',''],
+  ['glazing','Windows & Glazing',''],
+  ['furniture','Furniture assembly',''],
+  ['firesys','Fire systems','Alarms, extinguishers, emergency lighting'],
+  ['pest','Pest control',''],
+  ['cleaning','Deep clean / specialist cleaning',''],
+  ['general','General maintenance','Handyman / multi-trade']
+];
+/* Qualifications / tickets */
+var QUALS=[
+  ['gas_safe','Gas Safe registered'],
+  ['elec_18th','18th Edition (electrical)'],
+  ['pat','PAT testing'],
+  ['legionella','Legionella awareness'],
+  ['pool_plant','Pool Plant Operator'],
+  ['height','Working at Height'],
+  ['ipaf','IPAF / cherry picker'],
+  ['asbestos','Asbestos awareness'],
+  ['coshh','COSHH'],
+  ['manual','Manual Handling'],
+  ['firemarshal','Fire Marshal'],
+  ['firstaid','First Aid'],
+  ['foodhyg','Food Hygiene'],
+  ['driving','Full driving licence']
+];
+/* Uniform & PPE items */
+var UNIFORM=[
+  ['polo','Polo shirts'],
+  ['jacket','Fleece / jacket'],
+  ['trousers','Work trousers'],
+  ['boots','Safety boots'],
+  ['hivis','Hi-vis vest'],
+  ['badge','Name badge'],
+  ['lanyard','Lanyard / ID'],
+  ['ppe','PPE (gloves / goggles)'],
+  ['toolbelt','Tool belt']
+];
+
+function $(id){return document.getElementById(id);}
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function qp(k){return new URLSearchParams(location.search).get(k);}
+function inits(n){return (n||'').split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();}
+function fmtWhen(ts){ if(!ts) return ''; try{ return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }catch(e){ return ''; } }
+
+var me=qp('me'), manage=qp('manage')!=null;
+if(manage) renderManage();
+else if(me && OPS[me]) renderForm(me);
+else renderPicker();
+
+/* ---------- picker ---------- */
+function renderPicker(){
+  $('tName').textContent='HosFIX'; $('tRole').textContent='Skills & Profile';
+  $('app').innerHTML='<div class="card"><h1>Who are you?</h1><p class="lead">Tap your name to update your skills, tickets and kit.</p>'
+    +'<div class="pick" style="margin-top:14px">'
+    + Object.keys(OPS).map(function(id){var o=OPS[id];return '<a href="hosfix-skills.html?me='+id+'"><span class="av" style="background:'+o.colour+'">'+inits(o.name)+'</span><span>'+esc(o.name)+'<br><small style="font-weight:500;color:var(--muted)">'+esc(o.role)+'</small></span></a>';}).join('')
+    +'</div></div>';
+}
+
+/* ---------- operative form ---------- */
+var STATE={skills:{},quals:{},uniform:{}};
+function renderForm(id){
+  var o=OPS[id];
+  $('tAv').textContent=inits(o.name); $('tAv').style.background=o.colour;
+  $('tName').textContent=o.name; $('tRole').textContent=o.role+' · '+o.code;
+  $('app').innerHTML='<div class="card"><p class="lead">Loading your profile…</p></div>';
+  var done=function(data){
+    STATE={skills:(data&&data.skills)||{}, quals:(data&&data.quals)||{}, uniform:(data&&data.uniform)||{}, notes:(data&&data.notes)||''};
+    paintForm(id, data);
+  };
+  if(db){ db.collection(COL).doc(id).get().then(function(d){ done(d.exists?d.data():null); }).catch(function(){ done(null); }); }
+  else done(null);
+}
+function paintForm(id, data){
+  var o=OPS[id];
+  function chk(group,key,label,desc){
+    var on=STATE[group][key]?' on':'';
+    return '<div class="chk'+on+'" onclick="tog(\''+group+'\',\''+key+'\',this)"><span class="bx">'+(STATE[group][key]?'✔':'')+'</span><span class="lb">'+esc(label)+(desc?'<small>'+esc(desc)+'</small>':'')+'</span></div>';
+  }
+  var html=''
+    +'<div class="card"><h1>'+esc(o.name)+' — my profile</h1><p class="lead">Tick everything you can do, the tickets you hold and the kit you\'ve been given. This feeds your HosFIX profile and helps jobs get sent to the right person.</p>'
+    + (data&&data.updatedAt?'<p class="muted" style="margin-top:8px">Last updated '+fmtWhen(data.updatedAt)+(data.updatedBy?' by '+esc(data.updatedBy):'')+'</p>':'') +'</div>'
+    +'<div class="card"><h2>🔧 Skills — what I can do</h2><div class="grid">'
+      + SKILLS.map(function(s){return chk('skills',s[0],s[1],s[2]);}).join('') +'</div></div>'
+    +'<div class="card"><h2>🎓 Qualifications & tickets</h2><div class="grid">'
+      + QUALS.map(function(q){return chk('quals',q[0],q[1],'');}).join('') +'</div></div>'
+    +'<div class="card"><h2>👕 Uniform & kit received</h2><p class="lead">Tick what you\'ve been given.</p><div class="grid" style="margin-top:10px">'
+      + UNIFORM.map(function(u){return chk('uniform',u[0],u[1],'');}).join('') +'</div></div>'
+    +'<div class="card"><h2>📝 Anything else</h2><textarea id="notes" placeholder="Other skills, certificates with expiry dates, kit still outstanding…">'+esc(STATE.notes||'')+'</textarea></div>';
+  $('app').innerHTML=html;
+  $('app').insertAdjacentHTML('beforeend','');
+  // bottom bar
+  var old=document.querySelector('.bar'); if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend','<div class="bar"><button class="btn btn-ghost" onclick="location.href=\'hosfix-skills.html?manage\'">Team</button><button class="btn btn-go" id="save" onclick="saveForm(\''+id+'\')">Save my profile</button></div>');
+}
+function tog(group,key,el){
+  STATE[group][key]=!STATE[group][key];
+  el.classList.toggle('on',!!STATE[group][key]);
+  el.querySelector('.bx').textContent=STATE[group][key]?'✔':'';
+}
+function saveForm(id){
+  var o=OPS[id];
+  STATE.notes=$('notes')?$('notes').value.trim():'';
+  var rec={ id:id, name:o.name, role:o.role, code:o.code,
+    skills:STATE.skills, quals:STATE.quals, uniform:STATE.uniform, notes:STATE.notes,
+    updatedAt:Date.now(), updatedBy:o.name };
+  var btn=$('save'); if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  var finish=function(){ $('app').innerHTML='<div class="card"><div class="ok">✔ Saved — thank you, '+esc(o.name.split(' ')[0])+'!</div><p class="lead" style="margin-top:12px">Your skills, tickets and kit are now on your HosFIX profile. Management can see them in the Team section.</p>'
+      +'<div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-ghost" style="flex:1" onclick="renderForm(\''+id+'\')">Edit again</button><button class="btn btn-go" style="flex:1" onclick="location.href=\'hosfix-skills.html?manage\'">See the team</button></div></div>';
+      var bar=document.querySelector('.bar'); if(bar) bar.remove();
+    };
+  if(db){ db.collection(COL).doc(id).set(rec,{merge:true}).then(finish).catch(function(e){ alert('Could not save: '+e.message); if(btn){btn.disabled=false;btn.textContent='Save my profile';} }); }
+  else finish();
+}
+
+/* ---------- management / team view ---------- */
+function renderManage(){
+  $('tName').textContent='HosFIX Team'; $('tRole').textContent='Skills & kit overview';
+  $('tSwitch').textContent='+ Update mine'; $('tSwitch').href='hosfix-skills.html';
+  $('app').innerHTML='<div class="card"><p class="lead">Loading team…</p></div>';
+  var ids=Object.keys(OPS);
+  var reads=ids.map(function(id){ return db? db.collection(COL).doc(id).get().then(function(d){return {id:id,data:d.exists?d.data():null};}).catch(function(){return {id:id,data:null};}) : Promise.resolve({id:id,data:null}); });
+  Promise.all(reads).then(function(rows){
+    var html='<div class="card"><h1>Team skills & kit</h1><p class="lead">What each operative can do, the tickets they hold and the kit they\'ve had. Updated by the team themselves.</p></div>';
+    html += rows.map(function(r){ return manageCard(r.id, r.data); }).join('');
+    $('app').innerHTML=html;
+  });
+}
+function skillLabel(id){ for(var i=0;i<SKILLS.length;i++) if(SKILLS[i][0]===id) return SKILLS[i][1]; return id; }
+function qualLabel(id){ for(var i=0;i<QUALS.length;i++) if(QUALS[i][0]===id) return QUALS[i][1]; return id; }
+function manageCard(id, data){
+  var o=OPS[id];
+  var skills=data&&data.skills?Object.keys(data.skills).filter(function(k){return data.skills[k];}):[];
+  var quals=data&&data.quals?Object.keys(data.quals).filter(function(k){return data.quals[k];}):[];
+  var uni=data&&data.uniform?data.uniform:{};
+  var uGot=UNIFORM.filter(function(u){return uni[u[0]];});
+  var uMiss=UNIFORM.filter(function(u){return !uni[u[0]];});
+  return '<div class="mcard">'
+    +'<div class="mhead"><span class="av" style="width:42px;height:42px;border-radius:50%;background:'+o.colour+';color:#fff;display:grid;place-items:center;font-weight:800">'+inits(o.name)+'</span>'
+      +'<div style="flex:1"><div style="font-weight:800;color:var(--navy);font-size:16px">'+esc(o.name)+'</div><div class="muted">'+esc(o.role)+' · '+esc(o.code)+'</div></div>'
+      +'<a class="pill" style="background:var(--navy)" href="hosfix-skills.html?me='+id+'">Edit</a></div>'
+    +'<h2 style="color:var(--teal)">Skills ('+skills.length+')</h2>'
+      +(skills.length?'<div class="chips">'+skills.map(function(k){return '<span class="chip sk">'+esc(skillLabel(k))+'</span>';}).join('')+'</div>':'<div class="muted">Not completed yet.</div>')
+    +'<h2 style="color:#2c5f9e;margin-top:12px">Qualifications ('+quals.length+')</h2>'
+      +(quals.length?'<div class="chips">'+quals.map(function(k){return '<span class="chip ql">'+esc(qualLabel(k))+'</span>';}).join('')+'</div>':'<div class="muted">None recorded.</div>')
+    +'<h2 style="color:var(--gold);margin-top:12px">Uniform & kit</h2>'
+      +'<div class="uni">'+ uGot.map(function(u){return '<span class="u-ok">✔ '+esc(u[1])+'</span>';}).join('') + uMiss.map(function(u){return '<span class="u-no">○ '+esc(u[1])+'</span>';}).join('') +'</div>'
+    +(data&&data.notes?'<p class="muted" style="margin-top:10px"><b>Notes:</b> '+esc(data.notes)+'</p>':'')
+    +(data&&data.updatedAt?'<p class="muted" style="margin-top:8px">Updated '+fmtWhen(data.updatedAt)+'</p>':'<p class="muted" style="margin-top:8px">Not submitted yet.</p>')
+    +'</div>';
+}
+</script>
+</body>
+</html>
